@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.common.filter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,8 +32,10 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
+import java.nio.ByteBuffer;
 import java.util.*;
 
 /** operator 'in' & 'not in' */
@@ -75,7 +77,7 @@ public class InFilter extends FunctionFilter {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
-      throws LogicalOperatorException, MetadataException {
+      throws StatementAnalyzeException, MetadataException {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
       throw new MetadataException(
@@ -131,7 +133,7 @@ public class InFilter extends FunctionFilter {
         ret = In.getUnaryExpression(singlePath, binaryValues, not);
         break;
       default:
-        throw new LogicalOperatorException(type.toString(), "");
+        throw new StatementAnalyzeException(type.toString(), "");
     }
 
     return new Pair<>(ret, singlePath.getFullPath());
@@ -197,5 +199,26 @@ public class InFilter extends FunctionFilter {
     public <T extends Comparable<T>> Filter getValueFilter(T value) {
       return ValueFilter.notEq(value);
     }
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    FilterTypes.In.serialize(byteBuffer);
+    super.serializeWithoutType(byteBuffer);
+    ReadWriteIOUtils.write(not, byteBuffer);
+    ReadWriteIOUtils.write(values.size(), byteBuffer);
+    for (String value : values) {
+      ReadWriteIOUtils.write(value, byteBuffer);
+    }
+  }
+
+  public static InFilter deserialize(ByteBuffer byteBuffer) {
+    QueryFilter queryFilter = QueryFilter.deserialize(byteBuffer);
+    boolean not = ReadWriteIOUtils.readBool(byteBuffer);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    Set<String> values = new HashSet<>();
+    for (int i = 0; i < size; i++) {
+      values.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+    return new InFilter(queryFilter.filterType, queryFilter.singlePath, not, values);
   }
 }

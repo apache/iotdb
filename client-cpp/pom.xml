@@ -163,6 +163,10 @@
                                             <sourceFile>../thrift/src/main/thrift/rpc.thrift</sourceFile>
                                             <destinationFile>${project.build.directory}/thrift/rpc.thrift</destinationFile>
                                         </fileSet>
+                                        <fileSet>
+                                            <sourceFile>../thrift/src/main/thrift/common.thrift</sourceFile>
+                                            <destinationFile>${project.build.directory}/thrift/common.thrift</destinationFile>
+                                        </fileSet>
                                     </fileSets>
                                 </configuration>
                             </execution>

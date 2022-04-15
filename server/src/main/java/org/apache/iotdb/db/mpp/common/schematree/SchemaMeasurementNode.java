@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.nio.ByteBuffer;
 
 public class SchemaMeasurementNode extends SchemaNode {
 
   private String alias;
-  private final MeasurementSchema schema;
+  private MeasurementSchema schema;
 
   public SchemaMeasurementNode(String name, MeasurementSchema schema) {
     super(name);
@@ -44,6 +47,26 @@ public class SchemaMeasurementNode extends SchemaNode {
   }
 
   @Override
+  public void replaceChild(String name, SchemaNode newChild) {
+    throw new UnsupportedOperationException(
+        "This operation is not supported in SchemaMeasurementNode.");
+  }
+
+  @Override
+  public void copyDataTo(SchemaNode schemaNode) {
+    if (!schemaNode.isMeasurement()) {
+      return;
+    }
+    SchemaMeasurementNode measurementNode = schemaNode.getAsMeasurementNode();
+    measurementNode.setSchema(schema);
+    measurementNode.setAlias(alias);
+  }
+
+  private void setSchema(MeasurementSchema schema) {
+    this.schema = schema;
+  }
+
+  @Override
   public boolean isMeasurement() {
     return true;
   }
@@ -51,5 +74,29 @@ public class SchemaMeasurementNode extends SchemaNode {
   @Override
   public SchemaMeasurementNode getAsMeasurementNode() {
     return this;
+  }
+
+  @Override
+  public byte getType() {
+    return SCHEMA_MEASUREMENT_NODE;
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(getType(), buffer);
+    ReadWriteIOUtils.write(name, buffer);
+
+    ReadWriteIOUtils.write(alias, buffer);
+    schema.serializeTo(buffer);
+  }
+
+  public static SchemaMeasurementNode deserialize(ByteBuffer buffer) {
+    String name = ReadWriteIOUtils.readString(buffer);
+    String alias = ReadWriteIOUtils.readString(buffer);
+    MeasurementSchema schema = MeasurementSchema.deserializeFrom(buffer);
+
+    SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(name, schema);
+    measurementNode.setAlias(alias);
+    return measurementNode;
   }
 }

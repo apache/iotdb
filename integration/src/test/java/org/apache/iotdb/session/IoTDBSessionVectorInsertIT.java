@@ -490,7 +490,7 @@ public class IoTDBSessionVectorInsertIT {
           session.insertAlignedTablet(tablet, true);
         } catch (StatementExecutionException e) {
           Assert.assertEquals(
-              "313: failed to insert measurements [s3] caused by DataType mismatch, Insert measurement s3 type TEXT, metadata tree type INT64",
+              "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
               e.getMessage());
         }
         tablet.reset();
@@ -503,7 +503,7 @@ public class IoTDBSessionVectorInsertIT {
         session.insertAlignedTablet(tablet);
       } catch (StatementExecutionException e) {
         Assert.assertEquals(
-            "313: failed to insert measurements [s3] caused by DataType mismatch, Insert measurement s3 type TEXT, metadata tree type INT64",
+            "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
             e.getMessage());
       }
       tablet.reset();

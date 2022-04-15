@@ -31,6 +31,8 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.container.MNodeContainerMapImpl;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagLogFile;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -57,7 +59,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -273,7 +274,7 @@ public class MetadataUpgrader {
       }
 
       if (childrenSize != 0) {
-        ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
+        IMNodeContainer childrenMap = new MNodeContainerMapImpl();
         for (int i = 0; i < childrenSize; i++) {
           IMNode child = nodeStack.removeFirst();
           childrenMap.put(child.getName(), child);

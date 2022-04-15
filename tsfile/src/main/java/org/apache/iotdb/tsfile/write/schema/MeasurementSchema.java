@@ -292,6 +292,24 @@ public class MeasurementSchema
     return byteLen;
   }
 
+  @Override
+  public int serializedSize() {
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.sizeToWrite(measurementId);
+    byteLen += 3 * Byte.BYTES;
+    if (props == null) {
+      byteLen += Integer.BYTES;
+    } else {
+      byteLen += Integer.BYTES;
+      for (Map.Entry<String, String> entry : props.entrySet()) {
+        byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+        byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
+      }
+    }
+
+    return byteLen;
+  }
+
   /** function for serializing data to byte buffer. */
   @Override
   public int serializeTo(ByteBuffer buffer) {

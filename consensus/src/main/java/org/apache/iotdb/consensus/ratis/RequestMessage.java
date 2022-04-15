@@ -59,8 +59,8 @@ public class RequestMessage implements Message {
             // TODO Pooling
             ByteBuffer byteBuffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
             actualRequest.serializeRequest(byteBuffer);
-            serializedContent = ByteString.copyFrom(byteBuffer);
             byteBuffer.flip();
+            serializedContent = ByteString.copyFrom(byteBuffer);
           }
         }
       }

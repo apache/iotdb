@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.rpc.thrift.DeviceGroupHashInfo;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 /**
- * a subset of services provided by {@ConfigManager}. For use internally only, pased to Managers,
+ * a subset of services provided by {@ConfigManager}. For use internally only, passed to Managers,
  * services.
  */
 public interface Manager {
@@ -34,86 +34,102 @@ public interface Manager {
    *
    * @return true if service stopped
    */
-  public boolean isStopped();
+  boolean isStopped();
 
   /**
-   * register data node
+   * Get DataManager
    *
-   * @param physicalPlan physical plan
-   * @return status
+   * @return DataNodeManager instance
    */
-  public TSStatus registerDataNode(PhysicalPlan physicalPlan);
+  DataNodeManager getDataNodeManager();
 
   /**
-   * get data node info
+   * Get ConsensusManager
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @return ConsensusManager instance
+   */
+  ConsensusManager getConsensusManager();
+
+  /**
+   * Get RegionManager
+   *
+   * @return RegionManager instance
+   */
+  RegionManager getRegionManager();
+
+  /**
+   * Get PartitionManager
+   *
+   * @return PartitionManager instance
+   */
+  PartitionManager getPartitionManager();
+
+  /**
+   * Register DataNode
+   *
+   * @param physicalPlan RegisterDataNodePlan
+   * @return DataNodeConfigurationDataSet
+   */
+  DataSet registerDataNode(PhysicalPlan physicalPlan);
+
+  /**
+   * Get DataNode info
+   *
+   * @param physicalPlan QueryDataNodeInfoPlan
+   * @return DataNodesInfoDataSet
    */
   DataSet getDataNodeInfo(PhysicalPlan physicalPlan);
 
   /**
-   * get storage group schema
+   * Get StorageGroupSchemas
    *
-   * @return data set
+   * @return StorageGroupSchemaDataSet
    */
   DataSet getStorageGroupSchema();
 
   /**
-   * set storage group
+   * Set StorageGroup
    *
-   * @param physicalPlan physical plan
+   * @param physicalPlan SetStorageGroupPlan
    * @return status
    */
   TSStatus setStorageGroup(PhysicalPlan physicalPlan);
 
   /**
-   * get data node info manager
+   * Get SchemaPartition
    *
-   * @return DataNodeInfoManager instance
+   * @return SchemaPartitionDataSet
    */
-  DataNodeManager getDataNodeManager();
+  DataSet getSchemaPartition(PathPatternTree patternTree);
 
   /**
-   * get data partition
+   * Get or create SchemaPartition
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @return SchemaPartitionDataSet
+   */
+  DataSet getOrCreateSchemaPartition(PathPatternTree patternTree);
+
+  /**
+   * Get DataPartition
+   *
+   * @param physicalPlan DataPartitionPlan
+   * @return DataPartitionDataSet
    */
   DataSet getDataPartition(PhysicalPlan physicalPlan);
 
   /**
-   * get schema partition
+   * Get or create DataPartition
    *
-   * @param physicalPlan physical plan
-   * @return data set
+   * @param physicalPlan DataPartitionPlan
+   * @return DataPartitionDataSet
    */
-  DataSet getSchemaPartition(PhysicalPlan physicalPlan);
+  DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan);
 
   /**
-   * get assign region manager
+   * operate permission
    *
-   * @return AssignRegionManager instance
+   * @param physicalPlan
+   * @return
    */
-  RegionManager getRegionManager();
-
-  /**
-   * apply schema partition
-   *
-   * @param physicalPlan physical plan
-   * @return data set
-   */
-  DataSet applySchemaPartition(PhysicalPlan physicalPlan);
-
-  /**
-   * apply data partition
-   *
-   * @param physicalPlan physical plan
-   * @return data set
-   */
-  DataSet applyDataPartition(PhysicalPlan physicalPlan);
-
-  DeviceGroupHashInfo getDeviceGroupHashInfo();
-
-  ConsensusManager getConsensusManager();
+  TSStatus operatePermission(PhysicalPlan physicalPlan);
 }

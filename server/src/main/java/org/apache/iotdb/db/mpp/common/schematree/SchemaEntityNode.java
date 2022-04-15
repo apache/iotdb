@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,6 +60,30 @@ public class SchemaEntityNode extends SchemaInternalNode {
   }
 
   @Override
+  public void replaceChild(String name, SchemaNode newChild) {
+    super.replaceChild(name, newChild);
+    if (newChild.isMeasurement()) {
+      SchemaMeasurementNode measurementNode = newChild.getAsMeasurementNode();
+      if (measurementNode.getAlias() != null) {
+        aliasChildren.replace(name, measurementNode);
+      }
+    }
+  }
+
+  @Override
+  public void copyDataTo(SchemaNode schemaNode) {
+    if (!schemaNode.isEntity()) {
+      return;
+    }
+    SchemaEntityNode entityNode = schemaNode.getAsEntityNode();
+    if (aliasChildren != null) {
+      for (SchemaMeasurementNode child : aliasChildren.values()) {
+        entityNode.addAliasChild(child.getAlias(), child);
+      }
+    }
+  }
+
+  @Override
   public boolean isEntity() {
     return true;
   }
@@ -64,5 +91,29 @@ public class SchemaEntityNode extends SchemaInternalNode {
   @Override
   public SchemaEntityNode getAsEntityNode() {
     return this;
+  }
+
+  @Override
+  public byte getType() {
+    return SCHEMA_ENTITY_NODE;
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    serializeChildren(buffer);
+
+    ReadWriteIOUtils.write(getType(), buffer);
+    ReadWriteIOUtils.write(name, buffer);
+    ReadWriteIOUtils.write(isAligned, buffer);
+    ReadWriteIOUtils.write(children.size(), buffer);
+  }
+
+  public static SchemaEntityNode deserialize(ByteBuffer buffer) {
+    String name = ReadWriteIOUtils.readString(buffer);
+    boolean isAligned = ReadWriteIOUtils.readBool(buffer);
+
+    SchemaEntityNode entityNode = new SchemaEntityNode(name);
+    entityNode.setAligned(isAligned);
+    return entityNode;
   }
 }

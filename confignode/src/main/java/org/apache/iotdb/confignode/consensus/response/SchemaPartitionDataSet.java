@@ -19,61 +19,68 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.confignode.partition.SchemaPartitionInfo;
-import org.apache.iotdb.confignode.rpc.thrift.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class SchemaPartitionDataSet implements DataSet {
-  private SchemaPartitionInfo schemaPartitionInfo;
 
-  public SchemaPartitionInfo getSchemaPartitionInfo() {
-    return schemaPartitionInfo;
+  private TSStatus status;
+
+  private SchemaPartition schemaPartition;
+
+  public SchemaPartitionDataSet() {
+    // empty constructor
   }
 
-  public void setSchemaPartitionInfo(SchemaPartitionInfo schemaPartitionInfos) {
-    this.schemaPartitionInfo = schemaPartitionInfos;
+  public TSStatus getStatus() {
+    return status;
   }
 
-  public static org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo
-      convertRpcSchemaPartition(SchemaPartitionInfo schemaPartitionInfo) {
-    org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo rpcSchemaPartitionInfo =
-        new org.apache.iotdb.confignode.rpc.thrift.SchemaPartitionInfo();
+  public void setStatus(TSStatus status) {
+    this.status = status;
+  }
 
-    Map<String, Map<Integer, RegionReplicaSet>> schemaRegionRelicatSets = new HashMap<>();
+  public void setSchemaPartition(SchemaPartition schemaPartition) {
+    this.schemaPartition = schemaPartition;
+  }
 
-    schemaPartitionInfo.getSchemaPartitionInfo().entrySet().stream()
-        .forEach(
-            entity -> {
-              schemaRegionRelicatSets.putIfAbsent(entity.getKey(), new HashMap<>());
-              entity
-                  .getValue()
-                  .entrySet()
-                  .forEach(
-                      replica -> {
-                        RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-                        regionReplicaSet.setRegionId(replica.getKey());
-                        List<EndPoint> endPoints = new ArrayList<>();
-                        replica
-                            .getValue()
-                            .getEndPointList()
-                            .forEach(
-                                point -> {
-                                  EndPoint endPoint = new EndPoint(point.getIp(), point.getPort());
-                                  endPoints.add(endPoint);
-                                });
-                        regionReplicaSet.setEndpoint(endPoints);
-                        schemaRegionRelicatSets
-                            .get(entity.getKey())
-                            .put(replica.getKey(), regionReplicaSet);
-                      });
-            });
-    rpcSchemaPartitionInfo.setSchemaRegionDataNodesMap(schemaRegionRelicatSets);
-    return rpcSchemaPartitionInfo;
+  public void convertToRpcSchemaPartitionResp(TSchemaPartitionResp resp) {
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
+    resp.setStatus(status);
+
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      schemaPartition
+          .getSchemaPartitionMap()
+          .forEach(
+              (storageGroup, seriesPartitionSlotRegionReplicaSetMap) -> {
+                // Extract StorageGroupName
+                schemaPartitionMap.putIfAbsent(storageGroup, new HashMap<>());
+
+                // Extract Map<SeriesPartitionSlot, RegionReplicaSet>
+                seriesPartitionSlotRegionReplicaSetMap.forEach(
+                    ((seriesPartitionSlot, regionReplicaSet) -> {
+                      // Extract TSeriesPartitionSlot
+                      TSeriesPartitionSlot tSeriesPartitionSlot =
+                          new TSeriesPartitionSlot(seriesPartitionSlot.getSlotId());
+
+                      // Extract TRegionReplicaSet
+                      TRegionReplicaSet tRegionReplicaSet =
+                          regionReplicaSet.convertToRPCTRegionReplicaSet();
+                      schemaPartitionMap
+                          .get(storageGroup)
+                          .put(tSeriesPartitionSlot, tRegionReplicaSet);
+                    }));
+              });
+    }
+
+    resp.setSchemaRegionMap(schemaPartitionMap);
   }
 }

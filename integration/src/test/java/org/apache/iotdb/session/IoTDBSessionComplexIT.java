@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.trigger.example.Counter;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -471,8 +472,8 @@ public class IoTDBSessionComplexIT {
     session.setStorageGroup("root.sg1");
     String deviceId = "root.sg1.d1";
 
-    boolean isEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
+    WALMode prevWalMode = IoTDBDescriptor.getInstance().getConfig().getWalMode();
+    IoTDBDescriptor.getInstance().getConfig().setWalMode(WALMode.DISABLE);
     createTimeseries();
 
     List<String> measurements = new ArrayList<>();
@@ -528,7 +529,7 @@ public class IoTDBSessionComplexIT {
     }
     Assert.assertEquals(201, count);
 
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(isEnableWAL);
+    IoTDBDescriptor.getInstance().getConfig().setWalMode(prevWalMode);
     session.close();
   }
 

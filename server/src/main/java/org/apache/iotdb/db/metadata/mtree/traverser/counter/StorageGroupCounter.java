@@ -20,13 +20,15 @@ package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 // This class implements storage group count function.
 public class StorageGroupCounter extends CounterTraverser {
 
-  public StorageGroupCounter(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public StorageGroupCounter(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
   }
 
   @Override

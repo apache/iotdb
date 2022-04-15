@@ -136,12 +136,16 @@ public class TriggerRegistrationService implements IService {
 
   private IMNode tryGetMNode(CreateTriggerPlan plan) throws TriggerManagementException {
     try {
+// <<<<<<< master
+//       return IoTDB.schemaProcessor.getMeasurementMNodeForTrigger(plan.getFullPath());
+
       IMNode imNode = IoTDB.schemaProcessor.getNodeByPath(plan.getFullPath());
       if (imNode == null) {
         throw new TriggerManagementException(
             String.format("Path [%s] does not exist", plan.getFullPath().getFullPath()));
       }
       return imNode;
+
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     }
@@ -221,7 +225,17 @@ public class TriggerRegistrationService implements IService {
 
   private void doDeregister(DropTriggerPlan plan) throws TriggerManagementException {
     TriggerExecutor executor = executors.remove(plan.getTriggerName());
+// <<<<<<< master
+// //     IMeasurementMNode measurementMNode = executor.getMeasurementMNode();
+//     try {
+//       measurementMNode.setTriggerExecutor(null);
+//       IoTDB.schemaProcessor.releaseMeasurementMNodeAfterDropTrigger(executor.getMeasurementMNode());
+//     } catch (MetadataException e) {
+//       throw new TriggerManagementException(e.getMessage(), e);
+//     }
+// =======
     executor.getIMNode().setTriggerExecutor(null);
+// >>>>>>> trigger_fullpath
 
     try {
       executor.onDrop();

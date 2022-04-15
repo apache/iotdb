@@ -19,10 +19,13 @@
 package org.apache.iotdb.tsfile.read.expression;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 
 public interface IExpression extends Serializable {
 
   ExpressionType getType();
 
   IExpression clone();
+
+  void serialize(ByteBuffer byteBuffer);
 }

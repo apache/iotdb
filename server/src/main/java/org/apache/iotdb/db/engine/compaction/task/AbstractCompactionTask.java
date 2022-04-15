@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
@@ -43,6 +44,9 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected final AtomicInteger currentTaskNum;
   protected final TsFileManager tsFileManager;
   protected long timeCost = 0L;
+  protected volatile boolean ran = false;
+  protected volatile boolean finished = false;
+  protected ICompactionPerformer performer;
 
   public AbstractCompactionTask(
       String fullStorageGroupName,
@@ -61,16 +65,21 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
+    ran = true;
     long startTime = System.currentTimeMillis();
     currentTaskNum.incrementAndGet();
     try {
       doCompaction();
+    } catch (InterruptedException e) {
+      LOGGER.warn("Current task is interrupted");
+      Thread.interrupted();
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
-      CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
-      timeCost = System.currentTimeMillis() - startTime;
       this.currentTaskNum.decrementAndGet();
+      CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
+      timeCost = System.currentTimeMillis() - startTime;
+      finished = true;
     }
 
     return null;
@@ -106,5 +115,19 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
 
   public long getTimeCost() {
     return timeCost;
+  }
+
+  protected void checkInterrupted() throws InterruptedException {
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
+    }
+  }
+
+  public boolean isTaskRan() {
+    return ran;
+  }
+
+  public boolean isTaskFinished() {
+    return finished;
   }
 }

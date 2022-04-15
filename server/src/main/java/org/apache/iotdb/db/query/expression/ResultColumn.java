@@ -23,7 +23,9 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -185,5 +187,20 @@ public class ResultColumn {
       return false;
     }
     return getResultColumnName().equals(((ResultColumn) o).getResultColumnName());
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    expression.serialize(byteBuffer);
+    ReadWriteIOUtils.write(alias, byteBuffer);
+    dataType.serializeTo(byteBuffer);
+  }
+
+  public static ResultColumn deserialize(ByteBuffer byteBuffer) {
+    Expression expression = ExpressionType.deserialize(byteBuffer);
+    String alias = ReadWriteIOUtils.readString(byteBuffer);
+    TSDataType tsDataType = TSDataType.deserializeFrom(byteBuffer);
+    ResultColumn resultColumn = new ResultColumn(expression, alias);
+    resultColumn.dataType = tsDataType;
+    return resultColumn;
   }
 }
