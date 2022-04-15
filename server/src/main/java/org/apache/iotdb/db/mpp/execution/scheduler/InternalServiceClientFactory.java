@@ -20,21 +20,25 @@
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 public class InternalServiceClientFactory {
+  private static final int TIMEOUT_MS = 10000;
+
   // TODO: (xingtanzjr) consider the best practice to maintain the clients
   public static InternalService.Client getInternalServiceClient(String endpoint, int port)
       throws TTransportException {
-    try (TTransport transport = new TSocket(endpoint, port)) {
-      transport.open();
-      TProtocol protocol = new TBinaryProtocol(transport);
-      return new InternalService.Client(protocol);
-    }
+    TTransport transport =
+        RpcTransportFactory.INSTANCE.getTransport(
+            // as there is a try-catch already, we do not need to use TSocket.wrap
+            endpoint, port, TIMEOUT_MS);
+    transport.open();
+    TProtocol protocol = new TBinaryProtocol(transport);
+    return new InternalService.Client(protocol);
   }
 }
