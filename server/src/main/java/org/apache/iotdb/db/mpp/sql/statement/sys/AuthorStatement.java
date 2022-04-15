@@ -96,8 +96,8 @@ public class AuthorStatement extends Statement {
     return privilegeList;
   }
 
-  public void setPrivilegeList(String[] authorizationList) {
-    this.privilegeList = authorizationList;
+  public void setPrivilegeList(String[] privilegeList) {
+    this.privilegeList = privilegeList;
   }
 
   public PartialPath getNodeName() {

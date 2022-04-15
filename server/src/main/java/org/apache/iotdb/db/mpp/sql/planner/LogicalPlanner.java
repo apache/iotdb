@@ -21,8 +21,10 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
+import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -34,16 +36,25 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.*;
-import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -74,6 +85,10 @@ public class LogicalPlanner {
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, context);
       }
+
+      analysis
+          .getRespDatasetHeader()
+          .setColumnToTsBlockIndexMap(((IOutputPlanNode) rootNode).getOutputColumnNames());
     }
 
     return new LogicalQueryPlan(context, rootNode);
@@ -96,7 +111,7 @@ public class LogicalPlanner {
       QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
 
       planBuilder.planRawDataQuerySource(
-          queryStatement.getDeviceNameToPathsMap(),
+          queryStatement.getDeviceNameToDeduplicatedPathsMap(),
           queryStatement.getResultOrder(),
           queryStatement.isAlignByDevice(),
           analysis.getQueryFilter(),
@@ -119,7 +134,7 @@ public class LogicalPlanner {
         // with value filter
         planBuilder.planAggregationSourceWithValueFilter(
             queryStatement.getDeviceNameToAggregationsMap(),
-            queryStatement.getDeviceNameToPathsMap(),
+            queryStatement.getDeviceNameToDeduplicatedPathsMap(),
             queryStatement.getResultOrder(),
             queryStatement.isAlignByDevice(),
             analysis.getQueryFilter(),
@@ -221,12 +236,13 @@ public class LogicalPlanner {
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       // set schema in insert node
       // convert insert statement to insert node
-      List<MeasurementSchema> measurementSchemas =
+      DeviceSchemaInfo deviceSchemaInfo =
           analysis
               .getSchemaTree()
-              .searchMeasurementSchema(
+              .searchDeviceSchemaInfo(
                   insertTabletStatement.getDevicePath(),
                   Arrays.asList(insertTabletStatement.getMeasurements()));
+      List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
       return new InsertTabletNode(
           context.getQueryId().genPlanNodeId(),
           insertTabletStatement.getDevicePath(),
@@ -243,12 +259,13 @@ public class LogicalPlanner {
     public PlanNode visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       // set schema in insert node
       // convert insert statement to insert node
-      List<MeasurementSchema> measurementSchemas =
+      DeviceSchemaInfo deviceSchemaInfo =
           analysis
               .getSchemaTree()
-              .searchMeasurementSchema(
+              .searchDeviceSchemaInfo(
                   insertRowStatement.getDevicePath(),
                   Arrays.asList(insertRowStatement.getMeasurements()));
+      List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
       return new InsertRowNode(
           context.getQueryId().genPlanNodeId(),
           insertRowStatement.getDevicePath(),
@@ -257,6 +274,43 @@ public class LogicalPlanner {
           insertRowStatement.getDataTypes(),
           insertRowStatement.getTime(),
           insertRowStatement.getValues());
+    }
+
+    @Override
+    public PlanNode visitShowTimeSeries(
+        ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planTimeSeriesMetaSource(
+          showTimeSeriesStatement.getPathPattern(),
+          showTimeSeriesStatement.getKey(),
+          showTimeSeriesStatement.getValue(),
+          showTimeSeriesStatement.getLimit(),
+          showTimeSeriesStatement.getOffset(),
+          showTimeSeriesStatement.isOrderByHeat(),
+          showTimeSeriesStatement.isContains(),
+          showTimeSeriesStatement.isPrefixPath());
+      planBuilder.planSchemaMerge(showTimeSeriesStatement.isOrderByHeat());
+      if (showTimeSeriesStatement.getLimit() > 0) {
+        planBuilder.planOffset(showTimeSeriesStatement.getOffset());
+        planBuilder.planLimit(showTimeSeriesStatement.getLimit());
+      }
+      return planBuilder.getRoot();
+    }
+
+    @Override
+    public PlanNode visitShowDevices(
+        ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planDeviceSchemaSource(
+          showDevicesStatement.getPathPattern(),
+          showDevicesStatement.getLimit(),
+          showDevicesStatement.getOffset(),
+          showDevicesStatement.isPrefixPath(),
+          showDevicesStatement.hasSgCol());
+      planBuilder.planSchemaMerge(false);
+      planBuilder.planOffset(showDevicesStatement.getOffset());
+      planBuilder.planLimit(showDevicesStatement.getLimit());
+      return planBuilder.getRoot();
     }
 
     @Override
@@ -386,12 +440,13 @@ public class LogicalPlanner {
       for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
         InsertRowStatement insertRowStatement =
             insertRowsStatement.getInsertRowStatementList().get(i);
-        List<MeasurementSchema> measurementSchemas =
+        DeviceSchemaInfo deviceSchemaInfo =
             analysis
                 .getSchemaTree()
-                .searchMeasurementSchema(
+                .searchDeviceSchemaInfo(
                     insertRowStatement.getDevicePath(),
                     Arrays.asList(insertRowStatement.getMeasurements()));
+        List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
         insertRowsNode.addOneInsertRowNode(
             new InsertRowNode(
                 insertRowsNode.getPlanNodeId(),
@@ -417,12 +472,13 @@ public class LogicalPlanner {
       for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
         InsertTabletStatement insertTabletStatement =
             insertMultiTabletsStatement.getInsertTabletStatementList().get(i);
-        List<MeasurementSchema> measurementSchemas =
+        DeviceSchemaInfo deviceSchemaInfo =
             analysis
                 .getSchemaTree()
-                .searchMeasurementSchema(
+                .searchDeviceSchemaInfo(
                     insertTabletStatement.getDevicePath(),
                     Arrays.asList(insertTabletStatement.getMeasurements()));
+        List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
         insertTabletNodeList.add(
             new InsertTabletNode(
                 insertMultiTabletsNode.getPlanNodeId(),
@@ -448,12 +504,13 @@ public class LogicalPlanner {
       for (int i = 0; i < insertRowsOfOneDeviceStatement.getInsertRowStatementList().size(); i++) {
         InsertRowStatement insertRowStatement =
             insertRowsOfOneDeviceStatement.getInsertRowStatementList().get(i);
-        List<MeasurementSchema> measurementSchemas =
+        DeviceSchemaInfo deviceSchemaInfo =
             analysis
                 .getSchemaTree()
-                .searchMeasurementSchema(
+                .searchDeviceSchemaInfo(
                     insertRowStatement.getDevicePath(),
                     Arrays.asList(insertRowStatement.getMeasurements()));
+        List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
         insertRowsNode.addOneInsertRowNode(
             new InsertRowNode(
                 insertRowsNode.getPlanNodeId(),
@@ -466,6 +523,15 @@ public class LogicalPlanner {
             i);
       }
       return insertRowsNode;
+    }
+
+    @Override
+    public PlanNode visitSchemaFetch(
+        SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planSchemaFetchSource(schemaFetchStatement.getPatternTree());
+      planBuilder.planSchemaMerge(false);
+      return planBuilder.getRoot();
     }
   }
 }

@@ -21,16 +21,17 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.Arrays;
+import java.util.Objects;
 
-public abstract class InsertNode extends PlanNode {
+public abstract class InsertNode extends WritePlanNode {
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -69,6 +70,13 @@ public abstract class InsertNode extends PlanNode {
     this.isAligned = isAligned;
     this.measurementSchemas = measurementSchemas;
     this.dataTypes = dataTypes;
+
+    this.measurements = new String[measurementSchemas.length];
+    for (int i = 0; i < measurementSchemas.length; i++) {
+      if (measurementSchemas[i] != null) {
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+      }
+    }
   }
 
   public RegionReplicaSet getDataRegionReplicaSet() {
@@ -104,12 +112,6 @@ public abstract class InsertNode extends PlanNode {
   }
 
   public String[] getMeasurements() {
-    if (measurements == null) {
-      measurements = new String[measurementSchemas.length];
-      for (int i = 0; i < measurementSchemas.length; i++) {
-        measurements[i] = measurementSchemas[i].getMeasurementId();
-      }
-    }
     return measurements;
   }
 
@@ -129,10 +131,47 @@ public abstract class InsertNode extends PlanNode {
     this.deviceID = deviceID;
   }
 
-  // TODO(INSERT) split this insert node into multiple InsertNode according to the data partition
-  // info
-  public abstract List<InsertNode> splitByPartition(Analysis analysis);
+  public RegionReplicaSet getRegionReplicaSet() {
+    return dataRegionReplicaSet;
+  }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  protected int countFailedMeasurements() {
+    int result = 0;
+    for (MeasurementSchema measurement : measurementSchemas) {
+      if (measurement == null) {
+        result++;
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    InsertNode that = (InsertNode) o;
+    return isAligned == that.isAligned
+        && Objects.equals(devicePath, that.devicePath)
+        && Arrays.equals(measurementSchemas, that.measurementSchemas)
+        && Arrays.equals(measurements, that.measurements)
+        && Arrays.equals(dataTypes, that.dataTypes)
+        && Objects.equals(deviceID, that.deviceID)
+        && Objects.equals(dataRegionReplicaSet, that.dataRegionReplicaSet);
+  }
+
+  @Override
+  public int hashCode() {
+    int result =
+        Objects.hash(super.hashCode(), devicePath, isAligned, deviceID, dataRegionReplicaSet);
+    result = 31 * result + Arrays.hashCode(measurementSchemas);
+    result = 31 * result + Arrays.hashCode(measurements);
+    result = 31 * result + Arrays.hashCode(dataTypes);
+    return result;
+  }
 }

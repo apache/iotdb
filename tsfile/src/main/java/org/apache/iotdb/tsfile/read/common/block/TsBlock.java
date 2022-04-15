@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
+import java.util.Iterator;
 
 import static io.airlift.slice.SizeOf.sizeOf;
 import static java.lang.String.format;
@@ -177,8 +178,16 @@ public class TsBlock {
     return valueColumns[columnIndex];
   }
 
-  public TsBlockIterator getTsBlockIterator() {
-    return new TsBlockIterator(0);
+  public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator() {
+    return new TsBlockSingleColumnIterator(0);
+  }
+
+  public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator(int columnIndex) {
+    return new TsBlockSingleColumnIterator(0, columnIndex);
+  }
+
+  public TsBlockRowIterator getTsBlockRowIterator() {
+    return new TsBlockRowIterator(0);
   }
 
   /** Only used for the batch data of vector time series. */
@@ -186,17 +195,24 @@ public class TsBlock {
     return new AlignedTsBlockIterator(0, subIndex);
   }
 
-  public class TsBlockIterator implements IPointReader, IBatchDataIterator {
+  public class TsBlockSingleColumnIterator implements IPointReader, IBatchDataIterator {
 
-    protected int index;
+    protected int rowIndex;
+    protected int columnIndex;
 
-    public TsBlockIterator(int index) {
-      this.index = index;
+    public TsBlockSingleColumnIterator(int rowIndex) {
+      this.rowIndex = rowIndex;
+      this.columnIndex = 0;
+    }
+
+    public TsBlockSingleColumnIterator(int rowIndex, int columnIndex) {
+      this.rowIndex = rowIndex;
+      this.columnIndex = columnIndex;
     }
 
     @Override
     public boolean hasNext() {
-      return index < positionCount;
+      return rowIndex < positionCount;
     }
 
     @Override
@@ -206,22 +222,22 @@ public class TsBlock {
 
     @Override
     public void next() {
-      index++;
+      rowIndex++;
     }
 
     @Override
     public long currentTime() {
-      return timeColumn.getLong(index);
+      return timeColumn.getLong(rowIndex);
     }
 
     @Override
     public Object currentValue() {
-      return valueColumns[0].getTsPrimitiveType(index).getValue();
+      return valueColumns[columnIndex].getTsPrimitiveType(rowIndex).getValue();
     }
 
     @Override
     public void reset() {
-      index = 0;
+      rowIndex = 0;
     }
 
     @Override
@@ -244,19 +260,11 @@ public class TsBlock {
     @Override
     public TimeValuePair currentTimeValuePair() {
       return new TimeValuePair(
-          timeColumn.getLong(index), valueColumns[0].getTsPrimitiveType(index));
+          timeColumn.getLong(rowIndex), valueColumns[columnIndex].getTsPrimitiveType(rowIndex));
     }
 
     @Override
     public void close() {}
-
-    public int getIndex() {
-      return index;
-    }
-
-    public void setIndex(int index) {
-      this.index = index;
-    }
 
     public long getEndTime() {
       return TsBlock.this.getEndTime();
@@ -265,9 +273,49 @@ public class TsBlock {
     public long getStartTime() {
       return TsBlock.this.getStartTime();
     }
+
+    public int getRowIndex() {
+      return rowIndex;
+    }
+
+    public void setRowIndex(int rowIndex) {
+      this.rowIndex = rowIndex;
+    }
   }
 
-  private class AlignedTsBlockIterator extends TsBlockIterator {
+  /** Mainly used for UDF framework. Note that the timestamps are at the last column. */
+  public class TsBlockRowIterator implements Iterator<Object[]> {
+
+    protected int rowIndex;
+    protected int columnCount;
+
+    public TsBlockRowIterator(int rowIndex) {
+      this.rowIndex = rowIndex;
+      columnCount = getValueColumnCount();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return rowIndex < positionCount;
+    }
+
+    /** @return A row in the TsBlock. The timestamp is at the last column. */
+    @Override
+    public Object[] next() {
+      int columnCount = getValueColumnCount();
+      Object[] row = new Object[columnCount + 1];
+      for (int i = 0; i < columnCount; ++i) {
+        row[i] = valueColumns[i].getObject(rowIndex);
+      }
+      row[columnCount] = timeColumn.getObject(rowIndex);
+
+      rowIndex++;
+
+      return row;
+    }
+  }
+
+  private class AlignedTsBlockIterator extends TsBlockSingleColumnIterator {
 
     private final int subIndex;
 
@@ -297,7 +345,7 @@ public class TsBlock {
 
     @Override
     public Object currentValue() {
-      TsPrimitiveType v = valueColumns[subIndex].getTsPrimitiveType(index);
+      TsPrimitiveType v = valueColumns[subIndex].getTsPrimitiveType(rowIndex);
       return v == null ? null : v.getValue();
     }
 
@@ -306,12 +354,12 @@ public class TsBlock {
       // aligned timeseries' BatchData length() may return the length of time column
       // we need traverse to VectorBatchDataIterator calculate the actual value column's length
       int cnt = 0;
-      int indexSave = index;
+      int indexSave = rowIndex;
       while (hasNext()) {
         cnt++;
         next();
       }
-      index = indexSave;
+      rowIndex = indexSave;
       return cnt;
     }
   }

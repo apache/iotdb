@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class PermissionManager {
 

@@ -128,6 +128,10 @@ public class QueryId {
     return id;
   }
 
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(this.id, byteBuffer);
+  }
+
   public static QueryId deserialize(ByteBuffer byteBuffer) {
     return new QueryId(ReadWriteIOUtils.readString(byteBuffer));
   }

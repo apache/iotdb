@@ -710,7 +710,7 @@ public class SeriesScanUtil {
               mergeReader.addReader(
                   firstPageReader
                       .getAllSatisfiedPageData(orderUtils.getAscending())
-                      .getTsBlockIterator(),
+                      .getTsBlockSingleColumnIterator(),
                   firstPageReader.version,
                   orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()),
                   context);
@@ -737,7 +737,7 @@ public class SeriesScanUtil {
               mergeReader.addReader(
                   pageReader
                       .getAllSatisfiedPageData(orderUtils.getAscending())
-                      .getTsBlockIterator(),
+                      .getTsBlockSingleColumnIterator(),
                   pageReader.version,
                   orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
                   context);
@@ -918,7 +918,9 @@ public class SeriesScanUtil {
 
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     mergeReader.addReader(
-        pageReader.getAllSatisfiedPageData(orderUtils.getAscending()).getTsBlockIterator(),
+        pageReader
+            .getAllSatisfiedPageData(orderUtils.getAscending())
+            .getTsBlockSingleColumnIterator(),
         pageReader.version,
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
         context);

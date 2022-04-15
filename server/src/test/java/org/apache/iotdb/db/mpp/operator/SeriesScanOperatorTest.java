@@ -84,10 +84,12 @@ public class SeriesScanOperatorTest {
       FragmentInstanceContext fragmentInstanceContext =
           new FragmentInstanceContext(
               new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+      PlanNodeId planNodeId = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
-          1, new PlanNodeId("1"), SeriesScanOperator.class.getSimpleName());
+          1, planNodeId, SeriesScanOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
+              planNodeId,
               measurementPath,
               allSensors,
               TSDataType.INT32,

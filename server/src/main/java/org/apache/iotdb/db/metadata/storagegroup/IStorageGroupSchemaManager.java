@@ -33,7 +33,7 @@ import java.util.Set;
 // This class declares all the interfaces for storage group management.
 public interface IStorageGroupSchemaManager {
 
-  void init() throws IOException;
+  void init() throws MetadataException, IOException;
 
   void forceLog();
 
@@ -45,6 +45,14 @@ public interface IStorageGroupSchemaManager {
    * @param path storage group path
    */
   void setStorageGroup(PartialPath path) throws MetadataException;
+
+  /**
+   * different with LocalConfigNode.ensureStorageGroup, this method won't init storageGroup
+   * resources.
+   *
+   * @param path storage group path
+   */
+  void ensureStorageGroup(PartialPath path) throws MetadataException;
 
   /**
    * Delete storage groups of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3"

@@ -86,14 +86,17 @@ public class TimeJoinOperatorTest {
       FragmentInstanceContext fragmentInstanceContext =
           new FragmentInstanceContext(
               new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
-          1, new PlanNodeId("1"), SeriesScanOperator.class.getSimpleName());
+          1, planNodeId1, SeriesScanOperator.class.getSimpleName());
+      PlanNodeId planNodeId2 = new PlanNodeId("2");
       fragmentInstanceContext.addOperatorContext(
-          2, new PlanNodeId("2"), SeriesScanOperator.class.getSimpleName());
+          2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       fragmentInstanceContext.addOperatorContext(
           3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
       SeriesScanOperator seriesScanOperator1 =
           new SeriesScanOperator(
+              planNodeId1,
               measurementPath1,
               allSensors,
               TSDataType.INT32,
@@ -107,6 +110,7 @@ public class TimeJoinOperatorTest {
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       SeriesScanOperator seriesScanOperator2 =
           new SeriesScanOperator(
+              planNodeId2,
               measurementPath2,
               allSensors,
               TSDataType.INT32,

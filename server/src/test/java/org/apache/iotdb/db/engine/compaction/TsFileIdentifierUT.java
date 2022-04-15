@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.log.TsFileIdentifier;
 import org.apache.iotdb.db.utils.FileUtils;
 
 import org.junit.Assert;
@@ -31,7 +32,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 
-import static org.apache.iotdb.db.engine.compaction.TsFileIdentifier.INFO_SEPARATOR;
+import static org.apache.iotdb.db.engine.compaction.log.TsFileIdentifier.INFO_SEPARATOR;
 
 public class TsFileIdentifierUT {
 

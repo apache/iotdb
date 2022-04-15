@@ -46,6 +46,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
       return;
     }
     devicePath = insertRowStatementList.get(0).getDevicePath();
+    isAligned = insertRowStatementList.get(0).isAligned;
     Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
       List<String> measurements = Arrays.asList(insertRowStatement.getMeasurements());

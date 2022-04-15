@@ -103,14 +103,19 @@ public class ConfigNodeDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setDeviceGroupCount(
+      conf.setSeriesPartitionSlotNum(
           Integer.parseInt(
               properties.getProperty(
-                  "device_group_count", String.valueOf(conf.getDeviceGroupCount()))));
+                  "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()))));
 
-      conf.setDeviceGroupHashExecutorClass(
+      conf.setSeriesPartitionExecutorClass(
           properties.getProperty(
-              "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass()));
+              "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
+
+      conf.setTimePartitionInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))));
 
       conf.setRpcAddress(properties.getProperty("config_node_rpc_address", conf.getRpcAddress()));
 
@@ -164,6 +169,10 @@ public class ConfigNodeDescriptor {
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+
+      conf.setDefaultTTL(
+          Long.parseLong(
+              properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
       conf.setRegionReplicaCount(
           Integer.parseInt(

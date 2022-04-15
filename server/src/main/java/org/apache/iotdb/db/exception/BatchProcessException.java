@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.exception;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.util.Arrays;
 

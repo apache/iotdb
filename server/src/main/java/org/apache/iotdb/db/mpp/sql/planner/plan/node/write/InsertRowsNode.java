@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
@@ -31,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InsertRowsNode extends InsertNode {
 
@@ -83,6 +86,10 @@ public class InsertRowsNode extends InsertNode {
     return results;
   }
 
+  public TSStatus[] getFailingStatus() {
+    return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return null;
@@ -90,6 +97,21 @@ public class InsertRowsNode extends InsertNode {
 
   @Override
   public void addChild(PlanNode child) {}
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    InsertRowsNode that = (InsertRowsNode) o;
+    return Objects.equals(insertRowNodeIndexList, that.insertRowNodeIndexList)
+        && Objects.equals(insertRowNodeList, that.insertRowNodeList);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), insertRowNodeIndexList, insertRowNodeList);
+  }
 
   @Override
   public PlanNode clone() {
@@ -109,7 +131,7 @@ public class InsertRowsNode extends InsertNode {
   public void serialize(ByteBuffer byteBuffer) {}
 
   @Override
-  public List<InsertNode> splitByPartition(Analysis analysis) {
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<RegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);

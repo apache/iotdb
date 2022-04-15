@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
@@ -71,11 +71,19 @@ public class Utils {
     return String.format("%s-%d", groupTypeAbbr, consensusGroupId.getId());
   }
 
+  public static String RatisPeerId(Endpoint endpoint) {
+    return String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
+  }
+
+  public static Endpoint parseFromRatisId(String ratisId) {
+    String[] items = ratisId.split("-");
+    return new Endpoint(items[0], Integer.parseInt(items[1]));
+  }
+
   // priority is used as ordinal of leader election
   public static RaftPeer toRaftPeer(Endpoint endpoint, int priority) {
-    String Id = String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
     return RaftPeer.newBuilder()
-        .setId(Id)
+        .setId(RatisPeerId(endpoint))
         .setAddress(IPAddress(endpoint))
         .setPriority(priority)
         .build();

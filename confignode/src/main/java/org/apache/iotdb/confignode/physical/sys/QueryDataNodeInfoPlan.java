@@ -22,6 +22,7 @@ import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
 public class QueryDataNodeInfoPlan extends PhysicalPlan {
@@ -50,5 +51,18 @@ public class QueryDataNodeInfoPlan extends PhysicalPlan {
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
     this.dataNodeID = buffer.getInt();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    QueryDataNodeInfoPlan that = (QueryDataNodeInfoPlan) o;
+    return dataNodeID == that.dataNodeID;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(dataNodeID);
   }
 }

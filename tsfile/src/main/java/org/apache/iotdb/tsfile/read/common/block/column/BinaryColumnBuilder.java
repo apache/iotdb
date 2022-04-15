@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -120,6 +121,11 @@ public class BinaryColumnBuilder implements ColumnBuilder {
       return new RunLengthEncodedColumn(NULL_VALUE_BLOCK, positionCount);
     }
     return new BinaryColumn(0, positionCount, hasNullValue ? valueIsNull : null, values);
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.TEXT;
   }
 
   @Override

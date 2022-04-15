@@ -46,11 +46,15 @@ public class ConfigNodeConf {
   private Endpoint[] configNodeGroupAddressList =
       Collections.singletonList(new Endpoint("0.0.0.0", 22278)).toArray(new Endpoint[0]);
 
-  /** Number of DeviceGroups per StorageGroup */
-  private int deviceGroupCount = 10000;
+  /** Number of SeriesPartitionSlots per StorageGroup */
+  private int seriesPartitionSlotNum = 10000;
 
-  /** DeviceGroup hash executor class */
-  private String deviceGroupHashExecutorClass = "org.apache.iotdb.commons.hash.BKDRHashExecutor";
+  /** SeriesPartitionSlot executor class */
+  private String seriesPartitionExecutorClass =
+      "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+
+  /** Time partition interval in seconds */
+  private long timePartitionInterval = 604800;
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -83,8 +87,14 @@ public class ConfigNodeConf {
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
+  /** Default TTL for storage groups that are not set TTL by statements, in ms. */
+  private long defaultTTL = 36000000;
+
+  /** The number of replicas of each region */
   private int regionReplicaCount = 3;
+  /** The number of SchemaRegions of each StorageGroup */
   private int schemaRegionCount = 1;
+  /** The number of DataRegions of each StorageGroup */
   private int dataRegionCount = 1;
 
   public ConfigNodeConf() {
@@ -115,20 +125,28 @@ public class ConfigNodeConf {
     return dir;
   }
 
-  public int getDeviceGroupCount() {
-    return deviceGroupCount;
+  public int getSeriesPartitionSlotNum() {
+    return seriesPartitionSlotNum;
   }
 
-  public void setDeviceGroupCount(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
+  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public String getDeviceGroupHashExecutorClass() {
-    return deviceGroupHashExecutorClass;
+  public String getSeriesPartitionExecutorClass() {
+    return seriesPartitionExecutorClass;
   }
 
-  public void setDeviceGroupHashExecutorClass(String deviceGroupHashExecutorClass) {
-    this.deviceGroupHashExecutorClass = deviceGroupHashExecutorClass;
+  public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
+  }
+
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    this.timePartitionInterval = timePartitionInterval;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -249,6 +267,14 @@ public class ConfigNodeConf {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+  }
+
+  public long getDefaultTTL() {
+    return defaultTTL;
+  }
+
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 
   public int getRegionReplicaCount() {

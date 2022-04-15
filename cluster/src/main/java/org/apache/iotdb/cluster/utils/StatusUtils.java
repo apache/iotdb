@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.cluster.utils;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class StatusUtils {
 
@@ -101,9 +101,6 @@ public class StatusUtils {
         break;
       case SYSTEM_CHECK_ERROR:
         status.setMessage("Meet error while system checking. ");
-        break;
-      case SYNC_DEVICE_OWNER_CONFLICT_ERROR:
-        status.setMessage("Sync device owners conflict. ");
         break;
       case SYNC_CONNECTION_EXCEPTION:
         status.setMessage("Meet error while sync connecting. ");
@@ -200,6 +197,9 @@ public class StatusUtils {
         break;
       case PARSE_LOG_ERROR:
         status.setMessage("Parse log error.");
+        break;
+      case PIPESINK_ERROR:
+        status.setMessage("PipeSink error.");
         break;
       default:
         status.setMessage("");
