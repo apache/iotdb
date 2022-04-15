@@ -20,6 +20,7 @@ package org.apache.iotdb.db.wal.node;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -62,7 +63,7 @@ import static org.junit.Assert.fail;
 public class WALNodeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
-  private static final String logDirectory = "wal-test";
+  private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private static final String devicePath = "root.test_sg.test_d";
   private WALMode prevMode;
   private WALNode walNode;
