@@ -155,6 +155,9 @@ public class DataDriver implements Driver {
 
   @Override
   public void close() {
+    if (closed) {
+      return;
+    }
     closed = true;
     try {
       if (root != null) {
