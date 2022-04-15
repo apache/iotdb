@@ -106,17 +106,14 @@ public class SinkHandle implements ISinkHandle {
 
   private void submitSendNewDataBlockEventTask(int startSequenceId, List<Long> blockSizes) {
     // TODO: (xingtanzjr)
+    // We temporarily make it sync instead of async to avoid EOS Event(SinkHandle close() method is
+    // called) is sent before NewDataBlockEvent arrived
     new SendNewDataBlockEventTask(startSequenceId, blockSizes).run();
     //    executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
   }
 
   @Override
   public void send(List<TsBlock> tsBlocks) throws IOException {
-    logger.info(
-        "Send data block event to plan node {} of {}. {}",
-        remotePlanNodeId,
-        remoteFragmentInstanceId,
-        Thread.currentThread().getName());
     Validate.notNull(tsBlocks, "tsBlocks is null");
     if (throwable != null) {
       throw new IOException(throwable);
@@ -163,7 +160,7 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void sendEndOfDataBlockEvent() throws TException {
-    logger.info(
+    logger.debug(
         "Send end of data block event to plan node {} of {}. {}",
         remotePlanNodeId,
         remoteFragmentInstanceId,

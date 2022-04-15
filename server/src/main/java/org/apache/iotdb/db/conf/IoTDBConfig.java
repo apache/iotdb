@@ -110,7 +110,7 @@ public class IoTDBConfig {
   private int rpcPort = 6667;
 
   /** Port which is used for node communication in MPP. */
-  private int mppPort = 7778;
+  private int mppPort = 7777;
 
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
@@ -508,7 +508,7 @@ public class IoTDBConfig {
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
   /** indicate whether current mode is mpp */
-  private boolean mppMode = true;
+  private boolean mppMode = false;
 
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
@@ -878,7 +878,7 @@ public class IoTDBConfig {
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that data block manager thrift service listen to. */
-  private int dataBlockManagerPort = 7777;
+  private int dataBlockManagerPort = 8777;
 
   /** Core pool size of data block manager. */
   private int dataBlockManagerCorePoolSize = 1;

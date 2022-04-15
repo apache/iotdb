@@ -77,9 +77,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       throw new RuntimeException("cannot fetch schema");
     }
     TsBlock tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+    // TODO: (xingtanzjr) need to release this query's resource here
     SchemaTree result = new SchemaTree();
     result.setStorageGroups(storageGroups);
-
     Binary binary;
     SchemaTree fetchedSchemaTree;
     Column column = tsBlock.getColumn(0);

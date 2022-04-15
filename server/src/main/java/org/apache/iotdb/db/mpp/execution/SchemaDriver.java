@@ -65,6 +65,7 @@ public class SchemaDriver implements Driver {
     try {
       boolean isFinished = driverBlockedFuture.get().isDone() && root != null && root.isFinished();
       if (isFinished) {
+        close();
         driverContext.finish();
       }
       return isFinished;

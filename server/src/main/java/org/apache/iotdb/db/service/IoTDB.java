@@ -189,7 +189,11 @@ public class IoTDB implements IoTDBMBean {
 
     registerManager.register(SenderService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
-    //    registerManager.register(SettleService.getINSTANCE());
+    // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
+    // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
+    if (!IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
+      registerManager.register(SettleService.getINSTANCE());
+    }
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
 

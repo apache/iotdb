@@ -249,6 +249,7 @@ public class Analyzer {
     public Analysis visitCreateAlignedTimeseries(
         CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement,
         MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       List<String> measurements = createAlignedTimeSeriesStatement.getMeasurements();
       Set<String> measurementsSet = new HashSet<>(measurements);
       if (measurementsSet.size() < measurements.size()) {
@@ -272,6 +273,7 @@ public class Analyzer {
     @Override
     public Analysis visitAlterTimeseries(
         AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(alterTimeSeriesStatement);
 
@@ -286,6 +288,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
               insertTabletStatement.getDevicePath(),
@@ -358,6 +361,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -365,6 +369,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitCreateRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -372,6 +377,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitAlterUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -379,6 +385,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitGrantUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -386,6 +393,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitGrantRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -393,6 +401,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitGrantRoleToUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -400,6 +409,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitRevokeUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -407,6 +417,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitRevokeRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -415,6 +426,7 @@ public class Analyzer {
     @Override
     public Analysis visitRevokeRoleFromUser(
         AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -422,6 +434,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitDropUser(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -429,6 +442,7 @@ public class Analyzer {
 
     @Override
     public Analysis visitDropRole(AuthorStatement authorStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       Analysis analysis = new Analysis();
       analysis.setStatement(authorStatement);
       return analysis;
@@ -538,6 +552,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsertRows(
         InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       // TODO remove duplicate
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaListWithAutoCreate(
@@ -582,6 +597,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsertMultiTablets(
         InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       // TODO remove duplicate
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaListWithAutoCreate(
@@ -620,6 +636,7 @@ public class Analyzer {
     @Override
     public Analysis visitInsertRowsOfOneDevice(
         InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
       // TODO remove duplicate
       SchemaTree schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(

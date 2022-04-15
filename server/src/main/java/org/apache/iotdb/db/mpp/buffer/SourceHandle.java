@@ -100,10 +100,6 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public TsBlock receive() throws IOException {
-    System.out.println(
-        String.format(
-            "SourceHandle receive: %s, %s, %s",
-            this.localFragmentInstanceId, this.localPlanNodeId, this.remoteFragmentInstanceId));
     if (throwable != null) {
       throw new IOException(throwable);
     }
@@ -216,6 +212,7 @@ public class SourceHandle implements ISourceHandle {
   synchronized void setNoMoreTsBlocks(int lastSequenceId) {
     this.lastSequenceId = lastSequenceId;
     noMoreTsBlocks = true;
+    // someone may be waiting for this blocked, so here we need to notify it
     blocked.set(null);
   }
 
