@@ -212,8 +212,6 @@ public class SourceHandle implements ISourceHandle {
   synchronized void setNoMoreTsBlocks(int lastSequenceId) {
     this.lastSequenceId = lastSequenceId;
     noMoreTsBlocks = true;
-    // someone may be waiting for this blocked, so here we need to notify it
-    blocked.set(null);
   }
 
   synchronized void updatePendingDataBlockInfo(int startSequenceId, List<Long> dataBlockSizes) {

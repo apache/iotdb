@@ -34,6 +34,8 @@ public class StubSinkHandle implements ISinkHandle {
 
   private final List<TsBlock> tsBlocks = new ArrayList<>();
 
+  private boolean closed = false;
+
   @Override
   public long getBufferRetainedSizeInBytes() {
     return 0;
@@ -64,7 +66,7 @@ public class StubSinkHandle implements ISinkHandle {
 
   @Override
   public boolean isClosed() {
-    return false;
+    return closed;
   }
 
   @Override
@@ -74,7 +76,7 @@ public class StubSinkHandle implements ISinkHandle {
 
   @Override
   public void close() {
-    tsBlocks.clear();
+    closed = true;
   }
 
   @Override
