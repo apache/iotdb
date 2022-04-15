@@ -25,8 +25,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverManager;
@@ -121,6 +119,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.db.qp.executor.PlanExecutor.operateClearCache;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
@@ -2169,9 +2168,8 @@ public class VirtualStorageGroupProcessor {
             .recoverSettleFileMap
             .remove(oldTsFileResource.getTsFile().getAbsolutePath());
       }
-      // clear Cache , including chunk cache and timeseriesMetadata cache
-      ChunkCache.getInstance().clear();
-      TimeSeriesMetadataCache.getInstance().clear();
+      // clear Cache , including chunk cache, timeseriesMetadata cache and bloom filter cache
+      operateClearCache();
 
       // if old tsfile is being deleted in the process due to its all data's being deleted.
       if (!oldTsFileResource.getTsFile().exists()) {
