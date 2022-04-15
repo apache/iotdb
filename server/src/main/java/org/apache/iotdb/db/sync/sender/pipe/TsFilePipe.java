@@ -298,7 +298,7 @@ public class TsFilePipe implements Pipe {
     status = PipeStatus.DROP;
   }
 
-  private void clear() throws PipeException {
+  private void clear() {
     deregisterMetadata();
     deregisterTsFile();
     isCollectingRealTimeData = false;
@@ -310,6 +310,20 @@ public class TsFilePipe implements Pipe {
     } catch (IOException e) {
       logger.warn(String.format("Clear pipe %s %d error.", name, createTime), e);
     }
+  }
+
+  @Override
+  public void close() throws PipeException {
+    if (status == PipeStatus.DROP) {
+      return;
+    }
+
+    deregisterMetadata();
+    deregisterTsFile();
+    isCollectingRealTimeData = false;
+
+    historyQueue.close();
+    realTimeQueue.close();
   }
 
   @Override

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.transport.client.ITransportClient;
+import org.apache.iotdb.db.sync.sender.service.SenderService;
 
 /**
  * Pipe is the abstract of a sync task, and a data source for {@linkplain ITransportClient}. When
@@ -51,6 +52,15 @@ public interface Pipe {
    * @throws PipeException Some inside error happens(such as IOException about disk).
    */
   void drop() throws PipeException;
+
+  /**
+   * Close this pipe, stop collecting data from IoTDB, but do not delete information about this pipe
+   * on disk. Used for {@linkplain SenderService#shutdown(long)}. Do not change the status of this
+   * pipe.
+   *
+   * @throws PipeException Some inside error happens(such as IOException about disk).
+   */
+  void close() throws PipeException;
 
   /**
    * Get the name of this pipe.

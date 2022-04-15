@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -721,7 +722,11 @@ public class LocalSchemaProcessor {
    * @return A HashSet instance which stores devices paths.
    */
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    return getBelongedSchemaRegion(timeseries).getBelongedDevices(timeseries);
+    Set<PartialPath> result = new TreeSet<>();
+    for(ISchemaRegion schemaRegion: getInvolvedSchemaRegions(timeseries, false)){
+      result.addAll(schemaRegion.getBelongedDevices(timeseries));
+    }
+    return result;
   }
 
   /**

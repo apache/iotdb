@@ -398,7 +398,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
   }
 
   @Override
-  public void clear() {
+  public void close() {
     try {
       if (outputStream != null) {
         outputStream.close();
@@ -412,12 +412,18 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       inputDeque = null;
       pipeLogStartNumber = null;
       outputDeque = null;
-      File logDir = new File(pipeLogDir);
-      if (logDir.exists()) {
-        FileUtils.deleteDirectory(logDir);
-      }
     } catch (IOException e) {
-      logger.warn(String.format("Clear pipe log dir %s error, because %s.", pipeLogDir, e));
+      logger.warn(String.format("Close pipe log dir %s error.", pipeLogDir), e);
+    }
+  }
+
+  @Override
+  public void clear() {
+    close();
+
+    File logDir = new File(pipeLogDir);
+    if (logDir.exists()) {
+      FileUtils.deleteDirectory(logDir);
     }
   }
 
@@ -428,7 +434,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
         pipeData.add(PipeData.deserialize(inputStream));
       }
     } catch (EOFException e) {
-      logger.info(String.format("Finish parsing pipeLog %s.", file.getPath()));
+      // logger.info(String.format("Finish parsing pipeLog %s.", file.getPath()));
     } catch (IllegalPathException e) {
       logger.error(String.format("Parsing pipeLog %s error, because %s", file.getPath(), e));
       throw new IOException(e);

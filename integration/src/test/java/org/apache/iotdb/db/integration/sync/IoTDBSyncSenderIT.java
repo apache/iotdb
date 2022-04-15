@@ -19,16 +19,19 @@
 package org.apache.iotdb.db.integration.sync;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkTypePlan;
+import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.sync.sender.service.TransportHandler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -38,7 +41,12 @@ import org.junit.experimental.categories.Category;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Category({LocalStandaloneTest.class})
 public class IoTDBSyncSenderIT {
@@ -49,8 +57,16 @@ public class IoTDBSyncSenderIT {
   private static final String pipeSinkName = "test_pipesink";
   private static final String pipeName = "test_pipe";
 
-  private TsFilePipe pipe;
-  private TransportClientMock mock;
+  private TransportHandlerMock handler;
+  private TransportClientMock transportClient;
+
+  private final Map<String, List<PipeData>> resultMap = new HashMap<>();
+  private static final TsFilePipeData simpleTsFilePipeData =
+      new TsFilePipeData("path", "tsfile", 0L);
+  private static final SchemaPipeData simpleSchemaPipeData =
+      new SchemaPipeData(new ShowPipeSinkTypePlan(), 0L);
+  private static final DeletionPipeData simpleDeletionPipeData =
+      new DeletionPipeData(new Deletion(new PartialPath(), 0L, 0L), 0L);
 
   @Before
   public void setUp() throws Exception {
@@ -65,6 +81,12 @@ public class IoTDBSyncSenderIT {
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     Class.forName(Config.JDBC_DRIVER_NAME);
+
+    IoTDBPipeSink pipeSink = new IoTDBPipeSink(pipeSinkName);
+    TsFilePipe pipe = new TsFilePipe(0L, pipeName, pipeSink, 0L, true);
+    transportClient = new TransportClientMock(pipe, pipeSink.getIp(), pipeSink.getPort());
+    handler = new TransportHandlerMock(pipe, pipeSink, transportClient);
+    TransportHandler.setDebugTransportHandler(handler);
   }
 
   @After
@@ -80,7 +102,7 @@ public class IoTDBSyncSenderIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  private void prepareSchema() throws Exception {
+  private void prepareSchema() throws Exception { // 8 schema plans
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -93,6 +115,18 @@ public class IoTDBSyncSenderIT {
       statement.execute("create timeseries root.sg2.d1.s0 with datatype=int32, encoding=PLAIN");
       statement.execute("create timeseries root.sg2.d2.s1 with datatype=boolean, encoding=PLAIN");
     }
+
+    List<PipeData> resultList = new ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      resultList.add(simpleSchemaPipeData);
+    }
+    resultMap.put("schemaWithDel3InHistory", resultList); // del3 in history
+
+    resultList = new ArrayList<>();
+    for (int i = 0; i < 8; i++) {
+      resultList.add(simpleSchemaPipeData);
+    }
+    resultMap.put("schema", resultList); // del3 do not in history
   }
 
   private void prepareIns1() throws Exception { // add one seq tsfile in sg1
@@ -107,6 +141,8 @@ public class IoTDBSyncSenderIT {
       statement.execute("insert into root.sg1.d2(timestamp, s4) values(1, 1)");
       statement.execute("flush");
     }
+
+    resultMap.put("ins1", Collections.singletonList(simpleTsFilePipeData));
   }
 
   private void prepareIns2() throws Exception { // add one seq tsfile in sg1
@@ -120,6 +156,8 @@ public class IoTDBSyncSenderIT {
       statement.execute("insert into root.sg1.d2(timestamp, s4) values(200, 100)");
       statement.execute("flush");
     }
+
+    resultMap.put("ins2", Collections.singletonList(simpleTsFilePipeData));
   }
 
   private void prepareIns3()
@@ -137,25 +175,70 @@ public class IoTDBSyncSenderIT {
           "insert into root.sg1.d1(timestamp, s1, s2, s3) values(200, 100, 16.65, 'h')");
       statement.execute("flush");
     }
+
+    resultMap.put(
+        "ins3",
+        Arrays.asList(
+            simpleTsFilePipeData, simpleTsFilePipeData, simpleTsFilePipeData)); // del3 in history
+    resultMap.put(
+        "ins3WithDel3InHistory",
+        Arrays.asList(simpleTsFilePipeData, simpleTsFilePipeData)); // del3 do not in history
+  }
+
+  private void prepareDel1() throws Exception { // after ins1, add 2 deletions
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("delete from root.sg1.d1.s1 where time == 3");
+      statement.execute("delete from root.sg1.d1.s2 where time >= 1 and time <= 2");
+    }
+
+    resultMap.put("del1", Arrays.asList(simpleDeletionPipeData, simpleDeletionPipeData));
+  }
+
+  private void prepareDel2() throws Exception { // after ins2, add 3 deletions
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("delete from root.sg1.d1.s3 where time <= 65");
+    }
+
+    resultMap.put(
+        "del2",
+        Arrays.asList(simpleDeletionPipeData, simpleDeletionPipeData, simpleDeletionPipeData));
+    resultMap.put("del2WithoutIns3", Arrays.asList(simpleDeletionPipeData, simpleDeletionPipeData));
+  }
+
+  private void prepareDel3() throws Exception { // after ins3, add 5 deletions, 2 schemas
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("delete from root.sg1.d1.* where time <= 2");
+      statement.execute("delete timeseries root.sg1.d2.*");
+      statement.execute("delete storage group root.sg2");
+    }
+
+    List<PipeData> resultList = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      resultList.add(simpleDeletionPipeData);
+    }
+    for (int i = 0; i < 2; i++) {
+      resultList.add(simpleSchemaPipeData);
+    }
+    resultMap.put("del3", resultList);
   }
 
   private void preparePipeAndSetMock() throws Exception {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("start pipeserver");
       statement.execute("create pipesink " + pipeSinkName + " as iotdb");
       statement.execute("create pipe " + pipeName + " to " + pipeSinkName);
-      pipe = (TsFilePipe) SenderService.getInstance().getRunningPipe();
-      mock =
-          new TransportClientMock(SenderService.getInstance().getRunningPipe(), "127.0.0.1", 2333);
-      TransportHandler handler =
-          new TransportHandler(
-              mock, pipeName, SenderService.getInstance().getRunningPipe().getCreateTime());
-      SenderService.getInstance().setTransportHandler(handler);
-      Thread.sleep(1000L);
-      statement.execute("stop pipeserver");
     }
+  }
+
+  private void restart() throws Exception {
+    EnvironmentUtils.restartDaemon();
   }
 
   private void startPipe() throws Exception {
@@ -182,8 +265,8 @@ public class IoTDBSyncSenderIT {
     }
   }
 
-  private void checkResult(List<PipeData> list) { // check ins1, ins2, ins3
-    Assert.assertEquals(list.size(), 13);
+  private void checkInsOnlyResult(List<PipeData> list) { // check ins1, ins2, ins3
+    Assert.assertEquals(13, list.size());
     for (int i = 0; i < 8; i++) {
       Assert.assertTrue(list.get(i) instanceof SchemaPipeData);
     }
@@ -192,18 +275,33 @@ public class IoTDBSyncSenderIT {
     }
   }
 
+  private void checkResult(List<String> resultString, List<PipeData> list) {
+    int totalNumber = 0;
+    for (String string : resultString) {
+      totalNumber += resultMap.get(string).size();
+    }
+    Assert.assertEquals(totalNumber, list.size());
+    int cnt = 0;
+    for (String string : resultString) {
+      for (PipeData pipeData : resultMap.get(string)) {
+        Assert.assertEquals(pipeData.getType(), list.get(cnt++).getType());
+      }
+    }
+  }
+
   @Test
   public void testHistoryInsert() {
     try {
-      prepareSchema();
+      prepareSchema(); // history
       prepareIns1();
       prepareIns2();
       prepareIns3();
 
-      preparePipeAndSetMock();
+      preparePipeAndSetMock(); // realtime
       startPipe();
-      Thread.sleep(1000L);
-      checkResult(mock.getPipeDataList());
+
+      Thread.sleep(1000L); // check
+      checkInsOnlyResult(transportClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -221,16 +319,17 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testHistoryAndRealTimeInsert() {
     try {
-      prepareSchema();
+      prepareSchema(); // history
       prepareIns1();
       prepareIns2();
 
-      preparePipeAndSetMock();
+      preparePipeAndSetMock(); // realtime
       startPipe();
       Thread.sleep(1000L);
       prepareIns3();
-      Thread.sleep(1000L);
-      checkResult(mock.getPipeDataList());
+
+      Thread.sleep(1000L); // check
+      checkInsOnlyResult(transportClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -248,17 +347,18 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testStopAndStartInsert() {
     try {
-      prepareSchema();
+      prepareSchema(); // history
       prepareIns1();
 
-      preparePipeAndSetMock();
+      preparePipeAndSetMock(); // realtime
       startPipe();
       prepareIns2();
       stopPipe();
       prepareIns3();
       startPipe();
-      Thread.sleep(1000L);
-      checkResult(mock.getPipeDataList());
+
+      Thread.sleep(1000L); // check
+      checkInsOnlyResult(transportClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
@@ -276,9 +376,9 @@ public class IoTDBSyncSenderIT {
   @Test
   public void testRealTimeSchemaAndStopInsert() {
     try {
-      preparePipeAndSetMock();
-      prepareSchema();
+      preparePipeAndSetMock(); // realtime
       startPipe();
+      prepareSchema();
       prepareIns1();
       stopPipe();
       prepareIns2();
@@ -286,8 +386,176 @@ public class IoTDBSyncSenderIT {
       prepareIns3();
       stopPipe();
 
-      Thread.sleep(1000L);
-      checkResult(mock.getPipeDataList());
+      Thread.sleep(1000L); // check
+      checkInsOnlyResult(transportClient.getPipeDataList());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      try {
+        dropPipe();
+        Thread.sleep(1000L);
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
+    }
+  }
+
+  @Test
+  public void testHistoryDel() {
+    try {
+      prepareSchema(); // history
+      prepareIns1();
+      prepareIns2();
+      prepareIns3();
+      prepareDel1();
+      prepareDel2();
+      prepareDel3();
+
+      preparePipeAndSetMock(); // realtime
+      startPipe();
+
+      Thread.sleep(1000L); // check
+      //      for (PipeData pipeData : transportClient.getPipeDataList()) {
+      //        System.out.println(pipeData);
+      //      }
+      checkResult(
+          Arrays.asList("schemaWithDel3InHistory", "ins1", "ins2", "ins3WithDel3InHistory"),
+          transportClient.getPipeDataList());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      try {
+        dropPipe();
+        Thread.sleep(1000L);
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
+    }
+  }
+
+  @Test
+  public void testRealtimeDel() {
+    try {
+      prepareSchema(); // history
+      prepareIns1();
+
+      preparePipeAndSetMock(); // realtime
+      startPipe();
+      prepareIns2();
+      prepareDel1();
+      stopPipe();
+      prepareIns3();
+      startPipe();
+      prepareDel2();
+      prepareDel3();
+      stopPipe();
+
+      Thread.sleep(1000L); // check
+      //      for (PipeData pipeData : transportClient.getPipeDataList()) {
+      //        System.out.println(pipeData);
+      //      }
+      checkResult(
+          Arrays.asList("schema", "ins1", "ins2", "del1", "ins3", "del2", "del3"),
+          transportClient.getPipeDataList());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      try {
+        dropPipe();
+        Thread.sleep(1000L);
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
+    }
+  }
+
+  @Test
+  public void testRestartWhileRunning() {
+    try {
+      prepareSchema(); // history
+      prepareIns1();
+      prepareIns2();
+
+      preparePipeAndSetMock(); // realtime
+      startPipe();
+      restart();
+      prepareIns3();
+
+      Thread.sleep(1000L); // check
+      checkInsOnlyResult(transportClient.getPipeDataList());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      try {
+        dropPipe();
+        Thread.sleep(1000L);
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
+    }
+  }
+
+  @Test
+  public void testRestartWhileStopping() {
+    try {
+      prepareSchema(); // history
+      prepareIns1();
+
+      preparePipeAndSetMock(); // realtime
+      startPipe();
+      prepareIns2();
+      stopPipe();
+      restart();
+      prepareIns3();
+      startPipe();
+
+      Thread.sleep(1000L); // check
+      checkInsOnlyResult(transportClient.getPipeDataList());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      try {
+        dropPipe();
+        Thread.sleep(1000L);
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
+    }
+  }
+
+  @Test
+  public void testRestartWithDel() {
+    try {
+      prepareSchema(); // history
+      prepareIns1();
+      prepareDel1();
+
+      preparePipeAndSetMock(); // realtime
+      startPipe();
+      prepareIns2();
+      stopPipe();
+      prepareDel2();
+      restart();
+      startPipe();
+      prepareIns3();
+      stopPipe();
+      prepareDel3();
+      startPipe();
+
+      Thread.sleep(1000L); // check
+      checkResult(
+          Arrays.asList("schema", "ins1", "ins2", "del2WithoutIns3", "ins3", "del3"),
+          transportClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();

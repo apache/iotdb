@@ -81,20 +81,7 @@ public class SchemaSyncManager {
   }
 
   public void syncMetadataPlan(PhysicalPlan plan) {
-    try {
-      switch (plan.getOperatorType()) {
-        case DELETE_STORAGE_GROUP:
-          syncPipe.collectRealTimeMetaData(
-              splitDeleteTimeseriesPlanByDevice(
-                  plan.getPaths().get(0).concatNode(MULTI_LEVEL_PATH_WILDCARD)));
-          break;
-        default:
-          syncPipe.collectRealTimeMetaData(plan);
-          break;
-      }
-    } catch (MetadataException e) {
-
-    }
+    syncPipe.collectRealTimeMetaData(plan);
   }
 
   public void clear() {
@@ -146,7 +133,7 @@ public class SchemaSyncManager {
     return result;
   }
 
-  private DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
+  public DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
       throws MetadataException {
     return new DeleteTimeSeriesPlan(splitPathPatternByDevice(pathPattern));
   }

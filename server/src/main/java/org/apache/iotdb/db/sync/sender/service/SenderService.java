@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
@@ -39,12 +38,9 @@ import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.sender.recovery.SenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recovery.SenderLogger;
-import org.apache.iotdb.db.sync.transport.client.ITransportClient;
-import org.apache.iotdb.db.sync.transport.client.TransportClient;
 import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -167,13 +163,8 @@ public class SenderService implements IService {
     PipeSink runningPipeSink = getPipeSink(plan.getPipeSinkName());
     runningPipe = parseCreatePipePlan(plan, runningPipeSink, currentTime);
     try {
-      ITransportClient transportClient =
-          new TransportClient(
-              runningPipe,
-              ((IoTDBPipeSink) runningPipeSink).getIp(),
-              ((IoTDBPipeSink) runningPipeSink).getPort());
       transportHandler =
-          new TransportHandler(transportClient, runningPipe.getName(), runningPipe.getCreateTime());
+          TransportHandler.getNewTransportHandler(runningPipe, (IoTDBPipeSink) runningPipeSink);
       sendMsg(RequestType.CREATE);
     } catch (ClassCastException e) {
       logger.error(
@@ -293,7 +284,7 @@ public class SenderService implements IService {
 
   public synchronized void receiveMsg(SyncResponse response) {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
-      logger.warn(String.format("No running pipe for receiving msg %s.", response));
+      logger.info(String.format("No running pipe for receiving msg %s.", response));
       return;
     }
     switch (response.type) {
@@ -304,7 +295,7 @@ public class SenderService implements IService {
         try {
           stopPipe(runningPipe.getName());
         } catch (PipeException e) {
-          logger.error(
+          logger.warn(
               String.format(
                   "Stop pipe %s when meeting error in sender service.", runningPipe.getName()),
               e);
@@ -348,33 +339,35 @@ public class SenderService implements IService {
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       try {
         runningPipe.stop();
+        transportHandler.stop();
       } catch (PipeException e) {
         logger.warn(
-            String.format(
-                "Stop pipe %s error when stop Sender Service, because %s.",
-                runningPipe.getName(), e));
+            String.format("Stop pipe %s error when stop Sender Service.", runningPipe.getName()),
+            e);
       }
     }
   }
 
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
-    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
-      try {
-        runningPipe.stop();
-      } catch (PipeException e) {
-        logger.warn(
-            String.format(
-                "Stop pipe %s error when shutdown Sender Service, because %s.",
-                runningPipe.getName(), e));
-        throw new ShutdownException(e);
-      }
-    }
-
     pipeSinks = null;
     pipes = null;
     runningMsg = null;
     senderLogger.close();
+
+    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
+      try {
+        runningPipe.stop();
+        transportHandler.close();
+        runningPipe.close();
+      } catch (PipeException | InterruptedException e) {
+        logger.warn(
+            String.format(
+                "Stop pipe %s error when shutdown Sender Service.", runningPipe.getName()),
+            e);
+        throw new ShutdownException(e);
+      }
+    }
   }
 
   @Override
@@ -382,7 +375,7 @@ public class SenderService implements IService {
     return ServiceType.SENDER_SERVICE;
   }
 
-  private void recover() throws IOException, InterruptedException {
+  private void recover() throws IOException {
     SenderLogAnalyzer analyzer = new SenderLogAnalyzer();
     analyzer.recover();
     this.pipeSinks = analyzer.getRecoveryAllPipeSinks();
@@ -390,28 +383,13 @@ public class SenderService implements IService {
     this.runningPipe = analyzer.getRecoveryRunningPipe();
     this.runningMsg = analyzer.getRecoveryRunningMsg();
 
-    if (runningPipe != null) {
-      IoTDBPipeSink pipeSink = (IoTDBPipeSink) runningPipe.getPipeSink();
-      ITransportClient transportClient =
-          new TransportClient(runningPipe, pipeSink.getIp(), pipeSink.getPort());
+    if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       this.transportHandler =
-          new TransportHandler(transportClient, runningPipe.getName(), runningPipe.getCreateTime());
+          TransportHandler.getNewTransportHandler(
+              runningPipe, (IoTDBPipeSink) runningPipe.getPipeSink());
       if (Pipe.PipeStatus.RUNNING.equals(runningPipe.getStatus())) {
         transportHandler.start();
-      } else if (Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
-        transportHandler.close();
       }
     }
-  }
-
-  /** test */
-  @TestOnly
-  public Pipe getRunningPipe() {
-    return runningPipe;
-  }
-
-  @TestOnly
-  public void setTransportHandler(TransportHandler handler) {
-    this.transportHandler = handler;
   }
 }

@@ -118,4 +118,13 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, deletePathList.size());
   }
+
+  @Override
+  public String toString() {
+    return "DeleteTimeSeriesPlan{" +
+            "deletePathList=" + deletePathList +
+            ", results=" + results +
+            ", partitionFilter=" + partitionFilter +
+            '}';
+  }
 }

@@ -44,6 +44,7 @@ import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -68,6 +69,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /**
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
@@ -234,6 +237,9 @@ public class LocalConfigNode {
   }
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
+
+    DeleteTimeSeriesPlan deleteTimeSeriesPlan = SchemaSyncManager.getInstance().splitDeleteTimeseriesPlanByDevice(storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+
     deleteSchemaRegionsInStorageGroup(
         storageGroup, partitionTable.getSchemaRegionIdsByStorageGroup(storageGroup));
 
@@ -242,7 +248,7 @@ public class LocalConfigNode {
     }
     if (SchemaSyncManager.getInstance().isEnableSync()) {
       SchemaSyncManager.getInstance()
-          .syncMetadataPlan(new DeleteStorageGroupPlan(Collections.singletonList(storageGroup)));
+          .syncMetadataPlan(deleteTimeSeriesPlan);
     }
 
     if (!config.isEnableMemControl()) {
