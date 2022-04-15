@@ -66,16 +66,17 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
       SchemaRegionId schemaRegionId =
           (SchemaRegionId)
               ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
+      LOGGER.info("SchemaRegionId: " + schemaRegionId.getId());
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
-      ConsensusGroupId consensusGroupId =
-          ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
       List<Peer> peers = new ArrayList<>();
       for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
-        peers.add(new Peer(consensusGroupId, endpoint));
+        // TODO: Expend Peer and RegisterDataNodeReq
+        endpoint.setPort(endpoint.getPort() + 31007);
+        peers.add(new Peer(schemaRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          consensusImpl.addConsensusGroup(consensusGroupId, peers);
+          consensusImpl.addConsensusGroup(schemaRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
@@ -105,32 +106,28 @@ public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
       DataRegionId dataRegionId =
           (DataRegionId)
               ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
+      LOGGER.info("DataRegionId: " + dataRegionId.getId());
       storageEngine.createDataRegion(dataRegionId, req.storageGroup, req.ttl);
-      ConsensusGroupId consensusGroupId =
-          ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
       List<Peer> peers = new ArrayList<>();
       for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
-        peers.add(new Peer(consensusGroupId, endpoint));
+        // TODO: Expend Peer and RegisterDataNodeReq
+        endpoint.setPort(endpoint.getPort() + 31007);
+        peers.add(new Peer(dataRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
-          consensusImpl.addConsensusGroup(consensusGroupId, peers);
+          consensusImpl.addConsensusGroup(dataRegionId, peers);
       if (consensusGenericResponse.isSuccess()) {
         tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         tsStatus.setMessage(consensusGenericResponse.getException().getMessage());
       }
-    } catch (DataRegionException e1) {
+    } catch (DataRegionException e) {
       LOGGER.error(
-          "Create Data Region {} failed because {}", req.getStorageGroup(), e1.getMessage());
+          "Create Data Region {} failed because {}", req.getStorageGroup(), e.getMessage());
       tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      tsStatus.setMessage(
-          String.format("Create Data Region failed because of %s", e1.getMessage()));
-    } catch (IOException e2) {
-      LOGGER.error("Can't deserialize regionId", e2);
-      tsStatus = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      tsStatus.setMessage(String.format("Can't deserialize regionId %s", e2));
+      tsStatus.setMessage(String.format("Create Data Region failed because of %s", e.getMessage()));
     }
     return tsStatus;
   }

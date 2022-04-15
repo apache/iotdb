@@ -17,10 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 
-public interface IConfigTask {
-  ListenableFuture<Void> execute();
+import java.util.List;
+
+public abstract class WritePlanNode extends PlanNode {
+
+  protected WritePlanNode(PlanNodeId id) {
+    super(id);
+  }
+
+  public abstract RegionReplicaSet getRegionReplicaSet();
+
+  public abstract List<WritePlanNode> splitByPartition(Analysis analysis);
 }

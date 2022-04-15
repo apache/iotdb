@@ -46,6 +46,10 @@ public abstract class SchemaNode {
 
   public void addChild(String name, SchemaNode child) {}
 
+  public abstract void replaceChild(String name, SchemaNode newChild);
+
+  public abstract void copyDataTo(SchemaNode schemaNode);
+
   public Map<String, SchemaNode> getChildren() {
     return Collections.emptyMap();
   }
@@ -63,11 +67,11 @@ public abstract class SchemaNode {
   }
 
   public SchemaEntityNode getAsEntityNode() {
-    throw new UnsupportedOperationException("This not isn't instance of SchemaEntityNode.");
+    throw new UnsupportedOperationException("This node isn't instance of SchemaEntityNode.");
   }
 
   public SchemaMeasurementNode getAsMeasurementNode() {
-    throw new UnsupportedOperationException("This not isn't instance of SchemaMeasurementNode.");
+    throw new UnsupportedOperationException("This node isn't instance of SchemaMeasurementNode.");
   }
 
   public abstract byte getType();

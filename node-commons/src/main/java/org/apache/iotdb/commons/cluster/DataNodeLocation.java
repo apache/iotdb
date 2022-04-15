@@ -33,6 +33,10 @@ public class DataNodeLocation {
     this.endPoint = endPoint;
   }
 
+  public DataNodeLocation(Endpoint endPoint) {
+    this.endPoint = endPoint;
+  }
+
   public int getDataNodeId() {
     return dataNodeId;
   }

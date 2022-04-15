@@ -78,8 +78,8 @@ public class InsertTabletStatement extends InsertBaseStatement {
     }
     super.markFailedMeasurementInsertion(index, e);
     dataTypes[index] = null;
-    times[index] = Long.MAX_VALUE;
     columns[index] = null;
+    bitMaps[index] = null;
   }
 
   public List<TimePartitionSlot> getTimePartitionSlots() {
@@ -117,7 +117,10 @@ public class InsertTabletStatement extends InsertBaseStatement {
           markFailedMeasurementInsertion(
               i,
               new DataTypeMismatchException(
-                  measurements[i], measurementSchemas.get(i).getType(), dataTypes[i]));
+                  devicePath.getFullPath(),
+                  measurements[i],
+                  measurementSchemas.get(i).getType(),
+                  dataTypes[i]));
         }
       }
     }
