@@ -57,13 +57,7 @@ public class TriggerEngine {
       if (mNode == null) {
         continue;
       }
-      IMNode currentNode = mNode;
-      while (currentNode != null && !IoTDBConstant.PATH_ROOT.equals(currentNode.getName())) {
-        TriggerExecutor executor = currentNode.getTriggerExecutor();
-        currentNode = currentNode.getParent();
-        if (executor == null) {
-          continue;
-        }
+      for(TriggerExecutor executor : mNode.getUpperTriggerExecutorList()){
         executor.fireIfActivated(event, timestamp, values[i], mNode.getSchema().getType());
       }
     }
@@ -90,13 +84,7 @@ public class TriggerEngine {
       if (mNode == null) {
         continue;
       }
-      IMNode currentNode = mNode;
-      while (currentNode != null && !IoTDBConstant.PATH_ROOT.equals(currentNode.getName())) {
-        TriggerExecutor executor = currentNode.getTriggerExecutor();
-        currentNode = currentNode.getParent();
-        if (executor == null) {
-          continue;
-        }
+      for(TriggerExecutor executor : mNode.getUpperTriggerExecutorList()){
         executor.fireIfActivated(event, timestamps, columns[i], mNode.getSchema().getType());
       }
     }
