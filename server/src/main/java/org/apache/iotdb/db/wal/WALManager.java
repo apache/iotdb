@@ -54,7 +54,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class WALManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  public static final long DELETE_WAL_FILES_PERIOD_IN_MS = config.getDeleteWalFilesPeriodInMs();
   private static final int MAX_WAL_NODE_NUM =
       config.getMaxWalNodesNum() > 0 ? config.getMaxWalNodesNum() : config.getWalDirs().length * 2;
 
@@ -130,8 +129,8 @@ public class WALManager implements IService {
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
       walDeleteThread.scheduleWithFixedDelay(
           this::deleteOutdatedFiles,
-          DELETE_WAL_FILES_PERIOD_IN_MS,
-          DELETE_WAL_FILES_PERIOD_IN_MS,
+          config.getDeleteWalFilesPeriodInMs(),
+          config.getDeleteWalFilesPeriodInMs(),
           TimeUnit.MILLISECONDS);
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
@@ -152,8 +151,10 @@ public class WALManager implements IService {
     walDeleteThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
     walDeleteThread.scheduleWithFixedDelay(
-        this::deleteOutdatedFiles, 0, DELETE_WAL_FILES_PERIOD_IN_MS, TimeUnit.MILLISECONDS);
-    logger.info("Reboot wal delete thread successfully ");
+        this::deleteOutdatedFiles, 0, config.getDeleteWalFilesPeriodInMs(), TimeUnit.MILLISECONDS);
+    logger.info(
+        "Reboot wal delete thread successfully, current period is {} ms",
+        config.getDeleteWalFilesPeriodInMs());
   }
 
   /** submit delete outdated wal files task and wait for result */
