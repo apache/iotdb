@@ -84,7 +84,9 @@ public class AuthorizerConfigTask implements IConfigTask {
       LOGGER.error("No such privilege {}.", authorStatement.getAuthorType());
       future.setException(e);
     } finally {
-      configNodeClient.close();
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
