@@ -19,25 +19,32 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.mpp.common.schematree.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.mpp.common.schematree.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
 public class SchemaTree {
 
+  private List<String> storageGroups;
+
   private final SchemaNode root;
+
+  public SchemaTree() {
+    root = new SchemaInternalNode(PATH_ROOT);
+  }
 
   public SchemaTree(SchemaNode root) {
     this.root = root;
@@ -55,19 +62,6 @@ public class SchemaTree {
     SchemaTreeVisitor visitor =
         new SchemaTreeVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
-  }
-
-  /**
-   * Get storage group name by path
-   *
-   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
-   *
-   * @param path only full path, cannot be path pattern
-   * @return storage group in the given path
-   */
-  public String getBelongedStorageGroup(PartialPath path) {
-    // TODO: @zyk
-    throw new UnsupportedOperationException();
   }
 
   public DeviceSchemaInfo searchDeviceSchemaInfo(
@@ -88,7 +82,81 @@ public class SchemaTree {
         devicePath, cur.getAsEntityNode().isAligned(), measurementSchemaList);
   }
 
-  public void serialize(ByteBuffer buffer) throws IOException {
+  public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {
+    for (MeasurementPath measurementPath : measurementPathList) {
+      appendSingleMeasurementPath(measurementPath);
+    }
+  }
+
+  private void appendSingleMeasurementPath(MeasurementPath measurementPath) {
+    String[] nodes = measurementPath.getNodes();
+    SchemaNode cur = root;
+    SchemaNode child;
+    for (int i = 1; i < nodes.length; i++) {
+      child = cur.getChild(nodes[i]);
+      if (child == null) {
+        if (i == nodes.length - 1) {
+          SchemaMeasurementNode measurementNode =
+              new SchemaMeasurementNode(
+                  nodes[i], (MeasurementSchema) measurementPath.getMeasurementSchema());
+          if (measurementPath.isMeasurementAliasExists()) {
+            measurementNode.setAlias(measurementPath.getMeasurementAlias());
+            cur.getAsEntityNode()
+                .addAliasChild(measurementPath.getMeasurementAlias(), measurementNode);
+          }
+          child = measurementNode;
+        } else if (i == nodes.length - 2) {
+          SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
+          entityNode.setAligned(measurementPath.isUnderAlignedEntity());
+          child = entityNode;
+        } else {
+          child = new SchemaInternalNode(nodes[i]);
+        }
+        cur.addChild(nodes[i], child);
+      } else if (i == nodes.length - 2 && !child.isEntity()) {
+        SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
+        cur.replaceChild(nodes[i], entityNode);
+        child = entityNode;
+      }
+      cur = child;
+    }
+  }
+
+  public void mergeSchemaTree(SchemaTree schemaTree) {
+    traverseAndMerge(this.root, null, schemaTree.root);
+  }
+
+  private void traverseAndMerge(SchemaNode thisNode, SchemaNode thisParent, SchemaNode thatNode) {
+    SchemaNode thisChild;
+    for (SchemaNode thatChild : thatNode.getChildren().values()) {
+      thisChild = thisNode.getChild(thatChild.getName());
+      if (thisChild == null) {
+        thisNode.addChild(thatChild.getName(), thatChild);
+        if (thatChild.isMeasurement()) {
+          SchemaEntityNode entityNode;
+          if (thisNode.isEntity()) {
+            entityNode = thisNode.getAsEntityNode();
+          } else {
+            entityNode = new SchemaEntityNode(thisNode.getName());
+            thisParent.replaceChild(thisNode.getName(), entityNode);
+            thisNode = entityNode;
+          }
+
+          if (!entityNode.isAligned()) {
+            entityNode.setAligned(thatNode.getAsEntityNode().isAligned());
+          }
+          SchemaMeasurementNode measurementNode = thatChild.getAsMeasurementNode();
+          if (measurementNode.getAlias() != null) {
+            entityNode.addAliasChild(measurementNode.getAlias(), measurementNode);
+          }
+        }
+      } else {
+        traverseAndMerge(thisChild, thisNode, thatChild);
+      }
+    }
+  }
+
+  public void serialize(ByteBuffer buffer) {
     root.serialize(buffer);
   }
 
@@ -130,5 +198,36 @@ public class SchemaTree {
       }
     }
     return new SchemaTree(stack.poll());
+  }
+
+  /**
+   * Get storage group name by path
+   *
+   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   *
+   * @param path only full path, cannot be path pattern
+   * @return storage group in the given path
+   */
+  public String getBelongedStorageGroup(PartialPath path) {
+    for (String storageGroup : storageGroups) {
+      if (path.getFullPath().startsWith(storageGroup)) {
+        return storageGroup;
+      }
+    }
+    throw new RuntimeException(
+        "No matched storage group. Please check the path " + path.getFullPath());
+  }
+
+  public List<String> getStorageGroups() {
+    return storageGroups;
+  }
+
+  public void setStorageGroups(List<String> storageGroups) {
+    this.storageGroups = storageGroups;
+  }
+
+  @TestOnly
+  SchemaNode getRoot() {
+    return root;
   }
 }

@@ -72,7 +72,6 @@ public abstract class PhysicalPlan implements IConsensusRequest {
       buffer.reset();
       throw e;
     }
-    buffer.flip();
   }
 
   protected abstract void serializeImpl(ByteBuffer buffer);

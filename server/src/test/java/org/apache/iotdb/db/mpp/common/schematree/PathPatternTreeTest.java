@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Assert;
@@ -137,7 +136,7 @@ public class PathPatternTreeTest {
             new PartialPath("root.sg1.d3.t1")));
   }
 
-  public void checkPathPatternTree(
+  private void checkPathPatternTree(
       List<PartialPath> paths,
       List<PartialPath> compressedPaths,
       List<PartialPath> compressedDevicePaths)
@@ -170,5 +169,25 @@ public class PathPatternTreeTest {
     buffer.flip();
     PathPatternTree tmpPathPatternTree = PathPatternTree.deserialize(buffer);
     Assert.assertTrue(resultPatternTree.equalWith(tmpPathPatternTree));
+  }
+
+  @Test
+  public void testPathPatternTreeSplit() throws Exception {
+    List<PartialPath> partialPathList =
+        Arrays.asList(
+            new PartialPath("root.sg1.d1.t1.s1"),
+            new PartialPath("root.sg1.d1.t2.s2"),
+            new PartialPath("root.sg1.*.t1.s1"),
+            new PartialPath("root.sg1.d2.t1.s1"));
+
+    PathPatternTree patternTree = new PathPatternTree();
+    for (PartialPath path : partialPathList) {
+      patternTree.appendPath(path);
+    }
+    patternTree.constructTree();
+
+    Assert.assertEquals(
+        Arrays.asList(new PartialPath("root.sg1.*.t1.s1"), new PartialPath("root.sg1.d1.t2.s2")),
+        patternTree.splitToPathList());
   }
 }

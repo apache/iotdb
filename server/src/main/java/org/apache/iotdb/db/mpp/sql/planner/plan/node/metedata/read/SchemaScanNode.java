@@ -36,6 +36,15 @@ public abstract class SchemaScanNode extends SourceNode {
 
   private RegionReplicaSet schemaRegionReplicaSet;
 
+  protected SchemaScanNode(PlanNodeId id) {
+    super(id);
+    limit = 0;
+    offset = 0;
+    path = null;
+    hasLimit = false;
+    isPrefixPath = false;
+  }
+
   protected SchemaScanNode(
       PlanNodeId id, PartialPath partialPath, int limit, int offset, boolean isPrefixPath) {
     super(id);
@@ -114,6 +123,6 @@ public abstract class SchemaScanNode extends SourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitMetaScan(this, context);
+    return visitor.visitSchemaScan(this, context);
   }
 }
