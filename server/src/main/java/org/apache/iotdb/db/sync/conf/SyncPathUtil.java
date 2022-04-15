@@ -39,13 +39,13 @@ public class SyncPathUtil {
         + String.format("-%s-%d", pipeName, createTime);
   }
 
-  public static String getSenderHistoryPipeDataDir(String pipeName, long createTime) {
+  public static String getSenderHistoryPipeLogDir(String pipeName, long createTime) {
     return getSenderPipeDir(pipeName, createTime)
         + File.separator
         + SyncConstant.HISTORY_PIPE_LOG_DIR_NAME;
   }
 
-  public static String getSenderRealTimePipeDataDir(String pipeName, long createTime) {
+  public static String getSenderRealTimePipeLogDir(String pipeName, long createTime) {
     return getSenderPipeDir(pipeName, createTime) + File.separator + SyncConstant.PIPE_LOG_DIR_NAME;
   }
 
