@@ -22,8 +22,8 @@ package org.apache.iotdb.db.sync.sender.pipe;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
-import org.apache.iotdb.db.sync.transport.client.ITransportClient;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
+import org.apache.iotdb.db.sync.transport.client.ITransportClient;
 
 /**
  * Pipe is the abstract of a sync task, and a data source for {@linkplain ITransportClient}. When

@@ -121,10 +121,13 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return "DeleteTimeSeriesPlan{" +
-            "deletePathList=" + deletePathList +
-            ", results=" + results +
-            ", partitionFilter=" + partitionFilter +
-            '}';
+    return "DeleteTimeSeriesPlan{"
+        + "deletePathList="
+        + deletePathList
+        + ", results="
+        + results
+        + ", partitionFilter="
+        + partitionFilter
+        + '}';
   }
 }

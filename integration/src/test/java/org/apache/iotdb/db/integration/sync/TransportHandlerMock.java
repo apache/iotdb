@@ -43,7 +43,8 @@ public class TransportHandlerMock extends TransportHandler {
 
     super.resetTransportClient(pipe);
     IoTDBPipeSink pipeSink = (IoTDBPipeSink) pipe.getPipeSink();
-    ((TransportClientMock) this.transportClient).resetInfo(pipe, pipeSink.getIp(), pipeSink.getPort());
+    ((TransportClientMock) this.transportClient)
+        .resetInfo(pipe, pipeSink.getIp(), pipeSink.getPort());
     this.pipe = pipe;
 
     this.transportExecutorService =
