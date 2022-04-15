@@ -159,7 +159,6 @@ public class LocalExecutionPlanner {
       return seriesScanOperator;
     }
 
-    // TODO: init seriesAggregateScanOperator from seriesAggregateScanNode
     @Override
     public Operator visitTimeSeriesSchemaScan(
         TimeSeriesSchemaScanNode node, LocalExecutionPlanContext context) {

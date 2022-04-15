@@ -98,7 +98,7 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   }
 
   private void initHeap() {
-    TimeRange firstTimeRange = aggrWindowIterator.getFirstTimeRange();
+    TimeRange firstTimeRange = aggrWindowIterator.nextTimeRange();
     timeBoundaryHeap.add(firstTimeRange.getMin());
     timeBoundaryHeap.add(firstTimeRange.getMax());
     curStartTimeForIterator = firstTimeRange.getMin();
@@ -107,11 +107,12 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   }
 
   private void tryToExpandHeap() {
+    TimeRange timeRangeToExpand = null;
     while (aggrWindowIterator.hasNextTimeRange() && timeBoundaryHeap.size() < HEAP_MAX_SIZE) {
-      curTimeRange = aggrWindowIterator.nextTimeRange();
-      timeBoundaryHeap.add(curTimeRange.getMin());
-      timeBoundaryHeap.add(curTimeRange.getMax());
-      curStartTimeForIterator = curTimeRange.getMin();
+      timeRangeToExpand = aggrWindowIterator.nextTimeRange();
+      timeBoundaryHeap.add(timeRangeToExpand.getMin());
+      timeBoundaryHeap.add(timeRangeToExpand.getMax());
+      curStartTimeForIterator = timeRangeToExpand.getMin();
     }
   }
 
