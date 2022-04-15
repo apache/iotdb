@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.consensus.common.ConsensusType;
-import org.apache.iotdb.consensus.common.Endpoint;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
+import java.util.Collections;
 
 public class ConfigNodeConf {
 
@@ -33,20 +33,28 @@ public class ConfigNodeConf {
   /** used for communication between data node and config node */
   private int rpcPort = 22277;
 
-  /** used for communication between data node and data node */
+  /** used for communication between config node and config node */
   private int internalPort = 22278;
 
-  /** ConfigNodeGroup consensus protocol */
-  private ConsensusType consensusType = ConsensusType.STANDALONE;
+  /** ConfigNode consensus protocol */
+  private String configNodeConsensusProtocolClass =
+      "org.apache.iotdb.consensus.ratis.RatisConsensus";
+
+  private String dataNodeConsensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   /** Used for building the ConfigNode consensus group */
-  private Endpoint[] configNodeGroupAddressList = null;
+  private Endpoint[] configNodeGroupAddressList =
+      Collections.singletonList(new Endpoint("0.0.0.0", 22278)).toArray(new Endpoint[0]);
 
-  /** Number of DeviceGroups per StorageGroup */
-  private int deviceGroupCount = 10000;
+  /** Number of SeriesPartitionSlots per StorageGroup */
+  private int seriesPartitionSlotNum = 10000;
 
-  /** DeviceGroup hash executor class */
-  private String deviceGroupHashExecutorClass = "org.apache.iotdb.commons.hash.BKDRHashExecutor";
+  /** SeriesPartitionSlot executor class */
+  private String seriesPartitionExecutorClass =
+      "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+
+  /** Time partition interval in seconds */
+  private long timePartitionInterval = 604800;
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -79,8 +87,14 @@ public class ConfigNodeConf {
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
+  /** Default TTL for storage groups that are not set TTL by statements, in ms. */
+  private long defaultTTL = Long.MAX_VALUE;
+
+  /** The number of replicas of each region */
   private int regionReplicaCount = 3;
+  /** The number of SchemaRegions of each StorageGroup */
   private int schemaRegionCount = 1;
+  /** The number of DataRegions of each StorageGroup */
   private int dataRegionCount = 1;
 
   public ConfigNodeConf() {
@@ -111,20 +125,28 @@ public class ConfigNodeConf {
     return dir;
   }
 
-  public int getDeviceGroupCount() {
-    return deviceGroupCount;
+  public int getSeriesPartitionSlotNum() {
+    return seriesPartitionSlotNum;
   }
 
-  public void setDeviceGroupCount(int deviceGroupCount) {
-    this.deviceGroupCount = deviceGroupCount;
+  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public String getDeviceGroupHashExecutorClass() {
-    return deviceGroupHashExecutorClass;
+  public String getSeriesPartitionExecutorClass() {
+    return seriesPartitionExecutorClass;
   }
 
-  public void setDeviceGroupHashExecutorClass(String deviceGroupHashExecutorClass) {
-    this.deviceGroupHashExecutorClass = deviceGroupHashExecutorClass;
+  public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public long getTimePartitionInterval() {
+    return timePartitionInterval;
+  }
+
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    this.timePartitionInterval = timePartitionInterval;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -199,12 +221,20 @@ public class ConfigNodeConf {
     this.consensusDir = consensusDir;
   }
 
-  public ConsensusType getConsensusType() {
-    return consensusType;
+  public String getConfigNodeConsensusProtocolClass() {
+    return configNodeConsensusProtocolClass;
   }
 
-  public void setConsensusType(ConsensusType consensusType) {
-    this.consensusType = consensusType;
+  public void setConfigNodeConsensusProtocolClass(String configNodeConsensusProtocolClass) {
+    this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
+  }
+
+  public String getDataNodeConsensusProtocolClass() {
+    return dataNodeConsensusProtocolClass;
+  }
+
+  public void setDataNodeConsensusProtocolClass(String dataNodeConsensusProtocolClass) {
+    this.dataNodeConsensusProtocolClass = dataNodeConsensusProtocolClass;
   }
 
   public Endpoint[] getConfigNodeGroupAddressList() {
@@ -237,6 +267,14 @@ public class ConfigNodeConf {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
+  }
+
+  public long getDefaultTTL() {
+    return defaultTTL;
+  }
+
+  public void setDefaultTTL(long defaultTTL) {
+    this.defaultTTL = defaultTTL;
   }
 
   public int getRegionReplicaCount() {

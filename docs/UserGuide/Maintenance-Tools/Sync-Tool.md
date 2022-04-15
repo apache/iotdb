@@ -19,172 +19,332 @@
 
 -->
 
-# Collaboration of Edge and Cloud
+# Edge-Cloud Collaboration
 
-## TsFile Sync Tool
+## 1.Introduction
 
-### Introduction
-The Sync Tool is an IoTDB suite tool that periodically uploads persistent tsfiles from the sender disk to the receiver and loads them.
+The Sync Tool is an IoTDB suite tool that continuously uploads the timeseries data from the edge (sender) to the cloud(receiver).
 
-On the sender side of the sync, the sync module is a separate process, independent of the IoTDB process. It can be started and closed through a separate script (see Sections `Usage` for details). The frequency cycle of the sync can be set by the user. 
+On the sender side of the sync, the sync module is embedded in the IoTDB engine. You should start an IoTDB before using the Sync tool.
 
-On the receiver side of the sync, the sync module is embedded in the engine of IoTDB and is in the same process with IoTDB. The receiver module listens for a separate port, which can be set by the user (see Section `Configuration` for details). Before using it, it needs to set up a whitelist at the sync receiver, which is expressed as a network segment. The receiver only accepts the data transferred from the sender located in the whitelist segment, as detailed in Section `Configuration`. 
+You can use SQL commands to start or close a synchronization task at the sender, and you can check the status of the synchronization task at any time. At the receiving end, you can set the IP white list to specify the access IP address range of sender.
 
-The sync tool has a many-to-one sender-receiver mode - that is, one sync receiver can receive data from multiple sync senders simultaneously while one sync sender can only send data to one sync receiver.
+## 2.Model definition
 
-> Note: Before using the sync tool, the client and server need to be configured separately. The configuration is detailed in Sections Configuration.
+![img](https://y8dp9fjm8f.feishu.cn/space/api/box/stream/download/asynccode/?code=ODc2ZTdjZGE3ODBiODY0MjJiOTBmYmY4NGE1NDlkNDZfR1pZZWhzQTdBQjFLNHhOdlFQTVo1T0hsOWtSU25LenRfVG9rZW46Ym94Y25IWktNd0hEN2hBTFFwY1lDQlBmS0xmXzE2NDg3MDI5NTg6MTY0ODcwNjU1OF9WNA)
 
-### Application Scenario
-In the case of a factory application, there are usually multiple sub-factories and multiple general(main) factories. Each sub-factory uses an IoTDB instance to collect data, and then synchronize the data to the general factory for backup or analysis. A general factory can receive data from multiple sub-factories and a sub-factory can also synchronize data to multiple general factories. In this scenario, each IoTDB instance manages different devices. 
-​      
-In the sync module, each sub-factory is a sender, a general factory is a receiver, and senders periodically synchronizes the data to receivers. In the scenario above, the data of one device can only be collected by one sender, so there is no device overlap between the data synchronized by multiple senders. Otherwise, the application scenario of the sync module is not satisfied.
+Two machines A and B, which are installed with iotdb, we want to continuously synchronize the data from A to B. To better describe this process, we introduce the following concepts.
 
-When there is an abnormal scenario, namely, two or more senders synchronize the data of the same device (whose storage group is set as root.sg) to the same receiver, the root.sg data of the sender containing the device data received later by the receiver will be rejected. Example: the engine 1 synchronizes the storage groups root.sg1 and root.sg2 to the receiver, and the engine 2 synchronizes the storage groups root.sg2 and root.sg3 to the receiver. All of them include the time series root.sg2.d0.s0. 
-If the receiver receives the data of root.sg2.d0.s0 of the sender 1 first, the receiver will reject the data of root.sg2 of the sender 2.
+- Pipe
+  - It refers to a synchronization task. In the above case, we can see that there is a data flow pipeline connecting A and B.
+  - A pipe has three states, RUNNING, STOP and DROP, which respectively indicate running, pause and permanent cancellation.
+- PipeSink
+  - It refers to the receiving end. In the above case, pipesink is machine B. At present, the pipesink type only supports IoTDB, that is, the receiver is the IoTDB instance installed on B.
+  - Pipeserver: when the type of pipesink is IoTDB, you need to open the pipeserver service of IoTDB to process the pipe data.
 
-### Precautions for Use
+## 3.Precautions for Use
 
-Statement "alter timeseries add tag" will not effect the receiver when a sync-tool is running.
+- The Sync Tool only supports for many-to-one, that is, one sender should connect to exactly one receiver. One receiver can receive data from more senders.
+- The sender can only have one pipe in non drop status. If you want to create a new pipe, please drop the current pipe.
+- When one or more senders send data to a receiver, there should be no intersection between the respective device path sets of these senders and receivers, otherwise unexpected errors may occur.
+  - e.g. When sender A includes path `root.sg.d.s`, sender B also includes the path `root.sg.d.s`, sender A deletes storage group `root.sg` will also delete all data of B stored in the path `root.sg.d.s` at receiver.
+- Synchronization between the two machines is not supported at present.
+- The Sync Tool only synchronizes insertions, deletions, metadata creations and deletions, do not support TTL settings, trigger and other operations.
 
-### Configuration
-#### Sync Receiver
-The parameter configuration of the sync receiver is located in the configuration file `iotdb-engine.properties` of IoTDB, and its directory is `$IOTDB_HOME/conf/iotdb-engine.properties`. In this configuration file, there are four parameters related to the sync receiver. The configuration instructions are as follows:
+## 4.Quick Start
 
-|parameter: is_sync_enable||
-|--- |--- |
-|Description |Sync function switch, which is configured as true to indicate that the receiver is allowed to receive the data from the sender and load it. When set to false, it means that the receiver is not allowed to receive the data from any sender. |
-|Type|Boolean|
-|Default|false|
-|Modalities for Entry into Force after Modification|Restart receiver|
+Execute the following SQL statements at the sender and receiver to quickly start a data synchronization task between two IoTDB. For complete SQL statements and configuration matters, please see the `parameter configuration`and `SQL` sections. For more usage examples, please refer to the `usage examples` section.
 
+### 4.1 Receiver
 
-|parameter: IP_white_list||
-|--- |--- |
-|Description |Set up a white list of sender IP addresses, which is expressed in the form of network segments and separated by commas between multiple network segments. When the sender transfers data to the receiver, only when the IP address of the sender is within the network segment set by the whitelist can the receiver allow the sync operation. If the whitelist is empty, the receiver does not allow any sender to sync data. The default receiver accepts all IP sync requests.|
-|Type|String|
-|Default|0.0.0.0/0|
-|Modalities for Entry into Force after Modification|Restart receiver|
-
-
-|parameter: sync_server_port||
-|--- |--- |
-|Description |Sync receiver port to listen. Make sure that the port is not a system reserved port and is not occupied. This paramter is valid only when the parameter is_sync_enable is set to TRUE. |
-|Type|Short Int : [0,65535]|
-|Default|5555|
-|Modalities for Entry into Force after Modification|Restart receiver|
-
-#### Sync Sender
-The parameters of the sync sender are configured in a separate configuration file iotdb-sync-client.properties with the installation directory of ```$IOTDB_HOME/conf/iotdb-sync-client.properties```. In this configuration file, there are five parameters related to the sync sender. The configuration instructions are as follows:
-
-|parameter: server_ip||
-|--- |--- |
-|Description |IP address of sync receiver. |
-|Type|String|
-|Default|127.0.0.1|
-|Modalities for Entry into Force after Modification|Restart client|
-
-
-|parameter: server_port||
-|--- |--- |
-|Description |Listening port of sync receiver, it is necessary to ensure that the port is consistent with the configuration of the listening port set in receiver. |
-|Type|Short Int : [0,65535]|
-|Default|5555|
-|Modalities for Entry into Force after Modification|Restart client|
-
-
-|parameter: sync_period_in_second||
-|--- |--- |
-|Description |The period time of sync process, the time unit is second. |
-|Type|Int : [0,2147483647]|
-|Default|600|
-|Modalities for Entry into Force after Modification|Restart client|
-
-
-|parameter: iotdb_schema_directory||
-|--- |--- |
-|Description |The absolute path of the sender's IoTDB schema file, such as `$IOTDB_HOME/data/system/schema/mlog.txt` (if the user does not manually set the path of schema metadata, the path is the default path of IoTDB engine). This parameter is not valid by default and is set manually when the user needs it. |
-|Type|String|
-|Modalities for Entry into Force after Modification|Restart client|
-
-|parameter: sync_storage_groups||
-|--- |--- |
-|Description |This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma. If the list is empty, it means that all storage groups participate in synchronization. By default, it is an empty list. |
-|Type|String|
-|Example|root.sg1, root.sg2|
-|Modalities for Entry into Force after Modification|Restart client|
-
-
-|parameter: max_number_of_sync_file_retry||
-|--- |--- |
-|Description |The maximum number of retry when syncing a file to receiver fails. |
-|Type|Int : [0,2147483647]|
-|Example|5|
-|Modalities for Entry into Force after Modification|Restart client|
-
-
-### Usage
-#### Start Sync Receiver
-1. Set up parameters of sync receiver. For example:
+- Start PipeServer.
 
 ```
-	####################
-	### Sync Server Configuration
-	####################
-	# Whether to open the sync_server_port for receiving data from sync client, the default is closed
-	is_sync_enable=false
-	# Sync server port to listen
-	sync_server_port=5555
-	# White IP list of Sync client.
-	# Please use the form of network segment to present the range of IP, for example: 192.168.0.0/16
-	# If there are more than one IP segment, please separate them by commas
-	# The default is to allow all IP to sync
-	ip_white_list=0.0.0.0/0
+IoTDB> START PIPESERVER
 ```
 
-2. Start IoTDB engine, and the sync receiver will start at the same time, and the LOG log will start with the sentence `IoTDB: start SYNC ServerService successfully` indicating the successful start of the return receiver.
-
-
-#### Stop Sync Receiver
-Stop IoTDB and the sync receiver will be closed at the same time.
-
-#### Start Sync Sender
-1. Set up parameters of sync sender. For example:
+- Stop PipeServer(should execute after dropping all pipes which connect to this receiver).
 
 ```
-	# Sync receiver server address
-	server_ip=127.0.0.1
-	# Sync receiver server port
-	server_port=5555
-	# The period time of sync process, the time unit is second.
-	sync_period_in_second=600
-	# This parameter represents storage groups that participate in the synchronization task, which distinguishes each storage group by comma.
-	# If the list is empty, it means that all storage groups participate in synchronization.
-	# By default, it is empty list.
-	# sync_storage_groups = root.sg1, root.sg2
-	# The maximum number of retry when syncing a file to receiver fails.
-	max_number_of_sync_file_retry=5
+IOTDB> STOP PIPESERVER
 ```
 
-2. Start sync sender
-Users can use the scripts under the ```$IOTDB_HOME/tools``` folder to start the sync sender.
-For Linux and Mac OS X users:
+### 4.2 Sender
+
+- Create a pipesink with IoTDB type.
+
 ```
-  Shell >$IOTDB_HOME/tools/start-sync-client.sh
-```
-For Windows users:
-```
-  Shell >$IOTDB_HOME\tools\start-sync-client.bat
+IoTDB> CREATE PIPESINK central_iotdb AS IoTDB (IP='There is your goal IP')
 ```
 
+- Establish a pipe(before creation, ensure that PipeServer is running on receiver).
 
-#### Stop Sync Sender
-Users can use the scripts under the ```$IOTDB_HOME/tools``` folder to stop the sync sender.
-For Linux and Mac OS X users:
 ```
-  Shell >$IOTDB_HOME/tools/stop-sync-client.sh
-```
-For Windows users:
-```
-  Shell >$IOTDB_HOME\tools\stop-sync-client.bat
+IoTDB> CREATE PIPE my_pipe TO central_iotDB
 ```
 
+- Start this pipe.
+
+```
+IoTDB> START PIPE my_pipe
+```
+
+- Show pipe's status.
+
+```
+IoTDB> SHOW PIPES
+```
+
+- Stop this pipe.
+
+```
+IoTDB> STOP PIPE my_pipe
+```
+
+- Continue this pipe.
+
+```
+IoTDB> START PIPE my_pipe
+```
+
+- Drop this pipe(delete all information about this pipe).
+
+```
+IoTDB> DROP PIPE my_pipe
+```
+
+## 5.Parameter Configuration
+
+All parameters are in `$IOTDB_ HOME$/conf/iotdb-engine`, after all modifications are completed, execute `load configuration` and it will take effect immediately.
+
+### 5.1 Sender
+
+| **Parameter Name** | **max_number_of_sync_file_retry**                            |
+| ------------------ | ------------------------------------------------------------ |
+| Description        | The maximum number of retries when the sender fails to synchronize files to the receiver. |
+| Data type          | Int : [0,2147483647]                                         |
+| Default value      | 5                                                            |
+
+
+
+### 5.2 Receiver
+
+| **Parameter Name** | **ip_white_list**                                            |
+| ------------------ | ------------------------------------------------------------ |
+| Description        | Set the white list of IP addresses of the sending end of the synchronization, which is expressed in the form of network segments, and multiple network segments are separated by commas. When the sender synchronizes data to the receiver, the receiver allows synchronization only when the IP address of the sender is within the network segment set in the white list. If the whitelist is empty, the receiver does not allow any sender to synchronize data. By default, the receiving end accepts the synchronization request of all IP addresses. |
+| Data type          | String                                                       |
+| Default value      | 0.0.0.0/0                                                    |
+
+
+
+| **Parameter Name** | **sync_server_port**                                         |
+| ------------------ | ------------------------------------------------------------ |
+| Description        | The port which the receiver listens, please ensure this port is not occupied by other applications. |
+| Data type          | Short Int : [0,65535]                                        |
+| Default value      | 6670                                                         |
+
+
+
+## 6.SQL
+
+### 6.1 Sender
+
+- Create a pipesink with IoTDB type, where IP and port are optional parameters.
+
+```
+IoTDB> CREATE PIPESINK <PipeSinkName> AS IoTDB [(IP='127.0.0.1',port=6670);]
+```
+
+- Show all pipesink types supported by IoTDB.
+
+```Plain%20Text
+IoTDB> SHOW PIPESINKTYPE
+IoTDB>
++-----+
+| type|
++-----+
+|IoTDB|
++-----+
+```
+
+- Show all pipesinks' definition, the results set has three columns, name, pipesink's type and pipesink's attributes.
+
+```
+IoTDB> SHOW PIPESINKS
+IoTDB> SHOW PIPESINK [PipeSinkName]
+IoTDB> 
++-----------+-----+------------------------+
+|       name| type|              attributes|
++-----------+-----+------------------------+
+|my_pipesink|IoTDB|ip='127.0.0.1',port=6670|
++-----------+-----+------------------------+
+```
+
+- Drop the pipesink with PipeSinkName parameter.
+
+```
+IoTDB> DROP PIPESINK <PipeSinkName>
+```
+
+- Create a pipe.
+- At present, the SELECT statement only supports `**` (i.e. data in all timeseries), the FROM statement only supports `root`, and the WHERE statement only supports the start time of the specified time.
+- If the `SyncDelOp` parameter is true, the deletions of sender will not be synchronized to receiver.
+
+```
+IoTDB> CREATE PIPE my_pipe TO my_iotdb [FROM (select ** from root WHERE time>='yyyy-mm-dd HH:MM:SS' )] [WITH SyncDelOp=true]
+```
+
+- Show all pipes' status.
+- create time, the creation time of this pipe; name, the name of this pipe; pipesink, the pipesink this pipe connects to; status, this pipe's status.
+- Message, the status message of this pipe. When pipe runs normally, this column is usually empty. When an exception occurs, messages may appear in  following two states.
+  - WARN, this indicates that a data loss or other error has occurred, but the pipe will remain running.
+  - ERROR, this indicates that the network is interrupted for a long time or there is a problem at the receiving end. The pipe is stopped and set to STOP state.
+
+```
+IoTDB> SHOW PIPES
+IoTDB>
++-----------------------+-------+-----------+------+-------+
+|            create time|   name|   pipeSink|status|message|
++-----------------------+-------+-----------+------+-------+
+|2022-03-30T20:58:30.689|my_pipe|my_pipesink|  STOP|       |
++-----------------------+-------+-----------+------+-------+
+```
+
+- Show the pipe status with PipeName. When the PipeName is empty，it is the same with `Show PIPES`.
+
+```
+IoTDB> SHOW PIPE [PipeName]
+```
+
+- Stop the pipe with PipeName.
+
+```
+IoTDB> STOP PIPE <PipeName>
+```
+
+- Continue the pipe with PipeName.
+
+```
+IoTDB> START PIPE <PipeName>
+```
+
+- Drop the pipe with PipeName(delete all information about this pipe).
+
+```
+IoTDB> DROP PIPE <PipeName>
+```
+
+#### 6.2 Receiver
+
+- Start the PipeServer service.
+
+```
+IoTDB> START PIPESERVER
+```
+
+- Stop the PipeServer service.
+
+```
+IoTDB> STOP PIPESERVER
+```
+
+- Show the information of PipeServer.
+- True means the PipeServer is running, otherwise not.
+
+```
+IoTDB> SHOW PIPESERVER STATUS
++----------+
+|    enalbe|
++----------+
+|true/false|
++----------+
+```
+
+## 7. Usage Examples
+
+##### Goal
+
+- Create a synchronize task from sender IoTDB to receiver IoTDB.
+- Sender wants to synchronize the data after 2022-3-30 00:00:00.
+- Sender does not want to synchronize the deletions.
+- Sender has an unstable network environment, needs more retries.
+- Receiver only wants to receive data from this sender(sender ip 192.168.0.1).
+
+##### **Receiver**
+
+- `vi conf/iotdb-engine.properties`  to config the parameters，set the IP white list to 192.168.0.1/1 to receive and only receive data from sender.
+
+```
+####################
+### PIPE Server Configuration
+####################
+# PIPE server port to listen
+# Datatype: int
+# pipe_server_port=6670
+
+# White IP list of Sync client.
+# Please use the form of network segment to present the range of IP, for example: 192.168.0.0/16
+# If there are more than one IP segment, please separate them by commas
+# The default is to allow all IP to sync
+# Datatype: String
+ip_white_list=192.168.0.1/1
+```
+
+- Start PipeServer service at receiver.
+
+```
+IoTDB> START PIPESERVER
+```
+
+- Show PipeServer's status, a `True` result means running correctly.
+
+```
+IoTDB> SHOW PIPESERVER STATUS
+```
+
+##### Sender
+
+- Config the `max_number_of_sync_file_retry` parameter to 10.
+
+```
+####################
+### PIPE Sender Configuration
+####################
+# The maximum number of retry when syncing a file to receiver fails.
+max_number_of_sync_file_retry=10
+```
+
+- Create pipesink with IoTDB type, input ip address 192.168.0.1, port 6670.
+
+```
+IoTDB> CREATE PIPESINK my_iotdb AS IoTDB (IP='192.168.0.2'，PORT=6670)
+```
+
+- Create pipe connect to my_iotdb, input the start time 2022-03-30 00:00:00 in WHERE statments, set the `SyncDelOp` to false.
+
+```
+IoTDB> CREATE PIPE p TO my_iotdb FROM (select ** from root where time>='2022-03-30 00:00:00') WITH SyncDelOp=false
+```
+
+- Show the status of pipe p.
+
+```
+IoTDB> SHOW PIPE p
+```
+
+- Drop the pipe p.
+
+```
+IoTDB> DROP PIPE p
+```
+
+## 8.Q&A
+
+- Execute `STOP PIPESERVER` to close IoTDB PipeServer service with message 
+
+  ```
+  Msg: 328: Failed to stop pipe server because there is pipe still running.
+  ```
+
+  - Cause by: There is a running pipe connected to this receiver.
+  - Solution: Execute `STOP PIPE <PipeName>` to stop pipe, then stop PipeServer service.

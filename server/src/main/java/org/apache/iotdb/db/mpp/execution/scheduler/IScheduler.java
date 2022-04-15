@@ -28,13 +28,13 @@ public interface IScheduler {
 
   void start();
 
-  void abort();
+  void stop();
 
   Duration getTotalCpuTime();
 
   FragmentInfo getFragmentInfo();
 
-  void failFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
+  void abortFragmentInstance(FragmentInstanceId instanceId, Throwable failureCause);
 
   void cancelFragment(PlanFragmentId planFragmentId);
 }

@@ -23,17 +23,30 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.Closeable;
+import java.io.IOException;
 
 public interface ISourceHandle extends Closeable {
 
-  /** Get a {@link TsBlock} from the input buffer. */
-  TsBlock receive();
+  /** Get the total amount of memory used by buffered tsblocks. */
+  long getBufferRetainedSizeInBytes();
 
-  /** Check if there are more tsblocks. */
+  /**
+   * Get a {@link TsBlock}. If the source handle is blocked, a null will be returned. A {@link
+   * RuntimeException} will be thrown if any error happened.
+   */
+  TsBlock receive() throws IOException;
+
+  /** If there are more tsblocks. */
   boolean isFinished();
 
-  /** Get a future that will be completed when the input buffer is not empty. */
+  /**
+   * Get a future that will be completed when the input buffer is not empty. The future will not
+   * complete even when the handle is finished or closed.
+   */
   ListenableFuture<Void> isBlocked();
+
+  /** If this handle is closed. */
+  boolean isClosed();
 
   /** Close the handle. Discarding all tsblocks which may still be in memory buffer. */
   @Override

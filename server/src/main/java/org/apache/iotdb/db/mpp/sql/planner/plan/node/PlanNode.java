@@ -18,35 +18,42 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.apache.commons.lang.Validate;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-/** The base class of query executable operators, which is used to compose logical query plan. */
-// TODO: consider how to restrict the children type for each type of ExecOperator
+/** The base class of query logical plan nodes, which is used to compose logical query plan. */
 public abstract class PlanNode {
   protected static final int NO_CHILD_ALLOWED = 0;
   protected static final int ONE_CHILD = 1;
   protected static final int CHILD_COUNT_NO_LIMIT = -1;
 
-  private final PlanNodeId id;
+  private PlanNodeId id;
 
   protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
     this.id = id;
   }
 
-  public PlanNodeId getId() {
+  public PlanNodeId getPlanNodeId() {
     return id;
+  }
+
+  public void setPlanNodeId(PlanNodeId id) {
+    this.id = id;
   }
 
   public abstract List<PlanNode> getChildren();
 
   public abstract void addChild(PlanNode child);
 
+  @Override
   public abstract PlanNode clone();
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {
@@ -70,11 +77,40 @@ public abstract class PlanNode {
 
   public abstract int allowedChildCount();
 
-  public abstract List<String> getOutputColumnNames();
-
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitPlan(this, context);
   }
 
-  public abstract void serialize(ByteBuffer byteBuffer);
+  public void serialize(ByteBuffer byteBuffer) {
+    serializeAttributes(byteBuffer);
+    id.serialize(byteBuffer);
+    List<PlanNode> planNodes = getChildren();
+    if (planNodes == null) {
+      ReadWriteIOUtils.write(0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(planNodes.size(), byteBuffer);
+      for (PlanNode planNode : planNodes) {
+        planNode.serialize(byteBuffer);
+      }
+    }
+  }
+
+  protected abstract void serializeAttributes(ByteBuffer byteBuffer);
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PlanNode planNode = (PlanNode) o;
+    return Objects.equals(id, planNode.id);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id);
+  }
 }

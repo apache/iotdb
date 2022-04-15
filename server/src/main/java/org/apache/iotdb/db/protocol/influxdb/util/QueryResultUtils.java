@@ -76,8 +76,7 @@ public class QueryResultUtils {
     QueryResult.Series series = new QueryResult.Series();
     series.setName(measurement);
     // gets the reverse map of the tag
-    Map<String, Integer> tagOrders =
-        InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
+    Map<String, Integer> tagOrders = InfluxDBMetaManager.getTagOrders(database, measurement);
     Map<Integer, String> tagOrderReversed =
         tagOrders.entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));

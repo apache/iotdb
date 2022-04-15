@@ -51,6 +51,11 @@ public class FragmentSinkOperator implements SinkOperator {
   }
 
   @Override
+  public boolean isFinished() {
+    return false;
+  }
+
+  @Override
   public void send(TsBlock tsBlock) {}
 
   @Override

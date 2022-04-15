@@ -136,7 +136,7 @@ public class TriggerRegistrationService implements IService {
 
   private IMNode tryGetMNode(CreateTriggerPlan plan) throws TriggerManagementException {
     try {
-      IMNode imNode = IoTDB.schemaProcessor.getNodeByPath(plan.getFullPath());
+      IMNode imNode = IoTDB.schemaProcessor.getMNodeForTrigger(plan.getFullPath());
       if (imNode == null) {
         throw new TriggerManagementException(
             String.format("Path [%s] does not exist", plan.getFullPath().getFullPath()));
@@ -221,7 +221,14 @@ public class TriggerRegistrationService implements IService {
 
   private void doDeregister(DropTriggerPlan plan) throws TriggerManagementException {
     TriggerExecutor executor = executors.remove(plan.getTriggerName());
-    executor.getIMNode().setTriggerExecutor(null);
+
+    IMNode imNode = executor.getIMNode();
+    try {
+      imNode.setTriggerExecutor(null);
+      IoTDB.schemaProcessor.releaseMNodeAfterDropTrigger(imNode);
+    } catch (MetadataException e) {
+      throw new TriggerManagementException(e.getMessage(), e);
+    }
 
     try {
       executor.onDrop();

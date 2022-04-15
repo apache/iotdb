@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DataPartitionQueryParam {
 
   private String devicePath;
-  private List<TimePartitionId> timePartitionIdList;
+  private List<TimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
   public String getDevicePath() {
     return devicePath;
@@ -33,11 +34,11 @@ public class DataPartitionQueryParam {
     this.devicePath = devicePath;
   }
 
-  public List<TimePartitionId> getTimePartitionIdList() {
-    return timePartitionIdList;
+  public List<TimePartitionSlot> getTimePartitionSlotList() {
+    return timePartitionSlotList;
   }
 
-  public void setTimePartitionIdList(List<TimePartitionId> timePartitionIdList) {
-    this.timePartitionIdList = timePartitionIdList;
+  public void setTimePartitionSlotList(List<TimePartitionSlot> timePartitionSlotList) {
+    this.timePartitionSlotList = timePartitionSlotList;
   }
 }

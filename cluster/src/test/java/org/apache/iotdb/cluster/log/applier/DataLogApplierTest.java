@@ -53,8 +53,8 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -407,13 +407,13 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyCloseFile() throws IoTDBException {
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
+    DataRegion dataRegion =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    TestCase.assertFalse(virtualStorageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
+    TestCase.assertFalse(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
 
     CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
     applier.apply(closeFileLog);
-    TestCase.assertTrue(virtualStorageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
+    TestCase.assertTrue(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
   }
 
   @Test

@@ -26,6 +26,10 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 public class SimplePlanNodeRewriter<C> extends PlanVisitor<PlanNode, C> {
   @Override
   public PlanNode visitPlan(PlanNode node, C context) {
+    // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
+    if (node instanceof WritePlanNode) {
+      return node;
+    }
     return defaultRewrite(node, context);
   }
 

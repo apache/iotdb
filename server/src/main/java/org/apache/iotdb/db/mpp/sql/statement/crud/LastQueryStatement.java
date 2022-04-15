@@ -20,9 +20,15 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class LastQueryStatement extends QueryStatement {
 
@@ -34,6 +40,12 @@ public class LastQueryStatement extends QueryStatement {
     super(queryStatement);
   }
 
+  public DatasetHeader constructDatasetHeader() {
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
+    // TODO: consider LAST
+    return new DatasetHeader(columnHeaders, false);
+  }
+
   @Override
   public void selfCheck() {
     super.selfCheck();
@@ -42,7 +54,7 @@ public class LastQueryStatement extends QueryStatement {
       throw new SemanticException("Last query doesn't support align by device.");
     }
 
-    if (DisableAlign()) {
+    if (disableAlign()) {
       throw new SemanticException("Disable align cannot be applied to LAST query.");
     }
 
@@ -52,5 +64,9 @@ public class LastQueryStatement extends QueryStatement {
         throw new SemanticException("Last queries can only be applied on raw time series.");
       }
     }
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitLastQuery(this, context);
   }
 }

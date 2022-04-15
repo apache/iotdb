@@ -20,13 +20,13 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -219,16 +219,15 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    RewriteCrossSpaceCompactionTask rewriteCrossSpaceCompactionTask =
-        new RewriteCrossSpaceCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
             0,
             tsFileManager,
             seqResources,
             unseqResources,
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0));
-    rewriteCrossSpaceCompactionTask.call();
+    task.call();
 
     for (TsFileResource resource : seqResources) {
       resource.resetModFile();
@@ -456,16 +455,15 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
         new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    RewriteCrossSpaceCompactionTask rewriteCrossSpaceCompactionTask =
-        new RewriteCrossSpaceCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
             0,
             tsFileManager,
             seqResources,
             unseqResources,
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0));
-    rewriteCrossSpaceCompactionTask.call();
+    task.call();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getModFile().exists());
@@ -577,8 +575,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
    */
   @Test
   public void testOneDeletionDuringCompaction() throws Exception {
-    VirtualStorageGroupProcessor vsgp =
-        new VirtualStorageGroupProcessor(
+    DataRegion vsgp =
+        new DataRegion(
             STORAGE_GROUP_DIR.getPath(),
             "0",
             new TsFileFlushPolicy.DirectFlushPolicy(),
@@ -603,17 +601,16 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
         0,
         null);
 
-    RewriteCrossSpaceCompactionTask rewriteCrossSpaceCompactionTask =
-        new RewriteCrossSpaceCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
             0,
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0));
-    rewriteCrossSpaceCompactionTask.setSourceFilesToCompactionCandidate();
-    rewriteCrossSpaceCompactionTask.checkValidAndSetMerging();
+    task.setSourceFilesToCompactionCandidate();
+    task.checkValidAndSetMerging();
     // delete data in source file during compaction
     vsgp.delete(
         new PartialPath(
@@ -646,7 +643,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       Assert.assertTrue(resource.getModFile().exists());
       Assert.assertEquals(2, resource.getModFile().getModifications().size());
     }
-    rewriteCrossSpaceCompactionTask.call();
+    task.call();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getModFile().exists());
@@ -687,8 +684,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
    */
   @Test
   public void testSeveralDeletionsDuringCompaction() throws Exception {
-    VirtualStorageGroupProcessor vsgp =
-        new VirtualStorageGroupProcessor(
+    DataRegion vsgp =
+        new DataRegion(
             STORAGE_GROUP_DIR.getPath(),
             "0",
             new TsFileFlushPolicy.DirectFlushPolicy(),
@@ -713,17 +710,16 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
         0,
         null);
 
-    RewriteCrossSpaceCompactionTask rewriteCrossSpaceCompactionTask =
-        new RewriteCrossSpaceCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
+    CrossSpaceCompactionTask task =
+        new CrossSpaceCompactionTask(
             0,
             vsgp.getTsFileResourceManager(),
             seqResources,
             unseqResources,
+            new ReadPointCompactionPerformer(),
             new AtomicInteger(0));
-    rewriteCrossSpaceCompactionTask.setSourceFilesToCompactionCandidate();
-    rewriteCrossSpaceCompactionTask.checkValidAndSetMerging();
+    task.setSourceFilesToCompactionCandidate();
+    task.checkValidAndSetMerging();
     // delete data in source file during compaction
     vsgp.delete(
         new PartialPath(
@@ -768,7 +764,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       Assert.assertTrue(resource.getModFile().exists());
       Assert.assertEquals(3, resource.getModFile().getModifications().size());
     }
-    rewriteCrossSpaceCompactionTask.call();
+    task.call();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getModFile().exists());

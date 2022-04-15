@@ -20,18 +20,24 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.SystemCheckException;
-import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.db.wal.io.WALWriter;
+import org.apache.iotdb.db.wal.node.WALNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import static org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode.WAL_FILE_NAME;
 
 /** WalChecker verifies that whether all insert ahead logs in the WAL folder are recognizable. */
 public class WalChecker {
@@ -58,55 +64,56 @@ public class WalChecker {
       throw new SystemCheckException(walFolder);
     }
 
-    File[] storageWalFolders = walFolderFile.listFiles();
-    if (storageWalFolders == null || storageWalFolders.length == 0) {
+    File[] walNodeFolders =
+        walFolderFile.listFiles(
+            (dir, name) -> {
+              File walNodeFolder = SystemFileFactory.INSTANCE.getFile(dir, name);
+              return walNodeFolder.isDirectory()
+                  && WALNode.WAL_NODE_FOLDER_PATTERN.matcher(name).find();
+            });
+    if (walNodeFolders == null || walNodeFolders.length == 0) {
       logger.info("No sub-directories under the given directory, check ends");
       return Collections.emptyList();
     }
 
     List<File> failedFiles = new ArrayList<>();
-    for (int dirIndex = 0; dirIndex < storageWalFolders.length; dirIndex++) {
-      File storageWalFolder = storageWalFolders[dirIndex];
-      logger.info("Checking the No.{} directory {}", dirIndex, storageWalFolder.getName());
-      File walFile = SystemFileFactory.INSTANCE.getFile(storageWalFolder, WAL_FILE_NAME);
-      if (!checkFile(walFile)) {
-        failedFiles.add(walFile);
+    for (int dirIndex = 0; dirIndex < walNodeFolders.length; dirIndex++) {
+      File walNodeFolder = walNodeFolders[dirIndex];
+      logger.info("Checking the No.{} directory {}", dirIndex, walNodeFolder.getName());
+      File[] walFiles = walNodeFolder.listFiles(WALWriter::walFilenameFilter);
+      if (walFiles == null) {
+        continue;
+      }
+      for (File walFile : walFiles) {
+        if (!checkFile(walFile)) {
+          failedFiles.add(walFile);
+        }
       }
     }
     return failedFiles;
   }
 
   private boolean checkFile(File walFile) {
-    if (!walFile.exists()) {
-      logger.debug("No wal file in this dir, skipping");
-      return true;
-    }
-
-    if (walFile.length() > 0 && walFile.length() < SingleFileLogReader.LEAST_LOG_SIZE) {
-      // contains only one damaged log
-      logger.error(
-          "{} fails the check because it is non-empty but does not contain enough bytes "
-              + "even for one log.",
-          walFile.getAbsoluteFile());
-      return false;
-    }
-
-    SingleFileLogReader logReader = null;
-    try {
-      logReader = new SingleFileLogReader(walFile);
-      while (logReader.hasNext()) {
-        logReader.next();
+    int totalSize = 0;
+    try (DataInputStream logStream =
+        new DataInputStream(new BufferedInputStream(new FileInputStream(walFile)))) {
+      while (logStream.available() > 0) {
+        WALEntry walEntry = WALEntry.deserialize(logStream);
+        totalSize += walEntry.serializedSize();
       }
-      if (logReader.isFileCorrupted()) {
+    } catch (EOFException e) {
+      if (totalSize == walFile.length()) {
+        return true;
+      } else {
+        logger.error("{} fails the check because", walFile, e);
         return false;
       }
-    } catch (IOException e) {
-      logger.error("{} fails the check because", walFile.getAbsoluteFile(), e);
+    } catch (FileNotFoundException e) {
+      logger.debug("Wal file doesn't exist, skipping");
+      return true;
+    } catch (IOException | IllegalPathException e) {
+      logger.error("{} fails the check because", walFile, e);
       return false;
-    } finally {
-      if (logReader != null) {
-        logReader.close();
-      }
     }
     return true;
   }

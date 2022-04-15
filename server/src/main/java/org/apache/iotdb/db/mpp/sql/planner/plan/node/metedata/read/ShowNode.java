@@ -30,5 +30,7 @@ public abstract class ShowNode extends PlanNode {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+  }
 }
