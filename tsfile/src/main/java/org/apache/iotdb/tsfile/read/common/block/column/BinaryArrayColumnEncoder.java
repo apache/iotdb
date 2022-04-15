@@ -20,38 +20,40 @@
 package org.apache.iotdb.tsfile.read.common.block.column;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class Int64ArrayColumnEncoder implements ColumnEncoder {
+public class BinaryArrayColumnEncoder implements ColumnEncoder {
 
   @Override
   public void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount) {
-
     // Serialized data layout:
     //    +---------------+-----------------+-------------+
     //    | may have null | null indicators |   values    |
     //    +---------------+-----------------+-------------+
-    //    | byte          | list[byte]      | list[int64] |
+    //    | byte          | list[byte]      | list[entry] |
     //    +---------------+-----------------+-------------+
+    //
+    // Each entry is represented as:
+    //    +---------------+-------+
+    //    | value length  | value |
+    //    +---------------+-------+
+    //    | int32         | bytes |
+    //    +---------------+-------+
 
     boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
 
     TSDataType dataType = columnBuilder.getDataType();
-    if (TSDataType.INT64.equals(dataType)) {
+    if (TSDataType.TEXT.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators == null || !nullIndicators[i]) {
-          columnBuilder.writeLong(input.getLong());
-        } else {
-          columnBuilder.appendNull();
-        }
-      }
-    } else if (TSDataType.DOUBLE.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators == null || !nullIndicators[i]) {
-          columnBuilder.writeDouble(Double.longBitsToDouble(input.getLong()));
+          int length = input.getInt();
+          byte[] value = new byte[length];
+          input.get(value);
+          columnBuilder.writeBinary(new Binary(value));
         } else {
           columnBuilder.appendNull();
         }
@@ -68,16 +70,12 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
 
     TSDataType dataType = column.getDataType();
     int positionCount = column.getPositionCount();
-    if (TSDataType.INT64.equals(dataType)) {
+    if (TSDataType.TEXT.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (!column.isNull(i)) {
-          output.writeLong(column.getLong(i));
-        }
-      }
-    } else if (TSDataType.DOUBLE.equals(dataType)) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!column.isNull(i)) {
-          output.writeLong(Double.doubleToLongBits(column.getDouble(i)));
+          Binary binary = column.getBinary(i);
+          output.writeInt(binary.getLength());
+          output.write(binary.getValues());
         }
       }
     } else {

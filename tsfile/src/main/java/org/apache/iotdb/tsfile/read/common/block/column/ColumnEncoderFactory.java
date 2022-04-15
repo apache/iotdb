@@ -29,6 +29,8 @@ public class ColumnEncoderFactory {
   static {
     encodingToEncoder.put(ColumnEncoding.INT32_ARRAY, new Int32ArrayColumnEncoder());
     encodingToEncoder.put(ColumnEncoding.INT64_ARRAY, new Int64ArrayColumnEncoder());
+    encodingToEncoder.put(ColumnEncoding.BYTE_ARRAY, new ByteArrayColumnEncoder());
+    encodingToEncoder.put(ColumnEncoding.BINARY_ARRAY, new BinaryArrayColumnEncoder());
   }
 
   public static ColumnEncoder get(ColumnEncoding columnEncoding) {

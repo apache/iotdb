@@ -89,6 +89,7 @@ public class IoTDBInfluxDB implements InfluxDB {
         if (reflectField.getType().getName().equalsIgnoreCase("java.util.concurrent.TimeUnit")
             && reflectField.getName().equalsIgnoreCase("precision")) {
           precision = (TimeUnit) reflectField.get(point);
+          break;
         }
       } catch (IllegalAccessException e) {
         throw new IllegalArgumentException(e.getMessage());

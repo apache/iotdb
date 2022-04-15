@@ -29,7 +29,7 @@
     </dependency>
 ```
 
-Here are some examples of connecting IoTDB using the InfluxDB-Protocol adapter : https://github.com/apache/iotdb/tree/master/influxdb-protocol/src/main/java/org/apache/iotdb/influxdb/example
+Here are some [examples](https://github.com/apache/iotdb/tree/master/influxdb-protocol/src/main/java/org/apache/iotdb/influxdb/example) of connecting IoTDB using the InfluxDB-Protocol adapter.
 
 ## 1. Switching Scheme
 
@@ -261,6 +261,9 @@ However, this will not affect the correctness of the query, because once the tag
 ### 3.1 InfluxDB Version Support
 
 Currently, supports InfluxDB 1.x version, which does not support InfluxDB 2.x version.
+
+The Maven dependency of `influxdb-java` supports 2.21 +, and the lower version is not tested.
+
 
 ### 3.2 Function Interface Support
 

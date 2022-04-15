@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.tsfile.common.block;
 
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoderFactory;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoding;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.Int64ArrayColumnEncoder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 
@@ -33,6 +35,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
+import java.util.Random;
 
 public class Int64ArrayColumnEncoderTest {
 
@@ -40,21 +43,23 @@ public class Int64ArrayColumnEncoderTest {
   public void testLongColumn() {
     final int positionCount = 10;
 
+    Random random = new Random();
+
     boolean[] nullIndicators = new boolean[positionCount];
     long[] values = new long[positionCount];
     for (int i = 0; i < positionCount; i++) {
       nullIndicators[i] = i % 2 == 0;
       if (i % 2 != 0) {
-        values[i] = i;
+        values[i] = random.nextLong();
       }
     }
     LongColumn input = new LongColumn(positionCount, Optional.of(nullIndicators), values);
-    Int64ArrayColumnEncoder serde = new Int64ArrayColumnEncoder();
+    ColumnEncoder encoder = ColumnEncoderFactory.get(ColumnEncoding.INT64_ARRAY);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dos = new DataOutputStream(byteArrayOutputStream);
     try {
-      serde.writeColumn(dos, input);
+      encoder.writeColumn(dos, input);
     } catch (IOException e) {
       e.printStackTrace();
       Assert.fail();
@@ -62,14 +67,14 @@ public class Int64ArrayColumnEncoderTest {
 
     ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     LongColumnBuilder longColumnBuilder = new LongColumnBuilder(null, positionCount);
-    serde.readColumn(longColumnBuilder, buffer, positionCount);
+    encoder.readColumn(longColumnBuilder, buffer, positionCount);
     LongColumn output = (LongColumn) longColumnBuilder.build();
     Assert.assertEquals(positionCount, output.getPositionCount());
     Assert.assertTrue(output.mayHaveNull());
     for (int i = 0; i < positionCount; i++) {
       Assert.assertEquals(i % 2 == 0, output.isNull(i));
       if (i % 2 != 0) {
-        Assert.assertEquals(i, output.getLong(i));
+        Assert.assertEquals(values[i], output.getLong(i));
       }
     }
   }
@@ -78,21 +83,23 @@ public class Int64ArrayColumnEncoderTest {
   public void testDoubleColumn() {
     final int positionCount = 10;
 
+    Random random = new Random();
+
     boolean[] nullIndicators = new boolean[positionCount];
     double[] values = new double[positionCount];
     for (int i = 0; i < positionCount; i++) {
       nullIndicators[i] = i % 2 == 0;
       if (i % 2 != 0) {
-        values[i] = i + i / 10D;
+        values[i] = random.nextDouble();
       }
     }
     DoubleColumn input = new DoubleColumn(positionCount, Optional.of(nullIndicators), values);
-    Int64ArrayColumnEncoder serde = new Int64ArrayColumnEncoder();
+    ColumnEncoder encoder = ColumnEncoderFactory.get(ColumnEncoding.INT64_ARRAY);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dos = new DataOutputStream(byteArrayOutputStream);
     try {
-      serde.writeColumn(dos, input);
+      encoder.writeColumn(dos, input);
     } catch (IOException e) {
       e.printStackTrace();
       Assert.fail();
@@ -100,14 +107,14 @@ public class Int64ArrayColumnEncoderTest {
 
     ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     DoubleColumnBuilder doubleColumnBuilder = new DoubleColumnBuilder(null, positionCount);
-    serde.readColumn(doubleColumnBuilder, buffer, positionCount);
+    encoder.readColumn(doubleColumnBuilder, buffer, positionCount);
     DoubleColumn output = (DoubleColumn) doubleColumnBuilder.build();
     Assert.assertEquals(positionCount, output.getPositionCount());
     Assert.assertTrue(output.mayHaveNull());
     for (int i = 0; i < positionCount; i++) {
       Assert.assertEquals(i % 2 == 0, output.isNull(i));
       if (i % 2 != 0) {
-        Assert.assertEquals(i + i / 10D, output.getDouble(i), 0.001D);
+        Assert.assertEquals(values[i], output.getDouble(i), 0.001D);
       }
     }
   }

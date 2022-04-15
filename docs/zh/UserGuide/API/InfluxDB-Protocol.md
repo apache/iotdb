@@ -29,7 +29,7 @@
     </dependency>
 ```
 
-这里是一些使用 InfluxDB-Protocol 适配器连接 IoTDB 的示例：https://github.com/apache/iotdb/tree/master/influxdb-protocol/src/main/java/org/apache/iotdb/influxdb/example
+这里是一些使用 InfluxDB-Protocol 适配器连接 IoTDB 的[示例](https://github.com/apache/iotdb/tree/master/influxdb-protocol/src/main/java/org/apache/iotdb/influxdb/example)
 
 
 ## 1.切换方案
@@ -265,6 +265,8 @@ time                address name phone sex socre
 ### 3.1 InfluxDB版本支持情况
 
 目前支持InfluxDB 1.x 版本，暂不支持InfluxDB 2.x 版本。
+
+`influxdb-java`的maven依赖支持2.21+，低版本未进行测试。
 
 ### 3.2 函数接口支持情况
 
