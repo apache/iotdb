@@ -189,7 +189,7 @@
             </build>
         </profile>
         <profile>
-            <id>sync</id>
+            <id>test-sync</id>
             <build>
                 <plugins>
                     <!-- before integration test, we build the docker image -->
