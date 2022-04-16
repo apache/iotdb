@@ -108,8 +108,8 @@ public class SinkHandle implements ISinkHandle {
     // TODO: (xingtanzjr)
     // We temporarily make it sync instead of async to avoid EOS Event(SinkHandle close() method is
     // called) is sent before NewDataBlockEvent arrived
-    new SendNewDataBlockEventTask(startSequenceId, blockSizes).run();
-    //    executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
+    //    new SendNewDataBlockEventTask(startSequenceId, blockSizes).run();
+    executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
   }
 
   @Override
