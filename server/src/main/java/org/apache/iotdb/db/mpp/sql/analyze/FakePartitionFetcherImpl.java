@@ -19,26 +19,38 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.GroupType;
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.*;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.*;
 
 public class FakePartitionFetcherImpl implements IPartitionFetcher {
+
   @Override
-  public DataPartition fetchDataPartitionInfo(DataPartitionQueryParam parameter) {
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
     return null;
   }
 
   @Override
-  public DataPartition fetchDataPartitionInfos(List<DataPartitionQueryParam> parameterList) {
+  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
+    return null;
+  }
+
+  @Override
+  public DataPartition getDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     String device1 = "root.sg.d1";
     String device2 = "root.sg.d22";
     String device3 = "root.sg.d333";
 
-    DataPartition dataPartition = new DataPartition();
+    DataPartition dataPartition =
+        new DataPartition(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
     Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
     Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> sgPartitionMap =
@@ -47,13 +59,13 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     List<RegionReplicaSet> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 1),
+            new DataRegionId(1),
             Arrays.asList(
                 new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d1DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 2),
+            new DataRegionId(2),
             Arrays.asList(
                 new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)),
                 new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
@@ -63,7 +75,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 3),
+            new DataRegionId(3),
             Arrays.asList(
                 new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)),
                 new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
@@ -73,13 +85,13 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
     List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 1),
+            new DataRegionId(1),
             Arrays.asList(
                 new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
                 new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
     d3DataRegions.add(
         new RegionReplicaSet(
-            new ConsensusGroupId(GroupType.DataRegion, 4),
+            new DataRegionId(4),
             Arrays.asList(
                 new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)),
                 new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));
@@ -98,22 +110,8 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition fetchSchemaPartitionInfo(String devicePath) {
-    return null;
-  }
-
-  @Override
-  public SchemaPartition fetchSchemaPartitionInfos(List<String> devicePath) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfos(List<DataPartitionQueryParam> parameterList) {
+  public DataPartition getOrCreateDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return null;
   }
 }

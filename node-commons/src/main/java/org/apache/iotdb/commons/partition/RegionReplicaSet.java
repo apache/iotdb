@@ -18,21 +18,38 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.DataNodeLocation;
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class RegionReplicaSet {
-  private ConsensusGroupId Id;
+  private ConsensusGroupId consensusGroupId;
   private List<DataNodeLocation> dataNodeList;
 
   public RegionReplicaSet() {}
 
-  public RegionReplicaSet(ConsensusGroupId Id, List<DataNodeLocation> dataNodeList) {
-    this.Id = Id;
+  public RegionReplicaSet(ConsensusGroupId consensusGroupId, List<DataNodeLocation> dataNodeList) {
+    this.consensusGroupId = consensusGroupId;
     this.dataNodeList = dataNodeList;
+  }
+
+  public RegionReplicaSet(TRegionReplicaSet respRegionReplicaSet) {
+    this.consensusGroupId = ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId);
+    this.dataNodeList =
+        respRegionReplicaSet.getEndpoint().stream()
+            .map(
+                respEndpoint ->
+                    new DataNodeLocation(
+                        new Endpoint(respEndpoint.getIp(), respEndpoint.getPort())))
+            .collect(Collectors.toList());
   }
 
   public List<DataNodeLocation> getDataNodeList() {
@@ -43,20 +60,44 @@ public class RegionReplicaSet {
     this.dataNodeList = dataNodeList;
   }
 
-  public ConsensusGroupId getId() {
-    return Id;
+  public ConsensusGroupId getConsensusGroupId() {
+    return consensusGroupId;
   }
 
-  public void setId(ConsensusGroupId id) {
-    this.Id = id;
+  public void setConsensusGroupId(ConsensusGroupId consensusGroupId) {
+    this.consensusGroupId = consensusGroupId;
   }
 
+  /** Convert RegionReplicaSet to TRegionReplicaSet */
+  public TRegionReplicaSet convertToRPCTRegionReplicaSet() {
+    TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+
+    // Convert ConsensusGroupId
+    ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
+    consensusGroupId.serializeImpl(buffer);
+    buffer.flip();
+    tRegionReplicaSet.setRegionId(buffer);
+
+    // Convert EndPoints
+    List<EndPoint> endPointList = new ArrayList<>();
+    dataNodeList.forEach(
+        dataNodeLocation ->
+            endPointList.add(
+                new EndPoint(
+                    dataNodeLocation.getEndPoint().getIp(),
+                    dataNodeLocation.getEndPoint().getPort())));
+    tRegionReplicaSet.setEndpoint(endPointList);
+
+    return tRegionReplicaSet;
+  }
+
+  @Override
   public String toString() {
-    return String.format("RegionReplicaSet[%s-%d]: %s", Id.getType(), Id.getId(), dataNodeList);
+    return String.format("RegionReplicaSet[%s]: %s", consensusGroupId, dataNodeList);
   }
 
   public void serializeImpl(ByteBuffer buffer) {
-    Id.serializeImpl(buffer);
+    consensusGroupId.serializeImpl(buffer);
     buffer.putInt(dataNodeList.size());
     dataNodeList.forEach(
         dataNode -> {
@@ -64,26 +105,37 @@ public class RegionReplicaSet {
         });
   }
 
-  public void deserializeImpl(ByteBuffer buffer) {
-    Id = new ConsensusGroupId();
-    Id.deserializeImpl(buffer);
+  public static RegionReplicaSet deserializeImpl(ByteBuffer buffer) {
+    ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(buffer);
 
     int size = buffer.getInt();
     // We should always make dataNodeList as a new Object when deserialization
-    dataNodeList = new ArrayList<>();
-
+    List<DataNodeLocation> dataNodeList = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      DataNodeLocation dataNode = new DataNodeLocation();
-      dataNode.deserializeImpl(buffer);
-      dataNodeList.add(dataNode);
+      dataNodeList.add(DataNodeLocation.deserializeImpl(buffer));
     }
+    return new RegionReplicaSet(consensusGroupId, dataNodeList);
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    RegionReplicaSet that = (RegionReplicaSet) o;
+    return Objects.equals(consensusGroupId, that.consensusGroupId)
+        && Objects.equals(dataNodeList, that.dataNodeList);
+  }
+
+  @Override
   public int hashCode() {
-    return toString().hashCode();
+    return Objects.hash(consensusGroupId, dataNodeList);
   }
 
-  public boolean equals(Object obj) {
-    return obj instanceof RegionReplicaSet && obj.toString().equals(toString());
+  public boolean isEmpty() {
+    return dataNodeList == null || dataNodeList.isEmpty();
   }
 }

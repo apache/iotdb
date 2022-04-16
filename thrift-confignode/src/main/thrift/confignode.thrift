@@ -17,132 +17,137 @@
  * under the License.
  */
 
-include "rpc.thrift"
+include "common.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
 
-struct DataNodeRegisterReq {
-    1: required rpc.EndPoint endPoint
+// DataNode
+struct TDataNodeRegisterReq {
+  1: required common.EndPoint endPoint
+  // Map<StorageGroupName, TStorageGroupSchema>
+  // DataNode can use statusMap to report its status to the ConfigNode when restart
+  2: optional map<string, TStorageGroupSchema> statusMap
 }
 
-struct DataNodeRegisterResp {
-    1: required rpc.TSStatus registerResult
-    2: optional i32 dataNodeID
+struct TGlobalConfig {
+  1: required string dataNodeConsensusProtocolClass
+  2: required i32 seriesPartitionSlotNum
+  3: required string seriesPartitionExecutorClass
+  4: required i64 timePartitionInterval
 }
 
-struct DataNodeMessage {
-  1: required i32 dataNodeID
-  2: required rpc.EndPoint endPoint
+struct TDataNodeRegisterResp {
+  1: required common.TSStatus status
+  2: optional i32 dataNodeID
+  3: optional TGlobalConfig globalConfig
 }
 
-struct SetStorageGroupReq {
-    1: required string storageGroup
+struct TDataNodeMessageResp {
+  1: required common.TSStatus status
+  // map<DataNodeId, DataNodeMessage>
+  2: optional map<i32, TDataNodeMessage> dataNodeMessageMap
 }
 
-struct DeleteStorageGroupReq {
-    1: required string storageGroup
+struct TDataNodeMessage {
+  1: required i32 dataNodeId
+  2: required common.EndPoint endPoint
 }
 
-struct StorageGroupMessage {
-    1: required string storageGroup
+// StorageGroup
+struct TSetStorageGroupReq {
+  1: required string storageGroup
+  2: optional i64 TTL
 }
 
-struct GetDeviceGroupIDReq {
-    1: required string device
+struct TDeleteStorageGroupReq {
+  1: required string storageGroup
 }
 
-struct GetSchemaPartitionReq {
-    1: required string storageGroup
-    2: required list<i32> deviceGroupIDs
+struct TSetTTLReq {
+  1: required string storageGroup
+  2: required i64 TTL
 }
 
-struct RegionReplicaSet {
-    1: required i32 regionId
-    2: required list<rpc.EndPoint> endpoint
+struct TStorageGroupSchemaResp {
+  1: required common.TSStatus status
+  // map<string, StorageGroupMessage>
+  2: optional map<string, TStorageGroupSchema> storageGroupSchemaMap
 }
 
-struct SchemaPartitionInfo {
-    1: required map<string, map<i32, RegionReplicaSet>> schemaRegionDataNodesMap
+struct TStorageGroupSchema {
+  1: required string storageGroup
+  2: optional i64 TTL
+  // list<DataRegionId>
+  3: optional list<binary> dataRegionGroupIds
+  // list<SchemaRegionId>
+  4: optional list<binary> schemaRegionGroupIds
 }
 
-struct DataPartitionInfo {
-    1: required map<string, map<i64, map<i32, list<RegionReplicaSet>>>> deviceGroupStartTimeDataRegionGroupMap
+// Schema
+struct TSchemaPartitionReq {
+  1: required binary pathPatternTree
 }
 
-struct GetDataPartitionReq {
-    1: required string storageGroup
-    2: required map<i32, list<i64>> deviceGroupStartTimeMap
+struct TSchemaPartitionResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
 }
 
-struct DeviceGroupHashInfo {
-    1: required i32 deviceGroupCount
-    2: required string hashClass
+// Data
+struct TDataPartitionReq {
+  // map<StorageGroupName, map<TSeriesPartitionSlot, list<TTimePartitionSlot>>>
+  1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
 }
 
-struct FetchDataPartitionReq {
-    1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
+struct TDataPartitionResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
 }
 
-struct FetchSchemaPartitionReq {
-    1: required list<string> devicePaths
-}
-
-struct FetchPartitionReq {
-    1: required map<i32, list<i64>> deviceGroupIDToStartTimeMap
-}
-
-struct RegionInfo {
-    1: required i32 regionId
-    2: required list<rpc.EndPoint> endPointList
-}
-
-struct DataPartitionInfoResp {
-    // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionReplicaInfo>>>>
-    1: required map<string, map<i32, map<i64, list<RegionInfo>>>> dataPartitionMap
-}
-
-struct SchemaPartitionInfoResp {
-    // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
-    1: required map<string, map<i32, RegionInfo>> schemaPartitionInfo
-}
-
-struct PartitionInfoResp {
-    // Map<StorageGroup, Map<DeviceGroupID, Map<TimePartitionId, List<DataRegionReplicaInfo>>>>
-    1: required map<string, map<i32, map<i64, list<RegionInfo>>>> dataPartitionMap
-    // Map<StorageGroup, Map<DeviceGroupID, SchemaRegionPlaceInfo>>
-    2: required map<string, map<i32, RegionInfo>> schemaPartitionInfo
+// Authorize
+struct TAuthorizerReq {
+  1: required i32 authorType
+  2: required string userName
+  3: required string roleName
+  4: required string password
+  5: required string newPassword
+  6: required set<i32> permissions
+  7: required string nodeName
 }
 
 service ConfigIService {
-  // Return TSStatusCode.SUCCESS_STATUS and the register DataNode id when successful registered.
-  // Otherwise, return TSStatusCode.INTERNAL_SERVER_ERROR
-  DataNodeRegisterResp registerDataNode(DataNodeRegisterReq req)
 
-  map<i32, DataNodeMessage> getDataNodesMessage(i32 dataNodeID)
+  /* DataNode */
 
-  rpc.TSStatus setStorageGroup(SetStorageGroupReq req)
+  TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  rpc.TSStatus deleteStorageGroup(DeleteStorageGroupReq req)
+  TDataNodeMessageResp getDataNodesMessage(i32 dataNodeID)
 
-  map<string, StorageGroupMessage> getStorageGroupsMessage()
+  /* StorageGroup */
 
-  // Gets SchemaRegions for DeviceGroups in a StorageGroup
-  SchemaPartitionInfo getSchemaPartition(GetSchemaPartitionReq req)
+  common.TSStatus setStorageGroup(TSetStorageGroupReq req)
 
-  // Gets DataRegions for DeviceGroups in a StorageGroup at different starttime
-  DataPartitionInfo getDataPartition(GetDataPartitionReq req)
+  common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
 
-  DeviceGroupHashInfo getDeviceGroupHashInfo()
+  common.TSStatus setTTL(TSetTTLReq req)
 
-  // apply data partition when write data
-  DataPartitionInfo applyDataPartition(GetDataPartitionReq req)
+  TStorageGroupSchemaResp getStorageGroupsSchema()
 
-  // apply schema partition when create schema
-  SchemaPartitionInfo applySchemaPartition(GetSchemaPartitionReq req)
+  /* Schema */
 
-  DataPartitionInfoResp fetchDataPartitionInfo(FetchDataPartitionReq req)
+  TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
 
-  SchemaPartitionInfoResp fetchSchemaPartitionInfo(FetchSchemaPartitionReq req)
+  TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
 
-  PartitionInfoResp fetchPartitionInfo(FetchPartitionReq req)
+  /* Data */
+
+  TDataPartitionResp getDataPartition(TDataPartitionReq req)
+
+  TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
+
+  /* Authorize */
+  common.TSStatus operatePermission(TAuthorizerReq req)
+
 }

@@ -39,8 +39,18 @@ public class Endpoint {
     return ip;
   }
 
+  public Endpoint setIp(String ip) {
+    this.ip = ip;
+    return this;
+  }
+
   public int getPort() {
     return port;
+  }
+
+  public Endpoint setPort(int port) {
+    this.port = port;
+    return this;
   }
 
   public void serializeImpl(ByteBuffer buffer) {
@@ -51,13 +61,11 @@ public class Endpoint {
     buffer.putInt(port);
   }
 
-  public void deserializeImpl(ByteBuffer buffer) {
+  public static Endpoint deserializeImpl(ByteBuffer buffer) {
     int length = buffer.getInt();
     byte[] bytes = new byte[length];
     buffer.get(bytes, 0, length);
-    ip = new String(bytes, 0, length);
-
-    port = buffer.getInt();
+    return new Endpoint(new String(bytes, 0, length), buffer.getInt());
   }
 
   @Override

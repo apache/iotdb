@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
@@ -115,6 +116,11 @@ public class IntColumnBuilder implements ColumnBuilder {
       return new RunLengthEncodedColumn(NULL_VALUE_BLOCK, positionCount);
     }
     return new IntColumn(0, positionCount, hasNullValue ? valueIsNull : null, values);
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT32;
   }
 
   @Override

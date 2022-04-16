@@ -19,7 +19,8 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.consensus.common.ConsensusType;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.CommonUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,14 +103,19 @@ public class ConfigNodeDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setDeviceGroupCount(
+      conf.setSeriesPartitionSlotNum(
           Integer.parseInt(
               properties.getProperty(
-                  "device_group_count", String.valueOf(conf.getDeviceGroupCount()))));
+                  "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()))));
 
-      conf.setDeviceGroupHashExecutorClass(
+      conf.setSeriesPartitionExecutorClass(
           properties.getProperty(
-              "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass()));
+              "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
+
+      conf.setTimePartitionInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))));
 
       conf.setRpcAddress(properties.getProperty("config_node_rpc_address", conf.getRpcAddress()));
 
@@ -122,9 +128,13 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "config_node_internal_port", String.valueOf(conf.getInternalPort()))));
 
-      conf.setConsensusType(
-          ConsensusType.getConsensusType(
-              properties.getProperty("consensus_type", String.valueOf(conf.getConsensusType()))));
+      conf.setConfigNodeConsensusProtocolClass(
+          properties.getProperty(
+              "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
+
+      conf.setDataNodeConsensusProtocolClass(
+          properties.getProperty(
+              "data_node_consensus_protocol_class", conf.getDataNodeConsensusProtocolClass()));
 
       conf.setRpcAdvancedCompressionEnable(
           Boolean.parseBoolean(
@@ -160,6 +170,10 @@ public class ConfigNodeDescriptor {
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
+      conf.setDefaultTTL(
+          Long.parseLong(
+              properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
+
       conf.setRegionReplicaCount(
           Integer.parseInt(
               properties.getProperty(
@@ -175,25 +189,15 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "data_region_count", String.valueOf(conf.getDataRegionCount()))));
 
-      String addresses = properties.getProperty("config_node_group_address_list", null);
-      if (addresses != null) {
-        String[] addressList = addresses.split(",");
-        Endpoint[] endpointList = new Endpoint[addressList.length];
-        for (int i = 0; i < addressList.length; i++) {
-          String[] ipPort = addressList[i].split(":");
-          if (ipPort.length != 2) {
-            throw new IOException(
-                String.format(
-                    "Parsing parameter config_node_group_address_list error. "
-                        + "The %d-th address must format to ip:port, but currently is %s",
-                    i, addressList[i]));
-          }
-          endpointList[i] = new Endpoint(ipPort[0], Integer.parseInt(ipPort[1]));
-        }
-        conf.setConfigNodeGroupAddressList(endpointList);
-      }
+      String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
 
-    } catch (IOException e) {
+      String[] addressList = addresses.split(",");
+      Endpoint[] endpointList = new Endpoint[addressList.length];
+      for (int i = 0; i < addressList.length; i++) {
+        endpointList[i] = CommonUtils.parseNodeUrl(addressList[i]);
+      }
+      conf.setConfigNodeGroupAddressList(endpointList);
+    } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
       conf.updatePath();

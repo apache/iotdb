@@ -124,7 +124,9 @@ public class InsertRowStatement extends InsertBaseStatement {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType(SchemaTree schemaTree) throws QueryProcessException {
     List<MeasurementSchema> measurementSchemas =
-        schemaTree.searchMeasurementSchema(devicePath, Arrays.asList(measurements));
+        schemaTree
+            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
+            .getMeasurementSchemaList();
     if (isNeedInferType) {
       for (int i = 0; i < measurementSchemas.size(); i++) {
         if (measurementSchemas.get(i) == null) {
@@ -174,14 +176,15 @@ public class InsertRowStatement extends InsertBaseStatement {
     dataTypes[index] = null;
   }
 
-  @Override
   public List<TimePartitionSlot> getTimePartitionSlots() {
     return Collections.singletonList(StorageEngine.getTimePartitionSlot(time));
   }
 
   public boolean checkDataType(SchemaTree schemaTree) {
     List<MeasurementSchema> measurementSchemas =
-        schemaTree.searchMeasurementSchema(devicePath, Arrays.asList(measurements));
+        schemaTree
+            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
+            .getMeasurementSchemaList();
     for (int i = 0; i < measurementSchemas.size(); i++) {
       if (dataTypes[i] != measurementSchemas.get(i).getType()) {
         if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -190,7 +193,10 @@ public class InsertRowStatement extends InsertBaseStatement {
           markFailedMeasurementInsertion(
               i,
               new DataTypeMismatchException(
-                  measurements[i], measurementSchemas.get(i).getType(), dataTypes[i]));
+                  devicePath.getFullPath(),
+                  measurements[i],
+                  measurementSchemas.get(i).getType(),
+                  dataTypes[i]));
         }
       }
     }

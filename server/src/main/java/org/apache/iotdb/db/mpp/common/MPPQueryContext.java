@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 
 /**
@@ -28,18 +29,40 @@ public class MPPQueryContext {
   private String sql;
   private QueryId queryId;
   private SessionInfo session;
-  private QueryType queryType;
+  private QueryType queryType = QueryType.READ;
 
-  public MPPQueryContext() {}
+  private Endpoint hostEndpoint;
+  private ResultNodeContext resultNodeContext;
 
-  public MPPQueryContext(String sql, QueryId queryId, SessionInfo session, QueryType type) {
+  public MPPQueryContext(QueryId queryId) {
+    this.queryId = queryId;
+  }
+
+  public MPPQueryContext(String sql, QueryId queryId, SessionInfo session, Endpoint hostEndpoint) {
     this.sql = sql;
     this.queryId = queryId;
     this.session = session;
-    this.queryType = type;
+    this.hostEndpoint = hostEndpoint;
+    this.resultNodeContext = new ResultNodeContext(queryId);
   }
 
   public QueryId getQueryId() {
     return queryId;
+  }
+
+  public QueryType getQueryType() {
+    return queryType;
+  }
+
+  public void setQueryType(QueryType queryType) {
+    this.queryType = queryType;
+  }
+
+  public Endpoint getHostEndpoint() {
+    return hostEndpoint;
+  }
+
+  public ResultNodeContext getResultNodeContext() {
+    return resultNodeContext;
   }
 }

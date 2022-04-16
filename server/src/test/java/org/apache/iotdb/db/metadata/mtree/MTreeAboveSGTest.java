@@ -43,10 +43,10 @@ import static org.junit.Assert.fail;
 
 public class MTreeAboveSGTest {
 
-  private MTreeAboveSG root = new MTreeAboveSG();
+  private MTreeAboveSG root;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     root = new MTreeAboveSG();
   }
