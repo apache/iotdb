@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -32,11 +33,8 @@ import org.apache.iotdb.db.mpp.schedule.queue.L2PriorityQueue;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskID;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
-import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,9 +66,8 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
 
   private static final int MAX_CAPACITY = 1000; // TODO: load from config files
   private static final int WORKER_THREAD_NUM = 4; // TODO: load from config files
-  private static final int QUERY_TIMEOUT_MS = 10000; // TODO: load from config files or requests
+  private static final int QUERY_TIMEOUT_MS = 60_000; // TODO: load from config files or requests
   private final ThreadGroup workerGroups;
-  private InternalService.Client mppServiceClient; // TODO: use from client pool
   private final List<AbstractExecutor> threads;
 
   private FragmentInstanceScheduler() {
@@ -89,6 +86,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     this.scheduler = new Scheduler();
     this.workerGroups = new ThreadGroup("ScheduleThreads");
     this.threads = new ArrayList<>();
+    this.blockManager = DataBlockService.getInstance().getDataBlockManager();
   }
 
   @Override
@@ -240,11 +238,6 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     this.blockManager = blockManager;
   }
 
-  @TestOnly
-  void setMppServiceClient(InternalService.Client client) {
-    this.mppServiceClient = client;
-  }
-
   private static class InstanceHolder {
 
     private InstanceHolder() {}
@@ -346,12 +339,6 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
       QueryId queryId = task.getId().getQueryId();
       Set<FragmentInstanceTask> queryRelatedTasks = queryMap.remove(queryId);
       if (queryRelatedTasks != null) {
-        try {
-          mppServiceClient.cancelQuery(new TCancelQueryReq(queryId.getId()));
-        } catch (TException e) {
-          // If coordinator cancel query failed, we should continue clean other tasks.
-          logger.error("cancel query " + queryId.getId() + " failed", e);
-        }
         for (FragmentInstanceTask otherTask : queryRelatedTasks) {
           if (task.equals(otherTask)) {
             continue;
