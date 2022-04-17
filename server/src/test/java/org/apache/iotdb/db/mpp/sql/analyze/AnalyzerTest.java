@@ -48,7 +48,11 @@ public class AnalyzerTest {
 
   private void assertAnalyzeSemanticException(String sql, String message) {
     try {
-      Analyzer analyzer = new Analyzer(new MPPQueryContext(new QueryId("test_query")));
+      Analyzer analyzer =
+          new Analyzer(
+              new MPPQueryContext(new QueryId("test_query")),
+              new FakePartitionFetcherImpl(),
+              new FakeSchemaFetcherImpl());
       analyzer.analyze(StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
       fail();
     } catch (RuntimeException e) {

@@ -236,7 +236,7 @@ public class DataBlockManager implements IDataBlockManager {
   }
 
   public DataBlockServiceImpl getOrCreateDataBlockServiceImpl() {
-    if (dataBlockService != null) {
+    if (dataBlockService == null) {
       dataBlockService = new DataBlockServiceImpl();
     }
     return dataBlockService;

@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
+import org.apache.iotdb.db.mpp.sql.analyze.FakePartitionFetcherImpl;
+import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -868,7 +870,8 @@ public class LogicalPlannerTest {
       Statement statement =
           StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
       MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-      Analyzer analyzer = new Analyzer(context);
+      Analyzer analyzer =
+          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
       Analysis analysis = analyzer.analyze(statement);
       LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
       planNode = planner.plan(analysis).getRootNode();

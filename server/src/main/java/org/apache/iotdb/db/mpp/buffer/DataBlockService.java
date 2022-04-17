@@ -31,19 +31,14 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Processor;
 
-import org.apache.commons.lang3.Validate;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class DataBlockService extends ThriftService {
+public class DataBlockService extends ThriftService implements DataBlockServiceMBean {
 
-  private LocalMemoryManager localMemoryManager;
-  private TsBlockSerdeFactory tsBlockSerdeFactory;
   private DataBlockManager dataBlockManager;
   private ExecutorService executorService;
-  private DataBlockServiceClientFactory clientFactory;
 
   private DataBlockService() {}
 
@@ -55,6 +50,7 @@ public class DataBlockService extends ThriftService {
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    initSyncedServiceImpl(null);
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     executorService =
         IoTDBThreadPoolFactory.newThreadPool(
@@ -66,19 +62,13 @@ public class DataBlockService extends ThriftService {
             new LinkedBlockingQueue<>(),
             new IoTThreadFactory("data-block-manager-task-executors"),
             "data-block-manager-task-executors");
-    clientFactory = new DataBlockServiceClientFactory();
     this.dataBlockManager =
         new DataBlockManager(
-            localMemoryManager, tsBlockSerdeFactory, executorService, clientFactory);
+            new LocalMemoryManager(),
+            new TsBlockSerdeFactory(),
+            executorService,
+            new DataBlockServiceClientFactory());
     processor = new Processor<>(dataBlockManager.getOrCreateDataBlockServiceImpl());
-  }
-
-  public void setLocalMemoryManager(LocalMemoryManager localMemoryManager) {
-    this.localMemoryManager = Validate.notNull(localMemoryManager);
-  }
-
-  public void setTsBlockSerdeFactory(TsBlockSerdeFactory tsBlockSerdeFactory) {
-    this.tsBlockSerdeFactory = Validate.notNull(tsBlockSerdeFactory);
   }
 
   public DataBlockManager getDataBlockManager() {
@@ -101,7 +91,7 @@ public class DataBlockService extends ThriftService {
               config.getThriftServerAwaitTimeForStopService(),
               new DataBlockServiceThriftHandler(),
               // TODO: hard coded compress strategy
-              true);
+              false);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -131,6 +121,11 @@ public class DataBlockService extends ThriftService {
 
   public static DataBlockService getInstance() {
     return DataBlockManagerServiceHolder.INSTANCE;
+  }
+
+  @Override
+  public int getRPCPort() {
+    return getBindPort();
   }
 
   private static class DataBlockManagerServiceHolder {

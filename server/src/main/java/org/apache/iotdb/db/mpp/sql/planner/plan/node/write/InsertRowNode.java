@@ -169,10 +169,23 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putShort((short) PlanNodeType.INSERT_ROW.ordinal());
-    getPlanNodeId().serialize(byteBuffer);
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.INSERT_ROW.serialize(byteBuffer);
     subSerialize(byteBuffer);
+  }
+
+  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
+    // TODO: (xingtanzjr) remove placeholder
+    InsertRowNode insertNode = new InsertRowNode(new PlanNodeId("1"));
+    insertNode.setTime(byteBuffer.getLong());
+    try {
+      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(byteBuffer)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
+    insertNode.deserializeMeasurementsAndValues(byteBuffer);
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return insertNode;
   }
 
   void subSerialize(ByteBuffer buffer) {
@@ -312,19 +325,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   public void setTime(long time) {
     this.time = time;
-  }
-
-  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
-    InsertRowNode insertNode = new InsertRowNode(PlanNodeId.deserialize(byteBuffer));
-    insertNode.setTime(byteBuffer.getLong());
-    try {
-      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(byteBuffer)));
-    } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
-    }
-    insertNode.deserializeMeasurementsAndValues(byteBuffer);
-
-    return insertNode;
   }
 
   void deserializeMeasurementsAndValues(ByteBuffer buffer) {
