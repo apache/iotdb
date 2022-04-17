@@ -61,7 +61,7 @@ public class InternalService extends ThriftService implements InternalServiceMBe
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.INTERNAL_SERVICE_CLIENT.getName(),
+              ThreadName.INTERNAL_SERVICE_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -72,7 +72,7 @@ public class InternalService extends ThriftService implements InternalServiceMBe
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.INTERNAL_SERVICE_CLIENT.getName());
+    thriftServiceThread.setName(ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
   }
 
   @Override

@@ -114,6 +114,13 @@ public class FragmentInstanceContext extends QueryContext {
     this.endTime = System.currentTimeMillis();
   }
 
+  public void flushing() {
+    if (state.get().isDone()) {
+      return;
+    }
+    state.set(FragmentInstanceState.FLUSHING);
+  }
+
   public long getEndTime() {
     return endTime;
   }
