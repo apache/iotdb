@@ -20,7 +20,7 @@
 
 @echo off
 echo ````````````````````````
-echo Starting Sketching the IoTDB SchemaFile or Snapshot
+echo Starting Sketching the IoTDB SchemaFile
 echo ````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal

@@ -19,7 +19,7 @@
 #
 
 echo ---------------------
-echo Starting Sketching the IoTDB SchemaFile or Snapshot
+echo Starting Sketching the IoTDB SchemaFile
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then
