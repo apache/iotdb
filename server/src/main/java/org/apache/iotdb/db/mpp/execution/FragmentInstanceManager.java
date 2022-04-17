@@ -60,7 +60,7 @@ public class FragmentInstanceManager {
     this.instanceContext = new ConcurrentHashMap<>();
     this.instanceExecution = new ConcurrentHashMap<>();
     this.instanceManagementExecutor =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(5, "instance-management");
+        IoTDBThreadPoolFactory.newScheduledThreadPool(1, "instance-management");
 
     this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
 

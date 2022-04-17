@@ -66,7 +66,7 @@ public class DataNodeManagementServer extends ThriftService
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.DATA_NODE_MANAGEMENT_CLIENT.getName(),
+              ThreadName.DATA_NODE_MANAGEMENT_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -76,7 +76,7 @@ public class DataNodeManagementServer extends ThriftService
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.DATA_NODE_MANAGEMENT_RPC_SERVER.getName());
   }
 
   @Override

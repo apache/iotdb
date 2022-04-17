@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +94,13 @@ public class ReceiverManager {
   }
 
   public List<PipeInfo> getPipeInfos(String pipeName) {
-    return new ArrayList<>(pipeInfoMap.get(pipeName).values());
+    List<PipeInfo> res;
+    if (pipeInfoMap.containsKey(pipeName)) {
+      res = new ArrayList<>(pipeInfoMap.get(pipeName).values());
+    } else {
+      res = Collections.emptyList();
+    }
+    return res;
   }
 
   public List<PipeInfo> getAllPipeInfos() {
