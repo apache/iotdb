@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
@@ -197,6 +198,10 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
           if (!memTable.isSignalMemTable()) {
             walRedoer.resetRecoveryMemTable(memTable);
           }
+          break;
+        case INSERT_ROW_NODE:
+        case INSERT_TABLET_NODE:
+          walRedoer.redoInsert((InsertNode) walEntry.getValue());
           break;
       }
     } catch (Exception e) {
