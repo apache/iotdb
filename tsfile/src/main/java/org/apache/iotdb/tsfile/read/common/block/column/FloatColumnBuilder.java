@@ -84,6 +84,7 @@ public class FloatColumnBuilder implements ColumnBuilder {
   public ColumnBuilder writeObject(Object value) {
     if (value instanceof Float) {
       writeFloat((Float) value);
+      return this;
     }
     throw new UnSupportedDataTypeException("FloatColumn only support Float data type");
   }

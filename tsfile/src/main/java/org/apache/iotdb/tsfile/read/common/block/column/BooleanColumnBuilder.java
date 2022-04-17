@@ -79,6 +79,7 @@ public class BooleanColumnBuilder implements ColumnBuilder {
   public ColumnBuilder writeObject(Object value) {
     if (value instanceof Boolean) {
       writeBoolean((Boolean) value);
+      return this;
     }
     throw new UnSupportedDataTypeException("BooleanColumn only support Boolean data type");
   }

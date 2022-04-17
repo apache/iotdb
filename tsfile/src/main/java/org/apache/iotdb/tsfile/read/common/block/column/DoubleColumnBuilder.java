@@ -79,6 +79,7 @@ public class DoubleColumnBuilder implements ColumnBuilder {
   public ColumnBuilder writeObject(Object value) {
     if (value instanceof Double) {
       writeDouble((Double) value);
+      return this;
     }
     throw new UnSupportedDataTypeException("DoubleColumn only support Double data type");
   }

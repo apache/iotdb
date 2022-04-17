@@ -79,6 +79,7 @@ public class IntColumnBuilder implements ColumnBuilder {
   public ColumnBuilder writeObject(Object value) {
     if (value instanceof Integer) {
       writeInt((Integer) value);
+      return this;
     }
     throw new UnSupportedDataTypeException("IntegerColumn only support Integer data type");
   }

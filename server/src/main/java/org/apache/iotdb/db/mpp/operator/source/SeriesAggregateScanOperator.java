@@ -59,6 +59,7 @@ import java.util.stream.Collectors;
 public class SeriesAggregateScanOperator implements DataSourceOperator {
 
   private final OperatorContext operatorContext;
+  private final PlanNodeId sourceId;
   private final SeriesScanUtil seriesScanUtil;
   private final boolean ascending;
   private List<AggregateResult> aggregateResultList;
@@ -77,6 +78,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   private boolean finished = false;
 
   public SeriesAggregateScanOperator(
+      PlanNodeId sourceId,
       PartialPath seriesPath,
       Set<String> allSensors,
       OperatorContext context,
@@ -84,6 +86,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       Filter timeFilter,
       boolean ascending,
       GroupByTimeComponent groupByTimeParameter) {
+    this.sourceId = sourceId;
     this.operatorContext = context;
     this.ascending = ascending;
     this.seriesScanUtil =
@@ -215,6 +218,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
         }
       }
 
+      updateResultTsBlockUsingAggregateResult();
       return true;
     } catch (IOException e) {
       throw new RuntimeException("Error while scanning the file", e);
@@ -249,7 +253,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
 
   @Override
   public PlanNodeId getSourceId() {
-    return null;
+    return sourceId;
   }
 
   @Override

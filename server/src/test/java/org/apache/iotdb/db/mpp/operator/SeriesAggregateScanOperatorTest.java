@@ -28,13 +28,16 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
+import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.collect.Sets;
@@ -44,15 +47,15 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
-public class SeriesScanOperatorTest {
+public class SeriesAggregateScanOperatorTest {
+
   private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.SeriesScanOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -72,57 +75,71 @@ public class SeriesScanOperatorTest {
   }
 
   @Test
-  public void batchTest() {
-    try {
-      MeasurementPath measurementPath =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      Set<String> allSensors = Sets.newHashSet("sensor0");
-      QueryId queryId = new QueryId("stub_query");
-      AtomicReference<FragmentInstanceState> state =
-          new AtomicReference<>(FragmentInstanceState.RUNNING);
-      FragmentInstanceContext fragmentInstanceContext =
-          new FragmentInstanceContext(
-              new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
-      PlanNodeId planNodeId = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesScanOperator.class.getSimpleName());
-
-      SeriesScanOperator seriesScanOperator =
-          new SeriesScanOperator(
-              planNodeId,
-              measurementPath,
-              allSensors,
-              TSDataType.INT32,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              null,
-              null,
-              true);
-      seriesScanOperator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-      int count = 0;
-      while (seriesScanOperator.hasNext()) {
-        TsBlock tsBlock = seriesScanOperator.next();
-        assertEquals(1, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof IntColumn);
-        assertEquals(20, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          long expectedTime = i + 20L * count;
-          assertEquals(expectedTime, tsBlock.getTimeByIndex(i));
-          if (expectedTime < 200) {
-            assertEquals(20000 + expectedTime, tsBlock.getColumn(0).getInt(i));
-          } else if (expectedTime < 260
-              || (expectedTime >= 300 && expectedTime < 380)
-              || expectedTime >= 400) {
-            assertEquals(10000 + expectedTime, tsBlock.getColumn(0).getInt(i));
-          } else {
-            assertEquals(expectedTime, tsBlock.getColumn(0).getInt(i));
-          }
-        }
-        count++;
-      }
-      assertEquals(25, count);
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-      fail();
+  public void testAggregationUsingSequenceFileStatistics() throws IllegalPathException {
+    SeriesAggregateScanOperator seriesAggregateScanOperator =
+        initSeriesAggregateScanOperator(
+            Collections.singletonList(AggregationType.COUNT), null, true, null);
+    int count = 0;
+    while (seriesAggregateScanOperator.hasNext()) {
+      TsBlock resultTsBlock = seriesAggregateScanOperator.next();
+      assertEquals(resultTsBlock.getColumn(0).getLong(0), 500);
+      count++;
     }
+    assertEquals(1, count);
+  }
+
+  @Test
+  public void testAggregationUsingSequenceChunkStatistics() {}
+
+  @Test
+  public void testAggregationUsingSequencePageStatistics() {}
+
+  @Test
+  public void testAggregationUsingTsBlock() {}
+
+  @Test
+  public void testGroupByUsingSequenceFileStatistics() {}
+
+  @Test
+  public void testGroupByUsingSequenceChunkStatistics() {}
+
+  @Test
+  public void testGroupByUsingSequencePageStatistics() {}
+
+  @Test
+  public void testGroupByUsingTsBlock() {}
+
+  public SeriesAggregateScanOperator initSeriesAggregateScanOperator(
+      List<AggregationType> aggregateFuncList,
+      Filter timeFilter,
+      boolean ascending,
+      GroupByTimeComponent groupByTimeParameter)
+      throws IllegalPathException {
+    MeasurementPath measurementPath =
+        new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
+    Set<String> allSensors = Sets.newHashSet("sensor0");
+    QueryId queryId = new QueryId("stub_query");
+    AtomicReference<FragmentInstanceState> state =
+        new AtomicReference<>(FragmentInstanceState.RUNNING);
+    FragmentInstanceContext fragmentInstanceContext =
+        new FragmentInstanceContext(
+            new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+    PlanNodeId planNodeId = new PlanNodeId("1");
+    fragmentInstanceContext.addOperatorContext(
+        1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
+    SeriesAggregateScanOperator seriesAggregateScanOperator =
+        new SeriesAggregateScanOperator(
+            planNodeId,
+            measurementPath,
+            allSensors,
+            fragmentInstanceContext.getOperatorContexts().get(0),
+            aggregateFuncList,
+            timeFilter,
+            ascending,
+            groupByTimeParameter);
+    seriesAggregateScanOperator.initQueryDataSource(
+        new QueryDataSource(seqResources, unSeqResources));
+    return seriesAggregateScanOperator;
   }
 }

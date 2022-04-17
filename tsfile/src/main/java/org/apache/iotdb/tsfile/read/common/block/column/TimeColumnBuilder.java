@@ -77,6 +77,7 @@ public class TimeColumnBuilder implements ColumnBuilder {
   public ColumnBuilder writeObject(Object value) {
     if (value instanceof Long) {
       writeLong((Long) value);
+      return this;
     }
     throw new UnSupportedDataTypeException("LongColumn only support Long data type");
   }

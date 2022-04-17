@@ -225,6 +225,7 @@ public class LocalExecutionPlanner {
 
       SeriesAggregateScanOperator aggregateScanOperator =
           new SeriesAggregateScanOperator(
+              node.getPlanNodeId(),
               seriesPath,
               node.getAllSensors(),
               operatorContext,

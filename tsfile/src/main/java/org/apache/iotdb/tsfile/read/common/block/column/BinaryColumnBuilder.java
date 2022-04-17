@@ -77,6 +77,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
   public ColumnBuilder writeObject(Object value) {
     if (value instanceof Binary) {
       writeBinary((Binary) value);
+      return this;
     }
     throw new UnSupportedDataTypeException("BinaryColumn only support Binary data type");
   }
