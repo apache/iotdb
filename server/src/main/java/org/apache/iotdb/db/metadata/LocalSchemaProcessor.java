@@ -947,11 +947,6 @@ public class LocalSchemaProcessor {
     return getBelongedSchemaRegion(path).getDeviceNode(path);
   }
 
-  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    return getBelongedSchemaRegion(deviceId).getMeasurementMNodes(deviceId, measurements);
-  }
-
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     try {
       return getBelongedSchemaRegion(fullPath).getMeasurementMNode(fullPath);

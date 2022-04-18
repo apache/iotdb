@@ -160,7 +160,7 @@ public class MTreeBelowSG implements Serializable {
 
   // region Timeseries operation, including create and delete
 
-  public void createTimeseries(
+  public IMeasurementMNode createTimeseries(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,
@@ -168,8 +168,10 @@ public class MTreeBelowSG implements Serializable {
       Map<String, String> props,
       String alias)
       throws MetadataException {
-    unPinMNode(
-        createTimeseriesWithPinnedReturn(path, dataType, encoding, compressor, props, alias));
+    IMeasurementMNode measurementMNode =
+        createTimeseriesWithPinnedReturn(path, dataType, encoding, compressor, props, alias);
+    unPinMNode(measurementMNode);
+    return measurementMNode;
   }
 
   /**

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -28,7 +27,6 @@ import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -124,15 +122,14 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * <p>The codes are divided into the following code regions:
  *
  * <ol>
- *   <li>Interfaces and Implementation of initialization、snapshot、recover and clear
+ *   <li>Interfaces and Implementation for initialization、recover and clear
+ *   <li>Interfaces and Implementation for schema region Info query and operation
  *   <li>Interfaces and Implementation for Timeseries operation
- *   <li>Interfaces and Implementation for StorageGroup and TTL operation
- *   <li>Interfaces for get and auto create device
+ *   <li>Interfaces for auto create device
  *   <li>Interfaces for metadata info Query
  *       <ol>
  *         <li>Interfaces for metadata count
  *         <li>Interfaces for level Node info Query
- *         <li>Interfaces for StorageGroup and TTL info Query
  *         <li>Interfaces for Entity/Device info Query
  *         <li>Interfaces for timeseries, measurement and schema info Query
  *       </ol>
@@ -145,9 +142,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  * </ol>
  */
 @SuppressWarnings("java:S1135") // ignore todos
-public class SchemaRegion implements ISchemaRegion {
+public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaRegion.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaRegionSchemaFileImpl.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -173,7 +170,7 @@ public class SchemaRegion implements ISchemaRegion {
   private SchemaSyncManager syncManager = SchemaSyncManager.getInstance();
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
-  public SchemaRegion(
+  public SchemaRegionSchemaFileImpl(
       PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode)
       throws MetadataException {
 
@@ -352,8 +349,8 @@ public class SchemaRegion implements ISchemaRegion {
     isClearing = false;
   }
 
-  // this method is mainly used for recover and metadata sync
-  public void operation(PhysicalPlan plan) throws IOException, MetadataException {
+  // this method is mainly used for recover
+  private void operation(PhysicalPlan plan) throws IOException, MetadataException {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
         CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
@@ -405,7 +402,7 @@ public class SchemaRegion implements ISchemaRegion {
     return storageGroupFullPath;
   }
 
-  public ConsensusGroupId getSchemaRegionId() {
+  public SchemaRegionId getSchemaRegionId() {
     return schemaRegionId;
   }
 
@@ -953,18 +950,6 @@ public class SchemaRegion implements ISchemaRegion {
   }
 
   /**
-   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
-   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
-   * '*'.
-   *
-   * @param pathPattern can be a pattern or a full path of timeseries.
-   */
-  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
-      throws MetadataException {
-    return getMeasurementPaths(pathPattern, false);
-  }
-
-  /**
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
    * limit and offset. If using prefix match, the path pattern is used to match prefix path. All
    * timeseries start with the matched prefix path will be collected.
@@ -1169,22 +1154,6 @@ public class SchemaRegion implements ISchemaRegion {
       }
       throw e;
     }
-  }
-
-  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
-    for (int i = 0; i < mNodes.length; i++) {
-      try {
-        mNodes[i] = getMeasurementMNode(deviceId.concatNode(measurements[i]));
-      } catch (PathNotExistException | MNodeTypeMismatchException ignored) {
-        logger.warn("MeasurementMNode {} does not exist in {}", measurements[i], deviceId);
-      }
-      if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-        throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
-      }
-    }
-    return mNodes;
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
