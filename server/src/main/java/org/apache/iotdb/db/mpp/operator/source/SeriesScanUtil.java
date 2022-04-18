@@ -275,7 +275,6 @@ public class SeriesScanUtil {
       return false;
     }
 
-    /** Why using hasNextFile here? In this case, fileStatistics will never be used. */
     while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
       initFirstChunkMetadata();
     }
