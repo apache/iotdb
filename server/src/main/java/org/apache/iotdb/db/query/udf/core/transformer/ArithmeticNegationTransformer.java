@@ -43,7 +43,11 @@ public class ArithmeticNegationTransformer extends Transformer {
     if (!layerPointReader.next()) {
       return false;
     }
-    cachedTime = layerPointReader.currentTime();
+    // Constant doesn't have currentTime(), it will be determined by the other part in
+    // BinaryTransformer
+    if (!isConstantPointReader()) {
+      cachedTime = layerPointReader.currentTime();
+    }
     if (layerPointReader.isCurrentNull()) {
       currentNull = true;
     } else {
@@ -62,7 +66,7 @@ public class ArithmeticNegationTransformer extends Transformer {
           break;
         default:
           throw new QueryProcessException(
-              "Unsupported data type: " + layerPointReader.getDataType().toString());
+                  "Unsupported data type: " + layerPointReader.getDataType().toString());
       }
     }
     layerPointReader.readyForNext();
