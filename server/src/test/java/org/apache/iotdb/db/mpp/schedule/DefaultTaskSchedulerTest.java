@@ -29,7 +29,6 @@ import org.apache.iotdb.db.utils.stats.CpuTimer;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 
 import io.airlift.units.Duration;
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -305,7 +304,6 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     InternalService.Client mockMppServiceClient = Mockito.mock(InternalService.Client.class);
-    manager.setMppServiceClient(mockMppServiceClient);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId1 =
@@ -364,12 +362,6 @@ public class DefaultTaskSchedulerTest {
       manager.getTimeoutQueue().push(testTask1);
       defaultScheduler.toAborted(testTask1);
 
-      try {
-        Mockito.verify(mockMppServiceClient, Mockito.times(1)).cancelQuery(Mockito.any());
-      } catch (TException e) {
-        e.printStackTrace();
-        Assert.fail();
-      }
       Mockito.reset(mockMppServiceClient);
       Mockito.verify(mockDataBlockManager, Mockito.times(2))
           .forceDeregisterFragmentInstance(Mockito.any());

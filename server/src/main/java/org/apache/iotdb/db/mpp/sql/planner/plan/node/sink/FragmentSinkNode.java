@@ -69,6 +69,11 @@ public class FragmentSinkNode extends SinkNode {
   }
 
   @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitFragmentSink(this, context);
+  }
+
+  @Override
   public void addChild(PlanNode child) {
     this.child = child;
   }

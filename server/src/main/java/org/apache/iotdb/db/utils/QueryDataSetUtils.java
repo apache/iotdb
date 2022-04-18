@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.mpp.execution.QueryExecution;
+import org.apache.iotdb.db.mpp.execution.IQueryExecution;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -177,7 +177,7 @@ public class QueryDataSetUtils {
   }
 
   public static TSQueryDataSet convertTsBlockByFetchSize(
-      QueryExecution queryExecution, int fetchSize) throws IOException {
+      IQueryExecution queryExecution, int fetchSize) throws IOException {
     int columnNum = queryExecution.getOutputValueColumnCount();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     // one time column and each value column has an actual value buffer and a bitmap value to
@@ -194,6 +194,9 @@ public class QueryDataSetUtils {
     int[] valueOccupation = new int[columnNum];
     while (rowCount < fetchSize && queryExecution.hasNextResult()) {
       TsBlock tsBlock = queryExecution.getBatchResult();
+      if (tsBlock == null) {
+        break;
+      }
       int currentCount = tsBlock.getPositionCount();
       // serialize time column
       for (int i = 0; i < currentCount; i++) {
@@ -220,7 +223,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeInt(column.getInt(i));
                 valueOccupation[k] += 4;
               }
-              if (i % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -236,7 +239,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeLong(column.getLong(i));
                 valueOccupation[k] += 8;
               }
-              if (i % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -252,7 +255,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeFloat(column.getFloat(i));
                 valueOccupation[k] += 4;
               }
-              if (i % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -268,7 +271,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeDouble(column.getDouble(i));
                 valueOccupation[k] += 8;
               }
-              if (i % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -284,7 +287,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeBoolean(column.getBoolean(i));
                 valueOccupation[k] += 1;
               }
-              if (i % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -302,7 +305,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.write(binary.getValues());
                 valueOccupation[k] = valueOccupation[k] + 4 + binary.getLength();
               }
-              if (i % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;

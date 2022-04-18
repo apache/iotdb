@@ -20,10 +20,11 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.partition.PartitionInfo;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.List;
+import java.util.Map;
 
 public class StandalonePartitionFetcher implements IPartitionFetcher {
 
@@ -35,32 +36,24 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public DataPartition fetchDataPartitionInfo(DataPartitionQueryParam parameter) {
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
     return null;
   }
 
   @Override
-  public DataPartition fetchDataPartitionInfos(List<DataPartitionQueryParam> parameterList) {
+  public SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree) {
     return null;
   }
 
   @Override
-  public SchemaPartition fetchSchemaPartitionInfo(String devicePath) {
+  public DataPartition getDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return null;
   }
 
   @Override
-  public SchemaPartition fetchSchemaPartitionInfos(List<String> devicePath) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter) {
-    return null;
-  }
-
-  @Override
-  public PartitionInfo fetchPartitionInfos(List<DataPartitionQueryParam> parameterList) {
+  public DataPartition getOrCreateDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return null;
   }
 }

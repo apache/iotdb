@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanN
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -144,7 +146,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaMerge(SchemaMergeNode node, DistributionPlanContext context) {
+    public PlanNode visitSchemaMerge(SchemaMergeNode node, DistributionPlanContext context) {
       SchemaMergeNode root = (SchemaMergeNode) node.clone();
       SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
       TreeSet<RegionReplicaSet> schemaRegions =
@@ -161,13 +163,13 @@ public class DistributionPlanner {
       int count = schemaRegions.size();
       schemaRegions.forEach(
           region -> {
-            SchemaScanNode metaScanNode = (SchemaScanNode) seed.clone();
-            metaScanNode.setRegionReplicaSet(region);
+            SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setRegionReplicaSet(region);
             if (count > 1) {
-              metaScanNode.setLimit(metaScanNode.getOffset() + metaScanNode.getLimit());
-              metaScanNode.setOffset(0);
+              schemaScanNode.setLimit(schemaScanNode.getOffset() + schemaScanNode.getLimit());
+              schemaScanNode.setOffset(0);
             }
-            root.addChild(metaScanNode);
+            root.addChild(schemaScanNode);
           });
       return root;
     }
@@ -214,17 +216,23 @@ public class DistributionPlanner {
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
       // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
+      final boolean[] addParent = {false};
       sourceGroup.forEach(
           (dataRegion, seriesScanNodes) -> {
             if (seriesScanNodes.size() == 1) {
               root.addChild(seriesScanNodes.get(0));
             } else {
-              // We clone a TimeJoinNode from root to make the params to be consistent.
-              // But we need to assign a new ID to it
-              TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
-              root.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-              seriesScanNodes.forEach(parentOfGroup::addChild);
-              root.addChild(parentOfGroup);
+              if (!addParent[0]) {
+                seriesScanNodes.forEach(root::addChild);
+                addParent[0] = true;
+              } else {
+                // We clone a TimeJoinNode from root to make the params to be consistent.
+                // But we need to assign a new ID to it
+                TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
+                root.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                seriesScanNodes.forEach(parentOfGroup::addChild);
+                root.addChild(parentOfGroup);
+              }
             }
           });
 
@@ -271,7 +279,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaMerge(SchemaMergeNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaMerge(SchemaMergeNode node, NodeGroupContext context) {
       node.getChildren()
           .forEach(
               child -> {
@@ -299,11 +307,16 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaScan(SchemaScanNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaScan(SchemaScanNode node, NodeGroupContext context) {
       NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
       nodeDistribution.region = node.getRegionReplicaSet();
       context.putNodeDistribution(node.getPlanNodeId(), nodeDistribution);
       return node;
+    }
+
+    @Override
+    public PlanNode visitSchemaFetch(SchemaFetchNode node, NodeGroupContext context) {
+      return visitSchemaScan(node, context);
     }
 
     @Override
@@ -364,9 +377,15 @@ public class DistributionPlanner {
 
     private RegionReplicaSet calculateDataRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
-      // We always make the dataRegion of TimeJoinNode to be the same as its first child.
-      // TODO: (xingtanzjr) We need to implement more suitable policies here
-      return context.getNodeDistribution(children.get(0).getPlanNodeId()).region;
+      // Step 1: calculate the count of children group by DataRegion.
+      Map<RegionReplicaSet, Long> groupByRegion =
+          children.stream()
+              .collect(
+                  Collectors.groupingBy(
+                      child -> context.getNodeDistribution(child.getPlanNodeId()).region,
+                      Collectors.counting()));
+      // Step 2: return the RegionReplicaSet with max count
+      return Collections.max(groupByRegion.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
     private RegionReplicaSet calculateSchemaRegionByChildren(

@@ -24,11 +24,16 @@ import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.*;
 
 public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
+
+  private static final Logger logger = LoggerFactory.getLogger(FixedRateFragInsStateTracker.class);
+
   // TODO: (xingtanzjr) consider how much Interval is OK for state tracker
   private static final long STATE_FETCH_INTERVAL_IN_MS = 500;
   private ScheduledFuture<?> trackTask;
@@ -59,11 +64,14 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
     for (FragmentInstance instance : instances) {
       try {
         FragmentInstanceState state = fetchState(instance);
+        logger.info("Instance {}'s State is {}", instance.getId(), state);
+
         if (state != null) {
           stateMachine.updateFragInstanceState(instance.getId(), state);
         }
       } catch (TException e) {
         // TODO: do nothing ?
+        logger.error("error happened while fetching query state", e);
       }
     }
   }

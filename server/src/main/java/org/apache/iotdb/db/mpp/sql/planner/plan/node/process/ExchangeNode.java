@@ -61,6 +61,11 @@ public class ExchangeNode extends PlanNode {
   }
 
   @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitExchange(this, context);
+  }
+
+  @Override
   public void addChild(PlanNode child) {
     this.child = child;
   }

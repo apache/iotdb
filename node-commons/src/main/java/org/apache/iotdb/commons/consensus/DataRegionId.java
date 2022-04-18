@@ -77,6 +77,6 @@ public class DataRegionId implements ConsensusGroupId {
   }
 
   public String toString() {
-    return String.format("%s-%d", getType(), id);
+    return String.format("%s[%d]", getType(), getId());
   }
 }

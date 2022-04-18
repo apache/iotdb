@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class PlanNodeId {
@@ -57,5 +61,17 @@ public class PlanNodeId {
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(id, byteBuffer);
+  }
+
+  public int serializedSize() {
+    return ReadWriteIOUtils.sizeToWrite(id);
+  }
+
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    WALWriteUtils.write(id, buffer);
+  }
+
+  public static PlanNodeId deserialize(DataInputStream stream) throws IOException {
+    return new PlanNodeId(ReadWriteIOUtils.readString(stream));
   }
 }

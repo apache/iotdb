@@ -76,27 +76,43 @@ public class IoTDBSelectSchemaIT {
 
   @Test
   public void testSchemaExpression() {
-    String[] expressions = {"s1+s2", "-s1+s2", "-(s1+s3)", "!(s1>s2)", "-(-(s1))", "((s1+s2)*s3)"};
+    String[] expressions = {
+      "s1+s2",
+      "-s1+s2",
+      "-(s1+s3)",
+      "!(s1>s2)",
+      "-(-(s1))",
+      "((s1+s2)*s3)",
+      "-2+s1",
+      "!true||s1>0",
+      "-(-1)+s1",
+    };
     String[] completeExpressions = {
       "root.sg.d1.s1+root.sg.d1.s2",
       "-root.sg.d1.s1+root.sg.d1.s2",
       "-(root.sg.d1.s1+root.sg.d1.s3)",
       "!(root.sg.d1.s1>root.sg.d1.s2)",
       "-(-root.sg.d1.s1)",
-      "(root.sg.d1.s1+root.sg.d1.s2)*root.sg.d1.s3"
+      "(root.sg.d1.s1+root.sg.d1.s2)*root.sg.d1.s3",
+      "-2+root.sg.d1.s1",
+      "!true|(root.sg.d1.s1>0)",
+      "-(-1)+root.sg.d1.s1",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s, %s, %s, %s, %s, %s from root.sg.d1",
+                  "select %s, %s, %s, %s, %s, %s, %s, %s, %s from root.sg.d1",
                   expressions[0],
                   expressions[1],
                   expressions[2],
                   expressions[3],
                   expressions[4],
-                  expressions[5]));
+                  expressions[5],
+                  expressions[6],
+                  expressions[7],
+                  expressions[8]));
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + expressions.length, columnCount);
 
