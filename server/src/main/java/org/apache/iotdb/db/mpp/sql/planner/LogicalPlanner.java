@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -54,6 +55,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesSta
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -310,6 +312,17 @@ public class LogicalPlanner {
       planBuilder.planSchemaMerge(false);
       planBuilder.planOffset(showDevicesStatement.getOffset());
       planBuilder.planLimit(showDevicesStatement.getLimit());
+      return planBuilder.getRoot();
+    }
+
+    @Override
+    public PlanNode visitShowStorageGroup(
+        ShowStorageGroupStatement showStorageGroupStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
+      List<String> storageGroups =
+          new ArrayList<>(schemaPartition.getSchemaPartitionMap().keySet());
+      planBuilder.planStorageGroupSchemaSource(storageGroups);
       return planBuilder.getRoot();
     }
 

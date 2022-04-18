@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaFetchOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaMergeOperator;
+import org.apache.iotdb.db.mpp.operator.schema.StorageGroupSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.StorageGroupSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -168,6 +170,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               TimeSeriesSchemaScanOperator.class.getSimpleName());
       return new TimeSeriesSchemaScanOperator(
+          node.getPlanNodeId(),
           operatorContext,
           node.getLimit(),
           node.getOffset(),
@@ -176,8 +179,7 @@ public class LocalExecutionPlanner {
           node.getValue(),
           node.isContains(),
           node.isOrderByHeat(),
-          node.isPrefixPath(),
-          node.getOutputColumnNames());
+          node.isPrefixPath());
     }
 
     @Override
@@ -189,13 +191,25 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               DevicesSchemaScanOperator.class.getSimpleName());
       return new DevicesSchemaScanOperator(
+          node.getPlanNodeId(),
           operatorContext,
           node.getLimit(),
           node.getOffset(),
           node.getPath(),
           node.isPrefixPath(),
-          node.isHasSgCol(),
-          node.getOutputColumnNames());
+          node.isHasSgCol());
+    }
+
+    @Override
+    public Operator visitStorageSchemaScan(
+        StorageGroupSchemaScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              StorageGroupSchemaScanOperator.class.getSimpleName());
+      return new StorageGroupSchemaScanOperator(
+          node.getPlanNodeId(), operatorContext, node.getStorageGroups());
     }
 
     @Override

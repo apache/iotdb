@@ -338,6 +338,10 @@ public class Analyzer {
         ShowStorageGroupStatement showStorageGroupStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(showStorageGroupStatement);
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(showStorageGroupStatement.getPathPattern()));
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(HeaderConstant.showStorageGroupHeader);
       return analysis;
     }

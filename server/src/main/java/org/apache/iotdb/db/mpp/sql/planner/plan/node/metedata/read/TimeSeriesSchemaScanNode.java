@@ -18,26 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 
 public class TimeSeriesSchemaScanNode extends SchemaScanNode {
 
@@ -66,9 +56,8 @@ public class TimeSeriesSchemaScanNode extends SchemaScanNode {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_SERIES_SCHEMA_SCAN.serialize(byteBuffer);
-    ReadWriteIOUtils.write(getPlanNodeId().getId(), byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(key, byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
@@ -80,10 +69,8 @@ public class TimeSeriesSchemaScanNode extends SchemaScanNode {
   }
 
   public static TimeSeriesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
-    String id = ReadWriteIOUtils.readString(byteBuffer);
-    PlanNodeId planNodeId = new PlanNodeId(id);
     String fullPath = ReadWriteIOUtils.readString(byteBuffer);
-    PartialPath path = null;
+    PartialPath path;
     try {
       path = new PartialPath(fullPath);
     } catch (IllegalPathException e) {
@@ -96,6 +83,9 @@ public class TimeSeriesSchemaScanNode extends SchemaScanNode {
     boolean oderByHeat = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isContains = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
+
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
     return new TimeSeriesSchemaScanNode(
         planNodeId, path, key, value, limit, offset, oderByHeat, isContains, isPrefixPath);
   }
@@ -131,15 +121,25 @@ public class TimeSeriesSchemaScanNode extends SchemaScanNode {
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return Arrays.asList(
-        COLUMN_TIMESERIES,
-        COLUMN_TIMESERIES_ALIAS,
-        COLUMN_STORAGE_GROUP,
-        COLUMN_TIMESERIES_DATATYPE,
-        COLUMN_TIMESERIES_ENCODING,
-        COLUMN_TIMESERIES_COMPRESSION,
-        COLUMN_TAGS,
-        COLUMN_ATTRIBUTES);
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    TimeSeriesSchemaScanNode that = (TimeSeriesSchemaScanNode) o;
+    return isContains == that.isContains
+        && orderByHeat == that.orderByHeat
+        && Objects.equals(key, that.key)
+        && Objects.equals(value, that.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), key, value, isContains, orderByHeat);
   }
 }
