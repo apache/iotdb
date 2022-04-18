@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.service.thrift.handler;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;

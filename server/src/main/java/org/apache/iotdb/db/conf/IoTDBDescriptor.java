@@ -171,10 +171,6 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty("mpp_mode", Boolean.toString(conf.isMppMode()))));
 
-      conf.setMppPort(
-          Integer.parseInt(
-              properties.getProperty("mpp_port", Integer.toString(conf.getRpcPort()))));
-
       conf.setEnableInfluxDBRpcService(
           Boolean.parseBoolean(
               properties.getProperty(
