@@ -1159,10 +1159,6 @@ public class SchemaRegion implements ISchemaRegion {
 
   // region Interfaces and methods for MNode query
 
-  public IMNode getNodeByPath(PartialPath path) throws MetadataException {
-    return mtree.getNodeByPath(path);
-  }
-
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
