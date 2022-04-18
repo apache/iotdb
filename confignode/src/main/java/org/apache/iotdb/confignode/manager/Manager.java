@@ -126,10 +126,18 @@ public interface Manager {
   DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan);
 
   /**
-   * operate permission
+   * Operate Permission
    *
-   * @param physicalPlan
-   * @return
+   * @param physicalPlan AuthorPlan
+   * @return status
    */
   TSStatus operatePermission(PhysicalPlan physicalPlan);
+
+  /**
+   * Query Permission
+   *
+   * @param physicalPlan AuthorPlan
+   * @return PermissionInfoDataSet
+   */
+  DataSet queryPermission(PhysicalPlan physicalPlan);
 }

@@ -248,7 +248,7 @@ public class AuthorNode extends PlanNode {
     throw new NotImplementedException("serializeAttributes of AuthorNode is not implemented");
   }
 
-  public Set<Integer> strToPermissions(String[] privilegeList) throws AuthException {
+  public static Set<Integer> strToPermissions(String[] privilegeList) throws AuthException {
     Set<Integer> result = new HashSet<>();
     if (privilegeList == null) {
       return result;

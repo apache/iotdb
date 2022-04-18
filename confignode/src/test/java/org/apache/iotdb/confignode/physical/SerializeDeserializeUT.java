@@ -66,6 +66,7 @@ public class SerializeDeserializeUT {
     RegisterDataNodePlan plan0 =
         new RegisterDataNodePlan(new DataNodeLocation(1, new Endpoint("0.0.0.0", 6667)));
     plan0.serialize(buffer);
+    buffer.flip();
     RegisterDataNodePlan plan1 = (RegisterDataNodePlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
   }
@@ -74,6 +75,7 @@ public class SerializeDeserializeUT {
   public void QueryDataNodeInfoPlanTest() throws IOException {
     QueryDataNodeInfoPlan plan0 = new QueryDataNodeInfoPlan(-1);
     plan0.serialize(buffer);
+    buffer.flip();
     QueryDataNodeInfoPlan plan1 = (QueryDataNodeInfoPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
   }
@@ -82,6 +84,7 @@ public class SerializeDeserializeUT {
   public void SetStorageGroupPlanTest() throws IOException {
     SetStorageGroupPlan plan0 = new SetStorageGroupPlan(new StorageGroupSchema("sg"));
     plan0.serialize(buffer);
+    buffer.flip();
     SetStorageGroupPlan plan1 = (SetStorageGroupPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
   }
@@ -107,6 +110,7 @@ public class SerializeDeserializeUT {
     plan0.addRegion(schemaRegionSet);
 
     plan0.serialize(buffer);
+    buffer.flip();
     CreateRegionsPlan plan1 = (CreateRegionsPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
   }
@@ -128,6 +132,7 @@ public class SerializeDeserializeUT {
     CreateSchemaPartitionPlan plan0 = new CreateSchemaPartitionPlan();
     plan0.setAssignedSchemaPartition(assignedSchemaPartition);
     plan0.serialize(buffer);
+    buffer.flip();
     CreateSchemaPartitionPlan plan1 =
         (CreateSchemaPartitionPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
@@ -145,6 +150,7 @@ public class SerializeDeserializeUT {
         new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
     plan0.setPartitionSlotsMap(partitionSlotsMap);
     plan0.serialize(buffer);
+    buffer.flip();
     GetOrCreateSchemaPartitionPlan plan1 =
         (GetOrCreateSchemaPartitionPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
@@ -177,6 +183,7 @@ public class SerializeDeserializeUT {
     CreateDataPartitionPlan plan0 = new CreateDataPartitionPlan();
     plan0.setAssignedDataPartition(assignedDataPartition);
     plan0.serialize(buffer);
+    buffer.flip();
     CreateDataPartitionPlan plan1 = (CreateDataPartitionPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
   }
@@ -197,6 +204,7 @@ public class SerializeDeserializeUT {
         new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetDataPartition);
     plan0.setPartitionSlotsMap(partitionSlotsMap);
     plan0.serialize(buffer);
+    buffer.flip();
     GetOrCreateDataPartitionPlan plan1 =
         (GetOrCreateDataPartitionPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
@@ -216,6 +224,7 @@ public class SerializeDeserializeUT {
         new AuthorPlan(
             PhysicalPlanType.CREATE_USER, "thulab", "", "passwd", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -223,6 +232,7 @@ public class SerializeDeserializeUT {
     // create role
     plan0 = new AuthorPlan(PhysicalPlanType.CREATE_ROLE, "", "admin", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -232,6 +242,7 @@ public class SerializeDeserializeUT {
         new AuthorPlan(
             PhysicalPlanType.UPDATE_USER, "tempuser", "", "", "newpwd", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -240,6 +251,7 @@ public class SerializeDeserializeUT {
     plan0 =
         new AuthorPlan(PhysicalPlanType.GRANT_USER, "tempuser", "", "", "", permissions, "root.ln");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -255,6 +267,7 @@ public class SerializeDeserializeUT {
             permissions,
             "root.ln");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -263,6 +276,7 @@ public class SerializeDeserializeUT {
     plan0 =
         new AuthorPlan(PhysicalPlanType.GRANT_ROLE, "", "temprole", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -272,6 +286,7 @@ public class SerializeDeserializeUT {
         new AuthorPlan(
             PhysicalPlanType.REVOKE_USER, "tempuser", "", "", "", permissions, "root.ln");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -281,6 +296,7 @@ public class SerializeDeserializeUT {
         new AuthorPlan(
             PhysicalPlanType.REVOKE_ROLE, "", "temprole", "", "", permissions, "root.ln");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -296,6 +312,7 @@ public class SerializeDeserializeUT {
             new HashSet<>(),
             "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -303,6 +320,7 @@ public class SerializeDeserializeUT {
     // drop user
     plan0 = new AuthorPlan(PhysicalPlanType.DROP_USER, "xiaoming", "", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -310,6 +328,7 @@ public class SerializeDeserializeUT {
     // drop role
     plan0 = new AuthorPlan(PhysicalPlanType.DROP_ROLE, "", "admin", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -317,6 +336,7 @@ public class SerializeDeserializeUT {
     // list user
     plan0 = new AuthorPlan(PhysicalPlanType.LIST_USER, "", "", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -324,6 +344,7 @@ public class SerializeDeserializeUT {
     // list role
     plan0 = new AuthorPlan(PhysicalPlanType.LIST_ROLE, "", "", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -332,6 +353,7 @@ public class SerializeDeserializeUT {
     plan0 =
         new AuthorPlan(PhysicalPlanType.LIST_USER_PRIVILEGE, "", "", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -340,6 +362,7 @@ public class SerializeDeserializeUT {
     plan0 =
         new AuthorPlan(PhysicalPlanType.LIST_ROLE_PRIVILEGE, "", "", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -348,6 +371,7 @@ public class SerializeDeserializeUT {
     plan0 =
         new AuthorPlan(PhysicalPlanType.LIST_USER_PRIVILEGE, "", "", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -356,6 +380,7 @@ public class SerializeDeserializeUT {
     plan0 =
         new AuthorPlan(PhysicalPlanType.LIST_ROLE_PRIVILEGE, "", "", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -363,6 +388,7 @@ public class SerializeDeserializeUT {
     // list all role of user
     plan0 = new AuthorPlan(PhysicalPlanType.LIST_USER_ROLES, "", "", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();
@@ -370,6 +396,7 @@ public class SerializeDeserializeUT {
     // list all user of role
     plan0 = new AuthorPlan(PhysicalPlanType.LIST_ROLE_USERS, "", "", "", "", new HashSet<>(), "");
     plan0.serialize(buffer);
+    buffer.flip();
     plan1 = (AuthorPlan) PhysicalPlan.Factory.create(buffer);
     Assert.assertEquals(plan0, plan1);
     cleanBuffer();

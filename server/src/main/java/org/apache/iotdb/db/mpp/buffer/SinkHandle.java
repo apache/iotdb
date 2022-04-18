@@ -22,9 +22,9 @@ package org.apache.iotdb.db.mpp.buffer;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
-import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
-import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
@@ -59,7 +59,7 @@ public class SinkHandle implements ISinkHandle {
   private final TFragmentInstanceId localFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
-  private final DataBlockService.Client client;
+  private final DataBlockService.Iface client;
   private final TsBlockSerde serde;
   private final SinkHandleListener sinkHandleListener;
 
@@ -82,7 +82,7 @@ public class SinkHandle implements ISinkHandle {
       TFragmentInstanceId localFragmentInstanceId,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
-      DataBlockService.Client client,
+      DataBlockService.Iface client,
       TsBlockSerde serde,
       SinkHandleListener sinkHandleListener) {
     this.remoteHostname = Validate.notNull(remoteHostname);
@@ -105,6 +105,10 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void submitSendNewDataBlockEventTask(int startSequenceId, List<Long> blockSizes) {
+    // TODO: (xingtanzjr)
+    // We temporarily make it sync instead of async to avoid EOS Event(SinkHandle close() method is
+    // called) is sent before NewDataBlockEvent arrived
+    //    new SendNewDataBlockEventTask(startSequenceId, blockSizes).run();
     executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
   }
 
@@ -157,12 +161,13 @@ public class SinkHandle implements ISinkHandle {
 
   private void sendEndOfDataBlockEvent() throws TException {
     logger.debug(
-        "Send end of data block event to plan node {} of {}.",
+        "Send end of data block event to plan node {} of {}. {}",
         remotePlanNodeId,
-        remoteFragmentInstanceId);
+        remoteFragmentInstanceId,
+        Thread.currentThread().getName());
     int attempt = 0;
-    EndOfDataBlockEvent endOfDataBlockEvent =
-        new EndOfDataBlockEvent(
+    TEndOfDataBlockEvent endOfDataBlockEvent =
+        new TEndOfDataBlockEvent(
             remoteFragmentInstanceId,
             remotePlanNodeId,
             localFragmentInstanceId,
@@ -178,7 +183,8 @@ public class SinkHandle implements ISinkHandle {
             remotePlanNodeId,
             remoteFragmentInstanceId,
             e.getMessage(),
-            attempt);
+            attempt,
+            e);
         if (attempt == MAX_ATTEMPT_TIMES) {
           throw e;
         }
@@ -310,7 +316,10 @@ public class SinkHandle implements ISinkHandle {
         .toString();
   }
 
-  /** Send a {@link NewDataBlockEvent} to downstream fragment instance. */
+  /**
+   * Send a {@link org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent} to downstream fragment
+   * instance.
+   */
   class SendNewDataBlockEventTask implements Runnable {
 
     private final int startSequenceId;
@@ -335,8 +344,8 @@ public class SinkHandle implements ISinkHandle {
           remotePlanNodeId,
           remoteFragmentInstanceId);
       int attempt = 0;
-      NewDataBlockEvent newDataBlockEvent =
-          new NewDataBlockEvent(
+      TNewDataBlockEvent newDataBlockEvent =
+          new TNewDataBlockEvent(
               remoteFragmentInstanceId,
               remotePlanNodeId,
               localFragmentInstanceId,
@@ -353,7 +362,8 @@ public class SinkHandle implements ISinkHandle {
               remotePlanNodeId,
               remoteFragmentInstanceId,
               e.getMessage(),
-              attempt);
+              attempt,
+              e);
           if (attempt == MAX_ATTEMPT_TIMES) {
             synchronized (this) {
               throwable = e;

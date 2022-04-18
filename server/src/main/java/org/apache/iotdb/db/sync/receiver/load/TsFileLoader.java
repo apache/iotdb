@@ -58,7 +58,7 @@ public class TsFileLoader implements ILoader {
       }
 
       for (TsFileResource resource : splitResources) {
-        StorageEngine.getInstance().loadNewTsFile(resource);
+        StorageEngine.getInstance().loadNewTsFile(resource, false);
       }
     } catch (Exception e) {
       throw new PipeDataLoadUnbearableException(e.getMessage());

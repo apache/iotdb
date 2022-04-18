@@ -149,16 +149,24 @@ public class DataPartition {
           if (seriesTimePartitionSlotMap.containsKey(seriesPartitionSlot)) {
             Map<TimePartitionSlot, List<RegionReplicaSet>> timePartitionSlotMap =
                 seriesTimePartitionSlotMap.get(seriesPartitionSlot);
-            for (TimePartitionSlot timePartitionSlot :
-                partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot)) {
-              // Compare TimePartitionSlot
-              if (timePartitionSlotMap.containsKey(timePartitionSlot)) {
-                result
-                    .computeIfAbsent(storageGroupName, key -> new HashMap<>())
-                    .computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>())
-                    .put(
-                        timePartitionSlot,
-                        new ArrayList<>(timePartitionSlotMap.get(timePartitionSlot)));
+            // TODO: (xingtanzjr) optimize if timeSlotPartition is empty
+            if (partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot).size() == 0) {
+              result
+                  .computeIfAbsent(storageGroupName, key -> new HashMap<>())
+                  .computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>())
+                  .putAll(new HashMap<>(timePartitionSlotMap));
+            } else {
+              for (TimePartitionSlot timePartitionSlot :
+                  partitionSlotsMap.get(storageGroupName).get(seriesPartitionSlot)) {
+                // Compare TimePartitionSlot
+                if (timePartitionSlotMap.containsKey(timePartitionSlot)) {
+                  result
+                      .computeIfAbsent(storageGroupName, key -> new HashMap<>())
+                      .computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>())
+                      .put(
+                          timePartitionSlot,
+                          new ArrayList<>(timePartitionSlotMap.get(timePartitionSlot)));
+                }
               }
             }
           }

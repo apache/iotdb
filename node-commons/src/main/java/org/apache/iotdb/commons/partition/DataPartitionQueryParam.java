@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class DataPartitionQueryParam {
 
   private String devicePath;
-  private List<TimePartitionSlot> timePartitionSlotList;
+  private List<TimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
   public String getDevicePath() {
     return devicePath;

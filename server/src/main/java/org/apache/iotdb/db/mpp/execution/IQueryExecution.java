@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
 public interface IQueryExecution {
 
   void start();
@@ -26,4 +29,14 @@ public interface IQueryExecution {
   void stop();
 
   ExecutionResult getStatus();
+
+  TsBlock getBatchResult();
+
+  boolean hasNextResult();
+
+  int getOutputValueColumnCount();
+
+  DatasetHeader getDatasetHeader();
+
+  boolean isQuery();
 }

@@ -22,11 +22,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
+import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.CreateDataRegionReq;
-import org.apache.iotdb.service.rpc.thrift.CreateSchemaRegionReq;
-import org.apache.iotdb.service.rpc.thrift.ManagementIService;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -47,12 +47,13 @@ public class TemporaryClient {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TemporaryClient.class);
 
-  private static final int timeOutInMS = 2000;
+  // TODO: Add timeout parameter
+  private static final int timeOutInMS = 10000;
   private static final int retryWait = 10;
   private static final int retryNum = 3;
 
   // Map<DataNodeId, ManagementIService.Client>
-  private final Map<Integer, ManagementIService.Client> clients;
+  private final Map<Integer, InternalService.Iface> clients;
 
   private TemporaryClient() {
     this.clients = new HashMap<>();
@@ -65,7 +66,7 @@ public class TemporaryClient {
             RpcTransportFactory.INSTANCE.getTransport(
                 endpoint.getIp(), endpoint.getPort(), timeOutInMS);
         transport.open();
-        clients.put(dataNodeId, new ManagementIService.Client(new TBinaryProtocol(transport)));
+        clients.put(dataNodeId, new InternalService.Client(new TBinaryProtocol(transport)));
         LOGGER.info("Build client to DataNode: {} success", endpoint);
         return;
       } catch (TTransportException e) {
@@ -81,9 +82,9 @@ public class TemporaryClient {
     LOGGER.error("Build client to DataNode: {} failed.", endpoint);
   }
 
-  private CreateSchemaRegionReq genCreateSchemaRegionReq(
+  private TCreateSchemaRegionReq genCreateSchemaRegionReq(
       String storageGroup, RegionReplicaSet regionReplicaSet) {
-    CreateSchemaRegionReq req = new CreateSchemaRegionReq();
+    TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet.convertToRPCTRegionReplicaSet());
     return req;
@@ -98,7 +99,7 @@ public class TemporaryClient {
           DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
     }
 
-    CreateSchemaRegionReq req = genCreateSchemaRegionReq(storageGroup, regionReplicaSet);
+    TCreateSchemaRegionReq req = genCreateSchemaRegionReq(storageGroup, regionReplicaSet);
     if (clients.get(dataNodeId) != null) {
       for (int i = 0; i < retryNum; i++) {
         try {
@@ -115,6 +116,7 @@ public class TemporaryClient {
                 status);
           }
         } catch (TException e) {
+          // TODO: Handler SocketTimeOutException
           LOGGER.error(
               "Create SchemaRegion on DataNode: {} failed, {}. Retrying...",
               DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
@@ -132,9 +134,9 @@ public class TemporaryClient {
         DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
   }
 
-  private CreateDataRegionReq genCreateDataRegionReq(
+  private TCreateDataRegionReq genCreateDataRegionReq(
       String storageGroup, RegionReplicaSet regionReplicaSet, long TTL) {
-    CreateDataRegionReq req = new CreateDataRegionReq();
+    TCreateDataRegionReq req = new TCreateDataRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet.convertToRPCTRegionReplicaSet());
     req.setTtl(TTL);
@@ -150,7 +152,7 @@ public class TemporaryClient {
           DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
     }
 
-    CreateDataRegionReq req = genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL);
+    TCreateDataRegionReq req = genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL);
     if (clients.get(dataNodeId) != null) {
       for (int i = 0; i < retryNum; i++) {
         try {
@@ -167,6 +169,7 @@ public class TemporaryClient {
                 status);
           }
         } catch (TException e) {
+          // TODO: Handler SocketTimeOutException
           LOGGER.error(
               "Create DataRegion on DataNode: {} failed, {}. Retrying...",
               DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),

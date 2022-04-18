@@ -19,38 +19,81 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
+import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.thrift.handler.InternalServiceThriftHandler;
+import org.apache.iotdb.db.service.thrift.impl.InternalServiceImpl;
+import org.apache.iotdb.mpp.rpc.thrift.InternalService.Processor;
 
-public class InternalService extends ThriftService {
+public class InternalService extends ThriftService implements InternalServiceMBean {
 
   private InternalServiceImpl impl;
 
+  private InternalService() {}
+
   @Override
   public ServiceType getID() {
-    return null;
+    return ServiceType.INTERNAL_SERVICE;
   }
 
   @Override
   public ThriftService getImplementation() {
-    return null;
+    return InternalServiceHolder.INSTANCE;
   }
 
   @Override
   public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {}
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    impl = new InternalServiceImpl();
+    initSyncedServiceImpl(null);
+    processor = new Processor<>(impl);
+  }
 
   @Override
   public void initThriftServiceThread()
-      throws IllegalAccessException, InstantiationException, ClassNotFoundException {}
+      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+    try {
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      thriftServiceThread =
+          new ThriftServiceThread(
+              processor,
+              getID().getName(),
+              ThreadName.INTERNAL_SERVICE_RPC_CLIENT.getName(),
+              getBindIP(),
+              getBindPort(),
+              config.getRpcMaxConcurrentClientNum(),
+              config.getThriftServerAwaitTimeForStopService(),
+              new InternalServiceThriftHandler(),
+              // TODO: hard coded compress strategy
+              false);
+    } catch (RPCServiceException e) {
+      throw new IllegalAccessException(e.getMessage());
+    }
+    thriftServiceThread.setName(ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
+  }
 
   @Override
   public String getBindIP() {
-    return null;
+    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
   }
 
   @Override
   public int getBindPort() {
-    return 0;
+    return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+  }
+
+  private static class InternalServiceHolder {
+    private static final InternalService INSTANCE = new InternalService();
+
+    private InternalServiceHolder() {}
+  }
+
+  public static InternalService getInstance() {
+    return InternalService.InternalServiceHolder.INSTANCE;
   }
 }

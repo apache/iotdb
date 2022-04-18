@@ -270,6 +270,7 @@ public class IoTDBSyncReceiverIT {
         client.senderTransport(new SchemaPipeData(plan, serialNum++));
       }
       List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
+      SyncTestUtil.renameTsFiles(tsFiles);
       for (File f : tsFiles) {
         client.senderTransport(new TsFilePipeData(f.getPath(), serialNum++));
       }

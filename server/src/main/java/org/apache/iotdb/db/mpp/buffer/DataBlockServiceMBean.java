@@ -16,7 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.buffer;
 
-package org.apache.iotdb.db.service;
+import org.apache.iotdb.commons.exception.StartupException;
 
-public interface DataNodeManagementServerMBean {}
+public interface DataBlockServiceMBean {
+
+  String getRPCServiceStatus();
+
+  int getRPCPort();
+
+  void startService() throws StartupException;
+
+  void restartService() throws StartupException;
+
+  void stopService();
+}
