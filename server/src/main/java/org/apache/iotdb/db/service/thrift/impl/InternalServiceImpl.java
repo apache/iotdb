@@ -25,10 +25,14 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -36,12 +40,14 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceInfo;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.mpp.rpc.thrift.*;
+import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.CreateDataRegionReq;
-import org.apache.iotdb.service.rpc.thrift.CreateSchemaRegionReq;
-import org.apache.iotdb.service.rpc.thrift.ManagementIService;
-import org.apache.iotdb.service.rpc.thrift.MigrateDataRegionReq;
-import org.apache.iotdb.service.rpc.thrift.MigrateSchemaRegionReq;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -51,11 +57,75 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DataNodeManagementServiceImpl implements ManagementIService.Iface {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeManagementServiceImpl.class);
+public class InternalServiceImpl implements InternalService.Iface {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(InternalServiceImpl.class);
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
   private final IConsensus consensusImpl = ConsensusImpl.getInstance();
+
+  public InternalServiceImpl() {
+    super();
+  }
+
+  @Override
+  public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
+    QueryType type = QueryType.valueOf(req.queryType);
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.create(
+            req.consensusGroupId.id, GroupType.valueOf(req.consensusGroupId.type));
+    switch (type) {
+      case READ:
+        ConsensusReadResponse readResp =
+            ConsensusImpl.getInstance()
+                .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
+        FragmentInstanceInfo info = (FragmentInstanceInfo) readResp.getDataset();
+        return new TSendFragmentInstanceResp(!info.getState().isFailed());
+      case WRITE:
+        TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
+        ConsensusWriteResponse resp =
+            ConsensusImpl.getInstance()
+                .write(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
+        // TODO need consider more status
+        response.setAccepted(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode());
+        response.setMessage(resp.getStatus().message);
+        return response;
+    }
+    return null;
+  }
+
+  @Override
+  public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req) {
+    FragmentInstanceInfo info =
+        FragmentInstanceManager.getInstance()
+            .getInstanceInfo(FragmentInstanceId.fromThrift(req.fragmentInstanceId));
+    return new TFragmentInstanceStateResp(info.getState().toString());
+  }
+
+  @Override
+  public TCancelResp cancelQuery(TCancelQueryReq req) throws TException {
+
+    // TODO need to be implemented and currently in order not to print NotImplementedException log,
+    // we simply return null
+    return null;
+    //    throw new NotImplementedException();
+  }
+
+  @Override
+  public TCancelResp cancelPlanFragment(TCancelPlanFragmentReq req) throws TException {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req) throws TException {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public SchemaFetchResponse fetchSchema(SchemaFetchRequest req) throws TException {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   public TSStatus createSchemaRegion(CreateSchemaRegionReq req) throws TException {

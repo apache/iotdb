@@ -22,11 +22,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
+import org.apache.iotdb.mpp.rpc.thrift.CreateDataRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.CreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.CreateDataRegionReq;
-import org.apache.iotdb.service.rpc.thrift.CreateSchemaRegionReq;
-import org.apache.iotdb.service.rpc.thrift.ManagementIService;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -53,7 +53,7 @@ public class TemporaryClient {
   private static final int retryNum = 3;
 
   // Map<DataNodeId, ManagementIService.Client>
-  private final Map<Integer, ManagementIService.Client> clients;
+  private final Map<Integer, InternalService.Iface> clients;
 
   private TemporaryClient() {
     this.clients = new HashMap<>();
@@ -66,7 +66,7 @@ public class TemporaryClient {
             RpcTransportFactory.INSTANCE.getTransport(
                 endpoint.getIp(), endpoint.getPort(), timeOutInMS);
         transport.open();
-        clients.put(dataNodeId, new ManagementIService.Client(new TBinaryProtocol(transport)));
+        clients.put(dataNodeId, new InternalService.Client(new TBinaryProtocol(transport)));
         LOGGER.info("Build client to DataNode: {} success", endpoint);
         return;
       } catch (TTransportException e) {
