@@ -63,7 +63,7 @@ public class InternalServiceImpl implements InternalService.Iface {
             ConsensusImpl.getInstance()
                 .read(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         FragmentInstanceInfo info = (FragmentInstanceInfo) readResp.getDataset();
-        return new TSendFragmentInstanceResp(info.getState().isFailed());
+        return new TSendFragmentInstanceResp(!info.getState().isFailed());
       case WRITE:
         TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
         ConsensusWriteResponse resp =
@@ -88,7 +88,11 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) throws TException {
-    throw new NotImplementedException();
+
+    // TODO need to be implemented and currently in order not to print NotImplementedException log,
+    // we simply return null
+    return null;
+    //    throw new NotImplementedException();
   }
 
   @Override

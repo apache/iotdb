@@ -164,7 +164,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try {
       patternTree.serialize(baos);
       ByteBuffer serializedPatternTree = ByteBuffer.allocate(baos.size());
-      serializedPatternTree.put(baos.getBuf());
+      serializedPatternTree.put(baos.getBuf(), 0, baos.size());
       serializedPatternTree.flip();
       return new TSchemaPartitionReq(serializedPatternTree);
     } catch (IOException e) {
@@ -209,7 +209,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       schemaPartitionMap.put(storageGroupName, deviceToSchemaRegionMap);
     }
-    return new SchemaPartition(schemaPartitionMap);
+    return new SchemaPartition(
+        schemaPartitionMap,
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
 
   private DataPartition parseDataPartitionResp(TDataPartitionResp dataPartitionResp) {

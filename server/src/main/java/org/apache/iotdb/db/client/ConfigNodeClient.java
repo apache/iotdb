@@ -54,7 +54,7 @@ import java.util.Random;
 public class ConfigNodeClient {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
-  private static final int TIMEOUT_MS = 2000;
+  private static final int TIMEOUT_MS = 10000;
 
   private static final int RETRY_NUM = 5;
 
