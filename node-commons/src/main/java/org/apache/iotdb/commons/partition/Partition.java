@@ -18,24 +18,21 @@
  */
 package org.apache.iotdb.commons.partition;
 
-public class PartitionInfo {
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
-  private DataPartition dataPartition;
-  private SchemaPartition schemaPartition;
+public abstract class Partition {
+  protected String seriesSlotExecutorName;
+  protected int seriesPartitionSlotNum;
 
-  public DataPartition getDataPartitionInfo() {
-    return dataPartition;
+  public Partition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
+    this.seriesSlotExecutorName = seriesSlotExecutorName;
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public void setDataPartitionInfo(DataPartition dataPartition) {
-    this.dataPartition = dataPartition;
-  }
-
-  public SchemaPartition getSchemaPartitionInfo() {
-    return schemaPartition;
-  }
-
-  public void setSchemaPartitionInfo(SchemaPartition schemaPartition) {
-    this.schemaPartition = schemaPartition;
+  protected SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
+    SeriesPartitionExecutor executor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            seriesSlotExecutorName, seriesPartitionSlotNum);
+    return executor.getSeriesPartitionSlot(deviceName);
   }
 }

@@ -28,18 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class DataPartition {
-
-  private String seriesSlotExecutorName;
-  private int seriesPartitionSlotNum;
+public class DataPartition extends Partition{
 
   // Map<StorageGroup, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionMessage>>>>
   private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
       dataPartitionMap;
 
   public DataPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
-    this.seriesSlotExecutorName = seriesSlotExecutorName;
-    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
+    super(seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
   public DataPartition(
@@ -102,13 +98,6 @@ public class DataPartition {
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
     // more than 1 Regions for one timeSlot
     return regions.get(0);
-  }
-
-  private SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
-    SeriesPartitionExecutor executor =
-        SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            seriesSlotExecutorName, seriesPartitionSlotNum);
-    return executor.getSeriesPartitionSlot(deviceName);
   }
 
   private String getStorageGroupByDevice(String deviceName) {
