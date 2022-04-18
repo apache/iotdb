@@ -21,9 +21,10 @@ package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
-public class SetStorageGroupStatement extends Statement {
+public class SetStorageGroupStatement extends ConfigStatement {
   private PartialPath storageGroupPath;
 
   public SetStorageGroupStatement() {
@@ -33,6 +34,11 @@ public class SetStorageGroupStatement extends Statement {
 
   public PartialPath getStorageGroupPath() {
     return storageGroupPath;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitSetStorageGroup(this, context);
   }
 
   public void setStorageGroupPath(PartialPath storageGroupPath) {

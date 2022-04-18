@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -28,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class DataPartition extends Partition{
+public class DataPartition extends Partition {
 
   // Map<StorageGroup, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionMessage>>>>
   private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>

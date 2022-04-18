@@ -18,14 +18,12 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SchemaPartition extends Partition{
+public class SchemaPartition extends Partition {
 
   // Map<StorageGroup, Map<SeriesPartitionSlot, SchemaRegionPlaceInfo>>
   private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap;

@@ -46,32 +46,27 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
     return executor.submit(
         () -> {
           TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
-          try {
-            for (FragmentInstance instance : instances) {
-              InternalService.Iface client =
-                  InternalServiceClientFactory.getMppServiceClient(
-                      new Endpoint(
-                          instance.getHostEndpoint().getIp(),
-                          IoTDBDescriptor.getInstance().getConfig().getMppPort()));
-              // TODO: (xingtanzjr) consider how to handle the buffer here
-              ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-              instance.serializeRequest(buffer);
-              buffer.flip();
-              TConsensusGroupId groupId =
-                  new TConsensusGroupId(
-                      instance.getRegionReplicaSet().getConsensusGroupId().getId(),
-                      instance.getRegionReplicaSet().getConsensusGroupId().getType().toString());
-              TSendFragmentInstanceReq req =
-                  new TSendFragmentInstanceReq(
-                      new TFragmentInstance(buffer), groupId, instance.getType().toString());
-              resp = client.sendFragmentInstance(req);
-              if (!resp.accepted) {
-                break;
-              }
+          for (FragmentInstance instance : instances) {
+            InternalService.Iface client =
+                InternalServiceClientFactory.getMppServiceClient(
+                    new Endpoint(
+                        instance.getHostEndpoint().getIp(),
+                        IoTDBDescriptor.getInstance().getConfig().getMppPort()));
+            // TODO: (xingtanzjr) consider how to handle the buffer here
+            ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+            instance.serializeRequest(buffer);
+            buffer.flip();
+            TConsensusGroupId groupId =
+                new TConsensusGroupId(
+                    instance.getRegionReplicaSet().getConsensusGroupId().getId(),
+                    instance.getRegionReplicaSet().getConsensusGroupId().getType().toString());
+            TSendFragmentInstanceReq req =
+                new TSendFragmentInstanceReq(
+                    new TFragmentInstance(buffer), groupId, instance.getType().toString());
+            resp = client.sendFragmentInstance(req);
+            if (!resp.accepted) {
+              break;
             }
-          } catch (Exception e) {
-            // TODO: (xingtanzjr) add more details
-            return new FragInstanceDispatchResult(false);
           }
           return new FragInstanceDispatchResult(resp.accepted);
         });

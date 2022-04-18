@@ -28,8 +28,8 @@ import org.apache.iotdb.db.mpp.execution.config.ConfigExecution;
 import org.apache.iotdb.db.mpp.sql.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 
 import org.apache.commons.lang3.Validate;
 
@@ -71,7 +71,7 @@ public class Coordinator {
       MPPQueryContext queryContext,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    if (statement instanceof SetStorageGroupStatement) {
+    if (statement instanceof ConfigStatement) {
       queryContext.setQueryType(QueryType.WRITE);
       return new ConfigExecution(queryContext, statement, executor);
     }
@@ -125,7 +125,4 @@ public class Coordinator {
   public static Coordinator getInstance() {
     return INSTANCE;
   }
-  //    private TQueryResponse executeQuery(TQueryRequest request) {
-  //
-  //    }
 }

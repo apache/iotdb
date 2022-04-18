@@ -185,10 +185,11 @@ public class QueryExecution implements IQueryExecution {
       return resultHandle.receive();
 
     } catch (ExecutionException | IOException e) {
+      stateMachine.transitionToFailed(e);
       throwIfUnchecked(e.getCause());
       throw new RuntimeException(e.getCause());
     } catch (InterruptedException e) {
-      stateMachine.transitionToFailed();
+      stateMachine.transitionToFailed(e);
       Thread.currentThread().interrupt();
       throw new RuntimeException(new SQLException("ResultSet thread was interrupted", e));
     }
