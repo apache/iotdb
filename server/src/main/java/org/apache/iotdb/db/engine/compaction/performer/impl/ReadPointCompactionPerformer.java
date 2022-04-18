@@ -33,15 +33,12 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -156,19 +153,9 @@ public class ReadPointCompactionPerformer
     MultiTsFileDeviceIterator.AlignedMeasurementIterator alignedMeasurementIterator =
         deviceIterator.iterateAlignedSeries(device);
     Set<String> allMeasurements = alignedMeasurementIterator.getAllMeasurements();
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    for (String measurement : allMeasurements) {
-      try {
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-          measurementSchemas.add(IDTableManager.getInstance().getSeriesSchema(device, measurement));
-        } else {
-          measurementSchemas.add(
-              IoTDB.schemaProcessor.getSeriesSchema(new PartialPath(device, measurement)));
-        }
-      } catch (PathNotExistException e) {
-        LOGGER.info("A deleted path is skipped: {}", e.getMessage());
-      }
-    }
+    ConcurrentHashMap<String, MeasurementSchema> schemaMap =
+        getMeasurementSchema(device, allMeasurements);
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;
     }
@@ -208,7 +195,7 @@ public class ReadPointCompactionPerformer
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
     ConcurrentHashMap<String, MeasurementSchema> schemaMap =
-        getMeasurementSchemaForNotAlignedDevice(device, allMeasurements);
+        getMeasurementSchema(device, allMeasurements);
 
     // assign all measurements to different sub tasks
     Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
@@ -251,7 +238,7 @@ public class ReadPointCompactionPerformer
     compactionWriter.endChunkGroup();
   }
 
-  private ConcurrentHashMap<String, MeasurementSchema> getMeasurementSchemaForNotAlignedDevice(
+  private ConcurrentHashMap<String, MeasurementSchema> getMeasurementSchema(
       String device, Set<String> measurements) throws IllegalPathException, IOException {
     ConcurrentHashMap<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     List<TsFileResource> allResources = new LinkedList<>(seqFiles);
