@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanN
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -215,17 +216,23 @@ public class DistributionPlanner {
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
       // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
+      final boolean[] addParent = {false};
       sourceGroup.forEach(
           (dataRegion, seriesScanNodes) -> {
             if (seriesScanNodes.size() == 1) {
               root.addChild(seriesScanNodes.get(0));
             } else {
-              // We clone a TimeJoinNode from root to make the params to be consistent.
-              // But we need to assign a new ID to it
-              TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
-              root.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-              seriesScanNodes.forEach(parentOfGroup::addChild);
-              root.addChild(parentOfGroup);
+              if (!addParent[0]) {
+                seriesScanNodes.forEach(root::addChild);
+                addParent[0] = true;
+              } else {
+                // We clone a TimeJoinNode from root to make the params to be consistent.
+                // But we need to assign a new ID to it
+                TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
+                root.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                seriesScanNodes.forEach(parentOfGroup::addChild);
+                root.addChild(parentOfGroup);
+              }
             }
           });
 
@@ -370,9 +377,15 @@ public class DistributionPlanner {
 
     private RegionReplicaSet calculateDataRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
-      // We always make the dataRegion of TimeJoinNode to be the same as its first child.
-      // TODO: (xingtanzjr) We need to implement more suitable policies here
-      return context.getNodeDistribution(children.get(0).getPlanNodeId()).region;
+      // Step 1: calculate the count of children group by DataRegion.
+      Map<RegionReplicaSet, Long> groupByRegion =
+          children.stream()
+              .collect(
+                  Collectors.groupingBy(
+                      child -> context.getNodeDistribution(child.getPlanNodeId()).region,
+                      Collectors.counting()));
+      // Step 2: return the RegionReplicaSet with max count
+      return Collections.max(groupByRegion.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
     private RegionReplicaSet calculateSchemaRegionByChildren(

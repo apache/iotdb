@@ -26,8 +26,10 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.Coordinator;
+import org.apache.iotdb.db.mpp.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -69,11 +71,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     QueryId queryId =
         new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
-    coordinator.execute(schemaFetchStatement, queryId, QueryType.READ, null, "");
-    TsBlock tsBlock = coordinator.getResultSet(queryId);
+    ExecutionResult executionResult =
+        coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
+    // TODO: (xingtanzjr) throw exception
+    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException("cannot fetch schema, status is: " + executionResult.status);
+    }
+    TsBlock tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+    // TODO: (xingtanzjr) need to release this query's resource here
     SchemaTree result = new SchemaTree();
     result.setStorageGroups(storageGroups);
-
     Binary binary;
     SchemaTree fetchedSchemaTree;
     Column column = tsBlock.getColumn(0);

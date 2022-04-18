@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration.sync;
 
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
@@ -103,6 +105,36 @@ public class SyncTestUtil {
   }
 
   /**
+   * make tsFile's name unique
+   *
+   * @param tsFiles files list, each file will be replaced by a new file with unique name
+   */
+  public static void renameTsFiles(List<File> tsFiles) {
+    for (int i = 0; i < tsFiles.size(); i++) {
+      File tsFile = tsFiles.get(i);
+      File dir = tsFile.getParentFile();
+      String prefix =
+          dir.getParentFile().getParentFile().getName()
+              + "-"
+              + dir.getParentFile().getName()
+              + "-"
+              + dir.getName()
+              + "-";
+      File targetTsFile = new File(dir, prefix + tsFile.getName());
+      tsFile.renameTo(targetTsFile);
+      File resourceFile = new File(dir, tsFile.getName() + TsFileResource.RESOURCE_SUFFIX);
+      if (resourceFile.exists()) {
+        resourceFile.renameTo(new File(dir, prefix + resourceFile.getName()));
+      }
+      File modsFile = new File(dir, tsFile.getName() + ModificationFile.FILE_SUFFIX);
+      if (modsFile.exists()) {
+        modsFile.renameTo(new File(dir, prefix + modsFile.getName()));
+      }
+      tsFiles.set(i, targetTsFile);
+    }
+  }
+
+  /**
    * scan parentDir and return all TsFile sorted by load sequence
    *
    * @param parentDir folder to scan
@@ -114,24 +146,20 @@ public class SyncTestUtil {
       return res;
     }
     scanDir(res, parentDir);
-    Collections.sort(
-        res,
-        new Comparator<File>() {
-          @Override
-          public int compare(File f1, File f2) {
-            int diffSg =
-                f1.getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getName()
-                    .compareTo(f2.getParentFile().getParentFile().getParentFile().getName());
-            if (diffSg != 0) {
-              return diffSg;
-            } else {
-              return (int)
-                  (FilePathUtils.splitAndGetTsFileVersion(f1.getName())
-                      - FilePathUtils.splitAndGetTsFileVersion(f2.getName()));
-            }
+    res.sort(
+        (f1, f2) -> {
+          int diffSg =
+              f1.getParentFile()
+                  .getParentFile()
+                  .getParentFile()
+                  .getName()
+                  .compareTo(f2.getParentFile().getParentFile().getParentFile().getName());
+          if (diffSg != 0) {
+            return diffSg;
+          } else {
+            return (int)
+                (FilePathUtils.splitAndGetTsFileVersion(f1.getName())
+                    - FilePathUtils.splitAndGetTsFileVersion(f2.getName()));
           }
         });
     return res;

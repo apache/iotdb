@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,29 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
+package org.apache.iotdb.db.service.thrift.impl;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
 
-public class DataPartitionQueryParam {
-
-  private String devicePath;
-  private List<TimePartitionSlot> timePartitionSlotList = new ArrayList<>();
-
-  public String getDevicePath() {
-    return devicePath;
-  }
-
-  public void setDevicePath(String devicePath) {
-    this.devicePath = devicePath;
-  }
-
-  public List<TimePartitionSlot> getTimePartitionSlotList() {
-    return timePartitionSlotList;
-  }
-
-  public void setTimePartitionSlotList(List<TimePartitionSlot> timePartitionSlotList) {
-    this.timePartitionSlotList = timePartitionSlotList;
-  }
+public interface TSIEventHandler extends TSIService.Iface {
+  void handleClientExit();
 }
