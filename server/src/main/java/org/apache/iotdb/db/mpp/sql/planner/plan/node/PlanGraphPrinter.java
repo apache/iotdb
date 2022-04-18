@@ -60,7 +60,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("SeriesScanNode-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("Series: %s", node.getSeriesPath()));
-    boxValue.add(String.format("Partition: %s", node.getDataRegionReplicaSet().getId()));
+    boxValue.add(String.format("Partition: %s", node.getRegionReplicaSet().getConsensusGroupId()));
     return render(node, boxValue, context);
   }
 
