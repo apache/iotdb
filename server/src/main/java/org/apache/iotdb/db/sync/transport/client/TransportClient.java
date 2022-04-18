@@ -446,7 +446,7 @@ public class TransportClient implements ITransportClient {
           .receiveMsg(
               heartbeat(
                   new SyncRequest(
-                      RequestType.CREATE,
+                      RequestType.START,
                       pipe.getName(),
                       InetAddress.getLocalHost().getHostAddress(),
                       pipe.getCreateTime())));

@@ -152,7 +152,7 @@ public class ReceiverService implements IService {
 
   /** create and start a new pipe named pipeName */
   private void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
-    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp);
+    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
     if (pipeInfo == null || pipeInfo.getStatus().equals(PipeStatus.DROP)) {
       logger.info(
           "create Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
@@ -163,30 +163,30 @@ public class ReceiverService implements IService {
 
   /** start an existed pipe named pipeName */
   private void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
-    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp);
+    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
     if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.STOP)) {
       logger.info("start Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
-      receiverManager.startPipe(pipeName, remoteIp);
+      receiverManager.startPipe(pipeName, remoteIp, createTime);
       collector.startPipe(pipeName, remoteIp, createTime);
     }
   }
 
   /** stop an existed pipe named pipeName */
   private void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
-    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp);
+    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
     if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
       logger.info("stop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
-      receiverManager.stopPipe(pipeName, remoteIp);
+      receiverManager.stopPipe(pipeName, remoteIp, createTime);
       collector.stopPipe(pipeName, remoteIp, createTime);
     }
   }
 
   /** drop an existed pipe named pipeName */
   private void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
-    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp);
+    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
     if (pipeInfo != null && !pipeInfo.getStatus().equals(PipeStatus.DROP)) {
       logger.info("drop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
-      receiverManager.dropPipe(pipeName, remoteIp);
+      receiverManager.dropPipe(pipeName, remoteIp, createTime);
       collector.stopPipe(pipeName, remoteIp, createTime);
       PipeDataQueueFactory.removeBufferedPipeDataQueue(
           SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
@@ -228,7 +228,7 @@ public class ReceiverService implements IService {
   public QueryDataSet showPipe(ShowPipePlan plan, ListDataSet dataSet) {
     List<PipeInfo> pipeInfos;
     if (!StringUtils.isEmpty(plan.getPipeName())) {
-      pipeInfos = receiverManager.getPipeInfos(plan.getPipeName());
+      pipeInfos = receiverManager.getPipeInfosByPipeName(plan.getPipeName());
     } else {
       pipeInfos = receiverManager.getAllPipeInfos();
     }
