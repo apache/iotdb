@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.common.header;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
 import com.google.common.primitives.Bytes;
 
 import java.util.*;
@@ -51,10 +49,6 @@ public class DatasetHeader {
     return isIgnoreTimestamp;
   }
 
-  public Map<String, Integer> getColumnToTsBlockIndexMap() {
-    return columnToTsBlockIndexMap;
-  }
-
   public void setColumnToTsBlockIndexMap(List<String> outputColumnNames) {
     this.columnToTsBlockIndexMap = new HashMap<>();
     for (int i = 0; i < outputColumnNames.size(); i++) {
@@ -66,8 +60,11 @@ public class DatasetHeader {
     return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
   }
 
-  public List<TSDataType> getRespDataTypeList() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+  public List<String> getRespDataTypeList() {
+    return columnHeaders.stream()
+        .map(ColumnHeader::getColumnType)
+        .map(Objects::toString)
+        .collect(Collectors.toList());
   }
 
   public List<Byte> getRespAliasColumns() {

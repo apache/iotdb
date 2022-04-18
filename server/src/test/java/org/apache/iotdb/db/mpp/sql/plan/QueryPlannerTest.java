@@ -25,7 +25,8 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.QueryExecution;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.analyze.FakePartitionFetcherImpl;
+import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
@@ -49,10 +50,11 @@ public class QueryPlannerTest {
     QueryExecution queryExecution =
         new QueryExecution(
             stmt,
-            new MPPQueryContext(
-                querySql, new QueryId("query1"), new SessionInfo(), QueryType.READ, new Endpoint()),
+            new MPPQueryContext(querySql, new QueryId("query1"), new SessionInfo(), new Endpoint()),
             IoTDBThreadPoolFactory.newSingleThreadExecutor("test_query"),
-            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("test_query_scheduled"));
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("test_query_scheduled"),
+            new FakePartitionFetcherImpl(),
+            new FakeSchemaFetcherImpl());
     queryExecution.doLogicalPlan();
     System.out.printf("SQL: %s%n%n", querySql);
     System.out.println("===== Step 1: Logical Plan =====");

@@ -33,6 +33,9 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -127,6 +130,56 @@ public class TsFilePlanRedoer {
       } else {
         recoveryMemTable.insertTablet(
             (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
+      }
+    }
+  }
+
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  void redoInsert(InsertNode node) throws WriteProcessException, QueryProcessException {
+    if (tsFileResource != null) {
+      String deviceId =
+          node.isAligned()
+              ? node.getDevicePath().getDevicePath().getFullPath()
+              : node.getDevicePath().getFullPath();
+      // orders of insert node is guaranteed by storage engine, just check time in the file
+      // the last chunk group may contain the same data with the logs, ignore such logs in seq file
+      long lastEndTime = tsFileResource.getEndTime(deviceId);
+      long minTimeInNode;
+      if (node instanceof InsertRowNode) {
+        minTimeInNode = ((InsertRowNode) node).getTime();
+      } else {
+        minTimeInNode = ((InsertTabletNode) node).getTimes()[0];
+      }
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTimeInNode && sequence) {
+        return;
+      }
+    }
+    // TODO(getMeasurementSchema)
+    //    plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
+    //    try {
+    //      if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+    //        idTable.getSeriesSchemas(plan);
+    //      } else {
+    //        IoTDB.schemaProcessor.getSeriesSchemasAndReadLockDevice(plan);
+    //        plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));
+    //      }
+    //    } catch (IOException | MetadataException e) {
+    //      throw new QueryProcessException("can't replay insert logs, ", e);
+    //    }
+
+    if (node instanceof InsertRowNode) {
+      if (node.isAligned()) {
+        recoveryMemTable.insertAlignedRow((InsertRowNode) node);
+      } else {
+        recoveryMemTable.insert((InsertRowNode) node);
+      }
+    } else {
+      if (node.isAligned()) {
+        recoveryMemTable.insertAlignedTablet(
+            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
+      } else {
+        recoveryMemTable.insertTablet(
+            (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
       }
     }
   }

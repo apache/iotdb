@@ -16,29 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.auth;
+package org.apache.iotdb.db.service.thrift.impl;
 
-import org.apache.iotdb.confignode.utils.ConfigNodeEnvironmentUtils;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
 
-import org.junit.After;
-import org.junit.Before;
-
-public class AuthorTest {
-
-  IAuthorizer authorizer;
-
-  @Before
-  public void setUp() throws Exception {
-    ConfigNodeEnvironmentUtils.envSetUp();
-    authorizer = BasicAuthorizer.getInstance();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    ConfigNodeEnvironmentUtils.cleanEnv();
-  }
-
-  // TODO: ADD TEST
+public interface TSIEventHandler extends TSIService.Iface {
+  void handleClientExit();
 }
