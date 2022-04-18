@@ -64,7 +64,6 @@ import java.util.List;
 import java.util.Map;
 
 import static junit.framework.TestCase.assertTrue;
-import static org.apache.iotdb.db.engine.storagegroup.DataRegionTest.buildInsertRowNodeByTSRecord;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
