@@ -25,9 +25,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
-
 public class Int64ArrayColumnEncoder implements ColumnEncoder {
 
   @Override
@@ -43,7 +40,7 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
     boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
 
     TSDataType dataType = columnBuilder.getDataType();
-    if (INT64.equals(dataType)) {
+    if (TSDataType.INT64.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators == null || !nullIndicators[i]) {
           columnBuilder.writeLong(input.getLong());
@@ -51,7 +48,7 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
           columnBuilder.appendNull();
         }
       }
-    } else if (DOUBLE.equals(dataType)) {
+    } else if (TSDataType.DOUBLE.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators == null || !nullIndicators[i]) {
           columnBuilder.writeDouble(Double.longBitsToDouble(input.getLong()));
@@ -71,13 +68,13 @@ public class Int64ArrayColumnEncoder implements ColumnEncoder {
 
     TSDataType dataType = column.getDataType();
     int positionCount = column.getPositionCount();
-    if (INT64.equals(dataType)) {
+    if (TSDataType.INT64.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (!column.isNull(i)) {
           output.writeLong(column.getLong(i));
         }
       }
-    } else if (DOUBLE.equals(dataType)) {
+    } else if (TSDataType.DOUBLE.equals(dataType)) {
       for (int i = 0; i < positionCount; i++) {
         if (!column.isNull(i)) {
           output.writeLong(Double.doubleToLongBits(column.getDouble(i)));

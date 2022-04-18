@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.AcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
@@ -191,6 +193,12 @@ public class DataBlockManager implements IDataBlockManager {
   /** Listen to the state changes of a sink handle. */
   class SinkHandleListenerImpl implements SinkHandleListener {
 
+    private final FragmentInstanceContext context;
+
+    public SinkHandleListenerImpl(FragmentInstanceContext context) {
+      this.context = context;
+    }
+
     @Override
     public void onFinish(SinkHandle sinkHandle) {
       logger.info("Release resources of finished sink handle {}", sourceHandles);
@@ -198,10 +206,13 @@ public class DataBlockManager implements IDataBlockManager {
         logger.info("Resources of finished sink handle {} has already been released", sinkHandle);
       }
       sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
+      context.finish();
     }
 
     @Override
-    public void onClosed(SinkHandle sinkHandle) {}
+    public void onClosed(SinkHandle sinkHandle) {
+      context.flushing();
+    }
 
     @Override
     public void onAborted(SinkHandle sinkHandle) {
@@ -236,7 +247,7 @@ public class DataBlockManager implements IDataBlockManager {
   }
 
   public DataBlockServiceImpl getOrCreateDataBlockServiceImpl() {
-    if (dataBlockService != null) {
+    if (dataBlockService == null) {
       dataBlockService = new DataBlockServiceImpl();
     }
     return dataBlockService;
@@ -245,11 +256,10 @@ public class DataBlockManager implements IDataBlockManager {
   @Override
   public ISinkHandle createSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
-      String remoteHostname,
-      int remotePort,
+      Endpoint endpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
-      String remotePlanNodeId)
-      throws IOException {
+      String remotePlanNodeId,
+      FragmentInstanceContext instanceContext) {
     if (sinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException("Sink handle for " + localFragmentInstanceId + " exists.");
     }
@@ -262,15 +272,15 @@ public class DataBlockManager implements IDataBlockManager {
 
     SinkHandle sinkHandle =
         new SinkHandle(
-            remoteHostname,
+            endpoint.toString(),
             remoteFragmentInstanceId,
             remotePlanNodeId,
             localFragmentInstanceId,
             localMemoryManager,
             executorService,
-            clientFactory.getDataBlockServiceClient(remoteHostname, remotePort),
+            clientFactory.getDataBlockServiceClient(endpoint),
             tsBlockSerdeFactory.get(),
-            new SinkHandleListenerImpl());
+            new SinkHandleListenerImpl(instanceContext));
     sinkHandles.put(localFragmentInstanceId, sinkHandle);
     return sinkHandle;
   }
@@ -279,10 +289,8 @@ public class DataBlockManager implements IDataBlockManager {
   public ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
-      String remoteHostname,
-      int remotePort,
-      TFragmentInstanceId remoteFragmentInstanceId)
-      throws IOException {
+      Endpoint endpoint,
+      TFragmentInstanceId remoteFragmentInstanceId) {
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
@@ -301,13 +309,13 @@ public class DataBlockManager implements IDataBlockManager {
 
     SourceHandle sourceHandle =
         new SourceHandle(
-            remoteHostname,
+            endpoint.getIp(),
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
             localMemoryManager,
             executorService,
-            clientFactory.getDataBlockServiceClient(remoteHostname, remotePort),
+            clientFactory.getDataBlockServiceClient(endpoint),
             tsBlockSerdeFactory.get(),
             new SourceHandleListenerImpl());
     sourceHandles

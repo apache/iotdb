@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -33,6 +34,14 @@ public class StubSinkHandle implements ISinkHandle {
   private final ListenableFuture<Void> NOT_BLOCKED = immediateVoidFuture();
 
   private final List<TsBlock> tsBlocks = new ArrayList<>();
+
+  private final FragmentInstanceContext instanceContext;
+
+  private boolean closed = false;
+
+  public StubSinkHandle(FragmentInstanceContext instanceContext) {
+    this.instanceContext = instanceContext;
+  }
 
   @Override
   public long getBufferRetainedSizeInBytes() {
@@ -64,7 +73,7 @@ public class StubSinkHandle implements ISinkHandle {
 
   @Override
   public boolean isClosed() {
-    return false;
+    return closed;
   }
 
   @Override
@@ -74,7 +83,11 @@ public class StubSinkHandle implements ISinkHandle {
 
   @Override
   public void close() {
-    tsBlocks.clear();
+    if (closed) {
+      return;
+    }
+    closed = true;
+    instanceContext.flushing();
   }
 
   @Override

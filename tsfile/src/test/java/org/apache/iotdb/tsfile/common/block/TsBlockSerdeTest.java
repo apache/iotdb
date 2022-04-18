@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnEncoding;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -45,18 +46,24 @@ public class TsBlockSerdeTest {
     dataTypes.add(TSDataType.FLOAT);
     dataTypes.add(TSDataType.INT64);
     dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.BOOLEAN);
+    dataTypes.add(TSDataType.TEXT);
     TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(dataTypes);
     ColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder intColumnBuilder = tsBlockBuilder.getColumnBuilder(0);
     ColumnBuilder floatColumnBuilder = tsBlockBuilder.getColumnBuilder(1);
     ColumnBuilder longColumnBuilder = tsBlockBuilder.getColumnBuilder(2);
     ColumnBuilder doubleColumnBuilder = tsBlockBuilder.getColumnBuilder(3);
+    ColumnBuilder booleanColumnBuilder = tsBlockBuilder.getColumnBuilder(4);
+    ColumnBuilder binaryColumnBuilder = tsBlockBuilder.getColumnBuilder(5);
     for (int i = 0; i < positionCount; i++) {
       timeColumnBuilder.writeLong(i);
       intColumnBuilder.writeInt(i);
       floatColumnBuilder.writeFloat(i + i / 10F);
       longColumnBuilder.writeLong(i);
       doubleColumnBuilder.writeDouble(i + i / 10D);
+      booleanColumnBuilder.writeBoolean(true);
+      binaryColumnBuilder.writeBinary(new Binary("foo"));
       tsBlockBuilder.declarePosition();
     }
 
@@ -65,17 +72,21 @@ public class TsBlockSerdeTest {
       ByteBuffer output = tsBlockSerde.serialize(tsBlockBuilder.build());
       output.rewind();
       int valueColumnCount = output.getInt();
-      Assert.assertEquals(4, valueColumnCount);
+      Assert.assertEquals(6, valueColumnCount);
       Assert.assertEquals(TSDataType.INT32, TSDataType.deserialize(output.get()));
       Assert.assertEquals(TSDataType.FLOAT, TSDataType.deserialize(output.get()));
       Assert.assertEquals(TSDataType.INT64, TSDataType.deserialize(output.get()));
       Assert.assertEquals(TSDataType.DOUBLE, TSDataType.deserialize(output.get()));
+      Assert.assertEquals(TSDataType.BOOLEAN, TSDataType.deserialize(output.get()));
+      Assert.assertEquals(TSDataType.TEXT, TSDataType.deserialize(output.get()));
       Assert.assertEquals(positionCount, output.getInt());
       Assert.assertEquals(ColumnEncoding.INT64_ARRAY, ColumnEncoding.deserializeFrom(output));
       Assert.assertEquals(ColumnEncoding.INT32_ARRAY, ColumnEncoding.deserializeFrom(output));
       Assert.assertEquals(ColumnEncoding.INT32_ARRAY, ColumnEncoding.deserializeFrom(output));
       Assert.assertEquals(ColumnEncoding.INT64_ARRAY, ColumnEncoding.deserializeFrom(output));
       Assert.assertEquals(ColumnEncoding.INT64_ARRAY, ColumnEncoding.deserializeFrom(output));
+      Assert.assertEquals(ColumnEncoding.BYTE_ARRAY, ColumnEncoding.deserializeFrom(output));
+      Assert.assertEquals(ColumnEncoding.BINARY_ARRAY, ColumnEncoding.deserializeFrom(output));
 
       output.rewind();
       TsBlock tsBlock = tsBlockSerde.deserialize(output);
@@ -84,11 +95,15 @@ public class TsBlockSerdeTest {
       Assert.assertEquals(TSDataType.FLOAT, tsBlock.getColumn(1).getDataType());
       Assert.assertEquals(TSDataType.INT64, tsBlock.getColumn(2).getDataType());
       Assert.assertEquals(TSDataType.DOUBLE, tsBlock.getColumn(3).getDataType());
+      Assert.assertEquals(TSDataType.BOOLEAN, tsBlock.getColumn(4).getDataType());
+      Assert.assertEquals(TSDataType.TEXT, tsBlock.getColumn(5).getDataType());
       Assert.assertEquals(positionCount, tsBlock.getPositionCount());
       Assert.assertEquals(ColumnEncoding.INT32_ARRAY, tsBlock.getColumn(0).getEncoding());
       Assert.assertEquals(ColumnEncoding.INT32_ARRAY, tsBlock.getColumn(1).getEncoding());
       Assert.assertEquals(ColumnEncoding.INT64_ARRAY, tsBlock.getColumn(2).getEncoding());
       Assert.assertEquals(ColumnEncoding.INT64_ARRAY, tsBlock.getColumn(3).getEncoding());
+      Assert.assertEquals(ColumnEncoding.BYTE_ARRAY, tsBlock.getColumn(4).getEncoding());
+      Assert.assertEquals(ColumnEncoding.BINARY_ARRAY, tsBlock.getColumn(5).getEncoding());
     } catch (IOException e) {
       e.printStackTrace();
       Assert.fail();
