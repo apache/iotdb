@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 
 public class PermissionManager {
@@ -32,6 +33,10 @@ public class PermissionManager {
 
   public TSStatus operatePermission(AuthorPlan authorPlan) {
     return getConsensusManager().write(authorPlan).getStatus();
+  }
+
+  public PermissionInfoDataSet queryPermission(AuthorPlan authorPlan) {
+    return (PermissionInfoDataSet) getConsensusManager().read(authorPlan).getDataset();
   }
 
   private ConsensusManager getConsensusManager() {

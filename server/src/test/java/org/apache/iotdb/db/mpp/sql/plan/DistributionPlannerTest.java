@@ -45,6 +45,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -99,7 +100,7 @@ public class DistributionPlannerTest {
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
     PlanNode newRoot = planner.rewriteSource();
-    assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
+    assertEquals(4, newRoot.getChildren().get(0).getChildren().size());
   }
 
   @Test
@@ -181,7 +182,12 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
     PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
-    assertEquals(rootWithExchange.getChildren().get(0).getChildren().size(), 3);
+    assertEquals(4, rootWithExchange.getChildren().get(0).getChildren().size());
+    int exchangeNodeCount = 0;
+    for (PlanNode child : rootWithExchange.getChildren().get(0).getChildren()) {
+      exchangeNodeCount += child instanceof ExchangeNode ? 1 : 0;
+    }
+    assertEquals(2, exchangeNodeCount);
   }
 
   @Test

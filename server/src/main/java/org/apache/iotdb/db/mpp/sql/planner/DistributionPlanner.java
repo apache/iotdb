@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanN
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -376,9 +377,15 @@ public class DistributionPlanner {
 
     private RegionReplicaSet calculateDataRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
-      // We always make the dataRegion of TimeJoinNode to be the same as its first child.
-      // TODO: (xingtanzjr) We need to implement more suitable policies here
-      return context.getNodeDistribution(children.get(0).getPlanNodeId()).region;
+      // Step 1: calculate the count of children group by DataRegion.
+      Map<RegionReplicaSet, Long> groupByRegion =
+          children.stream()
+              .collect(
+                  Collectors.groupingBy(
+                      child -> context.getNodeDistribution(child.getPlanNodeId()).region,
+                      Collectors.counting()));
+      // Step 2: return the RegionReplicaSet with max count
+      return Collections.max(groupByRegion.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
     private RegionReplicaSet calculateSchemaRegionByChildren(

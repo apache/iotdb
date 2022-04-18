@@ -35,9 +35,15 @@ import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 
 public class SingleInputColumnMultiReferenceIntermediateLayer extends IntermediateLayer {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SingleInputColumnMultiReferenceIntermediateLayer.class);
 
   private final LayerPointReader parentLayerPointReader;
   private final TSDataType dataType;
@@ -220,6 +226,14 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
         beginIndex += slidingStep;
         int endIndex = beginIndex + windowSize;
+        if (beginIndex < 0 || endIndex < 0) {
+          LOGGER.warn(
+              "SingleInputColumnMultiReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              beginIndex,
+              endIndex,
+              windowSize);
+          return false;
+        }
 
         int pointsToBeCollected = endIndex - tvList.size();
         if (0 < pointsToBeCollected) {

@@ -91,7 +91,6 @@ public class DataDriver implements Driver {
           closed || (driverBlockedFuture.get().isDone() && root != null && root.isFinished());
       if (isFinished) {
         close();
-        driverContext.finish();
       }
       return isFinished;
     } catch (Throwable t) {
@@ -155,6 +154,9 @@ public class DataDriver implements Driver {
 
   @Override
   public void close() {
+    if (closed) {
+      return;
+    }
     closed = true;
     try {
       if (root != null) {

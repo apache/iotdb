@@ -43,4 +43,8 @@ public class DriverContext {
   public void finish() {
     fragmentInstanceContext.finish();
   }
+
+  public void flushing() {
+    fragmentInstanceContext.flushing();
+  }
 }

@@ -59,7 +59,7 @@ public class SinkHandle implements ISinkHandle {
   private final TFragmentInstanceId localFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
-  private final DataBlockService.Client client;
+  private final DataBlockService.Iface client;
   private final TsBlockSerde serde;
   private final SinkHandleListener sinkHandleListener;
 
@@ -82,7 +82,7 @@ public class SinkHandle implements ISinkHandle {
       TFragmentInstanceId localFragmentInstanceId,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
-      DataBlockService.Client client,
+      DataBlockService.Iface client,
       TsBlockSerde serde,
       SinkHandleListener sinkHandleListener) {
     this.remoteHostname = Validate.notNull(remoteHostname);
@@ -108,8 +108,8 @@ public class SinkHandle implements ISinkHandle {
     // TODO: (xingtanzjr)
     // We temporarily make it sync instead of async to avoid EOS Event(SinkHandle close() method is
     // called) is sent before NewDataBlockEvent arrived
-    new SendNewDataBlockEventTask(startSequenceId, blockSizes).run();
-    //    executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
+    //    new SendNewDataBlockEventTask(startSequenceId, blockSizes).run();
+    executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
   }
 
   @Override
@@ -359,7 +359,8 @@ public class SinkHandle implements ISinkHandle {
               remotePlanNodeId,
               remoteFragmentInstanceId,
               e.getMessage(),
-              attempt);
+              attempt,
+              e);
           if (attempt == MAX_ATTEMPT_TIMES) {
             synchronized (this) {
               throwable = e;
