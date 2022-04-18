@@ -43,12 +43,17 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -57,10 +62,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -72,6 +80,7 @@ public class ReadPointCompactionPerformer
   private List<TsFileResource> unseqFiles = Collections.emptyList();
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
+  private Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new HashMap<>();
 
   private List<TsFileResource> targetFiles = Collections.emptyList();
 
@@ -127,6 +136,7 @@ public class ReadPointCompactionPerformer
       updateDeviceStartTimeAndEndTime(targetFiles, compactionWriter);
       updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
     } finally {
+      clearReaderCache();
       QueryResourceManager.getInstance().endQuery(queryId);
     }
   }
@@ -192,19 +202,20 @@ public class ReadPointCompactionPerformer
       AbstractCompactionWriter compactionWriter,
       QueryContext queryContext,
       QueryDataSource queryDataSource)
-      throws MetadataException, IOException, InterruptedException {
-    boolean hasStartChunkGroup = false;
+      throws IOException, InterruptedException, IllegalPathException {
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
+    ConcurrentHashMap<String, MeasurementSchema> schemaMap =
+        getMeasurementSchemaForNotAlignedDevice(device, allMeasurements);
 
     // assign all measurements to different sub tasks
     Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
     int idx = 0;
     for (String measurement : allMeasurements) {
       if (measurementsForEachSubTask[idx % subTaskNums] == null) {
-        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<String>();
+        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<>();
       }
       measurementsForEachSubTask[idx++ % subTaskNums].add(measurement);
     }
@@ -222,6 +233,7 @@ public class ReadPointCompactionPerformer
                       queryContext,
                       queryDataSource,
                       compactionWriter,
+                      schemaMap,
                       i)));
     }
 
@@ -237,6 +249,60 @@ public class ReadPointCompactionPerformer
     }
 
     compactionWriter.endChunkGroup();
+  }
+
+  private ConcurrentHashMap<String, MeasurementSchema> getMeasurementSchemaForNotAlignedDevice(
+      String device, Set<String> measurements) throws IllegalPathException, IOException {
+    ConcurrentHashMap<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
+    List<TsFileResource> allResources = new LinkedList<>(seqFiles);
+    allResources.addAll(unseqFiles);
+    for (String measurement : measurements) {
+      for (TsFileResource tsFileResource : allResources) {
+        if (!tsFileResource.mayContainsDevice(device)) {
+          continue;
+        }
+        MeasurementSchema schema =
+            getMeasurementSchemaFromReader(
+                readerCacheMap.computeIfAbsent(
+                    tsFileResource,
+                    x -> {
+                      try {
+                        return new TsFileSequenceReader(x.getTsFilePath());
+                      } catch (IOException e) {
+                        throw new RuntimeException(
+                            String.format(
+                                "Failed to construct sequence reader for %s", tsFileResource));
+                      }
+                    }),
+                device,
+                measurement);
+        if (schema != null) {
+          schemaMap.put(measurement, schema);
+          break;
+        }
+      }
+    }
+    return schemaMap;
+  }
+
+  private MeasurementSchema getMeasurementSchemaFromReader(
+      TsFileSequenceReader reader, String device, String measurement)
+      throws IllegalPathException, IOException {
+    List<ChunkMetadata> chunkMetadata =
+        reader.getChunkMetadataList(new PartialPath(device, measurement));
+    if (chunkMetadata.size() > 0) {
+      Chunk chunk = reader.readMemChunk(chunkMetadata.get(0));
+      ChunkHeader header = chunk.getHeader();
+      return new MeasurementSchema(
+          measurement, header.getDataType(), header.getEncodingType(), header.getCompressionType());
+    }
+    return null;
+  }
+
+  private void clearReaderCache() throws IOException {
+    for (TsFileSequenceReader reader : readerCacheMap.values()) {
+      reader.close();
+    }
   }
 
   private static void updateDeviceStartTimeAndEndTime(
