@@ -122,8 +122,9 @@ public class TimeJoinOperator implements ProcessOperator {
     }
 
     if (timeSelector.isEmpty()) {
-      // TODO need to discuss whether to return null or return an empty TSBlock with TsBlockMetadata
-      return null;
+      // return empty TsBlock
+      TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(0, dataTypes);
+      return tsBlockBuilder.build();
     }
 
     TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();

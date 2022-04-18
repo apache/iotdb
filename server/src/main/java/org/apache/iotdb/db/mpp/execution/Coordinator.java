@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.config.ConfigExecution;
+import org.apache.iotdb.db.mpp.sql.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
@@ -42,9 +44,9 @@ import java.util.concurrent.ScheduledExecutorService;
  */
 public class Coordinator {
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
-  private static final int COORDINATOR_EXECUTOR_SIZE = 10;
+  private static final int COORDINATOR_EXECUTOR_SIZE = 2;
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
-  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
+  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 2;
 
   private static final Endpoint LOCAL_HOST =
       new Endpoint(
@@ -64,20 +66,33 @@ public class Coordinator {
     this.scheduledExecutor = getScheduledExecutor();
   }
 
-  private IQueryExecution createQueryExecution(Statement statement, MPPQueryContext queryContext) {
+  private IQueryExecution createQueryExecution(
+      Statement statement,
+      MPPQueryContext queryContext,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
     if (statement instanceof SetStorageGroupStatement) {
       queryContext.setQueryType(QueryType.WRITE);
       return new ConfigExecution(queryContext, statement, executor);
     }
-    return new QueryExecution(statement, queryContext, executor, scheduledExecutor);
+    return new QueryExecution(
+        statement, queryContext, executor, scheduledExecutor, partitionFetcher, schemaFetcher);
   }
 
   public ExecutionResult execute(
-      Statement statement, QueryId queryId, SessionInfo session, String sql) {
+      Statement statement,
+      QueryId queryId,
+      SessionInfo session,
+      String sql,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
 
     IQueryExecution execution =
         createQueryExecution(
-            statement, new MPPQueryContext(sql, queryId, session, getHostEndpoint()));
+            statement,
+            new MPPQueryContext(sql, queryId, session, getHostEndpoint()),
+            partitionFetcher,
+            schemaFetcher);
     queryExecutionMap.put(queryId, execution);
 
     execution.start();
