@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.engine.trigger.executor;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationInformation;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -57,7 +55,7 @@ public class TriggerEngine {
       if (mNode == null) {
         continue;
       }
-      for(TriggerExecutor executor : mNode.getUpperTriggerExecutorList()){
+      for (TriggerExecutor executor : mNode.getUpperTriggerExecutorList()) {
         executor.fireIfActivated(event, timestamp, values[i], mNode.getSchema().getType());
       }
     }
@@ -84,7 +82,7 @@ public class TriggerEngine {
       if (mNode == null) {
         continue;
       }
-      for(TriggerExecutor executor : mNode.getUpperTriggerExecutorList()){
+      for (TriggerExecutor executor : mNode.getUpperTriggerExecutorList()) {
         executor.fireIfActivated(event, timestamps, columns[i], mNode.getSchema().getType());
       }
     }

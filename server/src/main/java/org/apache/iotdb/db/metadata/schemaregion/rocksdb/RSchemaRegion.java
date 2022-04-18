@@ -654,7 +654,8 @@ public class RSchemaRegion implements ISchemaRegion {
           }
           Set<IMNode> tempSet = ConcurrentHashMap.newKeySet();
 
-          parentNeedsToCheck.parallelStream()
+          parentNeedsToCheck
+              .parallelStream()
               .forEach(
                   currentNode -> {
                     if (!currentNode.isStorageGroup()) {
@@ -753,7 +754,8 @@ public class RSchemaRegion implements ISchemaRegion {
           RSchemaUtils.getSuffixOfLevelPath(
               ArrayUtils.subarray(nodes, firstNonWildcardIndex, nextFirstWildcardIndex), level);
 
-      scanKeys.parallelStream()
+      scanKeys
+          .parallelStream()
           .forEach(
               prefixNodes -> {
                 String levelPrefix =
@@ -957,7 +959,8 @@ public class RSchemaRegion implements ISchemaRegion {
               .append(upperLevel)
               .toString();
       Set<String> parentPaths = readWriteHandler.getAllByPrefix(prefix);
-      parentPaths.parallelStream()
+      parentPaths
+          .parallelStream()
           .forEach(
               x -> {
                 String targetPrefix = RSchemaUtils.getNextLevelOfPath(x, upperLevel);

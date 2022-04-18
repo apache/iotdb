@@ -165,7 +165,7 @@ public abstract class MNode implements IMNode {
   @Override
   public List<TriggerExecutor> getUpperTriggerExecutorList() {
     IMNode currentNode = this;
-    List<TriggerExecutor>  results = new ArrayList<>();
+    List<TriggerExecutor> results = new ArrayList<>();
     while (currentNode != null && !IoTDBConstant.PATH_ROOT.equals(currentNode.getName())) {
       TriggerExecutor executor = currentNode.getTriggerExecutor();
       currentNode = currentNode.getParent();
