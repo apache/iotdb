@@ -270,8 +270,12 @@ public class SeriesScanUtil {
 
     if (firstChunkMetadata != null) {
       return true;
+      // hasNextFile() has not been invoked
+    } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
+      return false;
     }
 
+    /** Why using hasNextFile here? In this case, fileStatistics will never be used. */
     while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
       initFirstChunkMetadata();
     }

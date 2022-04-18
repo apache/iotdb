@@ -43,6 +43,15 @@ public class GroupByTimeComponent extends StatementNode {
 
   public GroupByTimeComponent() {}
 
+  public GroupByTimeComponent(
+      long startTime, long endTime, long interval, long slidingStep, boolean leftCRightO) {
+    this.startTime = startTime;
+    this.endTime = endTime;
+    this.interval = interval;
+    this.slidingStep = slidingStep;
+    this.leftCRightO = leftCRightO;
+  }
+
   public boolean isLeftCRightO() {
     return leftCRightO;
   }
