@@ -66,7 +66,7 @@ public class ArithmeticNegationTransformer extends Transformer {
           break;
         default:
           throw new QueryProcessException(
-                  "Unsupported data type: " + layerPointReader.getDataType().toString());
+              "Unsupported data type: " + layerPointReader.getDataType().toString());
       }
     }
     layerPointReader.readyForNext();

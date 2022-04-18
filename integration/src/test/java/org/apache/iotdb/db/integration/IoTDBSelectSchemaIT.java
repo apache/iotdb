@@ -38,69 +38,64 @@ import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBSelectSchemaIT {
-    private static String INSERTION_SQLS =
-            "insert into root.sg.d1(time, s1, s2, s3) values (1, 1, 2, 3.0);";
+  private static String INSERTION_SQLS =
+      "insert into root.sg.d1(time, s1, s2, s3) values (1, 1, 2, 3.0);";
 
-    private static void createTimeSeries() {
-        try (Connection connection = EnvFactory.getEnv().getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute("SET STORAGE GROUP TO root.sg");
-            statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
-            statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
-            statement.execute("CREATE TIMESERIES root.sg.d1.s3 with datatype=DOUBLE,encoding=PLAIN");
-        } catch (SQLException throwable) {
-            fail(throwable.getMessage());
-        }
+  private static void createTimeSeries() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.sg");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d1.s3 with datatype=DOUBLE,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
     }
+  }
 
-    @BeforeClass
-    public static void setUp() throws Exception {
-        EnvFactory.getEnv().initBeforeClass();
-        createTimeSeries();
-        generateData();
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
+    createTimeSeries();
+    generateData();
+  }
+
+  private static void generateData() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(INSERTION_SQLS);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
     }
+  }
 
-    private static void generateData() {
-        try (Connection connection = EnvFactory.getEnv().getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.execute(INSERTION_SQLS);
-        } catch (SQLException throwable) {
-            fail(throwable.getMessage());
-        }
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
+  }
+
+  @Test
+  public void testSchemaExpression() {
+    String[] expressions = {
+      "-2+s1", "-(-1)+s1",
+    };
+    String[] completeExpressions = {
+      "-2+root.sg.d1.s1", "--1+root.sg.d1.s1",
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format("select %s, %s from root.sg.d1", expressions[0], expressions[1]));
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + expressions.length, columnCount);
+
+      for (int i = 0; i < expressions.length; ++i) {
+        assertEquals(
+            completeExpressions[i], resultSet.getMetaData().getColumnName(i + 2).replace(" ", ""));
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
     }
-
-    @AfterClass
-    public static void tearDown() throws Exception {
-        EnvFactory.getEnv().cleanAfterClass();
-    }
-
-    @Test
-    public void testSchemaExpression() {
-        String[] expressions = {
-                "-2+s1",
-                "-(-1)+s1",
-        };
-        String[] completeExpressions = {
-                "-2+root.sg.d1.s1",
-                "--1+root.sg.d1.s1",
-        };
-        try (Connection connection = EnvFactory.getEnv().getConnection();
-             Statement statement = connection.createStatement()) {
-            ResultSet resultSet =
-                    statement.executeQuery(
-                            String.format(
-                                    "select %s, %s from root.sg.d1",
-                                    expressions[0],
-                                    expressions[1]));
-            int columnCount = resultSet.getMetaData().getColumnCount();
-            assertEquals(1 + expressions.length, columnCount);
-
-            for (int i = 0; i < expressions.length; ++i) {
-                assertEquals(
-                        completeExpressions[i], resultSet.getMetaData().getColumnName(i + 2).replace(" ", ""));
-            }
-        } catch (SQLException throwable) {
-            fail(throwable.getMessage());
-        }
-    }
+  }
 }
