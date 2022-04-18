@@ -158,7 +158,7 @@ public class DataDriverTest {
               dataRegion,
               ImmutableList.of(seriesScanOperator1, seriesScanOperator2));
 
-      StubSinkHandle sinkHandle = new StubSinkHandle();
+      StubSinkHandle sinkHandle = new StubSinkHandle(fragmentInstanceContext);
 
       try (Driver dataDriver = new DataDriver(limitOperator, sinkHandle, driverContext)) {
         assertEquals(fragmentInstanceContext.getId(), dataDriver.getInfo());
@@ -171,7 +171,7 @@ public class DataDriverTest {
           assertTrue(blocked.isDone());
         }
 
-        assertEquals(FragmentInstanceState.FINISHED, state.get());
+        assertEquals(FragmentInstanceState.FLUSHING, state.get());
 
         List<TsBlock> result = sinkHandle.getTsBlocks();
         assertEquals(13, result.size());

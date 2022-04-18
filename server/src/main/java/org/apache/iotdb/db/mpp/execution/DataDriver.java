@@ -91,7 +91,6 @@ public class DataDriver implements Driver {
           closed || (driverBlockedFuture.get().isDone() && root != null && root.isFinished());
       if (isFinished) {
         close();
-        driverContext.finish();
       }
       return isFinished;
     } catch (Throwable t) {

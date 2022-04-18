@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
@@ -246,19 +247,16 @@ public class QueryExecution implements IQueryExecution {
 
   private void initResultHandle() {
     if (this.resultHandle == null) {
-      try {
-        this.resultHandle =
-            DataBlockService.getInstance()
-                .getDataBlockManager()
-                .createSourceHandle(
-                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                    context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                    context.getResultNodeContext().getUpStreamEndpoint().getIp(),
-                    IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort(),
-                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
-      } catch (IOException e) {
-        stateMachine.transitionToFailed();
-      }
+      this.resultHandle =
+          DataBlockService.getInstance()
+              .getDataBlockManager()
+              .createSourceHandle(
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                  new Endpoint(
+                      context.getResultNodeContext().getUpStreamEndpoint().getIp(),
+                      IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
     }
   }
 

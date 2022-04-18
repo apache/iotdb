@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
@@ -54,9 +55,11 @@ public class SimpleQueryTerminator implements IQueryTerminator {
             () -> {
               try {
                 for (Endpoint endpoint : relatedHost) {
-                  InternalService.Client client =
-                      InternalServiceClientFactory.getInternalServiceClient(
-                          endpoint.getIp(), endpoint.getPort());
+                  InternalService.Iface client =
+                      InternalServiceClientFactory.getMppServiceClient(
+                          new Endpoint(
+                              endpoint.getIp(),
+                              IoTDBDescriptor.getInstance().getConfig().getMppPort()));
                   client.cancelQuery(new TCancelQueryReq(queryId.getId()));
                 }
               } catch (TException e) {

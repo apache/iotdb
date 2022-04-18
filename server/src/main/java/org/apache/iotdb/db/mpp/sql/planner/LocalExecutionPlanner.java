@@ -68,7 +68,6 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -301,18 +300,15 @@ public class LocalExecutionPlanner {
       FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
       Endpoint source = node.getUpstreamEndpoint();
 
-      try {
-        ISourceHandle sourceHandle =
-            DATA_BLOCK_MANAGER.createSourceHandle(
-                localInstanceId.toThrift(),
-                node.getPlanNodeId().getId(),
-                source.getIp(),
-                IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort(),
-                remoteInstanceId.toThrift());
-        return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
-      } catch (IOException e) {
-        throw new RuntimeException("Error happened while creating source handle", e);
-      }
+      ISourceHandle sourceHandle =
+          DATA_BLOCK_MANAGER.createSourceHandle(
+              localInstanceId.toThrift(),
+              node.getPlanNodeId().getId(),
+              new Endpoint(
+                  source.getIp(),
+                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+              remoteInstanceId.toThrift());
+      return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     }
 
     @Override
@@ -321,19 +317,17 @@ public class LocalExecutionPlanner {
       Endpoint target = node.getDownStreamEndpoint();
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
-      try {
-        ISinkHandle sinkHandle =
-            DATA_BLOCK_MANAGER.createSinkHandle(
-                localInstanceId.toThrift(),
-                target.getIp(),
-                IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort(),
-                targetInstanceId.toThrift(),
-                node.getDownStreamPlanNodeId().getId());
-        context.setSinkHandle(sinkHandle);
-        return child;
-      } catch (IOException e) {
-        throw new RuntimeException("Error happened while creating sink handle", e);
-      }
+      ISinkHandle sinkHandle =
+          DATA_BLOCK_MANAGER.createSinkHandle(
+              localInstanceId.toThrift(),
+              new Endpoint(
+                  target.getIp(),
+                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+              targetInstanceId.toThrift(),
+              node.getDownStreamPlanNodeId().getId(),
+              context.instanceContext);
+      context.setSinkHandle(sinkHandle);
+      return child;
     }
 
     @Override
