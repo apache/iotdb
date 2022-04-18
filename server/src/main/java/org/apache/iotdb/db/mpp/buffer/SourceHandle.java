@@ -59,7 +59,7 @@ public class SourceHandle implements ISourceHandle {
   private final String localPlanNodeId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
-  private final DataBlockService.Client client;
+  private final DataBlockService.Iface client;
   private final TsBlockSerde serde;
   private final SourceHandleListener sourceHandleListener;
 
@@ -83,7 +83,7 @@ public class SourceHandle implements ISourceHandle {
       String localPlanNodeId,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
-      DataBlockService.Client client,
+      DataBlockService.Iface client,
       TsBlockSerde serde,
       SourceHandleListener sourceHandleListener) {
     this.remoteHostname = Validate.notNull(remoteHostname);
@@ -242,7 +242,7 @@ public class SourceHandle implements ISourceHandle {
     return throwable == null
         && noMoreTsBlocks
         && numActiveGetDataBlocksTask == 0
-        && nextSequenceId - 1 == lastSequenceId
+        && currSequenceId - 1 == lastSequenceId
         && sequenceIdToTsBlock.isEmpty();
   }
 
