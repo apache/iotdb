@@ -123,12 +123,12 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public SchemaFetchResponse fetchSchema(SchemaFetchRequest req) throws TException {
+  public TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req) throws TException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public TSStatus createSchemaRegion(CreateSchemaRegionReq req) throws TException {
+  public TSStatus createSchemaRegion(TCreateSchemaRegionReq req) throws TException {
     TSStatus tsStatus;
     try {
       PartialPath storageGroupPartitionPath = new PartialPath(req.getStorageGroup());
@@ -169,7 +169,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSStatus createDataRegion(CreateDataRegionReq req) throws TException {
+  public TSStatus createDataRegion(TCreateDataRegionReq req) throws TException {
     TSStatus tsStatus;
     try {
       TRegionReplicaSet regionReplicaSet = req.getRegionReplicaSet();
@@ -203,12 +203,12 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public TSStatus migrateSchemaRegion(MigrateSchemaRegionReq req) throws TException {
+  public TSStatus migrateSchemaRegion(TMigrateSchemaRegionReq req) throws TException {
     return null;
   }
 
   @Override
-  public TSStatus migrateDataRegion(MigrateDataRegionReq req) throws TException {
+  public TSStatus migrateDataRegion(TMigrateDataRegionReq req) throws TException {
     return null;
   }
 

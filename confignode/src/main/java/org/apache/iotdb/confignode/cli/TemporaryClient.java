@@ -22,9 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
-import org.apache.iotdb.mpp.rpc.thrift.CreateDataRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.CreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -82,9 +82,9 @@ public class TemporaryClient {
     LOGGER.error("Build client to DataNode: {} failed.", endpoint);
   }
 
-  private CreateSchemaRegionReq genCreateSchemaRegionReq(
+  private TCreateSchemaRegionReq genCreateSchemaRegionReq(
       String storageGroup, RegionReplicaSet regionReplicaSet) {
-    CreateSchemaRegionReq req = new CreateSchemaRegionReq();
+    TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet.convertToRPCTRegionReplicaSet());
     return req;
@@ -99,7 +99,7 @@ public class TemporaryClient {
           DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
     }
 
-    CreateSchemaRegionReq req = genCreateSchemaRegionReq(storageGroup, regionReplicaSet);
+    TCreateSchemaRegionReq req = genCreateSchemaRegionReq(storageGroup, regionReplicaSet);
     if (clients.get(dataNodeId) != null) {
       for (int i = 0; i < retryNum; i++) {
         try {
@@ -134,9 +134,9 @@ public class TemporaryClient {
         DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
   }
 
-  private CreateDataRegionReq genCreateDataRegionReq(
+  private TCreateDataRegionReq genCreateDataRegionReq(
       String storageGroup, RegionReplicaSet regionReplicaSet, long TTL) {
-    CreateDataRegionReq req = new CreateDataRegionReq();
+    TCreateDataRegionReq req = new TCreateDataRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet.convertToRPCTRegionReplicaSet());
     req.setTtl(TTL);
@@ -152,7 +152,7 @@ public class TemporaryClient {
           DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
     }
 
-    CreateDataRegionReq req = genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL);
+    TCreateDataRegionReq req = genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL);
     if (clients.get(dataNodeId) != null) {
       for (int i = 0; i < retryNum; i++) {
         try {
