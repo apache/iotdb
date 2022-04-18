@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import static java.util.Objects.requireNonNull;
-import java.util.stream.Collectors;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -73,6 +67,14 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Objects.requireNonNull;
 
 /**
  * used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
