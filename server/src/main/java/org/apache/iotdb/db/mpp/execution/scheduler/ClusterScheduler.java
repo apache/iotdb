@@ -28,6 +28,8 @@ import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import io.airlift.units.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -43,6 +45,8 @@ import java.util.concurrent.ScheduledExecutorService;
  * this scheduler.
  */
 public class ClusterScheduler implements IScheduler {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterScheduler.class);
+
   private MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
   private QueryStateMachine stateMachine;
@@ -79,13 +83,16 @@ public class ClusterScheduler implements IScheduler {
 
   @Override
   public void start() {
+    LOGGER.info("[{}] start to dispatch fragment instance. size: {}", queryContext.getQueryId(), instances.size());
     stateMachine.transitionToDispatching();
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
 
     // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
     // So we need to start the state fetcher after the dispatching stage.
     try {
+      LOGGER.info("[{}] wait dispatch to be finished", queryContext.getQueryId());
       FragInstanceDispatchResult result = dispatchResultFuture.get();
+      LOGGER.info("[{}] dispatch finished: ", result.isSuccessful());
       if (!result.isSuccessful()) {
         stateMachine.transitionToFailed(new IllegalStateException("Fragment cannot be dispatched"));
         return;

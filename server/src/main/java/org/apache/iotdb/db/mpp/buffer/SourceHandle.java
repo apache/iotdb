@@ -120,6 +120,7 @@ public class SourceHandle implements ISourceHandle {
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
         blocked = SettableFuture.create();
+        logger.info("[SourceHandle {}]: blocked is set to new Future.", localPlanNodeId);
       }
     }
     if (isFinished()) {
@@ -210,6 +211,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   synchronized void setNoMoreTsBlocks(int lastSequenceId) {
+    logger.info("[SourceHandle {}-{}]: No more TsBlock. {} ", localFragmentInstanceId, localPlanNodeId, remoteFragmentInstanceId);
     this.lastSequenceId = lastSequenceId;
     noMoreTsBlocks = true;
   }
@@ -223,8 +225,13 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized void close() {
+    logger.info("[SourceHandle {}-{}]: closed ", localFragmentInstanceId, localPlanNodeId);
     if (closed) {
       return;
+    }
+    if (blocked != null && !blocked.isDone()) {
+      blocked.cancel(true);
+      logger.info("[SourceHandle {}]: blocked is cancelled.", localPlanNodeId);
     }
     sequenceIdToDataBlockSize.clear();
     if (bufferRetainedSizeInBytes > 0) {
@@ -307,13 +314,12 @@ public class SourceHandle implements ISourceHandle {
 
     @Override
     public void run() {
-      logger.debug(
-          "Get data blocks [{}, {}) from {} for plan node {} of {}.",
+      logger.info(
+          "[SourceHandle-{}]: Get data blocks [{}, {}) from {}",
+          localPlanNodeId,
           startSequenceId,
           endSequenceId,
-          remoteFragmentInstanceId,
-          localPlanNodeId,
-          localFragmentInstanceId);
+          remoteFragmentInstanceId);
       GetDataBlockRequest req =
           new GetDataBlockRequest(remoteFragmentInstanceId, startSequenceId, endSequenceId);
       int attempt = 0;
@@ -335,6 +341,7 @@ public class SourceHandle implements ISourceHandle {
             }
             if (!blocked.isDone()) {
               blocked.set(null);
+              logger.info("[SourceHandle {}]: blocked is set null.", localPlanNodeId);
             }
           }
           executorService.submit(
@@ -375,8 +382,9 @@ public class SourceHandle implements ISourceHandle {
 
     @Override
     public void run() {
-      logger.debug(
-          "Send ack data block event [{}, {}) to {}.",
+      logger.info(
+          "[SourceHandle {}]: Send ack data block event [{}, {}) to {}.",
+          localPlanNodeId,
           startSequenceId,
           endSequenceId,
           remoteFragmentInstanceId);

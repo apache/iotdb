@@ -32,6 +32,8 @@ import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 
 import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -43,8 +45,10 @@ import java.util.concurrent.ScheduledExecutorService;
  * QueryExecution.
  */
 public class Coordinator {
+  private static final Logger LOG = LoggerFactory.getLogger(Coordinator.class);
+
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
-  private static final int COORDINATOR_EXECUTOR_SIZE = 2;
+  private static final int COORDINATOR_EXECUTOR_SIZE = 20;
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 2;
 
@@ -94,7 +98,7 @@ public class Coordinator {
             partitionFetcher,
             schemaFetcher);
     queryExecutionMap.put(queryId, execution);
-
+    LOG.info("[Query: {}] start QueryExecution. Statement: {}", queryId, sql);
     execution.start();
 
     return execution.getStatus();

@@ -54,4 +54,15 @@ public class DistributedQueryPlan {
   public List<FragmentInstance> getInstances() {
     return instances;
   }
+
+  public String toString() {
+    StringBuilder ret = new StringBuilder();
+    ret.append("Instance Count: ").append(instances.size());
+    ret.append(System.lineSeparator());
+    for (FragmentInstance instance : instances) {
+      ret.append(instance);
+      ret.append(System.lineSeparator());
+    }
+    return ret.toString();
+  }
 }

@@ -43,6 +43,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -61,6 +63,8 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
  * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
  */
 public class QueryExecution implements IQueryExecution {
+  private static final Logger LOG = LoggerFactory.getLogger(Coordinator.class);
+
   private final MPPQueryContext context;
   private IScheduler scheduler;
   private final QueryStateMachine stateMachine;
@@ -112,10 +116,12 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     doLogicalPlan();
     doDistributedPlan();
+    LOG.info("[{}]: Distribution Plan: {}", this, distributedPlan);
     if (context.getQueryType() == QueryType.READ) {
       // The ResultHandle could only be initialized after distributed planning
       initResultHandle();
     }
+    LOG.info("[{}]: Start to schedule.", this);
     schedule();
   }
 
@@ -163,7 +169,12 @@ public class QueryExecution implements IQueryExecution {
   }
 
   /** Release the resources that current QueryExecution hold. */
-  private void releaseResource() {}
+  private void releaseResource() {
+    // close ResultHandle to unblock client's getResult request
+    if (resultHandle != null && !resultHandle.isClosed()) {
+      resultHandle.close();
+    }
+  }
 
   /**
    * This method will be called by the request thread from client connection. This method will block
@@ -175,9 +186,12 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public TsBlock getBatchResult() {
     try {
+      LOG.info("[QueryExecution {}]: try to get result.", context.getQueryId());
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
+      LOG.info("[QueryExecution {}]:  unblock. Cancelled: {}, Done: {}", context.getQueryId(), blocked.isCancelled(), blocked.isDone());
       if (resultHandle.isFinished()) {
+        LOG.info("[QueryExecution {}]:  result is null", context.getQueryId());
         return null;
       }
       return resultHandle.receive();
@@ -270,5 +284,9 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public boolean isQuery() {
     return context.getQueryType() == QueryType.READ;
+  }
+
+  public String toString() {
+    return String.format("QueryExecution[%s]", context.getQueryId());
   }
 }

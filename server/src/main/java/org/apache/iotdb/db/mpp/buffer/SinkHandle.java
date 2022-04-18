@@ -160,7 +160,7 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void sendEndOfDataBlockEvent() throws TException {
-    logger.debug(
+    logger.info(
         "Send end of data block event to plan node {} of {}. {}",
         remotePlanNodeId,
         remoteFragmentInstanceId,
@@ -220,10 +220,12 @@ public class SinkHandle implements ISinkHandle {
     synchronized (this) {
       sequenceIdToTsBlock.clear();
       closed = true;
-      localMemoryManager
-          .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
-      bufferRetainedSizeInBytes = 0;
+      if (bufferRetainedSizeInBytes > 0) {
+        localMemoryManager
+            .getQueryPool()
+            .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+        bufferRetainedSizeInBytes = 0;
+      }
     }
     sinkHandleListener.onAborted(this);
     logger.info("Sink handle {} is aborted", this);
@@ -334,7 +336,7 @@ public class SinkHandle implements ISinkHandle {
 
     @Override
     public void run() {
-      logger.debug(
+      logger.info(
           "Send new data block event [{}, {}) to plan node {} of {}.",
           startSequenceId,
           startSequenceId + blockSizes.size(),
