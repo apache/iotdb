@@ -164,11 +164,6 @@ public class ExchangeNode extends PlanNode {
   }
 
   @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitExchange(this, context);
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
