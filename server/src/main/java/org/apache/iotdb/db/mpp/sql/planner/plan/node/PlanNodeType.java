@@ -22,7 +22,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.StorageGroupSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
@@ -162,8 +161,6 @@ public enum PlanNodeType {
         return SchemaFetchNode.deserialize(buffer);
       case 26:
         return SchemaMergeNode.deserialize(buffer);
-      case 27:
-        return StorageGroupSchemaScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

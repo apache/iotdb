@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.StorageGroupSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -329,9 +328,5 @@ public class QueryPlanBuilder {
 
   public void planSchemaFetchSource(PathPatternTree patternTree) {
     this.root = new SchemaFetchNode(context.getQueryId().genPlanNodeId(), patternTree);
-  }
-
-  public void planStorageGroupSchemaSource(List<String> storageGroups) {
-    this.root = new StorageGroupSchemaScanNode(context.getQueryId().genPlanNodeId(), storageGroups);
   }
 }
