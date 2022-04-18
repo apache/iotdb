@@ -22,7 +22,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchema
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.StorageGroupSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
@@ -118,10 +117,6 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDevicesSchemaScan(DevicesSchemaScanNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitStorageSchemaScan(StorageGroupSchemaScanNode node, C context) {
     return visitPlan(node, context);
   }
 

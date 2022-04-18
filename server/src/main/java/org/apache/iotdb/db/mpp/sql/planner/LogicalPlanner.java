@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.commons.partition.SchemaPartition;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -55,18 +59,11 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesSta
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -312,17 +309,6 @@ public class LogicalPlanner {
       planBuilder.planSchemaMerge(false);
       planBuilder.planOffset(showDevicesStatement.getOffset());
       planBuilder.planLimit(showDevicesStatement.getLimit());
-      return planBuilder.getRoot();
-    }
-
-    @Override
-    public PlanNode visitShowStorageGroup(
-        ShowStorageGroupStatement showStorageGroupStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
-      SchemaPartition schemaPartition = analysis.getSchemaPartitionInfo();
-      List<String> storageGroups =
-          new ArrayList<>(schemaPartition.getSchemaPartitionMap().keySet());
-      planBuilder.planStorageGroupSchemaSource(storageGroups);
       return planBuilder.getRoot();
     }
 

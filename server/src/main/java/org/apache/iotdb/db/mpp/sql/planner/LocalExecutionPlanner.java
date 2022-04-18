@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import static java.util.Objects.requireNonNull;
+import java.util.stream.Collectors;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -40,7 +46,6 @@ import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaFetchOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaMergeOperator;
-import org.apache.iotdb.db.mpp.operator.schema.StorageGroupSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
@@ -50,7 +55,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.StorageGroupSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -69,14 +73,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
 
 /**
  * used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -198,18 +194,6 @@ public class LocalExecutionPlanner {
           node.getPath(),
           node.isPrefixPath(),
           node.isHasSgCol());
-    }
-
-    @Override
-    public Operator visitStorageSchemaScan(
-        StorageGroupSchemaScanNode node, LocalExecutionPlanContext context) {
-      OperatorContext operatorContext =
-          context.instanceContext.addOperatorContext(
-              context.getNextOperatorId(),
-              node.getPlanNodeId(),
-              StorageGroupSchemaScanOperator.class.getSimpleName());
-      return new StorageGroupSchemaScanOperator(
-          node.getPlanNodeId(), operatorContext, node.getStorageGroups());
     }
 
     @Override
