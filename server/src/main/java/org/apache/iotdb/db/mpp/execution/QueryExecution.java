@@ -97,8 +97,6 @@ public class QueryExecution implements IQueryExecution {
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
-    // TODO: (xingtanzjr) Initialize the result handle after the DataBlockManager is merged.
-    //    resultHandle = xxxx
 
     // We add the abort logic inside the QueryExecution.
     // So that the other components can only focus on the state change.
@@ -115,6 +113,7 @@ public class QueryExecution implements IQueryExecution {
     doLogicalPlan();
     doDistributedPlan();
     if (context.getQueryType() == QueryType.READ) {
+      // The ResultHandle could only be initialized after distributed planning
       initResultHandle();
     }
     schedule();
@@ -140,7 +139,6 @@ public class QueryExecution implements IQueryExecution {
             context.getQueryType(),
             executor,
             scheduledExecutor);
-    // TODO: (xingtanzjr) how to make the schedule running asynchronously
     this.scheduler.start();
   }
 
