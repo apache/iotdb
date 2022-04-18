@@ -101,7 +101,7 @@ public class ProcedureExecutor<Env> {
     this.timeoutExecutor =
         new TimeoutExecutorThread<>(this, threadGroup, "ProcedureTimeoutExecutor");
     this.workerMonitorExecutor =
-        new TimeoutExecutorThread<>(this, threadGroup, "WorkerThreadMonitor");
+        new TimeoutExecutorThread<>(this, threadGroup, "ProcedureWorkerThreadMonitor");
     workId.set(0);
     workerThreads = new CopyOnWriteArrayList<>();
     for (int i = 0; i < corePoolSize; i++) {
@@ -485,7 +485,7 @@ public class ProcedureExecutor<Env> {
    */
   private void countDownChildren(RootProcedureStack rootProcStack, Procedure<Env> proc) {
     Procedure<Env> parent = procedures.get(proc.getParentProcId());
-    if (parent == null) {
+    if (parent == null && rootProcStack.isRollingback()) {
       return;
     }
     if (parent.tryRunnable()) {
@@ -549,6 +549,7 @@ public class ProcedureExecutor<Env> {
       subproc.setParentProcId(proc.getProcId());
       subproc.setRootProcId(rootProcedureId);
       subproc.setProcId(nextProcId());
+      subproc.setProcRunnable();
       rootProcStack.addSubProcedure(subproc);
     }
 
@@ -696,12 +697,6 @@ public class ProcedureExecutor<Env> {
     completed.put(proc.getProcId(), retainer);
     rollbackStack.remove(proc.getProcId());
     procedures.remove(proc.getProcId());
-
-    try {
-      scheduler.completionCleanup(proc);
-    } catch (Throwable e) {
-      LOG.error("CODE-BUG:uncaught  runtimeexception for  completion  cleanup:{}", proc, e);
-    }
   }
 
   private Long getRootProcedureId(Procedure<Env> proc) {
@@ -919,6 +914,7 @@ public class ProcedureExecutor<Env> {
     final long currentProcId = nextProcId();
     // Initialize the procedure
     procedure.setProcId(currentProcId);
+    procedure.setProcRunnable();
     // Commit the transaction
     store.update(procedure);
     LOG.debug("{} is stored.", procedure);

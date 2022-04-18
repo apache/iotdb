@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class StoppableThread extends Thread {
 
+  private static final int JOIN_TIMEOUT = 250;
   private static final Logger LOG = LoggerFactory.getLogger(StoppableThread.class);
 
   public StoppableThread(ThreadGroup threadGroup, String name) {
@@ -36,7 +37,7 @@ public abstract class StoppableThread extends Thread {
     try {
       for (int i = 0; isAlive(); i++) {
         sendStopSignal();
-        join(250);
+        join(JOIN_TIMEOUT);
         if (i > 0 && (i % 8) == 0) {
           interrupt();
         }

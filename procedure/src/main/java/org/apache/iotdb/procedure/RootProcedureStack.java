@@ -174,16 +174,4 @@ public class RootProcedureStack<Env> {
       state = State.FAILED;
     }
   }
-
-  /** Called on store load by the ProcedureExecutor to validate the procedure stack. */
-  protected synchronized boolean isValid() {
-    if (subprocStack != null) {
-      for (Procedure<Env> proc : subprocStack) {
-        if (proc == null) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
 }

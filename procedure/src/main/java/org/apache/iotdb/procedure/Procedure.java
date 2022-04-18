@@ -254,7 +254,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     try {
       clazz = Class.forName(className);
     } catch (ClassNotFoundException e) {
-      throw new RuntimeException("Invalid  procedure class", e);
+      throw new RuntimeException("Invalid procedure class", e);
     }
     return clazz;
   }
@@ -576,6 +576,9 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   /** Called by the ProcedureExecutor to assign the ID to the newly created procedure. */
   protected void setProcId(long procId) {
     this.procId = procId;
+  }
+
+  public void setProcRunnable() {
     this.submittedTime = System.currentTimeMillis();
     setState(ProcedureState.RUNNABLE);
   }

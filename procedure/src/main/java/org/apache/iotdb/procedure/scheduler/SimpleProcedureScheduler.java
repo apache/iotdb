@@ -67,9 +67,6 @@ public class SimpleProcedureScheduler extends AbstractProcedureScheduler {
     return runnables.size();
   }
 
-  @Override
-  public void completionCleanup(Procedure proc) {}
-
   public void addWaiting(Procedure proc) {
     waitings.add(proc);
   }

@@ -75,13 +75,6 @@ public interface ProcedureScheduler {
    */
   void yield(Procedure proc);
 
-  /**
-   * The procedure in execution completed. This can be implemented to perform cleanups.
-   *
-   * @param proc the Procedure that completed the execution.
-   */
-  void completionCleanup(Procedure proc);
-
   /** @return true if there are procedures available to process, otherwise false. */
   boolean hasRunnables();
 

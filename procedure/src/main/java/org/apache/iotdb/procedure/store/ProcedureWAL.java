@@ -64,7 +64,7 @@ public class ProcedureWAL {
       byteBuffer.flip();
       channel.write(byteBuffer);
     }
-    Files.deleteIfExists(walTmpPath);
+    Files.deleteIfExists(walFilePath);
     Files.move(walTmpPath, walFilePath);
   }
 
@@ -83,14 +83,17 @@ public class ProcedureWAL {
         FileChannel channel = fis.getChannel()) {
       while (channel.read(byteBuffer) > 0) {
         byteBuffer.flip();
-        procedure = Procedure.newInstance(byteBuffer);
-        if (procedure != null) {
-          procedure.deserialize(byteBuffer);
+        while (byteBuffer.hasRemaining()) {
+          if (procedure == null) {
+            procedure = Procedure.newInstance(byteBuffer);
+          } else {
+            procedure.deserialize(byteBuffer);
+          }
         }
         byteBuffer.clear();
       }
     } catch (IOException e) {
-      LOG.error("Load  {}  failed,  it will  be deleted.", walFilePath, e);
+      LOG.error("Load {} failed, it will be deleted.", walFilePath, e);
       walFilePath.toFile().delete();
     }
   }

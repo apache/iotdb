@@ -25,8 +25,8 @@ import java.util.concurrent.TimeUnit;
 
 public class TimeoutExecutorThread<Env> extends StoppableThread {
 
+  private static final int DELAY_QUEUE_TIMEOUT = 20;
   private final ProcedureExecutor<Env> executor;
-
   private final DelayQueue<ProcedureDelayContainer<Env>> queue = new DelayQueue<>();
 
   public TimeoutExecutorThread(
@@ -46,7 +46,7 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
 
   private ProcedureDelayContainer<Env> takeQuietly() {
     try {
-      return queue.poll(20, TimeUnit.SECONDS);
+      return queue.poll(DELAY_QUEUE_TIMEOUT, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       currentThread().interrupt();
       return null;
@@ -95,7 +95,6 @@ public class TimeoutExecutorThread<Env> extends StoppableThread {
     @Override
     public long getDelay(TimeUnit unit) {
       long delay = procedure.getTimeoutTimestamp() - System.currentTimeMillis();
-      System.out.println("---------delay------(" + delay);
       return unit.convert(delay, TimeUnit.MILLISECONDS);
     }
 
