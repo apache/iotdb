@@ -139,6 +139,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(WALManager.getInstance());
 
     // in mpp mode we need to start some other services
     if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
@@ -153,7 +154,6 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(StorageEngine.getInstance());
     }
 
-    registerManager.register(WALManager.getInstance());
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(UDFClassLoaderManager.getInstance());
     registerManager.register(UDFRegistrationService.getInstance());
