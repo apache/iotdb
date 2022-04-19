@@ -167,6 +167,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               TimeSeriesSchemaScanOperator.class.getSimpleName());
       return new TimeSeriesSchemaScanOperator(
+          node.getPlanNodeId(),
           operatorContext,
           node.getLimit(),
           node.getOffset(),
@@ -175,8 +176,7 @@ public class LocalExecutionPlanner {
           node.getValue(),
           node.isContains(),
           node.isOrderByHeat(),
-          node.isPrefixPath(),
-          node.getOutputColumnNames());
+          node.isPrefixPath());
     }
 
     @Override
@@ -188,13 +188,13 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               DevicesSchemaScanOperator.class.getSimpleName());
       return new DevicesSchemaScanOperator(
+          node.getPlanNodeId(),
           operatorContext,
           node.getLimit(),
           node.getOffset(),
           node.getPath(),
           node.isPrefixPath(),
-          node.isHasSgCol(),
-          node.getOutputColumnNames());
+          node.isHasSgCol());
     }
 
     @Override

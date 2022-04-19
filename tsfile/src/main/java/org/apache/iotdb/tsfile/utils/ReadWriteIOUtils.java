@@ -803,6 +803,18 @@ public class ReadWriteIOUtils {
     return list;
   }
 
+  /** write string list with self define length. */
+  public static void writeStringList(List<String> list, ByteBuffer buffer) {
+    if (list == null) {
+      throw new IllegalArgumentException("stringList must not be null!");
+    }
+    int size = list.size();
+    buffer.putInt(size);
+    for (String s : list) {
+      buffer.put(s.getBytes());
+    }
+  }
+
   public static CompressionType readCompressionType(InputStream inputStream) throws IOException {
     byte n = readByte(inputStream);
     return CompressionType.deserialize(n);

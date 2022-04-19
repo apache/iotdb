@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.Arrays;
-import java.util.List;
 
 public class DevicesSchemaScanOperator extends SchemaScanOperator {
   private final boolean hasSgCol;
@@ -45,14 +44,14 @@ public class DevicesSchemaScanOperator extends SchemaScanOperator {
   };
 
   public DevicesSchemaScanOperator(
+      PlanNodeId sourceId,
       OperatorContext operatorContext,
       int limit,
       int offset,
       PartialPath partialPath,
       boolean isPrefixPath,
-      boolean hasSgCol,
-      List<String> columns) {
-    super(operatorContext, limit, offset, partialPath, isPrefixPath, columns);
+      boolean hasSgCol) {
+    super(sourceId, operatorContext, limit, offset, partialPath, isPrefixPath);
     this.hasSgCol = hasSgCol;
   }
 
@@ -88,10 +87,5 @@ public class DevicesSchemaScanOperator extends SchemaScanOperator {
       builder.getColumnBuilder(1).writeBoolean(device.isAligned());
     }
     builder.declarePosition();
-  }
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return null;
   }
 }

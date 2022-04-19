@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.operator;
+package org.apache.iotdb.db.mpp.operator.schema;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -30,9 +30,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
-import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
-import org.apache.iotdb.db.mpp.operator.schema.SchemaScanOperator;
-import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -99,9 +97,10 @@ public class SchemaScanOperatorTest {
       FragmentInstanceContext fragmentInstanceContext =
           new FragmentInstanceContext(
               new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+      PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
-              1, new PlanNodeId("1"), SchemaScanOperator.class.getSimpleName());
+              1, planNodeId, SchemaScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance()
@@ -113,13 +112,13 @@ public class SchemaScanOperatorTest {
       List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_STORAGE_GROUP, COLUMN_IS_ALIGNED);
       DevicesSchemaScanOperator deviceMetaScanOperator =
           new DevicesSchemaScanOperator(
+              planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               10,
               0,
               partialPath,
               false,
-              true,
-              columns);
+              true);
       while (deviceMetaScanOperator.hasNext()) {
         TsBlock tsBlock = deviceMetaScanOperator.next();
         assertEquals(3, tsBlock.getValueColumnCount());
@@ -162,9 +161,10 @@ public class SchemaScanOperatorTest {
       FragmentInstanceContext fragmentInstanceContext =
           new FragmentInstanceContext(
               new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+      PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
-              1, new PlanNodeId("1"), SchemaScanOperator.class.getSimpleName());
+              1, planNodeId, SchemaScanOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*");
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance()
@@ -185,6 +185,7 @@ public class SchemaScanOperatorTest {
               COLUMN_ATTRIBUTES);
       TimeSeriesSchemaScanOperator timeSeriesMetaScanOperator =
           new TimeSeriesSchemaScanOperator(
+              planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               10,
               0,
@@ -193,8 +194,7 @@ public class SchemaScanOperatorTest {
               null,
               false,
               false,
-              false,
-              columns);
+              false);
       while (timeSeriesMetaScanOperator.hasNext()) {
         TsBlock tsBlock = timeSeriesMetaScanOperator.next();
         assertEquals(8, tsBlock.getValueColumnCount());
