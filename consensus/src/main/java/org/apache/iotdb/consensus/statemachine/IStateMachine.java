@@ -39,18 +39,21 @@ public interface IStateMachine {
 
   /**
    * apply a write-request from user
+   *
    * @param IConsensusRequest write request
    */
   TSStatus write(IConsensusRequest IConsensusRequest);
 
   /**
    * read local data and return
+   *
    * @param IConsensusRequest read request
    */
   DataSet read(IConsensusRequest IConsensusRequest);
 
   /**
    * IConsensus will periodically take the snapshot on both log and statemachine Data
+   *
    * @param metadata the metadata IConsensus want IStateMachine to preserve
    * @param snapshotDir the root dir of snapshot files
    */
@@ -59,6 +62,7 @@ public interface IStateMachine {
   /**
    * When recover from crash / leader installSnapshot to follower, this method is called
    * IStateMachine is required to find the latest snapshot in snapshotDir
+   *
    * @param snapshotDir the root dir of snapshot files
    * @return latest snapshot info (metadata + snapshot files)
    */
@@ -67,13 +71,15 @@ public interface IStateMachine {
   /**
    * When recover from crash / follower installSnapshot from leader, this method is called
    * IStateMachine is required to load the given snapshot
+   *
    * @param latest is the latest snapshot given
    */
   void loadSnapshot(SnapshotMeta latest);
 
   /**
-   * IConsensus will periodically clean up old snapshots
-   * this method is called to inform IStateMachine to remove out-dated snapshot
+   * IConsensus will periodically clean up old snapshots this method is called to inform
+   * IStateMachine to remove out-dated snapshot
+   *
    * @param snapshotDir the root dir of snapshot files
    */
   void cleanUpOldSnapshots(File snapshotDir);
