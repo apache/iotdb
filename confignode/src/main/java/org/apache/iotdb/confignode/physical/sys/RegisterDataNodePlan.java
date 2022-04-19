@@ -28,30 +28,30 @@ import java.util.Objects;
 
 public class RegisterDataNodePlan extends PhysicalPlan {
 
-  private TDataNodeLocation info;
+  private TDataNodeLocation location;
 
   public RegisterDataNodePlan() {
     super(PhysicalPlanType.RegisterDataNode);
   }
 
-  public RegisterDataNodePlan(TDataNodeLocation info) {
+  public RegisterDataNodePlan(TDataNodeLocation location) {
     this();
-    this.info = info;
+    this.location = location;
   }
 
-  public TDataNodeLocation getInfo() {
-    return info;
+  public TDataNodeLocation getLocation() {
+    return location;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.RegisterDataNode.ordinal());
-    ThriftCommonsSerializeDeserializeUtils.writeTDataNodeLocation(info, buffer);
+    ThriftCommonsSerializeDeserializeUtils.writeTDataNodeLocation(location, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    info = ThriftCommonsSerializeDeserializeUtils.readTDataNodeLocation(buffer);
+    location = ThriftCommonsSerializeDeserializeUtils.readTDataNodeLocation(buffer);
   }
 
   @Override
@@ -59,11 +59,11 @@ public class RegisterDataNodePlan extends PhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegisterDataNodePlan plan = (RegisterDataNodePlan) o;
-    return info.equals(plan.info);
+    return location.equals(plan.location);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(info);
+    return Objects.hash(location);
   }
 }

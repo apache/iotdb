@@ -105,10 +105,10 @@ public class ConfigNodeRPCServerProcessorTest {
   private void registerDataNodes() throws TException {
     for (int i = 0; i < 3; i++) {
       TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
-      dataNodeLocation.setExternalEndPoint(new EndPoint("0.0.0.0", 6667 + i));
-      dataNodeLocation.setInternalEndPoint(new EndPoint("0.0.0.0", 9003 + i));
-      dataNodeLocation.setDataBlockManagerEndPoint(new EndPoint("0.0.0.0", 8777 + i));
-      dataNodeLocation.setConsensusEndPoint(new EndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
+      dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
+      dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
+      dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
 
       TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
       TDataNodeRegisterResp resp = processor.registerDataNode(req);
@@ -125,10 +125,10 @@ public class ConfigNodeRPCServerProcessorTest {
 
     // test success re-register
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
-    dataNodeLocation.setExternalEndPoint(new EndPoint("0.0.0.0", 6668));
-    dataNodeLocation.setInternalEndPoint(new EndPoint("0.0.0.0", 9004));
-    dataNodeLocation.setDataBlockManagerEndPoint(new EndPoint("0.0.0.0", 8778));
-    dataNodeLocation.setConsensusEndPoint(new EndPoint("0.0.0.0", 40011));
+    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6668));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
+    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8778));
+    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
 
     TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
     TDataNodeRegisterResp resp = processor.registerDataNode(req);
@@ -148,10 +148,10 @@ public class ConfigNodeRPCServerProcessorTest {
     locationList.sort(Comparator.comparingInt(Map.Entry::getKey));
     for (int i = 0; i < 3; i++) {
       dataNodeLocation.setDataNodeId(i);
-      dataNodeLocation.setExternalEndPoint(new EndPoint("0.0.0.0", 6667 + i));
-      dataNodeLocation.setInternalEndPoint(new EndPoint("0.0.0.0", 9003 + i));
-      dataNodeLocation.setDataBlockManagerEndPoint(new EndPoint("0.0.0.0", 8777 + i));
-      dataNodeLocation.setConsensusEndPoint(new EndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
+      dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
+      dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
+      dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
       Assert.assertEquals(dataNodeLocation, locationList.get(i).getValue());
     }
 
@@ -162,10 +162,10 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals(1, locationMap.size());
     Assert.assertNotNull(locationMap.get(1));
     dataNodeLocation.setDataNodeId(1);
-    dataNodeLocation.setExternalEndPoint(new EndPoint("0.0.0.0", 6668));
-    dataNodeLocation.setInternalEndPoint(new EndPoint("0.0.0.0", 9004));
-    dataNodeLocation.setDataBlockManagerEndPoint(new EndPoint("0.0.0.0", 8778));
-    dataNodeLocation.setConsensusEndPoint(new EndPoint("0.0.0.0", 40011));
+    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6668));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
+    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8778));
+    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
     Assert.assertEquals(dataNodeLocation, locationMap.get(1));
   }
 
@@ -175,7 +175,7 @@ public class ConfigNodeRPCServerProcessorTest {
     final String sg = "root.sg0";
 
     // failed because there are not enough DataNodes
-    TSetStorageGroupReq setReq = new TSetStorageGroupReq(sg);
+    TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg));
     status = processor.setStorageGroup(setReq);
     Assert.assertEquals(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(), status.getCode());
     Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
@@ -190,10 +190,15 @@ public class ConfigNodeRPCServerProcessorTest {
     // query StorageGroupSchema
     TStorageGroupSchemaResp resp = processor.getStorageGroupsSchema();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
-    Map<String, TStorageGroupSchema> msgMap = resp.getStorageGroupSchemaMap();
-    Assert.assertEquals(1, msgMap.size());
-    Assert.assertNotNull(msgMap.get(sg));
-    Assert.assertEquals(sg, msgMap.get(sg).getStorageGroup());
+    Map<String, TStorageGroupSchema> schemaMap = resp.getStorageGroupSchemaMap();
+    Assert.assertEquals(1, schemaMap.size());
+    TStorageGroupSchema storageGroupSchema = schemaMap.get(sg);
+    Assert.assertNotNull(storageGroupSchema);
+    Assert.assertEquals(sg, storageGroupSchema.getName());
+    Assert.assertEquals(Long.MAX_VALUE, storageGroupSchema.getTTL());
+    Assert.assertEquals(3, storageGroupSchema.getSchemaReplicationFactor());
+    Assert.assertEquals(3, storageGroupSchema.getDataReplicationFactor());
+    Assert.assertEquals(604800, storageGroupSchema.getTimePartitionInterval());
 
     // test fail by re-register
     status = processor.setStorageGroup(setReq);
@@ -242,9 +247,9 @@ public class ConfigNodeRPCServerProcessorTest {
     registerDataNodes();
 
     // Set StorageGroups
-    status = processor.setStorageGroup(new TSetStorageGroupReq(sg0));
+    status = processor.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.setStorageGroup(new TSetStorageGroupReq(sg1));
+    status = processor.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // Test getSchemaPartition, the result should be empty
@@ -434,7 +439,7 @@ public class ConfigNodeRPCServerProcessorTest {
 
     // set StorageGroups
     for (int i = 0; i < storageGroupNum; i++) {
-      TSetStorageGroupReq setReq = new TSetStorageGroupReq(sg + i);
+      TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
       status = processor.setStorageGroup(setReq);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }

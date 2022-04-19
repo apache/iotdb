@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.BasicStructureSerializeDeserializeUtil;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
@@ -33,7 +35,7 @@ public class CreateRegionsPlan extends PhysicalPlan {
 
   private String storageGroup;
 
-  private final List<RegionReplicaSet> regionReplicaSets;
+  private final List<TRegionReplicaSet> regionReplicaSets;
 
   public CreateRegionsPlan() {
     super(PhysicalPlanType.CreateRegions);
@@ -48,11 +50,11 @@ public class CreateRegionsPlan extends PhysicalPlan {
     this.storageGroup = storageGroup;
   }
 
-  public void addRegion(RegionReplicaSet regionReplicaSet) {
+  public void addRegion(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSets.add(regionReplicaSet);
   }
 
-  public List<RegionReplicaSet> getRegionReplicaSets() {
+  public List<TRegionReplicaSet> getRegionReplicaSets() {
     return regionReplicaSets;
   }
 
@@ -63,8 +65,8 @@ public class CreateRegionsPlan extends PhysicalPlan {
     BasicStructureSerializeDeserializeUtil.write(storageGroup, buffer);
 
     buffer.putInt(regionReplicaSets.size());
-    for (RegionReplicaSet regionReplicaSet : regionReplicaSets) {
-      regionReplicaSet.serializeImpl(buffer);
+    for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+      ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
     }
   }
 
@@ -74,7 +76,7 @@ public class CreateRegionsPlan extends PhysicalPlan {
 
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
-      regionReplicaSets.add(RegionReplicaSet.deserializeImpl(buffer));
+      regionReplicaSets.add(ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(buffer));
     }
   }
 

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.client;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
@@ -65,9 +65,9 @@ public class ConfigNodeClient {
 
   private TTransport transport;
 
-  private Endpoint configLeader;
+  private TEndPoint configLeader;
 
-  private List<Endpoint> configNodes;
+  private List<TEndPoint> configNodes;
 
   public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
     // Read config nodes from configuration
@@ -76,12 +76,12 @@ public class ConfigNodeClient {
     init();
   }
 
-  public ConfigNodeClient(List<Endpoint> configNodes) throws IoTDBConnectionException {
+  public ConfigNodeClient(List<TEndPoint> configNodes) throws IoTDBConnectionException {
     this.configNodes = configNodes;
     init();
   }
 
-  public ConfigNodeClient(List<Endpoint> configNodes, Endpoint configLeader)
+  public ConfigNodeClient(List<TEndPoint> configNodes, TEndPoint configLeader)
       throws IoTDBConnectionException {
     this.configNodes = configNodes;
     this.configLeader = configLeader;
@@ -92,7 +92,7 @@ public class ConfigNodeClient {
     reconnect();
   }
 
-  public void connect(Endpoint endpoint) throws IoTDBConnectionException {
+  public void connect(TEndPoint endpoint) throws IoTDBConnectionException {
     try {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
@@ -131,7 +131,7 @@ public class ConfigNodeClient {
       if (tryHostNum == configNodes.size()) {
         break;
       }
-      Endpoint tryEndpoint = configNodes.get(j);
+      TEndPoint tryEndpoint = configNodes.get(j);
       if (j == configNodes.size() - 1) {
         j = -1;
       }
@@ -154,7 +154,7 @@ public class ConfigNodeClient {
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       if (status.isSetRedirectNode()) {
         configLeader =
-            new Endpoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
+            new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
       } else {
         configLeader = null;
       }

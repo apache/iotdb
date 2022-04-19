@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -81,13 +82,13 @@ public class InsertTabletStatement extends InsertBaseStatement {
     bitMaps[index] = null;
   }
 
-  public List<TimePartitionSlot> getTimePartitionSlots() {
-    List<TimePartitionSlot> result = new ArrayList<>();
+  public List<TTimePartitionSlot> getTimePartitionSlots() {
+    List<TTimePartitionSlot> result = new ArrayList<>();
     long startTime =
         (times[0] / StorageEngine.getTimePartitionInterval())
             * StorageEngine.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
-    TimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
+    TTimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         result.add(timePartitionSlot);

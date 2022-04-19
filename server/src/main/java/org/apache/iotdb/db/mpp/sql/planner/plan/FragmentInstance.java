@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
@@ -39,9 +41,9 @@ public class FragmentInstance implements IConsensusRequest {
   private final PlanFragment fragment;
 
   // The Region where the FragmentInstance should run
-  private RegionReplicaSet regionReplicaSet;
+  private TRegionReplicaSet regionReplicaSet;
 
-  private Endpoint hostEndpoint;
+  private TEndPoint hostEndpoint;
 
   private Filter timeFilter;
 
@@ -56,26 +58,26 @@ public class FragmentInstance implements IConsensusRequest {
     this.type = type;
   }
 
-  public RegionReplicaSet getDataRegionId() {
+  public TRegionReplicaSet getDataRegionId() {
     return regionReplicaSet;
   }
 
-  public void setDataRegionAndHost(RegionReplicaSet regionReplicaSet) {
+  public void setDataRegionAndHost(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance
-    this.hostEndpoint = regionReplicaSet.getDataNodeList().get(0).getEndPoint();
+    this.hostEndpoint = regionReplicaSet.getDataNodeLocations().get(0).getConsensusEndPoint();
   }
 
-  public RegionReplicaSet getRegionReplicaSet() {
+  public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }
 
-  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  public Endpoint getHostEndpoint() {
+  public TEndPoint getHostEndpoint() {
     return hostEndpoint;
   }
 
@@ -122,7 +124,7 @@ public class FragmentInstance implements IConsensusRequest {
             "Region: %s",
             getRegionReplicaSet() == null
                 ? "Not set"
-                : getRegionReplicaSet().getConsensusGroupId()));
+                : getRegionReplicaSet().getRegionId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
@@ -136,8 +138,8 @@ public class FragmentInstance implements IConsensusRequest {
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType);
-    fragmentInstance.regionReplicaSet = RegionReplicaSet.deserializeImpl(buffer);
-    fragmentInstance.hostEndpoint = Endpoint.deserializeImpl(buffer);
+    fragmentInstance.regionReplicaSet = ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(buffer);
+    fragmentInstance.hostEndpoint = ThriftCommonsSerializeDeserializeUtils.readTEndPoint(buffer);
 
     return fragmentInstance;
   }
@@ -151,8 +153,8 @@ public class FragmentInstance implements IConsensusRequest {
       timeFilter.serialize(buffer);
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
-    regionReplicaSet.serializeImpl(buffer);
-    hostEndpoint.serializeImpl(buffer);
+    ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
+    ThriftCommonsSerializeDeserializeUtils.writeTEndPoint(hostEndpoint, buffer);
   }
 
   @Override

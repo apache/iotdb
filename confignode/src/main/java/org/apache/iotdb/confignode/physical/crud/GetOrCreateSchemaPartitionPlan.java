@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerializeDeserializeUtil;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
@@ -36,17 +38,17 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
   // Map<StorageGroup, List<SeriesPartitionSlot>>
   // Get all SchemaPartitions when the partitionSlotsMap is empty
   // Get all exists SchemaPartitions in one StorageGroup when the SeriesPartitionSlot is empty
-  private Map<String, List<SeriesPartitionSlot>> partitionSlotsMap;
+  private Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap;
 
   public GetOrCreateSchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
   }
 
-  public void setPartitionSlotsMap(Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
+  public void setPartitionSlotsMap(Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
     this.partitionSlotsMap = partitionSlotsMap;
   }
 
-  public Map<String, List<SeriesPartitionSlot>> getPartitionSlotsMap() {
+  public Map<String, List<TSeriesPartitionSlot>> getPartitionSlotsMap() {
     return partitionSlotsMap;
   }
 
@@ -60,7 +62,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
           BasicStructureSerializeDeserializeUtil.write(storageGroup, buffer);
           buffer.putInt(seriesPartitionSlots.size());
           seriesPartitionSlots.forEach(
-              seriesPartitionSlot -> seriesPartitionSlot.serializeImpl(buffer));
+              seriesPartitionSlot -> ThriftCommonsSerializeDeserializeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer));
         });
   }
 
@@ -73,8 +75,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
       partitionSlotsMap.put(storageGroup, new ArrayList<>());
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot();
-        seriesPartitionSlot.deserializeImpl(buffer);
+        TSeriesPartitionSlot seriesPartitionSlot = ThriftCommonsSerializeDeserializeUtils.readTSeriesPartitionSlot(buffer);
         partitionSlotsMap.get(storageGroup).add(seriesPartitionSlot);
       }
     }

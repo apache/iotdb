@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
@@ -41,7 +40,7 @@ public class RegionInfoPersistence {
 
   // TODO: Serialize and Deserialize
   // Map<StorageGroupName, StorageGroupSchema>
-  private final Map<String, StorageGroupSchema> storageGroupsMap;
+  private final Map<String, TStorageGroupSchema> storageGroupsMap;
 
   // Region allocate lock
   private final ReentrantReadWriteLock regionAllocateLock;
@@ -50,8 +49,8 @@ public class RegionInfoPersistence {
 
   // Region read write lock
   private final ReentrantReadWriteLock regionReadWriteLock;
-  // Map<ConsensusGroupId, TRegionReplicaSet>
-  private final Map<ConsensusGroupId, RegionReplicaSet> regionMap;
+  // Map<TConsensusGroupId, TRegionReplicaSet>
+  private final Map<TConsensusGroupId, TRegionReplicaSet> regionMap;
 
   public RegionInfoPersistence() {
     this.regionAllocateLock = new ReentrantReadWriteLock();
@@ -70,8 +69,8 @@ public class RegionInfoPersistence {
     TSStatus result;
     regionReadWriteLock.writeLock().lock();
     try {
-      StorageGroupSchema schema = plan.getSchema();
-      storageGroupsMap.put(schema.getName(), schema);
+      TStorageGroupSchema storageGroupSchema = plan.getSchema();
+      storageGroupsMap.put(storageGroupSchema.getName(), storageGroupSchema);
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       regionReadWriteLock.writeLock().unlock();
@@ -102,16 +101,17 @@ public class RegionInfoPersistence {
     regionReadWriteLock.writeLock().lock();
     regionAllocateLock.writeLock().lock();
     try {
-      StorageGroupSchema schema = storageGroupsMap.get(plan.getStorageGroup());
+      TStorageGroupSchema storageGroupSchema = storageGroupsMap.get(plan.getStorageGroup());
 
-      for (RegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
+      for (TRegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
         nextRegionGroupId =
-            Math.max(nextRegionGroupId, regionReplicaSet.getConsensusGroupId().getId());
-        regionMap.put(regionReplicaSet.getConsensusGroupId(), regionReplicaSet);
-        if (regionReplicaSet.getConsensusGroupId() instanceof DataRegionId) {
-          schema.addDataRegionGroup(regionReplicaSet.getConsensusGroupId());
-        } else if (regionReplicaSet.getConsensusGroupId() instanceof SchemaRegionId) {
-          schema.addSchemaRegionGroup(regionReplicaSet.getConsensusGroupId());
+            Math.max(nextRegionGroupId, regionReplicaSet.getRegionId().getId());
+        regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+        switch (regionReplicaSet.getRegionId().getType()) {
+          case SchemaRegion:
+            storageGroupSchema.getSchemaRegionGroupIds().add(regionReplicaSet.getRegionId());
+          case DataRegion:
+            storageGroupSchema.getDataRegionGroupIds().add(regionReplicaSet.getRegionId());
         }
       }
 
@@ -124,14 +124,14 @@ public class RegionInfoPersistence {
   }
 
   /** @return The SchemaRegion ReplicaSets in the specific StorageGroup */
-  public List<RegionReplicaSet> getSchemaRegionEndPoint(String storageGroup) {
-    List<RegionReplicaSet> schemaRegionEndPoints = new ArrayList<>();
+  public List<TRegionReplicaSet> getSchemaRegionEndPoint(String storageGroup) {
+    List<TRegionReplicaSet> schemaRegionEndPoints = new ArrayList<>();
     regionReadWriteLock.readLock().lock();
     try {
       if (storageGroupsMap.containsKey(storageGroup)) {
-        List<ConsensusGroupId> schemaRegionIds =
+        List<TConsensusGroupId> schemaRegionIds =
             storageGroupsMap.get(storageGroup).getSchemaRegionGroupIds();
-        for (ConsensusGroupId consensusGroupId : schemaRegionIds) {
+        for (TConsensusGroupId consensusGroupId : schemaRegionIds) {
           schemaRegionEndPoints.add(regionMap.get(consensusGroupId));
         }
       }
@@ -143,14 +143,14 @@ public class RegionInfoPersistence {
   }
 
   /** @return The DataRegion ReplicaSets in the specific StorageGroup */
-  public List<RegionReplicaSet> getDataRegionEndPoint(String storageGroup) {
-    List<RegionReplicaSet> dataRegionEndPoints = new ArrayList<>();
+  public List<TRegionReplicaSet> getDataRegionEndPoint(String storageGroup) {
+    List<TRegionReplicaSet> dataRegionEndPoints = new ArrayList<>();
     regionReadWriteLock.readLock().lock();
     try {
       if (storageGroupsMap.containsKey(storageGroup)) {
-        List<ConsensusGroupId> dataRegionIds =
+        List<TConsensusGroupId> dataRegionIds =
             storageGroupsMap.get(storageGroup).getDataRegionGroupIds();
-        for (ConsensusGroupId consensusGroupId : dataRegionIds) {
+        for (TConsensusGroupId consensusGroupId : dataRegionIds) {
           dataRegionEndPoints.add(regionMap.get(consensusGroupId));
         }
       }

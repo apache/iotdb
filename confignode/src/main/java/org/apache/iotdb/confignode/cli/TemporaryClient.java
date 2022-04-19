@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.confignode.cli;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
@@ -58,7 +59,7 @@ public class TemporaryClient {
     this.clients = new HashMap<>();
   }
 
-  public void buildClient(int dataNodeId, EndPoint endpoint) {
+  public void buildClient(int dataNodeId, TEndPoint endpoint) {
     for (int i = 0; i < retryNum; i++) {
       try {
         TTransport transport =
@@ -82,15 +83,15 @@ public class TemporaryClient {
   }
 
   private TCreateSchemaRegionReq genCreateSchemaRegionReq(
-      String storageGroup, RegionReplicaSet regionReplicaSet) {
+      String storageGroup, TRegionReplicaSet regionReplicaSet) {
     TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
     req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet.convertToRPCTRegionReplicaSet());
+    req.setRegionReplicaSet(regionReplicaSet);
     return req;
   }
 
   public void createSchemaRegion(
-      int dataNodeId, String storageGroup, RegionReplicaSet regionReplicaSet) {
+      int dataNodeId, String storageGroup, TRegionReplicaSet regionReplicaSet) {
 
     if (clients.get(dataNodeId) == null) {
       buildClient(
@@ -142,16 +143,16 @@ public class TemporaryClient {
   }
 
   private TCreateDataRegionReq genCreateDataRegionReq(
-      String storageGroup, RegionReplicaSet regionReplicaSet, long TTL) {
+      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
     TCreateDataRegionReq req = new TCreateDataRegionReq();
     req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet.convertToRPCTRegionReplicaSet());
+    req.setRegionReplicaSet(regionReplicaSet);
     req.setTtl(TTL);
     return req;
   }
 
   public void createDataRegion(
-      int dataNodeId, String storageGroup, RegionReplicaSet regionReplicaSet, long TTL) {
+      int dataNodeId, String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
 
     if (clients.get(dataNodeId) == null) {
       buildClient(

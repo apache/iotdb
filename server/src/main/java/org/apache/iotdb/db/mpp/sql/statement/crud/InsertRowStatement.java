@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -175,7 +176,7 @@ public class InsertRowStatement extends InsertBaseStatement {
     dataTypes[index] = null;
   }
 
-  public List<TimePartitionSlot> getTimePartitionSlots() {
+  public List<TTimePartitionSlot> getTimePartitionSlots() {
     return Collections.singletonList(StorageEngine.getTimePartitionSlot(time));
   }
 

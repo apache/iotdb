@@ -20,7 +20,6 @@ package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
@@ -55,7 +54,7 @@ public class DataNode implements DataNodeMBean {
    */
   private static final int DEFAULT_JOIN_RETRY = 10;
 
-  private Endpoint thisNode = new Endpoint();
+  private TEndPoint thisNode = new TEndPoint();
 
   private int dataNodeID;
 
@@ -128,13 +127,13 @@ public class DataNode implements DataNodeMBean {
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         TDataNodeLocation location = new TDataNodeLocation();
         location.setDataNodeId(-1);
-        location.setExternalEndPoint(new EndPoint(config.getRpcAddress(), config.getRpcPort()));
+        location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
-            new EndPoint(config.getInternalIp(), config.getInternalPort()));
+            new TEndPoint(config.getInternalIp(), config.getInternalPort()));
         location.setDataBlockManagerEndPoint(
-            new EndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
+            new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
         location.setConsensusEndPoint(
-            new EndPoint(config.getInternalIp(), config.getConsensusPort()));
+            new TEndPoint(config.getInternalIp(), config.getConsensusPort()));
         req.setDataNodeLocation(location);
 
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);

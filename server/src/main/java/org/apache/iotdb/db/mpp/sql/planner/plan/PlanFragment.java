@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -60,16 +61,16 @@ public class PlanFragment {
   // In current version, one PlanFragment should contain at least one SourceNode,
   // and the DataRegions of all SourceNodes should be same in one PlanFragment.
   // So we can use the DataRegion of one SourceNode as the PlanFragment's DataRegion.
-  public RegionReplicaSet getTargetRegion() {
+  public TRegionReplicaSet getTargetRegion() {
     return getNodeRegion(root);
   }
 
-  private RegionReplicaSet getNodeRegion(PlanNode root) {
+  private TRegionReplicaSet getNodeRegion(PlanNode root) {
     if (root instanceof SourceNode) {
       return ((SourceNode) root).getRegionReplicaSet();
     }
     for (PlanNode child : root.getChildren()) {
-      RegionReplicaSet result = getNodeRegion(child);
+      TRegionReplicaSet result = getNodeRegion(child);
       if (result != null) {
         return result;
       }

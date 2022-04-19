@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -52,7 +53,7 @@ public abstract class InsertNode extends WritePlanNode {
   protected IDeviceID deviceID;
 
   /** Physical address of data region after splitting */
-  RegionReplicaSet dataRegionReplicaSet;
+  TRegionReplicaSet dataRegionReplicaSet;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -78,11 +79,11 @@ public abstract class InsertNode extends WritePlanNode {
     }
   }
 
-  public RegionReplicaSet getDataRegionReplicaSet() {
+  public TRegionReplicaSet getDataRegionReplicaSet() {
     return dataRegionReplicaSet;
   }
 
-  public void setDataRegionReplicaSet(RegionReplicaSet dataRegionReplicaSet) {
+  public void setDataRegionReplicaSet(TRegionReplicaSet dataRegionReplicaSet) {
     this.dataRegionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -130,7 +131,7 @@ public abstract class InsertNode extends WritePlanNode {
     this.deviceID = deviceID;
   }
 
-  public RegionReplicaSet getRegionReplicaSet() {
+  public TRegionReplicaSet getRegionReplicaSet() {
     return dataRegionReplicaSet;
   }
 

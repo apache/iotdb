@@ -60,11 +60,11 @@ struct TRegionReplicaSet {
 struct TDataNodeLocation {
   1: required i32 dataNodeId
   // EndPoint for DataNode's external rpc
-  2: required EndPoint externalEndPoint
+  2: required TEndPoint externalEndPoint
   // EndPoint for DataNode's internal rpc
-  3: required EndPoint internalEndPoint
+  3: required TEndPoint internalEndPoint
   // EndPoint for transfering data between DataNodes
-  4: required EndPoint dataBlockManagerEndPoint
+  4: required TEndPoint dataBlockManagerEndPoint
   // EndPoint for DataNode's ConsensusLayer
-  5: required EndPoint consensusEndPoint
+  5: required TEndPoint consensusEndPoint
 }

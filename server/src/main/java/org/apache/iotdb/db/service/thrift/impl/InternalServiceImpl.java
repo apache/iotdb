@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -85,7 +85,7 @@ public class InternalServiceImpl implements InternalService.Iface {
     QueryType type = QueryType.valueOf(req.queryType);
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.create(
-            req.consensusGroupId.id, GroupType.valueOf(req.consensusGroupId.type));
+            req.consensusGroupId.id, TConsensusGroupType.valueOf(req.consensusGroupId.type));
     switch (type) {
       case READ:
         ConsensusReadResponse readResp =
@@ -149,8 +149,8 @@ public class InternalServiceImpl implements InternalService.Iface {
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
       List<Peer> peers = new ArrayList<>();
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        Endpoint endpoint =
-            new Endpoint(
+        TEndPoint endpoint =
+            new TEndPoint(
                 dataNodeLocation.getConsensusEndPoint().getIp(),
                 dataNodeLocation.getConsensusEndPoint().getPort());
         peers.add(new Peer(schemaRegionId, endpoint));
@@ -187,8 +187,8 @@ public class InternalServiceImpl implements InternalService.Iface {
       storageEngine.createDataRegion(dataRegionId, req.storageGroup, req.ttl);
       List<Peer> peers = new ArrayList<>();
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        Endpoint endpoint =
-            new Endpoint(
+        TEndPoint endpoint =
+            new TEndPoint(
                 dataNodeLocation.getConsensusEndPoint().getIp(),
                 dataNodeLocation.getConsensusEndPoint().getPort());
         peers.add(new Peer(dataRegionId, endpoint));

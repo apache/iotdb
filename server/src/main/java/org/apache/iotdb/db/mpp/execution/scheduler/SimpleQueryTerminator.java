@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
@@ -49,16 +49,16 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   @Override
   public boolean terminate() {
-    List<Endpoint> relatedHost = getRelatedHost(fragmentInstances);
+    List<TEndPoint> relatedHost = getRelatedHost(fragmentInstances);
     Future<Boolean> future =
         executor.submit(
             () -> {
               try {
-                for (Endpoint endpoint : relatedHost) {
+                for (TEndPoint endpoint : relatedHost) {
                   // TODO (jackie tien) change the port
                   InternalService.Iface client =
                       InternalServiceClientFactory.getInternalServiceClient(
-                          new Endpoint(
+                          new TEndPoint(
                               endpoint.getIp(),
                               IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
                   client.cancelQuery(new TCancelQueryReq(queryId.getId()));
@@ -77,7 +77,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
     }
   }
 
-  private List<Endpoint> getRelatedHost(List<FragmentInstance> instances) {
+  private List<TEndPoint> getRelatedHost(List<FragmentInstance> instances) {
     return instances.stream()
         .map(FragmentInstance::getHostEndpoint)
         .distinct()

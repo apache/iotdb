@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
@@ -79,18 +78,18 @@ public class DataNodeManager {
   public DataSet registerDataNode(RegisterDataNodePlan plan) {
     DataNodeConfigurationDataSet dataSet = new DataNodeConfigurationDataSet();
 
-    if (DataNodeInfoPersistence.getInstance().containsValue(plan.getInfo())) {
+    if (DataNodeInfoPersistence.getInstance().containsValue(plan.getLocation())) {
       TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
       dataSet.setStatus(status);
     } else {
       // Persist DataNodeInfo
-      plan.getInfo().setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
+      plan.getLocation().setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(plan);
       dataSet.setStatus(resp.getStatus());
     }
 
-    dataSet.setDataNodeId(plan.getInfo().getDataNodeId());
+    dataSet.setDataNodeId(plan.getLocation().getDataNodeId());
     setGlobalConfig(dataSet);
     return dataSet;
   }
@@ -139,12 +138,12 @@ public class DataNodeManager {
     }
 
     @Override
-    public void addDataNode(DataNodeLocation DataNodeInfo) {
+    public void addDataNode(TDataNodeLocation DataNodeInfo) {
       serverChanged();
     }
 
     @Override
-    public void removeDataNode(DataNodeLocation dataNodeInfo) {
+    public void removeDataNode(TDataNodeLocation dataNodeInfo) {
       serverChanged();
     }
 
@@ -170,13 +169,13 @@ public class DataNodeManager {
      *
      * @param dataNodeInfo datanode info
      */
-    void addDataNode(final DataNodeLocation dataNodeInfo);
+    void addDataNode(final TDataNodeLocation dataNodeInfo);
 
     /**
      * remove data node
      *
      * @param dataNodeInfo data node info
      */
-    void removeDataNode(final DataNodeLocation dataNodeInfo);
+    void removeDataNode(final TDataNodeLocation dataNodeInfo);
   }
 }

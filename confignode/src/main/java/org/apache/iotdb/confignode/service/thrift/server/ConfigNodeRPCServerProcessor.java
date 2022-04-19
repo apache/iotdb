@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
@@ -47,6 +46,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -58,6 +59,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
@@ -99,12 +101,18 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
-    SetStorageGroupPlan plan =
-        new SetStorageGroupPlan(new StorageGroupSchema(req.getStorageGroup()));
+    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+    storageGroupSchema.setName(req.getStorageGroup().getName());
+    // TODO: Set this filed by optional fields in TSetStorageGroupReq
+    storageGroupSchema.setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
+    storageGroupSchema.setSchemaReplicationFactor(ConfigNodeDescriptor.getInstance().getConf().getDefaultSchemaReplicationFactor());
+    storageGroupSchema.setDataReplicationFactor(ConfigNodeDescriptor.getInstance().getConf().getDefaultDataReplicationFactor());
+    storageGroupSchema.setTimePartitionInterval(ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
 
-    // TODO: Set TTL by optional field TSetStorageGroupReq.TTL
-    plan.getSchema().setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
+    storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
+    storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 
+    SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroupSchema);
     return configManager.setStorageGroup(plan);
   }
 
@@ -117,6 +125,12 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
     // TODO: Set TTL
+    return null;
+  }
+
+  @Override
+  public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
+    // TODO: Set TimePartitionInterval
     return null;
   }
 

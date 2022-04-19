@@ -86,7 +86,7 @@ public class DataNodeInfoPersistence {
    */
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
-    TDataNodeLocation info = plan.getInfo();
+    TDataNodeLocation info = plan.getLocation();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
       nextDataNodeId = Math.max(nextDataNodeId, info.getDataNodeId());

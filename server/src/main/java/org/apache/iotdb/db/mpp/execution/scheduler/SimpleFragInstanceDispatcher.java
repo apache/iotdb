@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
@@ -51,7 +51,7 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
               // TODO: (jackie tien) change the port
               InternalService.Iface client =
                   InternalServiceClientFactory.getInternalServiceClient(
-                      new Endpoint(
+                      new TEndPoint(
                           instance.getHostEndpoint().getIp(),
                           IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
               // TODO: (xingtanzjr) consider how to handle the buffer here
@@ -60,8 +60,8 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
               buffer.flip();
               TConsensusGroupId groupId =
                   new TConsensusGroupId(
-                      instance.getRegionReplicaSet().getConsensusGroupId().getId(),
-                      instance.getRegionReplicaSet().getConsensusGroupId().getType().toString());
+                      instance.getRegionReplicaSet().getRegionId().getId(),
+                      instance.getRegionReplicaSet().getRegionId().getType().toString());
               TSendFragmentInstanceReq req =
                   new TSendFragmentInstanceReq(
                       new TFragmentInstance(buffer), groupId, instance.getType().toString());

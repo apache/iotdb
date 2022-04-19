@@ -43,10 +43,6 @@ public class DataNodeConfigurationDataSet implements DataSet {
     this.status = status;
   }
 
-  public Integer getDataNodeId() {
-    return dataNodeId;
-  }
-
   public void setDataNodeId(int dataNodeId) {
     this.dataNodeId = dataNodeId;
   }

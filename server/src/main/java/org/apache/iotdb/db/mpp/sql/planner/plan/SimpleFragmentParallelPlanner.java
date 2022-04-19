@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -92,7 +93,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
-    RegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
+    TRegionReplicaSet regionReplicaSet = fragment.getTargetRegion();
 
     // Set DataRegion and target host for the instance
     // We need to store all the replica host in case of the scenario that the instance need to be

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonUtils;
 
@@ -174,25 +174,33 @@ public class ConfigNodeDescriptor {
           Long.parseLong(
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
-      conf.setRegionReplicaCount(
+      conf.setDefaultSchemaReplicationFactor(
           Integer.parseInt(
               properties.getProperty(
-                  "region_replica_count", String.valueOf(conf.getRegionReplicaCount()))));
+                  "default_schema_replication_factor", String.valueOf(conf.getDefaultSchemaReplicationFactor()))));
 
-      conf.setSchemaRegionCount(
-          Integer.parseInt(
-              properties.getProperty(
-                  "schema_region_count", String.valueOf(conf.getSchemaRegionCount()))));
+      conf.setDefaultDataReplicationFactor(
+              Integer.parseInt(
+                      properties.getProperty(
+                              "default_data_replication_factor", String.valueOf(conf.getDefaultDataReplicationFactor())
+                      )
+              )
+      );
 
-      conf.setDataRegionCount(
+      conf.setInitialSchemaRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "data_region_count", String.valueOf(conf.getDataRegionCount()))));
+                  "initial_schema_region_count", String.valueOf(conf.getInitialSchemaRegionCount()))));
+
+      conf.setInitialDataRegionCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
 
       String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
 
       String[] addressList = addresses.split(",");
-      Endpoint[] endpointList = new Endpoint[addressList.length];
+      TEndPoint[] endpointList = new TEndPoint[addressList.length];
       for (int i = 0; i < addressList.length; i++) {
         endpointList[i] = CommonUtils.parseNodeUrl(addressList[i]);
       }

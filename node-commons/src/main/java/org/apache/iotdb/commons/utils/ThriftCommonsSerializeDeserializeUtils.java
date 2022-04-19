@@ -18,10 +18,17 @@
  */
 package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Utils for serialize and deserialize all the data struct defined by thrift-commons */
 public class ThriftCommonsSerializeDeserializeUtils {
@@ -30,13 +37,13 @@ public class ThriftCommonsSerializeDeserializeUtils {
     // Empty constructor
   }
 
-  public static void writeEndPoint(EndPoint endPoint, ByteBuffer buffer) {
+  public static void writeTEndPoint(TEndPoint endPoint, ByteBuffer buffer) {
     BasicStructureSerializeDeserializeUtil.write(endPoint.getIp(), buffer);
     buffer.putInt(endPoint.getPort());
   }
 
-  public static EndPoint readEndPoint(ByteBuffer buffer) {
-    EndPoint endPoint = new EndPoint();
+  public static TEndPoint readTEndPoint(ByteBuffer buffer) {
+    TEndPoint endPoint = new TEndPoint();
     endPoint.setIp(BasicStructureSerializeDeserializeUtil.readString(buffer));
     endPoint.setPort(buffer.getInt());
     return endPoint;
@@ -44,19 +51,63 @@ public class ThriftCommonsSerializeDeserializeUtils {
 
   public static void writeTDataNodeLocation(TDataNodeLocation dataNodeLocation, ByteBuffer buffer) {
     buffer.putInt(dataNodeLocation.getDataNodeId());
-    writeEndPoint(dataNodeLocation.getExternalEndPoint(), buffer);
-    writeEndPoint(dataNodeLocation.getInternalEndPoint(), buffer);
-    writeEndPoint(dataNodeLocation.getDataBlockManagerEndPoint(), buffer);
-    writeEndPoint(dataNodeLocation.getConsensusEndPoint(), buffer);
+    writeTEndPoint(dataNodeLocation.getExternalEndPoint(), buffer);
+    writeTEndPoint(dataNodeLocation.getInternalEndPoint(), buffer);
+    writeTEndPoint(dataNodeLocation.getDataBlockManagerEndPoint(), buffer);
+    writeTEndPoint(dataNodeLocation.getConsensusEndPoint(), buffer);
   }
 
   public static TDataNodeLocation readTDataNodeLocation(ByteBuffer buffer) {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(buffer.getInt());
-    dataNodeLocation.setExternalEndPoint(readEndPoint(buffer));
-    dataNodeLocation.setInternalEndPoint(readEndPoint(buffer));
-    dataNodeLocation.setDataBlockManagerEndPoint(readEndPoint(buffer));
-    dataNodeLocation.setConsensusEndPoint(readEndPoint(buffer));
+    dataNodeLocation.setExternalEndPoint(readTEndPoint(buffer));
+    dataNodeLocation.setInternalEndPoint(readTEndPoint(buffer));
+    dataNodeLocation.setDataBlockManagerEndPoint(readTEndPoint(buffer));
+    dataNodeLocation.setConsensusEndPoint(readTEndPoint(buffer));
     return dataNodeLocation;
   }
+
+  public static void writeTSeriesPartitionSlot(TSeriesPartitionSlot seriesPartitionSlot, ByteBuffer buffer) {
+    buffer.putInt(seriesPartitionSlot.getSlotId());
+  }
+
+  public static TSeriesPartitionSlot readTSeriesPartitionSlot(ByteBuffer buffer) {
+    return new TSeriesPartitionSlot(buffer.getInt());
+  }
+
+  public static void writeTTimePartitionSlot(TTimePartitionSlot timePartitionSlot, ByteBuffer buffer) {
+    buffer.putLong(timePartitionSlot.getStartTime());
+  }
+
+  public static TTimePartitionSlot readTTimePartitionSlot(ByteBuffer buffer) {
+    return new TTimePartitionSlot(buffer.getLong());
+  }
+
+  public static void writeTConsensusGroupId(TConsensusGroupId consensusGroupId, ByteBuffer buffer) {
+    buffer.putInt(consensusGroupId.getType().ordinal());
+    buffer.putInt(consensusGroupId.getId());
+  }
+
+  public static TConsensusGroupId readTConsensusGroupId(ByteBuffer buffer) {
+    TConsensusGroupType type = TConsensusGroupType.values()[buffer.getInt()];
+    return new TConsensusGroupId(type, buffer.getInt());
+  }
+
+  public static void writeTRegionReplicaSet(TRegionReplicaSet regionReplicaSet, ByteBuffer buffer) {
+    writeTConsensusGroupId(regionReplicaSet.getRegionId(), buffer);
+    buffer.putInt(regionReplicaSet.getDataNodeLocationsSize());
+    regionReplicaSet.getDataNodeLocations().forEach(dataNodeLocation -> writeTDataNodeLocation(dataNodeLocation, buffer));
+  }
+
+  public static TRegionReplicaSet readTRegionReplicaSet(ByteBuffer buffer) {
+    TConsensusGroupId consensusGroupId = readTConsensusGroupId(buffer);
+    int dataNodeLocationNum = buffer.getInt();
+    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
+    for (int i = 0; i < dataNodeLocationNum; i++) {
+      dataNodeLocations.add(readTDataNodeLocation(buffer));
+    }
+    return new TRegionReplicaSet(consensusGroupId, dataNodeLocations);
+  }
+
+
 }

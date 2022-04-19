@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -78,7 +80,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
   private ColumnHeader columnHeader;
 
   // The id of DataRegion where the node will run
-  private RegionReplicaSet regionReplicaSet;
+  private TRegionReplicaSet regionReplicaSet;
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath) {
     super(id);
@@ -94,7 +96,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     this.columnHeader = new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType());
   }
 
-  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, RegionReplicaSet regionReplicaSet) {
+  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, TRegionReplicaSet regionReplicaSet) {
     this(id, seriesPath);
     this.regionReplicaSet = regionReplicaSet;
   }
@@ -114,12 +116,12 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
   public void open() throws Exception {}
 
   @Override
-  public RegionReplicaSet getRegionReplicaSet() {
+  public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }
 
   @Override
-  public void setRegionReplicaSet(RegionReplicaSet dataRegion) {
+  public void setRegionReplicaSet(TRegionReplicaSet dataRegion) {
     this.regionReplicaSet = dataRegion;
   }
 
@@ -208,7 +210,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     if (isNull == 1) valueFilter = FilterFactory.deserialize(byteBuffer);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
-    RegionReplicaSet dataRegionReplicaSet = RegionReplicaSet.deserializeImpl(byteBuffer);
+    TRegionReplicaSet dataRegionReplicaSet = ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesScanNode seriesScanNode = new SeriesScanNode(planNodeId, partialPath);
     seriesScanNode.allSensors = allSensors;
@@ -249,7 +251,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
-    regionReplicaSet.serializeImpl(byteBuffer);
+    ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public PartialPath getSeriesPath() {

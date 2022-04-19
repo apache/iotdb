@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
@@ -138,7 +139,7 @@ public class ConfigManager implements Manager {
 
       GetOrCreateSchemaPartitionPlan getSchemaPartitionPlan =
           new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
       boolean getAll = false;
       Set<String> getAllSet = new HashSet<>();
@@ -195,7 +196,7 @@ public class ConfigManager implements Manager {
 
       GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
           new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
       for (String devicePath : devicePaths) {
         if (!devicePath.contains("*")) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
@@ -31,7 +32,7 @@ public abstract class SchemaScanNode extends SourceNode {
   private boolean hasLimit;
   protected boolean isPrefixPath;
 
-  private RegionReplicaSet schemaRegionReplicaSet;
+  private TRegionReplicaSet schemaRegionReplicaSet;
 
   protected SchemaScanNode(PlanNodeId id) {
     super(id);
@@ -80,12 +81,12 @@ public abstract class SchemaScanNode extends SourceNode {
   }
 
   @Override
-  public RegionReplicaSet getRegionReplicaSet() {
+  public TRegionReplicaSet getRegionReplicaSet() {
     return schemaRegionReplicaSet;
   }
 
   @Override
-  public void setRegionReplicaSet(RegionReplicaSet schemaRegionReplicaSet) {
+  public void setRegionReplicaSet(TRegionReplicaSet schemaRegionReplicaSet) {
     this.schemaRegionReplicaSet = schemaRegionReplicaSet;
   }
 

@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -84,7 +86,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
   private List<ColumnHeader> columnHeaders;
 
   // The id of DataRegion where the node will run
-  private RegionReplicaSet regionReplicaSet;
+  private TRegionReplicaSet regionReplicaSet;
 
   public SeriesAggregateScanNode(
       PlanNodeId id,
@@ -145,12 +147,12 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
   public void open() throws Exception {}
 
   @Override
-  public RegionReplicaSet getRegionReplicaSet() {
+  public TRegionReplicaSet getRegionReplicaSet() {
     return this.regionReplicaSet;
   }
 
   @Override
-  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -180,7 +182,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     timeFilter.serialize(byteBuffer);
     // TODO serialize groupByTimeParameter
-    regionReplicaSet.serializeImpl(byteBuffer);
+    ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
@@ -194,7 +196,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     Filter timeFilter = FilterFactory.deserialize(byteBuffer);
 
     // TODO serialize groupByTimeParameter
-    RegionReplicaSet regionReplicaSet = RegionReplicaSet.deserializeImpl(byteBuffer);
+    TRegionReplicaSet regionReplicaSet = ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(

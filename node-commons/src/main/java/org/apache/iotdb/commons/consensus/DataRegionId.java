@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -34,7 +36,7 @@ public class DataRegionId implements ConsensusGroupId {
 
   @Override
   public void serializeImpl(ByteBuffer buffer) {
-    buffer.put((byte) GroupType.DataRegion.ordinal());
+    buffer.put((byte) TConsensusGroupType.DataRegion.ordinal());
     buffer.putInt(id);
   }
 
@@ -55,8 +57,8 @@ public class DataRegionId implements ConsensusGroupId {
   }
 
   @Override
-  public GroupType getType() {
-    return GroupType.DataRegion;
+  public TConsensusGroupType getType() {
+    return TConsensusGroupType.DataRegion;
   }
 
   @Override
@@ -73,7 +75,7 @@ public class DataRegionId implements ConsensusGroupId {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, GroupType.DataRegion);
+    return Objects.hash(id, TConsensusGroupType.DataRegion);
   }
 
   public String toString() {

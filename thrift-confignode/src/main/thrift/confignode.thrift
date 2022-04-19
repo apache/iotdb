@@ -50,8 +50,7 @@ struct TDataNodeLocationResp {
 
 // StorageGroup
 struct TSetStorageGroupReq {
-  1: required string storageGroup
-  2: optional i64 TTL
+  1: required TStorageGroupSchema storageGroup
 }
 
 struct TDeleteStorageGroupReq {
@@ -63,6 +62,11 @@ struct TSetTTLReq {
   2: required i64 TTL
 }
 
+struct TSetTimePartitionIntervalReq {
+  1: required string storageGroup
+  2: required i64 timePartitionInterval
+}
+
 struct TStorageGroupSchemaResp {
   1: required common.TSStatus status
   // map<string, StorageGroupMessage>
@@ -70,12 +74,13 @@ struct TStorageGroupSchemaResp {
 }
 
 struct TStorageGroupSchema {
-  1: required string storageGroup
+  1: required string name
   2: optional i64 TTL
-  // list<DataRegionId>
-  3: optional list<binary> dataRegionGroupIds
-  // list<SchemaRegionId>
-  4: optional list<binary> schemaRegionGroupIds
+  3: optional i32 schemaReplicationFactor
+  4: optional i32 dataReplicationFactor
+  5: optional i64 timePartitionInterval
+  6: optional list<common.TConsensusGroupId> dataRegionGroupIds
+  7: optional list<common.TConsensusGroupId> schemaRegionGroupIds
 }
 
 // Schema
@@ -132,6 +137,8 @@ service ConfigIService {
   common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
 
   common.TSStatus setTTL(TSetTTLReq req)
+
+  common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
   TStorageGroupSchemaResp getStorageGroupsSchema()
 
