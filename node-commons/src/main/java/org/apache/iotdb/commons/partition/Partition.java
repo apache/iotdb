@@ -24,15 +24,17 @@ public abstract class Partition {
   protected String seriesSlotExecutorName;
   protected int seriesPartitionSlotNum;
 
+  private final SeriesPartitionExecutor executor;
+
   public Partition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
     this.seriesSlotExecutorName = seriesSlotExecutorName;
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
+    executor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
   protected SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
-    SeriesPartitionExecutor executor =
-        SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            seriesSlotExecutorName, seriesPartitionSlotNum);
     return executor.getSeriesPartitionSlot(deviceName);
   }
 }
