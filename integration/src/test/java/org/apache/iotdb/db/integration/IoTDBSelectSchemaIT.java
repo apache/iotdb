@@ -77,10 +77,17 @@ public class IoTDBSelectSchemaIT {
   @Test
   public void testSchemaExpression() {
     String[] expressions = {
-      "-2+s1", "-(-1)+s1",
+      "s1+s2", "-s1+s2", "-(s1+s3)", "!(s1>s2)", "-(-(s1))", "((s1+s2)*s3)", "-2+s1", "-(-1)+s1"
     };
     String[] completeExpressions = {
-      "-2+root.sg.d1.s1", "--1+root.sg.d1.s1",
+      "root.sg.d1.s1+root.sg.d1.s2",
+      "-root.sg.d1.s1+root.sg.d1.s2",
+      "-(root.sg.d1.s1+root.sg.d1.s3)",
+      "!(root.sg.d1.s1>root.sg.d1.s2)",
+      "-(-root.sg.d1.s1)",
+      "(root.sg.d1.s1+root.sg.d1.s2)*root.sg.d1.s3",
+      "-2+root.sg.d1.s1",
+      "-(-1)+root.sg.d1.s1",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
