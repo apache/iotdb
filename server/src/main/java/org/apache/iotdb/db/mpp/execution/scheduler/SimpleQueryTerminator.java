@@ -55,11 +55,12 @@ public class SimpleQueryTerminator implements IQueryTerminator {
             () -> {
               try {
                 for (Endpoint endpoint : relatedHost) {
+                  // TODO (jackie tien) change the port
                   InternalService.Iface client =
-                      InternalServiceClientFactory.getMppServiceClient(
+                      InternalServiceClientFactory.getInternalServiceClient(
                           new Endpoint(
                               endpoint.getIp(),
-                              IoTDBDescriptor.getInstance().getConfig().getMppPort()));
+                              IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
                   client.cancelQuery(new TCancelQueryReq(queryId.getId()));
                 }
               } catch (TException e) {

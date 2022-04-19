@@ -50,10 +50,10 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
           TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
           for (FragmentInstance instance : instances) {
             InternalService.Iface client =
-                InternalServiceClientFactory.getMppServiceClient(
+                InternalServiceClientFactory.getInternalServiceClient(
                     new Endpoint(
                         instance.getHostEndpoint().getIp(),
-                        IoTDBDescriptor.getInstance().getConfig().getMppPort()));
+                        IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
             // TODO: (xingtanzjr) consider how to handle the buffer here
             ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
             instance.serializeRequest(buffer);

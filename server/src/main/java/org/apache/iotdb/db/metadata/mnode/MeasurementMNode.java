@@ -47,8 +47,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private IMeasurementSchema schema;
   /** last value cache */
   private volatile ILastCacheContainer lastCacheContainer = null;
-  /** registered trigger */
-  private TriggerExecutor triggerExecutor = null;
 
   /**
    * MeasurementMNode factory method. The type of returned MeasurementMNode is according to the

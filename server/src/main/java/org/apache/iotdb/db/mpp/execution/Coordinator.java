@@ -55,7 +55,7 @@ public class Coordinator {
   private static final Endpoint LOCAL_HOST =
       new Endpoint(
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMppPort());
+          IoTDBDescriptor.getInstance().getConfig().getInternalPort());
 
   private final ExecutorService executor;
   private final ScheduledExecutorService scheduledExecutor;

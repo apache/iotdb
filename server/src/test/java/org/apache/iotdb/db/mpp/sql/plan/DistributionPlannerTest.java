@@ -298,7 +298,6 @@ public class DistributionPlannerTest {
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
-    plan.getInstances().forEach(System.out::println);
     assertEquals(3, plan.getInstances().size());
   }
 

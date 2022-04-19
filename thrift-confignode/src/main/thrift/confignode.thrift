@@ -117,6 +117,11 @@ struct TAuthorizerReq {
   7: required string nodeName
 }
 
+struct TAuthorizerResp {
+    1: required common.TSStatus status
+    2: required map<string, list<string>> authorizerInfo
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -148,6 +153,8 @@ service ConfigIService {
   TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
   /* Authorize */
+
   common.TSStatus operatePermission(TAuthorizerReq req)
 
+  TAuthorizerResp queryPermission(TAuthorizerReq req)
 }

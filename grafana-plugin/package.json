@@ -17,16 +17,15 @@
     "@grafana/toolkit": "latest",
     "@grafana/ui": "latest",
     "@grafana/runtime": "latest",
-    "@testing-library/jest-dom": "5.4.0",
-    "@testing-library/react": "^10.0.2",
-    "@types/base-64": "^1.0.0",
     "@types/lodash": "latest"
+  },
+  "resolutions": {
+  "rxjs": "7.3.0"
   },
   "engines": {
     "node": ">=14"
   },
   "dependencies": {
-    "@grafana/runtime": "^8.3.2",
     "node-sass": "^7.0.1"
   }
 }

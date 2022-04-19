@@ -22,13 +22,13 @@ package org.apache.iotdb.db.mpp.buffer;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
-import org.apache.iotdb.mpp.rpc.thrift.AcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
-import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
-import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
-import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
-import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.commons.lang3.Validate;
@@ -67,7 +67,7 @@ public class DataBlockManager implements IDataBlockManager {
   class DataBlockServiceImpl implements DataBlockService.Iface {
 
     @Override
-    public GetDataBlockResponse getDataBlock(GetDataBlockRequest req) throws TException {
+    public TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req) throws TException {
       logger.debug(
           "Get data block request received, for data blocks whose sequence ID in [{}, {}) from {}.",
           req.getStartSequenceId(),
@@ -79,7 +79,7 @@ public class DataBlockManager implements IDataBlockManager {
                 + req.getSourceFragmentInstanceId()
                 + ".");
       }
-      GetDataBlockResponse resp = new GetDataBlockResponse();
+      TGetDataBlockResponse resp = new TGetDataBlockResponse();
       SinkHandle sinkHandle = sinkHandles.get(req.getSourceFragmentInstanceId());
       for (int i = req.getStartSequenceId(); i < req.getEndSequenceId(); i++) {
         try {
@@ -93,7 +93,7 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onAcknowledgeDataBlockEvent(AcknowledgeDataBlockEvent e) throws TException {
+    public void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e) throws TException {
       logger.debug(
           "Acknowledge data block event received, for data blocks whose sequence ID in [{}, {}) from {}.",
           e.getStartSequenceId(),
@@ -111,7 +111,7 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onNewDataBlockEvent(NewDataBlockEvent e) throws TException {
+    public void onNewDataBlockEvent(TNewDataBlockEvent e) throws TException {
       logger.debug(
           "New data block event received, for plan node {} of {} from {}.",
           e.getTargetPlanNodeId(),
@@ -137,8 +137,8 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onEndOfDataBlockEvent(EndOfDataBlockEvent e) throws TException {
-      logger.info(
+    public void onEndOfDataBlockEvent(TEndOfDataBlockEvent e) throws TException {
+      logger.debug(
           "End of data block event received, for plan node {} of {} from {}.",
           e.getTargetPlanNodeId(),
           e.getTargetFragmentInstanceId(),
