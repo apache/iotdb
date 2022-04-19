@@ -20,6 +20,10 @@
 package org.apache.iotdb.db.mpp.sql.statement.component;
 
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** This class maintains information of {@code GROUP BY} clause. */
 public class GroupByTimeComponent extends StatementNode {
@@ -45,10 +49,23 @@ public class GroupByTimeComponent extends StatementNode {
 
   public GroupByTimeComponent(
       long startTime, long endTime, long interval, long slidingStep, boolean leftCRightO) {
+    this(startTime, endTime, interval, slidingStep, false, false, leftCRightO);
+  }
+
+  public GroupByTimeComponent(
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep,
+      boolean isIntervalByMonth,
+      boolean isSlidingStepByMonth,
+      boolean leftCRightO) {
     this.startTime = startTime;
     this.endTime = endTime;
     this.interval = interval;
     this.slidingStep = slidingStep;
+    this.isIntervalByMonth = isIntervalByMonth;
+    this.isSlidingStepByMonth = isSlidingStepByMonth;
     this.leftCRightO = leftCRightO;
   }
 
@@ -106,5 +123,47 @@ public class GroupByTimeComponent extends StatementNode {
 
   public void setIntervalByMonth(boolean isIntervalByMonth) {
     this.isIntervalByMonth = isIntervalByMonth;
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(startTime, buffer);
+    ReadWriteIOUtils.write(endTime, buffer);
+    ReadWriteIOUtils.write(interval, buffer);
+    ReadWriteIOUtils.write(slidingStep, buffer);
+    ReadWriteIOUtils.write(isIntervalByMonth, buffer);
+    ReadWriteIOUtils.write(isSlidingStepByMonth, buffer);
+    ReadWriteIOUtils.write(leftCRightO, buffer);
+  }
+
+  public static GroupByTimeComponent deserialize(ByteBuffer buffer) {
+    GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
+    groupByTimeComponent.setStartTime(ReadWriteIOUtils.readLong(buffer));
+    groupByTimeComponent.setEndTime(ReadWriteIOUtils.readLong(buffer));
+    groupByTimeComponent.setInterval(ReadWriteIOUtils.readLong(buffer));
+    groupByTimeComponent.setSlidingStep(ReadWriteIOUtils.readLong(buffer));
+    groupByTimeComponent.setIntervalByMonth(ReadWriteIOUtils.readBool(buffer));
+    groupByTimeComponent.setSlidingStepByMonth(ReadWriteIOUtils.readBool(buffer));
+    groupByTimeComponent.setLeftCRightO(ReadWriteIOUtils.readBool(buffer));
+    return groupByTimeComponent;
+  }
+
+  public boolean equals(Object obj) {
+    if (!(obj instanceof GroupByTimeComponent)) {
+      return false;
+    }
+    GroupByTimeComponent other = (GroupByTimeComponent) obj;
+    return this.startTime == other.startTime
+        && this.endTime == other.endTime
+        && this.interval == other.interval
+        && this.slidingStep == other.slidingStep
+        && this.isSlidingStepByMonth == other.isSlidingStepByMonth
+        && this.isIntervalByMonth == other.isIntervalByMonth
+        && this.leftCRightO == other.leftCRightO;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        interval, slidingStep, startTime, endTime, isSlidingStepByMonth, isIntervalByMonth);
   }
 }

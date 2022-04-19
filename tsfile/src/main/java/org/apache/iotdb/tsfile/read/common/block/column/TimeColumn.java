@@ -104,9 +104,8 @@ public class TimeColumn implements Column {
     return new TimeColumn(positionOffset + arrayOffset, length, values);
   }
 
-  // TODO 这里是 0 吗?
   public long getStartTime() {
-    return values[0];
+    return values[arrayOffset];
   }
 
   public long getEndTime() {
