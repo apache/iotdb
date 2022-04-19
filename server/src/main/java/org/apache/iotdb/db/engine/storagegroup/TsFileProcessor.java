@@ -354,8 +354,8 @@ public class TsFileProcessor {
           memIncrements =
               checkAlignedMemCostAndAddToTsp(
                   insertTabletPlan.getDevicePath().getFullPath(),
-                  insertTabletPlan.getDataTypes(),
                   insertTabletPlan.getMeasurements(),
+                  insertTabletPlan.getDataTypes(),
                   insertTabletPlan.getColumns(),
                   start,
                   end);
@@ -363,8 +363,8 @@ public class TsFileProcessor {
           memIncrements =
               checkMemCostAndAddToTspInfo(
                   insertTabletPlan.getDevicePath().getFullPath(),
-                  insertTabletPlan.getDataTypes(),
                   insertTabletPlan.getMeasurements(),
+                  insertTabletPlan.getDataTypes(),
                   insertTabletPlan.getColumns(),
                   start,
                   end);
@@ -451,8 +451,8 @@ public class TsFileProcessor {
           memIncrements =
               checkAlignedMemCostAndAddToTsp(
                   insertTabletNode.getDevicePath().getFullPath(),
-                  insertTabletNode.getDataTypes(),
                   insertTabletNode.getMeasurements(),
+                  insertTabletNode.getDataTypes(),
                   insertTabletNode.getColumns(),
                   start,
                   end);
@@ -460,8 +460,8 @@ public class TsFileProcessor {
           memIncrements =
               checkMemCostAndAddToTspInfo(
                   insertTabletNode.getDevicePath().getFullPath(),
-                  insertTabletNode.getDataTypes(),
                   insertTabletNode.getMeasurements(),
+                  insertTabletNode.getDataTypes(),
                   insertTabletNode.getColumns(),
                   start,
                   end);
@@ -619,8 +619,8 @@ public class TsFileProcessor {
 
   private long[] checkMemCostAndAddToTspInfo(
       String deviceId,
-      TSDataType[] dataTypes,
       String[] measurements,
+      TSDataType[] dataTypes,
       Object[] columns,
       int start,
       int end)
@@ -654,8 +654,8 @@ public class TsFileProcessor {
 
   private long[] checkAlignedMemCostAndAddToTsp(
       String deviceId,
-      TSDataType[] dataTypes,
       String[] measurements,
+      TSDataType[] dataTypes,
       Object[] columns,
       int start,
       int end)
