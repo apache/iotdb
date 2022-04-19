@@ -96,6 +96,7 @@
                             <resources>
                                 <resource>
                                     <directory>${basedir}/../thrift/target/generated-sources-python/iotdb/thrift/</directory>
+                                    <directory>${basedir}/../thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>
                                 </resource>
                             </resources>
                         </configuration>
