@@ -173,6 +173,11 @@ public class DataDriver implements Driver {
     }
   }
 
+  @Override
+  public void failed(Throwable t) {
+    driverContext.failed(t);
+  }
+
   /**
    * init seq file list and unseq file list in QueryDataSource and set it into each SourceNode TODO
    * we should change all the blocked lock operation into tryLock
