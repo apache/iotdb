@@ -1894,14 +1894,12 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
-      throws MetadataException {
+  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
-      throws MetadataException {
+  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
