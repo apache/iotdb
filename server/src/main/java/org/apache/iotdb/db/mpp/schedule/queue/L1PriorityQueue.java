@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.mpp.schedule.queue;
 
 import java.util.Comparator;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /**
  * An efficient subclass of {@link IndexedBlockingQueue} with 1-level priority groups.
@@ -36,9 +38,8 @@ import java.util.TreeMap;
  */
 public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlockingQueue<E> {
 
-  // Here we use a map not a set to act as a queue because we need to get the element reference
-  // after it was removed.
-  private final SortedMap<E, E> elements;
+  private final SortedSet<E> sortedElements; // Used for accessing in order
+  private final Map<ID, E> keyedElements; // Used for accessing randomly
 
   /**
    * Init the queue with max capacity and specified comparator.
@@ -51,41 +52,51 @@ public class L1PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
    */
   public L1PriorityQueue(int maxCapacity, Comparator<E> comparator, E queryHolder) {
     super(maxCapacity, queryHolder);
-    this.elements = new TreeMap<>(comparator);
+    this.sortedElements = new TreeSet<>(comparator);
+    this.keyedElements = new HashMap<>();
   }
 
   @Override
   protected boolean isEmpty() {
-    return elements.isEmpty();
+    return keyedElements.isEmpty();
   }
 
   @Override
   protected E pollFirst() {
-    return elements.remove(elements.firstKey());
+    E element = sortedElements.first();
+    sortedElements.remove(element);
+    keyedElements.remove(element.getId());
+    return element;
   }
 
   @Override
   protected void pushToQueue(E element) {
-    elements.put(element, element);
+    keyedElements.put(element.getId(), element);
+    sortedElements.add(element);
   }
 
   @Override
   protected E remove(E element) {
-    return elements.remove(element);
+    E e = keyedElements.remove(element.getId());
+    if (e != null) {
+      sortedElements.remove(e);
+    }
+    return e;
   }
 
   @Override
   protected boolean contains(E element) {
-    return elements.containsKey(element);
+    return keyedElements.containsKey(element.getId());
   }
 
   @Override
   protected E get(E element) {
-    return elements.get(element);
+    return keyedElements.get(element.getId());
   }
 
   @Override
   protected void clearAllElements() {
-    elements.clear();
+    sortedElements.clear();
+    keyedElements.clear();
   }
 }
