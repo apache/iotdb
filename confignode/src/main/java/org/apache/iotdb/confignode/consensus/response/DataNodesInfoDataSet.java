@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessage;
@@ -64,7 +64,7 @@ public class DataNodesInfoDataSet implements DataSet {
             info.getDataNodeId(),
             new TDataNodeMessage(
                 info.getDataNodeId(),
-                new EndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
+                new TEndPoint(info.getEndPoint().getIp(), info.getEndPoint().getPort())));
         resp.setDataNodeMessageMap(msgMap);
       }
     }
