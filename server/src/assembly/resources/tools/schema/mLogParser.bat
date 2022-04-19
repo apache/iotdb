@@ -20,7 +20,7 @@
 
 @echo off
 echo ````````````````````````
-echo Starting Sketching the IoTDB SchemaFile
+echo Starting Parsing the IoTDB MLog or Snapshot
 echo ````````````````````````
 
 if "%OS%" == "Windows_NT" setlocal
@@ -29,7 +29,7 @@ pushd %~dp0..\..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.mlog.SchemaFileSketchTool
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.schema.MLogParser
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
