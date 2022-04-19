@@ -1700,8 +1700,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // region Interfaces for Trigger
 
-  public IMeasurementMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
-    return mtree.getMeasurementMNode(fullPath);
+  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
+    return mtree.getNodeByPath(fullPath);
   }
 
   public void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException {
