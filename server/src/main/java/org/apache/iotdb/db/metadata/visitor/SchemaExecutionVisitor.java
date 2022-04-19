@@ -39,8 +39,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /** Schema write PlanNode visitor */
-public class SchemaVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
-  private static final Logger logger = LoggerFactory.getLogger(SchemaVisitor.class);
+public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
+  private static final Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
   @Override
   public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {

@@ -71,7 +71,7 @@ public abstract class PlanNode {
     return node;
   }
 
-  public int getChildrenCount(List<PlanNode> children) {
+  private int getChildrenCount(List<PlanNode> children) {
     return children == null ? 0 : children.size();
   }
 
