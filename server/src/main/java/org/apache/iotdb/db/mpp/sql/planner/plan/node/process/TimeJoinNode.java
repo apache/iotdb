@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -57,6 +58,11 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   private List<PlanNode> children;
 
   private List<ColumnHeader> columnHeaders = new ArrayList<>();
+
+  // indicate each output column should use which value column of which input TsBlock and the
+  // overlapped situation
+  // size of outputColumns must be equal to the size of columnHeaders
+  private List<OutputColumn> outputColumns = new ArrayList<>();
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
@@ -123,6 +129,10 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     for (ColumnHeader columnHeader : columnHeaders) {
       columnHeader.serialize(byteBuffer);
     }
+  }
+
+  public List<OutputColumn> getOutputColumns() {
+    return outputColumns;
   }
 
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
