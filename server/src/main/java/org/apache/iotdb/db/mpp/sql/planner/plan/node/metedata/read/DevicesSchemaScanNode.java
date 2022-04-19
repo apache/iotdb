@@ -26,12 +26,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.List;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import java.util.Objects;
 
 public class DevicesSchemaScanNode extends SchemaScanNode {
 
@@ -66,22 +62,8 @@ public class DevicesSchemaScanNode extends SchemaScanNode {
   }
 
   @Override
-  public int allowedChildCount() {
-    return NO_CHILD_ALLOWED;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    if (hasSgCol) {
-      return Arrays.asList(COLUMN_DEVICES, COLUMN_STORAGE_GROUP, COLUMN_IS_ALIGNED);
-    }
-    return Arrays.asList(COLUMN_DEVICES, COLUMN_IS_ALIGNED);
-  }
-
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICES_SCHEMA_SCAN.serialize(byteBuffer);
-    ReadWriteIOUtils.write(getPlanNodeId().getId(), byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
@@ -90,10 +72,8 @@ public class DevicesSchemaScanNode extends SchemaScanNode {
   }
 
   public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
-    String id = ReadWriteIOUtils.readString(byteBuffer);
-    PlanNodeId planNodeId = new PlanNodeId(id);
     String fullPath = ReadWriteIOUtils.readString(byteBuffer);
-    PartialPath path = null;
+    PartialPath path;
     try {
       path = new PartialPath(fullPath);
     } catch (IllegalPathException e) {
@@ -103,6 +83,27 @@ public class DevicesSchemaScanNode extends SchemaScanNode {
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
     boolean hasSgCol = ReadWriteIOUtils.readBool(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new DevicesSchemaScanNode(planNodeId, path, limit, offset, isPrefixPath, hasSgCol);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    DevicesSchemaScanNode that = (DevicesSchemaScanNode) o;
+    return hasSgCol == that.hasSgCol;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), hasSgCol);
   }
 }
