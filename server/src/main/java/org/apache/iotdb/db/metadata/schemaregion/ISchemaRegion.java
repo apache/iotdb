@@ -42,11 +42,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,7 +68,6 @@ import java.util.Set;
  *       </ol>
  *   <li>Interfaces and methods for MNode query
  *   <li>Interfaces for alias and tag/attribute operations
- *   <li>Interfaces only for Cluster module usage
  *   <li>Interfaces for InsertPlan process
  *   <li>Interfaces for Template operations
  *   <li>Interfaces for Trigger
@@ -331,15 +327,6 @@ public interface ISchemaRegion {
    */
   void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException;
-  // endregion
-
-  // region Interfaces only for Cluster module usage
-  // todo remove this region after delete old cluster
-  void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas);
-
-  void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas);
   // endregion
 
   // region Interfaces for InsertPlan process

@@ -80,7 +80,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -93,7 +92,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -134,7 +132,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
  *       </ol>
  *   <li>Interfaces and methods for MNode query
  *   <li>Interfaces for alias and tag/attribute operations
- *   <li>Interfaces only for Cluster module usage
  *   <li>Interfaces and Implementation for InsertPlan process
  *   <li>Interfaces and Implementation for Template operations
  *   <li>Interfaces for Trigger
@@ -1361,37 +1358,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeFromTagInvertedIndex(IMeasurementMNode node) throws IOException {
     tagManager.removeFromTagInvertedIndex(node);
-  }
-  // endregion
-
-  // region Interfaces only for Cluster module usage
-
-  /**
-   * Collect the timeseries schemas as IMeasurementSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
-    try {
-      mtree.collectMeasurementSchema(prefixPath, measurementSchemas);
-    } catch (MetadataException ignored) {
-      // do nothing
-    }
-  }
-
-  /**
-   * Collect the timeseries schemas as TimeseriesSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
-    try {
-      mtree.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
-    } catch (MetadataException ignored) {
-      // do nothing
-    }
   }
   // endregion
 

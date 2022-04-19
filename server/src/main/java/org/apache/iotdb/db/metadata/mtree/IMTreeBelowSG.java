@@ -34,10 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -154,23 +151,6 @@ public interface IMTreeBelowSG {
    */
   Pair<List<Pair<PartialPath, String[]>>, Integer> getAllMeasurementSchema(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException;
-
-  /**
-   * Collect the timeseries schemas as IMeasurementSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  void collectMeasurementSchema(PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas)
-      throws MetadataException;
-
-  /**
-   * Collect the timeseries schemas as TimeseriesSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas)
-      throws MetadataException;
 
   /**
    * Get child node path in the next level of the given path pattern.

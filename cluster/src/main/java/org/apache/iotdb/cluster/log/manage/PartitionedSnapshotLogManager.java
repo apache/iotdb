@@ -130,7 +130,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       }
       Collection<TimeseriesSchema> schemas =
           slotTimeseries.computeIfAbsent(slot, s -> new HashSet<>());
-      IoTDB.schemaProcessor.collectTimeseriesSchema(sgPath, schemas);
+      //      IoTDB.schemaProcessor.collectTimeseriesSchema(sgPath, schemas);
       logger.debug("{}: {} timeseries are snapshot in slot {}", getName(), schemas.size(), slot);
     }
   }

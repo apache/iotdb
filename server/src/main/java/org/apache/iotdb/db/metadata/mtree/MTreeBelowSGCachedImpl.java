@@ -62,13 +62,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
@@ -745,52 +743,6 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     }
 
     return new Pair<>(result, collector.getCurOffset() + 1);
-  }
-
-  /**
-   * Collect the timeseries schemas as IMeasurementSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  @Override
-  public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas)
-      throws MetadataException {
-    MeasurementCollector<List<IMeasurementSchema>> collector =
-        new MeasurementCollector<List<IMeasurementSchema>>(storageGroupMNode, prefixPath, store) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) {
-            measurementSchemas.add(node.getSchema());
-          }
-        };
-    collector.setPrefixMatch(true);
-    collector.traverse();
-  }
-
-  /**
-   * Collect the timeseries schemas as TimeseriesSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  @Override
-  public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas)
-      throws MetadataException {
-    MeasurementCollector<List<IMeasurementSchema>> collector =
-        new MeasurementCollector<List<IMeasurementSchema>>(storageGroupMNode, prefixPath, store) {
-          @Override
-          protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
-            IMeasurementSchema nodeSchema = node.getSchema();
-            timeseriesSchemas.add(
-                new TimeseriesSchema(
-                    getCurrentPartialPath(node).getFullPath(),
-                    nodeSchema.getType(),
-                    nodeSchema.getEncodingType(),
-                    nodeSchema.getCompressor()));
-          }
-        };
-    collector.setPrefixMatch(true);
-    collector.traverse();
   }
 
   // endregion
