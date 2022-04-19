@@ -52,7 +52,6 @@ public class WALBuffer extends AbstractWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(WALBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final int WAL_BUFFER_SIZE = config.getWalBufferSize();
-  private static final long FSYNC_WAL_DELAY_IN_MS = config.getFsyncWalDelayInMs();
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
 
   /** whether close method is called */
@@ -159,7 +158,7 @@ public class WALBuffer extends AbstractWALBuffer {
               return;
             case CLOSE_SIGNAL:
             default:
-              break;
+              return;
           }
         }
       } catch (InterruptedException e) {
@@ -169,9 +168,10 @@ public class WALBuffer extends AbstractWALBuffer {
       }
 
       // for better fsync performance, sleep a while to enlarge write batch
-      if (FSYNC_WAL_DELAY_IN_MS > 0) {
+      long fsyncDelay = config.getFsyncWalDelayInMs();
+      if (fsyncDelay > 0) {
         try {
-          Thread.sleep(FSYNC_WAL_DELAY_IN_MS);
+          Thread.sleep(fsyncDelay);
         } catch (InterruptedException e) {
           logger.warn("Interrupted when sleeping a while to enlarge wal write batch.");
           Thread.currentThread().interrupt();
@@ -378,7 +378,7 @@ public class WALBuffer extends AbstractWALBuffer {
       // try to roll log writer
       try {
         if (rollWAlFileWriterListener != null
-            || (forceFlag && currentWALFileWriter.size() >= FILE_SIZE_THRESHOLD)) {
+            || (forceFlag && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
           rollLogWriter();
           if (rollWAlFileWriterListener != null) {
             rollWAlFileWriterListener.succeed();

@@ -26,8 +26,8 @@ import io.airlift.units.Duration;
 import java.io.Closeable;
 
 /**
- * ExecutableFragmentInstance encapsulates some methods which are necessary for execution scheduler
- * to run a fragment instance
+ * Driver encapsulates some methods which are necessary for execution scheduler to run a fragment
+ * instance
  */
 public interface Driver extends Closeable {
 
@@ -60,4 +60,11 @@ public interface Driver extends Closeable {
   /** clear resource used by this fragment instance */
   @Override
   void close();
+
+  /**
+   * fail current driver
+   *
+   * @param t reason cause this failure
+   */
+  void failed(Throwable t);
 }

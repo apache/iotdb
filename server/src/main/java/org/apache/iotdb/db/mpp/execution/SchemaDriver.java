@@ -50,6 +50,8 @@ public class SchemaDriver implements Driver {
 
   private final AtomicReference<SettableFuture<Void>> driverBlockedFuture = new AtomicReference<>();
 
+  private boolean closed = false;
+
   public SchemaDriver(Operator root, ISinkHandle sinkHandle, SchemaDriverContext driverContext) {
     this.root = root;
     this.sinkHandle = sinkHandle;
@@ -66,7 +68,6 @@ public class SchemaDriver implements Driver {
       boolean isFinished = driverBlockedFuture.get().isDone() && root != null && root.isFinished();
       if (isFinished) {
         close();
-        driverContext.finish();
       }
       return isFinished;
     } catch (Throwable t) {
@@ -146,5 +147,26 @@ public class SchemaDriver implements Driver {
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    if (closed) {
+      return;
+    }
+    closed = true;
+    try {
+      if (root != null) {
+        root.close();
+      }
+      if (sinkHandle != null) {
+        sinkHandle.close();
+      }
+    } catch (Throwable t) {
+      logger.error("Failed to closed driver {}", driverContext.getId(), t);
+      driverContext.failed(t);
+    }
+  }
+
+  @Override
+  public void failed(Throwable t) {
+    driverContext.failed(t);
+  }
 }

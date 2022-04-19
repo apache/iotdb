@@ -23,6 +23,9 @@ import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.query.context.QueryContext;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,6 +33,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class FragmentInstanceContext extends QueryContext {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
 
   private final FragmentInstanceId id;
 
@@ -93,6 +98,7 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public void failed(Throwable cause) {
+    LOGGER.warn("Fragment Instance {} failed.", id, cause);
     state.set(FragmentInstanceState.FAILED);
   }
 
@@ -112,6 +118,13 @@ public class FragmentInstanceContext extends QueryContext {
     }
     state.set(FragmentInstanceState.FINISHED);
     this.endTime = System.currentTimeMillis();
+  }
+
+  public void flushing() {
+    if (state.get().isDone()) {
+      return;
+    }
+    state.set(FragmentInstanceState.FLUSHING);
   }
 
   public long getEndTime() {

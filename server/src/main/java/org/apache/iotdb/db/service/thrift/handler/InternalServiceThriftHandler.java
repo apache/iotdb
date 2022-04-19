@@ -16,29 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.auth;
 
-import org.apache.iotdb.confignode.utils.ConfigNodeEnvironmentUtils;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+package org.apache.iotdb.db.service.thrift.handler;
 
-import org.junit.After;
-import org.junit.Before;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.ServerContext;
+import org.apache.thrift.server.TServerEventHandler;
+import org.apache.thrift.transport.TTransport;
 
-public class AuthorTest {
+public class InternalServiceThriftHandler implements TServerEventHandler {
 
-  IAuthorizer authorizer;
+  @Override
+  public void preServe() {}
 
-  @Before
-  public void setUp() throws Exception {
-    ConfigNodeEnvironmentUtils.envSetUp();
-    authorizer = BasicAuthorizer.getInstance();
+  @Override
+  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+    return null;
   }
 
-  @After
-  public void tearDown() throws Exception {
-    ConfigNodeEnvironmentUtils.cleanEnv();
-  }
+  @Override
+  public void deleteContext(
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
 
-  // TODO: ADD TEST
+  @Override
+  public void processContext(
+      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
 }
