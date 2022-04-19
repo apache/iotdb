@@ -369,9 +369,8 @@ public interface ISchemaRegion {
   // endregion
 
   // region Interfaces for Trigger
-  IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath) throws MetadataException;
+  IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException;
 
-  void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
-      throws MetadataException;
+  void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException;
   // endregion
 }

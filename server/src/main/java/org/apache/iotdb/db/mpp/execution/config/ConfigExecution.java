@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -149,6 +150,8 @@ public class ConfigExecution implements IQueryExecution {
       switch (statement.getType()) {
         case SET_STORAGE_GROUP:
           return new SetStorageGroupTask((SetStorageGroupStatement) statement);
+        case AUTHOR:
+          return new AuthorizerConfigTask((AuthorStatement) statement);
         default:
           throw new NotImplementedException();
       }
