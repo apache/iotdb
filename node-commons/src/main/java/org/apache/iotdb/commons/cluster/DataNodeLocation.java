@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.cluster;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/** TODO: Delete this class */
 public class DataNodeLocation {
 
   private int dataNodeId;

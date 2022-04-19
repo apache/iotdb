@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -180,10 +180,11 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TDataNodeMessageResp getDataNodesMessage(int dataNodeID) throws IoTDBConnectionException {
+  public TDataNodeLocationResp getDataNodeLocations(int dataNodeID)
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDataNodeMessageResp resp = client.getDataNodesMessage(dataNodeID);
+        TDataNodeLocationResp resp = client.getDataNodeLocations(dataNodeID);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }

@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.cluster;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
+/** TODO: Delete this class */
 public class Endpoint {
 
   private String ip;

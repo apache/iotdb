@@ -19,11 +19,9 @@
 package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
@@ -39,7 +37,7 @@ import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -78,10 +76,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
-    RegisterDataNodePlan plan =
-        new RegisterDataNodePlan(
-            new DataNodeLocation(
-                -1, new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort())));
+    RegisterDataNodePlan plan = new RegisterDataNodePlan(req.getDataNodeLocation());
     DataNodeConfigurationDataSet dataSet =
         (DataNodeConfigurationDataSet) configManager.registerDataNode(plan);
 
@@ -92,12 +87,13 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TDataNodeMessageResp getDataNodesMessage(int dataNodeID) throws TException {
+  public TDataNodeLocationResp getDataNodeLocations(int dataNodeID) throws TException {
     QueryDataNodeInfoPlan plan = new QueryDataNodeInfoPlan(dataNodeID);
-    DataNodesInfoDataSet dataSet = (DataNodesInfoDataSet) configManager.getDataNodeInfo(plan);
+    DataNodeLocationsDataSet dataSet =
+        (DataNodeLocationsDataSet) configManager.getDataNodeInfo(plan);
 
-    TDataNodeMessageResp resp = new TDataNodeMessageResp();
-    dataSet.convertToRPCDataNodeMessageResp(resp);
+    TDataNodeLocationResp resp = new TDataNodeLocationResp();
+    dataSet.convertToRpcDataNodeLocationResp(resp);
     return resp;
   }
 

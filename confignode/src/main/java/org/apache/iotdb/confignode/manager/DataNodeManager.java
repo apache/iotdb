@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
 import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
@@ -101,15 +102,15 @@ public class DataNodeManager {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodesInfoDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
-    return (DataNodesInfoDataSet) getConsensusManager().read(plan).getDataset();
+  public DataNodeLocationsDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
+    return (DataNodeLocationsDataSet) getConsensusManager().read(plan).getDataset();
   }
 
   public int getOnlineDataNodeCount() {
     return dataNodeInfoPersistence.getOnlineDataNodeCount();
   }
 
-  public List<DataNodeLocation> getOnlineDataNodes() {
+  public List<TDataNodeLocation> getOnlineDataNodes() {
     return dataNodeInfoPersistence.getOnlineDataNodes();
   }
 

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
@@ -28,40 +28,30 @@ import java.util.Objects;
 
 public class RegisterDataNodePlan extends PhysicalPlan {
 
-  private DataNodeLocation info;
+  private TDataNodeLocation info;
 
   public RegisterDataNodePlan() {
     super(PhysicalPlanType.RegisterDataNode);
   }
 
-  public RegisterDataNodePlan(DataNodeLocation info) {
+  public RegisterDataNodePlan(TDataNodeLocation info) {
     this();
     this.info = info;
   }
 
-  public DataNodeLocation getInfo() {
+  public TDataNodeLocation getInfo() {
     return info;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.RegisterDataNode.ordinal());
-    buffer.putInt(info.getDataNodeId());
-    buffer.putInt(info.getEndPoint().getIp().length());
-    buffer.put(info.getEndPoint().getIp().getBytes());
-    buffer.putInt(info.getEndPoint().getPort());
+    ThriftCommonsSerializeDeserializeUtils.writeTDataNodeLocation(info, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    int dataNodeID = buffer.getInt();
-    int ipLength = buffer.getInt();
-    byte[] byteIp = new byte[ipLength];
-    buffer.get(byteIp, 0, ipLength);
-    String ip = new String(byteIp, 0, ipLength);
-    int port = buffer.getInt();
-
-    this.info = new DataNodeLocation(dataNodeID, new Endpoint(ip, port));
+    info = ThriftCommonsSerializeDeserializeUtils.readTDataNodeLocation(buffer);
   }
 
   @Override

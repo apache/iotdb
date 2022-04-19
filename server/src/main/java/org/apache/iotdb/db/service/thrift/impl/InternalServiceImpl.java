@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
@@ -66,7 +66,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -146,16 +145,14 @@ public class InternalServiceImpl implements InternalService.Iface {
     try {
       PartialPath storageGroupPartitionPath = new PartialPath(req.getStorageGroup());
       TRegionReplicaSet regionReplicaSet = req.getRegionReplicaSet();
-      SchemaRegionId schemaRegionId =
-          (SchemaRegionId)
-              ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
-      LOGGER.info("SchemaRegionId: " + schemaRegionId.getId());
+      SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId().getId());
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
       List<Peer> peers = new ArrayList<>();
-      for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
-        Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
-        // TODO: Expend Peer and RegisterDataNodeReq
-        endpoint.setPort(endpoint.getPort() + 31007);
+      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+        Endpoint endpoint =
+            new Endpoint(
+                dataNodeLocation.getConsensusEndPoint().getIp(),
+                dataNodeLocation.getConsensusEndPoint().getPort());
         peers.add(new Peer(schemaRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =
@@ -186,16 +183,14 @@ public class InternalServiceImpl implements InternalService.Iface {
     TSStatus tsStatus;
     try {
       TRegionReplicaSet regionReplicaSet = req.getRegionReplicaSet();
-      DataRegionId dataRegionId =
-          (DataRegionId)
-              ConsensusGroupId.Factory.create(ByteBuffer.wrap(regionReplicaSet.getRegionId()));
-      LOGGER.info("DataRegionId: " + dataRegionId.getId());
+      DataRegionId dataRegionId = new DataRegionId(regionReplicaSet.getRegionId().getId());
       storageEngine.createDataRegion(dataRegionId, req.storageGroup, req.ttl);
       List<Peer> peers = new ArrayList<>();
-      for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
-        Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
-        // TODO: Expend Peer and RegisterDataNodeReq
-        endpoint.setPort(endpoint.getPort() + 31007);
+      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+        Endpoint endpoint =
+            new Endpoint(
+                dataNodeLocation.getConsensusEndPoint().getIp(),
+                dataNodeLocation.getConsensusEndPoint().getPort());
         peers.add(new Peer(dataRegionId, endpoint));
       }
       ConsensusGenericResponse consensusGenericResponse =

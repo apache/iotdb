@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.util;
+package org.apache.iotdb.commons.utils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -25,10 +25,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SerializeDeserializeUtil {
+public class BasicStructureSerializeDeserializeUtil {
   public static final int INT_LEN = 4;
 
-  private SerializeDeserializeUtil() {}
+  private BasicStructureSerializeDeserializeUtil() {}
 
   /** read string from byteBuffer. */
   public static String readString(ByteBuffer buffer) {

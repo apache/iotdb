@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.partition;
 
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
+import org.apache.iotdb.commons.utils.BasicStructureSerializeDeserializeUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -89,7 +89,7 @@ public class StorageGroupSchema {
   }
 
   public void deserialize(ByteBuffer buffer) throws IOException {
-    name = SerializeDeserializeUtil.readString(buffer);
+    name = BasicStructureSerializeDeserializeUtil.readString(buffer);
 
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {

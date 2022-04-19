@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
@@ -102,7 +102,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
     } else {
-      DataNodesInfoDataSet dataSet = new DataNodesInfoDataSet();
+      DataNodeLocationsDataSet dataSet = new DataNodeLocationsDataSet();
       dataSet.setStatus(status);
       return dataSet;
     }

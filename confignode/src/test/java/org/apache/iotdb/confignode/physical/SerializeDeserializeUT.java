@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.physical;
 
+import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -63,8 +65,13 @@ public class SerializeDeserializeUT {
 
   @Test
   public void RegisterDataNodePlanTest() throws IOException {
-    RegisterDataNodePlan plan0 =
-        new RegisterDataNodePlan(new DataNodeLocation(1, new Endpoint("0.0.0.0", 6667)));
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(1);
+    dataNodeLocation.setExternalEndPoint(new EndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new EndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setDataBlockManagerEndPoint(new EndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setConsensusEndPoint(new EndPoint("0.0.0.0", 7777));
+    RegisterDataNodePlan plan0 = new RegisterDataNodePlan(dataNodeLocation);
     plan0.serialize(buffer);
     buffer.flip();
     RegisterDataNodePlan plan1 = (RegisterDataNodePlan) PhysicalPlan.Factory.create(buffer);

@@ -19,9 +19,9 @@
 package org.apache.iotdb.confignode.physical.crud;
 
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.utils.BasicStructureSerializeDeserializeUtil;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
-import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -58,7 +58,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
     buffer.putInt(partitionSlotsMap.size());
     partitionSlotsMap.forEach(
         (storageGroup, seriesPartitionSlots) -> {
-          SerializeDeserializeUtil.write(storageGroup, buffer);
+          BasicStructureSerializeDeserializeUtil.write(storageGroup, buffer);
           buffer.putInt(seriesPartitionSlots.size());
           seriesPartitionSlots.forEach(
               seriesPartitionSlot -> seriesPartitionSlot.serializeImpl(buffer));
@@ -70,7 +70,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
     partitionSlotsMap = new HashMap<>();
     int storageGroupNum = buffer.getInt();
     for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = SerializeDeserializeUtil.readString(buffer);
+      String storageGroup = BasicStructureSerializeDeserializeUtil.readString(buffer);
       partitionSlotsMap.put(storageGroup, new ArrayList<>());
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {

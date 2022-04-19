@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -37,6 +38,7 @@ import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -124,7 +126,7 @@ public class RegionManager {
     // TODO: Use CopySet algorithm to optimize region allocation policy
 
     int regionCount = type.equals(GroupType.SchemaRegion) ? schemaRegionCount : dataRegionCount;
-    List<DataNodeLocation> onlineDataNodes = getDataNodeInfoManager().getOnlineDataNodes();
+    List<TDataNodeLocation> onlineDataNodes = getDataNodeInfoManager().getOnlineDataNodes();
     for (int i = 0; i < regionCount; i++) {
       Collections.shuffle(onlineDataNodes);
 
@@ -138,7 +140,9 @@ public class RegionManager {
           consensusGroupId = new DataRegionId(regionInfoPersistence.generateNextRegionGroupId());
       }
       regionReplicaSet.setConsensusGroupId(consensusGroupId);
-      regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionReplicaCount));
+      // TODO: Fix this
+      // regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionReplicaCount));
+      regionReplicaSet.setDataNodeList(new ArrayList<>());
       plan.addRegion(regionReplicaSet);
     }
   }

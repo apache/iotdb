@@ -18,28 +18,24 @@
  */
 package org.apache.iotdb.confignode.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
-import org.junit.Assert;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /** Demo for ConfigNode's integration with the ratis-consensus protocol. */
 public class RatisConsensusDemo {
+
+  // TODO: Optimize this manual test to automatic test after the test environment is set up.
 
   private static final String localhost = "0.0.0.0";
   private static final int timeOutInMS = 2000;
@@ -89,17 +85,19 @@ public class RatisConsensusDemo {
 
   private void registerDataNodes() throws TException, InterruptedException {
     // DataNodes can connect to any ConfigNode and send write requests
-    for (int i = 0; i < 10; i++) {
-      EndPoint endPoint = new EndPoint("0.0.0.0", 6667 + i);
-      TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
-      TDataNodeRegisterResp resp = clients[0].registerDataNode(req);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
-      Assert.assertEquals(i, resp.getDataNodeID());
-      System.out.printf(
-          "\nRegister DataNode successful. DataNodeID: %d, %s\n", resp.getDataNodeID(), endPoint);
-
-      TimeUnit.SECONDS.sleep(1);
-    }
+    //    for (int i = 0; i < 10; i++) {
+    //      EndPoint endPoint = new EndPoint("0.0.0.0", 6667 + i);
+    //      TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
+    //      TDataNodeRegisterResp resp = clients[0].registerDataNode(req);
+    //      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+    // resp.getStatus().getCode());
+    //      Assert.assertEquals(i, resp.getDataNodeID());
+    //      System.out.printf(
+    //          "\nRegister DataNode successful. DataNodeID: %d, %s\n", resp.getDataNodeID(),
+    // endPoint);
+    //
+    //      TimeUnit.SECONDS.sleep(1);
+    //    }
   }
 
   private void queryDataNodes() throws InterruptedException, TException {
@@ -107,12 +105,12 @@ public class RatisConsensusDemo {
     TimeUnit.SECONDS.sleep(1);
 
     // DataNodes can connect to any ConfigNode and send read requests
-    for (int i = 0; i < 3; i++) {
-      TDataNodeMessageResp msgMap = clients[i].getDataNodesMessage(-1);
-      System.out.printf(
-          "\nQuery DataNode message from ConfigNode 0.0.0.0:%d. Result: %s\n",
-          22277 + i * 2, msgMap);
-    }
+    //    for (int i = 0; i < 3; i++) {
+    //      TDataNodeMessageResp msgMap = clients[i].getDataNodesMessage(-1);
+    //      System.out.printf(
+    //          "\nQuery DataNode message from ConfigNode 0.0.0.0:%d. Result: %s\n",
+    //          22277 + i * 2, msgMap);
+    //    }
   }
 
   private void setStorageGroups() throws TException, InterruptedException {
@@ -141,11 +139,11 @@ public class RatisConsensusDemo {
   }
 
   private void registerDataNodeOnLeader() throws TException {
-    for (int i = 0; i < 3; i++) {
-      EndPoint endPoint = new EndPoint("0.0.0.0", 6667);
-      TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
-      TDataNodeRegisterResp resp = clients[i].registerDataNode(req);
-      System.out.println(resp);
-    }
+    //    for (int i = 0; i < 3; i++) {
+    //      EndPoint endPoint = new EndPoint("0.0.0.0", 6667);
+    //      TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
+    //      TDataNodeRegisterResp resp = clients[i].registerDataNode(req);
+    //      System.out.println(resp);
+    //    }
   }
 }

@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -30,6 +34,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/** TODO: Delete this class */
 public class RegionReplicaSet {
   private ConsensusGroupId consensusGroupId;
   private List<DataNodeLocation> dataNodeList;
@@ -42,13 +47,20 @@ public class RegionReplicaSet {
   }
 
   public RegionReplicaSet(TRegionReplicaSet respRegionReplicaSet) {
-    this.consensusGroupId = ConsensusGroupId.Factory.create(respRegionReplicaSet.regionId);
+    switch (respRegionReplicaSet.getRegionId().getType()) {
+      case SchemaRegion:
+        this.consensusGroupId = new SchemaRegionId(respRegionReplicaSet.getRegionId().getId());
+      case DataRegion:
+        this.consensusGroupId = new DataRegionId(respRegionReplicaSet.getRegionId().getId());
+    }
     this.dataNodeList =
-        respRegionReplicaSet.getEndpoint().stream()
+        respRegionReplicaSet.getDataNodeLocations().stream()
             .map(
                 respEndpoint ->
                     new DataNodeLocation(
-                        new Endpoint(respEndpoint.getIp(), respEndpoint.getPort())))
+                        new Endpoint(
+                            respEndpoint.getExternalEndPoint().getIp(),
+                            respEndpoint.getExternalEndPoint().getPort())))
             .collect(Collectors.toList());
   }
 
@@ -73,20 +85,18 @@ public class RegionReplicaSet {
     TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
 
     // Convert ConsensusGroupId
-    ByteBuffer buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
-    consensusGroupId.serializeImpl(buffer);
-    buffer.flip();
-    tRegionReplicaSet.setRegionId(buffer);
+    if (consensusGroupId instanceof SchemaRegionId) {
+      tRegionReplicaSet.setRegionId(
+          new TConsensusGroupId(TConsensusGroupType.SchemaRegion, consensusGroupId.getId()));
+    } else if (consensusGroupId instanceof DataRegionId) {
+      tRegionReplicaSet.setRegionId(
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId.getId()));
+    }
 
     // Convert EndPoints
-    List<EndPoint> endPointList = new ArrayList<>();
-    dataNodeList.forEach(
-        dataNodeLocation ->
-            endPointList.add(
-                new EndPoint(
-                    dataNodeLocation.getEndPoint().getIp(),
-                    dataNodeLocation.getEndPoint().getPort())));
-    tRegionReplicaSet.setEndpoint(endPointList);
+    List<TDataNodeLocation> endPointList = new ArrayList<>();
+    dataNodeList.forEach(dataNodeLocation -> endPointList.add(new TDataNodeLocation()));
+    tRegionReplicaSet.setDataNodeLocations(endPointList);
 
     return tRegionReplicaSet;
   }

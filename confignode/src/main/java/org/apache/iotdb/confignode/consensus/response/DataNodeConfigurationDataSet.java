@@ -59,7 +59,7 @@ public class DataNodeConfigurationDataSet implements DataSet {
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-      resp.setDataNodeID(dataNodeId);
+      resp.setDataNodeId(dataNodeId);
       resp.setGlobalConfig(globalConfig);
     }
   }

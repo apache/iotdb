@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.partition;
 
 import java.nio.ByteBuffer;
 
+/** TODO: Delete this class */
 public class SeriesPartitionSlot {
   private int slotId;
 

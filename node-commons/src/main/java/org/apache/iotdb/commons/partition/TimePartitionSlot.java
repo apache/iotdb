@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.partition;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/** TODO: Delete this class */
 public class TimePartitionSlot {
 
   private long startTime;

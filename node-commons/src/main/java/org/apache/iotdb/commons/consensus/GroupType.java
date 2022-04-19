@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.consensus;
 
-// TODO Use a mature IDL framework such as Protobuf to manage this structure
+/** TODO: Delete this class */
 public enum GroupType {
   PartitionRegion,
   DataRegion,
