@@ -158,7 +158,7 @@ public class WALBuffer extends AbstractWALBuffer {
               return;
             case CLOSE_SIGNAL:
             default:
-              return;
+              break;
           }
         }
       } catch (InterruptedException e) {
