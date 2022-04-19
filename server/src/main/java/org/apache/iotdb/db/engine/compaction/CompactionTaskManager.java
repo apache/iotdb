@@ -175,7 +175,7 @@ public class CompactionTaskManager implements IService {
     while (!taskExecutionPool.isTerminated()) {
       int timeMillis = 0;
       try {
-        Thread.sleep(200);
+        this.wait(200);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
