@@ -30,9 +30,10 @@ struct TDataNodeRegisterReq {
 }
 
 struct TGlobalConfig {
-  1: optional string dataNodeConsensusProtocolClass
-  2: optional i32 seriesPartitionSlotNum
-  3: optional string seriesPartitionExecutorClass
+  1: required string dataNodeConsensusProtocolClass
+  2: required i32 seriesPartitionSlotNum
+  3: required string seriesPartitionExecutorClass
+  4: required i64 timePartitionInterval
 }
 
 struct TDataNodeRegisterResp {
@@ -116,6 +117,11 @@ struct TAuthorizerReq {
   7: required string nodeName
 }
 
+struct TAuthorizerResp {
+    1: required common.TSStatus status
+    2: required map<string, list<string>> authorizerInfo
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -147,6 +153,8 @@ service ConfigIService {
   TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
   /* Authorize */
+
   common.TSStatus operatePermission(TAuthorizerReq req)
 
+  TAuthorizerResp queryPermission(TAuthorizerReq req)
 }

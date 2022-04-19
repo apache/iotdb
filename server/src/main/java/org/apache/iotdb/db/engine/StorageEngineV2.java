@@ -50,6 +50,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -64,8 +65,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.ConcurrentModificationException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -75,6 +78,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageEngineV2 implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngineV2.class);
@@ -103,6 +107,9 @@ public class StorageEngineV2 implements IService {
   private final ConcurrentHashMap<ConsensusGroupId, DataRegion> dataRegionMap =
       new ConcurrentHashMap<>();
 
+  /** number of ready data region */
+  private AtomicInteger readyDataRegionNum;
+
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
 
   private ScheduledExecutorService ttlCheckThread;
@@ -114,6 +121,7 @@ public class StorageEngineV2 implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
+  private int recoverDataRegionNum = 0;
 
   private StorageEngineV2() {}
 
@@ -199,15 +207,18 @@ public class StorageEngineV2 implements IService {
   public void recover() {
     setAllSgReady(false);
     recoveryThreadPool =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
-    try {
-      getLocalDataRegion();
-    } catch (Exception e) {
-      throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
-    }
+        IoTDBThreadPoolFactory.newCachedThreadPool(
+            ThreadName.DATA_REGION_RECOVER_SERVICE.getName());
+
     List<Future<Void>> futures = new LinkedList<>();
     asyncRecover(recoveryThreadPool, futures);
+
+    // wait until wal is recovered
+    try {
+      WALRecoverManager.getInstance().recover();
+    } catch (WALException e) {
+      logger.error("Fail to recover wal.", e);
+    }
 
     // operations after all virtual storage groups are recovered
     Thread recoverEndTrigger =
@@ -229,44 +240,56 @@ public class StorageEngineV2 implements IService {
     recoverEndTrigger.start();
   }
 
-  private void getLocalDataRegion() throws MetadataException, DataRegionException {
-    File system = SystemFileFactory.INSTANCE.getFile(systemDir);
-    File[] sgDirs = system.listFiles();
-    int sgCount = 0;
-    for (File sgDir : sgDirs) {
-      if (!sgDir.isDirectory()) {
-        sgCount++;
-      }
-    }
+  private void asyncRecover(ExecutorService pool, List<Future<Void>> futures) {
+
+    Map<String, List<String>> localDataRegionInfo = getLocalDataRegionInfo();
+    readyDataRegionNum = new AtomicInteger(0);
     // init wal recover manager
     WALRecoverManager.getInstance()
-        .setAllDataRegionScannedLatch(new CountDownLatch(sgCount * config.getDataRegionNum()));
-    for (File sgDir : sgDirs) {
-      if (!sgDir.isDirectory()) {
-        continue;
-      }
-      String sg = sgDir.getName();
-      long ttl = Long.MAX_VALUE;
-      for (File dataRegionDir : sgDir.listFiles()) {
-        if (!dataRegionDir.isDirectory()) {
-          continue;
-        }
-        ConsensusGroupId dataRegionId = new DataRegionId(Integer.parseInt(dataRegionDir.getName()));
-        DataRegion dataRegion = buildNewStorageGroupProcessor(sg, dataRegionDir.getName(), ttl);
-        dataRegionMap.putIfAbsent(dataRegionId, dataRegion);
+        .setAllDataRegionScannedLatch(new CountDownLatch(recoverDataRegionNum));
+    for (Map.Entry<String, List<String>> entry : localDataRegionInfo.entrySet()) {
+      String sgName = entry.getKey();
+      for (String dataRegionId : entry.getValue()) {
+        Callable<Void> recoverDataRegionTask =
+            () -> {
+              DataRegion dataRegion = null;
+              try {
+                dataRegion = buildNewDataRegion(sgName, dataRegionId, Long.MAX_VALUE);
+              } catch (DataRegionException e) {
+                logger.error("Failed to recover data region {}[{}]", sgName, dataRegionId, e);
+              }
+              dataRegionMap.put(new DataRegionId(Integer.parseInt(dataRegionId)), dataRegion);
+              logger.info(
+                  "Data regions have been recovered {}/{}",
+                  readyDataRegionNum.incrementAndGet(),
+                  recoverDataRegionNum);
+              return null;
+            };
+        futures.add(pool.submit(recoverDataRegionTask));
       }
     }
   }
 
-  private void asyncRecover(ExecutorService pool, List<Future<Void>> futures) {
-    for (DataRegion processor : dataRegionMap.values()) {
-      Callable<Void> recoverVsgTask =
-          () -> {
-            processor.setReady(true);
-            return null;
-          };
-      futures.add(pool.submit(recoverVsgTask));
+  private Map<String, List<String>> getLocalDataRegionInfo() {
+    File system = SystemFileFactory.INSTANCE.getFile(systemDir);
+    File[] sgDirs = system.listFiles();
+    Map<String, List<String>> localDataRegionInfo = new HashMap<>();
+    for (File sgDir : sgDirs) {
+      if (!sgDir.isDirectory()) {
+        continue;
+      }
+      String sgName = sgDir.getName();
+      List<String> dataRegionIdList = new ArrayList<>();
+      for (File dataRegionDir : sgDir.listFiles()) {
+        if (!dataRegionDir.isDirectory()) {
+          continue;
+        }
+        dataRegionIdList.add(dataRegionDir.getName());
+        recoverDataRegionNum++;
+      }
+      localDataRegionInfo.put(sgName, dataRegionIdList);
     }
+    return localDataRegionInfo;
   }
 
   @Override
@@ -430,29 +453,28 @@ public class StorageEngineV2 implements IService {
   }
 
   /**
-   * build a new storage group processor
+   * build a new data region
    *
-   * @param virtualStorageGroupId virtual storage group id e.g. 1
+   * @param dataRegionId data region id e.g. 1
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
-  public DataRegion buildNewStorageGroupProcessor(
-      String logicalStorageGroupName, String virtualStorageGroupId, long ttl)
-      throws DataRegionException {
-    DataRegion processor;
+  public DataRegion buildNewDataRegion(
+      String logicalStorageGroupName, String dataRegionId, long ttl) throws DataRegionException {
+    DataRegion dataRegion;
     logger.info(
-        "construct a processor instance, the storage group is {}, Thread is {}",
+        "construct a data region instance, the storage group is {}, Thread is {}",
         logicalStorageGroupName,
         Thread.currentThread().getId());
-    processor =
+    dataRegion =
         new DataRegion(
             systemDir + File.separator + logicalStorageGroupName,
-            virtualStorageGroupId,
+            dataRegionId,
             fileFlushPolicy,
             logicalStorageGroupName);
-    processor.setDataTTL(ttl);
-    processor.setCustomFlushListeners(customFlushListeners);
-    processor.setCustomCloseFileListeners(customCloseFileListeners);
-    return processor;
+    dataRegion.setDataTTL(ttl);
+    dataRegion.setCustomFlushListeners(customFlushListeners);
+    dataRegion.setCustomCloseFileListeners(customCloseFileListeners);
+    return dataRegion;
   }
 
   /** This function is just for unit test. */
@@ -555,7 +577,7 @@ public class StorageEngineV2 implements IService {
   // the local engine before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg, long ttl)
       throws DataRegionException {
-    DataRegion dataRegion = buildNewStorageGroupProcessor(sg, regionId.toString(), ttl);
+    DataRegion dataRegion = buildNewDataRegion(sg, String.valueOf(regionId.getId()), ttl);
     dataRegionMap.put(regionId, dataRegion);
     return dataRegion;
   }

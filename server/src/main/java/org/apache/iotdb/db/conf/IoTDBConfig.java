@@ -45,7 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -109,9 +109,6 @@ public class IoTDBConfig {
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
-  /** Port which is used for node communication in MPP. */
-  private int mppPort = 7777;
-
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
 
@@ -164,7 +161,7 @@ public class IoTDBConfig {
   private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private long fsyncWalDelayInMs = 10;
+  private volatile long fsyncWalDelayInMs = 10;
 
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
@@ -179,23 +176,23 @@ public class IoTDBConfig {
   private int walBufferQueueCapacity = 10_000;
 
   /** Size threshold of each wal file. Unit: byte */
-  private long walFileSizeThresholdInByte = 10 * 1024 * 1024;
+  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
 
-  /** TTL of wal file. Unit: ms */
-  private long walFileTTLInMs = 24 * 60 * 60 * 1000;
+  /** Minimum ratio of effective information in wal files */
+  private volatile double walMinEffectiveInfoRatio = 0.1;
 
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private long walMemTableSnapshotThreshold = 128 * 1024 * 1024;
+  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024;
 
   /** MemTable's max snapshot number in wal file */
-  private int maxWalMemTableSnapshotNum = 1;
+  private volatile int maxWalMemTableSnapshotNum = 1;
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
-  private long deleteWalFilesPeriodInMs = 10 * 60 * 1000;
+  private volatile long deleteWalFilesPeriodInMs = 20 * 1000;
   // endregion
 
   /**
@@ -302,17 +299,6 @@ public class IoTDBConfig {
 
   /** How many threads can concurrently build index. When <= 0, use CPU core number. */
   private int concurrentIndexBuildThread = Runtime.getRuntime().availableProcessors();
-
-  /**
-   * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
-   * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
-   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
-   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
-   * will be flushed to the disk file. As a result, data in one series may be divided into more than
-   * one part and indexed separately. Unit: byte
-   */
-  private long indexBufferSize = 128 * 1024 * 1024L;
 
   /**
    * the index framework adopts sliding window model to preprocess the original tv list in the
@@ -506,6 +492,9 @@ public class IoTDBConfig {
 
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
+
+  /** indicate whether current mode is mpp */
+  private boolean mppMode = false;
 
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
@@ -842,7 +831,7 @@ public class IoTDBConfig {
   /**
    * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
    */
-  private List<String> configNodeUrls = new ArrayList<>();
+  private List<String> configNodeUrls = Collections.singletonList("127.0.0.1:22277");
 
   /** Internal ip for data node */
   private String internalIp = "127.0.0.1";
@@ -854,7 +843,7 @@ public class IoTDBConfig {
   private int consensusPort = 40010;
 
   /** The max time of data node waiting to join into the cluster */
-  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
+  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
    * The consensus protocol class. The Datanode should communicate with ConfigNode on startup and
@@ -875,7 +864,7 @@ public class IoTDBConfig {
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that data block manager thrift service listen to. */
-  private int dataBlockManagerPort = 7777;
+  private int dataBlockManagerPort = 8777;
 
   /** Core pool size of data block manager. */
   private int dataBlockManagerCorePoolSize = 1;
@@ -1469,12 +1458,12 @@ public class IoTDBConfig {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
-  public long getWalFileTTLInMs() {
-    return walFileTTLInMs;
+  public double getWalMinEffectiveInfoRatio() {
+    return walMinEffectiveInfoRatio;
   }
 
-  void setWalFileTTLInMs(long walFileTTLInMs) {
-    this.walFileTTLInMs = walFileTTLInMs;
+  void setWalMinEffectiveInfoRatio(double walMinEffectiveInfoRatio) {
+    this.walMinEffectiveInfoRatio = walMinEffectiveInfoRatio;
   }
 
   public long getWalMemTableSnapshotThreshold() {
@@ -2327,14 +2316,6 @@ public class IoTDBConfig {
     return concurrentIndexBuildThread;
   }
 
-  public long getIndexBufferSize() {
-    return indexBufferSize;
-  }
-
-  public void setIndexBufferSize(long indexBufferSize) {
-    this.indexBufferSize = indexBufferSize;
-  }
-
   public String getIndexRootFolder() {
     return indexRootFolder;
   }
@@ -2756,14 +2737,6 @@ public class IoTDBConfig {
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public int getMppPort() {
-    return mppPort;
-  }
-
-  public void setMppPort(int mppPort) {
-    this.mppPort = mppPort;
-  }
-
   public int getDataBlockManagerPort() {
     return dataBlockManagerPort;
   }
@@ -2794,5 +2767,13 @@ public class IoTDBConfig {
 
   public void setDataBlockManagerKeepAliveTimeInMs(int dataBlockManagerKeepAliveTimeInMs) {
     this.dataBlockManagerKeepAliveTimeInMs = dataBlockManagerKeepAliveTimeInMs;
+  }
+
+  public boolean isMppMode() {
+    return mppMode;
+  }
+
+  public void setMppMode(boolean mppMode) {
+    this.mppMode = mppMode;
   }
 }

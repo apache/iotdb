@@ -21,11 +21,20 @@ package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
@@ -302,18 +311,22 @@ public class QueryPlanBuilder {
     this.root = timeSeriesMetaScanNode;
   }
 
-  public void planDeviceMetaSource(
+  public void planDeviceSchemaSource(
       PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
-    DevicesSchemaScanNode devicesMetaScanNode =
+    DevicesSchemaScanNode devicesSchemaScanNode =
         new DevicesSchemaScanNode(
             context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
-    this.root = devicesMetaScanNode;
+    this.root = devicesSchemaScanNode;
   }
 
-  public void planMetaMerge(boolean orderByHeat) {
-    SchemaMergeNode metaMergeNode =
+  public void planSchemaMerge(boolean orderByHeat) {
+    SchemaMergeNode schemaMergeNode =
         new SchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
-    metaMergeNode.addChild(this.getRoot());
-    this.root = metaMergeNode;
+    schemaMergeNode.addChild(this.getRoot());
+    this.root = schemaMergeNode;
+  }
+
+  public void planSchemaFetchSource(PathPatternTree patternTree) {
+    this.root = new SchemaFetchNode(context.getQueryId().genPlanNodeId(), patternTree);
   }
 }

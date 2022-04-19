@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
@@ -58,9 +59,15 @@ public class PartitionInfoPersistence {
   public PartitionInfoPersistence() {
     this.schemaPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.dataPartitionReadWriteLock = new ReentrantReadWriteLock();
-    this.schemaPartition = new SchemaPartition();
+    this.schemaPartition =
+        new SchemaPartition(
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
     this.schemaPartition.setSchemaPartitionMap(new HashMap<>());
-    this.dataPartition = new DataPartition();
+    this.dataPartition =
+        new DataPartition(
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+            ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
     this.dataPartition.setDataPartitionMap(new HashMap<>());
   }
 
@@ -135,7 +142,10 @@ public class PartitionInfoPersistence {
 
     try {
       dataPartitionDataSet.setDataPartition(
-          dataPartition.getDataPartition(physicalPlan.getPartitionSlotsMap()));
+          dataPartition.getDataPartition(
+              physicalPlan.getPartitionSlotsMap(),
+              ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
+              ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
     } finally {
       dataPartitionReadWriteLock.readLock().unlock();
       dataPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.operator.schema.SchemaFetchOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaMergeOperator;
 import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
@@ -45,6 +47,7 @@ import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
@@ -65,7 +68,6 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -157,7 +159,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitTimeSeriesMetaScan(
+    public Operator visitTimeSeriesSchemaScan(
         TimeSeriesSchemaScanNode node, LocalExecutionPlanContext context) {
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
@@ -165,6 +167,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               TimeSeriesSchemaScanOperator.class.getSimpleName());
       return new TimeSeriesSchemaScanOperator(
+          node.getPlanNodeId(),
           operatorContext,
           node.getLimit(),
           node.getOffset(),
@@ -173,12 +176,11 @@ public class LocalExecutionPlanner {
           node.getValue(),
           node.isContains(),
           node.isOrderByHeat(),
-          node.isPrefixPath(),
-          node.getOutputColumnNames());
+          node.isPrefixPath());
     }
 
     @Override
-    public Operator visitDevicesMetaScan(
+    public Operator visitDevicesSchemaScan(
         DevicesSchemaScanNode node, LocalExecutionPlanContext context) {
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
@@ -186,17 +188,17 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               DevicesSchemaScanOperator.class.getSimpleName());
       return new DevicesSchemaScanOperator(
+          node.getPlanNodeId(),
           operatorContext,
           node.getLimit(),
           node.getOffset(),
           node.getPath(),
           node.isPrefixPath(),
-          node.isHasSgCol(),
-          node.getOutputColumnNames());
+          node.isHasSgCol());
     }
 
     @Override
-    public Operator visitMetaMerge(SchemaMergeNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaMerge(SchemaMergeNode node, LocalExecutionPlanContext context) {
       List<Operator> children =
           node.getChildren().stream()
               .map(n -> n.accept(this, context))
@@ -298,18 +300,15 @@ public class LocalExecutionPlanner {
       FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
       Endpoint source = node.getUpstreamEndpoint();
 
-      try {
-        ISourceHandle sourceHandle =
-            DATA_BLOCK_MANAGER.createSourceHandle(
-                localInstanceId.toThrift(),
-                node.getPlanNodeId().getId(),
-                source.getIp(),
-                source.getPort(),
-                remoteInstanceId.toThrift());
-        return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
-      } catch (IOException e) {
-        throw new RuntimeException("Error happened while creating source handle", e);
-      }
+      ISourceHandle sourceHandle =
+          DATA_BLOCK_MANAGER.createSourceHandle(
+              localInstanceId.toThrift(),
+              node.getPlanNodeId().getId(),
+              new Endpoint(
+                  source.getIp(),
+                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+              remoteInstanceId.toThrift());
+      return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     }
 
     @Override
@@ -318,19 +317,31 @@ public class LocalExecutionPlanner {
       Endpoint target = node.getDownStreamEndpoint();
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
-      try {
-        ISinkHandle sinkHandle =
-            DATA_BLOCK_MANAGER.createSinkHandle(
-                localInstanceId.toThrift(),
-                target.getIp(),
-                target.getPort(),
-                targetInstanceId.toThrift(),
-                node.getDownStreamPlanNodeId().getId());
-        context.setSinkHandle(sinkHandle);
-        return child;
-      } catch (IOException e) {
-        throw new RuntimeException("Error happened while creating sink handle", e);
-      }
+      ISinkHandle sinkHandle =
+          DATA_BLOCK_MANAGER.createSinkHandle(
+              localInstanceId.toThrift(),
+              new Endpoint(
+                  target.getIp(),
+                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+              targetInstanceId.toThrift(),
+              node.getDownStreamPlanNodeId().getId(),
+              context.instanceContext);
+      context.setSinkHandle(sinkHandle);
+      return child;
+    }
+
+    @Override
+    public Operator visitSchemaFetch(SchemaFetchNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SchemaFetchOperator.class.getSimpleName());
+      return new SchemaFetchOperator(
+          node.getPlanNodeId(),
+          operatorContext,
+          node.getPatternTree(),
+          ((SchemaDriverContext) (context.instanceContext.getDriverContext())).getSchemaRegion());
     }
   }
 

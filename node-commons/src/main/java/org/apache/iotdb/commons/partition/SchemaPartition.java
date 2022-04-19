@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,15 +27,22 @@ import java.util.Map;
 
 public class SchemaPartition {
 
+  private String seriesSlotExecutorName;
+  private int seriesPartitionSlotNum;
+
   // Map<StorageGroup, Map<SeriesPartitionSlot, SchemaRegionPlaceInfo>>
   private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap;
 
-  public SchemaPartition() {
-    // Empty constructor
+  public SchemaPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
+    this.seriesSlotExecutorName = seriesSlotExecutorName;
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
   public SchemaPartition(
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap) {
+      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap,
+      String seriesSlotExecutorName,
+      int seriesPartitionSlotNum) {
+    this(seriesSlotExecutorName, seriesPartitionSlotNum);
     this.schemaPartitionMap = schemaPartitionMap;
   }
 
@@ -44,6 +53,32 @@ public class SchemaPartition {
   public void setSchemaPartitionMap(
       Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap) {
     this.schemaPartitionMap = schemaPartitionMap;
+  }
+
+  public RegionReplicaSet getSchemaRegionReplicaSet(String deviceName) {
+    // A list of data region replica sets will store data in a same time partition.
+    // We will insert data to the last set in the list.
+    // TODO return the latest dataRegionReplicaSet for each time partition
+    String storageGroup = getStorageGroupByDevice(deviceName);
+    SeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    return schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot);
+  }
+
+  private SeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
+    SeriesPartitionExecutor executor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            seriesSlotExecutorName, seriesPartitionSlotNum);
+    return executor.getSeriesPartitionSlot(deviceName);
+  }
+
+  private String getStorageGroupByDevice(String deviceName) {
+    for (String storageGroup : schemaPartitionMap.keySet()) {
+      if (deviceName.startsWith(storageGroup)) {
+        return storageGroup;
+      }
+    }
+    // TODO: (xingtanzjr) how to handle this exception in IoTDB
+    return null;
   }
 
   /* Interfaces for ConfigNode */
@@ -59,7 +94,8 @@ public class SchemaPartition {
       Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
     if (partitionSlotsMap.isEmpty()) {
       // Return all SchemaPartitions when the partitionSlotsMap is empty
-      return new SchemaPartition(new HashMap<>(schemaPartitionMap));
+      return new SchemaPartition(
+          new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
     } else {
       Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> result = new HashMap<>();
 
@@ -86,7 +122,7 @@ public class SchemaPartition {
             }
           });
 
-      return new SchemaPartition(result);
+      return new SchemaPartition(result, seriesSlotExecutorName, seriesPartitionSlotNum);
     }
   }
 

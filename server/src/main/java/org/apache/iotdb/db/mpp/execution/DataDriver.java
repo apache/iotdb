@@ -90,7 +90,7 @@ public class DataDriver implements Driver {
       boolean isFinished =
           closed || (driverBlockedFuture.get().isDone() && root != null && root.isFinished());
       if (isFinished) {
-        driverContext.finish();
+        close();
       }
       return isFinished;
     } catch (Throwable t) {
@@ -154,6 +154,9 @@ public class DataDriver implements Driver {
 
   @Override
   public void close() {
+    if (closed) {
+      return;
+    }
     closed = true;
     try {
       if (root != null) {
@@ -168,6 +171,11 @@ public class DataDriver implements Driver {
     } finally {
       removeUsedFilesForQuery();
     }
+  }
+
+  @Override
+  public void failed(Throwable t) {
+    driverContext.failed(t);
   }
 
   /**

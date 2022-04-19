@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ProcessNode;
 
@@ -64,13 +65,17 @@ public class SchemaMergeNode extends ProcessNode {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.SCHEMA_MERGE.serialize(byteBuffer);
+  }
 
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  public static SchemaMergeNode deserialize(ByteBuffer byteBuffer) {
+    PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
+    return new SchemaMergeNode(id);
+  }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitMetaMerge(this, context);
+    return visitor.visitSchemaMerge(this, context);
   }
 }

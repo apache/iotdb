@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.confignode.cli.TemporaryClient;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
@@ -82,17 +83,33 @@ public class RegionManager {
         CreateRegionsPlan createPlan = new CreateRegionsPlan();
         createPlan.setStorageGroup(plan.getSchema().getName());
 
-        // allocate schema region
+        // Allocate default Regions
         allocateRegions(GroupType.SchemaRegion, createPlan);
-        // allocate data region
         allocateRegions(GroupType.DataRegion, createPlan);
 
-        // set StorageGroup
+        // Persist StorageGroup and Regions
         getConsensusManager().write(plan);
-
-        // create Region
-        // TODO: Send create Region to DataNode
         result = getConsensusManager().write(createPlan).getStatus();
+
+        // Create Regions in DataNode
+        for (RegionReplicaSet regionReplicaSet : createPlan.getRegionReplicaSets()) {
+          for (DataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeList()) {
+            if (regionReplicaSet.getConsensusGroupId() instanceof SchemaRegionId) {
+              TemporaryClient.getInstance()
+                  .createSchemaRegion(
+                      dataNodeLocation.getDataNodeId(),
+                      createPlan.getStorageGroup(),
+                      regionReplicaSet);
+            } else if (regionReplicaSet.getConsensusGroupId() instanceof DataRegionId) {
+              TemporaryClient.getInstance()
+                  .createDataRegion(
+                      dataNodeLocation.getDataNodeId(),
+                      createPlan.getStorageGroup(),
+                      regionReplicaSet,
+                      plan.getSchema().getTTL());
+            }
+          }
+        }
       }
     }
     return result;

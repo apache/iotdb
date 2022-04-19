@@ -51,7 +51,6 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
-import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
@@ -148,7 +147,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 @SuppressWarnings("java:S1135") // ignore todos
 public class SchemaRegion implements ISchemaRegion {
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageGroupSchemaManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaRegion.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -1159,6 +1158,7 @@ public class SchemaRegion implements ISchemaRegion {
   // endregion
 
   // region Interfaces and methods for MNode query
+
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
@@ -1848,14 +1848,12 @@ public class SchemaRegion implements ISchemaRegion {
 
   // region Interfaces for Trigger
 
-  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
-      throws MetadataException {
-    return mtree.getMeasurementMNode(fullPath);
+  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
+    return mtree.getNodeByPath(fullPath);
   }
 
-  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
-      throws MetadataException {
-    mtree.unPinMNode(measurementMNode);
+  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
+    mtree.unPinMNode(imNode);
   }
 
   // endregion

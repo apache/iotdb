@@ -42,13 +42,15 @@ import static org.apache.iotdb.db.mpp.operator.Operator.NOT_BLOCKED;
 @NotThreadSafe
 public class SchemaDriver implements Driver {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataDriver.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaDriver.class);
 
   private final Operator root;
   private final ISinkHandle sinkHandle;
   private final SchemaDriverContext driverContext;
 
   private final AtomicReference<SettableFuture<Void>> driverBlockedFuture = new AtomicReference<>();
+
+  private boolean closed = false;
 
   public SchemaDriver(Operator root, ISinkHandle sinkHandle, SchemaDriverContext driverContext) {
     this.root = root;
@@ -65,7 +67,7 @@ public class SchemaDriver implements Driver {
     try {
       boolean isFinished = driverBlockedFuture.get().isDone() && root != null && root.isFinished();
       if (isFinished) {
-        driverContext.finish();
+        close();
       }
       return isFinished;
     } catch (Throwable t) {
@@ -145,5 +147,26 @@ public class SchemaDriver implements Driver {
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    if (closed) {
+      return;
+    }
+    closed = true;
+    try {
+      if (root != null) {
+        root.close();
+      }
+      if (sinkHandle != null) {
+        sinkHandle.close();
+      }
+    } catch (Throwable t) {
+      logger.error("Failed to closed driver {}", driverContext.getId(), t);
+      driverContext.failed(t);
+    }
+  }
+
+  @Override
+  public void failed(Throwable t) {
+    driverContext.failed(t);
+  }
 }

@@ -61,7 +61,6 @@ public class RequestMessage implements Message {
             actualRequest.serializeRequest(byteBuffer);
             byteBuffer.flip();
             serializedContent = ByteString.copyFrom(byteBuffer);
-            byteBuffer.flip();
           }
         }
       }

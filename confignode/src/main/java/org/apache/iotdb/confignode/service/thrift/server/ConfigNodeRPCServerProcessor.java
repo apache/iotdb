@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -37,6 +38,7 @@ import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -50,6 +52,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -84,6 +87,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     dataSet.convertToRpcDataNodeRegisterResp(resp);
+    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", resp, req);
     return resp;
   }
 
@@ -183,14 +187,16 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= PhysicalPlanType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid ordinal");
+    if (req.getAuthorType() < 0
+        || req.getAuthorType() >= AuthorOperator.AuthorType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
     AuthorPlan plan = null;
     try {
       plan =
           new AuthorPlan(
-              PhysicalPlanType.values()[req.getAuthorType()],
+              PhysicalPlanType.values()[
+                  req.getAuthorType() + PhysicalPlanType.AUTHOR.ordinal() + 1],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
@@ -201,6 +207,31 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
       LOGGER.error(e.getMessage());
     }
     return configManager.operatePermission(plan);
+  }
+
+  @Override
+  public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
+    if (req.getAuthorType() < 0
+        || req.getAuthorType() >= AuthorOperator.AuthorType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+    }
+    AuthorPlan plan = null;
+    try {
+      plan =
+          new AuthorPlan(
+              PhysicalPlanType.values()[
+                  req.getAuthorType() + PhysicalPlanType.AUTHOR.ordinal() + 1],
+              req.getUserName(),
+              req.getRoleName(),
+              req.getPassword(),
+              req.getNewPassword(),
+              req.getPermissions(),
+              req.getNodeName());
+    } catch (AuthException e) {
+      LOGGER.error(e.getMessage());
+    }
+    PermissionInfoDataSet dataSet = (PermissionInfoDataSet) configManager.queryPermission(plan);
+    return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
   }
 
   public void handleClientExit() {}

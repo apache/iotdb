@@ -74,11 +74,13 @@ public enum ThreadName {
   CLUSTER_MONITOR("ClusterMonitor"),
   CONFIG_NODE_RPC_SERVER("ConfigNodeRpcServer"),
   CONFIG_NODE_RPC_CLIENT("ConfigNodeRPC-Client"),
-  DATA_NODE_MANAGEMENT_SERVER("DataNodeManagementServer"),
-  DATA_NODE_MANAGEMENT_CLIENT("DataNodeManagementClient"),
+  DATA_NODE_MANAGEMENT_RPC_SERVER("DataNodeManagementRPC"),
+  DATA_NODE_MANAGEMENT_RPC_CLIENT("DataNodeManagementRPC-Client"),
   Cluster_Monitor("ClusterMonitor"),
-  DATA_BLOCK_MANAGER_SERVICE("DataBlockManagerService"),
-  DATA_BLOCK_MANAGER_CLIENT("DataBlockManagerService-Client"),
+  DATA_BLOCK_MANAGER_RPC_SERVER("DataBlockManagerRPC"),
+  DATA_BLOCK_MANAGER_RPC_CLIENT("DataBlockManagerRPC-Client"),
+  INTERNAL_SERVICE_RPC_SERVER("InternalServiceRPC"),
+  INTERNAL_SERVICE_RPC_CLIENT("InternalServiceRPC-Client"),
   ;
 
   private final String name;

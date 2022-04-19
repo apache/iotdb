@@ -36,12 +36,18 @@ import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
 public class MultiInputColumnIntermediateLayer extends IntermediateLayer
     implements IUDFInputDataSet {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(MultiInputColumnIntermediateLayer.class);
 
   private final LayerPointReader[] layerPointReaders;
   private final TSDataType[] dataTypes;
@@ -226,6 +232,14 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
         beginIndex += slidingStep;
         int endIndex = beginIndex + windowSize;
+        if (beginIndex < 0 || endIndex < 0) {
+          LOGGER.warn(
+              "MultiInputColumnIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              beginIndex,
+              endIndex,
+              windowSize);
+          return false;
+        }
 
         int rowsToBeCollected = endIndex - rowRecordList.size();
         if (0 < rowsToBeCollected) {

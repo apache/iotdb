@@ -56,8 +56,10 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -386,6 +388,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       statement.setKey(parseIdentifier(ctx.propertyClause().identifier().getText()));
     }
     statement.setValue(parseStringLiteral(propertyValueContext.getText()));
+  }
+
+  // Show Storage Group
+
+  @Override
+  public Statement visitShowStorageGroup(IoTDBSqlParser.ShowStorageGroupContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowStorageGroupStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowStorageGroupStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
   }
 
   // Show Devices ========================================================================
@@ -1562,6 +1575,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       privileges.add(privilegeValue.getText());
     }
     return privileges.toArray(new String[0]);
+  }
+
+  @Override
+  public Statement visitSetStorageGroup(IoTDBSqlParser.SetStorageGroupContext ctx) {
+    SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    setStorageGroupStatement.setStorageGroupPath(path);
+    return setStorageGroupStatement;
   }
 
   /** function for parsing file path used by LOAD statement. */

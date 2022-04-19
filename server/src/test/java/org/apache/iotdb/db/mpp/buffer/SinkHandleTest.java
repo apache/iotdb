@@ -23,9 +23,9 @@ import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Client;
-import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
-import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import org.apache.thrift.TException;
@@ -59,10 +59,10 @@ public class SinkHandleTest {
     try {
       Mockito.doNothing()
           .when(mockClient)
-          .onEndOfDataBlockEvent(Mockito.any(EndOfDataBlockEvent.class));
+          .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
       Mockito.doNothing()
           .when(mockClient)
-          .onNewDataBlockEvent(Mockito.any(NewDataBlockEvent.class));
+          .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
     } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
@@ -194,10 +194,10 @@ public class SinkHandleTest {
     try {
       Mockito.doNothing()
           .when(mockClient)
-          .onEndOfDataBlockEvent(Mockito.any(EndOfDataBlockEvent.class));
+          .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
       Mockito.doNothing()
           .when(mockClient)
-          .onNewDataBlockEvent(Mockito.any(NewDataBlockEvent.class));
+          .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
     } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
@@ -375,10 +375,10 @@ public class SinkHandleTest {
     try {
       Mockito.doThrow(new TException("Mock exception"))
           .when(mockClient)
-          .onEndOfDataBlockEvent(Mockito.any(EndOfDataBlockEvent.class));
+          .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
       Mockito.doThrow(new TException("Mock exception"))
           .when(mockClient)
-          .onNewDataBlockEvent(Mockito.any(NewDataBlockEvent.class));
+          .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
     } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
