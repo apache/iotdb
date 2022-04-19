@@ -164,4 +164,9 @@ public class SchemaDriver implements Driver {
       driverContext.failed(t);
     }
   }
+
+  @Override
+  public void failed(Throwable t) {
+    driverContext.failed(t);
+  }
 }
