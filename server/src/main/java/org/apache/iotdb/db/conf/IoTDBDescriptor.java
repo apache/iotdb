@@ -167,10 +167,6 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
 
-      conf.setMppPort(
-          Integer.parseInt(
-              properties.getProperty("mpp_port", Integer.toString(conf.getRpcPort()))));
-
       conf.setEnableInfluxDBRpcService(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -460,12 +456,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "default_index_window_range",
                   Integer.toString(conf.getDefaultIndexWindowRange()))));
-
-      conf.setIndexBufferSize(
-          Long.parseLong(
-              properties.getProperty(
-                  "index_buffer_size", Long.toString(conf.getIndexBufferSize()))));
-      // end: index parameter setting
 
       conf.setConcurrentQueryThread(
           Integer.parseInt(

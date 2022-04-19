@@ -186,8 +186,7 @@ public interface ISchemaRegion {
 
   void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException;
 
-  IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath) throws MetadataException;
+  IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException;
 
-  void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
-      throws MetadataException;
+  void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException;
 }

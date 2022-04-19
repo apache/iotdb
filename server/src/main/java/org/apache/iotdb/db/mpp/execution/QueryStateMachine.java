@@ -33,9 +33,9 @@ import java.util.concurrent.ExecutorService;
  * register listeners when the state changes of the QueryExecution.
  */
 public class QueryStateMachine {
-  private String name;
-  private StateMachine<QueryState> queryState;
-  private Map<FragmentInstanceId, FragmentInstanceState> fragInstanceStateMap;
+  private final String name;
+  private final StateMachine<QueryState> queryState;
+  private final Map<FragmentInstanceId, FragmentInstanceState> fragInstanceStateMap;
 
   // The executor will be used in all the state machines belonged to this query.
   private Executor stateMachineExecutor;

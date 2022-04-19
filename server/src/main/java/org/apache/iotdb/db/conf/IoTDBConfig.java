@@ -109,9 +109,6 @@ public class IoTDBConfig {
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
-  /** Port which is used for node communication in MPP. */
-  private int mppPort = 7777;
-
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
 
@@ -302,17 +299,6 @@ public class IoTDBConfig {
 
   /** How many threads can concurrently build index. When <= 0, use CPU core number. */
   private int concurrentIndexBuildThread = Runtime.getRuntime().availableProcessors();
-
-  /**
-   * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
-   * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
-   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
-   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
-   * will be flushed to the disk file. As a result, data in one series may be divided into more than
-   * one part and indexed separately. Unit: byte
-   */
-  private long indexBufferSize = 128 * 1024 * 1024L;
 
   /**
    * the index framework adopts sliding window model to preprocess the original tv list in the
@@ -506,6 +492,9 @@ public class IoTDBConfig {
 
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
+
+  /** indicate whether current mode is mpp */
+  private boolean mppMode = false;
 
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
@@ -875,7 +864,7 @@ public class IoTDBConfig {
   private int seriesPartitionSlotNum = 10000;
 
   /** Port that data block manager thrift service listen to. */
-  private int dataBlockManagerPort = 7777;
+  private int dataBlockManagerPort = 8777;
 
   /** Core pool size of data block manager. */
   private int dataBlockManagerCorePoolSize = 1;
@@ -2327,14 +2316,6 @@ public class IoTDBConfig {
     return concurrentIndexBuildThread;
   }
 
-  public long getIndexBufferSize() {
-    return indexBufferSize;
-  }
-
-  public void setIndexBufferSize(long indexBufferSize) {
-    this.indexBufferSize = indexBufferSize;
-  }
-
   public String getIndexRootFolder() {
     return indexRootFolder;
   }
@@ -2756,14 +2737,6 @@ public class IoTDBConfig {
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public int getMppPort() {
-    return mppPort;
-  }
-
-  public void setMppPort(int mppPort) {
-    this.mppPort = mppPort;
-  }
-
   public int getDataBlockManagerPort() {
     return dataBlockManagerPort;
   }
@@ -2794,5 +2767,13 @@ public class IoTDBConfig {
 
   public void setDataBlockManagerKeepAliveTimeInMs(int dataBlockManagerKeepAliveTimeInMs) {
     this.dataBlockManagerKeepAliveTimeInMs = dataBlockManagerKeepAliveTimeInMs;
+  }
+
+  public boolean isMppMode() {
+    return mppMode;
+  }
+
+  public void setMppMode(boolean mppMode) {
+    this.mppMode = mppMode;
   }
 }

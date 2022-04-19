@@ -22,11 +22,11 @@ package org.apache.iotdb.db.mpp.buffer;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.memory.MemoryPool;
-import org.apache.iotdb.mpp.rpc.thrift.AcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Client;
-import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
-import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import org.apache.thrift.TException;
@@ -63,16 +63,16 @@ public class SourceHandleTest {
     try {
       Mockito.doAnswer(
               invocation -> {
-                GetDataBlockRequest req = invocation.getArgument(0);
+                TGetDataBlockRequest req = invocation.getArgument(0);
                 List<ByteBuffer> byteBuffers =
                     new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
                 for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
                   byteBuffers.add(ByteBuffer.allocate(0));
                 }
-                return new GetDataBlockResponse(byteBuffers);
+                return new TGetDataBlockResponse(byteBuffers);
               })
           .when(mockClient)
-          .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
     } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
@@ -183,16 +183,16 @@ public class SourceHandleTest {
     try {
       Mockito.doAnswer(
               invocation -> {
-                GetDataBlockRequest req = invocation.getArgument(0);
+                TGetDataBlockRequest req = invocation.getArgument(0);
                 List<ByteBuffer> byteBuffers =
                     new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
                 for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
                   byteBuffers.add(ByteBuffer.allocate(0));
                 }
-                return new GetDataBlockResponse(byteBuffers);
+                return new TGetDataBlockResponse(byteBuffers);
               })
           .when(mockClient)
-          .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
     } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
@@ -331,16 +331,16 @@ public class SourceHandleTest {
     try {
       Mockito.doAnswer(
               invocation -> {
-                GetDataBlockRequest req = invocation.getArgument(0);
+                TGetDataBlockRequest req = invocation.getArgument(0);
                 List<ByteBuffer> byteBuffers =
                     new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
                 for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
                   byteBuffers.add(ByteBuffer.allocate(0));
                 }
-                return new GetDataBlockResponse(byteBuffers);
+                return new TGetDataBlockResponse(byteBuffers);
               })
           .when(mockClient)
-          .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
     } catch (TException e) {
       e.printStackTrace();
       Assert.fail();
@@ -371,9 +371,9 @@ public class SourceHandleTest {
     try {
       Thread.sleep(100L);
       Mockito.verify(mockClient, Mockito.times(0))
-          .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
       Mockito.verify(mockClient, Mockito.times(0))
-          .onAcknowledgeDataBlockEvent(Mockito.any(AcknowledgeDataBlockEvent.class));
+          .onAcknowledgeDataBlockEvent(Mockito.any(TAcknowledgeDataBlockEvent.class));
     } catch (InterruptedException | TException e) {
       e.printStackTrace();
       Assert.fail();
@@ -522,7 +522,7 @@ public class SourceHandleTest {
     try {
       Mockito.doThrow(new TException("Mock exception"))
           .when(mockClient)
-          .getDataBlock(Mockito.any(GetDataBlockRequest.class));
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
     } catch (TException e) {
       e.printStackTrace();
       Assert.fail();

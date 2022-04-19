@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
+import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
-
-import org.apache.thrift.TException;
+import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -44,11 +45,15 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
     return executor.submit(
         () -> {
+          TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
           try {
             for (FragmentInstance instance : instances) {
-              InternalService.Client client =
+              // TODO: (jackie tien) change the port
+              InternalService.Iface client =
                   InternalServiceClientFactory.getInternalServiceClient(
-                      instance.getHostEndpoint().getIp(), instance.getHostEndpoint().getPort());
+                      new Endpoint(
+                          instance.getHostEndpoint().getIp(),
+                          IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
               // TODO: (xingtanzjr) consider how to handle the buffer here
               ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
               instance.serializeRequest(buffer);
@@ -60,13 +65,16 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
               TSendFragmentInstanceReq req =
                   new TSendFragmentInstanceReq(
                       new TFragmentInstance(buffer), groupId, instance.getType().toString());
-              client.sendFragmentInstance(req);
+              resp = client.sendFragmentInstance(req);
+              if (!resp.accepted) {
+                break;
+              }
             }
-          } catch (TException e) {
+          } catch (Exception e) {
             // TODO: (xingtanzjr) add more details
             return new FragInstanceDispatchResult(false);
           }
-          return new FragInstanceDispatchResult(true);
+          return new FragInstanceDispatchResult(resp.accepted);
         });
   }
 

@@ -24,9 +24,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
+import org.apache.iotdb.db.mpp.execution.config.ConfigExecution;
+import org.apache.iotdb.db.mpp.sql.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 
 import org.apache.commons.lang3.Validate;
 
@@ -41,21 +44,21 @@ import java.util.concurrent.ScheduledExecutorService;
  */
 public class Coordinator {
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
-  private static final int COORDINATOR_EXECUTOR_SIZE = 10;
+  private static final int COORDINATOR_EXECUTOR_SIZE = 2;
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
-  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
+  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 2;
 
   private static final Endpoint LOCAL_HOST =
       new Endpoint(
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMppPort());
+          IoTDBDescriptor.getInstance().getConfig().getInternalPort());
 
-  private ExecutorService executor;
-  private ScheduledExecutorService scheduledExecutor;
+  private final ExecutorService executor;
+  private final ScheduledExecutorService scheduledExecutor;
 
   private static final Coordinator INSTANCE = new Coordinator();
 
-  private ConcurrentHashMap<QueryId, QueryExecution> queryExecutionMap;
+  private final ConcurrentHashMap<QueryId, IQueryExecution> queryExecutionMap;
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
@@ -63,16 +66,33 @@ public class Coordinator {
     this.scheduledExecutor = getScheduledExecutor();
   }
 
-  private QueryExecution createQueryExecution(Statement statement, MPPQueryContext queryContext) {
-    return new QueryExecution(statement, queryContext, executor, scheduledExecutor);
+  private IQueryExecution createQueryExecution(
+      Statement statement,
+      MPPQueryContext queryContext,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    if (statement instanceof SetStorageGroupStatement) {
+      queryContext.setQueryType(QueryType.WRITE);
+      return new ConfigExecution(queryContext, statement, executor);
+    }
+    return new QueryExecution(
+        statement, queryContext, executor, scheduledExecutor, partitionFetcher, schemaFetcher);
   }
 
   public ExecutionResult execute(
-      Statement statement, QueryId queryId, QueryType queryType, SessionInfo session, String sql) {
+      Statement statement,
+      QueryId queryId,
+      SessionInfo session,
+      String sql,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
 
-    QueryExecution execution =
+    IQueryExecution execution =
         createQueryExecution(
-            statement, new MPPQueryContext(sql, queryId, session, queryType, getHostEndpoint()));
+            statement,
+            new MPPQueryContext(sql, queryId, session, getHostEndpoint()),
+            partitionFetcher,
+            schemaFetcher);
     queryExecutionMap.put(queryId, execution);
 
     execution.start();
@@ -80,10 +100,10 @@ public class Coordinator {
     return execution.getStatus();
   }
 
-  public TsBlock getResultSet(QueryId queryId) {
-    QueryExecution execution = queryExecutionMap.get(queryId);
+  public IQueryExecution getQueryExecution(QueryId queryId) {
+    IQueryExecution execution = queryExecutionMap.get(queryId);
     Validate.notNull(execution, "invalid queryId %s", queryId.getId());
-    return execution.getBatchResult();
+    return execution;
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management

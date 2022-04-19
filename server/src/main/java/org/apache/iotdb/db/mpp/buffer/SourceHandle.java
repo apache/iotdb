@@ -21,11 +21,11 @@ package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
-import org.apache.iotdb.mpp.rpc.thrift.AcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
-import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockRequest;
-import org.apache.iotdb.mpp.rpc.thrift.GetDataBlockResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
+import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockResponse;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
@@ -59,7 +59,7 @@ public class SourceHandle implements ISourceHandle {
   private final String localPlanNodeId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
-  private final DataBlockService.Client client;
+  private final DataBlockService.Iface client;
   private final TsBlockSerde serde;
   private final SourceHandleListener sourceHandleListener;
 
@@ -83,7 +83,7 @@ public class SourceHandle implements ISourceHandle {
       String localPlanNodeId,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
-      DataBlockService.Client client,
+      DataBlockService.Iface client,
       TsBlockSerde serde,
       SourceHandleListener sourceHandleListener) {
     this.remoteHostname = Validate.notNull(remoteHostname);
@@ -242,7 +242,7 @@ public class SourceHandle implements ISourceHandle {
     return throwable == null
         && noMoreTsBlocks
         && numActiveGetDataBlocksTask == 0
-        && nextSequenceId - 1 == lastSequenceId
+        && currSequenceId - 1 == lastSequenceId
         && sequenceIdToTsBlock.isEmpty();
   }
 
@@ -314,13 +314,13 @@ public class SourceHandle implements ISourceHandle {
           remoteFragmentInstanceId,
           localPlanNodeId,
           localFragmentInstanceId);
-      GetDataBlockRequest req =
-          new GetDataBlockRequest(remoteFragmentInstanceId, startSequenceId, endSequenceId);
+      TGetDataBlockRequest req =
+          new TGetDataBlockRequest(remoteFragmentInstanceId, startSequenceId, endSequenceId);
       int attempt = 0;
       while (attempt < MAX_ATTEMPT_TIMES) {
         attempt += 1;
         try {
-          GetDataBlockResponse resp = client.getDataBlock(req);
+          TGetDataBlockResponse resp = client.getDataBlock(req);
           List<TsBlock> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
           for (ByteBuffer byteBuffer : resp.getTsBlocks()) {
             TsBlock tsBlock = serde.deserialize(byteBuffer);
@@ -381,8 +381,8 @@ public class SourceHandle implements ISourceHandle {
           endSequenceId,
           remoteFragmentInstanceId);
       int attempt = 0;
-      AcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
-          new AcknowledgeDataBlockEvent(remoteFragmentInstanceId, startSequenceId, endSequenceId);
+      TAcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
+          new TAcknowledgeDataBlockEvent(remoteFragmentInstanceId, startSequenceId, endSequenceId);
       while (attempt < MAX_ATTEMPT_TIMES) {
         attempt += 1;
         try {
