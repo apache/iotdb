@@ -1821,8 +1821,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return mtree.getNodeByPath(fullPath);
   }
 
-  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
-    mtree.unPinMNode(imNode);
+  public void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException {
+    mtree.unPinMNode(node);
   }
 
   // endregion
