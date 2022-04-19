@@ -44,7 +44,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mtree.MTreeBelowSG;
+import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
@@ -161,7 +161,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
-  private MTreeBelowSG mtree;
+  private MTreeBelowSGMemoryImpl mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager;
@@ -236,7 +236,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
 
       tagManager = new TagManager(schemaRegionDirPath);
-      mtree = new MTreeBelowSG(storageGroupMNode, schemaRegionId.getId());
+      mtree = new MTreeBelowSGMemoryImpl(storageGroupMNode, schemaRegionId.getId());
 
       int lineNumber = initFromLog(logFile);
 
@@ -475,7 +475,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
       if (offset != -1) {
         leafMNode.setOffset(offset);
-        mtree.updateMNode(leafMNode);
       }
 
     } catch (IOException e) {
@@ -614,7 +613,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       for (int i = 0; i < measurements.size(); i++) {
         if (tagOffsets.get(i) != -1) {
           measurementMNodeList.get(i).setOffset(tagOffsets.get(i));
-          mtree.updateMNode(measurementMNodeList.get(i));
         }
       }
     } catch (IOException e) {
@@ -1175,7 +1173,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private void changeOffset(PartialPath path, long offset) throws MetadataException {
     IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(path);
     measurementMNode.setOffset(offset);
-    mtree.updateMNode(measurementMNode);
 
     if (isRecovering) {
 
@@ -1234,7 +1231,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       long offset = tagManager.writeTagFile(tagsMap, attributesMap);
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
-      mtree.updateMNode(leafMNode);
       // update inverted Index map
       if (tagsMap != null && !tagsMap.isEmpty()) {
         tagManager.addIndex(tagsMap, leafMNode);
@@ -1272,20 +1268,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMeasurementMNode leafMNode = mtree.getMeasurementMNode(fullPath);
-    try {
-      // no tag or attribute, we need to add a new record in log
-      if (leafMNode.getOffset() < 0) {
-        long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
-        logWriter.changeOffset(fullPath, offset);
-        leafMNode.setOffset(offset);
-        mtree.updateMNode(leafMNode);
-        return;
-      }
 
-      tagManager.addAttributes(attributesMap, fullPath, leafMNode);
-    } finally {
-      mtree.updateMNode(leafMNode);
+    // no tag or attribute, we need to add a new record in log
+    if (leafMNode.getOffset() < 0) {
+      long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
+      logWriter.changeOffset(fullPath, offset);
+      leafMNode.setOffset(offset);
+      return;
     }
+
+    tagManager.addAttributes(attributesMap, fullPath, leafMNode);
   }
 
   /**
@@ -1302,7 +1294,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
-      mtree.updateMNode(leafMNode);
       // update inverted Index map
       tagManager.addIndex(tagsMap, leafMNode);
       return;
@@ -1642,7 +1633,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       TemplateManager.getInstance().checkIsTemplateCompatible(template, node);
       mtree.checkIsTemplateCompatibleWithChild(node, template);
       node.setSchemaTemplate(template);
-      mtree.updateMNode(node);
 
       TemplateManager.getInstance()
           .markSchemaRegion(template, storageGroupFullPath, schemaRegionId);
@@ -1727,7 +1717,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                   : node.getUpperTemplate().isDirectAligned());
     }
     mountedMNode.setUseTemplate(true);
-    mtree.updateMNode(mountedMNode);
 
     if (node != mountedMNode) {
       mNodeCache.invalidate(mountedMNode.getPartialPath());
