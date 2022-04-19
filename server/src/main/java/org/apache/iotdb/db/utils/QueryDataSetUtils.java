@@ -32,9 +32,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -45,7 +42,7 @@ import java.util.List;
 
 /** TimeValuePairUtils to convert between thrift format and TsFile format. */
 public class QueryDataSetUtils {
-  private static final Logger LOG = LoggerFactory.getLogger(QueryDataSetUtils.class);
+
   private static final int FLAG = 0x01;
 
   private QueryDataSetUtils() {}
@@ -196,9 +193,7 @@ public class QueryDataSetUtils {
     int rowCount = 0;
     int[] valueOccupation = new int[columnNum];
     while (rowCount < fetchSize) {
-      LOG.info("[ToTSDataSet {}] invoke queryExecution.getBatchResult.", queryExecution);
       TsBlock tsBlock = queryExecution.getBatchResult();
-      LOG.info("[ToTSDataSet {}] result got. Empty: {}", queryExecution, tsBlock == null);
       if (tsBlock == null) {
         break;
       }

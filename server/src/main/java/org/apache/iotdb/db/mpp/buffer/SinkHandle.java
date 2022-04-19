@@ -160,7 +160,11 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void sendEndOfDataBlockEvent() throws TException {
-    logger.info("[SinkHandle {}]: send end of data block event.", this.getRemotePlanNodeId());
+    logger.debug(
+        "Send end of data block event to plan node {} of {}. {}",
+        remotePlanNodeId,
+        remoteFragmentInstanceId,
+        Thread.currentThread().getName());
     int attempt = 0;
     TEndOfDataBlockEvent endOfDataBlockEvent =
         new TEndOfDataBlockEvent(
@@ -190,7 +194,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public void close() throws IOException {
-    logger.info("[SinkHandle {}]: is being closed.", this.getRemotePlanNodeId());
+    logger.info("Sink handle {} is being closed.", this);
     if (throwable != null) {
       throw new IOException(throwable);
     }
@@ -207,12 +211,12 @@ public class SinkHandle implements ISinkHandle {
     } catch (TException e) {
       throw new IOException(e);
     }
-    logger.info("[SinkHandle {}] is closed.", this.getRemotePlanNodeId());
+    logger.info("Sink handle {} is closed.", this);
   }
 
   @Override
   public void abort() {
-    logger.info("[SinkHandle {}]: is being aborted.", this.getRemotePlanNodeId());
+    logger.info("Sink handle {} is being aborted.", this);
     synchronized (this) {
       sequenceIdToTsBlock.clear();
       closed = true;
@@ -224,7 +228,7 @@ public class SinkHandle implements ISinkHandle {
       }
     }
     sinkHandleListener.onAborted(this);
-    logger.info("[SinkHandle {}]: is aborted.", this.getRemotePlanNodeId());
+    logger.info("Sink handle {} is aborted", this);
   }
 
   @Override
@@ -335,7 +339,7 @@ public class SinkHandle implements ISinkHandle {
 
     @Override
     public void run() {
-      logger.info(
+      logger.debug(
           "Send new data block event [{}, {}) to plan node {} of {}.",
           startSequenceId,
           startSequenceId + blockSizes.size(),

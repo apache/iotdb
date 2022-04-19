@@ -50,7 +50,6 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   @Override
   public Future<Boolean> terminate() {
-    LOGGER.info("[{}] start to submit terminate command", queryId);
     List<Endpoint> relatedHost = getRelatedHost(fragmentInstances);
 
     return executor.submit(
@@ -64,7 +63,6 @@ public class SimpleQueryTerminator implements IQueryTerminator {
                           endpoint.getIp(),
                           IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
               client.cancelQuery(new TCancelQueryReq(queryId.getId()));
-              LOGGER.info("[{}] cancel query from DataNode[{}]", queryId, endpoint.getIp());
             }
           } catch (TException e) {
             return false;

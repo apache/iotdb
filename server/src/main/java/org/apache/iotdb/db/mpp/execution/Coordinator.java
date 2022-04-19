@@ -98,7 +98,6 @@ public class Coordinator {
             partitionFetcher,
             schemaFetcher);
     queryExecutionMap.put(queryId, execution);
-    LOG.info("[Query: {}] start QueryExecution. Statement: {}", queryId, sql);
     execution.start();
 
     return execution.getStatus();

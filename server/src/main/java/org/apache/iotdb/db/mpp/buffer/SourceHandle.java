@@ -118,7 +118,6 @@ public class SourceHandle implements ISourceHandle {
 
       if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
         blocked = SettableFuture.create();
-        logger.info("[SourceHandle {}]: blocked is set to new Future.", localPlanNodeId);
       }
     }
     if (isFinished()) {
@@ -206,19 +205,9 @@ public class SourceHandle implements ISourceHandle {
   }
 
   synchronized void setNoMoreTsBlocks(int lastSequenceId) {
-    logger.info(
-        "[SourceHandle {}]: No more TsBlock. {} ", localPlanNodeId, remoteFragmentInstanceId);
     this.lastSequenceId = lastSequenceId;
-    if (!blocked.isDone() && currSequenceId - 1 == lastSequenceId) {
-      logger.info(
-          "[SourceHandle {}]: all blocks are consumed. set blocked to null.", localPlanNodeId);
+    if (!blocked.isDone() && remoteTsBlockedConsumedUp()) {
       blocked.set(null);
-    } else {
-      logger.info(
-          "[SourceHandle {}]: No need to set blocked. Blocked: {}, Consumed: {} ",
-          localPlanNodeId,
-          blocked.isDone(),
-          currSequenceId - 1 == lastSequenceId);
     }
   }
 
@@ -231,13 +220,11 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized void close() {
-    logger.info("[SourceHandle {}]: closed ", localPlanNodeId);
     if (closed) {
       return;
     }
     if (blocked != null && !blocked.isDone()) {
       blocked.cancel(true);
-      logger.info("[SourceHandle {}]: blocked is cancelled.", localPlanNodeId);
     }
     sequenceIdToDataBlockSize.clear();
     if (bufferRetainedSizeInBytes > 0) {
@@ -252,7 +239,14 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public boolean isFinished() {
-    return throwable == null && currSequenceId - 1 == lastSequenceId;
+    return throwable == null && remoteTsBlockedConsumedUp();
+  }
+
+  // Return true indicates two points:
+  //   1. Remote SinkHandle has told SourceHandle the total count of TsBlocks by lastSequenceId
+  //   2. All the TsBlocks has been consumed up
+  private boolean remoteTsBlockedConsumedUp() {
+    return currSequenceId - 1 == lastSequenceId;
   }
 
   String getRemoteHostname() {
@@ -316,12 +310,13 @@ public class SourceHandle implements ISourceHandle {
 
     @Override
     public void run() {
-      logger.info(
-          "[SourceHandle-{}]: Get data blocks [{}, {}) from {}",
-          localPlanNodeId,
+      logger.debug(
+          "Get data blocks [{}, {}) from {} for plan node {} of {}.",
           startSequenceId,
           endSequenceId,
-          remoteFragmentInstanceId);
+          remoteFragmentInstanceId,
+          localPlanNodeId,
+          localFragmentInstanceId);
       TGetDataBlockRequest req =
           new TGetDataBlockRequest(remoteFragmentInstanceId, startSequenceId, endSequenceId);
       int attempt = 0;
@@ -343,7 +338,6 @@ public class SourceHandle implements ISourceHandle {
             }
             if (!blocked.isDone()) {
               blocked.set(null);
-              logger.info("[SourceHandle {}]: blocked is set null.", localPlanNodeId);
             }
           }
           executorService.submit(
@@ -382,9 +376,8 @@ public class SourceHandle implements ISourceHandle {
 
     @Override
     public void run() {
-      logger.info(
-          "[SourceHandle {}]: Send ack data block event [{}, {}) to {}.",
-          localPlanNodeId,
+      logger.debug(
+          "Send ack data block event [{}, {}) to {}.",
           startSequenceId,
           endSequenceId,
           remoteFragmentInstanceId);

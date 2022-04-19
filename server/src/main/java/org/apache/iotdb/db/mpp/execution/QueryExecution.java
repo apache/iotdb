@@ -123,12 +123,9 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     doLogicalPlan();
     doDistributedPlan();
-    LOG.info("[{}]: Distribution Plan: {}", this, distributedPlan);
     if (context.getQueryType() == QueryType.READ) {
-      // The ResultHandle could only be initialized after distributed planning
       initResultHandle();
     }
-    LOG.info("[{}]: Start to schedule.", this);
     schedule();
   }
 
@@ -188,7 +185,6 @@ public class QueryExecution implements IQueryExecution {
     //   1. The client fetch all the result and the ResultHandle is finished.
     //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
     if (resultHandle != null && resultHandle.isFinished()) {
-      LOG.info("[QueryExecution {}]:  result handle is closed", context.getQueryId());
       resultHandle.close();
     }
   }
@@ -206,16 +202,9 @@ public class QueryExecution implements IQueryExecution {
       if (resultHandle.isClosed() || resultHandle.isFinished()) {
         return null;
       }
-      LOG.info("[QueryExecution {}]: try to get result.", context.getQueryId());
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
-      LOG.info(
-          "[QueryExecution {}]:  unblock. Cancelled: {}, Done: {}",
-          context.getQueryId(),
-          blocked.isCancelled(),
-          blocked.isDone());
       if (resultHandle.isFinished()) {
-        LOG.info("[QueryExecution {}]:  result is null", context.getQueryId());
         releaseResource();
         return null;
       }
@@ -261,16 +250,13 @@ public class QueryExecution implements IQueryExecution {
     SettableFuture<QueryState> future = SettableFuture.create();
     stateMachine.addStateChangeListener(
         state -> {
-          LOG.info("[QueryExecution {}]:  wait status callback invoked", context.getQueryId());
           if (state == QueryState.RUNNING || state.isDone()) {
             future.set(state);
           }
         });
 
     try {
-      LOG.info("[QueryExecution {}]:  start to wait status", context.getQueryId());
       QueryState state = future.get();
-      LOG.info("[QueryExecution {}]:  status got", context.getQueryId());
       // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
       TSStatusCode statusCode =
           // For WRITE, the state should be FINISHED; For READ, the state could be RUNNING

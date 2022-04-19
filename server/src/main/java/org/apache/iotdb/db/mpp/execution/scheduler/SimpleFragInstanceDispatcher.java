@@ -66,9 +66,7 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
             TSendFragmentInstanceReq req =
                 new TSendFragmentInstanceReq(
                     new TFragmentInstance(buffer), groupId, instance.getType().toString());
-            LOGGER.info("start to dispatch fragment instance: {}", instance.getId());
             resp = client.sendFragmentInstance(req);
-            LOGGER.info("dispatch complete: {}", instance.getId());
             if (!resp.accepted) {
               break;
             }

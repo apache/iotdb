@@ -83,19 +83,13 @@ public class ClusterScheduler implements IScheduler {
 
   @Override
   public void start() {
-    LOGGER.info(
-        "[{}] start to dispatch fragment instance. size: {}",
-        queryContext.getQueryId(),
-        instances.size());
     stateMachine.transitionToDispatching();
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
 
     // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
     // So we need to start the state fetcher after the dispatching stage.
     try {
-      LOGGER.info("[{}] wait dispatch to be finished", queryContext.getQueryId());
       FragInstanceDispatchResult result = dispatchResultFuture.get();
-      LOGGER.info("[{}] dispatch finished: {}", queryContext.getQueryId(), result.isSuccessful());
       if (!result.isSuccessful()) {
         stateMachine.transitionToFailed(new IllegalStateException("Fragment cannot be dispatched"));
         return;
@@ -108,9 +102,7 @@ public class ClusterScheduler implements IScheduler {
 
     // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
     if (queryType == QueryType.WRITE) {
-      LOGGER.info("[{}] prepare to transition WRITE to finished", queryContext.getQueryId());
       stateMachine.transitionToFinished();
-      LOGGER.info("[{}] transition done", queryContext.getQueryId());
       return;
     }
 
