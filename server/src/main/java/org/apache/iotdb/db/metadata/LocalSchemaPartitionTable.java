@@ -106,6 +106,9 @@ public class LocalSchemaPartitionTable {
   }
 
   public synchronized void setStorageGroup(PartialPath storageGroup) {
+    if (table.containsKey(storageGroup)) {
+      return;
+    }
     table.put(storageGroup, Collections.synchronizedSet(new HashSet<>()));
   }
 
@@ -116,6 +119,9 @@ public class LocalSchemaPartitionTable {
   // This method may be extended to implement multi schemaRegion for one storageGroup
   // todo keep consistent with the partition method of config node in new cluster
   private SchemaRegionId calculateSchemaRegionId(PartialPath storageGroup, PartialPath path) {
+    if (!table.containsKey(storageGroup)) {
+      setStorageGroup(storageGroup);
+    }
     return table.get(storageGroup).iterator().next();
   }
 }
