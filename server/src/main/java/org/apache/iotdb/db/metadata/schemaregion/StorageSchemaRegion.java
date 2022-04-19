@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheManager;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.LRUCacheManager;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,20 +30,19 @@ import org.slf4j.LoggerFactory;
  * StorageEngine
  */
 public class StorageSchemaRegion {
-    private static final Logger logger = LoggerFactory.getLogger(StorageSchemaRegion.class);
-    private final ICacheManager cacheManager;
+  private static final Logger logger = LoggerFactory.getLogger(StorageSchemaRegion.class);
+  private final ICacheManager cacheManager;
 
-    private StorageSchemaRegion() {
-        cacheManager = new LRUCacheManager();
-    }
+  private StorageSchemaRegion() {
+    cacheManager = new LRUCacheManager();
+  }
 
-    public static StorageSchemaRegion getInstance() {
-        return StorageSchemaRegionHolder.INSTANCE;
-    }
+  public static StorageSchemaRegion getInstance() {
+    return StorageSchemaRegionHolder.INSTANCE;
+  }
 
-
-    /** singleton pattern. */
-    private static class StorageSchemaRegionHolder {
-        private static final StorageSchemaRegion INSTANCE = new StorageSchemaRegion();
-    }
+  /** singleton pattern. */
+  private static class StorageSchemaRegionHolder {
+    private static final StorageSchemaRegion INSTANCE = new StorageSchemaRegion();
+  }
 }

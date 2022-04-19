@@ -27,12 +27,24 @@ import java.util.Map;
 
 public class SchemaEntityNode extends SchemaInternalNode {
 
+  private SchemaNode parent;
+
   private boolean isAligned;
 
   private Map<String, SchemaMeasurementNode> aliasChildren;
 
   public SchemaEntityNode(String name) {
     super(name);
+  }
+
+  @Override
+  public SchemaNode getParent() {
+    return parent;
+  }
+
+  @Override
+  public void setParent(SchemaNode parent) {
+    this.parent = parent;
   }
 
   @Override
