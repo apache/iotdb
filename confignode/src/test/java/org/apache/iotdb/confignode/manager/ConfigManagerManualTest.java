@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessage;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -74,7 +74,7 @@ public class ConfigManagerManualTest {
 
   private void registerDataNodes() throws TException {
     for (int i = 0; i < 3; i++) {
-      TDataNodeRegisterReq req = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6667 + i));
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6667 + i));
       TDataNodeRegisterResp resp = clients[0].registerDataNode(req);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
       Assert.assertEquals(i, resp.getDataNodeID());
@@ -114,7 +114,7 @@ public class ConfigManagerManualTest {
     }
 
     TDataNodeRegisterResp resp =
-        clients[1].registerDataNode(new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6670)));
+        clients[1].registerDataNode(new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6670)));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
     Assert.assertEquals(3, resp.getDataNodeID());
 

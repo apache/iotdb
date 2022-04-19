@@ -23,7 +23,7 @@ namespace py iotdb.thrift.confignode
 
 // DataNode
 struct TDataNodeRegisterReq {
-  1: required common.EndPoint endPoint
+  1: required common.TEndPoint endPoint
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
   2: optional map<string, TStorageGroupSchema> statusMap
@@ -50,7 +50,7 @@ struct TDataNodeMessageResp {
 
 struct TDataNodeMessage {
   1: required i32 dataNodeId
-  2: required common.EndPoint endPoint
+  2: required common.TEndPoint endPoint
 }
 
 // StorageGroup

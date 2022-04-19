@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
@@ -123,7 +123,7 @@ public class RpcUtils {
     verifySuccess(status);
     if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
         || status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
+      Map<String, TEndPoint> deviceEndPointMap = new HashMap<>();
       List<TSStatus> statusSubStatus = status.getSubStatus();
       for (int i = 0; i < statusSubStatus.size(); i++) {
         TSStatus subStatus = statusSubStatus.get(i);

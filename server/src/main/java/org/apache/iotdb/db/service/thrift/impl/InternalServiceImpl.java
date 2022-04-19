@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
@@ -152,7 +152,7 @@ public class InternalServiceImpl implements InternalService.Iface {
       LOGGER.info("SchemaRegionId: " + schemaRegionId.getId());
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
       List<Peer> peers = new ArrayList<>();
-      for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
+      for (TEndPoint endPoint : regionReplicaSet.getEndpoint()) {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
         // TODO: Expend Peer and RegisterDataNodeReq
         endpoint.setPort(endpoint.getPort() + 31007);
@@ -192,7 +192,7 @@ public class InternalServiceImpl implements InternalService.Iface {
       LOGGER.info("DataRegionId: " + dataRegionId.getId());
       storageEngine.createDataRegion(dataRegionId, req.storageGroup, req.ttl);
       List<Peer> peers = new ArrayList<>();
-      for (EndPoint endPoint : regionReplicaSet.getEndpoint()) {
+      for (TEndPoint endPoint : regionReplicaSet.getEndpoint()) {
         Endpoint endpoint = new Endpoint(endPoint.getIp(), endPoint.getPort());
         // TODO: Expend Peer and RegisterDataNodeReq
         endpoint.setPort(endpoint.getPort() + 31007);

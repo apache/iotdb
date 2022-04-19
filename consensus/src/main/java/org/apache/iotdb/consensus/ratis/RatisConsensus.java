@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -181,7 +181,7 @@ class RatisConsensus implements IConsensus {
 
     if (suggestedLeader != null) {
       Endpoint leaderEndPoint = Utils.getEndpoint(suggestedLeader);
-      writeResult.setRedirectNode(new EndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
+      writeResult.setRedirectNode(new TEndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
     }
 
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.influxdb.protocol.dto;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.session.Session;
 
 public class SessionPoint {
@@ -45,10 +45,10 @@ public class SessionPoint {
         if (reflectField
                 .getType()
                 .getName()
-                .equalsIgnoreCase("org.apache.iotdb.common.rpc.thrift.EndPoint")
+                .equalsIgnoreCase("org.apache.iotdb.common.rpc.thrift.TEndPoint")
             && reflectField.getName().equalsIgnoreCase("defaultEndPoint")) {
-          this.rpcPort = ((EndPoint) reflectField.get(session)).port;
-          this.host = ((EndPoint) reflectField.get(session)).ip;
+          this.rpcPort = ((TEndPoint) reflectField.get(session)).port;
+          this.host = ((TEndPoint) reflectField.get(session)).ip;
         }
         if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
             && reflectField.getName().equalsIgnoreCase("username")) {
