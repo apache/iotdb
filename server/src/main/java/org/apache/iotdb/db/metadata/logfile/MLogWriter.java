@@ -25,9 +25,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -123,32 +120,13 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  synchronized void putLogV2(PlanNode node) throws IOException {
-    try {
-      node.serialize(mlogBuffer);
-      sync();
-      logNum++;
-    } catch (BufferOverflowException e) {
-      throw new IOException(LOG_TOO_LARGE_INFO, e);
-    }
-  }
-
   public void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
     putLog(createTimeSeriesPlan);
-  }
-
-  public void createTimeseriesV2(CreateTimeSeriesNode createTimeSeriesNode) throws IOException {
-    putLogV2(createTimeSeriesNode);
   }
 
   public void createAlignedTimeseries(CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan)
       throws IOException {
     putLog(createAlignedTimeSeriesPlan);
-  }
-
-  public void createAlignedTimeseriesV2(CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode)
-      throws IOException {
-    putLogV2(createAlignedTimeSeriesNode);
   }
 
   public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {

@@ -29,6 +29,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSer
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -45,7 +47,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
     try {
-      schemaRegion.createTimeseriesV2(node, -1);
+      PhysicalPlan plan = node.accept(new PhysicalPlanTransformer(), new TransformerContext());
+      schemaRegion.createTimeseries((CreateTimeSeriesPlan) plan, -1);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -57,7 +60,8 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitCreateAlignedTimeSeries(
       CreateAlignedTimeSeriesNode node, ISchemaRegion schemaRegion) {
     try {
-      schemaRegion.createAlignedTimeSeriesV2(node);
+      PhysicalPlan plan = node.accept(new PhysicalPlanTransformer(), new TransformerContext());
+      schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan) plan);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
@@ -113,6 +117,31 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     public PhysicalPlan visitPlan(PlanNode node, TransformerContext context) {
       throw new NotImplementedException();
     }
+  }
+
+  public PhysicalPlan visitCreateTimeSeries(CreateTimeSeriesNode node, TransformerContext context) {
+    return new CreateTimeSeriesPlan(
+        node.getPath(),
+        node.getDataType(),
+        node.getEncoding(),
+        node.getCompressor(),
+        node.getProps(),
+        node.getTags(),
+        node.getAttributes(),
+        node.getAlias());
+  }
+
+  public PhysicalPlan visitCreateAlignedTimeSeries(
+      CreateAlignedTimeSeriesNode node, TransformerContext context) {
+    return new CreateAlignedTimeSeriesPlan(
+        node.getDevicePath(),
+        node.getMeasurements(),
+        node.getDataTypes(),
+        node.getEncodings(),
+        node.getCompressors(),
+        node.getAliasList(),
+        node.getTagsList(),
+        node.getAttributesList());
   }
 
   private static class TransformerContext {}

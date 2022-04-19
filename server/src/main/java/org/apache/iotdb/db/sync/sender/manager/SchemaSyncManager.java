@@ -24,8 +24,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.DeleteStorageGroupNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -93,23 +91,6 @@ public class SchemaSyncManager {
         default:
           syncPipe.collectRealTimeMetaData(plan);
           break;
-      }
-    } catch (MetadataException e) {
-
-    }
-  }
-
-  public void syncMetadataPlanV2(PlanNode node) {
-    try {
-      if (node instanceof DeleteStorageGroupNode) {
-        syncPipe.collectRealTimeMetaData(
-            splitDeleteTimeseriesPlanByDevice(
-                ((DeleteStorageGroupNode) node)
-                    .getPaths()
-                    .get(0)
-                    .concatNode(MULTI_LEVEL_PATH_WILDCARD)));
-      } else {
-        syncPipe.collectRealTimeMetaDataV2(node);
       }
     } catch (MetadataException e) {
 

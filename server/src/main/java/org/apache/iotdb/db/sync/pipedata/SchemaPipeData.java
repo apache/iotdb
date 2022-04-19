@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.sync.receiver.load.ILoader;
 import org.apache.iotdb.db.sync.receiver.load.SchemaLoader;
@@ -36,17 +35,9 @@ public class SchemaPipeData extends PipeData {
 
   private PhysicalPlan plan;
 
-  /** TODO will replace PhysicalPlan */
-  private PlanNode node;
-
   public SchemaPipeData(PhysicalPlan plan, long serialNumber) {
     super(serialNumber);
     this.plan = plan;
-  }
-
-  public SchemaPipeData(PlanNode node, long serialNumber) {
-    super(serialNumber);
-    this.node = node;
   }
 
   @Override
@@ -66,7 +57,6 @@ public class SchemaPipeData extends PipeData {
 
   private byte[] getBytes() {
     ByteBuffer buffer = ByteBuffer.allocate(SERIALIZE_BUFFER_SIZE);
-    // TODO will replace with PlanNode
     plan.serialize(buffer);
     byte[] bytes = new byte[buffer.position()];
     buffer.flip();
@@ -79,7 +69,6 @@ public class SchemaPipeData extends PipeData {
     long serialNumber = stream.readLong();
     byte[] bytes = new byte[stream.readInt()];
     stream.read(bytes);
-    // TODO will replace with PlanNode
     PhysicalPlan plan = PhysicalPlan.Factory.create(ByteBuffer.wrap(bytes));
     return new SchemaPipeData(plan, serialNumber);
   }

@@ -75,7 +75,6 @@ public class PlanNodeUtil {
     if (root.getChildren() == null) {
       return;
     }
-
     for (int i = 0; i < root.getChildren().size(); i++) {
       PlanNode child = root.getChildren().get(i);
       PrintContext childCtx = ctx.clone();

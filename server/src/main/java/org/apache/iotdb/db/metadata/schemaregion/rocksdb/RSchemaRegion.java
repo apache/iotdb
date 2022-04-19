@@ -53,8 +53,6 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -274,38 +272,6 @@ public class RSchemaRegion implements ISchemaRegion {
       } else {
         throw new AcquireLockTimeoutException(
             "Acquire lock timeout when creating timeseries: " + plan.getPath().getFullPath());
-      }
-    } catch (InterruptedException e) {
-      logger.warn("Acquire lock interrupted", e);
-      Thread.currentThread().interrupt();
-    } finally {
-      deleteUpdateLock.readLock().unlock();
-    }
-  }
-
-  @Override
-  public void createTimeseriesV2(CreateTimeSeriesNode node, long offset) throws MetadataException {
-    try {
-      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-        createTimeseries(
-            node.getPath(),
-            new MeasurementSchema(
-                node.getPath().getMeasurement(),
-                node.getDataType(),
-                node.getEncoding(),
-                node.getCompressor(),
-                node.getProps()),
-            node.getAlias(),
-            node.getTags(),
-            node.getAttributes());
-        // update id table if id table log file is disabled
-        if (config.isEnableIDTable() && !config.isEnableIDTableLogFile()) {
-          IDTable idTable = IDTableManager.getInstance().getIDTable(node.getPath().getDevicePath());
-          idTable.createTimeseriesV2(node);
-        }
-      } else {
-        throw new AcquireLockTimeoutException(
-            "Acquire lock timeout when creating timeseries: " + node.getPath().getFullPath());
       }
     } catch (InterruptedException e) {
       logger.warn("Acquire lock interrupted", e);
@@ -565,33 +531,6 @@ public class RSchemaRegion implements ISchemaRegion {
         if (config.isEnableIDTable() && !config.isEnableIDTableLogFile()) {
           IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
           idTable.createAlignedTimeseries(plan);
-        }
-      } else {
-        throw new AcquireLockTimeoutException(
-            "Acquire lock timeout when do createAlignedTimeSeries: " + prefixPath.getFullPath());
-      }
-    } catch (InterruptedException e) {
-      logger.warn("Acquire lock interrupted", e);
-      Thread.currentThread().interrupt();
-    } finally {
-      deleteUpdateLock.readLock().unlock();
-    }
-  }
-
-  @Override
-  public void createAlignedTimeSeriesV2(CreateAlignedTimeSeriesNode node) throws MetadataException {
-    PartialPath prefixPath = node.getDevicePath();
-    List<String> measurements = node.getMeasurements();
-    List<TSDataType> dataTypes = node.getDataTypes();
-    List<TSEncoding> encodings = node.getEncodings();
-
-    try {
-      if (deleteUpdateLock.readLock().tryLock(MAX_LOCK_WAIT_TIME, TimeUnit.MILLISECONDS)) {
-        createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings);
-        // update id table if not in recovering or disable id table log file
-        if (config.isEnableIDTable() && !config.isEnableIDTableLogFile()) {
-          IDTable idTable = IDTableManager.getInstance().getIDTable(node.getDevicePath());
-          idTable.createAlignedTimeseriesV2(node);
         }
       } else {
         throw new AcquireLockTimeoutException(
