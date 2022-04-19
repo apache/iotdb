@@ -138,7 +138,7 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onEndOfDataBlockEvent(EndOfDataBlockEvent e) throws TException {
-      logger.debug(
+      logger.info(
           "End of data block event received, for plan node {} of {} from {}.",
           e.getTargetPlanNodeId(),
           e.getTargetFragmentInstanceId(),
@@ -175,11 +175,12 @@ public class DataBlockManager implements IDataBlockManager {
               .containsKey(sourceHandle.getLocalPlanNodeId())) {
         logger.info(
             "Resources of finished source handle {} has already been released", sourceHandle);
+      } else {
+        sourceHandles
+            .get(sourceHandle.getLocalFragmentInstanceId())
+            .remove(sourceHandle.getLocalPlanNodeId());
       }
-      sourceHandles
-          .get(sourceHandle.getLocalFragmentInstanceId())
-          .remove(sourceHandle.getLocalPlanNodeId());
-      if (sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
+      if (sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId()) && sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
         sourceHandles.remove(sourceHandle.getLocalFragmentInstanceId());
       }
     }

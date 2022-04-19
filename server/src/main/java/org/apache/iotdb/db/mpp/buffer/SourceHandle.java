@@ -211,9 +211,14 @@ public class SourceHandle implements ISourceHandle {
   }
 
   synchronized void setNoMoreTsBlocks(int lastSequenceId) {
-    logger.info("[SourceHandle {}-{}]: No more TsBlock. {} ", localFragmentInstanceId, localPlanNodeId, remoteFragmentInstanceId);
+    logger.info("[SourceHandle {}]: No more TsBlock. {} ", localPlanNodeId, remoteFragmentInstanceId);
     this.lastSequenceId = lastSequenceId;
-    noMoreTsBlocks = true;
+    if (!blocked.isDone() && currSequenceId - 1 == lastSequenceId) {
+      logger.info("[SourceHandle {}]: all blocks are consumed. set blocked to null.", localPlanNodeId);
+      blocked.set(null);
+    } else {
+      logger.info("[SourceHandle {}]: No need to set blocked. Blocked: {}, Consumed: {} ", localPlanNodeId, blocked.isDone(), currSequenceId - 1 == lastSequenceId);
+    }
   }
 
   synchronized void updatePendingDataBlockInfo(int startSequenceId, List<Long> dataBlockSizes) {
@@ -225,7 +230,7 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized void close() {
-    logger.info("[SourceHandle {}-{}]: closed ", localFragmentInstanceId, localPlanNodeId);
+    logger.info("[SourceHandle {}]: closed ", localPlanNodeId);
     if (closed) {
       return;
     }
@@ -247,10 +252,7 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public boolean isFinished() {
     return throwable == null
-        && noMoreTsBlocks
-        && numActiveGetDataBlocksTask == 0
-        && currSequenceId - 1 == lastSequenceId
-        && sequenceIdToTsBlock.isEmpty();
+        && currSequenceId - 1 == lastSequenceId;
   }
 
   String getRemoteHostname() {

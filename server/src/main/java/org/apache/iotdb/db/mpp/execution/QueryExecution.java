@@ -110,6 +110,10 @@ public class QueryExecution implements IQueryExecution {
             return;
           }
           this.stop();
+          // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be invoked
+          if (state == QueryState.FAILED || state == QueryState.ABORTED || state == QueryState.CANCELED) {
+            releaseResource();
+          }
         });
   }
 
@@ -160,18 +164,28 @@ public class QueryExecution implements IQueryExecution {
     this.distributedPlan = planner.planFragments();
   }
 
-  /** Abort the query and do cleanup work including QuerySchedule aborting and resource releasing */
+  // Stop the workers for this query
   public void stop() {
     if (this.scheduler != null) {
       this.scheduler.stop();
     }
+  }
+
+  // Stop the query and clean up all the resources this query occupied
+  public void stopAndCleanup() {
+    stop();
     releaseResource();
   }
 
   /** Release the resources that current QueryExecution hold. */
   private void releaseResource() {
     // close ResultHandle to unblock client's getResult request
-    if (resultHandle != null && !resultHandle.isClosed()) {
+    // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
+    // There are only two scenarios where the ResultHandle should be closed:
+    //   1. The client fetch all the result and the ResultHandle is finished.
+    //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
+    if (resultHandle != null && resultHandle.isFinished()) {
+      LOG.info("[QueryExecution {}]:  result handle is closed", context.getQueryId());
       resultHandle.close();
     }
   }
@@ -186,12 +200,16 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public TsBlock getBatchResult() {
     try {
+      if (resultHandle.isClosed() || resultHandle.isFinished()) {
+        return null;
+      }
       LOG.info("[QueryExecution {}]: try to get result.", context.getQueryId());
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
       LOG.info("[QueryExecution {}]:  unblock. Cancelled: {}, Done: {}", context.getQueryId(), blocked.isCancelled(), blocked.isDone());
       if (resultHandle.isFinished()) {
         LOG.info("[QueryExecution {}]:  result is null", context.getQueryId());
+        releaseResource();
         return null;
       }
       return resultHandle.receive();

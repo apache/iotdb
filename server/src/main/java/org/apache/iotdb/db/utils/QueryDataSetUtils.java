@@ -195,10 +195,10 @@ public class QueryDataSetUtils {
 
     int rowCount = 0;
     int[] valueOccupation = new int[columnNum];
-    while (rowCount < fetchSize && queryExecution.hasNextResult()) {
-      LOG.info("[ToTSDataSet {}] hasNext return true.", queryExecution);
+    while (rowCount < fetchSize) {
+      LOG.info("[ToTSDataSet {}] invoke queryExecution.getBatchResult.", queryExecution);
       TsBlock tsBlock = queryExecution.getBatchResult();
-      LOG.info("[ToTSDataSet {}] result got.", queryExecution);
+      LOG.info("[ToTSDataSet {}] result got. Empty: {}", queryExecution, tsBlock == null);
       if (tsBlock == null) {
         break;
       }

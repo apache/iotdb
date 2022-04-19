@@ -104,6 +104,9 @@ public class ConfigExecution implements IQueryExecution {
   public void stop() {}
 
   @Override
+  public void stopAndCleanup() {}
+
+  @Override
   public ExecutionResult getStatus() {
     try {
       Boolean success = result.get();
