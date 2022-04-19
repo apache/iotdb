@@ -166,13 +166,14 @@ public class RSchemaRegion implements ISchemaRegion {
   public RSchemaRegion(
       PartialPath storageGroup,
       ConsensusGroupId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode)
+      IStorageGroupMNode storageGroupMNode,
+      RSchemaConfLoader rSchemaConfLoader)
       throws MetadataException {
     this.schemaRegionId = schemaRegionId;
     storageGroupFullPath = storageGroup.getFullPath();
     init(storageGroupMNode);
     try {
-      readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath);
+      readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath, rSchemaConfLoader);
     } catch (RocksDBException e) {
       logger.error("create RocksDBReadWriteHandler fail", e);
       throw new MetadataException(e);
