@@ -180,7 +180,8 @@ public class DataBlockManager implements IDataBlockManager {
             .get(sourceHandle.getLocalFragmentInstanceId())
             .remove(sourceHandle.getLocalPlanNodeId());
       }
-      if (sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId()) && sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
+      if (sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
+          && sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
         sourceHandles.remove(sourceHandle.getLocalFragmentInstanceId());
       }
     }

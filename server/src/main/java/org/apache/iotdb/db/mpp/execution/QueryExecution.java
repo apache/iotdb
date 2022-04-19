@@ -110,8 +110,11 @@ public class QueryExecution implements IQueryExecution {
             return;
           }
           this.stop();
-          // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be invoked
-          if (state == QueryState.FAILED || state == QueryState.ABORTED || state == QueryState.CANCELED) {
+          // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
+          // invoked
+          if (state == QueryState.FAILED
+              || state == QueryState.ABORTED
+              || state == QueryState.CANCELED) {
             releaseResource();
           }
         });
@@ -206,7 +209,11 @@ public class QueryExecution implements IQueryExecution {
       LOG.info("[QueryExecution {}]: try to get result.", context.getQueryId());
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
-      LOG.info("[QueryExecution {}]:  unblock. Cancelled: {}, Done: {}", context.getQueryId(), blocked.isCancelled(), blocked.isDone());
+      LOG.info(
+          "[QueryExecution {}]:  unblock. Cancelled: {}, Done: {}",
+          context.getQueryId(),
+          blocked.isCancelled(),
+          blocked.isDone());
       if (resultHandle.isFinished()) {
         LOG.info("[QueryExecution {}]:  result is null", context.getQueryId());
         releaseResource();

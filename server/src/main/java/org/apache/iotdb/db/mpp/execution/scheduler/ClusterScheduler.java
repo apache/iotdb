@@ -83,7 +83,10 @@ public class ClusterScheduler implements IScheduler {
 
   @Override
   public void start() {
-    LOGGER.info("[{}] start to dispatch fragment instance. size: {}", queryContext.getQueryId(), instances.size());
+    LOGGER.info(
+        "[{}] start to dispatch fragment instance. size: {}",
+        queryContext.getQueryId(),
+        instances.size());
     stateMachine.transitionToDispatching();
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
 

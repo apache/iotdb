@@ -107,7 +107,9 @@ public class SeriesScanOperator implements DataSourceOperator {
           return true;
         }
       }
-      System.out.println(String.format("[SeriesScanOperator-%s]: hasNext returned: %s", sourceId, hasCachedTsBlock));
+      System.out.println(
+          String.format(
+              "[SeriesScanOperator-%s]: hasNext returned: %s", sourceId, hasCachedTsBlock));
       return hasCachedTsBlock;
     } catch (IOException e) {
       throw new RuntimeException("Error happened while scanning the file", e);
