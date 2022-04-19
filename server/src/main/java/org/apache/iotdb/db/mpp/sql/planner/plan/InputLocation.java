@@ -16,29 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-package org.apache.iotdb.db.service;
+public class InputLocation {
+  // which input tsblock
+  private final int tsBlockIndex;
+  // which value column of that tsblock
+  private final int valueColumnIndex;
 
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.server.ServerContext;
-import org.apache.thrift.server.TServerEventHandler;
-import org.apache.thrift.transport.TTransport;
-
-public class InternalServiceThriftHandler implements TServerEventHandler {
-
-  @Override
-  public void preServe() {}
-
-  @Override
-  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
-    return null;
+  public InputLocation(int tsBlockIndex, int valueColumnIndex) {
+    this.tsBlockIndex = tsBlockIndex;
+    this.valueColumnIndex = valueColumnIndex;
   }
 
-  @Override
-  public void deleteContext(
-      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
+  public int getTsBlockIndex() {
+    return tsBlockIndex;
+  }
 
-  @Override
-  public void processContext(
-      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
+  public int getValueColumnIndex() {
+    return valueColumnIndex;
+  }
 }

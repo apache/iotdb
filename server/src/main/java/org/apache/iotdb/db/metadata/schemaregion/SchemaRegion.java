@@ -1158,6 +1158,7 @@ public class SchemaRegion implements ISchemaRegion {
   // endregion
 
   // region Interfaces and methods for MNode query
+
   public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
@@ -1847,14 +1848,12 @@ public class SchemaRegion implements ISchemaRegion {
 
   // region Interfaces for Trigger
 
-  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
-      throws MetadataException {
-    return mtree.getMeasurementMNode(fullPath);
+  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
+    return mtree.getNodeByPath(fullPath);
   }
 
-  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
-      throws MetadataException {
-    mtree.unPinMNode(measurementMNode);
+  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
+    mtree.unPinMNode(imNode);
   }
 
   // endregion

@@ -198,5 +198,8 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
     @Override
     public void close() {}
+
+    @Override
+    public void failed(Throwable t) {}
   }
 }

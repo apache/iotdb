@@ -58,11 +58,12 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
   public abstract void abort();
 
   protected FragmentInstanceState fetchState(FragmentInstance instance) throws TException {
+    // TODO (jackie tien) change the port
     InternalService.Iface client =
-        InternalServiceClientFactory.getMppServiceClient(
+        InternalServiceClientFactory.getInternalServiceClient(
             new Endpoint(
                 instance.getHostEndpoint().getIp(),
-                IoTDBDescriptor.getInstance().getConfig().getMppPort()));
+                IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
     TFragmentInstanceStateResp resp =
         client.fetchFragmentInstanceState(new TFetchFragmentInstanceStateReq(getTId(instance)));
     return FragmentInstanceState.valueOf(resp.state);

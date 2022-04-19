@@ -16,21 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+package org.apache.iotdb.db.service.thrift.handler;
 
-import java.nio.ByteBuffer;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.ServerContext;
+import org.apache.thrift.server.TServerEventHandler;
+import org.apache.thrift.transport.TTransport;
 
-public abstract class ShowNode extends PlanNode {
+public class InternalServiceThriftHandler implements TServerEventHandler {
 
-  protected ShowNode(PlanNodeId id) {
-    super(id);
+  @Override
+  public void preServe() {}
+
+  @Override
+  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+    return null;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
-  }
+  public void deleteContext(
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
+
+  @Override
+  public void processContext(
+      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
 }

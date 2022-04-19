@@ -1387,19 +1387,16 @@ public class LocalSchemaProcessor {
 
   // region Interfaces for Trigger
 
-  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
-      throws MetadataException {
+  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
     try {
-      return getBelongedSchemaRegion(fullPath).getMeasurementMNodeForTrigger(fullPath);
+      return getBelongedSchemaRegion(fullPath).getMNodeForTrigger(fullPath);
     } catch (StorageGroupNotSetException e) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
   }
 
-  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
-      throws MetadataException {
-    getBelongedSchemaRegion(measurementMNode.getPartialPath())
-        .releaseMeasurementMNodeAfterDropTrigger(measurementMNode);
+  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
+    getBelongedSchemaRegion(imNode.getPartialPath()).releaseMNodeAfterDropTrigger(imNode);
   }
 
   // endregion
