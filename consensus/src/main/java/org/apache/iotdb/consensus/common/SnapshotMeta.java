@@ -23,7 +23,12 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class SnapshotMeta {
+  /**
+   * metadata is the IConsensus metadata given when take this snapshot. More updated snapshot will
+   * have lexicographically larger metadata.
+   */
   private ByteBuffer metadata;
+
   private List<File> snapshotFiles;
 
   public SnapshotMeta(ByteBuffer metadata, List<File> snapshotFiles) {

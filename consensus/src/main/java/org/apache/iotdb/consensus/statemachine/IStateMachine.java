@@ -54,8 +54,8 @@ public interface IStateMachine {
   /**
    * IConsensus will periodically take the snapshot on both log and statemachine Data
    *
-   * @param metadata the metadata IConsensus want IStateMachine to preserve. NOTICE: the
-   *     more updated snapshot will have lexicographically larger metadata. This property should be
+   * @param metadata the metadata IConsensus want IStateMachine to preserve. NOTICE: the more
+   *     updated snapshot will have lexicographically larger metadata. This property should be
    *     guaranteed by every IConsensus implementation. IStateMachine can use the metadata to sort
    *     or label snapshot.
    * @param snapshotDir the root dir of snapshot files
