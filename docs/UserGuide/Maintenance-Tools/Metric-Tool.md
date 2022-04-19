@@ -327,8 +327,11 @@ The following documents may help you have a good journey with Prometheus and Gra
 
 [Grafana query metrics from Prometheus](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
-Here are two demo pictures of IoTDB's metrics data in Grafana.
+### 5.3. Apache IoTDB Dashboard
+We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as follows:
 
-![metrics_demo_1](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/metrics_demo_1.png)
+![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-![metrics_demo_2](http://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/metrics_demo_2.png)
+You can obtain the json files of Dashboards corresponding to different iotdb versions in the grafana-metrics-example folder.
+
+When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target data source for Apache IoTDB Dashboard.
