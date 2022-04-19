@@ -270,8 +270,7 @@ public class ConfigNodeRPCServerProcessorTest {
           .get(sg + i)
           .forEach(
               (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-                // TODO: Fix this
-                // Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
+                Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
                 Assert.assertEquals(
                     TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
               });
@@ -294,8 +293,7 @@ public class ConfigNodeRPCServerProcessorTest {
           .get(sg + i)
           .forEach(
               (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-                // TODO: Fix this
-                // Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
+                Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
                 Assert.assertEquals(
                     TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
               });
@@ -317,8 +315,7 @@ public class ConfigNodeRPCServerProcessorTest {
         .get(sg0)
         .forEach(
             (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-              // TODO: Fix this
-              // Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
+              Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
               Assert.assertEquals(
                   TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
             });
@@ -329,8 +326,7 @@ public class ConfigNodeRPCServerProcessorTest {
         .get(sg1)
         .forEach(
             (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-              // TODO: Fix this
-              // Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
+              Assert.assertEquals(3, tRegionReplicaSet.getDataNodeLocationsSize());
               Assert.assertEquals(
                   TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
             });
@@ -402,9 +398,8 @@ public class ConfigNodeRPCServerProcessorTest {
                   .getRegionId()
                   .getType());
           // Including three RegionReplica
-          // TODO: Fix this
           Assert.assertEquals(
-              0,
+              3,
               dataPartitionMap
                   .get(storageGroup)
                   .get(seriesPartitionSlot)

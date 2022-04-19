@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+
 import java.nio.ByteBuffer;
 
 public interface ConsensusGroupId {
@@ -35,21 +37,21 @@ public interface ConsensusGroupId {
   void setId(int id);
 
   // return specific type
-  GroupType getType();
+  TConsensusGroupType getType();
 
   class Factory {
     public static ConsensusGroupId create(ByteBuffer buffer) {
       int index = buffer.get();
-      if (index >= GroupType.values().length) {
+      if (index >= TConsensusGroupType.values().length) {
         throw new IllegalArgumentException("invalid ConsensusGroup type. Ordinal is: " + index);
       }
-      GroupType type = GroupType.values()[index];
+      TConsensusGroupType type = TConsensusGroupType.values()[index];
       ConsensusGroupId groupId = createEmpty(type);
       groupId.deserializeImpl(buffer);
       return groupId;
     }
 
-    public static ConsensusGroupId createEmpty(GroupType type) {
+    public static ConsensusGroupId createEmpty(TConsensusGroupType type) {
       ConsensusGroupId groupId;
       switch (type) {
         case DataRegion:
@@ -67,7 +69,7 @@ public interface ConsensusGroupId {
       return groupId;
     }
 
-    public static ConsensusGroupId create(int id, GroupType type) {
+    public static ConsensusGroupId create(int id, TConsensusGroupType type) {
       ConsensusGroupId groupId = createEmpty(type);
       groupId.setId(id);
       return groupId;

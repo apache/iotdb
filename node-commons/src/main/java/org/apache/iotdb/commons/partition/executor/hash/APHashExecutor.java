@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.commons.partition.executor.hash;
 
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
 public class APHashExecutor extends SeriesPartitionExecutor {

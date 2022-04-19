@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 
 import java.util.List;

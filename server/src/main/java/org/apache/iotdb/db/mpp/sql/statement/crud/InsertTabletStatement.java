@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;

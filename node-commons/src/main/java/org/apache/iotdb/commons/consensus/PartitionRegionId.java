@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -34,7 +36,7 @@ public class PartitionRegionId implements ConsensusGroupId {
 
   @Override
   public void serializeImpl(ByteBuffer buffer) {
-    buffer.put((byte) GroupType.PartitionRegion.ordinal());
+    buffer.put((byte) TConsensusGroupType.PartitionRegion.ordinal());
     buffer.putInt(id);
   }
 
@@ -55,8 +57,8 @@ public class PartitionRegionId implements ConsensusGroupId {
   }
 
   @Override
-  public GroupType getType() {
-    return GroupType.PartitionRegion;
+  public TConsensusGroupType getType() {
+    return TConsensusGroupType.PartitionRegion;
   }
 
   @Override
@@ -73,7 +75,7 @@ public class PartitionRegionId implements ConsensusGroupId {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, GroupType.PartitionRegion);
+    return Objects.hash(id, TConsensusGroupType.PartitionRegion);
   }
 
   public String toString() {

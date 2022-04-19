@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;

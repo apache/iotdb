@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerializeDeserializeUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
