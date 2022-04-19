@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -57,6 +58,16 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   private List<PlanNode> children;
 
   private List<ColumnHeader> columnHeaders = new ArrayList<>();
+
+  // indicate each output column should use which value column of which input TsBlock
+  // size of locationList must be equal to the size of columnHeaders
+  private List<List<InputLocation>> locationList = new ArrayList<>();
+
+  // if overlapped[i] is true, it means that locationList.get(i).size() > 1 and input locations in
+  // locationList.get(i) are overlapped
+  // it will only happen when we do the load balance and more than one DataRegion is assigned to one
+  // time partition
+  private boolean[] overlapped;
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
@@ -123,6 +134,18 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     for (ColumnHeader columnHeader : columnHeaders) {
       columnHeader.serialize(byteBuffer);
     }
+  }
+
+  public List<List<InputLocation>> getLocationList() {
+    return locationList;
+  }
+
+  public void setOverlapped(boolean[] overlapped) {
+    this.overlapped = overlapped;
+  }
+
+  public boolean[] getOverlapped() {
+    return overlapped;
   }
 
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
