@@ -21,7 +21,7 @@
 
 ## SchemaFileSketch Tool
 
-After version 0.13.x, IoTDB stores part of metadata into persistent slotted file.
+Since version 0.14.0, IoTDB could store schema into a persistent slotted file.
 
 If you want to parse schema file into a human readable way, you can use this tool to parse the specified schema file file.
 
