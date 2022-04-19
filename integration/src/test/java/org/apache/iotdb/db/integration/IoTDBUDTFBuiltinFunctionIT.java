@@ -586,7 +586,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
-    // create timeseries with only 0,1 values
     String[] SQL_FOR_SAMPLE_S1 = new String[100];
     for (int i = 0; i < 100; i++) {
       SQL_FOR_SAMPLE_S1[i] =
@@ -603,14 +602,13 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String functionName = "equal_bucket_sample";
-      String methodName = "random";
+      String functionName = "EQUAL_BUCKET_RANDOM_SAMPLE";
       double proportionValue = 0.1;
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select " + "%s(s1, 'method'='%s', 'proportion'='%f') from root.sg.d5",
-                  functionName, methodName, proportionValue));
+                  "select " + "%s(s1, 'proportion'='%f') from root.sg.d5",
+                  functionName, proportionValue));
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 1, columnCount);
       int count = 0;
@@ -630,13 +628,19 @@ public class IoTDBUDTFBuiltinFunctionIT {
       statement.execute("CREATE TIMESERIES root.sg.d4.s1 with datatype=FLOAT,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d4.s2 with datatype=DOUBLE,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d4.s3 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d4.s4 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d4.s5 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d4.s6 with datatype=DOUBLE,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
-    // create timeseries with only 0,1 values
     String[] SQL_FOR_SAMPLE_S1 = new String[100];
     String[] SQL_FOR_SAMPLE_S2 = new String[100];
     String[] SQL_FOR_SAMPLE_S3 = new String[100];
+    String[] SQL_FOR_SAMPLE_S4 = new String[100];
+    String[] SQL_FOR_SAMPLE_S5 = new String[100];
+    String[] SQL_FOR_SAMPLE_S6 = new String[100];
+
     for (int i = 0; i < 100; i++) {
       SQL_FOR_SAMPLE_S1[i] =
           String.format("insert into root.sg.d4(time, s1) values (%d, %f)", i, i * 1.0);
@@ -644,17 +648,29 @@ public class IoTDBUDTFBuiltinFunctionIT {
           String.format("insert into root.sg.d4(time, s2) values (%d, %f)", i, i * 1.0);
       SQL_FOR_SAMPLE_S3[i] =
           String.format("insert into root.sg.d4(time, s3) values (%d, %d)", i, i);
+      SQL_FOR_SAMPLE_S4[i] =
+          String.format("insert into root.sg.d4(time, s4) values (%d, %d)", i, i);
+      SQL_FOR_SAMPLE_S5[i] =
+          String.format("insert into root.sg.d4(time, s5) values (%d, %d)", i, -i);
+      SQL_FOR_SAMPLE_S6[i] =
+          String.format("insert into root.sg.d4(time, s6) values (%d, %f)", i, i * 1.0);
     }
     float[] ANSWER1 =
         new float[] {4.5F, 14.5F, 24.5F, 34.5F, 44.5F, 54.5F, 64.5F, 74.5F, 84.5F, 94.5F};
     double[] ANSWER2 = new double[] {0, 10, 20, 30, 40, 50, 60, 70, 80, 90};
     long[] ANSWER3 = new long[] {9, 19, 29, 39, 49, 59, 69, 79, 89, 99};
+    long[] ANSWER4 = new long[] {45, 145, 245, 345, 445, 545, 645, 745, 845, 945};
+    int[] ANSWER5 = new int[] {9, 19, 29, 39, 49, 59, 69, 79, 89, 99};
+    double[] ANSWER6 = new double[] {8.25, 8.25, 8.25, 8.25, 8.25, 8.25, 8.25, 8.25, 8.25, 8.25};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < 100; i++) {
         statement.execute(SQL_FOR_SAMPLE_S1[i]);
         statement.execute(SQL_FOR_SAMPLE_S2[i]);
         statement.execute(SQL_FOR_SAMPLE_S3[i]);
+        statement.execute(SQL_FOR_SAMPLE_S4[i]);
+        statement.execute(SQL_FOR_SAMPLE_S5[i]);
+        statement.execute(SQL_FOR_SAMPLE_S6[i]);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -662,35 +678,46 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String functionName = "equal_bucket_sample";
-      String methodName = "aggregation";
+      String functionName = "EQUAL_BUCKET_AGG_SAMPLE";
       double proportionValue = 0.1;
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
                   "select "
-                      + "%s(s1, 'method'='%s', 'proportion'='%f'), "
-                      + "%s(s2, 'method'='%s', 'type'='%s', 'proportion'='%f'), "
-                      + "%s(s3, 'method'='%s', 'type'='%s', 'proportion'='%f') "
+                      + "%s(s1, 'proportion'='%f'), "
+                      + "%s(s2, 'type'='%s', 'proportion'='%f'), "
+                      + "%s(s3, 'type'='%s', 'proportion'='%f'), "
+                      + "%s(s4, 'type'='%s', 'proportion'='%f'), "
+                      + "%s(s5, 'type'='%s', 'proportion'='%f'), "
+                      + "%s(s6, 'type'='%s', 'proportion'='%f')"
                       + "from root.sg.d4",
                   functionName,
-                  methodName,
                   proportionValue,
                   functionName,
-                  methodName,
                   "min",
                   proportionValue,
                   functionName,
-                  methodName,
                   "max",
+                  proportionValue,
+                  functionName,
+                  "sum",
+                  proportionValue,
+                  functionName,
+                  "extreme",
+                  proportionValue,
+                  functionName,
+                  "variance",
                   proportionValue));
       int columnCount = resultSet.getMetaData().getColumnCount();
-      assertEquals(1 + 3, columnCount);
+      assertEquals(1 + 6, columnCount);
       for (int i = 0; i < 10; i++) {
         resultSet.next();
         assertEquals(ANSWER1[i], resultSet.getDouble(2), 0.01);
         assertEquals(ANSWER2[i], resultSet.getDouble(3), 0.01);
         assertEquals(ANSWER3[i], resultSet.getLong(4));
+        assertEquals(ANSWER4[i], resultSet.getLong(5));
+        assertEquals(ANSWER5[i], resultSet.getInt(6));
+        assertEquals(ANSWER6[i], resultSet.getDouble(7), 0.01);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -705,13 +732,12 @@ public class IoTDBUDTFBuiltinFunctionIT {
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
-    // create timeseries with only 0,1 values
     String[] SQL_FOR_SAMPLE = new String[100];
     for (int i = 0; i < 100; i++) {
       SQL_FOR_SAMPLE[i] =
           String.format("insert into root.sg.d3(time, s1) values (%d, %d)", i, i + 1);
     }
-    int[] ANSWER1 = new int[] {1, 40, 41, 80, 81};
+    int[] ANSWER1 = new int[] {1, 2, 39, 40, 41, 42, 79, 80, 81, 82, 99, 100};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (String dataGenerationSql : SQL_FOR_SAMPLE) {
@@ -723,7 +749,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String functionName = "equal_bucket_sample";
+      String functionName = "EQUAL_BUCKET_M4_SAMPLE";
       String methodName = "m4";
       double proportionValue = 0.1;
       ResultSet resultSet =
