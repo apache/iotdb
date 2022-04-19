@@ -722,7 +722,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws IOException, MetadataException {
     IMNode node;
     try {
-      node = mNodeCache.get(path);
+      return mNodeCache.get(path);
     } catch (Exception e) {
       if (e.getCause() instanceof MetadataException) {
         if (!autoCreateSchema) {
