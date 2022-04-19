@@ -46,6 +46,8 @@ public class RecordUtils {
   static short LENGTH_OFFSET = 1;
   static short ALIAS_OFFSET = 19;
   static short SEG_ADDRESS_OFFSET = 3;
+  static short SCHEMA_OFFSET = 11;
+  static short INTERNAL_BITFLAG_OFFSET = 15;
 
   static byte INTERNAL_TYPE = 0;
   static byte ENTITY_TYPE = 1;
@@ -68,7 +70,7 @@ public class RecordUtils {
    *   <li>1 short (2 bytes): recLen, length of record (remove it may reduce space overhead while a
    *       bit slower)
    *   <li>1 long (8 bytes): glbIndex, combined index to its children records
-   *   <li>1 int (4 byte): templateIndex, hash code of template, occupies only 1 byte before
+   *   <li>1 int (4 byte): templateHash, hash code of template, occupies only 1 byte before
    * </ul>
    *
    * -- bitwise flags (1 byte) --
@@ -204,6 +206,26 @@ public class RecordUtils {
     long addr = ReadWriteIOUtils.readLong(recBuf);
     recBuf.position(oriPos);
     return addr;
+  }
+
+  public static byte[] getSchemaBytes(ByteBuffer recBuf) {
+    byte[] res = new byte[3];
+    int oriPos = recBuf.position();
+    recBuf.position(oriPos + SCHEMA_OFFSET);
+    long schemaBytes = ReadWriteIOUtils.readLong(recBuf);
+    res[0] = (byte) (schemaBytes >>> 16);
+    res[1] = (byte) ((schemaBytes >>> 8) & 0xffL);
+    res[2] = (byte) (schemaBytes & 0xffL);
+    recBuf.position(oriPos);
+    return res;
+  }
+
+  public static boolean getAlignment(ByteBuffer recBuf) {
+    int oriPos = recBuf.position();
+    recBuf.position(oriPos + INTERNAL_BITFLAG_OFFSET);
+    byte flag = ReadWriteIOUtils.readByte(recBuf);
+    recBuf.position(oriPos);
+    return isAligned(flag);
   }
 
   public static String getRecordAlias(ByteBuffer recBuf) {

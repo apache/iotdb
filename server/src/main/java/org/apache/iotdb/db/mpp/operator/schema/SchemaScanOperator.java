@@ -21,9 +21,8 @@ package org.apache.iotdb.db.mpp.operator.schema;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-
-import java.util.List;
 
 public abstract class SchemaScanOperator implements SourceOperator {
 
@@ -35,21 +34,22 @@ public abstract class SchemaScanOperator implements SourceOperator {
   protected int offset;
   protected PartialPath partialPath;
   protected boolean isPrefixPath;
-  protected List<String> columns;
+
+  protected PlanNodeId sourceId;
 
   protected SchemaScanOperator(
+      PlanNodeId sourceId,
       OperatorContext operatorContext,
       int limit,
       int offset,
       PartialPath partialPath,
-      boolean isPrefixPath,
-      List<String> columns) {
+      boolean isPrefixPath) {
     this.operatorContext = operatorContext;
     this.limit = limit;
     this.offset = offset;
     this.partialPath = partialPath;
     this.isPrefixPath = isPrefixPath;
-    this.columns = columns;
+    this.sourceId = sourceId;
   }
 
   protected abstract TsBlock createTsBlock();
@@ -103,5 +103,10 @@ public abstract class SchemaScanOperator implements SourceOperator {
   @Override
   public boolean isFinished() {
     return !hasNext();
+  }
+
+  @Override
+  public PlanNodeId getSourceId() {
+    return sourceId;
   }
 }

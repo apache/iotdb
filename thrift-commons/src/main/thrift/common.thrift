@@ -20,7 +20,7 @@
 namespace java org.apache.iotdb.common.rpc.thrift
 namespace py iotdb.thrift.common
 
-struct EndPoint {
+struct TEndPoint {
   1: required string ip
   2: required i32 port
 }
@@ -30,7 +30,7 @@ struct TSStatus {
   1: required i32 code
   2: optional string message
   3: optional list<TSStatus> subStatus
-  4: optional EndPoint redirectNode
+  4: optional TEndPoint redirectNode
 }
 
 enum TConsensusGroupType {

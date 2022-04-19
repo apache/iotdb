@@ -20,11 +20,9 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
-import java.nio.ByteBuffer;
-import java.util.List;
+import java.util.Objects;
 
 public abstract class SchemaScanNode extends SourceNode {
   protected int limit;
@@ -115,13 +113,26 @@ public abstract class SchemaScanNode extends SourceNode {
     this.hasLimit = hasLimit;
   }
 
-  public abstract List<String> getOutputColumnNames();
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    SchemaScanNode that = (SchemaScanNode) o;
+    return limit == that.limit
+        && offset == that.offset
+        && isPrefixPath == that.isPrefixPath
+        && path.equals(that.path);
+  }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
-
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaScan(this, context);
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), limit, offset, path, isPrefixPath);
   }
 }

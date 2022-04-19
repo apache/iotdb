@@ -20,6 +20,7 @@ package org.apache.iotdb.db.wal;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -38,7 +39,12 @@ import static org.junit.Assert.*;
 
 public class WALManagerTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private final String[] walDirs = new String[] {"wal_test1", "wal_test2", "wal_test3"};
+  private final String[] walDirs =
+      new String[] {
+        TestConstant.BASE_OUTPUT_PATH.concat("wal_test1"),
+        TestConstant.BASE_OUTPUT_PATH.concat("wal_test2"),
+        TestConstant.BASE_OUTPUT_PATH.concat("wal_test3")
+      };
   private String[] prevWalDirs;
 
   @Before

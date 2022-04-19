@@ -161,7 +161,7 @@ public class IoTDBConfig {
   private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private long fsyncWalDelayInMs = 10;
+  private volatile long fsyncWalDelayInMs = 10;
 
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
@@ -176,23 +176,23 @@ public class IoTDBConfig {
   private int walBufferQueueCapacity = 10_000;
 
   /** Size threshold of each wal file. Unit: byte */
-  private long walFileSizeThresholdInByte = 10 * 1024 * 1024;
+  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
 
-  /** TTL of wal file. Unit: ms */
-  private long walFileTTLInMs = 24 * 60 * 60 * 1000;
+  /** Minimum ratio of effective information in wal files */
+  private volatile double walMinEffectiveInfoRatio = 0.1;
 
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private long walMemTableSnapshotThreshold = 128 * 1024 * 1024;
+  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024;
 
   /** MemTable's max snapshot number in wal file */
-  private int maxWalMemTableSnapshotNum = 1;
+  private volatile int maxWalMemTableSnapshotNum = 1;
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
-  private long deleteWalFilesPeriodInMs = 10 * 60 * 1000;
+  private volatile long deleteWalFilesPeriodInMs = 20 * 1000;
   // endregion
 
   /**
@@ -1458,12 +1458,12 @@ public class IoTDBConfig {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
-  public long getWalFileTTLInMs() {
-    return walFileTTLInMs;
+  public double getWalMinEffectiveInfoRatio() {
+    return walMinEffectiveInfoRatio;
   }
 
-  void setWalFileTTLInMs(long walFileTTLInMs) {
-    this.walFileTTLInMs = walFileTTLInMs;
+  void setWalMinEffectiveInfoRatio(double walMinEffectiveInfoRatio) {
+    this.walMinEffectiveInfoRatio = walMinEffectiveInfoRatio;
   }
 
   public long getWalMemTableSnapshotThreshold() {

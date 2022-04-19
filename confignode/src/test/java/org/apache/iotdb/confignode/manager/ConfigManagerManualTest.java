@@ -18,8 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -107,30 +106,29 @@ public class ConfigManagerManualTest {
    * ConfigNode that occupies ports 22281 and 22282 on the local machine. Finally, run this test.
    */
   public void killTest() throws TException {
-    //    clients = new ConfigIService.Client[2];
-    //    for (int i = 0; i < 2; i++) {
-    //      TTransport transport =
-    //          RpcTransportFactory.INSTANCE.getTransport(localhost, 22277 + i * 2, timeOutInMS);
-    //      transport.open();
-    //      clients[i] = new ConfigIService.Client(new TBinaryProtocol(transport));
-    //    }
-    //
-    //    TDataNodeRegisterResp resp =
-    //        clients[1].registerDataNode(new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6670)));
-    //    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(),
-    // resp.getStatus().getCode());
-    //    Assert.assertEquals(3, resp.getDataNodeID());
-    //
-    //    for (int i = 0; i < 2; i++) {
-    //      Map<Integer, TDataNodeMessage> msgMap =
-    //          clients[i].getDataNodesMessage(-1).getDataNodeMessageMap();
-    //      Assert.assertEquals(4, msgMap.size());
-    //      for (int j = 0; j < 4; j++) {
-    //        Assert.assertNotNull(msgMap.get(j));
-    //        Assert.assertEquals(j, msgMap.get(j).getDataNodeId());
-    //        Assert.assertEquals(localhost, msgMap.get(j).getEndPoint().getIp());
-    //        Assert.assertEquals(6667 + j, msgMap.get(j).getEndPoint().getPort());
-    //      }
-    //    }
+    clients = new ConfigIService.Client[2];
+    for (int i = 0; i < 2; i++) {
+      TTransport transport =
+          RpcTransportFactory.INSTANCE.getTransport(localhost, 22277 + i * 2, timeOutInMS);
+      transport.open();
+      clients[i] = new ConfigIService.Client(new TBinaryProtocol(transport));
+    }
+
+    TDataNodeRegisterResp resp =
+        clients[1].registerDataNode(new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6670)));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
+    Assert.assertEquals(3, resp.getDataNodeID());
+
+    for (int i = 0; i < 2; i++) {
+      Map<Integer, TDataNodeMessage> msgMap =
+          clients[i].getDataNodesMessage(-1).getDataNodeMessageMap();
+      Assert.assertEquals(4, msgMap.size());
+      for (int j = 0; j < 4; j++) {
+        Assert.assertNotNull(msgMap.get(j));
+        Assert.assertEquals(j, msgMap.get(j).getDataNodeId());
+        Assert.assertEquals(localhost, msgMap.get(j).getEndPoint().getIp());
+        Assert.assertEquals(6667 + j, msgMap.get(j).getEndPoint().getPort());
+      }
+    }
   }
 }

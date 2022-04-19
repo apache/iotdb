@@ -16,21 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
+package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+public class InputLocation {
+  // which input tsblock
+  private final int tsBlockIndex;
+  // which value column of that tsblock
+  private final int valueColumnIndex;
 
-import java.nio.ByteBuffer;
-
-public abstract class ShowNode extends PlanNode {
-
-  protected ShowNode(PlanNodeId id) {
-    super(id);
+  public InputLocation(int tsBlockIndex, int valueColumnIndex) {
+    this.tsBlockIndex = tsBlockIndex;
+    this.valueColumnIndex = valueColumnIndex;
   }
 
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
+  public int getTsBlockIndex() {
+    return tsBlockIndex;
+  }
+
+  public int getValueColumnIndex() {
+    return valueColumnIndex;
   }
 }
