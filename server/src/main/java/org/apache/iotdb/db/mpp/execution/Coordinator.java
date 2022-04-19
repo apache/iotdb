@@ -48,9 +48,9 @@ public class Coordinator {
   private static final Logger LOG = LoggerFactory.getLogger(Coordinator.class);
 
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
-  private static final int COORDINATOR_EXECUTOR_SIZE = 20;
+  private static final int COORDINATOR_EXECUTOR_SIZE = 1;
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
-  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 2;
+  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 1;
 
   private static final Endpoint LOCAL_HOST =
       new Endpoint(

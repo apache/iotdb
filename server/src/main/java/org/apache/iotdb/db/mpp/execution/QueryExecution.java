@@ -261,13 +261,16 @@ public class QueryExecution implements IQueryExecution {
     SettableFuture<QueryState> future = SettableFuture.create();
     stateMachine.addStateChangeListener(
         state -> {
+          LOG.info("[QueryExecution {}]:  wait status callback invoked", context.getQueryId());
           if (state == QueryState.RUNNING || state.isDone()) {
             future.set(state);
           }
         });
 
     try {
+      LOG.info("[QueryExecution {}]:  start to wait status", context.getQueryId());
       QueryState state = future.get();
+      LOG.info("[QueryExecution {}]:  status got", context.getQueryId());
       // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
       TSStatusCode statusCode =
           // For WRITE, the state should be FINISHED; For READ, the state could be RUNNING

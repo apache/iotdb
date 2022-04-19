@@ -95,7 +95,7 @@ public class ClusterScheduler implements IScheduler {
     try {
       LOGGER.info("[{}] wait dispatch to be finished", queryContext.getQueryId());
       FragInstanceDispatchResult result = dispatchResultFuture.get();
-      LOGGER.info("[{}] dispatch finished: ", result.isSuccessful());
+      LOGGER.info("[{}] dispatch finished: {}", queryContext.getQueryId(), result.isSuccessful());
       if (!result.isSuccessful()) {
         stateMachine.transitionToFailed(new IllegalStateException("Fragment cannot be dispatched"));
         return;
@@ -108,7 +108,9 @@ public class ClusterScheduler implements IScheduler {
 
     // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
     if (queryType == QueryType.WRITE) {
+      LOGGER.info("[{}] prepare to transition WRITE to finished", queryContext.getQueryId());
       stateMachine.transitionToFinished();
+      LOGGER.info("[{}] transition done", queryContext.getQueryId());
       return;
     }
 
