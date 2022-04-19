@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeConf {
 
@@ -32,9 +33,11 @@ public class ConfigNodeConf {
 
   /** used for communication between data node and config node */
   private int rpcPort = 22277;
-
   /** used for communication between config node and config node */
   private int internalPort = 22278;
+
+  /** Thrift socket and connection timeout between data node and config node */
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /** ConfigNode consensus protocol */
   private String configNodeConsensusProtocolClass =
@@ -45,6 +48,15 @@ public class ConfigNodeConf {
   /** Used for building the ConfigNode consensus group */
   private TEndPoint[] configNodeGroupAddressList =
       Collections.singletonList(new TEndPoint("0.0.0.0", 22278)).toArray(new TEndPoint[0]);
+
+  /**
+   * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private final int selectorNumOfClientPool =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
 
   /** Number of SeriesPartitionSlots per StorageGroup */
   private int seriesPartitionSlotNum = 10000;
@@ -146,6 +158,10 @@ public class ConfigNodeConf {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
   }
 
+  public int getSelectorNumOfClientPool() {
+    return selectorNumOfClientPool;
+  }
+
   public long getTimePartitionInterval() {
     return timePartitionInterval;
   }
@@ -216,6 +232,15 @@ public class ConfigNodeConf {
 
   public void setInternalPort(int internalPort) {
     this.internalPort = internalPort;
+  }
+
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public ConfigNodeConf setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
+    return this;
   }
 
   public String getConsensusDir() {

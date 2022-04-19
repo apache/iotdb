@@ -875,6 +875,18 @@ public class IoTDBConfig {
   /** Thread keep alive time in ms of data block manager. */
   private int dataBlockManagerKeepAliveTimeInMs = 1000;
 
+  /** Thrift socket and connection timeout between data node and config node */
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+
+  /**
+   * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private final int selectorNumOfClientPool =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
+
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
   }
@@ -2767,6 +2779,18 @@ public class IoTDBConfig {
 
   public void setDataBlockManagerKeepAliveTimeInMs(int dataBlockManagerKeepAliveTimeInMs) {
     this.dataBlockManagerKeepAliveTimeInMs = dataBlockManagerKeepAliveTimeInMs;
+  }
+
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getSelectorNumOfClientPool() {
+    return selectorNumOfClientPool;
   }
 
   public boolean isMppMode() {
