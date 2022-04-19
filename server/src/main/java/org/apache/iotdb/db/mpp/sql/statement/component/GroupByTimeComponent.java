@@ -161,9 +161,14 @@ public class GroupByTimeComponent extends StatementNode {
         && this.leftCRightO == other.leftCRightO;
   }
 
-  @Override
   public int hashCode() {
     return Objects.hash(
-        interval, slidingStep, startTime, endTime, isSlidingStepByMonth, isIntervalByMonth);
+        startTime,
+        endTime,
+        interval,
+        slidingStep,
+        isIntervalByMonth,
+        isSlidingStepByMonth,
+        leftCRightO);
   }
 }
