@@ -225,13 +225,13 @@ public class TsFileProcessor {
       if (insertRowPlan.isAligned()) {
         memIncrements =
             checkAlignedMemCostAndAddToTspInfo(
-                insertRowPlan.getDevicePath().getFullPath(), insertRowPlan.getDataTypes(),
-                insertRowPlan.getMeasurements(), insertRowPlan.getValues());
+                insertRowPlan.getDevicePath().getFullPath(), insertRowPlan.getMeasurements(),
+                insertRowPlan.getDataTypes(), insertRowPlan.getValues());
       } else {
         memIncrements =
             checkMemCostAndAddToTspInfo(
-                insertRowPlan.getDevicePath().getFullPath(), insertRowPlan.getDataTypes(),
-                insertRowPlan.getMeasurements(), insertRowPlan.getValues());
+                insertRowPlan.getDevicePath().getFullPath(), insertRowPlan.getMeasurements(),
+                insertRowPlan.getDataTypes(), insertRowPlan.getValues());
       }
     }
 
@@ -285,13 +285,13 @@ public class TsFileProcessor {
       if (insertRowNode.isAligned()) {
         memIncrements =
             checkAlignedMemCostAndAddToTspInfo(
-                insertRowNode.getDevicePath().getFullPath(), insertRowNode.getDataTypes(),
-                insertRowNode.getMeasurements(), insertRowNode.getValues());
+                insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
+                insertRowNode.getDataTypes(), insertRowNode.getValues());
       } else {
         memIncrements =
             checkMemCostAndAddToTspInfo(
-                insertRowNode.getDevicePath().getFullPath(), insertRowNode.getDataTypes(),
-                insertRowNode.getMeasurements(), insertRowNode.getValues());
+                insertRowNode.getDevicePath().getFullPath(), insertRowNode.getMeasurements(),
+                insertRowNode.getDataTypes(), insertRowNode.getValues());
       }
     }
 
@@ -522,7 +522,7 @@ public class TsFileProcessor {
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private long[] checkMemCostAndAddToTspInfo(
-      String deviceId, TSDataType[] dataTypes, String[] measurements, Object[] values)
+      String deviceId, String[] measurements, TSDataType[] dataTypes, Object[] values)
       throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
@@ -564,7 +564,7 @@ public class TsFileProcessor {
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private long[] checkAlignedMemCostAndAddToTspInfo(
-      String deviceId, TSDataType[] dataTypes, String[] measurements, Object[] values)
+      String deviceId, String[] measurements, TSDataType[] dataTypes, Object[] values)
       throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
