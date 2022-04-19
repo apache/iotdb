@@ -194,7 +194,7 @@ public class IoTDBInfluxDBIT {
     QueryResult.Series series = result.getResults().get(0).getSeries().get(0);
 
     Object[] retArray =
-        new Object[] {0, 1, 87, "china", 87.0, 87.0, 87.0, 87.0, 87, 0.0, 0.0, 87.0};
+        new Object[] {0, 2, 87, "china", 99.0, 93.0, 93.0, 87.0, 87, 12.0, 6.0, 186.0};
     for (int i = 0; i < series.getColumns().size(); i++) {
       assertEquals(retArray[i], series.getValues().get(0).get(i));
     }
