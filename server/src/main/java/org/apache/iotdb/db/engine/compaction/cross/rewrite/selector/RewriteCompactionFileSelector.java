@@ -167,6 +167,12 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
+      if (!unseqFile.getTsFile().exists()
+          || unseqFile.isCompacting()
+          || !unseqFile.isClosed()
+          || unseqFile.isCompactionCandidate()) {
+        break;
+      }
 
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
@@ -235,7 +241,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     for (Integer seqIdx : tmpSelectedSeqFiles) {
       if (resource.getSeqFiles().get(seqIdx).isCompactionCandidate()
           || resource.getSeqFiles().get(seqIdx).isCompacting()
-          || !resource.getSeqFiles().get(seqIdx).isClosed()) {
+          || !resource.getSeqFiles().get(seqIdx).isClosed()
+          || !resource.getSeqFiles().get(seqIdx).getTsFile().exists()) {
         return false;
       }
     }
