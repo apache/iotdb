@@ -37,7 +37,6 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -149,7 +148,7 @@ public class MetaPuller {
       }
       int preSize = results.size();
       for (PartialPath prefixPath : prefixPaths) {
-        IoTDB.schemaProcessor.collectMeasurementSchema(prefixPath, results);
+        //        IoTDB.schemaProcessor.collectMeasurementSchema(prefixPath, results);
       }
       if (logger.isDebugEnabled()) {
         logger.debug(
