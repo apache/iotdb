@@ -151,7 +151,7 @@ public class CompactionTaskManager implements IService {
       while (taskExecutionPool.getActiveCount() > 0 || taskExecutionPool.getQueue().size() > 0) {
         // wait
         try {
-          Thread.sleep(200);
+          this.wait(200);
           sleepingStartTime += 200;
           if (sleepingStartTime % 10000 == 0) {
             logger.warn(
@@ -382,11 +382,20 @@ public class CompactionTaskManager implements IService {
         this.taskExecutionPool.shutdownNow();
         this.taskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
       }
+      if (subCompactionTaskExecutionPool != null) {
+        this.subCompactionTaskExecutionPool.shutdownNow();
+        this.subCompactionTaskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+      }
       this.taskExecutionPool =
           (WrappedScheduledExecutorService)
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
+      this.subCompactionTaskExecutionPool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(
+              IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                  * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
+              ThreadName.COMPACTION_SUB_SERVICE.getName());
       this.compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
       candidateCompactionTaskQueue.regsitPollLastHook(
