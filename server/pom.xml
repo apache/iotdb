@@ -250,6 +250,11 @@
             <artifactId>rocksdbjni</artifactId>
             <version>6.27.3</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>[${guava.version},)</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
