@@ -122,6 +122,7 @@ public class ConfigExecutionTest {
   public void exceptionAfterInvokeGetStatusTest() {
     IConfigTask task =
         () -> {
+          System.out.println(Thread.currentThread().getName() + " - throw RuntimeException");
           throw new RuntimeException("task throw exception when executing");
         };
     ConfigExecution execution =
@@ -129,16 +130,34 @@ public class ConfigExecutionTest {
     Thread resultThread =
         new Thread(
             () -> {
+              System.out.println(Thread.currentThread().getName() + " - start get status");
               ExecutionResult result = execution.getStatus();
+              System.out.println(Thread.currentThread().getName() + " - status got");
               Assert.assertEquals(
                   TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
             });
     resultThread.start();
     execution.start();
     try {
+      System.out.println(Thread.currentThread().getName() + " - resultThread start join");
       resultThread.join();
+      System.out.println(
+          Thread.currentThread().getName()
+              + " - resultThread interrupted: "
+              + resultThread.isInterrupted());
+      System.out.println(Thread.currentThread().getName() + " - resultThread end join");
       Assert.fail("InterruptedException should be threw here");
     } catch (InterruptedException e) {
+      System.out.println(
+          Thread.currentThread().getName() + " - Exception, caught interrupted exception");
+      System.out.println(
+          Thread.currentThread().getName()
+              + " - Exception, current Thread interrupted: "
+              + Thread.currentThread().isInterrupted());
+      System.out.println(
+          Thread.currentThread().getName()
+              + " - Exception, resultThread interrupted: "
+              + resultThread.isInterrupted());
       execution.stop();
     }
   }

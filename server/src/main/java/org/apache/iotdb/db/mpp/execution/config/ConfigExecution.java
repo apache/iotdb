@@ -37,6 +37,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -82,17 +83,20 @@ public class ConfigExecution implements IQueryExecution {
           new FutureCallback<ConfigTaskResult>() {
             @Override
             public void onSuccess(ConfigTaskResult taskRet) {
+              System.out.println("on success");
               stateMachine.transitionToFinished();
               taskFuture.set(taskRet);
             }
 
             @Override
             public void onFailure(@NotNull Throwable throwable) {
+              System.out.println("on fail");
               fail(throwable);
             }
           },
           executor);
     } catch (Throwable e) {
+      System.out.println(Thread.currentThread().getName() + " - re-interrupt");
       Thread.currentThread().interrupt();
       fail(e);
     }
@@ -118,7 +122,8 @@ public class ConfigExecution implements IQueryExecution {
       String message =
           statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage();
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode, message));
-    } catch (InterruptedException | ExecutionException e) {
+    } catch (InterruptedException | ExecutionException | CancellationException e) {
+      System.out.println("taskResult is cancelled");
       Thread.currentThread().interrupt();
       return new ExecutionResult(
           context.getQueryId(),
