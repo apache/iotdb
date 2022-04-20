@@ -72,6 +72,10 @@ public class SchemaEngine {
     return initSchemaRegion();
   }
 
+  /**
+   * Scan the storage group and schema region directories to recover schema regions and return the
+   * collected local schema partition info for localSchemaPartitionTable recovery.
+   */
   private Map<PartialPath, List<SchemaRegionId>> initSchemaRegion() throws MetadataException {
     Map<PartialPath, List<SchemaRegionId>> partitionTable = new HashMap<>();
     for (PartialPath storageGroup : localStorageGroupSchemaManager.getAllStorageGroupPaths()) {
