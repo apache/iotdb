@@ -35,6 +35,7 @@ import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxSelectComponent;
 import org.apache.iotdb.db.protocol.influxdb.util.FieldUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.FilterUtils;
+import org.apache.iotdb.db.protocol.influxdb.util.JacksonUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
@@ -61,7 +62,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import com.google.gson.Gson;
 import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.QueryResult;
@@ -112,7 +112,7 @@ public class QueryHandler {
                 queryOperator.getSelectComponent(), database, measurement, serviceProvider);
       }
       return tsQueryResultRsp
-          .setResultJsonString(new Gson().toJson(queryResult))
+          .setResultJsonString(JacksonUtils.bean2Json(queryResult))
           .setStatus(RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
     } catch (AuthException e) {
       return tsQueryResultRsp.setStatus(

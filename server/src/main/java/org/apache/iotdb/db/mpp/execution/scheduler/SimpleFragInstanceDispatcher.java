@@ -28,13 +28,16 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleFragInstanceDispatcher.class);
   private final ExecutorService executor;
 
   public SimpleFragInstanceDispatcher(ExecutorService exeutor) {
@@ -67,9 +70,6 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
                 break;
               }
             }
-          } catch (Exception e) {
-            // TODO: (xingtanzjr) add more details
-            return new FragInstanceDispatchResult(false);
           }
           return new FragInstanceDispatchResult(resp.accepted);
         });

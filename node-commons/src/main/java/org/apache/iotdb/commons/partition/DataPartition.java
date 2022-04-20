@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,18 +30,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class DataPartition {
-
-  private String seriesSlotExecutorName;
-  private int seriesPartitionSlotNum;
+public class DataPartition extends Partition {
 
   // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       dataPartitionMap;
 
   public DataPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
-    this.seriesSlotExecutorName = seriesSlotExecutorName;
-    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
+    super(seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
   public DataPartition(
@@ -105,13 +100,6 @@ public class DataPartition {
     // IMPORTANT TODO: (xingtanzjr) need to handle the situation for write operation that there are
     // more than 1 Regions for one timeSlot
     return regions.get(0);
-  }
-
-  private TSeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
-    SeriesPartitionExecutor executor =
-        SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            seriesSlotExecutorName, seriesPartitionSlotNum);
-    return executor.getSeriesPartitionSlot(deviceName);
   }
 
   private String getStorageGroupByDevice(String deviceName) {

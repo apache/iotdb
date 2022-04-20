@@ -562,7 +562,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       ExecutionResult result =
           COORDINATOR.execute(
               statement,
-              new QueryId(String.valueOf(queryId)),
+              genQueryId(queryId),
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
@@ -756,8 +756,17 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   public void handleClientExit() {
     Long sessionId = SESSION_MANAGER.getCurrSessionId();
     if (sessionId != null) {
+      SESSION_MANAGER.releaseSessionResource(sessionId, this::cleanupQueryExecution);
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
+  }
+
+  private void cleanupQueryExecution(Long queryId) {
+    COORDINATOR.getQueryExecution(genQueryId(queryId)).stopAndCleanup();
+  }
+
+  private QueryId genQueryId(long id) {
+    return new QueryId(String.valueOf(id));
   }
 }

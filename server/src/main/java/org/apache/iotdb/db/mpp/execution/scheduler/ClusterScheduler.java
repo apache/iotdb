@@ -28,6 +28,8 @@ import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import io.airlift.units.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -43,6 +45,8 @@ import java.util.concurrent.ScheduledExecutorService;
  * this scheduler.
  */
 public class ClusterScheduler implements IScheduler {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterScheduler.class);
+
   private MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
   private QueryStateMachine stateMachine;
@@ -79,16 +83,20 @@ public class ClusterScheduler implements IScheduler {
 
   @Override
   public void start() {
-    // TODO: consider where the state transition should be put
     stateMachine.transitionToDispatching();
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
 
     // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
     // So we need to start the state fetcher after the dispatching stage.
-    boolean success = waitDispatchingFinished(dispatchResultFuture);
-    // If the dispatch failed, we make the QueryState as failed, and return.
-    if (!success) {
-      stateMachine.transitionToFailed();
+    try {
+      FragInstanceDispatchResult result = dispatchResultFuture.get();
+      if (!result.isSuccessful()) {
+        stateMachine.transitionToFailed(new IllegalStateException("Fragment cannot be dispatched"));
+        return;
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      // If the dispatch failed, we make the QueryState as failed, and return.
+      stateMachine.transitionToFailed(e);
       return;
     }
 
@@ -108,19 +116,6 @@ public class ClusterScheduler implements IScheduler {
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
     this.stateTracker.start();
-  }
-
-  private boolean waitDispatchingFinished(Future<FragInstanceDispatchResult> dispatchResultFuture) {
-    try {
-      FragInstanceDispatchResult result = dispatchResultFuture.get();
-      if (result.isSuccessful()) {
-        return true;
-      }
-    } catch (InterruptedException | ExecutionException e) {
-      Thread.currentThread().interrupt();
-      // TODO: (xingtanzjr) record the dispatch failure reason.
-    }
-    return false;
   }
 
   @Override

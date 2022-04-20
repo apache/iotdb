@@ -20,24 +20,19 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SchemaPartition {
-
-  private String seriesSlotExecutorName;
-  private int seriesPartitionSlotNum;
+public class SchemaPartition extends Partition {
 
   // Map<StorageGroup, Map<TSeriesPartitionSlot, TSchemaRegionPlaceInfo>>
   private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap;
 
   public SchemaPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
-    this.seriesSlotExecutorName = seriesSlotExecutorName;
-    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
+    super(seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
   public SchemaPartition(
@@ -64,13 +59,6 @@ public class SchemaPartition {
     String storageGroup = getStorageGroupByDevice(deviceName);
     TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     return schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot);
-  }
-
-  private TSeriesPartitionSlot calculateDeviceGroupId(String deviceName) {
-    SeriesPartitionExecutor executor =
-        SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            seriesSlotExecutorName, seriesPartitionSlotNum);
-    return executor.getSeriesPartitionSlot(deviceName);
   }
 
   private String getStorageGroupByDevice(String deviceName) {

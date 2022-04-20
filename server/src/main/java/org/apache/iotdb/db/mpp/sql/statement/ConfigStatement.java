@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.db.mpp.sql.statement;
 
-import java.util.concurrent.Future;
-
-public interface IQueryTerminator {
-  Future<Boolean> terminate();
-}
+/**
+ * ConfigStatement represents the statement which should be executed by ConfigNode All the
+ * statements which need to be transformed into IConfigTask should extend this class
+ */
+public abstract class ConfigStatement extends Statement {}

@@ -181,7 +181,7 @@ public class LocalConfigNode {
       SchemaResourceManager.clearSchemaResource();
 
       if (timedForceMLogThread != null) {
-        timedForceMLogThread.shutdownNow();
+        timedForceMLogThread.shutdown();
         timedForceMLogThread = null;
       }
 
