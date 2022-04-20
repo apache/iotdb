@@ -45,16 +45,16 @@ struct TConsensusGroupId {
 }
 
 struct TSeriesPartitionSlot {
-    1: required i32 slotId
+  1: required i32 slotId
 }
 
 struct TTimePartitionSlot {
-    1: required i64 startTime
+  1: required i64 startTime
 }
 
 struct TRegionReplicaSet {
-    1: required TConsensusGroupId regionId
-    2: required list<TDataNodeLocation> dataNodeLocations
+  1: required TConsensusGroupId regionId
+  2: required list<TDataNodeLocation> dataNodeLocations
 }
 
 struct TDataNodeLocation {
