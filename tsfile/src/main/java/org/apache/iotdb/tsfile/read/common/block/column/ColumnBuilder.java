@@ -59,6 +59,11 @@ public interface ColumnBuilder {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
+  /** Write an Object to the current entry, which should be the corresponding type; */
+  default ColumnBuilder writeObject(Object value) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
   int appendColumn(
       TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder);
 

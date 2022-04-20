@@ -69,6 +69,45 @@ import static org.junit.Assert.assertEquals;
 public class DistributionPlannerTest {
 
   @Test
+  public void TestSingleSeriesScan() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query");
+    SeriesScanNode root =
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC);
+
+    Analysis analysis = constructAnalysis();
+
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
+    DistributedQueryPlan plan = planner.planFragments();
+    plan.getInstances().forEach(System.out::println);
+    assertEquals(2, plan.getInstances().size());
+  }
+
+  @Test
+  public void TestSingleSeriesScanRewriteSource() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query");
+    SeriesScanNode root =
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC);
+
+    Analysis analysis = constructAnalysis();
+
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
+    PlanNode rootAfterRewrite = planner.rewriteSource();
+    assertEquals(2, rootAfterRewrite.getChildren().size());
+  }
+
+  @Test
   public void TestRewriteSourceNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
 

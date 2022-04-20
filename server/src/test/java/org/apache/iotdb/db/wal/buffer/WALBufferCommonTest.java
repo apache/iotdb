@@ -20,6 +20,7 @@ package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -47,7 +48,7 @@ import static org.junit.Assert.*;
 public abstract class WALBufferCommonTest {
   protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected static final String identifier = String.valueOf(Integer.MAX_VALUE);
-  protected static final String logDirectory = "wal-test";
+  protected static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   protected static final String devicePath = "root.test_sg.test_d";
   protected IWALBuffer walBuffer;
 

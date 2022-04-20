@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.cluster.Endpoint;
@@ -79,11 +79,11 @@ public class RegionReplicaSet {
     tRegionReplicaSet.setRegionId(buffer);
 
     // Convert EndPoints
-    List<EndPoint> endPointList = new ArrayList<>();
+    List<TEndPoint> endPointList = new ArrayList<>();
     dataNodeList.forEach(
         dataNodeLocation ->
             endPointList.add(
-                new EndPoint(
+                new TEndPoint(
                     dataNodeLocation.getEndPoint().getIp(),
                     dataNodeLocation.getEndPoint().getPort())));
     tRegionReplicaSet.setEndpoint(endPointList);

@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.apache.iotdb.db.mpp.operator.Operator.NOT_BLOCKED;
 
+/** One SchemaDriver is used to execute one FragmentInstance which is for metadata query. */
 @NotThreadSafe
 public class SchemaDriver implements Driver {
 
@@ -163,5 +164,10 @@ public class SchemaDriver implements Driver {
       logger.error("Failed to closed driver {}", driverContext.getId(), t);
       driverContext.failed(t);
     }
+  }
+
+  @Override
+  public void failed(Throwable t) {
+    driverContext.failed(t);
   }
 }

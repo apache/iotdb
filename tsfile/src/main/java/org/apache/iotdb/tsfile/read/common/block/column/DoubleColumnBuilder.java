@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -71,6 +72,16 @@ public class DoubleColumnBuilder implements ColumnBuilder {
       columnBuilderStatus.addBytes(DoubleColumn.SIZE_IN_BYTES_PER_POSITION);
     }
     return this;
+  }
+
+  /** Write an Object to the current entry, which should be the Double type; */
+  @Override
+  public ColumnBuilder writeObject(Object value) {
+    if (value instanceof Double) {
+      writeDouble((Double) value);
+      return this;
+    }
+    throw new UnSupportedDataTypeException("DoubleColumn only support Double data type");
   }
 
   @Override

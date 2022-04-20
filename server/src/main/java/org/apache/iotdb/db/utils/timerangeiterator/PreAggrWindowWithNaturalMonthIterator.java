@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.utils.timerangeiterator;
 
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator {
 
@@ -33,6 +33,7 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   private long curStartTimeForIterator;
 
   private long lastEndTime;
+  private TimeRange curTimeRange;
 
   public PreAggrWindowWithNaturalMonthIterator(
       long startTime,
@@ -57,48 +58,61 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   }
 
   @Override
-  public Pair<Long, Long> getFirstTimeRange() {
+  public TimeRange getFirstTimeRange() {
     long retStartTime = timeBoundaryHeap.pollFirst();
     lastEndTime = timeBoundaryHeap.first();
-    return new Pair<>(retStartTime, lastEndTime);
+    return new TimeRange(retStartTime, lastEndTime);
   }
 
   @Override
-  public Pair<Long, Long> getNextTimeRange(long curStartTime) {
+  public boolean hasNextTimeRange() {
+    if (curTimeRange == null) {
+      curTimeRange = getFirstTimeRange();
+      return true;
+    }
+
     if (lastEndTime >= curStartTimeForIterator) {
       tryToExpandHeap();
     }
     if (timeBoundaryHeap.isEmpty()) {
-      return null;
+      return false;
     }
     long retStartTime = timeBoundaryHeap.pollFirst();
     if (retStartTime >= curStartTimeForIterator) {
       tryToExpandHeap();
     }
     if (timeBoundaryHeap.isEmpty()) {
-      return null;
+      return false;
     }
     lastEndTime = timeBoundaryHeap.first();
-    return new Pair<>(retStartTime, lastEndTime);
+    curTimeRange = new TimeRange(retStartTime, lastEndTime);
+    return true;
+  }
+
+  @Override
+  public TimeRange nextTimeRange() {
+    if (curTimeRange != null || hasNextTimeRange()) {
+      return curTimeRange;
+    }
+    return null;
   }
 
   private void initHeap() {
-    Pair<Long, Long> firstTimeRange = aggrWindowIterator.getFirstTimeRange();
-    timeBoundaryHeap.add(firstTimeRange.left);
-    timeBoundaryHeap.add(firstTimeRange.right);
-    curStartTimeForIterator = firstTimeRange.left;
+    TimeRange firstTimeRange = aggrWindowIterator.nextTimeRange();
+    timeBoundaryHeap.add(firstTimeRange.getMin());
+    timeBoundaryHeap.add(firstTimeRange.getMax());
+    curStartTimeForIterator = firstTimeRange.getMin();
 
     tryToExpandHeap();
   }
 
   private void tryToExpandHeap() {
-    Pair<Long, Long> curTimeRange = aggrWindowIterator.getNextTimeRange(curStartTimeForIterator);
-    while (curTimeRange != null && timeBoundaryHeap.size() < HEAP_MAX_SIZE) {
-      timeBoundaryHeap.add(curTimeRange.left);
-      timeBoundaryHeap.add(curTimeRange.right);
-      curStartTimeForIterator = curTimeRange.left;
-
-      curTimeRange = aggrWindowIterator.getNextTimeRange(curStartTimeForIterator);
+    TimeRange timeRangeToExpand = null;
+    while (aggrWindowIterator.hasNextTimeRange() && timeBoundaryHeap.size() < HEAP_MAX_SIZE) {
+      timeRangeToExpand = aggrWindowIterator.nextTimeRange();
+      timeBoundaryHeap.add(timeRangeToExpand.getMin());
+      timeBoundaryHeap.add(timeRangeToExpand.getMax());
+      curStartTimeForIterator = timeRangeToExpand.getMin();
     }
   }
 

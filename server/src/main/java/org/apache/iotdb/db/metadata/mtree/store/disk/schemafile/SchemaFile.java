@@ -153,6 +153,23 @@ public class SchemaFile implements ISchemaFile {
     initFileHeader();
   }
 
+  private SchemaFile(File file) throws IOException, MetadataException {
+    // only be called to sketch a schema file so an arbitrary file object is necessary
+    channel = new RandomAccessFile(file, "rw").getChannel();
+    headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
+    pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
+    evictLock = new ReentrantLock();
+    pageLocks = new PageLocks();
+
+    if (channel.size() <= 0) {
+      channel.close();
+      file.deleteOnExit();
+      throw new SchemaFileNotExists(file.getAbsolutePath());
+    }
+
+    initFileHeader();
+  }
+
   public static ISchemaFile initSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     return new SchemaFile(
@@ -166,6 +183,11 @@ public class SchemaFile implements ISchemaFile {
   public static ISchemaFile loadSchemaFile(String sgName, int schemaRegionId)
       throws IOException, MetadataException {
     return new SchemaFile(sgName, schemaRegionId, false, -1L, false);
+  }
+
+  public static ISchemaFile loadSchemaFile(File file) throws IOException, MetadataException {
+    // only be called to sketch a Schema File
+    return new SchemaFile(file);
   }
 
   // region Interface Implementation
@@ -498,14 +520,19 @@ public class SchemaFile implements ISchemaFile {
     StringBuilder builder =
         new StringBuilder(
             String.format(
-                "==================\n"
-                    + "==================\n"
-                    + "SchemaFile inspect: %s, totalPages:%d\n",
-                storageGroupName, lastPageIndex + 1));
+                "=============================\n"
+                    + "== Schema File Sketch Tool ==\n"
+                    + "=============================\n"
+                    + "== Notice: \n"
+                    + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
+                    + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
+                    + "=============================\n"
+                    + "Belong to StorageGroup: [%s], total pages:%d\n",
+                storageGroupName == null ? "NOT SPECIFIED" : storageGroupName, lastPageIndex + 1));
     int cnt = 0;
     while (cnt <= lastPageIndex) {
       ISchemaPage page = getPageInstance(cnt);
-      builder.append(String.format("----------\n%s\n", page.inspect()));
+      builder.append(String.format("---------------------\n%s\n", page.inspect()));
       cnt++;
     }
     return builder.toString();

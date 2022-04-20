@@ -21,6 +21,7 @@ package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
@@ -29,6 +30,9 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.nio.ByteBuffer;
 
 public class SchemaRegionStateMachine extends BaseStateMachine {
 
@@ -47,6 +51,20 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void stop() {}
+
+  @Override
+  public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {}
+
+  @Override
+  public SnapshotMeta getLatestSnapshot(File snapshotDir) {
+    return null;
+  }
+
+  @Override
+  public void loadSnapshot(SnapshotMeta latest) {}
+
+  @Override
+  public void cleanUpOldSnapshots(File snapshotDir) {}
 
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {

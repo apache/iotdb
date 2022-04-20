@@ -209,6 +209,10 @@ public class TsBlockBuilder {
 
     declaredPositions = 0;
 
+    timeColumnBuilder =
+        (TimeColumnBuilder)
+            timeColumnBuilder.newColumnBuilderLike(
+                tsBlockBuilderStatus.createColumnBuilderStatus());
     for (int i = 0; i < valueColumnBuilders.length; i++) {
       valueColumnBuilders[i] =
           valueColumnBuilders[i].newColumnBuilderLike(
@@ -240,6 +244,7 @@ public class TsBlockBuilder {
     return types.get(channel);
   }
 
+  // Indicate current row number
   public void declarePosition() {
     declaredPositions++;
   }

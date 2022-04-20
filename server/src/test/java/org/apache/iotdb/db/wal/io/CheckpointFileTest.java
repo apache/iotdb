@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.io;
 
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.wal.checkpoint.Checkpoint;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointType;
@@ -38,7 +39,8 @@ import java.util.List;
 import static org.junit.Assert.*;
 
 public class CheckpointFileTest {
-  private final File checkpointFile = new File("_0.checkpoint");
+  private final File checkpointFile =
+      new File(TestConstant.BASE_OUTPUT_PATH.concat("_0.checkpoint"));
 
   @Before
   public void setUp() throws Exception {

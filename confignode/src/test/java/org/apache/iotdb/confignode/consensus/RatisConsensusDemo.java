@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -90,7 +90,7 @@ public class RatisConsensusDemo {
   private void registerDataNodes() throws TException, InterruptedException {
     // DataNodes can connect to any ConfigNode and send write requests
     for (int i = 0; i < 10; i++) {
-      EndPoint endPoint = new EndPoint("0.0.0.0", 6667 + i);
+      TEndPoint endPoint = new TEndPoint("0.0.0.0", 6667 + i);
       TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
       TDataNodeRegisterResp resp = clients[0].registerDataNode(req);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
@@ -142,7 +142,7 @@ public class RatisConsensusDemo {
 
   private void registerDataNodeOnLeader() throws TException {
     for (int i = 0; i < 3; i++) {
-      EndPoint endPoint = new EndPoint("0.0.0.0", 6667);
+      TEndPoint endPoint = new TEndPoint("0.0.0.0", 6667);
       TDataNodeRegisterReq req = new TDataNodeRegisterReq(endPoint);
       TDataNodeRegisterResp resp = clients[i].registerDataNode(req);
       System.out.println(resp);
