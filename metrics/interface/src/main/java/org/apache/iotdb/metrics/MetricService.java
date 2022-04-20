@@ -62,9 +62,9 @@ public abstract class MetricService {
     metricManager.init();
     // do start all reporter without first time
 
-        if (!firstInit.getAndSet(false)) {
-    startAllReporter();
-        }
+    if (!firstInit.getAndSet(false)) {
+      startAllReporter();
+    }
 
     logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
@@ -74,10 +74,10 @@ public abstract class MetricService {
 
     collectFileSystemInfo();
 
-    //Collect process monitoring information
+    // Collect process monitoring information
     collectProcessInfo();
 
-    //Collect system monitoring information
+    // Collect system monitoring information
     collectSystemInfo();
   }
 
@@ -166,7 +166,7 @@ public abstract class MetricService {
   /** collect process info in metric way */
   protected abstract void collectProcessInfo();
 
-  /** collect system hardware info in metric way*/
+  /** collect system hardware info in metric way */
   protected abstract void collectSystemInfo();
 
   /**
