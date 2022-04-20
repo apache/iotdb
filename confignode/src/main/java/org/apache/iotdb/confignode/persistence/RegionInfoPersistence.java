@@ -49,7 +49,6 @@ public class RegionInfoPersistence {
 
   // Region read write lock
   private final ReentrantReadWriteLock regionReadWriteLock;
-  // Map<TConsensusGroupId, TRegionReplicaSet>
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionMap;
 
   public RegionInfoPersistence() {

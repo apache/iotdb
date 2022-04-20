@@ -86,22 +86,21 @@ public class InternalServiceImplTest {
     switch (regionReplicaSet.getRegionId().getType()) {
       case SchemaRegion:
         ConsensusImpl.getInstance()
-                .addConsensusGroup(
-                        new SchemaRegionId(regionReplicaSet.getRegionId().getId()),
-                        genPeerList(regionReplicaSet));
+            .addConsensusGroup(
+                new SchemaRegionId(regionReplicaSet.getRegionId().getId()),
+                genPeerList(regionReplicaSet));
         break;
       case DataRegion:
         ConsensusImpl.getInstance()
-                .addConsensusGroup(
-                        new DataRegionId(regionReplicaSet.getRegionId().getId()),
-                        genPeerList(regionReplicaSet));
-        internalServiceImpl = new InternalServiceImpl();
+            .addConsensusGroup(
+                new DataRegionId(regionReplicaSet.getRegionId().getId()),
+                genPeerList(regionReplicaSet));
     }
+    internalServiceImpl = new InternalServiceImpl();
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDB.configManager.clear();
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     switch (regionReplicaSet.getRegionId().getType()) {
       case SchemaRegion:
