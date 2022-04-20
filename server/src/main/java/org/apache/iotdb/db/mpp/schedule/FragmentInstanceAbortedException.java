@@ -16,32 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.schedule;
 
-package org.apache.iotdb.db.mpp.execution.config;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.Driver;
 
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
+/** A common exception to pass to {@link Driver#failed(Throwable)} */
+public class FragmentInstanceAbortedException extends Exception {
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+  public static final String BY_TIMEOUT = "timeout";
+  public static final String BY_FRAGMENT_ABORT_CALLED = "fragment abort called";
+  public static final String BY_QUERY_CASCADING_ABORTED = "query cascading aborted";
+  public static final String BY_ALREADY_BEING_CANCELLED = "already being cancelled";
 
-public class SampleConfigTask implements IConfigTask {
-
-  private Statement statement;
-
-  public SampleConfigTask(Statement statement) {
-    this.statement = statement;
-  }
-
-  @Override
-  public ListenableFuture<Void> execute() {
-    // Construct request using statement
-
-    // Send request to some API server
-
-    // Get response or throw exception
-
-    // If the action is executed successfully, return the Future.
-    // If your operation is async, you can return the corresponding future directly.
-    return Futures.immediateVoidFuture();
+  public FragmentInstanceAbortedException(FragmentInstanceId id, String causeMsg) {
+    super(String.format("FragmentInstance %s is aborted by %s", id.toString(), causeMsg));
   }
 }

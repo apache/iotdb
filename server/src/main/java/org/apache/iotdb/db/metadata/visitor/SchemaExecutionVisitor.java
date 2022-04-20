@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.Executor;
+package org.apache.iotdb.db.metadata.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -37,9 +38,11 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 /** Schema write PlanNode visitor */
-public class SchemaVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
-  private static final Logger logger = LoggerFactory.getLogger(SchemaVisitor.class);
+public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
+  private static final Logger logger = LoggerFactory.getLogger(SchemaExecutionVisitor.class);
 
   @Override
   public TSStatus visitCreateTimeSeries(CreateTimeSeriesNode node, ISchemaRegion schemaRegion) {
@@ -54,10 +57,60 @@ public class SchemaVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
   }
 
   @Override
+  public TSStatus visitCreateAlignedTimeSeries(
+      CreateAlignedTimeSeriesNode node, ISchemaRegion schemaRegion) {
+    try {
+      PhysicalPlan plan = node.accept(new PhysicalPlanTransformer(), new TransformerContext());
+      schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan) plan);
+    } catch (MetadataException e) {
+      logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+  }
+
+  @Override
+  public TSStatus visitAlterTimeSeries(AlterTimeSeriesNode node, ISchemaRegion schemaRegion) {
+    try {
+      switch (node.getAlterType()) {
+        case RENAME:
+          String beforeName = node.getAlterMap().keySet().iterator().next();
+          String currentName = node.getAlterMap().get(beforeName);
+          schemaRegion.renameTagOrAttributeKey(beforeName, currentName, node.getPath());
+          break;
+        case SET:
+          schemaRegion.setTagsOrAttributesValue(node.getAlterMap(), node.getPath());
+          break;
+        case DROP:
+          schemaRegion.dropTagsOrAttributes(node.getAlterMap().keySet(), node.getPath());
+          break;
+        case ADD_TAGS:
+          schemaRegion.addTags(node.getAlterMap(), node.getPath());
+          break;
+        case ADD_ATTRIBUTES:
+          schemaRegion.addAttributes(node.getAlterMap(), node.getPath());
+          break;
+        case UPSERT:
+          schemaRegion.upsertTagsAndAttributes(
+              node.getAlias(), node.getTagsMap(), node.getAttributesMap(), node.getPath());
+          break;
+      }
+    } catch (MetadataException e) {
+      logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
+    } catch (IOException e) {
+      logger.error("{}: IO error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+  }
+
+  @Override
   public TSStatus visitPlan(PlanNode node, ISchemaRegion context) {
     return null;
   }
 
+  // TODO need remove
   private static class PhysicalPlanTransformer
       extends PlanVisitor<PhysicalPlan, TransformerContext> {
     @Override

@@ -136,8 +136,11 @@ public class SchemaEngine {
         localStorageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup);
     switch (schemaRegionStoredMode) {
       case Memory:
+        schemaRegion = new SchemaRegionMemoryImpl(storageGroup, schemaRegionId, storageGroupMNode);
+        break;
       case Schema_File:
-        schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+        schemaRegion =
+            new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       case Rocksdb_based:
         schemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);

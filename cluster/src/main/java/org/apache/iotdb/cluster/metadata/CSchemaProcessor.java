@@ -282,43 +282,6 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
     return node;
   }
 
-  /**
-   * the {@link org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer#redoLog} will
-   * call this to get schema after restart we should retry to get schema util we get the schema.
-   *
-   * @param deviceId the device id.
-   * @param measurements the measurements.
-   */
-  @Override
-  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    try {
-      return super.getMeasurementMNodes(deviceId, measurements);
-    } catch (MetadataException e) {
-      // some measurements not exist in local
-      // try cache
-      IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[measurements.length];
-      int failedMeasurementIndex = getMNodesLocally(deviceId, measurements, measurementMNodes);
-      if (failedMeasurementIndex == -1) {
-        return measurementMNodes;
-      }
-
-      // will retry util get schema
-      pullSeriesSchemas(deviceId, measurements);
-
-      // try again
-      failedMeasurementIndex = getMNodesLocally(deviceId, measurements, measurementMNodes);
-      if (failedMeasurementIndex != -1) {
-        throw new MetadataException(
-            deviceId.getFullPath()
-                + IoTDBConstant.PATH_SEPARATOR
-                + measurements[failedMeasurementIndex]
-                + " is not found");
-      }
-      return measurementMNodes;
-    }
-  }
-
   /** @return -1 if all schemas are found, or the first index of the non-exist schema */
   private int getMNodesLocally(
       PartialPath deviceId, String[] measurements, IMeasurementMNode[] measurementMNodes) {

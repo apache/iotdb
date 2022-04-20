@@ -19,8 +19,35 @@
 
 package org.apache.iotdb.db.mpp.execution.config;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-public interface IConfigTask {
-  ListenableFuture<ConfigTaskResult> execute() throws InterruptedException;
+public class ConfigTaskResult {
+  private TSStatusCode statusCode;
+  private TsBlock resultSet;
+
+  public ConfigTaskResult(TSStatusCode statusCode) {
+    this.statusCode = statusCode;
+  }
+
+  public ConfigTaskResult(TSStatusCode statusCode, TsBlock resultSet) {
+    this.statusCode = statusCode;
+    this.resultSet = resultSet;
+  }
+
+  public TSStatusCode getStatusCode() {
+    return statusCode;
+  }
+
+  public void setStatusCode(TSStatusCode statusCode) {
+    this.statusCode = statusCode;
+  }
+
+  public TsBlock getResultSet() {
+    return resultSet;
+  }
+
+  public void setResultSet(TsBlock resultSet) {
+    this.resultSet = resultSet;
+  }
 }
