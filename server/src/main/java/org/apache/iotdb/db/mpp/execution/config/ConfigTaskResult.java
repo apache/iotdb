@@ -19,29 +19,35 @@
 
 package org.apache.iotdb.db.mpp.execution.config;
 
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+public class ConfigTaskResult {
+  private TSStatusCode statusCode;
+  private TsBlock resultSet;
 
-public class SampleConfigTask implements IConfigTask {
-
-  private Statement statement;
-
-  public SampleConfigTask(Statement statement) {
-    this.statement = statement;
+  public ConfigTaskResult(TSStatusCode statusCode) {
+    this.statusCode = statusCode;
   }
 
-  @Override
-  public ListenableFuture<Void> execute() {
-    // Construct request using statement
+  public ConfigTaskResult(TSStatusCode statusCode, TsBlock resultSet) {
+    this.statusCode = statusCode;
+    this.resultSet = resultSet;
+  }
 
-    // Send request to some API server
+  public TSStatusCode getStatusCode() {
+    return statusCode;
+  }
 
-    // Get response or throw exception
+  public void setStatusCode(TSStatusCode statusCode) {
+    this.statusCode = statusCode;
+  }
 
-    // If the action is executed successfully, return the Future.
-    // If your operation is async, you can return the corresponding future directly.
-    return Futures.immediateVoidFuture();
+  public TsBlock getResultSet() {
+    return resultSet;
+  }
+
+  public void setResultSet(TsBlock resultSet) {
+    this.resultSet = resultSet;
   }
 }
