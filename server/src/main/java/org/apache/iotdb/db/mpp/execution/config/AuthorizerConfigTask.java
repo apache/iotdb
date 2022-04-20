@@ -48,8 +48,8 @@ public class AuthorizerConfigTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<Void> execute() {
-    SettableFuture<Void> future = SettableFuture.create();
+  public ListenableFuture<ConfigTaskResult> execute() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ConfigNodeClient configNodeClient = null;
     try {
       // Construct request using statement
@@ -75,7 +75,7 @@ public class AuthorizerConfigTask implements IConfigTask {
             tsStatus);
         future.setException(new StatementExecutionException(tsStatus));
       } else {
-        future.set(null);
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
       LOGGER.error("Failed to connect to config node.");

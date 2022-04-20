@@ -23,15 +23,20 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.config.ConfigExecution;
+import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
@@ -40,12 +45,32 @@ public class ConfigExecutionTest {
 
   @Test
   public void normalConfigTaskTest() {
-    IConfigTask task = () -> immediateFuture(null);
+    IConfigTask task = () -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     ConfigExecution execution =
         new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
     execution.start();
     ExecutionResult result = execution.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+  }
+
+  @Test
+  public void normalConfigTaskWithResultTest() {
+    TsBlock tsBlock =
+        new TsBlock(
+            new TimeColumn(1, new long[] {0}),
+            new IntColumn(1, Optional.of(new boolean[] {false}), new int[] {1}));
+    IConfigTask task =
+        () -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock));
+    ConfigExecution execution =
+        new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
+    execution.start();
+    ExecutionResult result = execution.getStatus();
+    TsBlock tsBlockFromExecution = null;
+    if (execution.hasNextResult()) {
+      tsBlockFromExecution = execution.getBatchResult();
+    }
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+    Assert.assertEquals(tsBlock, tsBlockFromExecution);
   }
 
   @Test
@@ -63,16 +88,16 @@ public class ConfigExecutionTest {
 
   @Test
   public void configTaskCancelledTest() throws InterruptedException {
-    SettableFuture<Void> taskResult = SettableFuture.create();
+    SettableFuture<ConfigTaskResult> taskResult = SettableFuture.create();
     class SimpleTask implements IConfigTask {
-      private final ListenableFuture<Void> result;
+      private final ListenableFuture<ConfigTaskResult> result;
 
-      public SimpleTask(ListenableFuture<Void> future) {
+      public SimpleTask(ListenableFuture<ConfigTaskResult> future) {
         this.result = future;
       }
 
       @Override
-      public ListenableFuture<Void> execute() throws InterruptedException {
+      public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
         return result;
       }
     }
@@ -86,7 +111,7 @@ public class ConfigExecutionTest {
             () -> {
               ExecutionResult result = execution.getStatus();
               Assert.assertEquals(
-                  TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), result.status.code);
+                  TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
             });
     resultThread.start();
     taskResult.cancel(true);
@@ -106,7 +131,7 @@ public class ConfigExecutionTest {
             () -> {
               ExecutionResult result = execution.getStatus();
               Assert.assertEquals(
-                  TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), result.status.code);
+                  TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
             });
     resultThread.start();
     execution.start();
