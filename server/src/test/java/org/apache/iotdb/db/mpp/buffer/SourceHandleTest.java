@@ -152,7 +152,7 @@ public class SourceHandleTest {
 
     // Receive EndOfDataBlock event from upstream fragment instance.
     sourceHandle.setNoMoreTsBlocks(numOfMockTsBlock - 1);
-    Assert.assertFalse(sourceHandle.isBlocked().isDone());
+    Assert.assertTrue(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
@@ -298,7 +298,7 @@ public class SourceHandleTest {
 
     // Receive EndOfDataBlock event from upstream fragment instance.
     sourceHandle.setNoMoreTsBlocks(numOfMockTsBlock - 1);
-    Assert.assertFalse(sourceHandle.isBlocked().isDone());
+    Assert.assertTrue(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
@@ -488,7 +488,7 @@ public class SourceHandleTest {
 
     // Receive EndOfDataBlock event from upstream fragment instance.
     sourceHandle.setNoMoreTsBlocks(3 * numOfMockTsBlock - 1);
-    Assert.assertFalse(sourceHandle.isBlocked().isDone());
+    Assert.assertTrue(sourceHandle.isBlocked().isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertTrue(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());

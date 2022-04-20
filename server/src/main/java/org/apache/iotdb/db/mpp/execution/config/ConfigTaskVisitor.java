@@ -17,10 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.execution.scheduler;
+package org.apache.iotdb.db.mpp.execution.config;
 
-import java.util.concurrent.Future;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
-public interface IQueryTerminator {
-  Future<Boolean> terminate();
+public class ConfigTaskVisitor
+    extends StatementVisitor<IConfigTask, ConfigTaskVisitor.TaskContext> {
+
+  public IConfigTask visitStatement(Statement statement, TaskContext context) {
+    throw new NotImplementedException("ConfigTask is not implemented for: " + statement);
+  }
+
+  public IConfigTask visitSetStorageGroup(SetStorageGroupStatement statement, TaskContext context) {
+    return new SetStorageGroupTask(statement);
+  }
+
+  public static class TaskContext {}
 }

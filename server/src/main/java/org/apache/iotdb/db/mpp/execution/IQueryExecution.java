@@ -28,6 +28,8 @@ public interface IQueryExecution {
 
   void stop();
 
+  void stopAndCleanup();
+
   ExecutionResult getStatus();
 
   TsBlock getBatchResult();

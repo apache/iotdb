@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,26 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.partition;
 
-public class PartitionInfo {
+package org.apache.iotdb.db.mpp.sql.statement;
 
-  private DataPartition dataPartition;
-  private SchemaPartition schemaPartition;
-
-  public DataPartition getDataPartitionInfo() {
-    return dataPartition;
-  }
-
-  public void setDataPartitionInfo(DataPartition dataPartition) {
-    this.dataPartition = dataPartition;
-  }
-
-  public SchemaPartition getSchemaPartitionInfo() {
-    return schemaPartition;
-  }
-
-  public void setSchemaPartitionInfo(SchemaPartition schemaPartition) {
-    this.schemaPartition = schemaPartition;
-  }
-}
+/**
+ * ConfigStatement represents the statement which should be executed by ConfigNode All the
+ * statements which need to be transformed into IConfigTask should extend this class
+ */
+public abstract class ConfigStatement extends Statement {}
