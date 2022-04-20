@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
+import com.google.common.util.concurrent.SettableFuture;
+import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.DriverContext;
+import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
@@ -175,15 +179,29 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     }
   }
 
-  private static class StubFragmentInstance implements Driver {
+  private static class StubFragmentInstance extends Driver {
 
     private static final QueryId stubQueryId = new QueryId("stub_query");
     private static final FragmentInstanceId stubInstance =
         new FragmentInstanceId(new PlanFragmentId(stubQueryId, 0), "stub-instance");
 
+    public StubFragmentInstance() {
+      super(null, null, null);
+    }
+
     @Override
     public boolean isFinished() {
       return false;
+    }
+
+    @Override
+    protected boolean init(SettableFuture<Void> blockedFuture) {
+      return true;
+    }
+
+    @Override
+    protected void releaseResource() {
+
     }
 
     @Override
@@ -201,5 +219,10 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
     @Override
     public void failed(Throwable t) {}
+
+    @Override
+    public ISinkHandle getSinkHandle() {
+      return null;
+    }
   }
 }

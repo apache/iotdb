@@ -18,27 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import com.google.common.util.concurrent.SettableFuture;
-import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
-import org.apache.iotdb.db.mpp.operator.Operator;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 
-import javax.annotation.concurrent.NotThreadSafe;
-
-@NotThreadSafe
-public class SchemaDriver extends Driver {
-
-  public SchemaDriver(Operator root, ISinkHandle sinkHandle, SchemaDriverContext driverContext) {
-    super(root, sinkHandle, driverContext);
-  }
-
-
-  @Override
-  protected boolean init(SettableFuture<Void> blockedFuture) {
-    return true;
-  }
-
-  @Override
-  protected void releaseResource() {
-    // do nothing
-  }
+public interface FragmentInstanceFailureListener {
+  void onTaskFailed(FragmentInstanceId taskId, Throwable failure);
 }

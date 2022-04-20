@@ -40,7 +40,7 @@ public enum FragmentInstanceState {
   /** Instance has finished executing and all output has been consumed. */
   FINISHED(true, false),
   /** Instance was canceled by a user. */
-  CANCELED(true, true),
+  CANCELLED(true, true),
   /** Instance was aborted due to a failure in the query. The failure was not in this instance. */
   ABORTED(true, true),
   /** Instance execution failed. */

@@ -20,9 +20,14 @@ package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class DriverContext {
 
   private final FragmentInstanceContext fragmentInstanceContext;
+
+  private final AtomicBoolean finished = new AtomicBoolean();
+
 
   public DriverContext(FragmentInstanceContext fragmentInstanceContext) {
     this.fragmentInstanceContext = fragmentInstanceContext;
@@ -38,13 +43,15 @@ public class DriverContext {
 
   public void failed(Throwable cause) {
     fragmentInstanceContext.failed(cause);
+    finished.set(true);
   }
 
-  public void finish() {
-    fragmentInstanceContext.finish();
+  public void finished() {
+    finished.compareAndSet(false, true);
   }
 
-  public void flushing() {
-    fragmentInstanceContext.flushing();
+
+  public boolean isDone() {
+    return finished.get();
   }
 }

@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import io.airlift.stats.CounterStat;
+import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
 
 import com.google.common.collect.ImmutableList;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceState.ABORTED;
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceState.CANCELLED;
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceState.FAILED;
 
 public class FragmentInstanceExecution {
 
@@ -36,23 +39,35 @@ public class FragmentInstanceExecution {
 
   private final Driver driver;
 
-  // TODO we may use StateMachine<FragmentInstanceState> to replace it
-  private final AtomicReference<FragmentInstanceState> state;
+  private final ISinkHandle sinkHandle;
+
+  private final FragmentInstanceStateMachine stateMachine;
 
   private long lastHeartbeat;
 
-  public FragmentInstanceExecution(
+  public static FragmentInstanceExecution createFragmentInstanceExecution(IFragmentInstanceScheduler scheduler,
+                                                                          FragmentInstanceId instanceId,
+                                                                          FragmentInstanceContext context,
+                                                                          Driver driver,
+                                                                          FragmentInstanceStateMachine stateMachine,
+                                                                          CounterStat failedInstances) {
+    FragmentInstanceExecution execution = new FragmentInstanceExecution(scheduler, instanceId, context, driver, stateMachine);
+    execution.initialize(failedInstances, scheduler, instanceId, driver);
+    return execution;
+  }
+
+  private FragmentInstanceExecution(
       IFragmentInstanceScheduler scheduler,
       FragmentInstanceId instanceId,
       FragmentInstanceContext context,
       Driver driver,
-      AtomicReference<FragmentInstanceState> state) {
+      FragmentInstanceStateMachine stateMachine) {
     this.scheduler = scheduler;
     this.instanceId = instanceId;
     this.context = context;
     this.driver = driver;
-    this.state = state;
-    state.set(FragmentInstanceState.RUNNING);
+    this.sinkHandle = driver.getSinkHandle();
+    this.stateMachine = stateMachine;
     scheduler.submitFragmentInstances(instanceId.getQueryId(), ImmutableList.of(driver));
   }
 
@@ -65,24 +80,66 @@ public class FragmentInstanceExecution {
   }
 
   public FragmentInstanceState getInstanceState() {
-    return state.get();
+    return stateMachine.getState();
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(state.get(), context.getEndTime());
+    return new FragmentInstanceInfo(stateMachine.getState(), context.getEndTime());
   }
 
   public void failed(Throwable cause) {
     requireNonNull(cause, "cause is null");
-    context.failed(cause);
+    stateMachine.failed(cause);
   }
 
   public void cancel() {
-    context.cancel();
+    stateMachine.cancel();
   }
 
   public void abort() {
-    scheduler.abortFragmentInstance(instanceId);
-    context.abort();
+    stateMachine.abort();
+  }
+
+  // this is a separate method to ensure that the `this` reference is not leaked during construction
+  private void initialize(CounterStat failedInstances, IFragmentInstanceScheduler scheduler, FragmentInstanceId instanceId, Driver driver) {
+    requireNonNull(failedInstances, "failedInstances is null");
+    stateMachine.addStateChangeListener(newState -> {
+
+      if (!newState.isDone()) {
+        return;
+      }
+
+      // Update failed tasks counter
+      if (newState == FAILED) {
+        failedInstances.update(1);
+      }
+
+      driver.close();
+      sinkHandle.abort();
+      scheduler.abortFragmentInstance(instanceId);
+    });
+  }
+
+  private synchronized void instanceCompletion() {
+    if (stateMachine.getState().isDone()) {
+      return;
+    }
+
+    if (!sinkHandle.isFinished()) {
+      stateMachine.transitionToFlushing();
+      return;
+    }
+
+    if (sinkHandle.isFinished()) {
+      // Cool! All done!
+      stateMachine.finished();
+      return;
+    }
+
+    if (sinkHandle.isFailed()) {
+      Throwable failureCause = sinkHandle.getFailureCause()
+          .orElseGet(() -> new RuntimeException("Fragment Instance " + instanceId + " 's SinkHandle is failed but the failure cause is missing"));
+      stateMachine.failed(failureCause);
+    }
   }
 }

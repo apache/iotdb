@@ -24,8 +24,9 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
-public interface ISinkHandle extends AutoCloseable {
+public interface ISinkHandle {
 
   /** Get the total amount of memory used by buffered tsblocks. */
   long getBufferRetainedSizeInBytes();
@@ -41,7 +42,7 @@ public interface ISinkHandle extends AutoCloseable {
    * the send tsblock call is ignored. This can happen with limit queries. A {@link
    * RuntimeException} will be thrown if any exception happened * during the data transmission.
    */
-  void send(List<TsBlock> tsBlocks) throws IOException;
+  void send(List<TsBlock> tsBlocks);
 
   /**
    * Send a {@link TsBlock} to a specific partition. If no-more-tsblocks has been set, the send
@@ -57,22 +58,32 @@ public interface ISinkHandle extends AutoCloseable {
   void setNoMoreTsBlocks();
 
   /** If the handle is closed. */
-  public boolean isClosed();
+  boolean isClosed();
 
   /**
    * If no more tsblocks will be sent and all the tsblocks have been fetched by downstream fragment
    * instances.
    */
-  public boolean isFinished();
+  boolean isFinished();
 
   /**
    * Close the handle. The output buffer will not be cleared until all tsblocks are fetched by
    * downstream instances. A {@link RuntimeException} will be thrown if any exception happened
    * during the data transmission.
    */
-  @Override
   void close() throws IOException;
 
   /** Abort the sink handle, discarding all tsblocks which may still be in memory buffer. */
   void abort();
+
+  /**
+   * @return whether this SinkHandle is failed
+   */
+  boolean isFailed();
+
+
+  /**
+   * Returns non empty failure cause if the sink handle is failed
+   */
+  Optional<Throwable> getFailureCause();
 }

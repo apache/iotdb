@@ -41,6 +41,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.concurrent.ExecutorService;
 
@@ -113,11 +114,8 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) throws IOException {
+  public void send(List<TsBlock> tsBlocks) {
     Validate.notNull(tsBlocks, "tsBlocks is null");
-    if (throwable != null) {
-      throw new IOException(throwable);
-    }
     if (closed) {
       throw new IllegalStateException("Sink handle is closed.");
     }
@@ -227,6 +225,16 @@ public class SinkHandle implements ISinkHandle {
     }
     sinkHandleListener.onAborted(this);
     logger.info("Sink handle {} is aborted", this);
+  }
+
+  @Override
+  public boolean isFailed() {
+    return throwable != null;
+  }
+
+  @Override
+  public Optional<Throwable> getFailureCause() {
+    return Optional.ofNullable(throwable);
   }
 
   @Override

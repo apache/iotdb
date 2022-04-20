@@ -53,5 +53,5 @@ public interface Operator extends AutoCloseable {
   /**
    * Is this operator completely finished processing and no more output TsBlock will be produced.
    */
-  boolean isFinished() throws IOException;
+  boolean isFinished();
 }
