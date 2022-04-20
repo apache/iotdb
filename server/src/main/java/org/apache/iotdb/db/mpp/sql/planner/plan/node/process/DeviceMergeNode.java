@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -53,9 +52,10 @@ public class DeviceMergeNode extends ProcessNode {
   // DeviceNode means the node whose output TsBlock contains the data belonged to one device.
   private Map<String, PlanNode> childDeviceNodeMap = new HashMap<>();
 
-  private List<PlanNode> children;
+  // column name and datatype of each output column
+  private final List<ColumnHeader> outputColumnHeaders = new ArrayList<>();
 
-  private final List<ColumnHeader> columnHeaders = new ArrayList<>();;
+  private List<PlanNode> children;
 
   public DeviceMergeNode(PlanNodeId id) {
     super(id);
@@ -98,30 +98,29 @@ public class DeviceMergeNode extends ProcessNode {
     List<ColumnHeader> childColumnHeaders = childNode.getOutputColumnHeaders();
     for (ColumnHeader columnHeader : childColumnHeaders) {
       ColumnHeader tmpColumnHeader = columnHeader.replacePathWithMeasurement();
-      if (!columnHeaders.contains(tmpColumnHeader)) {
-        columnHeaders.add(tmpColumnHeader);
+      if (!outputColumnHeaders.contains(tmpColumnHeader)) {
+        outputColumnHeaders.add(tmpColumnHeader);
       }
     }
   }
 
   @Override
-  public List<OutputColumn> getOutputColumns() {
-    return null;
-  }
-
-  @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return columnHeaders;
+    return outputColumnHeaders;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+    return outputColumnHeaders.stream()
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    return outputColumnHeaders.stream()
+        .map(ColumnHeader::getColumnType)
+        .collect(Collectors.toList());
   }
 
   public OrderBy getMergeOrder() {
@@ -142,8 +141,8 @@ public class DeviceMergeNode extends ProcessNode {
       ReadWriteIOUtils.write(e.getKey(), byteBuffer);
       e.getValue().serialize(byteBuffer);
     }
-    ReadWriteIOUtils.write(columnHeaders.size(), byteBuffer);
-    for (ColumnHeader columnHeader : columnHeaders) {
+    ReadWriteIOUtils.write(outputColumnHeaders.size(), byteBuffer);
+    for (ColumnHeader columnHeader : outputColumnHeaders) {
       columnHeader.serialize(byteBuffer);
     }
   }
@@ -166,7 +165,7 @@ public class DeviceMergeNode extends ProcessNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     DeviceMergeNode deviceMergeNode = new DeviceMergeNode(planNodeId, orderBy);
     deviceMergeNode.childDeviceNodeMap = childDeviceNodeMap;
-    deviceMergeNode.columnHeaders.addAll(columnHeaders);
+    deviceMergeNode.outputColumnHeaders.addAll(columnHeaders);
     return deviceMergeNode;
   }
 

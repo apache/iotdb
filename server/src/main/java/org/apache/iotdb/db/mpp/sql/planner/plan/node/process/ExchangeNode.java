@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -87,11 +86,6 @@ public class ExchangeNode extends PlanNode {
   @Override
   public int allowedChildCount() {
     return CHILD_COUNT_NO_LIMIT;
-  }
-
-  @Override
-  public List<OutputColumn> getOutputColumns() {
-    return null;
   }
 
   @Override

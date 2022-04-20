@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.FilterNullParameter;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -41,10 +42,11 @@ import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
+import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -270,10 +272,8 @@ public class QueryPlanBuilder {
         new FilterNullNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
-            filterNullComponent.getWithoutPolicyType(),
-            filterNullComponent.getWithoutNullColumns().stream()
-                .map(Expression::getExpressionString)
-                .collect(Collectors.toList()));
+            new FilterNullParameter(
+                filterNullComponent.getWithoutPolicyType(), ImmutableList.of()));
   }
 
   public void planLimit(int rowLimit) {

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -77,7 +76,7 @@ public class SeriesScanNode extends SourceNode {
   private int offset;
 
   // contain output column header of this node
-  private OutputColumn outputColumn;
+  private ColumnHeader outputColumnHeader;
 
   // The id of DataRegion where the node will run
   private RegionReplicaSet regionReplicaSet;
@@ -93,8 +92,8 @@ public class SeriesScanNode extends SourceNode {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
     this.scanOrder = scanOrder;
-    this.outputColumn =
-        new OutputColumn(new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType()));
+    this.outputColumnHeader =
+        new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType());
   }
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, RegionReplicaSet regionReplicaSet) {
@@ -161,23 +160,18 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
-  public List<OutputColumn> getOutputColumns() {
-    return ImmutableList.of(outputColumn);
-  }
-
-  @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return ImmutableList.of(outputColumn.getColumnHeader());
+    return ImmutableList.of(outputColumnHeader);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ImmutableList.of(outputColumn.getColumnHeader().getColumnName());
+    return ImmutableList.of(outputColumnHeader.getColumnName());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return ImmutableList.of(outputColumn.getColumnHeader().getColumnType());
+    return ImmutableList.of(outputColumnHeader.getColumnType());
   }
 
   public Set<String> getAllSensors() {

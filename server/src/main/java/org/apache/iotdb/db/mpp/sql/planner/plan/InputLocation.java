@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class InputLocation {
   // which input tsblock
@@ -50,5 +51,22 @@ public class InputLocation {
     int tsBlockIndex = ReadWriteIOUtils.readInt(byteBuffer);
     int valueColumnIndex = ReadWriteIOUtils.readInt(byteBuffer);
     return new InputLocation(tsBlockIndex, valueColumnIndex);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    InputLocation that = (InputLocation) o;
+    return tsBlockIndex == that.tsBlockIndex && valueColumnIndex == that.valueColumnIndex;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(tsBlockIndex, valueColumnIndex);
   }
 }

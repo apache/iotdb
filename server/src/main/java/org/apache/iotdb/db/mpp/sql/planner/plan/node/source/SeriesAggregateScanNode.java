@@ -24,14 +24,12 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -71,12 +69,8 @@ public class SeriesAggregateScanNode extends SourceNode {
 
   // The series path and aggregation functions on this series.
   // (Currently, we only support one series in the aggregation function)
-  @Deprecated private final PartialPath seriesPath;
-  @Deprecated private final List<AggregationType> aggregateFuncList;
-
-  // The list of aggregation functions, each FunctionExpression will be output as one column of
-  // result TsBlock
-  private List<FunctionExpression> aggregateList;
+  private final PartialPath seriesPath;
+  private final List<AggregationType> aggregateFuncList;
 
   // all the sensors in seriesPath's device of current query
   private final Set<String> allSensors;
@@ -94,7 +88,7 @@ public class SeriesAggregateScanNode extends SourceNode {
   private final GroupByTimeParameter groupByTimeParameter;
 
   // contain output column headers of this node
-  private final List<OutputColumn> outputColumns;
+  private final List<ColumnHeader> outputColumnHeaders;
 
   // The id of DataRegion where the node will run
   private RegionReplicaSet regionReplicaSet;
@@ -114,15 +108,12 @@ public class SeriesAggregateScanNode extends SourceNode {
     this.scanOrder = scanOrder;
     this.timeFilter = timeFilter;
     this.groupByTimeParameter = groupByTimeParameter;
-    this.outputColumns =
+    this.outputColumnHeaders =
         aggregateFuncList.stream()
             .map(
                 functionType ->
-                    new OutputColumn(
-                        new ColumnHeader(
-                            seriesPath.getFullPath(),
-                            functionType.name(),
-                            seriesPath.getSeriesType())))
+                    new ColumnHeader(
+                        seriesPath.getFullPath(), functionType.name(), seriesPath.getSeriesType()))
             .collect(Collectors.toList());
   }
 
@@ -161,27 +152,20 @@ public class SeriesAggregateScanNode extends SourceNode {
   }
 
   @Override
-  public List<OutputColumn> getOutputColumns() {
-    return outputColumns;
-  }
-
-  @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return outputColumns.stream().map(OutputColumn::getColumnHeader).collect(Collectors.toList());
+    return outputColumnHeaders;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return outputColumns.stream()
-        .map(OutputColumn::getColumnHeader)
+    return outputColumnHeaders.stream()
         .map(ColumnHeader::getColumnName)
         .collect(Collectors.toList());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return outputColumns.stream()
-        .map(OutputColumn::getColumnHeader)
+    return outputColumnHeaders.stream()
         .map(ColumnHeader::getColumnType)
         .collect(Collectors.toList());
   }

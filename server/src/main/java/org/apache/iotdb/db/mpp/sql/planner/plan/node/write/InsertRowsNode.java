@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
-import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
@@ -124,11 +123,6 @@ public class InsertRowsNode extends InsertNode {
   @Override
   public int allowedChildCount() {
     return NO_CHILD_ALLOWED;
-  }
-
-  @Override
-  public List<OutputColumn> getOutputColumns() {
-    return null;
   }
 
   @Override

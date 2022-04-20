@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.mpp.common.FilterNullParameter;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
 import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
@@ -26,7 +27,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -53,11 +53,14 @@ public class TimeJoinNode extends ProcessNode {
   // The without policy is able to be push down to the TimeJoinOperator because we can know whether
   // a row contains
   // null or not.
-  private FilterNullPolicy filterNullPolicy = FilterNullPolicy.NO_FILTER;
+  private FilterNullParameter filterNullParameter;
 
   // indicate each output column should use which value column of which input TsBlock and the
   // overlapped situation
   private List<OutputColumn> outputColumns = new ArrayList<>();
+
+  // column name and datatype of each output column
+  private List<ColumnHeader> outputColumnHeaders;
 
   private List<PlanNode> children;
 
@@ -97,35 +100,28 @@ public class TimeJoinNode extends ProcessNode {
       for (int valueColumnIndex = 0;
           valueColumnIndex < childColumnHeaders.size();
           valueColumnIndex++) {
-        ColumnHeader columnHeader = childColumnHeaders.get(valueColumnIndex);
         InputLocation inputLocation = new InputLocation(tsBlockIndex, valueColumnIndex);
-        outputColumns.add(new OutputColumn(columnHeader, inputLocation));
+        outputColumns.add(new OutputColumn(inputLocation));
       }
+      outputColumnHeaders.addAll(childColumnHeaders);
     }
   }
 
   @Override
-  public List<OutputColumn> getOutputColumns() {
-    return outputColumns;
-  }
-
-  @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return outputColumns.stream().map(OutputColumn::getColumnHeader).collect(Collectors.toList());
+    return outputColumnHeaders;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return outputColumns.stream()
-        .map(OutputColumn::getColumnHeader)
+    return outputColumnHeaders.stream()
         .map(ColumnHeader::getColumnName)
         .collect(Collectors.toList());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return outputColumns.stream()
-        .map(OutputColumn::getColumnHeader)
+    return outputColumnHeaders.stream()
         .map(ColumnHeader::getColumnType)
         .collect(Collectors.toList());
   }
@@ -139,7 +135,7 @@ public class TimeJoinNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
+    filterNullParameter.serialize(byteBuffer);
     ReadWriteIOUtils.write(outputColumns.size(), byteBuffer);
     for (OutputColumn outputColumn : outputColumns) {
       outputColumn.serialize(byteBuffer);
@@ -148,8 +144,7 @@ public class TimeJoinNode extends ProcessNode {
 
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
     OrderBy orderBy = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    FilterNullPolicy filterNullPolicy =
-        FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    FilterNullParameter filterNullParameter = FilterNullParameter.deserialize(byteBuffer);
     int outputColumnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<OutputColumn> outputColumns = new ArrayList<>();
     for (int i = 0; i < outputColumnSize; i++) {
@@ -158,7 +153,7 @@ public class TimeJoinNode extends ProcessNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     TimeJoinNode timeJoinNode = new TimeJoinNode(planNodeId, orderBy);
     timeJoinNode.outputColumns.addAll(outputColumns);
-    timeJoinNode.filterNullPolicy = filterNullPolicy;
+    timeJoinNode.setFilterNullParameter(filterNullParameter);
 
     return timeJoinNode;
   }
@@ -176,12 +171,12 @@ public class TimeJoinNode extends ProcessNode {
     return mergeOrder;
   }
 
-  public FilterNullPolicy getFilterNullPolicy() {
-    return filterNullPolicy;
+  public FilterNullParameter getFilterNullParameter() {
+    return filterNullParameter;
   }
 
-  public void setWithoutPolicy(FilterNullPolicy filterNullPolicy) {
-    this.filterNullPolicy = filterNullPolicy;
+  public void setFilterNullParameter(FilterNullParameter filterNullParameter) {
+    this.filterNullParameter = filterNullParameter;
   }
 
   public String toString() {
@@ -195,7 +190,9 @@ public class TimeJoinNode extends ProcessNode {
     attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     attributes.add(
         "FilterNullPolicy: "
-            + (this.getFilterNullPolicy() == null ? "null" : this.getFilterNullPolicy()));
+            + (this.getFilterNullParameter() == null
+                ? "null"
+                : this.getFilterNullParameter().getFilterNullPolicy()));
     return new Pair<>(title, attributes);
   }
 
@@ -211,12 +208,12 @@ public class TimeJoinNode extends ProcessNode {
 
     TimeJoinNode that = (TimeJoinNode) o;
     return mergeOrder == that.mergeOrder
-        && filterNullPolicy == that.filterNullPolicy
+        && Objects.equals(filterNullParameter, that.filterNullParameter)
         && Objects.equals(children, that.children);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(mergeOrder, filterNullPolicy, children);
+    return Objects.hash(mergeOrder, filterNullParameter, children);
   }
 }

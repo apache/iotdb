@@ -23,7 +23,6 @@ import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -165,11 +164,6 @@ public class AuthorNode extends PlanNode {
   @Override
   public int allowedChildCount() {
     return 0;
-  }
-
-  @Override
-  public List<OutputColumn> getOutputColumns() {
-    return null;
   }
 
   @Override

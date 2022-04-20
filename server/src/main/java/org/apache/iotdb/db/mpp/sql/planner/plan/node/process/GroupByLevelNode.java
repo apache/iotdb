@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -36,7 +36,6 @@ import com.google.common.collect.ImmutableList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -60,15 +59,18 @@ public class GroupByLevelNode extends ProcessNode {
 
   private final int[] groupByLevels;
 
-  @Deprecated private final Map<ColumnHeader, ColumnHeader> groupedPathMap;
+  @Deprecated private Map<ColumnHeader, ColumnHeader> groupedPathMap;
 
-  // The list of aggregation functions, each FunctionExpression will be output as one column of
-  // result TsBlock
-  private List<FunctionExpression> aggregateFuncList;
+  // The list of aggregation functions, each aggregation will be output as one column of result
+  // TsBlock
+  private List<AggregationType> aggregateFuncList = new ArrayList<>();
 
   // indicate each output column should use which value column of which input TsBlock and the
   // overlapped situation
-  private final List<OutputColumn> outputColumns = new ArrayList<>();
+  private List<OutputColumn> outputColumns = new ArrayList<>();
+
+  // column name and datatype of each output column
+  private List<ColumnHeader> outputColumnHeaders;
 
   private PlanNode child;
 
@@ -81,11 +83,22 @@ public class GroupByLevelNode extends ProcessNode {
     this.child = child;
     this.groupByLevels = groupByLevels;
     this.groupedPathMap = groupedPathMap;
-    initOutputColumns();
+    this.outputColumnHeaders =
+        groupedPathMap.values().stream().distinct().collect(Collectors.toList());
   }
 
-  private void initOutputColumns() {
-    // TODO
+  public GroupByLevelNode(
+      PlanNodeId id,
+      PlanNode child,
+      int[] groupByLevels,
+      List<AggregationType> aggregateFuncList,
+      List<OutputColumn> outputColumns) {
+    super(id);
+    this.child = child;
+    this.groupByLevels = groupByLevels;
+    this.aggregateFuncList = aggregateFuncList;
+    this.outputColumns = outputColumns;
+    // TODO: init outputColumnHeaders
   }
 
   @Override
@@ -113,27 +126,20 @@ public class GroupByLevelNode extends ProcessNode {
   }
 
   @Override
-  public List<OutputColumn> getOutputColumns() {
-    return outputColumns;
-  }
-
-  @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return outputColumns.stream().map(OutputColumn::getColumnHeader).collect(Collectors.toList());
+    return outputColumnHeaders;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return outputColumns.stream()
-        .map(OutputColumn::getColumnHeader)
+    return outputColumnHeaders.stream()
         .map(ColumnHeader::getColumnName)
         .collect(Collectors.toList());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return outputColumns.stream()
-        .map(OutputColumn::getColumnHeader)
+    return outputColumnHeaders.stream()
         .map(ColumnHeader::getColumnType)
         .collect(Collectors.toList());
   }
@@ -147,13 +153,16 @@ public class GroupByLevelNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.GROUP_BY_LEVEL.serialize(byteBuffer);
     ReadWriteIOUtils.write(groupByLevels.length, byteBuffer);
-    for (int i = 0; i < groupByLevels.length; i++) {
-      ReadWriteIOUtils.write(groupByLevels[i], byteBuffer);
+    for (int level : groupByLevels) {
+      ReadWriteIOUtils.write(level, byteBuffer);
     }
-    ReadWriteIOUtils.write(groupedPathMap.size(), byteBuffer);
-    for (Map.Entry<ColumnHeader, ColumnHeader> e : groupedPathMap.entrySet()) {
-      e.getKey().serialize(byteBuffer);
-      e.getValue().serialize(byteBuffer);
+    ReadWriteIOUtils.write(aggregateFuncList.size(), byteBuffer);
+    for (AggregationType aggregationType : aggregateFuncList) {
+      ReadWriteIOUtils.write(aggregationType.ordinal(), byteBuffer);
+    }
+    ReadWriteIOUtils.write(outputColumns.size(), byteBuffer);
+    for (OutputColumn outputColumn : outputColumns) {
+      outputColumn.serialize(byteBuffer);
     }
   }
 
@@ -163,14 +172,18 @@ public class GroupByLevelNode extends ProcessNode {
     for (int i = 0; i < groupByLevelSize; i++) {
       groupByLevels[i] = ReadWriteIOUtils.readInt(byteBuffer);
     }
-    int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
-    for (int i = 0; i < mapSize; i++) {
-      groupedPathMap.put(
-          ColumnHeader.deserialize(byteBuffer), ColumnHeader.deserialize(byteBuffer));
+    int aggregateFuncListSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<AggregationType> aggregateFuncList = new ArrayList<>(aggregateFuncListSize);
+    for (int i = 0; i < aggregateFuncListSize; i++) {
+      aggregateFuncList.add(AggregationType.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
+    }
+    int outputColumnsSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<OutputColumn> outputColumns = new ArrayList<>(outputColumnsSize);
+    for (int i = 0; i < outputColumnsSize; i++) {
+      outputColumns.add(OutputColumn.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new GroupByLevelNode(planNodeId, null, groupByLevels, groupedPathMap);
+    return new GroupByLevelNode(planNodeId, null, groupByLevels, aggregateFuncList, outputColumns);
   }
 
   @TestOnly

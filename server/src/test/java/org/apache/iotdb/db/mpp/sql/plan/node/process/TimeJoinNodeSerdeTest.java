@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.FilterNullParameter;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -130,7 +131,8 @@ public class TimeJoinNodeSerdeTest {
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), OrderBy.TIMESTAMP_ASC);
-    timeJoinNode.setWithoutPolicy(FilterNullPolicy.CONTAINS_NULL);
+    timeJoinNode.setFilterNullParameter(
+        new FilterNullParameter(FilterNullPolicy.CONTAINS_NULL, null));
     timeJoinNode.addChild(sortNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     timeJoinNode.serialize(byteBuffer);

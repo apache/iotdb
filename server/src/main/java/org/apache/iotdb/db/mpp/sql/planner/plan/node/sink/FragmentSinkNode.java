@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -84,11 +83,6 @@ public class FragmentSinkNode extends SinkNode {
   @Override
   public int allowedChildCount() {
     return ONE_CHILD;
-  }
-
-  @Override
-  public List<OutputColumn> getOutputColumns() {
-    return null;
   }
 
   @Override
