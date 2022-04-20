@@ -76,7 +76,7 @@ public class SeriesScanNode extends SourceNode {
   // offset for result set. The default value is 0
   private int offset;
 
-  // output column header of this node
+  // contain output column header of this node
   private OutputColumn outputColumn;
 
   // The id of DataRegion where the node will run

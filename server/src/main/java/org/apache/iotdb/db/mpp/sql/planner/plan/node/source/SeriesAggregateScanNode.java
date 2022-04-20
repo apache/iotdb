@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -70,23 +71,29 @@ public class SeriesAggregateScanNode extends SourceNode {
 
   // The series path and aggregation functions on this series.
   // (Currently, we only support one series in the aggregation function)
-  private final PartialPath seriesPath;
-  private final List<AggregationType> aggregateFuncList;
+  @Deprecated private final PartialPath seriesPath;
+  @Deprecated private final List<AggregationType> aggregateFuncList;
+
+  // The list of aggregation functions, each FunctionExpression will be output as one column of
+  // result TsBlock
+  private List<FunctionExpression> aggregateList;
 
   // all the sensors in seriesPath's device of current query
-  private Set<String> allSensors;
+  private final Set<String> allSensors;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   private final OrderBy scanOrder;
 
+  // time filter for current series, could be null if doesn't exist
   private final Filter timeFilter;
 
   // The parameter of `group by time`
   // Its value will be null if there is no `group by time` clause,
   private final GroupByTimeParameter groupByTimeParameter;
 
+  // contain output column headers of this node
   private final List<OutputColumn> outputColumns;
 
   // The id of DataRegion where the node will run

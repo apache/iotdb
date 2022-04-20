@@ -82,7 +82,7 @@ public class SortNode extends ProcessNode {
 
   @Override
   public List<OutputColumn> getOutputColumns() {
-    return null;
+    return child.getOutputColumns();
   }
 
   @Override

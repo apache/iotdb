@@ -54,7 +54,7 @@ public class DeviceMergeNode extends ProcessNode {
   // The without policy is able to be push down to the DeviceMergeNode because we can know whether a
   // row contains
   // null or not.
-  private FilterNullComponent filterNullComponent;
+  @Deprecated private FilterNullComponent filterNullComponent;
 
   // The map from deviceName to corresponding query result node responsible for that device.
   // DeviceNode means the node whose output TsBlock contains the data belonged to one device.

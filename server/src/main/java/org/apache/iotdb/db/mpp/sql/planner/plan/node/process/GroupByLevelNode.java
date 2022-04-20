@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -59,11 +60,17 @@ public class GroupByLevelNode extends ProcessNode {
 
   private final int[] groupByLevels;
 
-  private final Map<ColumnHeader, ColumnHeader> groupedPathMap;
+  @Deprecated private final Map<ColumnHeader, ColumnHeader> groupedPathMap;
+
+  // The list of aggregation functions, each FunctionExpression will be output as one column of
+  // result TsBlock
+  private List<FunctionExpression> aggregateFuncList;
+
+  // indicate each output column should use which value column of which input TsBlock and the
+  // overlapped situation
+  private final List<OutputColumn> outputColumns = new ArrayList<>();
 
   private PlanNode child;
-
-  private final List<ColumnHeader> columnHeaders;
 
   public GroupByLevelNode(
       PlanNodeId id,
@@ -74,7 +81,11 @@ public class GroupByLevelNode extends ProcessNode {
     this.child = child;
     this.groupByLevels = groupByLevels;
     this.groupedPathMap = groupedPathMap;
-    this.columnHeaders = groupedPathMap.values().stream().distinct().collect(Collectors.toList());
+    initOutputColumns();
+  }
+
+  private void initOutputColumns() {
+    // TODO
   }
 
   @Override
@@ -103,22 +114,28 @@ public class GroupByLevelNode extends ProcessNode {
 
   @Override
   public List<OutputColumn> getOutputColumns() {
-    return null;
+    return outputColumns;
   }
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return columnHeaders;
+    return outputColumns.stream().map(OutputColumn::getColumnHeader).collect(Collectors.toList());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+    return outputColumns.stream()
+        .map(OutputColumn::getColumnHeader)
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    return outputColumns.stream()
+        .map(OutputColumn::getColumnHeader)
+        .map(ColumnHeader::getColumnType)
+        .collect(Collectors.toList());
   }
 
   @Override

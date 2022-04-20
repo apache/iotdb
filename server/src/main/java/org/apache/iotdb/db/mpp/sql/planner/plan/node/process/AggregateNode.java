@@ -87,7 +87,9 @@ public class AggregateNode extends ProcessNode {
     initOutputColumns();
   }
 
-  private void initOutputColumns() {}
+  private void initOutputColumns() {
+    // TOOD
+  }
 
   @Override
   public List<PlanNode> getChildren() {
