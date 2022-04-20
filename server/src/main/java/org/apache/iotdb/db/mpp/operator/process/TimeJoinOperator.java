@@ -40,17 +40,24 @@ public class TimeJoinOperator implements ProcessOperator {
 
   private final List<Operator> children;
 
-  private final int inputCount;
+  private final int inputOperatorsNum;
 
+  /** TsBlock from child operator. Only one cache now. */
   private final TsBlock[] inputTsBlocks;
 
+  /** For each TsBlock in inputTsBlocks, inputIndex represents current row index of it. */
   private final int[] inputIndex;
 
+  /**
+   * Represent whether there are more tsBlocks from ith child operator. If all elements in
+   * noMoreTsBlocks[] are true and inputTsBlocks[] are consumed completely, this operator is
+   * finished.
+   */
   private final boolean[] noMoreTsBlocks;
 
   private final TimeSelector timeSelector;
 
-  private final int columnCount;
+  private final int outputColumnCount;
 
   /**
    * this field indicates each data type for output columns(not including time column) of
@@ -67,12 +74,13 @@ public class TimeJoinOperator implements ProcessOperator {
       List<TSDataType> dataTypes) {
     this.operatorContext = operatorContext;
     this.children = children;
-    this.inputCount = children.size();
-    this.inputTsBlocks = new TsBlock[this.inputCount];
-    this.inputIndex = new int[this.inputCount];
-    this.noMoreTsBlocks = new boolean[this.inputCount];
-    this.timeSelector = new TimeSelector(this.inputCount << 1, OrderBy.TIMESTAMP_ASC == mergeOrder);
-    this.columnCount = dataTypes.size();
+    this.inputOperatorsNum = children.size();
+    this.inputTsBlocks = new TsBlock[this.inputOperatorsNum];
+    this.inputIndex = new int[this.inputOperatorsNum];
+    this.noMoreTsBlocks = new boolean[this.inputOperatorsNum];
+    this.timeSelector =
+        new TimeSelector(this.inputOperatorsNum << 1, OrderBy.TIMESTAMP_ASC == mergeOrder);
+    this.outputColumnCount = dataTypes.size();
     this.dataTypes = dataTypes;
   }
 
@@ -83,7 +91,7 @@ public class TimeJoinOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    for (int i = 0; i < inputCount; i++) {
+    for (int i = 0; i < inputOperatorsNum; i++) {
       if (!noMoreTsBlocks[i] && empty(i)) {
         ListenableFuture<Void> blocked = children.get(i).isBlocked();
         if (!blocked.isDone()) {
@@ -100,7 +108,7 @@ public class TimeJoinOperator implements ProcessOperator {
     // TsBlocks
     long currentEndTime = 0;
     boolean init = false;
-    for (int i = 0; i < inputCount; i++) {
+    for (int i = 0; i < inputOperatorsNum; i++) {
       if (!noMoreTsBlocks[i] && empty(i)) {
         inputIndex[i] = 0;
         inputTsBlocks[i] = children.get(i).next();
@@ -137,7 +145,7 @@ public class TimeJoinOperator implements ProcessOperator {
 
     tsBlockBuilder.buildValueColumnBuilders(dataTypes);
 
-    for (int i = 0, column = 0; i < inputCount; i++) {
+    for (int i = 0, column = 0; i < inputOperatorsNum; i++) {
       TsBlock block = inputTsBlocks[i];
       TimeColumn timeColumn = block.getTimeColumn();
       int valueColumnCount = block.getValueColumnCount();
@@ -158,7 +166,7 @@ public class TimeJoinOperator implements ProcessOperator {
     if (finished) {
       return false;
     }
-    for (int i = 0; i < inputCount; i++) {
+    for (int i = 0; i < inputOperatorsNum; i++) {
       if (!empty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
@@ -185,7 +193,7 @@ public class TimeJoinOperator implements ProcessOperator {
       return true;
     }
     finished = true;
-    for (int i = 0; i < columnCount; i++) {
+    for (int i = 0; i < outputColumnCount; i++) {
       // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
       if (!noMoreTsBlocks[i] || !empty(i)) {
         finished = false;
@@ -195,6 +203,10 @@ public class TimeJoinOperator implements ProcessOperator {
     return finished;
   }
 
+  /**
+   * If the tsBlock of columnIndex is null or has no more data in the tsBlock, return true; else
+   * return false;
+   */
   private boolean empty(int columnIndex) {
     return inputTsBlocks[columnIndex] == null
         || inputTsBlocks[columnIndex].getPositionCount() == inputIndex[columnIndex];

@@ -57,11 +57,11 @@ import java.util.stream.Collectors;
  */
 public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
 
-  private final int[] groupByLevels;
+  private PlanNode child;
 
   private final Map<ColumnHeader, ColumnHeader> groupedPathMap;
 
-  private PlanNode child;
+  private final int[] groupByLevels;
 
   private final List<ColumnHeader> columnHeaders;
 
