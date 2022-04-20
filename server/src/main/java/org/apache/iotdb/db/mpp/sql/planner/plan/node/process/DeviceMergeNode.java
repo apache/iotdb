@@ -33,7 +33,11 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -50,10 +54,9 @@ public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
   // The result output order that this operator
   private OrderBy mergeOrder;
 
-  // The policy to decide whether a row should be discarded
+  // The policy to decide whether a row should be discarded.
   // The without policy is able to be push down to the DeviceMergeNode because we can know whether a
-  // row contains
-  // null or not.
+  // row contains null or not.
   private FilterNullComponent filterNullComponent;
 
   // The map from deviceName to corresponding query result node responsible for that device.

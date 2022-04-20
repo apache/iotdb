@@ -67,12 +67,12 @@ public class TsBlock {
 
   private volatile long retainedSizeInBytes = -1;
 
-  public TsBlock(TimeColumn timeColumn, Column... valueColumns) {
-    this(true, determinePositionCount(valueColumns), timeColumn, valueColumns);
-  }
-
   public TsBlock(int positionCount) {
     this(false, positionCount, null, EMPTY_COLUMNS);
+  }
+
+  public TsBlock(TimeColumn timeColumn, Column... valueColumns) {
+    this(true, determinePositionCount(valueColumns), timeColumn, valueColumns);
   }
 
   public TsBlock(int positionCount, TimeColumn timeColumn, Column... valueColumns) {
@@ -152,13 +152,25 @@ public class TsBlock {
   }
 
   public TsBlock appendValueColumn(Column column) {
-    requireNonNull(column, "column is null");
+    requireNonNull(column, "Column is null");
     if (positionCount != column.getPositionCount()) {
       throw new IllegalArgumentException("Block does not have same position count");
     }
 
     Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
     newBlocks[valueColumns.length] = column;
+    return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
+  }
+
+  public TsBlock insertValueColumn(int index, Column column) {
+    requireNonNull(column, "Column is null");
+    if (positionCount != column.getPositionCount()) {
+      throw new IllegalArgumentException("Block does not have same position count");
+    }
+
+    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
+    System.arraycopy(newBlocks, index, newBlocks, index + 1, valueColumns.length - index);
+    newBlocks[index] = column;
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 
@@ -183,6 +195,9 @@ public class TsBlock {
   }
 
   public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator(int columnIndex) {
+    if (valueColumns[columnIndex] == null) {
+      throw new UnsupportedOperationException("Can not get the iterator of null columns");
+    }
     return new TsBlockSingleColumnIterator(0, columnIndex);
   }
 
@@ -305,7 +320,11 @@ public class TsBlock {
       int columnCount = getValueColumnCount();
       Object[] row = new Object[columnCount + 1];
       for (int i = 0; i < columnCount; ++i) {
-        row[i] = valueColumns[i].getObject(rowIndex);
+        if (valueColumns[i] == null) {
+          row[i] = null;
+        } else {
+          row[i] = valueColumns[i].getObject(rowIndex);
+        }
       }
       row[columnCount] = timeColumn.getObject(rowIndex);
 

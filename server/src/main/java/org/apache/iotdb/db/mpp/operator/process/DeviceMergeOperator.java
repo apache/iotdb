@@ -19,38 +19,115 @@
 package org.apache.iotdb.db.mpp.operator.process;
 
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilderStatus;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+/**
+ * Since childDeviceOperatorMap should be sorted by the merge order as expected, what
+ * DeviceMergeOperator need to do is traversing the device child operators, get all tsBlocks of one
+ * device and transform it to the form we need, then get the next device operator until no next
+ * operator.
+ *
+ * <p>Attention! If some columns are not existing in one devices, those columns will be null. e.g.
+ * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be null.
+ */
 public class DeviceMergeOperator implements ProcessOperator {
+
+  private final OperatorContext operatorContext;
+  // <deviceName, corresponding query result operator responsible for that device>
+  private Map<String, Operator> childDeviceOperatorMap;
+  // Column dataTypes that includes device column
+  private final List<TSDataType> dataTypes;
+  // Used to fill columns and leave null columns which doesn't exist in some devices.
+  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
+  // not 0 because device is the first column
+  private Map<String, List<Integer>> deviceToColumnIndexMap;
+
+  private Iterator<Entry<String, Operator>> deviceIterator;
+  private Entry<String, Operator> curDeviceEntry;
+
+  public DeviceMergeOperator(
+      OperatorContext operatorContext,
+      Map<String, Operator> childDeviceOperatorMap,
+      List<TSDataType> dataTypes,
+      Map<String, List<Integer>> deviceToColumnIndexMap) {
+    this.operatorContext = operatorContext;
+    this.childDeviceOperatorMap = childDeviceOperatorMap;
+    this.dataTypes = dataTypes;
+    this.deviceToColumnIndexMap = deviceToColumnIndexMap;
+
+    this.deviceIterator = childDeviceOperatorMap.entrySet().iterator();
+    if (deviceIterator.hasNext()) {
+      curDeviceEntry = deviceIterator.next();
+    }
+  }
+
   @Override
   public OperatorContext getOperatorContext() {
-    return null;
+    return operatorContext;
   }
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    return ProcessOperator.super.isBlocked();
+    ListenableFuture<Void> blocked = curDeviceEntry.getValue().isBlocked();
+    if (!blocked.isDone()) {
+      return blocked;
+    }
+    return NOT_BLOCKED;
   }
 
   @Override
   public TsBlock next() {
-    return null;
+    TsBlock tsBlock = curDeviceEntry.getValue().next();
+    List<Integer> indexes = deviceToColumnIndexMap.get(curDeviceEntry.getKey());
+
+    // fill existing columns
+    Column[] newValueColumns = new Column[dataTypes.size()];
+    for (int i = 0; i < indexes.size(); i++) {
+      newValueColumns[indexes.get(i)] = tsBlock.getColumn(i);
+    }
+    // construct device column
+    ColumnBuilder deviceColumnBuilder =
+        new BinaryColumnBuilder(new ColumnBuilderStatus(), tsBlock.getPositionCount());
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+      deviceColumnBuilder.writeObject(curDeviceEntry.getKey());
+    }
+    // leave other columns null
+    return new TsBlock(tsBlock.getPositionCount(), tsBlock.getTimeColumn(), newValueColumns);
   }
 
   @Override
   public boolean hasNext() {
-    return false;
+    while (!curDeviceEntry.getValue().hasNext()) {
+      if (deviceIterator.hasNext()) {
+        curDeviceEntry = deviceIterator.next();
+      } else {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
   public void close() throws Exception {
-    ProcessOperator.super.close();
+    for (Operator child : childDeviceOperatorMap.values()) {
+      child.close();
+    }
   }
 
   @Override
   public boolean isFinished() {
-    return false;
+    return !this.hasNext();
   }
 }
