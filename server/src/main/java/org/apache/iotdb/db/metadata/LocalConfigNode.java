@@ -278,10 +278,9 @@ public class LocalConfigNode {
           throw storageGroupAlreadySetException;
         }
 
-        // do nothing
         // concurrent timeseries creation may result concurrent ensureStorageGroup
         // it's ok that the storageGroup has already been set
-        return storageGroupPath;
+        return getBelongedStorageGroup(path);
       }
     }
   }
