@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -321,13 +321,13 @@ public class LocalExecutionPlanner {
               SeriesScanOperator.class.getSimpleName());
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
-      Endpoint source = node.getUpstreamEndpoint();
+      TEndPoint source = node.getUpstreamEndpoint();
 
       ISourceHandle sourceHandle =
           DATA_BLOCK_MANAGER.createSourceHandle(
               localInstanceId.toThrift(),
               node.getPlanNodeId().getId(),
-              new Endpoint(
+              new TEndPoint(
                   source.getIp(),
                   IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
               remoteInstanceId.toThrift());
@@ -337,13 +337,13 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
-      Endpoint target = node.getDownStreamEndpoint();
+      TEndPoint target = node.getDownStreamEndpoint();
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
       ISinkHandle sinkHandle =
           DATA_BLOCK_MANAGER.createSinkHandle(
               localInstanceId.toThrift(),
-              new Endpoint(
+              new TEndPoint(
                   target.getIp(),
                   IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
               targetInstanceId.toThrift(),

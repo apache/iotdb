@@ -23,7 +23,7 @@ namespace py iotdb.thrift.confignode
 
 // DataNode
 struct TDataNodeRegisterReq {
-  1: required common.TEndPoint endPoint
+  1: required common.TDataNodeLocation dataNodeLocation
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
   2: optional map<string, TStorageGroupSchema> statusMap
@@ -38,25 +38,19 @@ struct TGlobalConfig {
 
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
-  2: optional i32 dataNodeID
+  2: optional i32 dataNodeId
   3: optional TGlobalConfig globalConfig
 }
 
-struct TDataNodeMessageResp {
+struct TDataNodeLocationResp {
   1: required common.TSStatus status
-  // map<DataNodeId, DataNodeMessage>
-  2: optional map<i32, TDataNodeMessage> dataNodeMessageMap
-}
-
-struct TDataNodeMessage {
-  1: required i32 dataNodeId
-  2: required common.TEndPoint endPoint
+  // map<DataNodeId, DataNodeLocation>
+  2: optional map<i32, common.TDataNodeLocation> dataNodeLocationMap
 }
 
 // StorageGroup
 struct TSetStorageGroupReq {
-  1: required string storageGroup
-  2: optional i64 TTL
+  1: required TStorageGroupSchema storageGroup
 }
 
 struct TDeleteStorageGroupReq {
@@ -68,6 +62,11 @@ struct TSetTTLReq {
   2: required i64 TTL
 }
 
+struct TSetTimePartitionIntervalReq {
+  1: required string storageGroup
+  2: required i64 timePartitionInterval
+}
+
 struct TStorageGroupSchemaResp {
   1: required common.TSStatus status
   // map<string, StorageGroupMessage>
@@ -75,12 +74,13 @@ struct TStorageGroupSchemaResp {
 }
 
 struct TStorageGroupSchema {
-  1: required string storageGroup
+  1: required string name
   2: optional i64 TTL
-  // list<DataRegionId>
-  3: optional list<binary> dataRegionGroupIds
-  // list<SchemaRegionId>
-  4: optional list<binary> schemaRegionGroupIds
+  3: optional i32 schemaReplicationFactor
+  4: optional i32 dataReplicationFactor
+  5: optional i64 timePartitionInterval
+  6: optional list<common.TConsensusGroupId> dataRegionGroupIds
+  7: optional list<common.TConsensusGroupId> schemaRegionGroupIds
 }
 
 // Schema
@@ -128,7 +128,7 @@ service ConfigIService {
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  TDataNodeMessageResp getDataNodesMessage(i32 dataNodeID)
+  TDataNodeLocationResp getDataNodeLocations(i32 dataNodeId)
 
   /* StorageGroup */
 
@@ -137,6 +137,8 @@ service ConfigIService {
   common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
 
   common.TSStatus setTTL(TSetTTLReq req)
+
+  common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
   TStorageGroupSchemaResp getStorageGroupsSchema()
 

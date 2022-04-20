@@ -19,35 +19,32 @@
 
 package org.apache.iotdb.commons;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.GroupType;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public class ConsensusGroupIdTest {
   @Test
   public void TestCreate() throws IOException {
-    ConsensusGroupId dataRegionId = ConsensusGroupId.Factory.create(1, GroupType.DataRegion);
+    ConsensusGroupId dataRegionId =
+        ConsensusGroupId.Factory.convertFromTConsensusGroupId(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
     Assert.assertTrue(dataRegionId instanceof DataRegionId);
     Assert.assertEquals(1, dataRegionId.getId());
-    Assert.assertEquals(GroupType.DataRegion, dataRegionId.getType());
+    Assert.assertEquals(TConsensusGroupType.DataRegion, dataRegionId.getType());
 
-    ConsensusGroupId schemaRegionId = ConsensusGroupId.Factory.create(2, GroupType.SchemaRegion);
+    ConsensusGroupId schemaRegionId =
+        ConsensusGroupId.Factory.convertFromTConsensusGroupId(
+            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2));
     Assert.assertTrue(schemaRegionId instanceof SchemaRegionId);
     Assert.assertEquals(2, schemaRegionId.getId());
-    Assert.assertEquals(GroupType.SchemaRegion, schemaRegionId.getType());
-
-    ByteBuffer buffer = ByteBuffer.allocate(1024);
-    schemaRegionId.serializeImpl(buffer);
-    buffer.flip();
-
-    ConsensusGroupId schemaRegionIdClone = ConsensusGroupId.Factory.create(buffer);
-    Assert.assertEquals(schemaRegionId, schemaRegionIdClone);
+    Assert.assertEquals(TConsensusGroupType.SchemaRegion, schemaRegionId.getType());
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.config;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -45,8 +46,9 @@ public class SetStorageGroupTask implements IConfigTask {
   public ListenableFuture<ConfigTaskResult> execute() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TSetStorageGroupReq req =
-        new TSetStorageGroupReq(setStorageGroupStatement.getStorageGroupPath().getFullPath());
+    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+    storageGroupSchema.setName(setStorageGroupStatement.getStorageGroupPath().getFullPath());
+    TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
 
     ConfigNodeClient configNodeClient = null;
     try {

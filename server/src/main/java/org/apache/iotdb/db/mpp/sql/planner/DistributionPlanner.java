@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -149,8 +149,8 @@ public class DistributionPlanner {
     public PlanNode visitSchemaMerge(SchemaMergeNode node, DistributionPlanContext context) {
       SchemaMergeNode root = (SchemaMergeNode) node.clone();
       SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
-      TreeSet<RegionReplicaSet> schemaRegions =
-          new TreeSet<>(Comparator.comparingInt(region -> region.getConsensusGroupId().getId()));
+      TreeSet<TRegionReplicaSet> schemaRegions =
+          new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
       analysis
           .getSchemaPartitionInfo()
           .getSchemaPartitionMap()
@@ -177,7 +177,7 @@ public class DistributionPlanner {
     // TODO: (xingtanzjr) a temporary way to resolve the distribution of single SeriesScanNode issue
     @Override
     public PlanNode visitSeriesScan(SeriesScanNode node, DistributionPlanContext context) {
-      List<RegionReplicaSet> dataDistribution =
+      List<TRegionReplicaSet> dataDistribution =
           analysis.getPartitionInfo(node.getSeriesPath(), node.getTimeFilter());
       if (dataDistribution.size() == 1) {
         node.setRegionReplicaSet(dataDistribution.get(0));
@@ -185,7 +185,7 @@ public class DistributionPlanner {
       }
       TimeJoinNode timeJoinNode =
           new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
-      for (RegionReplicaSet dataRegion : dataDistribution) {
+      for (TRegionReplicaSet dataRegion : dataDistribution) {
         SeriesScanNode split = (SeriesScanNode) node.clone();
         split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
         split.setRegionReplicaSet(dataRegion);
@@ -206,11 +206,11 @@ public class DistributionPlanner {
           // If the child is SeriesScanNode, we need to check whether this node should be seperated
           // into several splits.
           SeriesScanNode handle = (SeriesScanNode) child;
-          List<RegionReplicaSet> dataDistribution =
+          List<TRegionReplicaSet> dataDistribution =
               analysis.getPartitionInfo(handle.getSeriesPath(), handle.getTimeFilter());
           // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
           // SeriesScanNode.
-          for (RegionReplicaSet dataRegion : dataDistribution) {
+          for (TRegionReplicaSet dataRegion : dataDistribution) {
             SeriesScanNode split = (SeriesScanNode) handle.clone();
             split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
             split.setRegionReplicaSet(dataRegion);
@@ -230,7 +230,7 @@ public class DistributionPlanner {
       }
 
       // Step 2: For the source nodes, group them by the DataRegion.
-      Map<RegionReplicaSet, List<SeriesScanNode>> sourceGroup =
+      Map<TRegionReplicaSet, List<SeriesScanNode>> sourceGroup =
           sources.stream().collect(Collectors.groupingBy(SeriesScanNode::getRegionReplicaSet));
       // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
       // and make the
@@ -365,7 +365,7 @@ public class DistributionPlanner {
                 visitedChildren.add(visit(child, context));
               });
 
-      RegionReplicaSet dataRegion = calculateDataRegionByChildren(visitedChildren, context);
+      TRegionReplicaSet dataRegion = calculateDataRegionByChildren(visitedChildren, context);
       NodeDistributionType distributionType =
           nodeDistributionIsSame(visitedChildren, context)
               ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
@@ -395,10 +395,10 @@ public class DistributionPlanner {
       return newNode;
     }
 
-    private RegionReplicaSet calculateDataRegionByChildren(
+    private TRegionReplicaSet calculateDataRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
       // Step 1: calculate the count of children group by DataRegion.
-      Map<RegionReplicaSet, Long> groupByRegion =
+      Map<TRegionReplicaSet, Long> groupByRegion =
           children.stream()
               .collect(
                   Collectors.groupingBy(
@@ -408,7 +408,7 @@ public class DistributionPlanner {
       return Collections.max(groupByRegion.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
-    private RegionReplicaSet calculateSchemaRegionByChildren(
+    private TRegionReplicaSet calculateSchemaRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
       // We always make the schemaRegion of MetaMergeNode to be the same as its first child.
       return context.getNodeDistribution(children.get(0).getPlanNodeId()).region;
@@ -458,9 +458,9 @@ public class DistributionPlanner {
 
   private class NodeDistribution {
     private NodeDistributionType type;
-    private RegionReplicaSet region;
+    private TRegionReplicaSet region;
 
-    private NodeDistribution(NodeDistributionType type, RegionReplicaSet region) {
+    private NodeDistribution(NodeDistributionType type, TRegionReplicaSet region) {
       this.type = type;
       this.region = region;
     }

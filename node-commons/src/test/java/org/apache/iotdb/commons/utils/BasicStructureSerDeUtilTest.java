@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.utils;
-
-import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
+package org.apache.iotdb.commons.utils;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -30,7 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SerializeDeserializeUtilTest {
+public class BasicStructureSerDeUtilTest {
   protected static final int DEFAULT_BUFFER_SIZE = 4096;
 
   @Test
@@ -42,10 +40,10 @@ public class SerializeDeserializeUtilTest {
     map.put(key, value);
 
     ByteBuffer bf = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-    SerializeDeserializeUtil.write(map, bf);
+    BasicStructureSerDeUtil.write(map, bf);
     byte[] b = bf.array();
     bf.clear();
-    Map<String, String> result = SerializeDeserializeUtil.readMap(ByteBuffer.wrap(b));
+    Map<String, String> result = BasicStructureSerDeUtil.readMap(ByteBuffer.wrap(b));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
   }
@@ -61,11 +59,11 @@ public class SerializeDeserializeUtilTest {
     stringMapLists.put(key, keyLists);
 
     ByteBuffer bf = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-    SerializeDeserializeUtil.writeStringMapLists(stringMapLists, bf);
+    BasicStructureSerDeUtil.writeStringMapLists(stringMapLists, bf);
     byte[] b = bf.array();
     bf.clear();
     Map<String, List<String>> stringMapListsResult =
-        SerializeDeserializeUtil.readStringMapLists(ByteBuffer.wrap(b));
+        BasicStructureSerDeUtil.readStringMapLists(ByteBuffer.wrap(b));
     Assert.assertNotNull(stringMapListsResult);
     Assert.assertEquals(stringMapLists, stringMapListsResult);
   }
@@ -81,9 +79,9 @@ public class SerializeDeserializeUtilTest {
     ByteBuffer bf = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
     byte[] b = bf.array();
 
-    SerializeDeserializeUtil.writeIntMapLists(integerMapLists, bf);
+    BasicStructureSerDeUtil.writeIntMapLists(integerMapLists, bf);
     Map<Integer, List<Integer>> intMapListsResult =
-        SerializeDeserializeUtil.readIntMapLists(ByteBuffer.wrap(b));
+        BasicStructureSerDeUtil.readIntMapLists(ByteBuffer.wrap(b));
     Assert.assertNotNull(intMapListsResult);
     Assert.assertEquals(integerMapLists, intMapListsResult);
   }

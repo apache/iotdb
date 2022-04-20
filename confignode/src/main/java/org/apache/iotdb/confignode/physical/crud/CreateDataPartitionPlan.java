@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
-import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -36,20 +37,20 @@ import java.util.Objects;
 /** Create DataPartition by assignedDataPartition */
 public class CreateDataPartitionPlan extends PhysicalPlan {
 
-  private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+  private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       assignedDataPartition;
 
   public CreateDataPartitionPlan() {
     super(PhysicalPlanType.CreateDataPartition);
   }
 
-  public Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+  public Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       getAssignedDataPartition() {
     return assignedDataPartition;
   }
 
   public void setAssignedDataPartition(
-      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           assignedDataPartition) {
     this.assignedDataPartition = assignedDataPartition;
   }
@@ -59,20 +60,21 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
     buffer.putInt(PhysicalPlanType.CreateDataPartition.ordinal());
 
     buffer.putInt(assignedDataPartition.size());
-    for (Map.Entry<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+    for (Map.Entry<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         seriesPartitionTimePartitionEntry : assignedDataPartition.entrySet()) {
-      SerializeDeserializeUtil.write(seriesPartitionTimePartitionEntry.getKey(), buffer);
+      BasicStructureSerDeUtil.write(seriesPartitionTimePartitionEntry.getKey(), buffer);
       buffer.putInt(seriesPartitionTimePartitionEntry.getValue().size());
-      for (Map.Entry<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>
+      for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           timePartitionEntry : seriesPartitionTimePartitionEntry.getValue().entrySet()) {
-        timePartitionEntry.getKey().serializeImpl(buffer);
+        ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(timePartitionEntry.getKey(), buffer);
         buffer.putInt(timePartitionEntry.getValue().size());
-        for (Map.Entry<TimePartitionSlot, List<RegionReplicaSet>> regionReplicaSetEntry :
+        for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetEntry :
             timePartitionEntry.getValue().entrySet()) {
-          regionReplicaSetEntry.getKey().serializeImpl(buffer);
+          ThriftCommonsSerDeUtils.writeTTimePartitionSlot(regionReplicaSetEntry.getKey(), buffer);
           buffer.putInt(regionReplicaSetEntry.getValue().size());
-          for (RegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
-            regionReplicaSet.serializeImpl(buffer);
+          for (TRegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
+            ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
           }
         }
       }
@@ -84,17 +86,17 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
     assignedDataPartition = new HashMap<>();
     int storageGroupNum = buffer.getInt();
     for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroupName = SerializeDeserializeUtil.readString(buffer);
+      String storageGroupName = BasicStructureSerDeUtil.readString(buffer);
       assignedDataPartition.put(storageGroupName, new HashMap<>());
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot();
-        seriesPartitionSlot.deserializeImpl(buffer);
+        TSeriesPartitionSlot seriesPartitionSlot =
+            ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
         assignedDataPartition.get(storageGroupName).put(seriesPartitionSlot, new HashMap<>());
         int timePartitionSlotNum = buffer.getInt();
         for (int k = 0; k < timePartitionSlotNum; k++) {
-          TimePartitionSlot timePartitionSlot = new TimePartitionSlot();
-          timePartitionSlot.deserializeImpl(buffer);
+          TTimePartitionSlot timePartitionSlot =
+              ThriftCommonsSerDeUtils.readTTimePartitionSlot(buffer);
           assignedDataPartition
               .get(storageGroupName)
               .get(seriesPartitionSlot)
@@ -105,7 +107,7 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
                 .get(storageGroupName)
                 .get(seriesPartitionSlot)
                 .get(timePartitionSlot)
-                .add(RegionReplicaSet.deserializeImpl(buffer));
+                .add(ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer));
           }
         }
       }

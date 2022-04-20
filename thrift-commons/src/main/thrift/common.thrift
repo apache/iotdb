@@ -33,9 +33,15 @@ struct TSStatus {
   4: optional TEndPoint redirectNode
 }
 
-struct TRegionReplicaSet {
-  1: required binary regionId
-  2: required list<TEndPoint> endpoint
+enum TConsensusGroupType {
+  PartitionRegion,
+  DataRegion,
+  SchemaRegion
+}
+
+struct TConsensusGroupId {
+  1: required TConsensusGroupType type
+  2: required i32 id
 }
 
 struct TSeriesPartitionSlot {
@@ -44,4 +50,21 @@ struct TSeriesPartitionSlot {
 
 struct TTimePartitionSlot {
   1: required i64 startTime
+}
+
+struct TRegionReplicaSet {
+  1: required TConsensusGroupId regionId
+  2: required list<TDataNodeLocation> dataNodeLocations
+}
+
+struct TDataNodeLocation {
+  1: required i32 dataNodeId
+  // TEndPoint for DataNode's external rpc
+  2: required TEndPoint externalEndPoint
+  // TEndPoint for DataNode's internal rpc
+  3: required TEndPoint internalEndPoint
+  // TEndPoint for transfering data between DataNodes
+  4: required TEndPoint dataBlockManagerEndPoint
+  // TEndPoint for DataNode's ConsensusLayer
+  5: required TEndPoint consensusEndPoint
 }
