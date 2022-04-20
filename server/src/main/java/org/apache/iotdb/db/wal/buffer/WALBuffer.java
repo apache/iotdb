@@ -217,8 +217,11 @@ public class WALBuffer extends AbstractWALBuffer {
           fsyncWorkingBuffer(fsyncListeners, rollWALFileWriterListener);
           return true;
         case CLOSE_SIGNAL:
-          fsyncWorkingBuffer(fsyncListeners, rollWALFileWriterListener);
-          return true;
+          boolean dataExists = batchSize > 0;
+          if (dataExists) {
+            fsyncWorkingBuffer(fsyncListeners, rollWALFileWriterListener);
+          }
+          return dataExists;
         default:
           return false;
       }
