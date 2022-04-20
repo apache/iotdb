@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,6 +34,24 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 
 public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
+
+  private String aggMethodType;
+
+  @Override
+  public void validate(UDFParameterValidator validator) throws MetadataException, UDFException {
+    super.validate(validator);
+    aggMethodType = validator.getParameters().getStringOrDefault("type", "avg").toLowerCase();
+    validator.validate(
+        type ->
+            "avg".equals(type)
+                || "max".equals(type)
+                || "min".equals(type)
+                || "sum".equals(type)
+                || "extreme".equals(type)
+                || "variance".equals(type),
+        "Illegal aggregation method.",
+        aggMethodType);
+  }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
