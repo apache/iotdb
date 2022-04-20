@@ -94,6 +94,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -141,6 +142,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -193,6 +195,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -245,6 +248,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -296,6 +300,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNull(manager.getReadyQueue().get(testTask.getId()));
     Assert.assertNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertFalse(manager.getQueryMap().containsKey(queryId));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -342,6 +347,9 @@ public class DefaultTaskSchedulerTest {
       Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
       Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask1));
       Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask2));
+
+      Mockito.verify(mockDriver1, Mockito.never()).failed(Mockito.any());
+      Mockito.verify(mockDriver2, Mockito.never()).failed(Mockito.any());
       clear();
     }
     FragmentInstanceTaskStatus[] validStates =
@@ -351,6 +359,11 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.BLOCKED,
         };
     for (FragmentInstanceTaskStatus status : validStates) {
+      Mockito.reset(mockDriver1);
+      Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
+      Mockito.reset(mockDriver2);
+      Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
+
       FragmentInstanceTask testTask1 = new FragmentInstanceTask(mockDriver1, 100L, status);
 
       FragmentInstanceTask testTask2 =
@@ -377,6 +390,11 @@ public class DefaultTaskSchedulerTest {
       Assert.assertNull(manager.getTimeoutQueue().get(testTask1.getId()));
       Assert.assertNull(manager.getTimeoutQueue().get(testTask2.getId()));
       Assert.assertFalse(manager.getQueryMap().containsKey(queryId));
+
+      // The mockDriver1.failed() will be called outside the scheduler
+      Mockito.verify(mockDriver1, Mockito.never()).failed(Mockito.any());
+      Mockito.verify(mockDriver2, Mockito.times(1)).failed(Mockito.any());
+
       clear();
     }
   }
