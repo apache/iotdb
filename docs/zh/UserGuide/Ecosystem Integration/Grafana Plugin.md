@@ -44,7 +44,7 @@ Grafana 是开源的指标量监测和可视化工具，可用于展示时序数
 
 二进制文件下载地址：https://iotdb.apache.org/zh/Download/
 
-#### 方案二 grafana-plugin 单独编译
+##### 方案二 grafana-plugin 单独编译
 
 我们需要编译 IoTDB 仓库 `grafana-plugin` 目录下的前端工程并生成 `dist` 目标目录，具体执行流程如下。
 
