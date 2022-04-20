@@ -59,6 +59,7 @@ public class ThriftConfigNodeSerializeDeserializeUtilsTest {
     }
 
     ThriftConfigNodeSerializeDeserializeUtils.writeTStorageGroupSchema(storageGroupSchema0, buffer);
+    buffer.flip();
     TStorageGroupSchema storageGroupSchema1 =
         ThriftConfigNodeSerializeDeserializeUtils.readTStorageGroupSchema(buffer);
     Assert.assertEquals(storageGroupSchema0, storageGroupSchema1);

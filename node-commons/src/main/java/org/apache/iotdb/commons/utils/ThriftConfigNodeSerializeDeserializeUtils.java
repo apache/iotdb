@@ -38,20 +38,24 @@ public class ThriftConfigNodeSerializeDeserializeUtils {
     buffer.putLong(storageGroupSchema.getTimePartitionInterval());
 
     buffer.putInt(storageGroupSchema.getSchemaRegionGroupIdsSize());
-    storageGroupSchema
-        .getSchemaRegionGroupIds()
-        .forEach(
-            schemaRegionGroupId ->
-                ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(
-                    schemaRegionGroupId, buffer));
+    if (storageGroupSchema.getSchemaRegionGroupIdsSize() > 0) {
+      storageGroupSchema
+          .getSchemaRegionGroupIds()
+          .forEach(
+              schemaRegionGroupId ->
+                  ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(
+                      schemaRegionGroupId, buffer));
+    }
 
     buffer.putInt(storageGroupSchema.getDataRegionGroupIdsSize());
-    storageGroupSchema
-        .getDataRegionGroupIds()
-        .forEach(
-            dataRegionGroupId ->
-                ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(
-                    dataRegionGroupId, buffer));
+    if (storageGroupSchema.getDataRegionGroupIdsSize() > 0) {
+      storageGroupSchema
+          .getDataRegionGroupIds()
+          .forEach(
+              dataRegionGroupId ->
+                  ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(
+                      dataRegionGroupId, buffer));
+    }
   }
 
   public static TStorageGroupSchema readTStorageGroupSchema(ByteBuffer buffer) {
