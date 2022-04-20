@@ -186,8 +186,8 @@ public class PartitionManager {
           Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
               noAssignedDataPartitionSlotsMap) {
 
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>> result =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        result = new HashMap<>();
 
     for (String storageGroup : noAssignedDataPartitionSlotsMap.keySet()) {
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> noAssignedPartitionSlotsMap =

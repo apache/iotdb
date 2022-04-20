@@ -67,7 +67,8 @@ public class ThriftCommonsSerializeDeserializeUtils {
     return dataNodeLocation;
   }
 
-  public static void writeTSeriesPartitionSlot(TSeriesPartitionSlot seriesPartitionSlot, ByteBuffer buffer) {
+  public static void writeTSeriesPartitionSlot(
+      TSeriesPartitionSlot seriesPartitionSlot, ByteBuffer buffer) {
     buffer.putInt(seriesPartitionSlot.getSlotId());
   }
 
@@ -75,7 +76,8 @@ public class ThriftCommonsSerializeDeserializeUtils {
     return new TSeriesPartitionSlot(buffer.getInt());
   }
 
-  public static void writeTTimePartitionSlot(TTimePartitionSlot timePartitionSlot, ByteBuffer buffer) {
+  public static void writeTTimePartitionSlot(
+      TTimePartitionSlot timePartitionSlot, ByteBuffer buffer) {
     buffer.putLong(timePartitionSlot.getStartTime());
   }
 
@@ -96,7 +98,9 @@ public class ThriftCommonsSerializeDeserializeUtils {
   public static void writeTRegionReplicaSet(TRegionReplicaSet regionReplicaSet, ByteBuffer buffer) {
     writeTConsensusGroupId(regionReplicaSet.getRegionId(), buffer);
     buffer.putInt(regionReplicaSet.getDataNodeLocationsSize());
-    regionReplicaSet.getDataNodeLocations().forEach(dataNodeLocation -> writeTDataNodeLocation(dataNodeLocation, buffer));
+    regionReplicaSet
+        .getDataNodeLocations()
+        .forEach(dataNodeLocation -> writeTDataNodeLocation(dataNodeLocation, buffer));
   }
 
   public static TRegionReplicaSet readTRegionReplicaSet(ByteBuffer buffer) {
@@ -108,6 +112,4 @@ public class ThriftCommonsSerializeDeserializeUtils {
     }
     return new TRegionReplicaSet(consensusGroupId, dataNodeLocations);
   }
-
-
 }

@@ -210,7 +210,8 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     if (isNull == 1) valueFilter = FilterFactory.deserialize(byteBuffer);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
-    TRegionReplicaSet dataRegionReplicaSet = ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(byteBuffer);
+    TRegionReplicaSet dataRegionReplicaSet =
+        ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesScanNode seriesScanNode = new SeriesScanNode(planNodeId, partialPath);
     seriesScanNode.allSensors = allSensors;

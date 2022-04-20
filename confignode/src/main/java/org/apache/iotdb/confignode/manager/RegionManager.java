@@ -70,7 +70,8 @@ public class RegionManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result;
-    if (configNodeManager.getDataNodeManager().getOnlineDataNodeCount() < Math.max(initialSchemaRegionCount, initialDataRegionCount)) {
+    if (configNodeManager.getDataNodeManager().getOnlineDataNodeCount()
+        < Math.max(initialSchemaRegionCount, initialDataRegionCount)) {
       result = new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
       result.setMessage("DataNode is not enough, please register more.");
     } else {
@@ -95,10 +96,19 @@ public class RegionManager {
           for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
             switch (regionReplicaSet.getRegionId().getType()) {
               case SchemaRegion:
-                TemporaryClient.getInstance().createSchemaRegion(dataNodeLocation.getDataNodeId(), createPlan.getStorageGroup(), regionReplicaSet);
+                TemporaryClient.getInstance()
+                    .createSchemaRegion(
+                        dataNodeLocation.getDataNodeId(),
+                        createPlan.getStorageGroup(),
+                        regionReplicaSet);
                 break;
               case DataRegion:
-                TemporaryClient.getInstance().createDataRegion(dataNodeLocation.getDataNodeId(), createPlan.getStorageGroup(), regionReplicaSet, plan.getSchema().getTTL());
+                TemporaryClient.getInstance()
+                    .createDataRegion(
+                        dataNodeLocation.getDataNodeId(),
+                        createPlan.getStorageGroup(),
+                        regionReplicaSet,
+                        plan.getSchema().getTTL());
             }
           }
         }
@@ -115,14 +125,21 @@ public class RegionManager {
 
     // TODO: Use CopySet algorithm to optimize region allocation policy
 
-    int replicaCount = type.equals(TConsensusGroupType.SchemaRegion) ? schemaReplicationFactor : dataReplicationFactor;
-    int regionCount = type.equals(TConsensusGroupType.SchemaRegion) ? initialSchemaRegionCount : initialDataRegionCount;
+    int replicaCount =
+        type.equals(TConsensusGroupType.SchemaRegion)
+            ? schemaReplicationFactor
+            : dataReplicationFactor;
+    int regionCount =
+        type.equals(TConsensusGroupType.SchemaRegion)
+            ? initialSchemaRegionCount
+            : initialDataRegionCount;
     List<TDataNodeLocation> onlineDataNodes = getDataNodeInfoManager().getOnlineDataNodes();
     for (int i = 0; i < regionCount; i++) {
       Collections.shuffle(onlineDataNodes);
 
       TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
-      TConsensusGroupId consensusGroupId = new TConsensusGroupId(type, regionInfoPersistence.generateNextRegionGroupId());
+      TConsensusGroupId consensusGroupId =
+          new TConsensusGroupId(type, regionInfoPersistence.generateNextRegionGroupId());
       regionReplicaSet.setRegionId(consensusGroupId);
       regionReplicaSet.setDataNodeLocations(onlineDataNodes.subList(0, replicaCount));
       plan.addRegion(regionReplicaSet);

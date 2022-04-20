@@ -122,9 +122,7 @@ public class FragmentInstance implements IConsensusRequest {
     ret.append(
         String.format(
             "Region: %s",
-            getRegionReplicaSet() == null
-                ? "Not set"
-                : getRegionReplicaSet().getRegionId()));
+            getRegionReplicaSet() == null ? "Not set" : getRegionReplicaSet().getRegionId()));
     ret.append("---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
@@ -138,7 +136,8 @@ public class FragmentInstance implements IConsensusRequest {
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType);
-    fragmentInstance.regionReplicaSet = ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(buffer);
+    fragmentInstance.regionReplicaSet =
+        ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(buffer);
     fragmentInstance.hostEndpoint = ThriftCommonsSerializeDeserializeUtils.readTEndPoint(buffer);
 
     return fragmentInstance;

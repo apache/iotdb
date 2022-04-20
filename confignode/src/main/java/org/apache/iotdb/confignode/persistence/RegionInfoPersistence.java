@@ -104,8 +104,7 @@ public class RegionInfoPersistence {
       TStorageGroupSchema storageGroupSchema = storageGroupsMap.get(plan.getStorageGroup());
 
       for (TRegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
-        nextRegionGroupId =
-            Math.max(nextRegionGroupId, regionReplicaSet.getRegionId().getId());
+        nextRegionGroupId = Math.max(nextRegionGroupId, regionReplicaSet.getRegionId().getId());
         regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
         switch (regionReplicaSet.getRegionId().getType()) {
           case SchemaRegion:

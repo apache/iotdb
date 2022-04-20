@@ -95,10 +95,13 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
           buffer.putInt(seriesPartitionTimePartitionSlots.size());
           seriesPartitionTimePartitionSlots.forEach(
               ((seriesPartitionSlot, timePartitionSlots) -> {
-                ThriftCommonsSerializeDeserializeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
+                ThriftCommonsSerializeDeserializeUtils.writeTSeriesPartitionSlot(
+                    seriesPartitionSlot, buffer);
                 buffer.putInt(timePartitionSlots.size());
                 timePartitionSlots.forEach(
-                    timePartitionSlot -> ThriftCommonsSerializeDeserializeUtils.writeTTimePartitionSlot(timePartitionSlot, buffer));
+                    timePartitionSlot ->
+                        ThriftCommonsSerializeDeserializeUtils.writeTTimePartitionSlot(
+                            timePartitionSlot, buffer));
               }));
         }));
   }
@@ -112,11 +115,13 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
       partitionSlotsMap.put(storageGroup, new HashMap<>());
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot = ThriftCommonsSerializeDeserializeUtils.readTSeriesPartitionSlot(buffer);
+        TSeriesPartitionSlot seriesPartitionSlot =
+            ThriftCommonsSerializeDeserializeUtils.readTSeriesPartitionSlot(buffer);
         partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
         int timePartitionSlotNum = buffer.getInt();
         for (int k = 0; k < timePartitionSlotNum; k++) {
-          TTimePartitionSlot timePartitionSlot = ThriftCommonsSerializeDeserializeUtils.readTTimePartitionSlot(buffer);
+          TTimePartitionSlot timePartitionSlot =
+              ThriftCommonsSerializeDeserializeUtils.readTTimePartitionSlot(buffer);
           partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
         }
       }

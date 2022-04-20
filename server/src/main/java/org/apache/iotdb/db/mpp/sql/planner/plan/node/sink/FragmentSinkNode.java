@@ -85,7 +85,8 @@ public class FragmentSinkNode extends SinkNode {
 
   public static FragmentSinkNode deserialize(ByteBuffer byteBuffer) {
     TEndPoint downStreamEndpoint =
-        new TEndPoint(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+        new TEndPoint(
+            ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     FragmentInstanceId downStreamInstanceId = FragmentInstanceId.deserialize(byteBuffer);
     PlanNodeId downStreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);

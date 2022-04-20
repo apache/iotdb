@@ -222,12 +222,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       String storageGroupName = sgEntry.getKey();
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           respDeviceToRegionsMap = sgEntry.getValue();
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> deviceToRegionsMap =
-          new HashMap<>();
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          deviceToRegionsMap = new HashMap<>();
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           deviceEntry : respDeviceToRegionsMap.entrySet()) {
         // for each device
-        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap = new HashMap<>();
+        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+            new HashMap<>();
         for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionEntry :
             deviceEntry.getValue().entrySet()) {
           // for each time partition

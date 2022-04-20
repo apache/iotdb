@@ -96,7 +96,8 @@ public class ExchangeNode extends PlanNode {
     FragmentSinkNode fragmentSinkNode =
         (FragmentSinkNode) PlanFragment.deserializeHelper(byteBuffer);
     TEndPoint endPoint =
-        new TEndPoint(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+        new TEndPoint(
+            ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
     PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);

@@ -50,7 +50,8 @@ public class QueryPlannerTest {
     QueryExecution queryExecution =
         new QueryExecution(
             stmt,
-            new MPPQueryContext(querySql, new QueryId("query1"), new SessionInfo(), new TEndPoint()),
+            new MPPQueryContext(
+                querySql, new QueryId("query1"), new SessionInfo(), new TEndPoint()),
             IoTDBThreadPoolFactory.newSingleThreadExecutor("test_query"),
             IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("test_query_scheduled"),
             new FakePartitionFetcherImpl(),

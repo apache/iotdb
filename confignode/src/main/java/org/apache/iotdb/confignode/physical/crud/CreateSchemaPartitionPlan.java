@@ -60,8 +60,10 @@ public class CreateSchemaPartitionPlan extends PhysicalPlan {
           buffer.putInt(partitionSlots.size());
           partitionSlots.forEach(
               (seriesPartitionSlot, regionReplicaSet) -> {
-                ThriftCommonsSerializeDeserializeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
-                ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
+                ThriftCommonsSerializeDeserializeUtils.writeTSeriesPartitionSlot(
+                    seriesPartitionSlot, buffer);
+                ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(
+                    regionReplicaSet, buffer);
               });
         });
   }
@@ -76,10 +78,13 @@ public class CreateSchemaPartitionPlan extends PhysicalPlan {
       assignedSchemaPartition.put(storageGroup, new HashMap<>());
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot = ThriftCommonsSerializeDeserializeUtils.readTSeriesPartitionSlot(buffer);
+        TSeriesPartitionSlot seriesPartitionSlot =
+            ThriftCommonsSerializeDeserializeUtils.readTSeriesPartitionSlot(buffer);
         assignedSchemaPartition
             .get(storageGroup)
-            .put(seriesPartitionSlot, ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(buffer));
+            .put(
+                seriesPartitionSlot,
+                ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(buffer));
       }
     }
   }

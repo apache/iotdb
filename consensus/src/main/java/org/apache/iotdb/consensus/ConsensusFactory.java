@@ -37,11 +37,12 @@ public class ConsensusFactory {
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 
   public static Optional<IConsensus> getConsensusImpl(
-          String className, TEndPoint endpoint, File storageDir, IStateMachine.Registry registry) {
+      String className, TEndPoint endpoint, File storageDir, IStateMachine.Registry registry) {
     try {
       Class<?> executor = Class.forName(className);
       Constructor<?> executorConstructor =
-          executor.getDeclaredConstructor(TEndPoint.class, File.class, IStateMachine.Registry.class);
+          executor.getDeclaredConstructor(
+              TEndPoint.class, File.class, IStateMachine.Registry.class);
       executorConstructor.setAccessible(true);
       return Optional.of(
           (IConsensus) executorConstructor.newInstance(endpoint, storageDir, registry));

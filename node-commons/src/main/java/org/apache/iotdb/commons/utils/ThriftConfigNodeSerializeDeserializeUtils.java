@@ -29,7 +29,8 @@ public class ThriftConfigNodeSerializeDeserializeUtils {
     // Empty constructor
   }
 
-  public static void writeTStorageGroupSchema(TStorageGroupSchema storageGroupSchema, ByteBuffer buffer) {
+  public static void writeTStorageGroupSchema(
+      TStorageGroupSchema storageGroupSchema, ByteBuffer buffer) {
     BasicStructureSerializeDeserializeUtil.write(storageGroupSchema.getName(), buffer);
     buffer.putLong(storageGroupSchema.getTTL());
     buffer.putInt(storageGroupSchema.getSchemaReplicationFactor());
@@ -37,10 +38,20 @@ public class ThriftConfigNodeSerializeDeserializeUtils {
     buffer.putLong(storageGroupSchema.getTimePartitionInterval());
 
     buffer.putInt(storageGroupSchema.getSchemaRegionGroupIdsSize());
-    storageGroupSchema.getSchemaRegionGroupIds().forEach(schemaRegionGroupId -> ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(schemaRegionGroupId, buffer));
+    storageGroupSchema
+        .getSchemaRegionGroupIds()
+        .forEach(
+            schemaRegionGroupId ->
+                ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(
+                    schemaRegionGroupId, buffer));
 
     buffer.putInt(storageGroupSchema.getDataRegionGroupIdsSize());
-    storageGroupSchema.getDataRegionGroupIds().forEach(dataRegionGroupId -> ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(dataRegionGroupId, buffer));
+    storageGroupSchema
+        .getDataRegionGroupIds()
+        .forEach(
+            dataRegionGroupId ->
+                ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(
+                    dataRegionGroupId, buffer));
   }
 
   public static TStorageGroupSchema readTStorageGroupSchema(ByteBuffer buffer) {
@@ -54,13 +65,17 @@ public class ThriftConfigNodeSerializeDeserializeUtils {
     int groupIdNum = buffer.getInt();
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
     for (int i = 0; i < groupIdNum; i++) {
-      storageGroupSchema.getSchemaRegionGroupIds().add(ThriftCommonsSerializeDeserializeUtils.readTConsensusGroupId(buffer));
+      storageGroupSchema
+          .getSchemaRegionGroupIds()
+          .add(ThriftCommonsSerializeDeserializeUtils.readTConsensusGroupId(buffer));
     }
 
     groupIdNum = buffer.getInt();
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
     for (int i = 0; i < groupIdNum; i++) {
-      storageGroupSchema.getDataRegionGroupIds().add(ThriftCommonsSerializeDeserializeUtils.readTConsensusGroupId(buffer));
+      storageGroupSchema
+          .getDataRegionGroupIds()
+          .add(ThriftCommonsSerializeDeserializeUtils.readTConsensusGroupId(buffer));
     }
 
     return storageGroupSchema;

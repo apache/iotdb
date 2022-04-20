@@ -248,7 +248,8 @@ public class StandAloneConsensusTest {
 
     ConsensusGenericResponse response3 =
         consensusImpl.addConsensusGroup(
-            configId, Collections.singletonList(new Peer(configId, new TEndPoint("0.0.0.0", 6667))));
+            configId,
+            Collections.singletonList(new Peer(configId, new TEndPoint("0.0.0.0", 6667))));
     assertTrue(response3.isSuccess());
     assertNull(response3.getException());
 

@@ -105,9 +105,12 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
     storageGroupSchema.setName(req.getStorageGroup().getName());
     // TODO: Set this filed by optional fields in TSetStorageGroupReq
     storageGroupSchema.setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
-    storageGroupSchema.setSchemaReplicationFactor(ConfigNodeDescriptor.getInstance().getConf().getDefaultSchemaReplicationFactor());
-    storageGroupSchema.setDataReplicationFactor(ConfigNodeDescriptor.getInstance().getConf().getDefaultDataReplicationFactor());
-    storageGroupSchema.setTimePartitionInterval(ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+    storageGroupSchema.setSchemaReplicationFactor(
+        ConfigNodeDescriptor.getInstance().getConf().getDefaultSchemaReplicationFactor());
+    storageGroupSchema.setDataReplicationFactor(
+        ConfigNodeDescriptor.getInstance().getConf().getDefaultDataReplicationFactor());
+    storageGroupSchema.setTimePartitionInterval(
+        ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
 
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());

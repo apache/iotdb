@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -84,8 +83,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     QueryType type = QueryType.valueOf(req.queryType);
     ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.create(
-            req.consensusGroupId.id, TConsensusGroupType.valueOf(req.consensusGroupId.type));
+        ConsensusGroupId.Factory.create(req.consensusGroupId.id, req.consensusGroupId.type);
     switch (type) {
       case READ:
         ConsensusReadResponse readResp =

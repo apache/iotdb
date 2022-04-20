@@ -33,12 +33,14 @@ import java.nio.ByteBuffer;
 public class ConsensusGroupIdTest {
   @Test
   public void TestCreate() throws IOException {
-    ConsensusGroupId dataRegionId = ConsensusGroupId.Factory.create(1, TConsensusGroupType.DataRegion);
+    ConsensusGroupId dataRegionId =
+        ConsensusGroupId.Factory.create(1, TConsensusGroupType.DataRegion);
     Assert.assertTrue(dataRegionId instanceof DataRegionId);
     Assert.assertEquals(1, dataRegionId.getId());
     Assert.assertEquals(TConsensusGroupType.DataRegion, dataRegionId.getType());
 
-    ConsensusGroupId schemaRegionId = ConsensusGroupId.Factory.create(2, TConsensusGroupType.SchemaRegion);
+    ConsensusGroupId schemaRegionId =
+        ConsensusGroupId.Factory.create(2, TConsensusGroupType.SchemaRegion);
     Assert.assertTrue(schemaRegionId instanceof SchemaRegionId);
     Assert.assertEquals(2, schemaRegionId.getId());
     Assert.assertEquals(TConsensusGroupType.SchemaRegion, schemaRegionId.getType());

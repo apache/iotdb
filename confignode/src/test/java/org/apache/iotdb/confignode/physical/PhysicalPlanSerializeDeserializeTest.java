@@ -112,14 +112,12 @@ public class PhysicalPlanSerializeDeserializeTest {
     plan0.setStorageGroup("sg");
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
-    dataRegionSet.setDataNodeLocations(
-        Collections.singletonList(dataNodeLocation));
+    dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
     plan0.addRegion(dataRegionSet);
 
     TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
     schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
-    schemaRegionSet.setDataNodeLocations(
-        Collections.singletonList(dataNodeLocation));
+    schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
     plan0.addRegion(schemaRegionSet);
 
     plan0.serialize(buffer);
@@ -141,8 +139,7 @@ public class PhysicalPlanSerializeDeserializeTest {
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
     TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
     regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
-    regionReplicaSet.setDataNodeLocations(
-        Collections.singletonList(dataNodeLocation));
+    regionReplicaSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
 
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition =
         new HashMap<>();
@@ -190,8 +187,7 @@ public class PhysicalPlanSerializeDeserializeTest {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
     TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
     regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
-    regionReplicaSet.setDataNodeLocations(
-        Collections.singletonList(dataNodeLocation));
+    regionReplicaSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
 
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         assignedDataPartition = new HashMap<>();

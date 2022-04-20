@@ -37,7 +37,7 @@ public class ResultNodeContext {
   }
 
   public void setUpStream(
-          TEndPoint upStreamEndpoint,
+      TEndPoint upStreamEndpoint,
       FragmentInstanceId upStreamFragmentInstanceId,
       PlanNodeId upStreamPlanNodeId) {
     this.upStreamEndpoint = upStreamEndpoint;

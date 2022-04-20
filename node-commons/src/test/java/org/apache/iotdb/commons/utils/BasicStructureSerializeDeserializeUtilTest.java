@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerializeDeserializeUtil;
-
 import org.junit.Assert;
 import org.junit.Test;
 

@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -103,7 +102,7 @@ public class FragmentInstanceSerdeTest {
             QueryType.READ);
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
             ImmutableList.of(dataNodeLocation));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
@@ -141,17 +140,20 @@ public class FragmentInstanceSerdeTest {
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
     seriesScanNode1.setRegionReplicaSet(
-        new TRegionReplicaSet(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
     seriesScanNode2.setRegionReplicaSet(
-        new TRegionReplicaSet(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), new ArrayList<>()));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
     seriesScanNode3.setRegionReplicaSet(
-        new TRegionReplicaSet(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), new ArrayList<>()));
     seriesScanNode3.setScanOrder(OrderBy.TIMESTAMP_DESC);
 
     // build tree

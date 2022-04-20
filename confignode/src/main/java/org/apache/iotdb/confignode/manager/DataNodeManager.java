@@ -84,7 +84,8 @@ public class DataNodeManager {
       dataSet.setStatus(status);
     } else {
       // Persist DataNodeInfo
-      plan.getLocation().setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
+      plan.getLocation()
+          .setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(plan);
       dataSet.setStatus(resp.getStatus());
     }

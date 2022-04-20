@@ -60,18 +60,21 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
     buffer.putInt(PhysicalPlanType.CreateDataPartition.ordinal());
 
     buffer.putInt(assignedDataPartition.size());
-    for (Map.Entry<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+    for (Map.Entry<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         seriesPartitionTimePartitionEntry : assignedDataPartition.entrySet()) {
       BasicStructureSerializeDeserializeUtil.write(
           seriesPartitionTimePartitionEntry.getKey(), buffer);
       buffer.putInt(seriesPartitionTimePartitionEntry.getValue().size());
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           timePartitionEntry : seriesPartitionTimePartitionEntry.getValue().entrySet()) {
-        ThriftCommonsSerializeDeserializeUtils.writeTSeriesPartitionSlot(timePartitionEntry.getKey(), buffer);
+        ThriftCommonsSerializeDeserializeUtils.writeTSeriesPartitionSlot(
+            timePartitionEntry.getKey(), buffer);
         buffer.putInt(timePartitionEntry.getValue().size());
         for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetEntry :
             timePartitionEntry.getValue().entrySet()) {
-          ThriftCommonsSerializeDeserializeUtils.writeTTimePartitionSlot(regionReplicaSetEntry.getKey(), buffer);
+          ThriftCommonsSerializeDeserializeUtils.writeTTimePartitionSlot(
+              regionReplicaSetEntry.getKey(), buffer);
           buffer.putInt(regionReplicaSetEntry.getValue().size());
           for (TRegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
             ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
@@ -90,11 +93,13 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
       assignedDataPartition.put(storageGroupName, new HashMap<>());
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot = ThriftCommonsSerializeDeserializeUtils.readTSeriesPartitionSlot(buffer);
+        TSeriesPartitionSlot seriesPartitionSlot =
+            ThriftCommonsSerializeDeserializeUtils.readTSeriesPartitionSlot(buffer);
         assignedDataPartition.get(storageGroupName).put(seriesPartitionSlot, new HashMap<>());
         int timePartitionSlotNum = buffer.getInt();
         for (int k = 0; k < timePartitionSlotNum; k++) {
-          TTimePartitionSlot timePartitionSlot = ThriftCommonsSerializeDeserializeUtils.readTTimePartitionSlot(buffer);
+          TTimePartitionSlot timePartitionSlot =
+              ThriftCommonsSerializeDeserializeUtils.readTTimePartitionSlot(buffer);
           assignedDataPartition
               .get(storageGroupName)
               .get(seriesPartitionSlot)

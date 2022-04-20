@@ -138,8 +138,8 @@ public class DataPartition {
       Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap,
       String seriesSlotExecutorName,
       int seriesPartitionSlotNum) {
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>> result =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        result = new HashMap<>();
 
     for (String storageGroupName : partitionSlotsMap.keySet()) {
       // Compare StorageGroupName
