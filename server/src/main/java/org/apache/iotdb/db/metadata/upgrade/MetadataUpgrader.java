@@ -109,12 +109,12 @@ public class MetadataUpgrader {
    *   <li>Try set storage group based on the recovered StorageGroupMNodes and create timeseries
    *       based on the recovered MeasurementMNode
    *   <li>Redo the mlog
-   *   <li>delete the files of version, the order is:
+   *   <li>rename and backup the files in the same directory, the order is:
    *       <ol>
-   *         <li>mlog
-   *         <li>snapshot
-   *         <li>tag file
-   *         <li>tmp snapshot
+   *         <li>mlog.bin to mlog.bin.bak
+   *         <li>mtree-1.snapshot.bin to mtree-1.snapshot.bin.bak
+   *         <li>tlog.txt to tlog.txt.bak
+   *         <li>mtree-1.snapshot.bin.tmp to mtree-1.snapshot.bin.tmp.bak
    *       </ol>
    * </ol>
    */
@@ -164,29 +164,32 @@ public class MetadataUpgrader {
       }
       return false;
     } else {
-      deleteFile(tagFile);
-      deleteFile(snapshotTmpFile);
-      deleteFile(snapshotFile);
-      deleteFile(mlogFile);
+      clearOldFiles();
       return true;
     }
   }
 
   public void clearOldFiles() throws IOException {
-    deleteFile(mlogFile);
-    deleteFile(snapshotFile);
-    deleteFile(tagFile);
-    deleteFile(snapshotTmpFile);
+    backupFile(mlogFile);
+    backupFile(snapshotFile);
+    backupFile(tagFile);
+    backupFile(snapshotTmpFile);
   }
 
-  private void deleteFile(File file) throws IOException {
+  private void backupFile(File file) throws IOException {
     if (!file.exists()) {
       return;
     }
-
-    if (!file.delete()) {
+    File backupFile = new File(file.getAbsolutePath() + ".bak");
+    if (backupFile.exists()) {
+      throw new IOException(
+          "The backup file "
+              + backupFile.getAbsolutePath()
+              + " has already existed, please remove it first");
+    }
+    if (!file.renameTo(backupFile)) {
       String errorMessage =
-          String.format("Cannot delete file %s during metadata upgrade", file.getName());
+          String.format("Cannot backup file %s during metadata upgrade", file.getName());
       logger.error(errorMessage);
       throw new IOException(errorMessage);
     }
@@ -231,8 +234,6 @@ public class MetadataUpgrader {
           }
         } catch (MetadataException e) {
           logger.error("Error occurred during recovering metadata from snapshot", e);
-          e.printStackTrace();
-          throw new IOException(e);
         }
       }
     }
@@ -331,8 +332,6 @@ public class MetadataUpgrader {
           }
         } catch (MetadataException e) {
           logger.error("Error occurred during redo mlog: ", e);
-          e.printStackTrace();
-          throw new IOException(e);
         }
       }
     }
