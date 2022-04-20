@@ -37,13 +37,13 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import com.google.common.collect.Sets;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -76,8 +76,7 @@ public class SeriesScanOperatorTest {
     try {
       MeasurementPath measurementPath =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      Set<String> allSensors = new HashSet<>();
-      allSensors.add("sensor0");
+      Set<String> allSensors = Sets.newHashSet("sensor0");
       QueryId queryId = new QueryId("stub_query");
       AtomicReference<FragmentInstanceState> state =
           new AtomicReference<>(FragmentInstanceState.RUNNING);
@@ -87,6 +86,7 @@ public class SeriesScanOperatorTest {
       PlanNodeId planNodeId = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
       SeriesScanOperator seriesScanOperator =
           new SeriesScanOperator(
               planNodeId,

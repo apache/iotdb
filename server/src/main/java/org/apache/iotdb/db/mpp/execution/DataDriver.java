@@ -53,6 +53,10 @@ import java.util.stream.Collectors;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.apache.iotdb.db.mpp.operator.Operator.NOT_BLOCKED;
 
+/**
+ * One dataDriver is responsible for one FragmentInstance which is for data query, which may
+ * contains several series.
+ */
 @NotThreadSafe
 public class DataDriver implements Driver {
 
