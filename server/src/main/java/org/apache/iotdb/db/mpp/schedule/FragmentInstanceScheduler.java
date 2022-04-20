@@ -66,7 +66,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
 
   private static final int MAX_CAPACITY = 1000; // TODO: load from config files
   private static final int WORKER_THREAD_NUM = 4; // TODO: load from config files
-  private static final int QUERY_TIMEOUT_MS = 60_000; // TODO: load from config files or requests
+  private static final int QUERY_TIMEOUT_MS = 10_000; // TODO: load from config files or requests
   private final ThreadGroup workerGroups;
   private final List<AbstractExecutor> threads;
 
@@ -78,9 +78,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
             new FragmentInstanceTask());
     this.timeoutQueue =
         new L1PriorityQueue<>(
-            MAX_CAPACITY,
-            new FragmentInstanceTask.SchedulePriorityComparator(),
-            new FragmentInstanceTask());
+            MAX_CAPACITY, new FragmentInstanceTask.TimeoutComparator(), new FragmentInstanceTask());
     this.queryMap = new ConcurrentHashMap<>();
     this.blockedTasks = Collections.synchronizedSet(new HashSet<>());
     this.scheduler = new Scheduler();
@@ -154,6 +152,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
       for (FragmentInstanceTask task : queryRelatedTasks) {
         task.lock();
         try {
+          task.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
           clearFragmentInstanceTask(task);
         } finally {
           task.unlock();
@@ -170,6 +169,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     }
     task.lock();
     try {
+      task.setAbortCause(FragmentInstanceAbortedException.BY_FRAGMENT_ABORT_CALLED);
       clearFragmentInstanceTask(task);
     } finally {
       task.unlock();
@@ -189,6 +189,12 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   private void clearFragmentInstanceTask(FragmentInstanceTask task) {
     if (task.getStatus() != FragmentInstanceTaskStatus.FINISHED) {
       task.setStatus(FragmentInstanceTaskStatus.ABORTED);
+    }
+    if (task.getAbortCause() != null) {
+      task.getFragmentInstance()
+          .failed(
+              new FragmentInstanceAbortedException(
+                  task.getFragmentInstance().getInfo(), task.getAbortCause()));
     }
     if (task.getStatus() == FragmentInstanceTaskStatus.ABORTED) {
       blockManager.forceDeregisterFragmentInstance(
@@ -345,6 +351,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
           }
           otherTask.lock();
           try {
+            otherTask.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
             clearFragmentInstanceTask(otherTask);
           } finally {
             otherTask.unlock();

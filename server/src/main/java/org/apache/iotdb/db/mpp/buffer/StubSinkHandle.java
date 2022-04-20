@@ -26,7 +26,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
@@ -88,22 +87,12 @@ public class StubSinkHandle implements ISinkHandle {
       return;
     }
     closed = true;
-    instanceContext.flushing();
+    instanceContext.transitionToFlushing();
   }
 
   @Override
   public void abort() {
     tsBlocks.clear();
-  }
-
-  @Override
-  public boolean isFailed() {
-    return false;
-  }
-
-  @Override
-  public Optional<Throwable> getFailureCause() {
-    return Optional.empty();
   }
 
   public List<TsBlock> getTsBlocks() {

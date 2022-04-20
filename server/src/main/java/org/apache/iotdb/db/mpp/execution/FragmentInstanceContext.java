@@ -32,7 +32,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class FragmentInstanceContext extends QueryContext {
 
@@ -65,8 +64,7 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
-  public FragmentInstanceContext(
-      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+  public FragmentInstanceContext(FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     this.id = id;
     this.stateMachine = stateMachine;
   }
@@ -140,6 +138,14 @@ public class FragmentInstanceContext extends QueryContext {
 
   public void failed(Throwable cause) {
     stateMachine.failed(cause);
+  }
+
+  public void finished() {
+    stateMachine.finished();
+  }
+
+  public void transitionToFlushing() {
+    stateMachine.transitionToFlushing();
   }
 
   public long getEndTime() {

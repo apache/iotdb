@@ -41,7 +41,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.concurrent.ExecutorService;
 
@@ -74,7 +73,6 @@ public class SinkHandle implements ISinkHandle {
   private long bufferRetainedSizeInBytes;
   private boolean closed;
   private boolean noMoreTsBlocks;
-  private Throwable throwable;
 
   public SinkHandle(
       String remoteHostname,
@@ -191,11 +189,8 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     logger.info("Sink handle {} is being closed.", this);
-    if (throwable != null) {
-      throw new IOException(throwable);
-    }
     if (closed) {
       return;
     }
@@ -207,7 +202,7 @@ public class SinkHandle implements ISinkHandle {
     try {
       sendEndOfDataBlockEvent();
     } catch (TException e) {
-      throw new IOException(e);
+      throw new RuntimeException("Send EndOfDataBlockEvent failed", e);
     }
     logger.info("Sink handle {} is closed.", this);
   }
@@ -218,23 +213,15 @@ public class SinkHandle implements ISinkHandle {
     synchronized (this) {
       sequenceIdToTsBlock.clear();
       closed = true;
-      localMemoryManager
-          .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
-      bufferRetainedSizeInBytes = 0;
+      if (bufferRetainedSizeInBytes > 0) {
+        localMemoryManager
+            .getQueryPool()
+            .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+        bufferRetainedSizeInBytes = 0;
+      }
     }
     sinkHandleListener.onAborted(this);
     logger.info("Sink handle {} is aborted", this);
-  }
-
-  @Override
-  public boolean isFailed() {
-    return throwable != null;
-  }
-
-  @Override
-  public Optional<Throwable> getFailureCause() {
-    return Optional.ofNullable(throwable);
   }
 
   @Override
@@ -249,7 +236,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public boolean isFinished() {
-    return throwable == null && noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
+    return noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
   }
 
   @Override
@@ -364,7 +351,7 @@ public class SinkHandle implements ISinkHandle {
         try {
           client.onNewDataBlockEvent(newDataBlockEvent);
           break;
-        } catch (TException e) {
+        } catch (Throwable e) {
           logger.error(
               "Failed to send new data block event to plan node {} of {} due to {}, attempt times: {}",
               remotePlanNodeId,
@@ -373,9 +360,7 @@ public class SinkHandle implements ISinkHandle {
               attempt,
               e);
           if (attempt == MAX_ATTEMPT_TIMES) {
-            synchronized (this) {
-              throwable = e;
-            }
+            sinkHandleListener.onFailed(e);
           }
         }
       }

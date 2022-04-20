@@ -34,6 +34,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class FragmentInstance implements IConsensusRequest {
+
   private final FragmentInstanceId id;
   private final QueryType type;
   // The reference of PlanFragment which this instance is generated from

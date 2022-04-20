@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.service.thrift.server;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -107,9 +107,9 @@ public class ConfigNodeRPCServerProcessorTest {
   @Test
   public void registerAndQueryDataNodeTest() throws TException {
     TDataNodeRegisterResp resp;
-    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
-    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
-    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6667));
+    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6668));
+    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6669));
 
     // test success register
     resp = processor.registerDataNode(registerReq0);
@@ -168,9 +168,9 @@ public class ConfigNodeRPCServerProcessorTest {
     Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
 
     // register DataNodes
-    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
-    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
-    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6667));
+    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6668));
+    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6669));
     status = processor.registerDataNode(registerReq0).getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     status = processor.registerDataNode(registerReq1).getStatus();
@@ -234,9 +234,9 @@ public class ConfigNodeRPCServerProcessorTest {
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap;
 
     // register DataNodes
-    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
-    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
-    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6667));
+    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6668));
+    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6669));
     status = processor.registerDataNode(registerReq0).getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     status = processor.registerDataNode(registerReq1).getStatus();
@@ -441,9 +441,9 @@ public class ConfigNodeRPCServerProcessorTest {
     TDataPartitionResp dataPartitionResp;
 
     // register DataNodes
-    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6667));
-    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6668));
-    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new EndPoint("0.0.0.0", 6669));
+    TDataNodeRegisterReq registerReq0 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6667));
+    TDataNodeRegisterReq registerReq1 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6668));
+    TDataNodeRegisterReq registerReq2 = new TDataNodeRegisterReq(new TEndPoint("0.0.0.0", 6669));
     status = processor.registerDataNode(registerReq0).getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     status = processor.registerDataNode(registerReq1).getStatus();

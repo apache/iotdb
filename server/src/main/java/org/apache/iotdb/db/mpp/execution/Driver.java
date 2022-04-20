@@ -18,18 +18,20 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import io.airlift.units.Duration;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
+import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -52,17 +54,19 @@ public abstract class Driver {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(Driver.class);
 
-
   protected final Operator root;
   protected final ISinkHandle sinkHandle;
   protected final DriverContext driverContext;
-  protected final AtomicReference<SettableFuture<Void>> driverBlockedFuture = new AtomicReference<>();
+  protected final AtomicReference<SettableFuture<Void>> driverBlockedFuture =
+      new AtomicReference<>();
   protected final AtomicReference<State> state = new AtomicReference<>(State.ALIVE);
 
   protected final DriverLock exclusiveLock = new DriverLock();
 
   protected enum State {
-    ALIVE, NEED_DESTRUCTION, DESTROYED
+    ALIVE,
+    NEED_DESTRUCTION,
+    DESTROYED
   }
 
   public Driver(Operator root, ISinkHandle sinkHandle, DriverContext driverContext) {
@@ -96,9 +100,7 @@ public abstract class Driver {
    */
   protected abstract boolean init(SettableFuture<Void> blockedFuture);
 
-  /**
-   * release resource this driver used
-   */
+  /** release resource this driver used */
   protected abstract void releaseResource();
 
   /**
@@ -107,9 +109,9 @@ public abstract class Driver {
    *
    * @param duration how long should this fragment instance run
    * @return the returned ListenableFuture<Void> is used to represent status of this processing if
-   * isDone() return true, meaning that this fragment instance is not blocked and is ready for
-   * next processing otherwise, meaning that this fragment instance is blocked and not ready for
-   * next processing.
+   *     isDone() return true, meaning that this fragment instance is not blocked and is ready for
+   *     next processing otherwise, meaning that this fragment instance is blocked and not ready for
+   *     next processing.
    */
   public ListenableFuture<Void> processFor(Duration duration) {
 
@@ -128,17 +130,21 @@ public abstract class Driver {
 
     long maxRuntime = duration.roundTo(TimeUnit.NANOSECONDS);
 
-    Optional<ListenableFuture<Void>> result = tryWithLock(100, TimeUnit.MILLISECONDS, true, () -> {
-      long start = System.nanoTime();
-      do {
-        ListenableFuture<Void> future = processInternal();
-        if (!future.isDone()) {
-          return updateDriverBlockedFuture(future);
-        }
-      }
-      while (System.nanoTime() - start < maxRuntime && !isFinishedInternal());
-      return NOT_BLOCKED;
-    });
+    Optional<ListenableFuture<Void>> result =
+        tryWithLock(
+            100,
+            TimeUnit.MILLISECONDS,
+            true,
+            () -> {
+              long start = System.nanoTime();
+              do {
+                ListenableFuture<Void> future = processInternal();
+                if (!future.isDone()) {
+                  return updateDriverBlockedFuture(future);
+                }
+              } while (System.nanoTime() - start < maxRuntime && !isFinishedInternal());
+              return NOT_BLOCKED;
+            });
 
     return result.orElse(NOT_BLOCKED);
   }
@@ -152,9 +158,7 @@ public abstract class Driver {
     return driverContext.getId();
   }
 
-  /**
-   * clear resource used by this fragment instance
-   */
+  /** clear resource used by this fragment instance */
   public void close() {
     // mark the service for destruction
     if (!state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION)) {
@@ -184,13 +188,13 @@ public abstract class Driver {
   private boolean isFinishedInternal() {
     checkLockHeld("Lock must be held to call isFinishedInternal");
 
-    boolean finished = state.get() != State.ALIVE || driverContext.isDone() || root == null || root.isFinished();
+    boolean finished =
+        state.get() != State.ALIVE || driverContext.isDone() || root == null || root.isFinished();
     if (finished) {
       state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION);
     }
     return finished;
   }
-
 
   private ListenableFuture<Void> processInternal() {
     try {
@@ -218,7 +222,8 @@ public abstract class Driver {
       }
 
       // Driver thread was interrupted which should only happen if the task is already finished.
-      // If this becomes the actual cause of a failed query there is a bug in the task state machine.
+      // If this becomes the actual cause of a failed query there is a bug in the task state
+      // machine.
       Exception exception = new Exception("Interrupted By");
       exception.setStackTrace(interrupterStack.toArray(new StackTraceElement[0]));
       RuntimeException newException = new RuntimeException("Driver was interrupted", exception);
@@ -245,7 +250,6 @@ public abstract class Driver {
     return newDriverBlockedFuture;
   }
 
-
   private synchronized void checkLockNotHeld(String message) {
     checkState(!exclusiveLock.isHeldByCurrentThread(), message);
   }
@@ -256,23 +260,24 @@ public abstract class Driver {
   }
 
   /**
-   * Try to acquire the {@code exclusiveLock} immediately and run a {@code task}
-   * The task will not be interrupted if the {@code Driver} is closed.
-   * <p>
-   * Note: task cannot return null
+   * Try to acquire the {@code exclusiveLock} immediately and run a {@code task} The task will not
+   * be interrupted if the {@code Driver} is closed.
+   *
+   * <p>Note: task cannot return null
    */
   private <T> Optional<T> tryWithLockUnInterruptibly(Supplier<T> task) {
     return tryWithLock(0, TimeUnit.MILLISECONDS, false, task);
   }
 
   /**
-   * Try to acquire the {@code exclusiveLock} with {@code timeout} and run a {@code task}.
-   * If the {@code interruptOnClose} flag is set to {@code true} the {@code task} will be
-   * interrupted if the {@code Driver} is closed.
-   * <p>
-   * Note: task cannot return null
+   * Try to acquire the {@code exclusiveLock} with {@code timeout} and run a {@code task}. If the
+   * {@code interruptOnClose} flag is set to {@code true} the {@code task} will be interrupted if
+   * the {@code Driver} is closed.
+   *
+   * <p>Note: task cannot return null
    */
-  private <T> Optional<T> tryWithLock(long timeout, TimeUnit unit, boolean interruptOnClose, Supplier<T> task) {
+  private <T> Optional<T> tryWithLock(
+      long timeout, TimeUnit unit, boolean interruptOnClose, Supplier<T> task) {
     checkLockNotHeld("Lock cannot be reacquired");
 
     boolean acquired = false;
@@ -315,11 +320,9 @@ public abstract class Driver {
       driverContext.finished();
     } catch (Throwable t) {
       // this shouldn't happen but be safe
-      inFlightException = addSuppressedException(
-          inFlightException,
-          t,
-          "Error destroying driver for task %s",
-          driverContext.getId());
+      inFlightException =
+          addSuppressedException(
+              inFlightException, t, "Error destroying driver for task %s", driverContext.getId());
     } finally {
       releaseResource();
     }
@@ -349,12 +352,13 @@ public abstract class Driver {
       wasInterrupted = true;
     } catch (Throwable t) {
       // TODO currently, we won't know exact operator which is failed in closing
-      inFlightException = addSuppressedException(
-          inFlightException,
-          t,
-          "Error closing operator {} for fragment instance {}",
-          root.getOperatorContext().getOperatorId(),
-          driverContext.getId());
+      inFlightException =
+          addSuppressedException(
+              inFlightException,
+              t,
+              "Error closing operator {} for fragment instance {}",
+              root.getOperatorContext().getOperatorId(),
+              driverContext.getId());
     } finally {
       // reset the interrupted flag
       if (wasInterrupted) {
@@ -364,7 +368,8 @@ public abstract class Driver {
     return inFlightException;
   }
 
-  private static Throwable addSuppressedException(Throwable inFlightException, Throwable newException, String message, Object... args) {
+  private static Throwable addSuppressedException(
+      Throwable inFlightException, Throwable newException, String message, Object... args) {
     if (newException instanceof Error) {
       if (inFlightException == null) {
         inFlightException = newException;
@@ -386,6 +391,7 @@ public abstract class Driver {
 
     @GuardedBy("this")
     private Thread currentOwner;
+
     @GuardedBy("this")
     private boolean currentOwnerInterruptionAllowed;
 

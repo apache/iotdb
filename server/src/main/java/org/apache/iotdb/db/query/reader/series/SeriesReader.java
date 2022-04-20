@@ -331,6 +331,9 @@ public class SeriesReader {
 
     if (firstChunkMetadata != null) {
       return true;
+      // hasNextFile() has not been invoked
+    } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
+      return false;
     }
 
     while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {

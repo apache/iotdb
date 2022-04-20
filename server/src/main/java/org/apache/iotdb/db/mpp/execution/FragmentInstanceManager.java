@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import io.airlift.stats.CounterStat;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
 import org.apache.iotdb.db.mpp.sql.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
+import io.airlift.stats.CounterStat;
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +53,6 @@ public class FragmentInstanceManager {
   private final ScheduledExecutorService instanceManagementExecutor;
   private final ExecutorService instanceNotificationExecutor;
 
-
   private final Duration infoCacheTime;
 
   // record failed instances count
@@ -68,7 +67,8 @@ public class FragmentInstanceManager {
     this.instanceExecution = new ConcurrentHashMap<>();
     this.instanceManagementExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "instance-management");
-    this.instanceNotificationExecutor = IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
+    this.instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
 
     this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
 
@@ -93,13 +93,14 @@ public class FragmentInstanceManager {
         instanceExecution.computeIfAbsent(
             instanceId,
             id -> {
-
-              FragmentInstanceStateMachine stateMachine = new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+              FragmentInstanceStateMachine stateMachine =
+                  new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
               FragmentInstanceContext context =
                   instanceContext.computeIfAbsent(
                       instanceId,
-                      fragmentInstanceId -> new FragmentInstanceContext(fragmentInstanceId, stateMachine));
+                      fragmentInstanceId ->
+                          new FragmentInstanceContext(fragmentInstanceId, stateMachine));
 
               try {
                 DataDriver driver =
@@ -108,7 +109,8 @@ public class FragmentInstanceManager {
                         context,
                         instance.getTimeFilter(),
                         dataRegion);
-                return createFragmentInstanceExecution(scheduler, instanceId, context, driver, stateMachine, failedInstances);
+                return createFragmentInstanceExecution(
+                    scheduler, instanceId, context, driver, stateMachine, failedInstances);
               } catch (Throwable t) {
                 stateMachine.failed(t);
                 return null;
@@ -126,18 +128,20 @@ public class FragmentInstanceManager {
         instanceExecution.computeIfAbsent(
             instanceId,
             id -> {
-              FragmentInstanceStateMachine stateMachine = new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-
+              FragmentInstanceStateMachine stateMachine =
+                  new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
               FragmentInstanceContext context =
                   instanceContext.computeIfAbsent(
                       instanceId,
-                      fragmentInstanceId -> new FragmentInstanceContext(fragmentInstanceId, stateMachine));
+                      fragmentInstanceId ->
+                          new FragmentInstanceContext(fragmentInstanceId, stateMachine));
 
               try {
                 SchemaDriver driver =
                     planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
-                return createFragmentInstanceExecution(scheduler, instanceId, context, driver, stateMachine, failedInstances);
+                return createFragmentInstanceExecution(
+                    scheduler, instanceId, context, driver, stateMachine, failedInstances);
               } catch (Throwable t) {
                 stateMachine.failed(t);
                 return null;
@@ -146,9 +150,7 @@ public class FragmentInstanceManager {
     return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
   }
 
-  /**
-   * Aborts a FragmentInstance.
-   */
+  /** Aborts a FragmentInstance. */
   public FragmentInstanceInfo abortFragmentInstance(FragmentInstanceId fragmentInstanceId) {
     FragmentInstanceExecution execution = instanceExecution.remove(fragmentInstanceId);
     if (execution != null) {
@@ -159,9 +161,7 @@ public class FragmentInstanceManager {
     return null;
   }
 
-  /**
-   * Cancels a FragmentInstance.
-   */
+  /** Cancels a FragmentInstance. */
   public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId) {
     requireNonNull(instanceId, "taskId is null");
 

@@ -24,7 +24,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 
 public interface ISinkHandle {
 
@@ -71,19 +70,8 @@ public interface ISinkHandle {
    * downstream instances. A {@link RuntimeException} will be thrown if any exception happened
    * during the data transmission.
    */
-  void close() throws IOException;
+  void close();
 
   /** Abort the sink handle, discarding all tsblocks which may still be in memory buffer. */
   void abort();
-
-  /**
-   * @return whether this SinkHandle is failed
-   */
-  boolean isFailed();
-
-
-  /**
-   * Returns non empty failure cause if the sink handle is failed
-   */
-  Optional<Throwable> getFailureCause();
 }

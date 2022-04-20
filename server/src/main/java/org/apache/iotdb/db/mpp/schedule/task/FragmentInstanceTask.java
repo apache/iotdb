@@ -18,20 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.Driver;
-import org.apache.iotdb.db.mpp.execution.DriverContext;
-import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
 import org.apache.iotdb.db.mpp.schedule.queue.IDIndexedAccessible;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
 
 import java.util.Comparator;
@@ -56,6 +54,8 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
   // Running stats
   private long cpuWallNano;
+
+  private String abortCause;
 
   /** Initialize a dummy instance for queryHolder */
   public FragmentInstanceTask() {
@@ -143,6 +143,14 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     return o instanceof FragmentInstanceTask && ((FragmentInstanceTask) o).getId().equals(id);
   }
 
+  public String getAbortCause() {
+    return abortCause;
+  }
+
+  public void setAbortCause(String abortCause) {
+    this.abortCause = abortCause;
+  }
+
   /** a comparator of ddl, the less the ddl is, the low order it has. */
   public static class TimeoutComparator implements Comparator<FragmentInstanceTask> {
 
@@ -200,9 +208,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     }
 
     @Override
-    protected void releaseResource() {
-
-    }
+    protected void releaseResource() {}
 
     @Override
     public ListenableFuture<Void> processFor(Duration duration) {

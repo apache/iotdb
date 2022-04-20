@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -30,14 +29,20 @@ import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import javax.annotation.concurrent.NotThreadSafe;
+
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
+/**
+ * One dataDriver is responsible for one FragmentInstance which is for data query, which may
+ * contains several series.
+ */
 @NotThreadSafe
 public class DataDriver extends Driver {
 
@@ -47,7 +52,6 @@ public class DataDriver extends Driver {
   private Set<TsFileResource> closedFilePaths;
   /** unClosed tsfile used in this fragment instance */
   private Set<TsFileResource> unClosedFilePaths;
-
 
   public DataDriver(Operator root, ISinkHandle sinkHandle, DataDriverContext driverContext) {
     super(root, sinkHandle, driverContext);
@@ -87,13 +91,13 @@ public class DataDriver extends Driver {
     unClosedFilePaths = null;
   }
 
-
   /**
    * init seq file list and unseq file list in QueryDataSource and set it into each SourceNode TODO
    * we should change all the blocked lock operation into tryLock
    */
   private void initialize() throws QueryProcessException {
-    List<DataSourceOperator> sourceOperators = ((DataDriverContext)driverContext).getSourceOperators();
+    List<DataSourceOperator> sourceOperators =
+        ((DataDriverContext) driverContext).getSourceOperators();
     if (sourceOperators != null && !sourceOperators.isEmpty()) {
       QueryDataSource dataSource = initQueryDataSourceCache();
       sourceOperators.forEach(
@@ -121,9 +125,7 @@ public class DataDriver extends Driver {
     dataRegion.readLock();
     try {
       List<PartialPath> pathList =
-          context.getPaths().stream()
-              .map(IDTable::translateQueryPath)
-              .collect(Collectors.toList());
+          context.getPaths().stream().map(IDTable::translateQueryPath).collect(Collectors.toList());
       // when all the selected series are under the same device, the QueryDataSource will be
       // filtered according to timeIndex
       Set<String> selectedDeviceIdSet =
@@ -188,5 +190,4 @@ public class DataDriver extends Driver {
       FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
     }
   }
-
 }

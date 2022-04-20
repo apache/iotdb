@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -125,7 +125,7 @@ public class DataNode implements DataNodeMBean {
       try {
         TDataNodeRegisterResp dataNodeRegisterResp =
             configNodeClient.registerDataNode(
-                new TDataNodeRegisterReq(new EndPoint(thisNode.getIp(), thisNode.getPort())));
+                new TDataNodeRegisterReq(new TEndPoint(thisNode.getIp(), thisNode.getPort())));
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()

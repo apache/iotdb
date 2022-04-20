@@ -28,7 +28,6 @@ public class DriverContext {
 
   private final AtomicBoolean finished = new AtomicBoolean();
 
-
   public DriverContext(FragmentInstanceContext fragmentInstanceContext) {
     this.fragmentInstanceContext = fragmentInstanceContext;
   }
@@ -49,7 +48,6 @@ public class DriverContext {
   public void finished() {
     finished.compareAndSet(false, true);
   }
-
 
   public boolean isDone() {
     return finished.get();

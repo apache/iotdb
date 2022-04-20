@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
+import java.util.concurrent.Future;
+
 public interface IQueryTerminator {
-  boolean terminate();
+  Future<Boolean> terminate();
 }

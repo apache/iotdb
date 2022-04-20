@@ -61,6 +61,8 @@ public class DataBlockManager implements IDataBlockManager {
     void onClosed(SinkHandle sinkHandle);
 
     void onAborted(SinkHandle sinkHandle);
+
+    void onFailed(Throwable t);
   }
 
   /** Handle thrift communications. */
@@ -166,6 +168,7 @@ public class DataBlockManager implements IDataBlockManager {
 
   /** Listen to the state changes of a source handle. */
   class SourceHandleListenerImpl implements SourceHandleListener {
+
     @Override
     public void onFinished(SourceHandle sourceHandle) {
       logger.info("Release resources of finished source handle {}", sourceHandle);
@@ -175,11 +178,13 @@ public class DataBlockManager implements IDataBlockManager {
               .containsKey(sourceHandle.getLocalPlanNodeId())) {
         logger.info(
             "Resources of finished source handle {} has already been released", sourceHandle);
+      } else {
+        sourceHandles
+            .get(sourceHandle.getLocalFragmentInstanceId())
+            .remove(sourceHandle.getLocalPlanNodeId());
       }
-      sourceHandles
-          .get(sourceHandle.getLocalFragmentInstanceId())
-          .remove(sourceHandle.getLocalPlanNodeId());
-      if (sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
+      if (sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
+          && sourceHandles.get(sourceHandle.getLocalFragmentInstanceId()).isEmpty()) {
         sourceHandles.remove(sourceHandle.getLocalFragmentInstanceId());
       }
     }
@@ -206,12 +211,12 @@ public class DataBlockManager implements IDataBlockManager {
         logger.info("Resources of finished sink handle {} has already been released", sinkHandle);
       }
       sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
-      context.finish();
+      context.finished();
     }
 
     @Override
     public void onClosed(SinkHandle sinkHandle) {
-      context.flushing();
+      context.transitionToFlushing();
     }
 
     @Override
@@ -221,6 +226,11 @@ public class DataBlockManager implements IDataBlockManager {
         logger.info("Resources of aborted sink handle {} has already been released", sinkHandle);
       }
       sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
+    }
+
+    @Override
+    public void onFailed(Throwable t) {
+      context.failed(t);
     }
   }
 
@@ -264,7 +274,7 @@ public class DataBlockManager implements IDataBlockManager {
       throw new IllegalStateException("Sink handle for " + localFragmentInstanceId + " exists.");
     }
 
-    logger.info(
+    logger.debug(
         "Create sink handle to plan node {} of {} for {}",
         remotePlanNodeId,
         remoteFragmentInstanceId,
@@ -301,7 +311,7 @@ public class DataBlockManager implements IDataBlockManager {
               + " exists.");
     }
 
-    logger.info(
+    logger.debug(
         "Create source handle from {} for plan node {} of {}",
         remoteFragmentInstanceId,
         localPlanNodeId,

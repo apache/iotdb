@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.StateMachine.StateChangeListener;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.iotdb.db.mpp.execution.StateMachine.StateChangeListener;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +49,6 @@ import static org.apache.iotdb.db.mpp.execution.FragmentInstanceState.FLUSHING;
 import static org.apache.iotdb.db.mpp.execution.FragmentInstanceState.RUNNING;
 import static org.apache.iotdb.db.mpp.execution.FragmentInstanceState.TERMINAL_INSTANCE_STATES;
 
-
 @ThreadSafe
 public class FragmentInstanceStateMachine {
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceStateMachine.class);
@@ -61,14 +62,19 @@ public class FragmentInstanceStateMachine {
 
   @GuardedBy("this")
   private final Map<FragmentInstanceId, Throwable> sourceInstanceFailures = new HashMap<>();
+
   @GuardedBy("this")
-  private final List<FragmentInstanceFailureListener> sourceInstanceFailureListeners = new ArrayList<>();
+  private final List<FragmentInstanceFailureListener> sourceInstanceFailureListeners =
+      new ArrayList<>();
 
   public FragmentInstanceStateMachine(FragmentInstanceId fragmentInstanceId, Executor executor) {
     this.instanceId = requireNonNull(fragmentInstanceId, "fragmentInstanceId is null");
     this.executor = requireNonNull(executor, "executor is null");
-    instanceState = new StateMachine<>("FragmentInstance " + fragmentInstanceId, executor, RUNNING, TERMINAL_INSTANCE_STATES);
-    instanceState.addStateChangeListener(newState -> LOGGER.debug("Fragment Instance {} is {}", fragmentInstanceId, newState));
+    instanceState =
+        new StateMachine<>(
+            "FragmentInstance " + fragmentInstanceId, executor, RUNNING, TERMINAL_INSTANCE_STATES);
+    instanceState.addStateChangeListener(
+        newState -> LOGGER.debug("Fragment Instance {} is {}", fragmentInstanceId, newState));
   }
 
   public long getCreatedTime() {
@@ -83,7 +89,8 @@ public class FragmentInstanceStateMachine {
     return instanceState.get();
   }
 
-  public ListenableFuture<FragmentInstanceState> getStateChange(FragmentInstanceState currentState) {
+  public ListenableFuture<FragmentInstanceState> getStateChange(
+      FragmentInstanceState currentState) {
     requireNonNull(currentState, "currentState is null");
     checkArgument(!currentState.isDone(), "Current state is already done");
 
@@ -128,11 +135,13 @@ public class FragmentInstanceStateMachine {
   }
 
   /**
-   * Listener is always notified asynchronously using a dedicated notification thread pool so, care should
-   * be taken to avoid leaking {@code this} when adding a listener in a constructor. Additionally, it is
-   * possible notifications are observed out of order due to the asynchronous execution.
+   * Listener is always notified asynchronously using a dedicated notification thread pool so, care
+   * should be taken to avoid leaking {@code this} when adding a listener in a constructor.
+   * Additionally, it is possible notifications are observed out of order due to the asynchronous
+   * execution.
    */
-  public void addStateChangeListener(StateChangeListener<FragmentInstanceState> stateChangeListener) {
+  public void addStateChangeListener(
+      StateChangeListener<FragmentInstanceState> stateChangeListener) {
     instanceState.addStateChangeListener(stateChangeListener);
   }
 
@@ -142,9 +151,10 @@ public class FragmentInstanceStateMachine {
       sourceInstanceFailureListeners.add(listener);
       failures = ImmutableMap.copyOf(sourceInstanceFailures);
     }
-    executor.execute(() -> {
-      failures.forEach(listener::onTaskFailed);
-    });
+    executor.execute(
+        () -> {
+          failures.forEach(listener::onTaskFailed);
+        });
   }
 
   public void sourceTaskFailed(FragmentInstanceId instanceId, Throwable failure) {
@@ -153,11 +163,12 @@ public class FragmentInstanceStateMachine {
       sourceInstanceFailures.putIfAbsent(instanceId, failure);
       listeners = ImmutableList.copyOf(sourceInstanceFailureListeners);
     }
-    executor.execute(() -> {
-      for (FragmentInstanceFailureListener listener : listeners) {
-        listener.onTaskFailed(instanceId, failure);
-      }
-    });
+    executor.execute(
+        () -> {
+          for (FragmentInstanceFailureListener listener : listeners) {
+            listener.onTaskFailed(instanceId, failure);
+          }
+        });
   }
 
   @Override
