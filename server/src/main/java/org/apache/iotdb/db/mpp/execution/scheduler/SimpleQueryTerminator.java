@@ -50,16 +50,16 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   @Override
   public Future<Boolean> terminate() {
-    List<Endpoint> relatedHost = getRelatedHost(fragmentInstances);
+    List<TEndPoint> relatedHost = getRelatedHost(fragmentInstances);
 
     return executor.submit(
         () -> {
           try {
-            for (TEndpoint endpoint : relatedHost) {
+            for (TEndPoint endpoint : relatedHost) {
               // TODO (jackie tien) change the port
               InternalService.Iface client =
                   InternalServiceClientFactory.getInternalServiceClient(
-                      new TEndpoint(
+                      new TEndPoint(
                           endpoint.getIp(),
                           IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
               client.cancelQuery(new TCancelQueryReq(queryId.getId()));

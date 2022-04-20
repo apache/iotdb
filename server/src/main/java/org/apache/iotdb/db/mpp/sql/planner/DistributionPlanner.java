@@ -177,7 +177,7 @@ public class DistributionPlanner {
     // TODO: (xingtanzjr) a temporary way to resolve the distribution of single SeriesScanNode issue
     @Override
     public PlanNode visitSeriesScan(SeriesScanNode node, DistributionPlanContext context) {
-      List<RegionReplicaSet> dataDistribution =
+      List<TRegionReplicaSet> dataDistribution =
           analysis.getPartitionInfo(node.getSeriesPath(), node.getTimeFilter());
       if (dataDistribution.size() == 1) {
         node.setRegionReplicaSet(dataDistribution.get(0));
@@ -185,7 +185,7 @@ public class DistributionPlanner {
       }
       TimeJoinNode timeJoinNode =
           new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
-      for (RegionReplicaSet dataRegion : dataDistribution) {
+      for (TRegionReplicaSet dataRegion : dataDistribution) {
         SeriesScanNode split = (SeriesScanNode) node.clone();
         split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
         split.setRegionReplicaSet(dataRegion);
