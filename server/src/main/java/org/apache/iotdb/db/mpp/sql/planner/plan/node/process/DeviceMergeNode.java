@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
  * contain n+1 columns where the new column is Device column.
  */
-public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
+public class DeviceMergeNode extends ProcessNode {
 
   // The result output order that this operator
   private OrderBy mergeOrder;
@@ -106,13 +106,18 @@ public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
   }
 
   private void updateColumnHeaders(PlanNode childNode) {
-    List<ColumnHeader> childColumnHeaders = ((IOutputPlanNode) childNode).getOutputColumnHeaders();
+    List<ColumnHeader> childColumnHeaders = childNode.getOutputColumnHeaders();
     for (ColumnHeader columnHeader : childColumnHeaders) {
       ColumnHeader tmpColumnHeader = columnHeader.replacePathWithMeasurement();
       if (!columnHeaders.contains(tmpColumnHeader)) {
         columnHeaders.add(tmpColumnHeader);
       }
     }
+  }
+
+  @Override
+  public List<OutputColumn> getOutputColumns() {
+    return null;
   }
 
   @Override

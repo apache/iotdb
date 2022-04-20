@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
+
 public class InputLocation {
   // which input tsblock
   private final int tsBlockIndex;
@@ -35,5 +39,16 @@ public class InputLocation {
 
   public int getValueColumnIndex() {
     return valueColumnIndex;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(tsBlockIndex, byteBuffer);
+    ReadWriteIOUtils.write(valueColumnIndex, byteBuffer);
+  }
+
+  public static InputLocation deserialize(ByteBuffer byteBuffer) {
+    int tsBlockIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    int valueColumnIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    return new InputLocation(tsBlockIndex, valueColumnIndex);
   }
 }

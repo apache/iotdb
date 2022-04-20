@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** WithoutNode is used to discard specific rows from upstream node. */
-public class FilterNullNode extends ProcessNode implements IOutputPlanNode {
+public class FilterNullNode extends ProcessNode {
 
   // The policy to discard the result from upstream operator
   private final FilterNullPolicy discardPolicy;
@@ -84,18 +84,23 @@ public class FilterNullNode extends ProcessNode implements IOutputPlanNode {
   }
 
   @Override
+  public List<OutputColumn> getOutputColumns() {
+    return null;
+  }
+
+  @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return ((IOutputPlanNode) child).getOutputColumnHeaders();
+    return child.getOutputColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ((IOutputPlanNode) child).getOutputColumnNames();
+    return child.getOutputColumnNames();
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return ((IOutputPlanNode) child).getOutputColumnTypes();
+    return child.getOutputColumnTypes();
   }
 
   public FilterNullPolicy getDiscardPolicy() {

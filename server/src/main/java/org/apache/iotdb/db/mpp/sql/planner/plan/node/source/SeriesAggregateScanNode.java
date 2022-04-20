@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -64,7 +64,7 @@ import java.util.stream.Collectors;
  * represent the whole aggregation result of this series. And the timestamp will be 0, which is
  * meaningless.
  */
-public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNode {
+public class SeriesAggregateScanNode extends SourceNode {
 
   // The series path and aggregation functions on this series.
   // (Currently, we only support one series in the aggregation function)
@@ -125,6 +125,11 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
   @Override
   public int allowedChildCount() {
     return NO_CHILD_ALLOWED;
+  }
+
+  @Override
+  public List<OutputColumn> getOutputColumns() {
+    return null;
   }
 
   @Override

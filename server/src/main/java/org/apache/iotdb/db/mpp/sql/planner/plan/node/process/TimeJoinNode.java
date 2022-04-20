@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -44,7 +43,7 @@ import java.util.stream.Collectors;
  * TimeJoinOperator is sorted by timestamp
  */
 // TODO: define the TimeJoinMergeNode for distributed plan
-public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
+public class TimeJoinNode extends ProcessNode {
 
   // This parameter indicates the order when executing multiway merge sort.
   private final OrderBy mergeOrder;
@@ -62,7 +61,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   // indicate each output column should use which value column of which input TsBlock and the
   // overlapped situation
   // size of outputColumns must be equal to the size of columnHeaders
-  private List<OutputColumn> outputColumns = new ArrayList<>();
+  private final List<OutputColumn> outputColumns = new ArrayList<>();
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
@@ -96,23 +95,34 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
 
   private void initColumnHeaders() {
     for (PlanNode child : children) {
-      columnHeaders.addAll(((IOutputPlanNode) child).getOutputColumnHeaders());
+      columnHeaders.addAll(child.getOutputColumnHeaders());
     }
   }
 
   @Override
+  public List<OutputColumn> getOutputColumns() {
+    return outputColumns;
+  }
+
+  @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return columnHeaders;
+    return outputColumns.stream().map(OutputColumn::getColumnHeader).collect(Collectors.toList());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+    return outputColumns.stream()
+        .map(OutputColumn::getColumnHeader)
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    return outputColumns.stream()
+        .map(OutputColumn::getColumnHeader)
+        .map(ColumnHeader::getColumnType)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -125,28 +135,24 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     PlanNodeType.TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(columnHeaders.size(), byteBuffer);
-    for (ColumnHeader columnHeader : columnHeaders) {
-      columnHeader.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputColumns.size(), byteBuffer);
+    for (OutputColumn outputColumn : outputColumns) {
+      outputColumn.serialize(byteBuffer);
     }
-  }
-
-  public List<OutputColumn> getOutputColumns() {
-    return outputColumns;
   }
 
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
     OrderBy orderBy = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     FilterNullPolicy filterNullPolicy =
         FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    int columnHeaderSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<ColumnHeader> columnHeaders = new ArrayList<>();
-    for (int i = 0; i < columnHeaderSize; i++) {
-      columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
+    int outputColumnSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<OutputColumn> outputColumns = new ArrayList<>();
+    for (int i = 0; i < outputColumnSize; i++) {
+      outputColumns.add(OutputColumn.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     TimeJoinNode timeJoinNode = new TimeJoinNode(planNodeId, orderBy);
-    timeJoinNode.columnHeaders.addAll(columnHeaders);
+    timeJoinNode.outputColumns.addAll(outputColumns);
     timeJoinNode.filterNullPolicy = filterNullPolicy;
 
     return timeJoinNode;

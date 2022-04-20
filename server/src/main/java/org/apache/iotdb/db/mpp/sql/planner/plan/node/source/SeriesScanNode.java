@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -51,7 +51,7 @@ import java.util.Set;
  *
  * <p>Children type: no child is allowed for SeriesScanNode
  */
-public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
+public class SeriesScanNode extends SourceNode {
 
   // The path of the target series which will be scanned.
   private final PartialPath seriesPath;
@@ -156,6 +156,11 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
   @Override
   public int allowedChildCount() {
     return NO_CHILD_ALLOWED;
+  }
+
+  @Override
+  public List<OutputColumn> getOutputColumns() {
+    return null;
   }
 
   @Override

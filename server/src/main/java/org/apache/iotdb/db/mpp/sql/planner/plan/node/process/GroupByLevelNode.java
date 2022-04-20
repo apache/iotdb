@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
  * <p>If the group by level parameter is [0, 2], then these two columns will not belong to one
  * bucket. And the total buckets are `root.*.d1.s1` and `root.*.d2.s1`
  */
-public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
+public class GroupByLevelNode extends ProcessNode {
 
   private final int[] groupByLevels;
 
@@ -99,6 +99,11 @@ public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
 
   public int[] getGroupByLevels() {
     return groupByLevels;
+  }
+
+  @Override
+  public List<OutputColumn> getOutputColumns() {
+    return null;
   }
 
   @Override

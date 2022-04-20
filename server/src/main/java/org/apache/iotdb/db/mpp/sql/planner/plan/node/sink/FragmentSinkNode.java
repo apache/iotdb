@@ -20,10 +20,13 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
 import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -81,6 +84,26 @@ public class FragmentSinkNode extends SinkNode {
   @Override
   public int allowedChildCount() {
     return ONE_CHILD;
+  }
+
+  @Override
+  public List<OutputColumn> getOutputColumns() {
+    return null;
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return null;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return null;
   }
 
   public static FragmentSinkNode deserialize(ByteBuffer byteBuffer) {

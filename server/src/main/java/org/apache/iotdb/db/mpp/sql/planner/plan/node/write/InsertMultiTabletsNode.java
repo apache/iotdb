@@ -21,11 +21,14 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -154,6 +157,26 @@ public class InsertMultiTabletsNode extends InsertNode {
   @Override
   public int allowedChildCount() {
     return NO_CHILD_ALLOWED;
+  }
+
+  @Override
+  public List<OutputColumn> getOutputColumns() {
+    return null;
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return null;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return null;
   }
 
   public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -52,7 +52,7 @@ import java.util.stream.Collectors;
  * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
  * final series aggregated result represented by TsBlock.
  */
-public class AggregateNode extends ProcessNode implements IOutputPlanNode {
+public class AggregateNode extends ProcessNode {
 
   // The map from columns to corresponding aggregation functions on that column.
   //    KEY: The index of a column in the input {@link TsBlock}.
@@ -107,6 +107,11 @@ public class AggregateNode extends ProcessNode implements IOutputPlanNode {
   @Override
   public int allowedChildCount() {
     return CHILD_COUNT_NO_LIMIT;
+  }
+
+  @Override
+  public List<OutputColumn> getOutputColumns() {
+    return null;
   }
 
   @Override

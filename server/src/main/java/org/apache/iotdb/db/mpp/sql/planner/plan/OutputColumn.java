@@ -18,11 +18,19 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class OutputColumn {
+
+  // header (column name and dataType) of this output column
+  private final ColumnHeader columnHeader;
 
   // indicate this output column should use which value column of which input TsBlock
   // if overlapped is false, the order in sourceLocations should be in ascending timestamp order
@@ -35,14 +43,21 @@ public class OutputColumn {
   private final boolean overlapped;
 
   /** used for case that this OutputColumn only has one input column */
-  public OutputColumn(InputLocation inputLocation) {
+  public OutputColumn(ColumnHeader columnHeader, InputLocation inputLocation) {
+    this.columnHeader = columnHeader;
     this.sourceLocations = ImmutableList.of(inputLocation);
     this.overlapped = false;
   }
 
-  public OutputColumn(List<InputLocation> sourceLocations, boolean overlapped) {
+  public OutputColumn(
+      ColumnHeader columnHeader, List<InputLocation> sourceLocations, boolean overlapped) {
+    this.columnHeader = columnHeader;
     this.sourceLocations = sourceLocations;
     this.overlapped = overlapped;
+  }
+
+  public ColumnHeader getColumnHeader() {
+    return columnHeader;
   }
 
   public List<InputLocation> getSourceLocations() {
@@ -51,5 +66,26 @@ public class OutputColumn {
 
   public boolean isOverlapped() {
     return overlapped;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    columnHeader.serialize(byteBuffer);
+    ReadWriteIOUtils.write(sourceLocations.size(), byteBuffer);
+    for (InputLocation sourceLocation : sourceLocations) {
+      sourceLocation.serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(overlapped, byteBuffer);
+  }
+
+  public static OutputColumn deserialize(ByteBuffer byteBuffer) {
+    ColumnHeader columnHeader = ColumnHeader.deserialize(byteBuffer);
+    int sourceLocationSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<InputLocation> sourceLocations = new ArrayList<>();
+    while (sourceLocationSize > 0) {
+      sourceLocations.add(InputLocation.deserialize(byteBuffer));
+      sourceLocationSize--;
+    }
+    boolean overlapped = ReadWriteIOUtils.readBool(byteBuffer);
+    return new OutputColumn(columnHeader, sourceLocations, overlapped);
   }
 }
