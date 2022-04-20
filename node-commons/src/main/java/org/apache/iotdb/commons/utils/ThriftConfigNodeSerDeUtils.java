@@ -23,6 +23,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
+// TODO: Serialize and deserialize by thrift structure
+/** Utils for serialize and deserialize all the data struct defined by thrift-confignode */
 public class ThriftConfigNodeSerDeUtils {
 
   private ThriftConfigNodeSerDeUtils() {
