@@ -62,26 +62,6 @@ public class ConfigExecutionTest {
   }
 
   @Test
-  public void exceptionAfterInvokeGetStatusTest() throws InterruptedException {
-    IConfigTask task =
-        () -> {
-          throw new RuntimeException("task throw exception when executing");
-        };
-    ConfigExecution execution =
-        new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
-    Thread resultThread =
-        new Thread(
-            () -> {
-              ExecutionResult result = execution.getStatus();
-              Assert.assertEquals(
-                  TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), result.status.code);
-            });
-    resultThread.start();
-    execution.start();
-    resultThread.join();
-  }
-
-  @Test
   public void configTaskCancelledTest() throws InterruptedException {
     SettableFuture<Void> taskResult = SettableFuture.create();
     class SimpleTask implements IConfigTask {
@@ -111,6 +91,31 @@ public class ConfigExecutionTest {
     resultThread.start();
     taskResult.cancel(true);
     resultThread.join();
+  }
+
+  @Test
+  public void exceptionAfterInvokeGetStatusTest() {
+    IConfigTask task =
+        () -> {
+          throw new RuntimeException("task throw exception when executing");
+        };
+    ConfigExecution execution =
+        new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
+    Thread resultThread =
+        new Thread(
+            () -> {
+              ExecutionResult result = execution.getStatus();
+              Assert.assertEquals(
+                  TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), result.status.code);
+            });
+    resultThread.start();
+    execution.start();
+    try {
+      resultThread.join();
+      Assert.fail("InterruptedException should be threw here");
+    } catch (InterruptedException e) {
+      execution.stop();
+    }
   }
 
   private MPPQueryContext genMPPQueryContext() {
