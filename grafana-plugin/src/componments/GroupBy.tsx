@@ -34,8 +34,8 @@ export const GroupByLabel: FunctionComponent<Props> = ({ groupBy, onChange }) =>
           className="width-5"
           placeholder="1s"
         />
-        <InlineFormLabel className="query-keyword" width={5}>
-          sliding step
+        <InlineFormLabel className="query-keyword" width={9}>
+          SLIDING STEP
         </InlineFormLabel>
         <SegmentInput
           className="width-5"
@@ -43,8 +43,8 @@ export const GroupByLabel: FunctionComponent<Props> = ({ groupBy, onChange }) =>
           value={groupBy.step}
           onChange={(string) => onChange({ ...groupBy, step: string.toString() })}
         />
-        <InlineFormLabel className="query-keyword" width={9}>
-          GroupBy Level
+        <InlineFormLabel className="query-keyword" width={5}>
+          LEVEL
         </InlineFormLabel>
         <SegmentInput
           className="width-5"

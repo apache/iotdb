@@ -65,7 +65,6 @@ const selectElement = [
 
 const paths = [''];
 const expressions = [''];
-const selectPoint = ['sampling interval'];
 const selectRaw = ['Raw', 'Aggregation'];
 type Props = QueryEditorProps<DataSource, IoTDBQuery, IoTDBOptions>;
 
@@ -238,7 +237,7 @@ export class QueryEditor extends PureComponent<Props, State> {
             {this.state.isAggregated && (
               <>
                 <div className="gf-form">
-                  <QueryInlineField label={'Time-Series'}>
+                  <QueryInlineField label={'TIME-SERIES'}>
                     <TimeSeries
                       timeSeries={this.state.timeSeries}
                       onChange={this.onTimeSeriesChange}
@@ -248,7 +247,7 @@ export class QueryEditor extends PureComponent<Props, State> {
                   </QueryInlineField>
                 </div>
                 <div className="gf-form">
-                  <QueryInlineField label={'Function'}>
+                  <QueryInlineField label={'FUNCTION'}>
                     <AggregateFun
                       aggregateFun={this.state.aggregateFun}
                       onChange={this.onAggregationsChange}
@@ -262,13 +261,13 @@ export class QueryEditor extends PureComponent<Props, State> {
                   </QueryInlineField>
                 </div>
                 <div className="gf-form">
-                  <QueryInlineField label={'Group By'}>
-                    <QueryField label={selectPoint[0]} />
+                  <QueryInlineField label={'GROUP BY'}>
+                    <QueryField label={'SAMPLING INTERVAL'} />
                     <GroupByLabel groupBy={this.state.groupBy} onChange={this.onGroupByChange} />
                   </QueryInlineField>
                 </div>
                 <div className="gf-form">
-                  <QueryInlineField label={'Fill'}>
+                  <QueryInlineField label={'FILL'}>
                     <FillValue fill={fillClauses} onChange={this.onFillsChange} />
                   </QueryInlineField>
                 </div>
