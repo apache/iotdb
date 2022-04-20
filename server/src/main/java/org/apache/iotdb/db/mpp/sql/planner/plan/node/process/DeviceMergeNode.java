@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -50,12 +49,6 @@ public class DeviceMergeNode extends ProcessNode {
   // The result output order that this operator
   private OrderBy mergeOrder;
 
-  // The policy to decide whether a row should be discarded
-  // The without policy is able to be push down to the DeviceMergeNode because we can know whether a
-  // row contains
-  // null or not.
-  @Deprecated private FilterNullComponent filterNullComponent;
-
   // The map from deviceName to corresponding query result node responsible for that device.
   // DeviceNode means the node whose output TsBlock contains the data belonged to one device.
   private Map<String, PlanNode> childDeviceNodeMap = new HashMap<>();
@@ -73,10 +66,6 @@ public class DeviceMergeNode extends ProcessNode {
     this(id);
     this.mergeOrder = mergeOrder;
     this.children = new ArrayList<>();
-  }
-
-  public void setFilterNullComponent(FilterNullComponent filterNullComponent) {
-    this.filterNullComponent = filterNullComponent;
   }
 
   @Override
@@ -148,7 +137,6 @@ public class DeviceMergeNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICE_MERGE.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
-    filterNullComponent.serialize(byteBuffer);
     ReadWriteIOUtils.write(childDeviceNodeMap.size(), byteBuffer);
     for (Map.Entry<String, PlanNode> e : childDeviceNodeMap.entrySet()) {
       ReadWriteIOUtils.write(e.getKey(), byteBuffer);
@@ -163,7 +151,6 @@ public class DeviceMergeNode extends ProcessNode {
   public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
     int orderByIndex = ReadWriteIOUtils.readInt(byteBuffer);
     OrderBy orderBy = OrderBy.values()[orderByIndex];
-    FilterNullComponent filterNullComponent = FilterNullComponent.deserialize(byteBuffer);
     Map<String, PlanNode> childDeviceNodeMap = new HashMap<>();
     int childDeviceNodeMapSize = ReadWriteIOUtils.readInt(byteBuffer);
     for (int i = 0; i < childDeviceNodeMapSize; i++) {
@@ -178,7 +165,6 @@ public class DeviceMergeNode extends ProcessNode {
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     DeviceMergeNode deviceMergeNode = new DeviceMergeNode(planNodeId, orderBy);
-    deviceMergeNode.filterNullComponent = filterNullComponent;
     deviceMergeNode.childDeviceNodeMap = childDeviceNodeMap;
     deviceMergeNode.columnHeaders.addAll(columnHeaders);
     return deviceMergeNode;
@@ -208,12 +194,11 @@ public class DeviceMergeNode extends ProcessNode {
 
     DeviceMergeNode that = (DeviceMergeNode) o;
     return mergeOrder == that.mergeOrder
-        && Objects.equals(filterNullComponent, that.filterNullComponent)
         && Objects.equals(childDeviceNodeMap, that.childDeviceNodeMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(mergeOrder, filterNullComponent, childDeviceNodeMap);
+    return Objects.hash(mergeOrder, childDeviceNodeMap);
   }
 }
