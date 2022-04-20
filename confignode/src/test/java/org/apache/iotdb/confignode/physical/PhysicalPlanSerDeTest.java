@@ -52,7 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class PhysicalPlanSerializeDeserializeTest {
+public class PhysicalPlanSerDeTest {
 
   private final ByteBuffer buffer = ByteBuffer.allocate(10240);
 

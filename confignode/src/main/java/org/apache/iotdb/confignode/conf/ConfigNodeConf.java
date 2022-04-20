@@ -91,10 +91,10 @@ public class ConfigNodeConf {
   private long defaultTTL = Long.MAX_VALUE;
 
   /** Default number of SchemaRegion replicas */
-  private int defaultSchemaReplicationFactor = 3;
+  private int schemaReplicationFactor = 3;
 
   /** Default number of DataRegion replicas */
-  private int defaultDataReplicationFactor = 3;
+  private int dataReplicationFactor = 3;
 
   /** The initial number of SchemaRegions of each StorageGroup */
   private int initialSchemaRegionCount = 1;
@@ -282,20 +282,20 @@ public class ConfigNodeConf {
     this.defaultTTL = defaultTTL;
   }
 
-  public int getDefaultSchemaReplicationFactor() {
-    return defaultSchemaReplicationFactor;
+  public int getSchemaReplicationFactor() {
+    return schemaReplicationFactor;
   }
 
-  public void setDefaultSchemaReplicationFactor(int defaultSchemaReplicationFactor) {
-    this.defaultSchemaReplicationFactor = defaultSchemaReplicationFactor;
+  public void setSchemaReplicationFactor(int schemaReplicationFactor) {
+    this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
-  public int getDefaultDataReplicationFactor() {
-    return defaultDataReplicationFactor;
+  public int getDataReplicationFactor() {
+    return dataReplicationFactor;
   }
 
-  public void setDefaultDataReplicationFactor(int defaultDataReplicationFactor) {
-    this.defaultDataReplicationFactor = defaultDataReplicationFactor;
+  public void setDataReplicationFactor(int dataReplicationFactor) {
+    this.dataReplicationFactor = dataReplicationFactor;
   }
 
   public int getInitialSchemaRegionCount() {

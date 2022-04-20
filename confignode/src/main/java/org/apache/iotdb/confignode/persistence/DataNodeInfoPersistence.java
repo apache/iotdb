@@ -28,6 +28,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -113,9 +114,11 @@ public class DataNodeInfoPersistence {
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {
-        result.setDataNodeLocations(new ArrayList<>(onlineDataNodes.values()));
+        result.setDataNodeLocations(new HashMap<>(onlineDataNodes));
       } else {
-        result.setDataNodeLocations(Collections.singletonList(onlineDataNodes.get(dataNodeId)));
+
+        result.setDataNodeLocations(
+            Collections.singletonMap(dataNodeId, onlineDataNodes.get(dataNodeId)));
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();

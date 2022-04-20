@@ -38,13 +38,13 @@ public class ThriftCommonsSerDeUtils {
   }
 
   public static void writeTEndPoint(TEndPoint endPoint, ByteBuffer buffer) {
-    BasicStructureSerializeDeserializeUtil.write(endPoint.getIp(), buffer);
+    BasicStructureSerDeUtil.write(endPoint.getIp(), buffer);
     buffer.putInt(endPoint.getPort());
   }
 
   public static TEndPoint readTEndPoint(ByteBuffer buffer) {
     TEndPoint endPoint = new TEndPoint();
-    endPoint.setIp(BasicStructureSerializeDeserializeUtil.readString(buffer));
+    endPoint.setIp(BasicStructureSerDeUtil.readString(buffer));
     endPoint.setPort(buffer.getInt());
     return endPoint;
   }

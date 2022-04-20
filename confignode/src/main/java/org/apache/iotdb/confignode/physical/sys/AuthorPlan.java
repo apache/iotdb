@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerializeDeserializeUtil;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.db.auth.AuthException;
@@ -132,11 +132,11 @@ public class AuthorPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    BasicStructureSerializeDeserializeUtil.write(getPlanTypeOrdinal(authorType), buffer);
-    BasicStructureSerializeDeserializeUtil.write(userName, buffer);
-    BasicStructureSerializeDeserializeUtil.write(roleName, buffer);
-    BasicStructureSerializeDeserializeUtil.write(password, buffer);
-    BasicStructureSerializeDeserializeUtil.write(newPassword, buffer);
+    BasicStructureSerDeUtil.write(getPlanTypeOrdinal(authorType), buffer);
+    BasicStructureSerDeUtil.write(userName, buffer);
+    BasicStructureSerDeUtil.write(roleName, buffer);
+    BasicStructureSerDeUtil.write(password, buffer);
+    BasicStructureSerDeUtil.write(newPassword, buffer);
     if (permissions == null) {
       buffer.put((byte) 0);
     } else {
@@ -146,15 +146,15 @@ public class AuthorPlan extends PhysicalPlan {
         buffer.putInt(permission);
       }
     }
-    BasicStructureSerializeDeserializeUtil.write(nodeName, buffer);
+    BasicStructureSerDeUtil.write(nodeName, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    userName = BasicStructureSerializeDeserializeUtil.readString(buffer);
-    roleName = BasicStructureSerializeDeserializeUtil.readString(buffer);
-    password = BasicStructureSerializeDeserializeUtil.readString(buffer);
-    newPassword = BasicStructureSerializeDeserializeUtil.readString(buffer);
+    userName = BasicStructureSerDeUtil.readString(buffer);
+    roleName = BasicStructureSerDeUtil.readString(buffer);
+    password = BasicStructureSerDeUtil.readString(buffer);
+    newPassword = BasicStructureSerDeUtil.readString(buffer);
     byte hasPermissions = buffer.get();
     if (hasPermissions == (byte) 0) {
       this.permissions = null;
@@ -165,7 +165,7 @@ public class AuthorPlan extends PhysicalPlan {
         permissions.add(buffer.getInt());
       }
     }
-    nodeName = BasicStructureSerializeDeserializeUtil.readString(buffer);
+    nodeName = BasicStructureSerDeUtil.readString(buffer);
   }
 
   private int getPlanTypeOrdinal(PhysicalPlanType physicalPlanType) {

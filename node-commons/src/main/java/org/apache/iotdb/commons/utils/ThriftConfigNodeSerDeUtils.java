@@ -31,7 +31,7 @@ public class ThriftConfigNodeSerDeUtils {
 
   public static void writeTStorageGroupSchema(
       TStorageGroupSchema storageGroupSchema, ByteBuffer buffer) {
-    BasicStructureSerializeDeserializeUtil.write(storageGroupSchema.getName(), buffer);
+    BasicStructureSerDeUtil.write(storageGroupSchema.getName(), buffer);
     buffer.putLong(storageGroupSchema.getTTL());
     buffer.putInt(storageGroupSchema.getSchemaReplicationFactor());
     buffer.putInt(storageGroupSchema.getDataReplicationFactor());
@@ -58,7 +58,7 @@ public class ThriftConfigNodeSerDeUtils {
 
   public static TStorageGroupSchema readTStorageGroupSchema(ByteBuffer buffer) {
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-    storageGroupSchema.setName(BasicStructureSerializeDeserializeUtil.readString(buffer));
+    storageGroupSchema.setName(BasicStructureSerDeUtil.readString(buffer));
     storageGroupSchema.setTTL(buffer.getLong());
     storageGroupSchema.setSchemaReplicationFactor(buffer.getInt());
     storageGroupSchema.setDataReplicationFactor(buffer.getInt());

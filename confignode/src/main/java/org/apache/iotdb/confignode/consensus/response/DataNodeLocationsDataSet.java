@@ -24,13 +24,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.HashMap;
-import java.util.List;
+import java.util.Map;
 
 public class DataNodeLocationsDataSet implements DataSet {
 
   private TSStatus status;
-  private List<TDataNodeLocation> dataNodeLocations;
+  private Map<Integer, TDataNodeLocation> dataNodeLocationMap;
 
   public DataNodeLocationsDataSet() {
     // empty constructor
@@ -44,22 +43,14 @@ public class DataNodeLocationsDataSet implements DataSet {
     return status;
   }
 
-  public List<TDataNodeLocation> getDataNodeLocations() {
-    return dataNodeLocations;
-  }
-
-  public void setDataNodeLocations(List<TDataNodeLocation> dataNodeLocations) {
-    this.dataNodeLocations = dataNodeLocations;
+  public void setDataNodeLocations(Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    this.dataNodeLocationMap = dataNodeLocationMap;
   }
 
   public void convertToRpcDataNodeLocationResp(TDataNodeLocationResp resp) {
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setDataNodeLocationMap(new HashMap<>());
-      dataNodeLocations.forEach(
-          dataNodeLocation ->
-              resp.getDataNodeLocationMap()
-                  .put(dataNodeLocation.getDataNodeId(), dataNodeLocation));
+      resp.setDataNodeLocationMap(dataNodeLocationMap);
     }
   }
 }

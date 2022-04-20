@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BasicStructureSerializeDeserializeUtilTest {
+public class BasicStructureSerDeUtilTest {
   protected static final int DEFAULT_BUFFER_SIZE = 4096;
 
   @Test
@@ -40,10 +40,10 @@ public class BasicStructureSerializeDeserializeUtilTest {
     map.put(key, value);
 
     ByteBuffer bf = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-    BasicStructureSerializeDeserializeUtil.write(map, bf);
+    BasicStructureSerDeUtil.write(map, bf);
     byte[] b = bf.array();
     bf.clear();
-    Map<String, String> result = BasicStructureSerializeDeserializeUtil.readMap(ByteBuffer.wrap(b));
+    Map<String, String> result = BasicStructureSerDeUtil.readMap(ByteBuffer.wrap(b));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
   }
@@ -59,11 +59,11 @@ public class BasicStructureSerializeDeserializeUtilTest {
     stringMapLists.put(key, keyLists);
 
     ByteBuffer bf = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-    BasicStructureSerializeDeserializeUtil.writeStringMapLists(stringMapLists, bf);
+    BasicStructureSerDeUtil.writeStringMapLists(stringMapLists, bf);
     byte[] b = bf.array();
     bf.clear();
     Map<String, List<String>> stringMapListsResult =
-        BasicStructureSerializeDeserializeUtil.readStringMapLists(ByteBuffer.wrap(b));
+        BasicStructureSerDeUtil.readStringMapLists(ByteBuffer.wrap(b));
     Assert.assertNotNull(stringMapListsResult);
     Assert.assertEquals(stringMapLists, stringMapListsResult);
   }
@@ -79,9 +79,9 @@ public class BasicStructureSerializeDeserializeUtilTest {
     ByteBuffer bf = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
     byte[] b = bf.array();
 
-    BasicStructureSerializeDeserializeUtil.writeIntMapLists(integerMapLists, bf);
+    BasicStructureSerDeUtil.writeIntMapLists(integerMapLists, bf);
     Map<Integer, List<Integer>> intMapListsResult =
-        BasicStructureSerializeDeserializeUtil.readIntMapLists(ByteBuffer.wrap(b));
+        BasicStructureSerDeUtil.readIntMapLists(ByteBuffer.wrap(b));
     Assert.assertNotNull(intMapListsResult);
     Assert.assertEquals(integerMapLists, intMapListsResult);
   }

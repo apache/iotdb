@@ -42,8 +42,8 @@ import java.util.List;
 public class RegionManager {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int schemaReplicationFactor = conf.getDefaultSchemaReplicationFactor();
-  private static final int dataReplicationFactor = conf.getDefaultDataReplicationFactor();
+  private static final int schemaReplicationFactor = conf.getSchemaReplicationFactor();
+  private static final int dataReplicationFactor = conf.getDataReplicationFactor();
   private static final int initialSchemaRegionCount = conf.getInitialSchemaRegionCount();
   private static final int initialDataRegionCount = conf.getInitialDataRegionCount();
 

@@ -21,15 +21,7 @@ package org.apache.iotdb.commons.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
-import java.nio.ByteBuffer;
-
 public interface ConsensusGroupId {
-
-  // contains specific id and type
-  void serializeImpl(ByteBuffer buffer);
-
-  // only deserialize specific id
-  void deserializeImpl(ByteBuffer buffer);
 
   // return specific id
   int getId();
@@ -40,17 +32,6 @@ public interface ConsensusGroupId {
   TConsensusGroupType getType();
 
   class Factory {
-    public static ConsensusGroupId create(ByteBuffer buffer) {
-      int index = buffer.get();
-      if (index >= TConsensusGroupType.values().length) {
-        throw new IllegalArgumentException("invalid ConsensusGroup type. Ordinal is: " + index);
-      }
-      TConsensusGroupType type = TConsensusGroupType.values()[index];
-      ConsensusGroupId groupId = createEmpty(type);
-      groupId.deserializeImpl(buffer);
-      return groupId;
-    }
-
     public static ConsensusGroupId createEmpty(TConsensusGroupType type) {
       ConsensusGroupId groupId;
       switch (type) {

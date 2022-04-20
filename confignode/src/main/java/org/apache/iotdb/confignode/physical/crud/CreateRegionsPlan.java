@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.physical.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.utils.BasicStructureSerializeDeserializeUtil;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
@@ -62,7 +62,7 @@ public class CreateRegionsPlan extends PhysicalPlan {
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.CreateRegions.ordinal());
 
-    BasicStructureSerializeDeserializeUtil.write(storageGroup, buffer);
+    BasicStructureSerDeUtil.write(storageGroup, buffer);
 
     buffer.putInt(regionReplicaSets.size());
     for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
@@ -72,7 +72,7 @@ public class CreateRegionsPlan extends PhysicalPlan {
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    storageGroup = BasicStructureSerializeDeserializeUtil.readString(buffer);
+    storageGroup = BasicStructureSerDeUtil.readString(buffer);
 
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {

@@ -25,10 +25,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class BasicStructureSerializeDeserializeUtil {
+public class BasicStructureSerDeUtil {
   public static final int INT_LEN = 4;
 
-  private BasicStructureSerializeDeserializeUtil() {}
+  private BasicStructureSerDeUtil() {}
 
   /** read string from byteBuffer. */
   public static String readString(ByteBuffer buffer) {

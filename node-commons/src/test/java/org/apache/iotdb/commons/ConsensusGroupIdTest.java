@@ -28,7 +28,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public class ConsensusGroupIdTest {
   @Test
@@ -44,12 +43,5 @@ public class ConsensusGroupIdTest {
     Assert.assertTrue(schemaRegionId instanceof SchemaRegionId);
     Assert.assertEquals(2, schemaRegionId.getId());
     Assert.assertEquals(TConsensusGroupType.SchemaRegion, schemaRegionId.getType());
-
-    ByteBuffer buffer = ByteBuffer.allocate(1024);
-    schemaRegionId.serializeImpl(buffer);
-    buffer.flip();
-
-    ConsensusGroupId schemaRegionIdClone = ConsensusGroupId.Factory.create(buffer);
-    Assert.assertEquals(schemaRegionId, schemaRegionIdClone);
   }
 }

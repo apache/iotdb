@@ -174,17 +174,15 @@ public class ConfigNodeDescriptor {
           Long.parseLong(
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
-      conf.setDefaultSchemaReplicationFactor(
+      conf.setSchemaReplicationFactor(
           Integer.parseInt(
               properties.getProperty(
-                  "default_schema_replication_factor",
-                  String.valueOf(conf.getDefaultSchemaReplicationFactor()))));
+                  "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))));
 
-      conf.setDefaultDataReplicationFactor(
+      conf.setDataReplicationFactor(
           Integer.parseInt(
               properties.getProperty(
-                  "default_data_replication_factor",
-                  String.valueOf(conf.getDefaultDataReplicationFactor()))));
+                  "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
       conf.setInitialSchemaRegionCount(
           Integer.parseInt(
