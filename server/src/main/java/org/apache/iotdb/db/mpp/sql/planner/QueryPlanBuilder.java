@@ -109,6 +109,10 @@ public class QueryPlanBuilder {
     for (Map.Entry<String, Map<PartialPath, Set<AggregationType>>> entry :
         deviceNameToAggregationsMap.entrySet()) {
       String deviceName = entry.getKey();
+      Set<String> allSensors =
+          entry.getValue().keySet().stream()
+              .map(PartialPath::getMeasurement)
+              .collect(Collectors.toSet());
 
       for (PartialPath path : entry.getValue().keySet()) {
         deviceNameToSourceNodesMap
@@ -117,6 +121,7 @@ public class QueryPlanBuilder {
                 new SeriesAggregateScanNode(
                     context.getQueryId().genPlanNodeId(),
                     path,
+                    allSensors,
                     new ArrayList<>(entry.getValue().get(path)),
                     scanOrder,
                     timeFilter,

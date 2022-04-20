@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.operator.schema.SchemaMergeOperator;
 import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
@@ -76,7 +77,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 /**
- * used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
+ * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
  * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
  * run a fragment instance parallel and take full advantage of multi-cores
  */
@@ -214,7 +215,29 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitSeriesAggregate(
         SeriesAggregateScanNode node, LocalExecutionPlanContext context) {
-      return super.visitSeriesAggregate(node, context);
+      PartialPath seriesPath = node.getSeriesPath();
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SeriesAggregateScanNode.class.getSimpleName());
+
+      SeriesAggregateScanOperator aggregateScanOperator =
+          new SeriesAggregateScanOperator(
+              node.getPlanNodeId(),
+              seriesPath,
+              node.getAllSensors(),
+              operatorContext,
+              node.getAggregateFuncList(),
+              node.getTimeFilter(),
+              ascending,
+              node.getGroupByTimeParameter());
+
+      context.addSourceOperator(aggregateScanOperator);
+      context.addPath(seriesPath);
+
+      return aggregateScanOperator;
     }
 
     @Override
@@ -355,6 +378,7 @@ public class LocalExecutionPlanner {
   private static class LocalExecutionPlanContext {
     private final FragmentInstanceContext instanceContext;
     private final List<PartialPath> paths;
+    // Used to lock corresponding query resources
     private final List<DataSourceOperator> sourceOperators;
     private ISinkHandle sinkHandle;
 
