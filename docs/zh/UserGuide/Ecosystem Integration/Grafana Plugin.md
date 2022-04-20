@@ -40,7 +40,7 @@ Grafana 是开源的指标量监测和可视化工具，可用于展示时序数
 
 #### grafana-plugin 获取
 
-#### 方案一 grafana-plugin 下载
+##### 方案一 grafana-plugin 下载
 
 二进制文件下载地址：https://iotdb.apache.org/zh/Download/
 
