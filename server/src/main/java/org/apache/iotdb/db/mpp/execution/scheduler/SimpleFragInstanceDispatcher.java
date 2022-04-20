@@ -28,13 +28,16 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleFragInstanceDispatcher.class);
   private final ExecutorService executor;
 
   public SimpleFragInstanceDispatcher(ExecutorService exeutor) {
@@ -46,33 +49,27 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
     return executor.submit(
         () -> {
           TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
-          try {
-            for (FragmentInstance instance : instances) {
-              // TODO: (jackie tien) change the port
-              InternalService.Iface client =
-                  InternalServiceClientFactory.getInternalServiceClient(
-                      new Endpoint(
-                          instance.getHostEndpoint().getIp(),
-                          IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
-              // TODO: (xingtanzjr) consider how to handle the buffer here
-              ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-              instance.serializeRequest(buffer);
-              buffer.flip();
-              TConsensusGroupId groupId =
-                  new TConsensusGroupId(
-                      instance.getRegionReplicaSet().getConsensusGroupId().getId(),
-                      instance.getRegionReplicaSet().getConsensusGroupId().getType().toString());
-              TSendFragmentInstanceReq req =
-                  new TSendFragmentInstanceReq(
-                      new TFragmentInstance(buffer), groupId, instance.getType().toString());
-              resp = client.sendFragmentInstance(req);
-              if (!resp.accepted) {
-                break;
-              }
+          for (FragmentInstance instance : instances) {
+            InternalService.Iface client =
+                InternalServiceClientFactory.getInternalServiceClient(
+                    new Endpoint(
+                        instance.getHostEndpoint().getIp(),
+                        IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
+            // TODO: (xingtanzjr) consider how to handle the buffer here
+            ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+            instance.serializeRequest(buffer);
+            buffer.flip();
+            TConsensusGroupId groupId =
+                new TConsensusGroupId(
+                    instance.getRegionReplicaSet().getConsensusGroupId().getId(),
+                    instance.getRegionReplicaSet().getConsensusGroupId().getType().toString());
+            TSendFragmentInstanceReq req =
+                new TSendFragmentInstanceReq(
+                    new TFragmentInstance(buffer), groupId, instance.getType().toString());
+            resp = client.sendFragmentInstance(req);
+            if (!resp.accepted) {
+              break;
             }
-          } catch (Exception e) {
-            // TODO: (xingtanzjr) add more details
-            return new FragInstanceDispatchResult(false);
           }
           return new FragInstanceDispatchResult(resp.accepted);
         });

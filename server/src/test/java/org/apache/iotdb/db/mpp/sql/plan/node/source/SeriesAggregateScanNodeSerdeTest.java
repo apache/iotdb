@@ -26,11 +26,13 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.operator.In;
 
+import org.apache.commons.compress.utils.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -50,14 +52,17 @@ public class SeriesAggregateScanNodeSerdeTest {
     st.add("s2");
     List<AggregationType> aggregateFuncList = new ArrayList<>();
     aggregateFuncList.add(AggregationType.MAX_TIME);
+    GroupByTimeComponent groupByTimeComponent =
+        new GroupByTimeComponent(1, 100, 1, 1, true, true, true);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
             new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN),
+            Sets.newHashSet("s1"),
             aggregateFuncList,
             OrderBy.TIMESTAMP_ASC,
             new In<String>(st, VALUE_FILTER, true),
-            null);
+            groupByTimeComponent);
     seriesAggregateScanNode.setRegionReplicaSet(
         new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
 

@@ -110,6 +110,10 @@ public class TsBlock {
     return positionCount;
   }
 
+  public long getStartTime() {
+    return timeColumn.getStartTime();
+  }
+
   public long getEndTime() {
     return timeColumn.getEndTime();
   }
@@ -191,7 +195,7 @@ public class TsBlock {
     return new AlignedTsBlockIterator(0, subIndex);
   }
 
-  private class TsBlockSingleColumnIterator implements IPointReader, IBatchDataIterator {
+  public class TsBlockSingleColumnIterator implements IPointReader, IBatchDataIterator {
 
     protected int rowIndex;
     protected int columnIndex;
@@ -261,6 +265,22 @@ public class TsBlock {
 
     @Override
     public void close() {}
+
+    public long getEndTime() {
+      return TsBlock.this.getEndTime();
+    }
+
+    public long getStartTime() {
+      return TsBlock.this.getStartTime();
+    }
+
+    public int getRowIndex() {
+      return rowIndex;
+    }
+
+    public void setRowIndex(int rowIndex) {
+      this.rowIndex = rowIndex;
+    }
   }
 
   /** Mainly used for UDF framework. Note that the timestamps are at the last column. */

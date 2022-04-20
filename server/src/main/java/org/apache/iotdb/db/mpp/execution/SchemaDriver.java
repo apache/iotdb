@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.apache.iotdb.db.mpp.operator.Operator.NOT_BLOCKED;
 
+/** One SchemaDriver is used to execute one FragmentInstance which is for metadata query. */
 @NotThreadSafe
 public class SchemaDriver implements Driver {
 

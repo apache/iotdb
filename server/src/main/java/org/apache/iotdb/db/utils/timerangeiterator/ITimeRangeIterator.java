@@ -19,19 +19,21 @@
 
 package org.apache.iotdb.db.utils.timerangeiterator;
 
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 /** This interface used for iteratively generating aggregated time windows in GROUP BY query. */
 public interface ITimeRangeIterator {
 
   /** return the first time range by sorting order */
-  Pair<Long, Long> getFirstTimeRange();
+  TimeRange getFirstTimeRange();
 
+  /** @return whether current iterator has next time range */
+  boolean hasNextTimeRange();
   /**
    * return the next time range according to curStartTime (the start time of the last returned time
    * range)
    */
-  Pair<Long, Long> getNextTimeRange(long curStartTime);
+  TimeRange nextTimeRange();
 
   boolean isAscending();
 }

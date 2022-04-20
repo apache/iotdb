@@ -16,22 +16,39 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution;
+package org.apache.iotdb.consensus.common;
 
-import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import java.io.File;
+import java.nio.ByteBuffer;
+import java.util.List;
 
-/** TODO Add javadoc for context */
-public class SchemaDriverContext extends DriverContext {
+public class SnapshotMeta {
+  /**
+   * metadata is the IConsensus metadata given when take this snapshot. More updated snapshot will
+   * have lexicographically larger metadata.
+   */
+  private ByteBuffer metadata;
 
-  private final ISchemaRegion schemaRegion;
+  private List<File> snapshotFiles;
 
-  public SchemaDriverContext(
-      FragmentInstanceContext fragmentInstanceContext, ISchemaRegion schemaRegion) {
-    super(fragmentInstanceContext);
-    this.schemaRegion = schemaRegion;
+  public SnapshotMeta(ByteBuffer metadata, List<File> snapshotFiles) {
+    this.metadata = metadata;
+    this.snapshotFiles = snapshotFiles;
   }
 
-  public ISchemaRegion getSchemaRegion() {
-    return schemaRegion;
+  public ByteBuffer getMetadata() {
+    return metadata;
+  }
+
+  public void setMetadata(ByteBuffer metadata) {
+    this.metadata = metadata;
+  }
+
+  public List<File> getSnapshotFiles() {
+    return snapshotFiles;
+  }
+
+  public void setSnapshotFiles(List<File> snapshotFiles) {
+    this.snapshotFiles = snapshotFiles;
   }
 }
