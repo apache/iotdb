@@ -49,7 +49,7 @@ public class ConfigExecution implements IQueryExecution {
   private final QueryStateMachine stateMachine;
   private final SettableFuture<ConfigTaskResult> taskFuture;
   private TsBlock resultSet;
-
+  private boolean resultSetConsumed;
   private final IConfigTask task;
 
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
@@ -59,6 +59,7 @@ public class ConfigExecution implements IQueryExecution {
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.taskFuture = SettableFuture.create();
     this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
+    this.resultSetConsumed = false;
   }
 
   @TestOnly
@@ -127,14 +128,18 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public TsBlock getBatchResult() {
-    return resultSet;
+    if (!resultSetConsumed) {
+      resultSetConsumed = true;
+      return resultSet;
+    }
+    return null;
   }
 
-  // According to the execution process of ConfigExecution. When the hasNextResult() is invoked,
-  // the getStatus() is already be invoked. So we always return true here.
+  // According to the execution process of ConfigExecution, there is only one TsBlock for
+  // this execution. Thus, the hasNextResult will be false once the TsBlock is consumed
   @Override
   public boolean hasNextResult() {
-    return true;
+    return !resultSetConsumed && resultSet != null;
   }
 
   @Override
