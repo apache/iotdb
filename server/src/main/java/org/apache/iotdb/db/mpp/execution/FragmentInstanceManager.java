@@ -39,6 +39,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstance;
 import static org.apache.iotdb.db.mpp.execution.FragmentInstanceExecution.createFragmentInstanceExecution;
 
 public class FragmentInstanceManager {
@@ -100,7 +101,7 @@ public class FragmentInstanceManager {
                   instanceContext.computeIfAbsent(
                       instanceId,
                       fragmentInstanceId ->
-                          new FragmentInstanceContext(fragmentInstanceId, stateMachine));
+                          createFragmentInstance(fragmentInstanceId, stateMachine));
 
               try {
                 DataDriver driver =
@@ -135,7 +136,7 @@ public class FragmentInstanceManager {
                   instanceContext.computeIfAbsent(
                       instanceId,
                       fragmentInstanceId ->
-                          new FragmentInstanceContext(fragmentInstanceId, stateMachine));
+                          createFragmentInstance(fragmentInstanceId, stateMachine));
 
               try {
                 SchemaDriver driver =

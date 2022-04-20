@@ -64,7 +64,15 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
-  public FragmentInstanceContext(FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+  public static FragmentInstanceContext createFragmentInstance(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+    FragmentInstanceContext instanceContext = new FragmentInstanceContext(id, stateMachine);
+    instanceContext.initialize();
+    return instanceContext;
+  }
+
+  private FragmentInstanceContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     this.id = id;
     this.stateMachine = stateMachine;
   }

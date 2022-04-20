@@ -57,6 +57,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstance;
 import static org.junit.Assert.assertEquals;
 
 public class SeriesAggregateScanOperatorTest {
@@ -361,7 +362,7 @@ public class SeriesAggregateScanOperatorTest {
     FragmentInstanceStateMachine stateMachine =
         new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
-        new FragmentInstanceContext(instanceId, stateMachine);
+        createFragmentInstance(instanceId, stateMachine);
     PlanNodeId planNodeId = new PlanNodeId("1");
     fragmentInstanceContext.addOperatorContext(
         1, planNodeId, SeriesScanOperator.class.getSimpleName());
