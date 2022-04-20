@@ -377,14 +377,26 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public void restart() throws InterruptedException {
+    long MAX_WAITING_TIME = 120_000L;
     if (IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
       if (taskExecutionPool != null) {
         this.taskExecutionPool.shutdownNow();
-        this.taskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+        if (!this.taskExecutionPool.awaitTermination(MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
+          throw new InterruptedException(
+              "Has been waiting over "
+                  + MAX_WAITING_TIME / 1000
+                  + " seconds for all compaction tasks to finish.");
+        }
       }
       if (subCompactionTaskExecutionPool != null) {
         this.subCompactionTaskExecutionPool.shutdownNow();
-        this.subCompactionTaskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+        if (!this.subCompactionTaskExecutionPool.awaitTermination(
+            MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
+          throw new InterruptedException(
+              "Has been waiting over "
+                  + MAX_WAITING_TIME / 1000
+                  + " seconds for all sub compaction tasks to finish.");
+        }
       }
       this.taskExecutionPool =
           (WrappedScheduledExecutorService)
