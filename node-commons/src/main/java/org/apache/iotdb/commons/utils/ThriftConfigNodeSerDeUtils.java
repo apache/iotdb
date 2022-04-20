@@ -43,8 +43,7 @@ public class ThriftConfigNodeSerDeUtils {
           .getSchemaRegionGroupIds()
           .forEach(
               schemaRegionGroupId ->
-                  ThriftCommonsSerDeUtils.writeTConsensusGroupId(
-                      schemaRegionGroupId, buffer));
+                  ThriftCommonsSerDeUtils.writeTConsensusGroupId(schemaRegionGroupId, buffer));
     }
 
     buffer.putInt(storageGroupSchema.getDataRegionGroupIdsSize());
@@ -53,8 +52,7 @@ public class ThriftConfigNodeSerDeUtils {
           .getDataRegionGroupIds()
           .forEach(
               dataRegionGroupId ->
-                  ThriftCommonsSerDeUtils.writeTConsensusGroupId(
-                      dataRegionGroupId, buffer));
+                  ThriftCommonsSerDeUtils.writeTConsensusGroupId(dataRegionGroupId, buffer));
     }
   }
 

@@ -95,13 +95,11 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
           buffer.putInt(seriesPartitionTimePartitionSlots.size());
           seriesPartitionTimePartitionSlots.forEach(
               ((seriesPartitionSlot, timePartitionSlots) -> {
-                ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(
-                    seriesPartitionSlot, buffer);
+                ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
                 buffer.putInt(timePartitionSlots.size());
                 timePartitionSlots.forEach(
                     timePartitionSlot ->
-                        ThriftCommonsSerDeUtils.writeTTimePartitionSlot(
-                            timePartitionSlot, buffer));
+                        ThriftCommonsSerDeUtils.writeTTimePartitionSlot(timePartitionSlot, buffer));
               }));
         }));
   }

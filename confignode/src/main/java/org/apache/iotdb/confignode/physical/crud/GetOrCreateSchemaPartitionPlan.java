@@ -63,8 +63,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
           buffer.putInt(seriesPartitionSlots.size());
           seriesPartitionSlots.forEach(
               seriesPartitionSlot ->
-                  ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(
-                      seriesPartitionSlot, buffer));
+                  ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer));
         });
   }
 

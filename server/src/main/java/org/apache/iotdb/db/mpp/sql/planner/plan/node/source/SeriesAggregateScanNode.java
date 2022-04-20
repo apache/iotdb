@@ -228,8 +228,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     Filter timeFilter = FilterFactory.deserialize(byteBuffer);
 
     GroupByTimeComponent groupByTimeComponent = GroupByTimeComponent.deserialize(byteBuffer);
-    TRegionReplicaSet regionReplicaSet =
-        ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
+    TRegionReplicaSet regionReplicaSet = ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(

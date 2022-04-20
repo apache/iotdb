@@ -137,8 +137,7 @@ public class FragmentInstance implements IConsensusRequest {
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType);
-    fragmentInstance.regionReplicaSet =
-        ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer);
+    fragmentInstance.regionReplicaSet = ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer);
     fragmentInstance.hostEndpoint = ThriftCommonsSerDeUtils.readTEndPoint(buffer);
 
     return fragmentInstance;

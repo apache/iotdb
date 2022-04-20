@@ -68,13 +68,11 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
       buffer.putInt(seriesPartitionTimePartitionEntry.getValue().size());
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           timePartitionEntry : seriesPartitionTimePartitionEntry.getValue().entrySet()) {
-        ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(
-            timePartitionEntry.getKey(), buffer);
+        ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(timePartitionEntry.getKey(), buffer);
         buffer.putInt(timePartitionEntry.getValue().size());
         for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetEntry :
             timePartitionEntry.getValue().entrySet()) {
-          ThriftCommonsSerDeUtils.writeTTimePartitionSlot(
-              regionReplicaSetEntry.getKey(), buffer);
+          ThriftCommonsSerDeUtils.writeTTimePartitionSlot(regionReplicaSetEntry.getKey(), buffer);
           buffer.putInt(regionReplicaSetEntry.getValue().size());
           for (TRegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
             ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
