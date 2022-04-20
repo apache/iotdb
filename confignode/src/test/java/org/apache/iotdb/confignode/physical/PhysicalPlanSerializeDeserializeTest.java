@@ -89,7 +89,12 @@ public class PhysicalPlanSerializeDeserializeTest {
   public void SetStorageGroupPlanTest() throws IOException {
     SetStorageGroupPlan plan0 =
         new SetStorageGroupPlan(
-            new TStorageGroupSchema("sg")
+            new TStorageGroupSchema()
+                .setName("sg")
+                .setTTL(Long.MAX_VALUE)
+                .setSchemaReplicationFactor(3)
+                .setDataReplicationFactor(3)
+                .setTimePartitionInterval(604800)
                 .setSchemaRegionGroupIds(new ArrayList<>())
                 .setDataRegionGroupIds(new ArrayList<>()));
     plan0.serialize(buffer);

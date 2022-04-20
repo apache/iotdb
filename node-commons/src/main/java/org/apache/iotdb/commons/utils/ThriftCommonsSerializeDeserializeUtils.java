@@ -51,19 +51,47 @@ public class ThriftCommonsSerializeDeserializeUtils {
 
   public static void writeTDataNodeLocation(TDataNodeLocation dataNodeLocation, ByteBuffer buffer) {
     buffer.putInt(dataNodeLocation.getDataNodeId());
-    writeTEndPoint(dataNodeLocation.getExternalEndPoint(), buffer);
-    writeTEndPoint(dataNodeLocation.getInternalEndPoint(), buffer);
-    writeTEndPoint(dataNodeLocation.getDataBlockManagerEndPoint(), buffer);
-    writeTEndPoint(dataNodeLocation.getConsensusEndPoint(), buffer);
+
+    buffer.put(dataNodeLocation.isSetExternalEndPoint() ? (byte) 1 : (byte) 0);
+    if (dataNodeLocation.isSetExternalEndPoint()) {
+      writeTEndPoint(dataNodeLocation.getExternalEndPoint(), buffer);
+    }
+
+    buffer.put(dataNodeLocation.isSetInternalEndPoint() ? (byte) 1 : (byte) 0);
+    if (dataNodeLocation.isSetInternalEndPoint()) {
+      writeTEndPoint(dataNodeLocation.getInternalEndPoint(), buffer);
+    }
+
+    buffer.put(dataNodeLocation.isSetDataBlockManagerEndPoint() ? (byte) 1 : (byte) 0);
+    if (dataNodeLocation.isSetDataBlockManagerEndPoint()) {
+      writeTEndPoint(dataNodeLocation.getDataBlockManagerEndPoint(), buffer);
+    }
+
+    buffer.put(dataNodeLocation.isSetConsensusEndPoint() ? (byte) 1 : (byte) 0);
+    if (dataNodeLocation.isSetConsensusEndPoint()) {
+      writeTEndPoint(dataNodeLocation.getConsensusEndPoint(), buffer);
+    }
   }
 
   public static TDataNodeLocation readTDataNodeLocation(ByteBuffer buffer) {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(buffer.getInt());
-    dataNodeLocation.setExternalEndPoint(readTEndPoint(buffer));
-    dataNodeLocation.setInternalEndPoint(readTEndPoint(buffer));
-    dataNodeLocation.setDataBlockManagerEndPoint(readTEndPoint(buffer));
-    dataNodeLocation.setConsensusEndPoint(readTEndPoint(buffer));
+
+    if (buffer.get() > 0) {
+      dataNodeLocation.setExternalEndPoint(readTEndPoint(buffer));
+    }
+
+    if (buffer.get() > 0) {
+      dataNodeLocation.setInternalEndPoint(readTEndPoint(buffer));
+    }
+
+    if (buffer.get() > 0) {
+      dataNodeLocation.setDataBlockManagerEndPoint(readTEndPoint(buffer));
+    }
+
+    if (buffer.get() > 0) {
+      dataNodeLocation.setConsensusEndPoint(readTEndPoint(buffer));
+    }
     return dataNodeLocation;
   }
 

@@ -109,6 +109,7 @@ public class RegionInfoPersistence {
         switch (regionReplicaSet.getRegionId().getType()) {
           case SchemaRegion:
             storageGroupSchema.getSchemaRegionGroupIds().add(regionReplicaSet.getRegionId());
+            break;
           case DataRegion:
             storageGroupSchema.getDataRegionGroupIds().add(regionReplicaSet.getRegionId());
         }
