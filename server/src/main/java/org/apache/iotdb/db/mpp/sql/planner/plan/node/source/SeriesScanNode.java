@@ -76,7 +76,8 @@ public class SeriesScanNode extends SourceNode {
   // offset for result set. The default value is 0
   private int offset;
 
-  private ColumnHeader columnHeader;
+  // output column header of this node
+  private OutputColumn outputColumn;
 
   // The id of DataRegion where the node will run
   private RegionReplicaSet regionReplicaSet;
@@ -92,7 +93,8 @@ public class SeriesScanNode extends SourceNode {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
     this.scanOrder = scanOrder;
-    this.columnHeader = new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType());
+    this.outputColumn =
+        new OutputColumn(new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType()));
   }
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, RegionReplicaSet regionReplicaSet) {
@@ -160,22 +162,22 @@ public class SeriesScanNode extends SourceNode {
 
   @Override
   public List<OutputColumn> getOutputColumns() {
-    return null;
+    return ImmutableList.of(outputColumn);
   }
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return ImmutableList.of(columnHeader);
+    return ImmutableList.of(outputColumn.getColumnHeader());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ImmutableList.of(columnHeader.getColumnName());
+    return ImmutableList.of(outputColumn.getColumnHeader().getColumnName());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return ImmutableList.of(columnHeader.getColumnType());
+    return ImmutableList.of(outputColumn.getColumnHeader().getColumnType());
   }
 
   public Set<String> getAllSensors() {

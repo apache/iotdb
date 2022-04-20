@@ -42,6 +42,13 @@ public class OutputColumn {
   // time partition
   private final boolean overlapped;
 
+  /** used for sourceNode */
+  public OutputColumn(ColumnHeader columnHeader) {
+    this.columnHeader = columnHeader;
+    this.sourceLocations = ImmutableList.of();
+    this.overlapped = false;
+  }
+
   /** used for case that this OutputColumn only has one input column */
   public OutputColumn(ColumnHeader columnHeader, InputLocation inputLocation) {
     this.columnHeader = columnHeader;

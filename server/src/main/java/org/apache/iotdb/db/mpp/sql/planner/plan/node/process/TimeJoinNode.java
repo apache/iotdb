@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
 import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -54,14 +55,11 @@ public class TimeJoinNode extends ProcessNode {
   // null or not.
   private FilterNullPolicy filterNullPolicy = FilterNullPolicy.NO_FILTER;
 
-  private List<PlanNode> children;
-
-  private List<ColumnHeader> columnHeaders = new ArrayList<>();
-
   // indicate each output column should use which value column of which input TsBlock and the
   // overlapped situation
-  // size of outputColumns must be equal to the size of columnHeaders
-  private final List<OutputColumn> outputColumns = new ArrayList<>();
+  private List<OutputColumn> outputColumns = new ArrayList<>();
+
+  private List<PlanNode> children;
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
@@ -72,7 +70,7 @@ public class TimeJoinNode extends ProcessNode {
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, List<PlanNode> children) {
     this(id, mergeOrder);
     this.children = children;
-    initColumnHeaders();
+    initOutputColumns();
   }
 
   @Override
@@ -84,7 +82,7 @@ public class TimeJoinNode extends ProcessNode {
   public PlanNode clone() {
     // TODO: (xingtanzjr)
     TimeJoinNode cloneNode = new TimeJoinNode(getPlanNodeId(), this.mergeOrder);
-    cloneNode.columnHeaders = this.columnHeaders;
+    cloneNode.outputColumns = this.outputColumns;
     return cloneNode;
   }
 
@@ -93,9 +91,16 @@ public class TimeJoinNode extends ProcessNode {
     return CHILD_COUNT_NO_LIMIT;
   }
 
-  private void initColumnHeaders() {
-    for (PlanNode child : children) {
-      columnHeaders.addAll(child.getOutputColumnHeaders());
+  private void initOutputColumns() {
+    for (int tsBlockIndex = 0; tsBlockIndex < children.size(); tsBlockIndex++) {
+      List<ColumnHeader> childColumnHeaders = children.get(tsBlockIndex).getOutputColumnHeaders();
+      for (int valueColumnIndex = 0;
+          valueColumnIndex < childColumnHeaders.size();
+          valueColumnIndex++) {
+        ColumnHeader columnHeader = childColumnHeaders.get(valueColumnIndex);
+        InputLocation inputLocation = new InputLocation(tsBlockIndex, valueColumnIndex);
+        outputColumns.add(new OutputColumn(columnHeader, inputLocation));
+      }
     }
   }
 
