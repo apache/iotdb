@@ -18,7 +18,7 @@ import defaults from 'lodash/defaults';
 import React, { ChangeEvent, PureComponent } from 'react';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
-import { GroupBy, LimitAll, IoTDBOptions, IoTDBQuery } from './types';
+import { GroupBy, IoTDBOptions, IoTDBQuery } from './types';
 import { QueryField, QueryInlineField } from './componments/Form';
 import { TimeSeries } from './componments/TimeSeries';
 import { SelectValue } from './componments/SelectValue';
@@ -46,7 +46,6 @@ interface State {
   isAggregated: boolean;
   aggregated: string;
   shouldAdd: boolean;
-  limitAll: LimitAll;
 }
 
 const selectElement = [
@@ -87,10 +86,6 @@ export class QueryEditor extends PureComponent<Props, State> {
     isAggregated: false,
     aggregated: selectRaw[0],
     shouldAdd: true,
-    limitAll: {
-      slimit: '',
-      limit: '',
-    },
   };
 
   onSelectValueChange = (exp: string[]) => {
