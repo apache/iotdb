@@ -208,12 +208,13 @@ public class GroupByLevelNode extends ProcessNode {
     GroupByLevelNode that = (GroupByLevelNode) o;
     return Objects.equals(child, that.child)
         && Arrays.equals(groupByLevels, that.groupByLevels)
-        && Objects.equals(groupedPathMap, that.groupedPathMap);
+        && Objects.equals(aggregateFuncList, that.aggregateFuncList)
+        && Objects.equals(outputColumns, that.outputColumns);
   }
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(child, groupedPathMap);
+    int result = Objects.hash(super.hashCode(), aggregateFuncList, outputColumns);
     result = 31 * result + Arrays.hashCode(groupByLevels);
     return result;
   }

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -117,6 +118,7 @@ public class GroupByLevelNodeSerdeTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     groupByLevelNode.serialize(byteBuffer);
     byteBuffer.flip();
-    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), groupByLevelNode);
+    PlanNode snode = PlanNodeDeserializeHelper.deserialize(byteBuffer);
+    assertEquals(snode, groupByLevelNode);
   }
 }
