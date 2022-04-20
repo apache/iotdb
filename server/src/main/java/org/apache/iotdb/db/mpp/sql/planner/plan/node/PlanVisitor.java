@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNo
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
@@ -108,10 +109,6 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitCreateAlignedTimeSeries(CreateAlignedTimeSeriesNode node, C context) {
-    return visitPlan(node, context);
-  }
-
   public R visitTimeSeriesSchemaScan(TimeSeriesSchemaScanNode node, C context) {
     return visitPlan(node, context);
   }
@@ -129,6 +126,14 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitSchemaFetch(SchemaFetchNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitCreateAlignedTimeSeries(CreateAlignedTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitAlterTimeSeries(AlterTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 }
