@@ -131,7 +131,7 @@ public class SeriesAggregateScanNode extends SourceNode {
     return timeFilter;
   }
 
-  public GroupByTimeComponent getGroupByTimeParameter() {
+  public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
   }
 
@@ -240,7 +240,7 @@ public class SeriesAggregateScanNode extends SourceNode {
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     Filter timeFilter = FilterFactory.deserialize(byteBuffer);
 
-    GroupByTimeComponent groupByTimeComponent = GroupByTimeComponent.deserialize(byteBuffer);
+    GroupByTimeParameter groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     RegionReplicaSet regionReplicaSet = RegionReplicaSet.deserializeImpl(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesAggregateScanNode seriesAggregateScanNode =
@@ -251,7 +251,7 @@ public class SeriesAggregateScanNode extends SourceNode {
             aggregateFuncList,
             scanOrder,
             timeFilter,
-            groupByTimeComponent);
+            groupByTimeParameter);
     seriesAggregateScanNode.regionReplicaSet = regionReplicaSet;
     return seriesAggregateScanNode;
   }

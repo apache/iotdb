@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
 /** The parameter of `GROUP BY TIME` */
 public class GroupByTimeParameter {
 
@@ -40,4 +45,129 @@ public class GroupByTimeParameter {
   private boolean leftCRightO;
 
   public GroupByTimeParameter() {}
+
+  public GroupByTimeParameter(
+      long startTime, long endTime, long interval, long slidingStep, boolean leftCRightO) {
+    this(startTime, endTime, interval, slidingStep, false, false, leftCRightO);
+  }
+
+  public GroupByTimeParameter(
+      long startTime,
+      long endTime,
+      long interval,
+      long slidingStep,
+      boolean isIntervalByMonth,
+      boolean isSlidingStepByMonth,
+      boolean leftCRightO) {
+    this.startTime = startTime;
+    this.endTime = endTime;
+    this.interval = interval;
+    this.slidingStep = slidingStep;
+    this.isIntervalByMonth = isIntervalByMonth;
+    this.isSlidingStepByMonth = isSlidingStepByMonth;
+    this.leftCRightO = leftCRightO;
+  }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
+  }
+
+  public long getInterval() {
+    return interval;
+  }
+
+  public void setInterval(long interval) {
+    this.interval = interval;
+  }
+
+  public long getSlidingStep() {
+    return slidingStep;
+  }
+
+  public void setSlidingStep(long slidingStep) {
+    this.slidingStep = slidingStep;
+  }
+
+  public boolean isIntervalByMonth() {
+    return isIntervalByMonth;
+  }
+
+  public void setIntervalByMonth(boolean intervalByMonth) {
+    isIntervalByMonth = intervalByMonth;
+  }
+
+  public boolean isSlidingStepByMonth() {
+    return isSlidingStepByMonth;
+  }
+
+  public void setSlidingStepByMonth(boolean slidingStepByMonth) {
+    isSlidingStepByMonth = slidingStepByMonth;
+  }
+
+  public boolean isLeftCRightO() {
+    return leftCRightO;
+  }
+
+  public void setLeftCRightO(boolean leftCRightO) {
+    this.leftCRightO = leftCRightO;
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(startTime, buffer);
+    ReadWriteIOUtils.write(endTime, buffer);
+    ReadWriteIOUtils.write(interval, buffer);
+    ReadWriteIOUtils.write(slidingStep, buffer);
+    ReadWriteIOUtils.write(isIntervalByMonth, buffer);
+    ReadWriteIOUtils.write(isSlidingStepByMonth, buffer);
+    ReadWriteIOUtils.write(leftCRightO, buffer);
+  }
+
+  public static GroupByTimeParameter deserialize(ByteBuffer buffer) {
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter();
+    groupByTimeParameter.setStartTime(ReadWriteIOUtils.readLong(buffer));
+    groupByTimeParameter.setEndTime(ReadWriteIOUtils.readLong(buffer));
+    groupByTimeParameter.setInterval(ReadWriteIOUtils.readLong(buffer));
+    groupByTimeParameter.setSlidingStep(ReadWriteIOUtils.readLong(buffer));
+    groupByTimeParameter.setIntervalByMonth(ReadWriteIOUtils.readBool(buffer));
+    groupByTimeParameter.setSlidingStepByMonth(ReadWriteIOUtils.readBool(buffer));
+    groupByTimeParameter.setLeftCRightO(ReadWriteIOUtils.readBool(buffer));
+    return groupByTimeParameter;
+  }
+
+  public boolean equals(Object obj) {
+    if (!(obj instanceof GroupByTimeParameter)) {
+      return false;
+    }
+    GroupByTimeParameter other = (GroupByTimeParameter) obj;
+    return this.startTime == other.startTime
+        && this.endTime == other.endTime
+        && this.interval == other.interval
+        && this.slidingStep == other.slidingStep
+        && this.isSlidingStepByMonth == other.isSlidingStepByMonth
+        && this.isIntervalByMonth == other.isIntervalByMonth
+        && this.leftCRightO == other.leftCRightO;
+  }
+
+  public int hashCode() {
+    return Objects.hash(
+        startTime,
+        endTime,
+        interval,
+        slidingStep,
+        isIntervalByMonth,
+        isSlidingStepByMonth,
+        leftCRightO);
+  }
 }
