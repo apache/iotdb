@@ -36,10 +36,12 @@ public class FragmentInstanceTaskID implements ID, Comparable<FragmentInstanceTa
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof FragmentInstanceTaskID
-        && id.getQueryId().equals(((FragmentInstanceTaskID) o).getQueryId())
-        && id.getFragmentId().getId() == ((FragmentInstanceTaskID) o).getFragmentId().getId()
-        && id.getInstanceId().equals(((FragmentInstanceTaskID) o).getInstanceId());
+    return o instanceof FragmentInstanceTaskID && ((FragmentInstanceTaskID) o).id.equals(id);
+  }
+
+  @Override
+  public int hashCode() {
+    return id.hashCode();
   }
 
   public String toString() {

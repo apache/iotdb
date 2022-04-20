@@ -16,32 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.schedule;
 
-namespace java org.apache.iotdb.common.rpc.thrift
-namespace py iotdb.thrift.common
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.execution.Driver;
 
-struct TEndPoint {
-  1: required string ip
-  2: required i32 port
-}
+/** A common exception to pass to {@link Driver#failed(Throwable)} */
+public class FragmentInstanceAbortedException extends Exception {
 
-// The return status code and message in each response.
-struct TSStatus {
-  1: required i32 code
-  2: optional string message
-  3: optional list<TSStatus> subStatus
-  4: optional TEndPoint redirectNode
-}
+  public static final String BY_TIMEOUT = "timeout";
+  public static final String BY_FRAGMENT_ABORT_CALLED = "fragment abort called";
+  public static final String BY_QUERY_CASCADING_ABORTED = "query cascading aborted";
+  public static final String BY_ALREADY_BEING_CANCELLED = "already being cancelled";
 
-struct TRegionReplicaSet {
-  1: required binary regionId
-  2: required list<TEndPoint> endpoint
-}
-
-struct TSeriesPartitionSlot {
-  1: required i32 slotId
-}
-
-struct TTimePartitionSlot {
-  1: required i64 startTime
+  public FragmentInstanceAbortedException(FragmentInstanceId id, String causeMsg) {
+    super(String.format("FragmentInstance %s is aborted by %s", id.toString(), causeMsg));
+  }
 }

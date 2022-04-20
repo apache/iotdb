@@ -24,10 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
@@ -195,17 +192,17 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private SchemaPartition parseSchemaPartitionResp(TSchemaPartitionResp schemaPartitionResp) {
-    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap = new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
     for (Map.Entry<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> sgEntry :
         schemaPartitionResp.getSchemaRegionMap().entrySet()) {
       // for each sg
       String storageGroupName = sgEntry.getKey();
-      Map<SeriesPartitionSlot, RegionReplicaSet> deviceToSchemaRegionMap = new HashMap<>();
+      Map<TSeriesPartitionSlot, TRegionReplicaSet> deviceToSchemaRegionMap = new HashMap<>();
       for (Map.Entry<TSeriesPartitionSlot, TRegionReplicaSet> deviceEntry :
           sgEntry.getValue().entrySet()) {
         deviceToSchemaRegionMap.put(
-            new SeriesPartitionSlot(deviceEntry.getKey().getSlotId()),
-            new RegionReplicaSet(deviceEntry.getValue()));
+            new TSeriesPartitionSlot(deviceEntry.getKey().getSlotId()),
+            new TRegionReplicaSet(deviceEntry.getValue()));
       }
       schemaPartitionMap.put(storageGroupName, deviceToSchemaRegionMap);
     }
@@ -216,7 +213,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private DataPartition parseDataPartitionResp(TDataPartitionResp dataPartitionResp) {
-    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
     for (Map.Entry<
             String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -225,23 +222,24 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       String storageGroupName = sgEntry.getKey();
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           respDeviceToRegionsMap = sgEntry.getValue();
-      Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> deviceToRegionsMap =
-          new HashMap<>();
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+          deviceToRegionsMap = new HashMap<>();
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           deviceEntry : respDeviceToRegionsMap.entrySet()) {
         // for each device
-        Map<TimePartitionSlot, List<RegionReplicaSet>> timePartitionToRegionsMap = new HashMap<>();
+        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
+            new HashMap<>();
         for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionEntry :
             deviceEntry.getValue().entrySet()) {
           // for each time partition
           timePartitionToRegionsMap.put(
-              new TimePartitionSlot(timePartitionEntry.getKey().getStartTime()),
+              new TTimePartitionSlot(timePartitionEntry.getKey().getStartTime()),
               timePartitionEntry.getValue().stream()
-                  .map(RegionReplicaSet::new)
+                  .map(TRegionReplicaSet::new)
                   .collect(Collectors.toList()));
         }
         deviceToRegionsMap.put(
-            new SeriesPartitionSlot(deviceEntry.getKey().getSlotId()), timePartitionToRegionsMap);
+            new TSeriesPartitionSlot(deviceEntry.getKey().getSlotId()), timePartitionToRegionsMap);
       }
       dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
     }

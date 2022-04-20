@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -31,12 +32,18 @@ import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 // manage all the schemaRegion in this dataNode
 public class SchemaEngine {
+
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final IStorageGroupSchemaManager localStorageGroupSchemaManager =
       StorageGroupSchemaManager.getInstance();
@@ -57,11 +64,43 @@ public class SchemaEngine {
     return SchemaEngineManagerHolder.INSTANCE;
   }
 
-  public void init() {
+  public Map<PartialPath, List<SchemaRegionId>> init() throws MetadataException {
     schemaRegionMap = new ConcurrentHashMap<>();
-    schemaRegionStoredMode =
-        SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode());
+    schemaRegionStoredMode = SchemaEngineMode.valueOf(config.getSchemaEngineMode());
     logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
+
+    return initSchemaRegion();
+  }
+
+  /**
+   * Scan the storage group and schema region directories to recover schema regions and return the
+   * collected local schema partition info for localSchemaPartitionTable recovery.
+   */
+  private Map<PartialPath, List<SchemaRegionId>> initSchemaRegion() throws MetadataException {
+    Map<PartialPath, List<SchemaRegionId>> partitionTable = new HashMap<>();
+    for (PartialPath storageGroup : localStorageGroupSchemaManager.getAllStorageGroupPaths()) {
+      List<SchemaRegionId> schemaRegionIdList = new ArrayList<>();
+      partitionTable.put(storageGroup, schemaRegionIdList);
+
+      File sgDir = new File(config.getSchemaDir(), storageGroup.getFullPath());
+
+      if (!sgDir.exists()) {
+        continue;
+      }
+
+      File[] schemaRegionDirs = sgDir.listFiles();
+      if (schemaRegionDirs == null) {
+        continue;
+      }
+
+      for (File schemaRegionDir : schemaRegionDirs) {
+        SchemaRegionId schemaRegionId =
+            new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
+        createSchemaRegion(storageGroup, schemaRegionId);
+        schemaRegionIdList.add(schemaRegionId);
+      }
+    }
+    return partitionTable;
   }
 
   public void forceMlog() {
@@ -101,8 +140,11 @@ public class SchemaEngine {
         localStorageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup);
     switch (schemaRegionStoredMode) {
       case Memory:
+        schemaRegion = new SchemaRegionMemoryImpl(storageGroup, schemaRegionId, storageGroupMNode);
+        break;
       case Schema_File:
-        schemaRegion = new SchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+        schemaRegion =
+            new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       case Rocksdb_based:
         schemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);

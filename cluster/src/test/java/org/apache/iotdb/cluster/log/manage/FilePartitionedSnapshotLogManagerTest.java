@@ -38,6 +38,7 @@ import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -48,6 +49,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
+@Ignore
 public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
 
   @Override
