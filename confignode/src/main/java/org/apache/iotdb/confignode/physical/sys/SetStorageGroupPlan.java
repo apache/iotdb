@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.commons.utils.ThriftConfigNodeSerializeDeserializeUtils;
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -52,12 +52,12 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.SetStorageGroup.ordinal());
-    ThriftConfigNodeSerializeDeserializeUtils.writeTStorageGroupSchema(schema, buffer);
+    ThriftConfigNodeSerDeUtils.writeTStorageGroupSchema(schema, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    schema = ThriftConfigNodeSerializeDeserializeUtils.readTStorageGroupSchema(buffer);
+    schema = ThriftConfigNodeSerDeUtils.readTStorageGroupSchema(buffer);
   }
 
   @Override

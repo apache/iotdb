@@ -33,7 +33,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-public class ThriftCommonsSerializeDeserializeUtilsTest {
+public class ThriftCommonsSerDeUtilsTest {
 
   private static final ByteBuffer buffer = ByteBuffer.allocate(1024 * 10);
 
@@ -45,9 +45,9 @@ public class ThriftCommonsSerializeDeserializeUtilsTest {
   @Test
   public void readWriteTEndPointTest() {
     TEndPoint endPoint0 = new TEndPoint("0.0.0.0", 6667);
-    ThriftCommonsSerializeDeserializeUtils.writeTEndPoint(endPoint0, buffer);
+    ThriftCommonsSerDeUtils.writeTEndPoint(endPoint0, buffer);
     buffer.flip();
-    TEndPoint endPoint1 = ThriftCommonsSerializeDeserializeUtils.readTEndPoint(buffer);
+    TEndPoint endPoint1 = ThriftCommonsSerDeUtils.readTEndPoint(buffer);
     Assert.assertEquals(endPoint0, endPoint1);
   }
 
@@ -59,30 +59,30 @@ public class ThriftCommonsSerializeDeserializeUtilsTest {
     dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
     dataNodeLocation0.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
     dataNodeLocation0.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    ThriftCommonsSerializeDeserializeUtils.writeTDataNodeLocation(dataNodeLocation0, buffer);
+    ThriftCommonsSerDeUtils.writeTDataNodeLocation(dataNodeLocation0, buffer);
     buffer.flip();
     TDataNodeLocation dataNodeLocation1 =
-        ThriftCommonsSerializeDeserializeUtils.readTDataNodeLocation(buffer);
+        ThriftCommonsSerDeUtils.readTDataNodeLocation(buffer);
     Assert.assertEquals(dataNodeLocation0, dataNodeLocation1);
   }
 
   @Test
   public void readWriteTSeriesPartitionSlotTest() {
     TSeriesPartitionSlot seriesPartitionSlot0 = new TSeriesPartitionSlot(10);
-    ThriftCommonsSerializeDeserializeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot0, buffer);
+    ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot0, buffer);
     buffer.flip();
     TSeriesPartitionSlot seriesPartitionSlot1 =
-        ThriftCommonsSerializeDeserializeUtils.readTSeriesPartitionSlot(buffer);
+        ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
     Assert.assertEquals(seriesPartitionSlot0, seriesPartitionSlot1);
   }
 
   @Test
   public void writeTTimePartitionSlot() {
     TTimePartitionSlot timePartitionSlot0 = new TTimePartitionSlot(100);
-    ThriftCommonsSerializeDeserializeUtils.writeTTimePartitionSlot(timePartitionSlot0, buffer);
+    ThriftCommonsSerDeUtils.writeTTimePartitionSlot(timePartitionSlot0, buffer);
     buffer.flip();
     TTimePartitionSlot timePartitionSlot1 =
-        ThriftCommonsSerializeDeserializeUtils.readTTimePartitionSlot(buffer);
+        ThriftCommonsSerDeUtils.readTTimePartitionSlot(buffer);
     Assert.assertEquals(timePartitionSlot0, timePartitionSlot1);
   }
 
@@ -90,10 +90,10 @@ public class ThriftCommonsSerializeDeserializeUtilsTest {
   public void readWriteTConsensusGroupIdTest() {
     TConsensusGroupId consensusGroupId0 =
         new TConsensusGroupId(TConsensusGroupType.PartitionRegion, 0);
-    ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(consensusGroupId0, buffer);
+    ThriftCommonsSerDeUtils.writeTConsensusGroupId(consensusGroupId0, buffer);
     buffer.flip();
     TConsensusGroupId consensusGroupId1 =
-        ThriftCommonsSerializeDeserializeUtils.readTConsensusGroupId(buffer);
+        ThriftCommonsSerDeUtils.readTConsensusGroupId(buffer);
     Assert.assertEquals(consensusGroupId0, consensusGroupId1);
   }
 
@@ -111,10 +111,10 @@ public class ThriftCommonsSerializeDeserializeUtilsTest {
       dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
       regionReplicaSet0.getDataNodeLocations().add(dataNodeLocation);
     }
-    ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet0, buffer);
+    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet0, buffer);
     buffer.flip();
     TRegionReplicaSet regionReplicaSet1 =
-        ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(buffer);
+        ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer);
     Assert.assertEquals(regionReplicaSet0, regionReplicaSet1);
   }
 }

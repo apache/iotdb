@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -211,7 +211,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     TRegionReplicaSet dataRegionReplicaSet =
-        ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(byteBuffer);
+        ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesScanNode seriesScanNode = new SeriesScanNode(planNodeId, partialPath);
     seriesScanNode.allSensors = allSensors;
@@ -252,7 +252,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
-    ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
+    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public PartialPath getSeriesPath() {

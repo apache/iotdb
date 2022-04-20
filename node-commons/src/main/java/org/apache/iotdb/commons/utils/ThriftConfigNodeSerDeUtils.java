@@ -23,9 +23,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-public class ThriftConfigNodeSerializeDeserializeUtils {
+public class ThriftConfigNodeSerDeUtils {
 
-  private ThriftConfigNodeSerializeDeserializeUtils() {
+  private ThriftConfigNodeSerDeUtils() {
     // Empty constructor
   }
 
@@ -43,7 +43,7 @@ public class ThriftConfigNodeSerializeDeserializeUtils {
           .getSchemaRegionGroupIds()
           .forEach(
               schemaRegionGroupId ->
-                  ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(
+                  ThriftCommonsSerDeUtils.writeTConsensusGroupId(
                       schemaRegionGroupId, buffer));
     }
 
@@ -53,7 +53,7 @@ public class ThriftConfigNodeSerializeDeserializeUtils {
           .getDataRegionGroupIds()
           .forEach(
               dataRegionGroupId ->
-                  ThriftCommonsSerializeDeserializeUtils.writeTConsensusGroupId(
+                  ThriftCommonsSerDeUtils.writeTConsensusGroupId(
                       dataRegionGroupId, buffer));
     }
   }
@@ -71,7 +71,7 @@ public class ThriftConfigNodeSerializeDeserializeUtils {
     for (int i = 0; i < groupIdNum; i++) {
       storageGroupSchema
           .getSchemaRegionGroupIds()
-          .add(ThriftCommonsSerializeDeserializeUtils.readTConsensusGroupId(buffer));
+          .add(ThriftCommonsSerDeUtils.readTConsensusGroupId(buffer));
     }
 
     groupIdNum = buffer.getInt();
@@ -79,7 +79,7 @@ public class ThriftConfigNodeSerializeDeserializeUtils {
     for (int i = 0; i < groupIdNum; i++) {
       storageGroupSchema
           .getDataRegionGroupIds()
-          .add(ThriftCommonsSerializeDeserializeUtils.readTConsensusGroupId(buffer));
+          .add(ThriftCommonsSerDeUtils.readTConsensusGroupId(buffer));
     }
 
     return storageGroupSchema;

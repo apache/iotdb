@@ -29,7 +29,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-public class ThriftConfigNodeSerializeDeserializeUtilsTest {
+public class ThriftConfigNodeSerDeUtilsTest {
 
   private static final ByteBuffer buffer = ByteBuffer.allocate(1024 * 10);
 
@@ -58,10 +58,10 @@ public class ThriftConfigNodeSerializeDeserializeUtilsTest {
           .add(new TConsensusGroupId(TConsensusGroupType.DataRegion, i * 2 + 1));
     }
 
-    ThriftConfigNodeSerializeDeserializeUtils.writeTStorageGroupSchema(storageGroupSchema0, buffer);
+    ThriftConfigNodeSerDeUtils.writeTStorageGroupSchema(storageGroupSchema0, buffer);
     buffer.flip();
     TStorageGroupSchema storageGroupSchema1 =
-        ThriftConfigNodeSerializeDeserializeUtils.readTStorageGroupSchema(buffer);
+        ThriftConfigNodeSerDeUtils.readTStorageGroupSchema(buffer);
     Assert.assertEquals(storageGroupSchema0, storageGroupSchema1);
   }
 }

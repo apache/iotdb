@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.physical.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerializeDeserializeUtil;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
@@ -63,7 +63,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
           buffer.putInt(seriesPartitionSlots.size());
           seriesPartitionSlots.forEach(
               seriesPartitionSlot ->
-                  ThriftCommonsSerializeDeserializeUtils.writeTSeriesPartitionSlot(
+                  ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(
                       seriesPartitionSlot, buffer));
         });
   }
@@ -78,7 +78,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
         TSeriesPartitionSlot seriesPartitionSlot =
-            ThriftCommonsSerializeDeserializeUtils.readTSeriesPartitionSlot(buffer);
+            ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
         partitionSlotsMap.get(storageGroup).add(seriesPartitionSlot);
       }
     }

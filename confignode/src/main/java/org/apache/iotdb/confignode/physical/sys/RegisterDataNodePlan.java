@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.physical.sys;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
@@ -46,12 +46,12 @@ public class RegisterDataNodePlan extends PhysicalPlan {
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.RegisterDataNode.ordinal());
-    ThriftCommonsSerializeDeserializeUtils.writeTDataNodeLocation(location, buffer);
+    ThriftCommonsSerDeUtils.writeTDataNodeLocation(location, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    location = ThriftCommonsSerializeDeserializeUtils.readTDataNodeLocation(buffer);
+    location = ThriftCommonsSerDeUtils.readTDataNodeLocation(buffer);
   }
 
   @Override

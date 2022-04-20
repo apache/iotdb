@@ -31,9 +31,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Utils for serialize and deserialize all the data struct defined by thrift-commons */
-public class ThriftCommonsSerializeDeserializeUtils {
+public class ThriftCommonsSerDeUtils {
 
-  private ThriftCommonsSerializeDeserializeUtils() {
+  private ThriftCommonsSerDeUtils() {
     // Empty constructor
   }
 

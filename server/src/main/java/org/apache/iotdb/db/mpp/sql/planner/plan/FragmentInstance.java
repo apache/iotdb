@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
@@ -138,8 +138,8 @@ public class FragmentInstance implements IConsensusRequest {
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType);
     fragmentInstance.regionReplicaSet =
-        ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(buffer);
-    fragmentInstance.hostEndpoint = ThriftCommonsSerializeDeserializeUtils.readTEndPoint(buffer);
+        ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer);
+    fragmentInstance.hostEndpoint = ThriftCommonsSerDeUtils.readTEndPoint(buffer);
 
     return fragmentInstance;
   }
@@ -153,8 +153,8 @@ public class FragmentInstance implements IConsensusRequest {
       timeFilter.serialize(buffer);
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
-    ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
-    ThriftCommonsSerializeDeserializeUtils.writeTEndPoint(hostEndpoint, buffer);
+    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
+    ThriftCommonsSerDeUtils.writeTEndPoint(hostEndpoint, buffer);
   }
 
   @Override

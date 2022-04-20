@@ -101,8 +101,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
-    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-    storageGroupSchema.setName(req.getStorageGroup().getName());
+    TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
     // TODO: Set this filed by optional fields in TSetStorageGroupReq
     storageGroupSchema.setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
     storageGroupSchema.setSchemaReplicationFactor(

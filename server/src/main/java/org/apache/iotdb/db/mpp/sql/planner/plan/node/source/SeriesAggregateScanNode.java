@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerializeDeserializeUtils;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -208,8 +208,8 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     timeFilter.serialize(byteBuffer);
-    // TODO serialize groupByTimeParameter
-    ThriftCommonsSerializeDeserializeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
+    groupByTimeParameter.serialize(byteBuffer);
+    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
@@ -227,10 +227,9 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     Filter timeFilter = FilterFactory.deserialize(byteBuffer);
 
-    // TODO serialize groupByTimeParameter
-    TRegionReplicaSet regionReplicaSet =
-        ThriftCommonsSerializeDeserializeUtils.readTRegionReplicaSet(byteBuffer);
     GroupByTimeComponent groupByTimeComponent = GroupByTimeComponent.deserialize(byteBuffer);
+    TRegionReplicaSet regionReplicaSet =
+        ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(
