@@ -117,31 +117,32 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     public PhysicalPlan visitPlan(PlanNode node, TransformerContext context) {
       throw new NotImplementedException();
     }
-  }
 
-  public PhysicalPlan visitCreateTimeSeries(CreateTimeSeriesNode node, TransformerContext context) {
-    return new CreateTimeSeriesPlan(
-        node.getPath(),
-        node.getDataType(),
-        node.getEncoding(),
-        node.getCompressor(),
-        node.getProps(),
-        node.getTags(),
-        node.getAttributes(),
-        node.getAlias());
-  }
+    public PhysicalPlan visitCreateTimeSeries(
+        CreateTimeSeriesNode node, TransformerContext context) {
+      return new CreateTimeSeriesPlan(
+          node.getPath(),
+          node.getDataType(),
+          node.getEncoding(),
+          node.getCompressor(),
+          node.getProps(),
+          node.getTags(),
+          node.getAttributes(),
+          node.getAlias());
+    }
 
-  public PhysicalPlan visitCreateAlignedTimeSeries(
-      CreateAlignedTimeSeriesNode node, TransformerContext context) {
-    return new CreateAlignedTimeSeriesPlan(
-        node.getDevicePath(),
-        node.getMeasurements(),
-        node.getDataTypes(),
-        node.getEncodings(),
-        node.getCompressors(),
-        node.getAliasList(),
-        node.getTagsList(),
-        node.getAttributesList());
+    public PhysicalPlan visitCreateAlignedTimeSeries(
+        CreateAlignedTimeSeriesNode node, TransformerContext context) {
+      return new CreateAlignedTimeSeriesPlan(
+          node.getDevicePath(),
+          node.getMeasurements(),
+          node.getDataTypes(),
+          node.getEncodings(),
+          node.getCompressors(),
+          node.getAliasList(),
+          node.getTagsList(),
+          node.getAttributesList());
+    }
   }
 
   private static class TransformerContext {}
