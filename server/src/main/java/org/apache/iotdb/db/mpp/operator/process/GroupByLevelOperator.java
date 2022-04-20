@@ -114,7 +114,7 @@ public class GroupByLevelOperator implements ProcessOperator {
         aggregateResultList[j].reset();
         // merge results
         for (int columnIndex : this.groupedColumns.get(j)) {
-          aggregateResultList[j].merge(inputTsBlock.getColumn(columnIndex).getObject(i));
+          aggregateResultList[j].merge(inputTsBlock.getColumn(columnIndex));
         }
         columnBuilders[j].writeObject(aggregateResultList[i].getResult());
       }
