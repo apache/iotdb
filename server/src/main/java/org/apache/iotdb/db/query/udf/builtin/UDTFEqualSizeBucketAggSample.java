@@ -416,12 +416,10 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
       RowWindow rowWindow, PointCollector collector, long time, int windowSize) throws IOException {
     int extreme = 0;
     for (int i = 0; i < windowSize; i++) {
-      int value =
-          rowWindow.getRow(i).getInt(0) > 0
-              ? rowWindow.getRow(i).getInt(0)
-              : -rowWindow.getRow(i).getInt(0);
+      int origin = rowWindow.getRow(i).getInt(0);
+      int value = origin > 0 ? origin : -origin;
       if (extreme < value) {
-        extreme = value;
+        extreme = origin;
       }
     }
     collector.putInt(time, extreme);
@@ -431,12 +429,10 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
       RowWindow rowWindow, PointCollector collector, long time, int windowSize) throws IOException {
     long extreme = 0;
     for (int i = 0; i < windowSize; i++) {
-      long value =
-          rowWindow.getRow(i).getLong(0) > 0
-              ? rowWindow.getRow(i).getLong(0)
-              : -rowWindow.getRow(i).getLong(0);
+      long origin = rowWindow.getRow(i).getLong(0);
+      long value = origin > 0 ? origin : -origin;
       if (extreme < value) {
-        extreme = value;
+        extreme = origin;
       }
     }
     collector.putLong(time, extreme);
@@ -446,12 +442,10 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
       RowWindow rowWindow, PointCollector collector, long time, int windowSize) throws IOException {
     float extreme = 0;
     for (int i = 0; i < windowSize; i++) {
-      float value =
-          rowWindow.getRow(i).getFloat(0) > 0
-              ? rowWindow.getRow(i).getFloat(0)
-              : -rowWindow.getRow(i).getFloat(0);
+      float origin = rowWindow.getRow(i).getFloat(0);
+      float value = origin > 0 ? origin : -origin;
       if (extreme < value) {
-        extreme = value;
+        extreme = origin;
       }
     }
     collector.putFloat(time, extreme);
@@ -461,12 +455,10 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
       RowWindow rowWindow, PointCollector collector, long time, int windowSize) throws IOException {
     double extreme = 0;
     for (int i = 0; i < windowSize; i++) {
-      double value =
-          rowWindow.getRow(i).getDouble(0) > 0
-              ? rowWindow.getRow(i).getDouble(0)
-              : -rowWindow.getRow(i).getDouble(0);
+      double origin = rowWindow.getRow(i).getDouble(0);
+      double value = origin > 0 ? origin : -origin;
       if (extreme < value) {
-        extreme = value;
+        extreme = origin;
       }
     }
     collector.putDouble(time, extreme);

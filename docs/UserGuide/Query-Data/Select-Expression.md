@@ -528,14 +528,13 @@ Result:
 
 ### Equal Bucket Sample Function
 This function samples the input sequence in equal buckets, that is, according to the downsampling ratio and downsampling method given by the user, the input sequence is equally divided into several buckets according to a fixed number of points. Sampling by the given sampling method within each bucket.
-- `method`：sample method，takes a value of `random` or `aggregation` or `M4`. By default, the random sampling method of `random` is used.
 - `proportion`: sample ratio, the value range is `(0, 1]`.
 #### Equal Bucket Random Sample
-When the `method` parameter is `random` or the default, random sampling is used to sample the input sequence.
+Random sampling is performed on the equally divided buckets.
 
 | Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_BUCKET_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `method`:`random`</br>`proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns a random sample of equal buckets that matches the sampling ratio |
+| EQUAL_BUCKET_RANDOM_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns a random sample of equal buckets that matches the sampling ratio |
 
 ##### Demonstrate
 Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`.
@@ -573,7 +572,7 @@ IoTDB> select temperature from root.ln.wf01.wt01;
 ```
 Sql:
 ```sql
-select equal_bucket_sample(temperature, 'method'='random','proportion'='0.1') as random_sample from root.ln.wf01.wt01;
+select equal_bucket_random_sample(temperature,'proportion'='0.1') as random_sample from root.ln.wf01.wt01;
 ```
 Result:
 ```
@@ -597,47 +596,46 @@ It costs 0.024s
 
 #### Equal Bucket Aggregation Sample
 
-When the `method` parameter is `aggregation`, the input sequence is sampled using the aggregation sampling method. When selecting `aggregation` as the sampling method, the user needs to provide an additional aggregation function parameter namely
-- `type`: Aggregation type, the value is `avg` or `max` or `min`. By default, `avg` is used.
+The input sequence is sampled by the aggregation sampling method, and the user needs to provide an additional aggregation function parameter, namely
+- `type`: Aggregate type, which can be `avg` or `max` or `min` or `sum` or `extreme` or `variance`. By default, `avg` is used. `extreme` represents the value with the largest absolute value in the equal bucket. `variance` represents the variance in the sampling equal buckets.
 
 | Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_BUCKET_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `method`:`aggregation`</br>`proportion` The value range is `(0, 1]`, the default is `0.1`</br>`type`: The value types are `avg`, `max`, `min`, the default is `avg` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket aggregation samples that match the sampling ratio |
+| EQUAL_BUCKET_AGG_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1`</br>`type`: The value types are `avg`, `max`, `min`, `sum`, `extreme`, `variance`, the default is `avg` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket aggregation samples that match the sampling ratio |
 
 ##### Demonstrate
 Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`, and the test data is randomly sampled in equal buckets.
 
 Sql:
 ```sql
-select equal_bucket_sample(temperature, 'method'='aggregation','type'='avg','proportion'='0.1') as agg_avg, equal_bucket_sample(temperature, 'method'='aggregation','type'='max','proportion'='0.1') as agg_max, equal_bucket_sample(temperature, 'method'='aggregation','type'='min','proportion'='0.1') as agg_min from root.ln.wf01.wt01;
+select equal_bucket_agg_sample(temperature, 'type'='avg','proportion'='0.1') as agg_avg, equal_bucket_agg_sample(temperature, 'type'='max','proportion'='0.1') as agg_max, equal_bucket_agg_sample(temperature,'type'='min','proportion'='0.1') as agg_min, equal_bucket_agg_sample(temperature, 'type'='sum','proportion'='0.1') as agg_sum, equal_bucket_agg_sample(temperature, 'type'='extreme','proportion'='0.1') as agg_extreme, equal_bucket_agg_sample(temperature, 'type'='variance','proportion'='0.1') as agg_variance from root.ln.wf01.wt01;
 ```
 Result:
 ```
-+-----------------------------+-----------------+-------+-------+
-|                         Time|          agg_avg|agg_max|agg_min|
-+-----------------------------+-----------------+-------+-------+
-|1970-01-01T08:00:00.000+08:00|4.500000022351742|    9.0|    0.0|
-|1970-01-01T08:00:00.010+08:00|             14.5|   19.0|   10.0|
-|1970-01-01T08:00:00.020+08:00|             24.5|   29.0|   20.0|
-|1970-01-01T08:00:00.030+08:00|             34.5|   39.0|   30.0|
-|1970-01-01T08:00:00.040+08:00|             44.5|   49.0|   40.0|
-|1970-01-01T08:00:00.050+08:00|             54.5|   59.0|   50.0|
-|1970-01-01T08:00:00.060+08:00|             64.5|   69.0|   60.0|
-|1970-01-01T08:00:00.070+08:00|             74.5|   79.0|   70.0|
-|1970-01-01T08:00:00.080+08:00|             84.5|   89.0|   80.0|
-|1970-01-01T08:00:00.090+08:00|             94.5|   99.0|   90.0|
-+-----------------------------+-----------------+-------+-------+
++-----------------------------+-----------------+-------+-------+-------+-----------+------------+
+|                         Time|          agg_avg|agg_max|agg_min|agg_sum|agg_extreme|agg_variance|
++-----------------------------+-----------------+-------+-------+-------+-----------+------------+
+|1970-01-01T08:00:00.000+08:00|              4.5|    9.0|    0.0|   45.0|        9.0|        8.25|
+|1970-01-01T08:00:00.010+08:00|             14.5|   19.0|   10.0|  145.0|       19.0|        8.25|
+|1970-01-01T08:00:00.020+08:00|             24.5|   29.0|   20.0|  245.0|       29.0|        8.25|
+|1970-01-01T08:00:00.030+08:00|             34.5|   39.0|   30.0|  345.0|       39.0|        8.25|
+|1970-01-01T08:00:00.040+08:00|             44.5|   49.0|   40.0|  445.0|       49.0|        8.25|
+|1970-01-01T08:00:00.050+08:00|             54.5|   59.0|   50.0|  545.0|       59.0|        8.25|
+|1970-01-01T08:00:00.060+08:00|             64.5|   69.0|   60.0|  645.0|       69.0|        8.25|
+|1970-01-01T08:00:00.070+08:00|74.50000000000001|   79.0|   70.0|  745.0|       79.0|        8.25|
+|1970-01-01T08:00:00.080+08:00|             84.5|   89.0|   80.0|  845.0|       89.0|        8.25|
+|1970-01-01T08:00:00.090+08:00|             94.5|   99.0|   90.0|  945.0|       99.0|        8.25|
++-----------------------------+-----------------+-------+-------+-------+-----------+------------+
 Total line number = 10
-It costs 0.037s
-
+It costs 0.044s
 ```
 #### Equal Bucket M4 Sample
 
-When the `method` parameter is `M4`, the M4 sampling method is used to sample the input sequence. That is to sample the head, tail, min and max values for each bucket.
+The input sequence is sampled using the M4 sampling method. That is to sample the head, tail, min and max values for each bucket.
 
 | Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_BUCKET_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `method`:`M4`</br>`proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket M4 samples that match the sampling ratio |
+| EQUAL_BUCKET_M4_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket M4 samples that match the sampling ratio |
 
 
 ##### Demonstrate
@@ -645,7 +643,7 @@ Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data 
 
 Sql:
 ```sql
-select equal_bucket_sample(temperature, 'method'='M4', 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01;
+select equal_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01;
 ```
 Result:
 ```
@@ -653,14 +651,20 @@ Result:
 |                         Time|M4_sample|
 +-----------------------------+---------+
 |1970-01-01T08:00:00.000+08:00|      0.0|
+|1970-01-01T08:00:00.001+08:00|      1.0|
+|1970-01-01T08:00:00.038+08:00|     38.0|
 |1970-01-01T08:00:00.039+08:00|     39.0|
 |1970-01-01T08:00:00.040+08:00|     40.0|
+|1970-01-01T08:00:00.041+08:00|     41.0|
+|1970-01-01T08:00:00.078+08:00|     78.0|
 |1970-01-01T08:00:00.079+08:00|     79.0|
 |1970-01-01T08:00:00.080+08:00|     80.0|
+|1970-01-01T08:00:00.081+08:00|     81.0|
+|1970-01-01T08:00:00.098+08:00|     98.0|
 |1970-01-01T08:00:00.099+08:00|     99.0|
 +-----------------------------+---------+
-Total line number = 6
-It costs 0.052s
+Total line number = 12
+It costs 0.065s
 ```
 
 ### User Defined Timeseries Generating Functions
