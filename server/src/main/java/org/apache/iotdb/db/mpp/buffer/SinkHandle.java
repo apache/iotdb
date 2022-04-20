@@ -194,16 +194,16 @@ public class SinkHandle implements ISinkHandle {
     if (closed) {
       return;
     }
-    synchronized (this) {
-      closed = true;
-      noMoreTsBlocks = true;
-    }
-    sinkHandleListener.onClosed(this);
     try {
       sendEndOfDataBlockEvent();
     } catch (TException e) {
       throw new RuntimeException("Send EndOfDataBlockEvent failed", e);
     }
+    synchronized (this) {
+      closed = true;
+      noMoreTsBlocks = true;
+    }
+    sinkHandleListener.onClosed(this);
     logger.info("Sink handle {} is closed.", this);
   }
 
