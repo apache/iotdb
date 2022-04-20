@@ -83,7 +83,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     QueryType type = QueryType.valueOf(req.queryType);
     ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.create(req.consensusGroupId.id, req.consensusGroupId.type);
+        ConsensusGroupId.Factory.convertFromTConsensusGroupId(req.getConsensusGroupId());
     switch (type) {
       case READ:
         ConsensusReadResponse readResp =

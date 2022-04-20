@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -83,34 +83,19 @@ public class InternalServiceImplTest {
   @Before
   public void setUp() throws Exception {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
-    switch (regionReplicaSet.getRegionId().getType()) {
-      case SchemaRegion:
-        ConsensusImpl.getInstance()
-            .addConsensusGroup(
-                new SchemaRegionId(regionReplicaSet.getRegionId().getId()),
-                genPeerList(regionReplicaSet));
-        break;
-      case DataRegion:
-        ConsensusImpl.getInstance()
-            .addConsensusGroup(
-                new DataRegionId(regionReplicaSet.getRegionId().getId()),
-                genPeerList(regionReplicaSet));
-    }
+    ConsensusImpl.getInstance()
+        .addConsensusGroup(
+            ConsensusGroupId.Factory.convertFromTConsensusGroupId(regionReplicaSet.getRegionId()),
+            genPeerList(regionReplicaSet));
     internalServiceImpl = new InternalServiceImpl();
   }
 
   @After
   public void tearDown() throws Exception {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
-    switch (regionReplicaSet.getRegionId().getType()) {
-      case SchemaRegion:
-        ConsensusImpl.getInstance()
-            .removeConsensusGroup(new SchemaRegionId(regionReplicaSet.getRegionId().getId()));
-        break;
-      case DataRegion:
-        ConsensusImpl.getInstance()
-            .removeConsensusGroup(new DataRegionId(regionReplicaSet.getRegionId().getId()));
-    }
+    ConsensusImpl.getInstance()
+        .removeConsensusGroup(
+            ConsensusGroupId.Factory.convertFromTConsensusGroupId(regionReplicaSet.getRegionId()));
     FileUtils.deleteFully(new File(conf.getConsensusDir()));
   }
 

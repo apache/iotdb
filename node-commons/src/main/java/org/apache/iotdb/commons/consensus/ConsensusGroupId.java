@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
 public interface ConsensusGroupId {
@@ -50,10 +51,24 @@ public interface ConsensusGroupId {
       return groupId;
     }
 
-    public static ConsensusGroupId create(int id, TConsensusGroupType type) {
-      ConsensusGroupId groupId = createEmpty(type);
-      groupId.setId(id);
+    public static ConsensusGroupId convertFromTConsensusGroupId(
+        TConsensusGroupId tConsensusGroupId) {
+      ConsensusGroupId groupId = createEmpty(tConsensusGroupId.getType());
+      groupId.setId(tConsensusGroupId.getId());
       return groupId;
+    }
+
+    public static TConsensusGroupId convertToTConsensusGroupId(ConsensusGroupId consensusGroupId) {
+      TConsensusGroupId result = new TConsensusGroupId();
+      if (consensusGroupId instanceof SchemaRegionId) {
+        result.setType(TConsensusGroupType.SchemaRegion);
+      } else if (consensusGroupId instanceof DataRegionId) {
+        result.setType(TConsensusGroupType.DataRegion);
+      } else if (consensusGroupId instanceof PartitionRegionId) {
+        result.setType(TConsensusGroupType.PartitionRegion);
+      }
+      result.setId(consensusGroupId.getId());
+      return result;
     }
   }
 }
