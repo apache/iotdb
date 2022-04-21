@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -76,6 +77,16 @@ public class FloatColumnBuilder implements ColumnBuilder {
   @Override
   public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
     return writeFloat(value.getFloat());
+  }
+
+  /** Write an Object to the current entry, which should be the Float type; */
+  @Override
+  public ColumnBuilder writeObject(Object value) {
+    if (value instanceof Float) {
+      writeFloat((Float) value);
+      return this;
+    }
+    throw new UnSupportedDataTypeException("FloatColumn only support Float data type");
   }
 
   @Override

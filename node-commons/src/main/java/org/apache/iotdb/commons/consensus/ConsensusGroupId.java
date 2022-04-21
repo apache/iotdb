@@ -19,15 +19,10 @@
 
 package org.apache.iotdb.commons.consensus;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
 public interface ConsensusGroupId {
-
-  // contains specific id and type
-  void serializeImpl(ByteBuffer buffer);
-
-  // only deserialize specific id
-  void deserializeImpl(ByteBuffer buffer);
 
   // return specific id
   int getId();
@@ -35,21 +30,10 @@ public interface ConsensusGroupId {
   void setId(int id);
 
   // return specific type
-  GroupType getType();
+  TConsensusGroupType getType();
 
   class Factory {
-    public static ConsensusGroupId create(ByteBuffer buffer) {
-      int index = buffer.get();
-      if (index >= GroupType.values().length) {
-        throw new IllegalArgumentException("invalid ConsensusGroup type. Ordinal is: " + index);
-      }
-      GroupType type = GroupType.values()[index];
-      ConsensusGroupId groupId = createEmpty(type);
-      groupId.deserializeImpl(buffer);
-      return groupId;
-    }
-
-    public static ConsensusGroupId createEmpty(GroupType type) {
+    public static ConsensusGroupId createEmpty(TConsensusGroupType type) {
       ConsensusGroupId groupId;
       switch (type) {
         case DataRegion:
@@ -67,10 +51,24 @@ public interface ConsensusGroupId {
       return groupId;
     }
 
-    public static ConsensusGroupId create(int id, GroupType type) {
-      ConsensusGroupId groupId = createEmpty(type);
-      groupId.setId(id);
+    public static ConsensusGroupId convertFromTConsensusGroupId(
+        TConsensusGroupId tConsensusGroupId) {
+      ConsensusGroupId groupId = createEmpty(tConsensusGroupId.getType());
+      groupId.setId(tConsensusGroupId.getId());
       return groupId;
+    }
+
+    public static TConsensusGroupId convertToTConsensusGroupId(ConsensusGroupId consensusGroupId) {
+      TConsensusGroupId result = new TConsensusGroupId();
+      if (consensusGroupId instanceof SchemaRegionId) {
+        result.setType(TConsensusGroupType.SchemaRegion);
+      } else if (consensusGroupId instanceof DataRegionId) {
+        result.setType(TConsensusGroupType.DataRegion);
+      } else if (consensusGroupId instanceof PartitionRegionId) {
+        result.setType(TConsensusGroupType.PartitionRegion);
+      }
+      result.setId(consensusGroupId.getId());
+      return result;
     }
   }
 }

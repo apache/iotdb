@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.service.executor.PlanExecutor;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
@@ -32,7 +33,9 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /** Statemachine for PartitionRegion */
 public class PartitionRegionStateMachine implements IStateMachine {
@@ -94,6 +97,20 @@ public class PartitionRegionStateMachine implements IStateMachine {
     }
     return read(plan);
   }
+
+  @Override
+  public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {}
+
+  @Override
+  public SnapshotMeta getLatestSnapshot(File snapshotDir) {
+    return null;
+  }
+
+  @Override
+  public void loadSnapshot(SnapshotMeta latest) {}
+
+  @Override
+  public void cleanUpOldSnapshots(File snapshotDir) {}
 
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
   protected DataSet read(PhysicalPlan plan) {

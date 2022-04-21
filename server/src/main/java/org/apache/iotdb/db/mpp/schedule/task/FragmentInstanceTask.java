@@ -53,6 +53,8 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
   // Running stats
   private long cpuWallNano;
 
+  private String abortCause;
+
   /** Initialize a dummy instance for queryHolder */
   public FragmentInstanceTask() {
     this(new StubFragmentInstance(), 0L, null);
@@ -139,6 +141,14 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     return o instanceof FragmentInstanceTask && ((FragmentInstanceTask) o).getId().equals(id);
   }
 
+  public String getAbortCause() {
+    return abortCause;
+  }
+
+  public void setAbortCause(String abortCause) {
+    this.abortCause = abortCause;
+  }
+
   /** a comparator of ddl, the less the ddl is, the low order it has. */
   public static class TimeoutComparator implements Comparator<FragmentInstanceTask> {
 
@@ -198,5 +208,8 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
     @Override
     public void close() {}
+
+    @Override
+    public void failed(Throwable t) {}
   }
 }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
@@ -58,11 +58,12 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
   public abstract void abort();
 
   protected FragmentInstanceState fetchState(FragmentInstance instance) throws TException {
+    // TODO (jackie tien) change the port
     InternalService.Iface client =
-        InternalServiceClientFactory.getMppServiceClient(
-            new Endpoint(
+        InternalServiceClientFactory.getInternalServiceClient(
+            new TEndPoint(
                 instance.getHostEndpoint().getIp(),
-                IoTDBDescriptor.getInstance().getConfig().getMppPort()));
+                IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
     TFragmentInstanceStateResp resp =
         client.fetchFragmentInstanceState(new TFetchFragmentInstanceStateReq(getTId(instance)));
     return FragmentInstanceState.valueOf(resp.state);

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,16 +53,13 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -79,7 +76,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.common.collect.MapMaker;
 import org.apache.commons.lang3.ArrayUtils;
@@ -150,7 +146,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
-  private ConsensusGroupId schemaRegionId;
+  private SchemaRegionId schemaRegionId;
   private IStorageGroupMNode storageGroupMNode;
   private int storageGroupPathLevel;
 
@@ -164,9 +160,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   public RSchemaRegion(
-      PartialPath storageGroup,
-      ConsensusGroupId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode,
+      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode,
       RSchemaConfLoader rSchemaConfLoader)
       throws MetadataException {
     this.schemaRegionId = schemaRegionId;
@@ -209,39 +203,13 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void operation(PhysicalPlan plan) throws IOException, MetadataException {
-    switch (plan.getOperatorType()) {
-      case CREATE_TIMESERIES:
-        CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
-        break;
-      case CREATE_ALIGNED_TIMESERIES:
-        CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
-            (CreateAlignedTimeSeriesPlan) plan;
-        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
-        break;
-      case DELETE_TIMESERIES:
-        DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
-        // cause we only has one path for one DeleteTimeSeriesPlan
-        deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
-        break;
-      case CHANGE_ALIAS:
-        ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
-        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
-        break;
-      case AUTO_CREATE_DEVICE_MNODE:
-        AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
-        autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
-        break;
-      case CHANGE_TAG_OFFSET:
-      case SET_TEMPLATE:
-      case ACTIVATE_TEMPLATE:
-      case UNSET_TEMPLATE:
-        logger.error("unsupported operations {}", plan);
-        break;
-      default:
-        logger.error("Unrecognizable command {}", plan.getOperatorType());
-    }
+  public SchemaRegionId getSchemaRegionId() {
+    return schemaRegionId;
+  }
+
+  @Override
+  public String getStorageGroupFullPath() {
+    return storageGroupFullPath;
   }
 
   @Override
@@ -1207,23 +1175,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
-    for (int i = 0; i < mNodes.length; i++) {
-      try {
-        mNodes[i] = getMeasurementMNode(deviceId.concatNode(measurements[i]));
-      } catch (PathNotExistException | MNodeTypeMismatchException ignored) {
-        logger.warn("MeasurementMNode {} does not exist in {}", measurements[i], deviceId);
-      }
-      if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-        throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
-      }
-    }
-    return mNodes;
-  }
-
-  @Override
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     String[] nodes = fullPath.getNodes();
     String key = RSchemaUtils.getLevelPath(nodes, nodes.length - 1);
@@ -1706,18 +1657,6 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     // devicePath is a logical path which is parent of measurement, whether in template or not
@@ -1895,14 +1834,12 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
-      throws MetadataException {
+  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
-      throws MetadataException {
+  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

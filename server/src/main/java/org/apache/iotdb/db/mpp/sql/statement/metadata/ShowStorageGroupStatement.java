@@ -22,6 +22,13 @@ package org.apache.iotdb.db.mpp.sql.statement.metadata;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
+/**
+ * SHOW STORAGE GROUP statement
+ *
+ * <p>Here is the syntax definition:
+ *
+ * <p>SHOW STORAGE GROUP prefixPath?
+ */
 public class ShowStorageGroupStatement extends ShowStatement {
 
   private final PartialPath pathPattern;

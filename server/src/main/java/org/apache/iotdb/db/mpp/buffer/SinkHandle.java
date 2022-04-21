@@ -22,9 +22,9 @@ package org.apache.iotdb.db.mpp.buffer;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
-import org.apache.iotdb.mpp.rpc.thrift.EndOfDataBlockEvent;
-import org.apache.iotdb.mpp.rpc.thrift.NewDataBlockEvent;
+import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
+import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
@@ -166,8 +166,8 @@ public class SinkHandle implements ISinkHandle {
         remoteFragmentInstanceId,
         Thread.currentThread().getName());
     int attempt = 0;
-    EndOfDataBlockEvent endOfDataBlockEvent =
-        new EndOfDataBlockEvent(
+    TEndOfDataBlockEvent endOfDataBlockEvent =
+        new TEndOfDataBlockEvent(
             remoteFragmentInstanceId,
             remotePlanNodeId,
             localFragmentInstanceId,
@@ -220,10 +220,12 @@ public class SinkHandle implements ISinkHandle {
     synchronized (this) {
       sequenceIdToTsBlock.clear();
       closed = true;
-      localMemoryManager
-          .getQueryPool()
-          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
-      bufferRetainedSizeInBytes = 0;
+      if (bufferRetainedSizeInBytes > 0) {
+        localMemoryManager
+            .getQueryPool()
+            .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+        bufferRetainedSizeInBytes = 0;
+      }
     }
     sinkHandleListener.onAborted(this);
     logger.info("Sink handle {} is aborted", this);
@@ -316,7 +318,10 @@ public class SinkHandle implements ISinkHandle {
         .toString();
   }
 
-  /** Send a {@link NewDataBlockEvent} to downstream fragment instance. */
+  /**
+   * Send a {@link org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent} to downstream fragment
+   * instance.
+   */
   class SendNewDataBlockEventTask implements Runnable {
 
     private final int startSequenceId;
@@ -341,8 +346,8 @@ public class SinkHandle implements ISinkHandle {
           remotePlanNodeId,
           remoteFragmentInstanceId);
       int attempt = 0;
-      NewDataBlockEvent newDataBlockEvent =
-          new NewDataBlockEvent(
+      TNewDataBlockEvent newDataBlockEvent =
+          new TNewDataBlockEvent(
               remoteFragmentInstanceId,
               remotePlanNodeId,
               localFragmentInstanceId,

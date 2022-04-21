@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.List;
 
 /** This interface defines a MNode's operation interfaces. */
 public interface IMNode extends Serializable {
@@ -86,6 +88,12 @@ public interface IMNode extends Serializable {
   IEntityMNode getAsEntityMNode();
 
   IMeasurementMNode getAsMeasurementMNode();
+
+  List<TriggerExecutor> getUpperTriggerExecutorList();
+
+  TriggerExecutor getTriggerExecutor();
+
+  void setTriggerExecutor(TriggerExecutor triggerExecutor);
 
   void serializeTo(MLogWriter logWriter) throws IOException;
 

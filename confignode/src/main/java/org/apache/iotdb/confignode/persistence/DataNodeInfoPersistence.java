@@ -18,16 +18,17 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,25 +46,25 @@ public class DataNodeInfoPersistence {
 
   /** online data nodes */
   // TODO: serialize and deserialize
-  private final ConcurrentNavigableMap<Integer, DataNodeLocation> onlineDataNodes =
+  private final ConcurrentNavigableMap<Integer, TDataNodeLocation> onlineDataNodes =
       new ConcurrentSkipListMap();
 
   /** For remove node or draining node */
-  private final Set<DataNodeLocation> drainingDataNodes = new HashSet<>();
+  private final Set<TDataNodeLocation> drainingDataNodes = new HashSet<>();
 
   private DataNodeInfoPersistence() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
   }
 
-  public boolean containsValue(DataNodeLocation info) {
+  public boolean containsValue(TDataNodeLocation info) {
     boolean result = false;
     dataNodeInfoReadWriteLock.readLock().lock();
 
     try {
-      for (Map.Entry<Integer, DataNodeLocation> entry : onlineDataNodes.entrySet()) {
-        if (entry.getValue().getEndPoint().equals(info.getEndPoint())) {
+      for (Map.Entry<Integer, TDataNodeLocation> entry : onlineDataNodes.entrySet()) {
+        info.setDataNodeId(entry.getKey());
+        if (entry.getValue().equals(info)) {
           result = true;
-          info.setDataNodeId(entry.getKey());
           break;
         }
       }
@@ -74,7 +75,7 @@ public class DataNodeInfoPersistence {
     return result;
   }
 
-  public void put(int dataNodeID, DataNodeLocation info) {
+  public void put(int dataNodeID, TDataNodeLocation info) {
     onlineDataNodes.put(dataNodeID, info);
   }
 
@@ -86,7 +87,7 @@ public class DataNodeInfoPersistence {
    */
   public TSStatus registerDataNode(RegisterDataNodePlan plan) {
     TSStatus result;
-    DataNodeLocation info = plan.getInfo();
+    TDataNodeLocation info = plan.getLocation();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
       nextDataNodeId = Math.max(nextDataNodeId, info.getDataNodeId());
@@ -105,17 +106,19 @@ public class DataNodeInfoPersistence {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodesInfoDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
-    DataNodesInfoDataSet result = new DataNodesInfoDataSet();
+  public DataNodeLocationsDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
+    DataNodeLocationsDataSet result = new DataNodeLocationsDataSet();
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
     int dataNodeId = plan.getDataNodeID();
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {
-        result.setDataNodeList(new ArrayList<>(onlineDataNodes.values()));
+        result.setDataNodeLocations(new HashMap<>(onlineDataNodes));
       } else {
-        result.setDataNodeList(Collections.singletonList(onlineDataNodes.get(dataNodeId)));
+
+        result.setDataNodeLocations(
+            Collections.singletonMap(dataNodeId, onlineDataNodes.get(dataNodeId)));
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
@@ -135,8 +138,8 @@ public class DataNodeInfoPersistence {
     return result;
   }
 
-  public List<DataNodeLocation> getOnlineDataNodes() {
-    List<DataNodeLocation> result;
+  public List<TDataNodeLocation> getOnlineDataNodes() {
+    List<TDataNodeLocation> result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       result = new ArrayList<>(onlineDataNodes.values());
@@ -146,8 +149,8 @@ public class DataNodeInfoPersistence {
     return result;
   }
 
-  public DataNodeLocation getOnlineDataNode(int dataNodeId) {
-    DataNodeLocation result;
+  public TDataNodeLocation getOnlineDataNode(int dataNodeId) {
+    TDataNodeLocation result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       result = onlineDataNodes.get(dataNodeId);

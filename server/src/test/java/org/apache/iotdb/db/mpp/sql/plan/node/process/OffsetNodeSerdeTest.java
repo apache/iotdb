@@ -18,9 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
@@ -29,7 +31,6 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
@@ -87,7 +88,13 @@ public class OffsetNodeSerdeTest {
         new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
     AggregateNode aggregateNode =
         new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
-    aggregateNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
+    SeriesScanNode seriesScanNode =
+        new SeriesScanNode(
+            new PlanNodeId("TestSeriesScanNode"),
+            new AlignedPath("s1"),
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+    aggregateNode.addChild(seriesScanNode);
     deviceMergeNode.addChildDeviceNode("device", aggregateNode);
 
     aggregateFuncMap = new HashMap<>();
@@ -97,9 +104,9 @@ public class OffsetNodeSerdeTest {
         new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
     aggregateNode =
         new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
-    aggregateNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
+    aggregateNode.addChild(seriesScanNode);
     deviceMergeNode.addChild(aggregateNode);
-    deviceMergeNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
+    deviceMergeNode.addChild(seriesScanNode);
 
     fillNode.addChild(deviceMergeNode);
     filterNode.addChild(fillNode);
@@ -122,7 +129,7 @@ public class OffsetNodeSerdeTest {
 
     LimitNode limitNode = new LimitNode(new PlanNodeId("TestLimitNode"), groupByLevelNode, 3);
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("TestOffsetNode"), limitNode, 2);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     offsetNode.serialize(byteBuffer);
     byteBuffer.flip();
     assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), offsetNode);
@@ -156,17 +163,20 @@ public class OffsetNodeSerdeTest {
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
     seriesScanNode1.setRegionReplicaSet(
-        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
     seriesScanNode2.setRegionReplicaSet(
-        new RegionReplicaSet(new DataRegionId(2), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), new ArrayList<>()));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
     seriesScanNode3.setRegionReplicaSet(
-        new RegionReplicaSet(new DataRegionId(3), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), new ArrayList<>()));
     seriesScanNode3.setScanOrder(OrderBy.TIMESTAMP_DESC);
 
     // build tree

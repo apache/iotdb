@@ -28,7 +28,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 
 public class SchemaFetchNode extends SchemaScanNode {
@@ -76,11 +75,6 @@ public class SchemaFetchNode extends SchemaScanNode {
 
   @Override
   public void open() throws Exception {}
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return Collections.singletonList("SchemaTree");
-  }
 
   @Override
   public void close() throws Exception {}
