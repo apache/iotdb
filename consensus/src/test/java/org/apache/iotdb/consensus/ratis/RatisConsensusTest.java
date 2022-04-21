@@ -39,13 +39,21 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -81,7 +89,8 @@ public class RatisConsensusTest {
   }
 
   private static class IntegerCounter implements IStateMachine {
-    AtomicInteger integer;
+    private AtomicInteger integer;
+    private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
 
     @Override
     public void start() {
@@ -109,18 +118,73 @@ public class RatisConsensusTest {
     }
 
     @Override
-    public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {}
+    public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+      String tempFilePath = snapshotDir + File.separator + ".tmp";
+      String filePath = snapshotDir + File.separator + "snapshot." + new String(metadata.array());
 
-    @Override
-    public SnapshotMeta getLatestSnapshot(File snapshotDir) {
-      return null;
+      File tempFile = new File(tempFilePath);
+
+      try {
+        FileWriter writer = new FileWriter(tempFile);
+        writer.write(String.valueOf(integer.get()));
+        writer.close();
+        tempFile.renameTo(new File(filePath));
+      } catch (IOException e) {
+        logger.error("take snapshot failed ", e);
+      }
+    }
+
+    private Object[] getSortedPaths(File rootDir) {
+      ArrayList<Path> paths = new ArrayList<>();
+      try {
+        DirectoryStream<Path> stream = Files.newDirectoryStream(rootDir.toPath());
+        for (Path path : stream) {
+          paths.add(path);
+        }
+      } catch (IOException e) {
+        logger.error("read directory failed ", e);
+      }
+
+      Object[] pathArray = paths.toArray();
+      Arrays.sort(pathArray);
+      return pathArray;
     }
 
     @Override
-    public void loadSnapshot(SnapshotMeta latest) {}
+    public SnapshotMeta getLatestSnapshot(File snapshotDir) {
+      Object[] pathArray = getSortedPaths(snapshotDir);
+      if (pathArray.length == 0) {
+        return null;
+      }
+      Path max = (Path) pathArray[pathArray.length - 1];
+
+      String ordinal = max.getFileName().toString().split("\\.")[1];
+      ByteBuffer metadata = ByteBuffer.wrap(ordinal.getBytes());
+      return new SnapshotMeta(metadata, Collections.singletonList(max.toFile()));
+    }
 
     @Override
-    public void cleanUpOldSnapshots(File snapshotDir) {}
+    public void loadSnapshot(SnapshotMeta latest) {
+      try {
+        Scanner scanner = new Scanner(latest.getSnapshotFiles().get(0));
+        int snapshotValue = Integer.parseInt(scanner.next());
+        integer.set(snapshotValue);
+      } catch (IOException e) {
+        logger.error("read file failed ", e);
+      }
+    }
+
+    @Override
+    public void cleanUpOldSnapshots(File snapshotDir) {
+      Object[] paths = getSortedPaths(snapshotDir);
+      for (int i = 0; i < paths.length - 1; i++) {
+        try {
+          FileUtils.deleteFully((Path) paths[i]);
+        } catch (IOException e) {
+          logger.error("delete file failed ", e);
+        }
+      }
+    }
   }
 
   private ConsensusGroupId gid;
@@ -132,6 +196,22 @@ public class RatisConsensusTest {
   private Peer peer1;
   private Peer peer2;
   CountDownLatch latch;
+
+  private void makeServers() throws IOException {
+    for (int i = 0; i < 3; i++) {
+      servers.add(
+          ConsensusFactory.getConsensusImpl(
+                  RATIS_CLASS_NAME,
+                  peers.get(i).getEndpoint(),
+                  peersStorage.get(i),
+                  groupId -> new IntegerCounter())
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
+      servers.get(i).start();
+    }
+  }
 
   @Before
   public void setUp() throws IOException {
@@ -152,19 +232,7 @@ public class RatisConsensusTest {
     }
     group = new ConsensusGroup(gid, peers);
     servers = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      servers.add(
-          ConsensusFactory.getConsensusImpl(
-                  RATIS_CLASS_NAME,
-                  peers.get(i).getEndpoint(),
-                  peersStorage.get(i),
-                  groupId -> new IntegerCounter())
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
-      servers.get(i).start();
-    }
+    makeServers();
   }
 
   @After
@@ -180,15 +248,15 @@ public class RatisConsensusTest {
   @Test
   public void basicConsensus() throws Exception {
 
-    // 4. Add a new group
+    // 1. Add a new group
     servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
 
-    // 5. Do Consensus 10
+    // 2. Do Consensus 10
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    // 6. Remove two Peers from Group (peer 0 and peer 2)
+    // 3. Remove two Peers from Group (peer 0 and peer 2)
     // transfer the leader to peer1
     // servers.get(0).transferLeader(gid, peer1);
     // Assert.assertTrue(servers.get(1).isLeader(gid));
@@ -200,10 +268,10 @@ public class RatisConsensusTest {
     servers.get(2).removeConsensusGroup(gid);
     Assert.assertEquals(servers.get(1).getLeader(gid), peers.get(1));
 
-    // 7. try consensus again with one peer
+    // 4. try consensus again with one peer
     doConsensus(servers.get(1), gid, 10, 20);
 
-    // 8. add two peers back
+    // 5. add two peers back
     // first notify these new peers, let them initialize
     servers.get(0).addConsensusGroup(gid, peers);
     servers.get(2).addConsensusGroup(gid, peers);
@@ -211,16 +279,29 @@ public class RatisConsensusTest {
     servers.get(1).addPeer(gid, peer0);
     servers.get(1).addPeer(gid, peer2);
 
-    // 9. try consensus with all 3 peers
+    // 6. try consensus with all 3 peers
     doConsensus(servers.get(2), gid, 10, 30);
 
-    // 10. again, group contains only peer0
+    // 7. again, group contains only peer0
     servers.get(0).changePeer(group.getGroupId(), Collections.singletonList(peer0));
     servers.get(1).removeConsensusGroup(group.getGroupId());
     servers.get(2).removeConsensusGroup(group.getGroupId());
 
-    // 11. try consensus with only peer0
+    // 8. try consensus with only peer0
     doConsensus(servers.get(0), gid, 10, 40);
+
+    // 9. shutdown all the servers
+    for (IConsensus consensus : servers) {
+      consensus.stop();
+    }
+    servers.clear();
+
+    // 10. start again and verify the snapshot
+    makeServers();
+    servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
+    doConsensus(servers.get(0), gid, 10, 50);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
