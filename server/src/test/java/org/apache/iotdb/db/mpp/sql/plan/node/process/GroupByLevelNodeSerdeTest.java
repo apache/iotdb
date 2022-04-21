@@ -124,7 +124,6 @@ public class GroupByLevelNodeSerdeTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     groupByLevelNode.serialize(byteBuffer);
     byteBuffer.flip();
-    PlanNode tmpNode = PlanNodeDeserializeHelper.deserialize(byteBuffer);
-    assertEquals(tmpNode, groupByLevelNode);
+    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), groupByLevelNode);
   }
 }
