@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -80,6 +81,7 @@ public class TTLTest {
 
   private String sg1 = "root.TTL_SG1";
   private String sg2 = "root.TTL_SG2";
+  private String storageGroupNotExist = "root.test.notExist";
   private long ttl = 12345;
   private DataRegion dataRegion;
   private String s1 = "s1";
@@ -139,6 +141,22 @@ public class TTLTest {
     // default ttl
     mNode = IoTDB.schemaProcessor.getStorageGroupNodeByPath(new PartialPath(sg2));
     assertEquals(Long.MAX_VALUE, mNode.getDataTTL());
+  }
+
+  @Test
+  public void testExecuteTtlPlan() throws QueryProcessException, StorageEngineException {
+    Planner planner = new Planner();
+    SetTTLPlan plan =
+        (SetTTLPlan)
+            planner.parseSQLToPhysicalPlan("SET TTL TO " + storageGroupNotExist + " 10000");
+    PlanExecutor executor = new PlanExecutor();
+    boolean result = false;
+    try {
+      executor.processNonQuery(plan);
+    } catch (StorageGroupNotSetException e) {
+      result = true;
+    }
+    assertTrue(result);
   }
 
   @Test

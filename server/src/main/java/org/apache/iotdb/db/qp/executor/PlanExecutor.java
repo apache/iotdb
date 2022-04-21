@@ -1630,15 +1630,21 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
+  private void operateTTL(SetTTLPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException {
     try {
       List<PartialPath> storageGroupPaths =
           IoTDB.schemaProcessor.getMatchedStorageGroups(
               plan.getStorageGroup(), plan.isPrefixMatch());
+      if (storageGroupPaths.isEmpty()) {
+        throw new StorageGroupNotSetException(plan.getStorageGroup().getFullPath());
+      }
       for (PartialPath storagePath : storageGroupPaths) {
         IoTDB.schemaProcessor.setTTL(storagePath, plan.getDataTTL());
         StorageEngine.getInstance().setTTL(storagePath, plan.getDataTTL());
       }
+    } catch (StorageGroupNotSetException e) {
+      throw e;
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {
