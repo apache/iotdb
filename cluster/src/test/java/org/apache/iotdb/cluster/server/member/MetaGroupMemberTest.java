@@ -332,7 +332,8 @@ public class MetaGroupMemberTest extends BaseMember {
     try {
       for (String prefixPath : prefixPaths) {
         if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
-          IoTDB.schemaProcessor.collectMeasurementSchema(new PartialPath(prefixPath), schemas);
+          //          IoTDB.schemaProcessor.collectMeasurementSchema(new PartialPath(prefixPath),
+          // schemas);
           dataOutputStream.writeInt(schemas.size());
           for (IMeasurementSchema schema : schemas) {
             schema.partialSerializeTo(dataOutputStream);
@@ -342,7 +343,7 @@ public class MetaGroupMemberTest extends BaseMember {
           TestUtils.getTestMeasurementSchema(0).partialSerializeTo(dataOutputStream);
         }
       }
-    } catch (IOException | IllegalPathException e) {
+    } catch (IOException e) {
       // ignore
     }
     PullSchemaResp resp = new PullSchemaResp();

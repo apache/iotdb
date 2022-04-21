@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.sink;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -44,7 +44,7 @@ public class FragmentSinkNodeSerdeTest {
         new DevicesSchemaScanNode(
             new PlanNodeId("deviceSchema"), new PartialPath("root.sg.device"), 0, 0, false, false));
     fragmentSinkNode.setDownStream(
-        new Endpoint("127.0.0.1", 6666),
+        new TEndPoint("127.0.0.1", 6666),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
         new PlanNodeId("test"));
 

@@ -59,6 +59,7 @@ public class FragmentInstanceTaskExecutor extends AbstractExecutor {
     // long cost = System.nanoTime() - startTime;
     // If the future is cancelled, the task is in an error and should be thrown.
     if (future.isCancelled()) {
+      task.setAbortCause(FragmentInstanceAbortedException.BY_ALREADY_BEING_CANCELLED);
       scheduler.toAborted(task);
       return;
     }

@@ -69,29 +69,33 @@ public class FragmentInstanceTimeoutSentinelTest {
         new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.FINISHED);
     executor.execute(testTask);
     Assert.assertEquals(FragmentInstanceTaskStatus.FINISHED, testTask.getStatus());
-    Mockito.verify(mockDriver, Mockito.times(0)).processFor(Mockito.any());
+    Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
 
     // ABORTED status test
     testTask = new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.ABORTED);
     executor.execute(testTask);
     Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, testTask.getStatus());
-    Mockito.verify(mockDriver, Mockito.times(0)).processFor(Mockito.any());
+    Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
 
     // RUNNING status test
     testTask = new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
     executor.execute(testTask);
     Assert.assertEquals(FragmentInstanceTaskStatus.RUNNING, testTask.getStatus());
-    Mockito.verify(mockDriver, Mockito.times(0)).processFor(Mockito.any());
+    Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
 
     // BLOCKED status test
     testTask = new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.BLOCKED);
     executor.execute(testTask);
     Assert.assertEquals(FragmentInstanceTaskStatus.BLOCKED, testTask.getStatus());
-    Mockito.verify(mockDriver, Mockito.times(0)).processFor(Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).toAborted(Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToBlocked(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToFinished(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).blockedToReady(Mockito.any());
+    Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
+    Assert.assertNull(testTask.getAbortCause());
+    Mockito.verify(mockScheduler, Mockito.never()).toAborted(Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToBlocked(Mockito.any(), Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToFinished(Mockito.any(), Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).blockedToReady(Mockito.any());
   }
 
   @Test
@@ -127,11 +131,13 @@ public class FragmentInstanceTimeoutSentinelTest {
         new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
+    Assert.assertEquals(
+        FragmentInstanceAbortedException.BY_ALREADY_BEING_CANCELLED, testTask.getAbortCause());
     Mockito.verify(mockScheduler, Mockito.times(1)).toAborted(Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToReady(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToBlocked(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToFinished(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).blockedToReady(Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToReady(Mockito.any(), Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToBlocked(Mockito.any(), Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToFinished(Mockito.any(), Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).blockedToReady(Mockito.any());
   }
 
   @Test
@@ -166,11 +172,12 @@ public class FragmentInstanceTimeoutSentinelTest {
         new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).toAborted(Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToReady(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToBlocked(Mockito.any(), Mockito.any());
+    Assert.assertNull(testTask.getAbortCause());
+    Mockito.verify(mockScheduler, Mockito.never()).toAborted(Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToReady(Mockito.any(), Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToBlocked(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.times(1)).runningToFinished(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).blockedToReady(Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).blockedToReady(Mockito.any());
   }
 
   @Test
@@ -216,10 +223,11 @@ public class FragmentInstanceTimeoutSentinelTest {
         new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).toAborted(Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToReady(Mockito.any(), Mockito.any());
+    Assert.assertNull(testTask.getAbortCause());
+    Mockito.verify(mockScheduler, Mockito.never()).toAborted(Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToReady(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.times(1)).runningToBlocked(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToFinished(Mockito.any(), Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToFinished(Mockito.any(), Mockito.any());
     Mockito.verify(mockScheduler, Mockito.times(1)).blockedToReady(Mockito.any());
   }
 
@@ -266,10 +274,11 @@ public class FragmentInstanceTimeoutSentinelTest {
         new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).toAborted(Mockito.any());
+    Assert.assertNull(testTask.getAbortCause());
+    Mockito.verify(mockScheduler, Mockito.never()).toAborted(Mockito.any());
     Mockito.verify(mockScheduler, Mockito.times(1)).runningToReady(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToBlocked(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).runningToFinished(Mockito.any(), Mockito.any());
-    Mockito.verify(mockScheduler, Mockito.times(0)).blockedToReady(Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToBlocked(Mockito.any(), Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).runningToFinished(Mockito.any(), Mockito.any());
+    Mockito.verify(mockScheduler, Mockito.never()).blockedToReady(Mockito.any());
   }
 }

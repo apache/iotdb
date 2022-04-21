@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
-import org.apache.iotdb.mpp.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
@@ -50,19 +50,17 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
         () -> {
           TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
           for (FragmentInstance instance : instances) {
+            // TODO: (jackie tien) change the port
             InternalService.Iface client =
                 InternalServiceClientFactory.getInternalServiceClient(
-                    new Endpoint(
+                    new TEndPoint(
                         instance.getHostEndpoint().getIp(),
                         IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
             // TODO: (xingtanzjr) consider how to handle the buffer here
             ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
             instance.serializeRequest(buffer);
             buffer.flip();
-            TConsensusGroupId groupId =
-                new TConsensusGroupId(
-                    instance.getRegionReplicaSet().getConsensusGroupId().getId(),
-                    instance.getRegionReplicaSet().getConsensusGroupId().getType().toString());
+            TConsensusGroupId groupId = instance.getRegionReplicaSet().getRegionId();
             TSendFragmentInstanceReq req =
                 new TSendFragmentInstanceReq(
                     new TFragmentInstance(buffer), groupId, instance.getType().toString());

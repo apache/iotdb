@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.FilterNullParameter;
@@ -57,6 +58,13 @@ public class FragmentInstanceSerdeTest {
 
   @Test
   public void TestSerializeAndDeserializeForTree1() throws IllegalPathException {
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(0);
+    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+
     PlanFragmentId planFragmentId = new PlanFragmentId("test", -1);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
@@ -64,10 +72,10 @@ public class FragmentInstanceSerdeTest {
             planFragmentId.genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.READ);
-    RegionReplicaSet regionReplicaSet =
-        new RegionReplicaSet(
-            new DataRegionId(1),
-            ImmutableList.of(new DataNodeLocation(0, new Endpoint("127.0.0.1", 6666))));
+    TRegionReplicaSet regionReplicaSet =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+            ImmutableList.of(dataNodeLocation));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -79,6 +87,13 @@ public class FragmentInstanceSerdeTest {
 
   @Test
   public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(0);
+    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+
     PlanFragmentId planFragmentId = new PlanFragmentId("test2", 1);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
@@ -86,10 +101,10 @@ public class FragmentInstanceSerdeTest {
             planFragmentId.genFragmentInstanceId(),
             null,
             QueryType.READ);
-    RegionReplicaSet regionReplicaSet =
-        new RegionReplicaSet(
-            new DataRegionId(1),
-            ImmutableList.of(new DataNodeLocation(0, new Endpoint("127.0.0.2", 6667))));
+    TRegionReplicaSet regionReplicaSet =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
+            ImmutableList.of(dataNodeLocation));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -127,17 +142,20 @@ public class FragmentInstanceSerdeTest {
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
     seriesScanNode1.setRegionReplicaSet(
-        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
     seriesScanNode2.setRegionReplicaSet(
-        new RegionReplicaSet(new DataRegionId(2), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), new ArrayList<>()));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
     seriesScanNode3.setRegionReplicaSet(
-        new RegionReplicaSet(new DataRegionId(3), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), new ArrayList<>()));
     seriesScanNode3.setScanOrder(OrderBy.TIMESTAMP_DESC);
 
     // build tree

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -130,11 +130,11 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    Map<RegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
+    Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
       // data region for insert row node
-      RegionReplicaSet dataRegionReplicaSet =
+      TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(

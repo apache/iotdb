@@ -485,8 +485,8 @@ public class LocalQueryExecutor {
             .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
             .add(new PartialPath(prefixPath));
       } else {
-        getCSchemaProcessor()
-            .collectMeasurementSchema(new PartialPath(prefixPath), measurementSchemas);
+        //        getCSchemaProcessor()
+        //            .collectMeasurementSchema(new PartialPath(prefixPath), measurementSchemas);
       }
     }
 
@@ -524,8 +524,8 @@ public class LocalQueryExecutor {
             .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
             .add(prefixPath);
       } else {
-        getCSchemaProcessor()
-            .collectTimeseriesSchema(new PartialPath(prefixPath), timeseriesSchemas);
+        //        getCSchemaProcessor()
+        //            .collectTimeseriesSchema(new PartialPath(prefixPath), timeseriesSchemas);
       }
     }
 

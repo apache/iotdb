@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.commons.partition.executor;
 
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -32,7 +32,7 @@ public abstract class SeriesPartitionExecutor {
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public abstract SeriesPartitionSlot getSeriesPartitionSlot(String device);
+  public abstract TSeriesPartitionSlot getSeriesPartitionSlot(String device);
 
   public static SeriesPartitionExecutor getSeriesPartitionExecutor(
       String executorName, int seriesPartitionSlotNum) {

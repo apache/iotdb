@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -90,7 +89,7 @@ class RatisConsensus implements IConsensus {
 
   private Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
-  public RatisConsensus(Endpoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
+  public RatisConsensus(TEndPoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
       throws IOException {
 
     this.clientMap = new ConcurrentHashMap<>();
@@ -180,7 +179,7 @@ class RatisConsensus implements IConsensus {
     }
 
     if (suggestedLeader != null) {
-      Endpoint leaderEndPoint = Utils.getEndpoint(suggestedLeader);
+      TEndPoint leaderEndPoint = Utils.getEndpoint(suggestedLeader);
       writeResult.setRedirectNode(new TEndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
     }
 
@@ -460,7 +459,7 @@ class RatisConsensus implements IConsensus {
     if (client == null) {
       return null;
     }
-    Endpoint leaderEndpoint = Utils.parseFromRatisId(client.getLeaderId().toString());
+    TEndPoint leaderEndpoint = Utils.parseFromRatisId(client.getLeaderId().toString());
     return new Peer(groupId, leaderEndpoint);
   }
 

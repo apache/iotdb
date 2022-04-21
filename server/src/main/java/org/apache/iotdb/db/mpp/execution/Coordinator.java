@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -52,8 +52,8 @@ public class Coordinator {
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 1;
 
-  private static final Endpoint LOCAL_HOST =
-      new Endpoint(
+  private static final TEndPoint LOCAL_HOST =
+      new TEndPoint(
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
           IoTDBDescriptor.getInstance().getConfig().getInternalPort());
 
@@ -121,7 +121,7 @@ public class Coordinator {
   }
 
   // Get the hostname of current coordinator
-  private Endpoint getHostEndpoint() {
+  private TEndPoint getHostEndpoint() {
     return LOCAL_HOST;
   }
 

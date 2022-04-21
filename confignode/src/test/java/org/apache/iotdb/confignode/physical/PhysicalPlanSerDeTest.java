@@ -18,14 +18,13 @@
  */
 package org.apache.iotdb.confignode.physical;
 
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
 import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
@@ -35,6 +34,7 @@ import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
 import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 
@@ -52,7 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class SerializeDeserializeUT {
+public class PhysicalPlanSerDeTest {
 
   private final ByteBuffer buffer = ByteBuffer.allocate(10240);
 
@@ -63,8 +63,13 @@ public class SerializeDeserializeUT {
 
   @Test
   public void RegisterDataNodePlanTest() throws IOException {
-    RegisterDataNodePlan plan0 =
-        new RegisterDataNodePlan(new DataNodeLocation(1, new Endpoint("0.0.0.0", 6667)));
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(1);
+    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 7777));
+    RegisterDataNodePlan plan0 = new RegisterDataNodePlan(dataNodeLocation);
     plan0.serialize(buffer);
     buffer.flip();
     RegisterDataNodePlan plan1 = (RegisterDataNodePlan) PhysicalPlan.Factory.create(buffer);
@@ -82,7 +87,16 @@ public class SerializeDeserializeUT {
 
   @Test
   public void SetStorageGroupPlanTest() throws IOException {
-    SetStorageGroupPlan plan0 = new SetStorageGroupPlan(new StorageGroupSchema("sg"));
+    SetStorageGroupPlan plan0 =
+        new SetStorageGroupPlan(
+            new TStorageGroupSchema()
+                .setName("sg")
+                .setTTL(Long.MAX_VALUE)
+                .setSchemaReplicationFactor(3)
+                .setDataReplicationFactor(3)
+                .setTimePartitionInterval(604800)
+                .setSchemaRegionGroupIds(new ArrayList<>())
+                .setDataRegionGroupIds(new ArrayList<>()));
     plan0.serialize(buffer);
     buffer.flip();
     SetStorageGroupPlan plan1 = (SetStorageGroupPlan) PhysicalPlan.Factory.create(buffer);
@@ -96,17 +110,23 @@ public class SerializeDeserializeUT {
 
   @Test
   public void CreateRegionsPlanTest() throws IOException {
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(0);
+    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+
     CreateRegionsPlan plan0 = new CreateRegionsPlan();
     plan0.setStorageGroup("sg");
-    RegionReplicaSet dataRegionSet = new RegionReplicaSet();
-    dataRegionSet.setConsensusGroupId(new DataRegionId(0));
-    dataRegionSet.setDataNodeList(
-        Collections.singletonList(new DataNodeLocation(0, new Endpoint("0.0.0.0", 6667))));
+    TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
+    dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
+    dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
     plan0.addRegion(dataRegionSet);
-    RegionReplicaSet schemaRegionSet = new RegionReplicaSet();
-    schemaRegionSet.setConsensusGroupId(new SchemaRegionId(1));
-    schemaRegionSet.setDataNodeList(
-        Collections.singletonList(new DataNodeLocation(0, new Endpoint("0.0.0.0", 6667))));
+
+    TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
+    schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
+    schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
     plan0.addRegion(schemaRegionSet);
 
     plan0.serialize(buffer);
@@ -117,14 +137,20 @@ public class SerializeDeserializeUT {
 
   @Test
   public void CreateSchemaPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(10);
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    regionReplicaSet.setConsensusGroupId(new SchemaRegionId(0));
-    regionReplicaSet.setDataNodeList(
-        Collections.singletonList(new DataNodeLocation(0, new Endpoint("0.0.0.0", 6667))));
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(0);
+    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
 
-    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> assignedSchemaPartition =
+    String storageGroup = "root.sg0";
+    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
+    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+    regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
+    regionReplicaSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
+
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition =
         new HashMap<>();
     assignedSchemaPartition.put(storageGroup, new HashMap<>());
     assignedSchemaPartition.get(storageGroup).put(seriesPartitionSlot, regionReplicaSet);
@@ -141,9 +167,9 @@ public class SerializeDeserializeUT {
   @Test
   public void GetOrCreateSchemaPartitionPlanTest() throws IOException {
     String storageGroup = "root.sg0";
-    SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(10);
+    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
 
-    Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+    Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
 
     GetOrCreateSchemaPartitionPlan plan0 =
@@ -158,15 +184,21 @@ public class SerializeDeserializeUT {
 
   @Test
   public void CreateDataPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(10);
-    TimePartitionSlot timePartitionSlot = new TimePartitionSlot(100);
-    RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-    regionReplicaSet.setConsensusGroupId(new DataRegionId(0));
-    regionReplicaSet.setDataNodeList(
-        Collections.singletonList(new DataNodeLocation(0, new Endpoint("0.0.0.0", 6667))));
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(0);
+    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
 
-    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+    String storageGroup = "root.sg0";
+    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
+    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
+    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+    regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
+    regionReplicaSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
+
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         assignedDataPartition = new HashMap<>();
     assignedDataPartition.put(storageGroup, new HashMap<>());
     assignedDataPartition.get(storageGroup).put(seriesPartitionSlot, new HashMap<>());
@@ -191,10 +223,10 @@ public class SerializeDeserializeUT {
   @Test
   public void GetOrCreateDataPartitionPlanTest() throws IOException {
     String storageGroup = "root.sg0";
-    SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot(10);
-    TimePartitionSlot timePartitionSlot = new TimePartitionSlot(100);
+    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
+    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
 
-    Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap =
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
         new HashMap<>();
     partitionSlotsMap.put(storageGroup, new HashMap<>());
     partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
