@@ -120,14 +120,15 @@ import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_NODE_VALUE;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_ALIAS;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ROOT_STRING;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ZERO;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class RSchemaRegion implements ISchemaRegion {
+
   private static final Logger logger = LoggerFactory.getLogger(RSchemaRegion.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -867,7 +868,7 @@ public class RSchemaRegion implements ISchemaRegion {
       throws MetadataException {
     // todo support wildcard
     if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
-      throw new MetadataException(
+      throw new UnsupportedOperationException(
           "Wildcards are not currently supported for this operation"
               + " [COUNT NODES pathPattern].");
     }
@@ -894,51 +895,92 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    throw new UnsupportedOperationException();
+    Map<PartialPath, Integer> result = new ConcurrentHashMap<>();
+    BiFunction<byte[], byte[], Boolean> function =
+        (a, b) -> {
+          String key = new String(a);
+          String partialName = splitToPartialNameByLevel(key, level);
+          if (partialName != null) {
+            PartialPath path = null;
+            try {
+              path = new PartialPath(partialName);
+            } catch (IllegalPathException e) {
+              logger.warn(e.getMessage());
+            }
+            result.putIfAbsent(path, 0);
+            result.put(path, result.get(path) + 1);
+          }
+          return true;
+        };
+    traverseOutcomeBasins(
+        pathPattern.getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
+
+    return result;
+  }
+
+  private String splitToPartialNameByLevel(String innerName, int level) {
+    StringBuilder stringBuilder = new StringBuilder(ROOT_STRING);
+    boolean currentIsFlag;
+    boolean lastIsFlag = false;
+    int j = 0;
+    for (int i = 0; i < innerName.length() && j <= level; i++) {
+      currentIsFlag = innerName.charAt(i) == '.';
+      if (currentIsFlag) {
+        j++;
+        currentIsFlag = true;
+      }
+      if (j <= 0 || lastIsFlag || (currentIsFlag && j > level)) {
+        lastIsFlag = false;
+        continue;
+      }
+      stringBuilder.append(innerName.charAt(i));
+      lastIsFlag = currentIsFlag;
+    }
+    if (j < level) {
+      return null;
+    }
+    return stringBuilder.toString();
   }
 
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
       throws MetadataException {
+    if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
+      throw new UnsupportedOperationException(
+          formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
+    }
     return getNodesListInGivenLevel(pathPattern, nodeLevel);
   }
 
-  public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
-      throws MetadataException {
-    // TODO: ignore pathPattern with *, all nodeLevel are start from "root.*"
-    List<PartialPath> results = new ArrayList<>();
-    if (nodeLevel == 0) {
-      results.add(new PartialPath(RSchemaConstants.ROOT));
-      return results;
-    }
-    // TODO: level one usually only contains small numbers, query in serialize
-    Set<String> paths;
-    StringBuilder builder = new StringBuilder();
-    if (nodeLevel <= 5) {
-      char level = (char) (ZERO + nodeLevel);
-      String prefix =
-          builder.append(RSchemaConstants.ROOT).append(PATH_SEPARATOR).append(level).toString();
-      paths = readWriteHandler.getAllByPrefix(prefix);
-    } else {
-      paths = ConcurrentHashMap.newKeySet();
-      char upperLevel = (char) (ZERO + nodeLevel - 1);
-      String prefix =
-          builder
-              .append(RSchemaConstants.ROOT)
-              .append(PATH_SEPARATOR)
-              .append(upperLevel)
-              .toString();
-      Set<String> parentPaths = readWriteHandler.getAllByPrefix(prefix);
-      parentPaths
-          .parallelStream()
-          .forEach(
-              x -> {
-                String targetPrefix = RSchemaUtils.getNextLevelOfPath(x, upperLevel);
-                paths.addAll(readWriteHandler.getAllByPrefix(targetPrefix));
-              });
-    }
-    return RSchemaUtils.convertToPartialPath(paths, nodeLevel);
+  private String formatNotSupportInfo(String methodName) {
+    return String.format("[%s] is not currently supported!", methodName);
+  }
+
+  private List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel) {
+    List<PartialPath> result = Collections.synchronizedList(new ArrayList<>());
+    Arrays.stream(ALL_NODE_TYPE_ARRAY)
+        .forEach(
+            x -> {
+              if (x == NODE_TYPE_ALIAS) {
+                return;
+              }
+              String innerName =
+                  RSchemaUtils.convertPartialPathToInnerByNodes(
+                      pathPattern.getNodes(), nodeLevel, x);
+              readWriteHandler
+                  .getAllByPrefix(innerName)
+                  .forEach(
+                      resultByPrefix -> {
+                        try {
+                          result.add(
+                              new PartialPath(RSchemaUtils.getPathByInnerName(resultByPrefix)));
+                        } catch (IllegalPathException e) {
+                          logger.warn(e.getMessage());
+                        }
+                      });
+            });
+    return result;
   }
 
   @Override
@@ -1080,7 +1122,8 @@ public class RSchemaRegion implements ISchemaRegion {
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
       ShowTimeSeriesPlan plan, QueryContext context) {
     // temporarily unsupported
-    throw new UnsupportedOperationException("temporarily unsupported : showTimeseriesWithIndex");
+    throw new UnsupportedOperationException(
+        formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
   }
 
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
