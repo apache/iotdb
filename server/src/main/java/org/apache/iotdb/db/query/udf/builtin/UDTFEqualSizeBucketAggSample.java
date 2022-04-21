@@ -418,7 +418,8 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
   }
 
   @Override
-  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws UDFParameterNotValidException {
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+      throws UDFParameterNotValidException {
     // if we use aggregation method on average or variance, the outputDataType may be double.
     // For other scenarios, outputDataType == dataType
     TSDataType outputDataType = dataType;
@@ -448,7 +449,8 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
         aggregator = new VarianceAggregator();
         break;
       default:
-        throw new UDFParameterNotValidException("Illegal aggregation method. Aggregation type should be avg, min, max, sum, extreme, variance.");
+        throw new UDFParameterNotValidException(
+            "Illegal aggregation method. Aggregation type should be avg, min, max, sum, extreme, variance.");
     }
   }
 
@@ -471,12 +473,7 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            dataType,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE);
+            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
   }
 }
