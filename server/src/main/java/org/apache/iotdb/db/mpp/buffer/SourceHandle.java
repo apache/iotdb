@@ -356,6 +356,12 @@ public class SourceHandle implements ISourceHandle {
               localMemoryManager
                   .getQueryPool()
                   .free(localFragmentInstanceId.getQueryId(), reservedBytes);
+              // That GetDataBlocksTask throws exception means some TsBlock cannot be
+              // fetched permanently. Someone maybe waiting the SourceHandle to be
+              // unblocked after fetching data. So the blocked should be released.
+              if (blocked != null && !blocked.isDone()) {
+                blocked.cancel(true);
+              }
             }
           }
         }
