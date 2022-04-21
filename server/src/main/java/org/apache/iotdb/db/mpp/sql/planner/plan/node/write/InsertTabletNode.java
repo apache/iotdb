@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -44,7 +44,13 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
@@ -552,10 +558,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         (times[0] / StorageEngine.getTimePartitionInterval())
             * StorageEngine.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
-    TimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
+    TTimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
 
-    List<TimePartitionSlot> timePartitionSlots = new ArrayList<>();
+    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     List<Integer> ranges = new ArrayList<>();
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
@@ -580,12 +586,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     timePartitionSlots.add(timePartitionSlot);
 
     // data region for each time partition
-    List<RegionReplicaSet> dataRegionReplicaSets =
+    List<TRegionReplicaSet> dataRegionReplicaSets =
         analysis
             .getDataPartitionInfo()
             .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlots);
 
-    Map<RegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
+    Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
     for (int i = 0; i < dataRegionReplicaSets.size(); i++) {
       List<Integer> sub_ranges =
           splitMap.computeIfAbsent(dataRegionReplicaSets.get(i), x -> new ArrayList<>());
@@ -594,7 +600,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
 
     List<Integer> locs;
-    for (Map.Entry<RegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
+    for (Map.Entry<TRegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
       // generate a new times and values
       locs = entry.getValue();
       int count = 0;

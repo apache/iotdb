@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -44,7 +44,7 @@ public class ExchangeNode extends PlanNode {
   // In current version, one ExchangeNode will only have one source.
   // And the fragment which the sourceNode belongs to will only have one instance.
   // Thus, by nodeId and endpoint, the ExchangeNode can know where its source from.
-  private Endpoint upstreamEndpoint;
+  private TEndPoint upstreamEndpoint;
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
 
@@ -86,7 +86,7 @@ public class ExchangeNode extends PlanNode {
     return CHILD_COUNT_NO_LIMIT;
   }
 
-  public void setUpstream(Endpoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+  public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.upstreamEndpoint = endPoint;
     this.upstreamInstanceId = instanceId;
     this.upstreamPlanNodeId = nodeId;
@@ -95,8 +95,9 @@ public class ExchangeNode extends PlanNode {
   public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
     FragmentSinkNode fragmentSinkNode =
         (FragmentSinkNode) PlanFragment.deserializeHelper(byteBuffer);
-    Endpoint endPoint =
-        new Endpoint(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+    TEndPoint endPoint =
+        new TEndPoint(
+            ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
     PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
@@ -151,7 +152,7 @@ public class ExchangeNode extends PlanNode {
     this.child = null;
   }
 
-  public Endpoint getUpstreamEndpoint() {
+  public TEndPoint getUpstreamEndpoint() {
     return upstreamEndpoint;
   }
 

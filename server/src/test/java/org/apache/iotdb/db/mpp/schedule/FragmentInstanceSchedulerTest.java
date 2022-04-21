@@ -117,6 +117,8 @@ public class FragmentInstanceSchedulerTest {
     Assert.assertEquals(FragmentInstanceTaskStatus.READY, task4.getStatus());
 
     // Abort one FragmentInstance
+    Mockito.reset(mockDriver1);
+    Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
     manager.abortFragmentInstance(instanceId1);
     Mockito.verify(mockDataBlockManager, Mockito.times(1))
         .forceDeregisterFragmentInstance(Mockito.any());
@@ -129,9 +131,18 @@ public class FragmentInstanceSchedulerTest {
     Assert.assertEquals(FragmentInstanceTaskStatus.READY, task2.getStatus());
     Assert.assertEquals(FragmentInstanceTaskStatus.READY, task3.getStatus());
     Assert.assertEquals(FragmentInstanceTaskStatus.READY, task4.getStatus());
+    Mockito.verify(mockDriver1, Mockito.times(1)).failed(Mockito.any());
+    Assert.assertEquals(
+        FragmentInstanceAbortedException.BY_FRAGMENT_ABORT_CALLED, task1.getAbortCause());
 
     // Abort the whole query
     Mockito.reset(mockDataBlockManager);
+    Mockito.reset(mockDriver1);
+    Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
+    Mockito.reset(mockDriver2);
+    Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
+    Mockito.reset(mockDriver3);
+    Mockito.when(mockDriver3.getInfo()).thenReturn(instanceId3);
     manager.abortQuery(queryId);
     Mockito.verify(mockDataBlockManager, Mockito.times(2))
         .forceDeregisterFragmentInstance(Mockito.any());
@@ -144,5 +155,14 @@ public class FragmentInstanceSchedulerTest {
     Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, task2.getStatus());
     Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, task3.getStatus());
     Assert.assertEquals(FragmentInstanceTaskStatus.READY, task4.getStatus());
+    Mockito.verify(mockDriver1, Mockito.never()).failed(Mockito.any());
+    Mockito.verify(mockDriver2, Mockito.times(1)).failed(Mockito.any());
+    Mockito.verify(mockDriver3, Mockito.times(1)).failed(Mockito.any());
+    Mockito.verify(mockDriver4, Mockito.never()).failed(Mockito.any());
+    Assert.assertEquals(
+        FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED, task2.getAbortCause());
+    Assert.assertEquals(
+        FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED, task3.getAbortCause());
+    Assert.assertNull(task4.getAbortCause());
   }
 }

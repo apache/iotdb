@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
@@ -54,7 +54,7 @@ public class DataNode implements DataNodeMBean {
    */
   private static final int DEFAULT_JOIN_RETRY = 10;
 
-  private Endpoint thisNode = new Endpoint();
+  private TEndPoint thisNode = new TEndPoint();
 
   private int dataNodeID;
 
@@ -123,14 +123,25 @@ public class DataNode implements DataNodeMBean {
     while (retry > 0) {
       logger.info("start joining the cluster.");
       try {
-        TDataNodeRegisterResp dataNodeRegisterResp =
-            configNodeClient.registerDataNode(
-                new TDataNodeRegisterReq(new TEndPoint(thisNode.getIp(), thisNode.getPort())));
+        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+        TDataNodeRegisterReq req = new TDataNodeRegisterReq();
+        TDataNodeLocation location = new TDataNodeLocation();
+        location.setDataNodeId(-1);
+        location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
+        location.setInternalEndPoint(
+            new TEndPoint(config.getInternalIp(), config.getInternalPort()));
+        location.setDataBlockManagerEndPoint(
+            new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
+        location.setConsensusEndPoint(
+            new TEndPoint(config.getInternalIp(), config.getConsensusPort()));
+        req.setDataNodeLocation(location);
+
+        TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-          dataNodeID = dataNodeRegisterResp.getDataNodeID();
+          dataNodeID = dataNodeRegisterResp.getDataNodeId();
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
           logger.info("Joined the cluster successfully");
           return;

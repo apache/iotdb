@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class SchemaPartitionDataSet implements DataSet {
 
@@ -53,34 +48,10 @@ public class SchemaPartitionDataSet implements DataSet {
   }
 
   public void convertToRpcSchemaPartitionResp(TSchemaPartitionResp resp) {
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      schemaPartition
-          .getSchemaPartitionMap()
-          .forEach(
-              (storageGroup, seriesPartitionSlotRegionReplicaSetMap) -> {
-                // Extract StorageGroupName
-                schemaPartitionMap.putIfAbsent(storageGroup, new HashMap<>());
-
-                // Extract Map<SeriesPartitionSlot, RegionReplicaSet>
-                seriesPartitionSlotRegionReplicaSetMap.forEach(
-                    ((seriesPartitionSlot, regionReplicaSet) -> {
-                      // Extract TSeriesPartitionSlot
-                      TSeriesPartitionSlot tSeriesPartitionSlot =
-                          new TSeriesPartitionSlot(seriesPartitionSlot.getSlotId());
-
-                      // Extract TRegionReplicaSet
-                      TRegionReplicaSet tRegionReplicaSet =
-                          regionReplicaSet.convertToRPCTRegionReplicaSet();
-                      schemaPartitionMap
-                          .get(storageGroup)
-                          .put(tSeriesPartitionSlot, tRegionReplicaSet);
-                    }));
-              });
+      resp.setSchemaRegionMap(schemaPartition.getSchemaPartitionMap());
     }
-
-    resp.setSchemaRegionMap(schemaPartitionMap);
   }
 }

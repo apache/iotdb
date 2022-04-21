@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,16 +53,13 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -79,7 +76,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.common.collect.MapMaker;
 import org.apache.commons.lang3.ArrayUtils;
@@ -124,14 +120,15 @@ import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_NODE_VALUE;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.FLAG_IS_ALIGNED;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_ALIAS;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_ENTITY;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
+import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ROOT_STRING;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ZERO;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class RSchemaRegion implements ISchemaRegion {
+
   private static final Logger logger = LoggerFactory.getLogger(RSchemaRegion.class);
 
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -150,7 +147,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
-  private ConsensusGroupId schemaRegionId;
+  private SchemaRegionId schemaRegionId;
   private IStorageGroupMNode storageGroupMNode;
   private int storageGroupPathLevel;
 
@@ -165,14 +162,15 @@ public class RSchemaRegion implements ISchemaRegion {
 
   public RSchemaRegion(
       PartialPath storageGroup,
-      ConsensusGroupId schemaRegionId,
-      IStorageGroupMNode storageGroupMNode)
+      SchemaRegionId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode,
+      RSchemaConfLoader rSchemaConfLoader)
       throws MetadataException {
     this.schemaRegionId = schemaRegionId;
     storageGroupFullPath = storageGroup.getFullPath();
     init(storageGroupMNode);
     try {
-      readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath);
+      readWriteHandler = new RSchemaReadWriteHandler(schemaRegionDirPath, rSchemaConfLoader);
     } catch (RocksDBException e) {
       logger.error("create RocksDBReadWriteHandler fail", e);
       throw new MetadataException(e);
@@ -208,39 +206,13 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void operation(PhysicalPlan plan) throws IOException, MetadataException {
-    switch (plan.getOperatorType()) {
-      case CREATE_TIMESERIES:
-        CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
-        break;
-      case CREATE_ALIGNED_TIMESERIES:
-        CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
-            (CreateAlignedTimeSeriesPlan) plan;
-        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
-        break;
-      case DELETE_TIMESERIES:
-        DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
-        // cause we only has one path for one DeleteTimeSeriesPlan
-        deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
-        break;
-      case CHANGE_ALIAS:
-        ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
-        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
-        break;
-      case AUTO_CREATE_DEVICE_MNODE:
-        AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
-        autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
-        break;
-      case CHANGE_TAG_OFFSET:
-      case SET_TEMPLATE:
-      case ACTIVATE_TEMPLATE:
-      case UNSET_TEMPLATE:
-        logger.error("unsupported operations {}", plan);
-        break;
-      default:
-        logger.error("Unrecognizable command {}", plan.getOperatorType());
-    }
+  public SchemaRegionId getSchemaRegionId() {
+    return schemaRegionId;
+  }
+
+  @Override
+  public String getStorageGroupFullPath() {
+    return storageGroupFullPath;
   }
 
   @Override
@@ -896,7 +868,7 @@ public class RSchemaRegion implements ISchemaRegion {
       throws MetadataException {
     // todo support wildcard
     if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
-      throw new MetadataException(
+      throw new UnsupportedOperationException(
           "Wildcards are not currently supported for this operation"
               + " [COUNT NODES pathPattern].");
     }
@@ -923,51 +895,92 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    throw new UnsupportedOperationException();
+    Map<PartialPath, Integer> result = new ConcurrentHashMap<>();
+    BiFunction<byte[], byte[], Boolean> function =
+        (a, b) -> {
+          String key = new String(a);
+          String partialName = splitToPartialNameByLevel(key, level);
+          if (partialName != null) {
+            PartialPath path = null;
+            try {
+              path = new PartialPath(partialName);
+            } catch (IllegalPathException e) {
+              logger.warn(e.getMessage());
+            }
+            result.putIfAbsent(path, 0);
+            result.put(path, result.get(path) + 1);
+          }
+          return true;
+        };
+    traverseOutcomeBasins(
+        pathPattern.getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
+
+    return result;
+  }
+
+  private String splitToPartialNameByLevel(String innerName, int level) {
+    StringBuilder stringBuilder = new StringBuilder(ROOT_STRING);
+    boolean currentIsFlag;
+    boolean lastIsFlag = false;
+    int j = 0;
+    for (int i = 0; i < innerName.length() && j <= level; i++) {
+      currentIsFlag = innerName.charAt(i) == '.';
+      if (currentIsFlag) {
+        j++;
+        currentIsFlag = true;
+      }
+      if (j <= 0 || lastIsFlag || (currentIsFlag && j > level)) {
+        lastIsFlag = false;
+        continue;
+      }
+      stringBuilder.append(innerName.charAt(i));
+      lastIsFlag = currentIsFlag;
+    }
+    if (j < level) {
+      return null;
+    }
+    return stringBuilder.toString();
   }
 
   @Override
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
       throws MetadataException {
+    if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
+      throw new UnsupportedOperationException(
+          formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
+    }
     return getNodesListInGivenLevel(pathPattern, nodeLevel);
   }
 
-  public List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel)
-      throws MetadataException {
-    // TODO: ignore pathPattern with *, all nodeLevel are start from "root.*"
-    List<PartialPath> results = new ArrayList<>();
-    if (nodeLevel == 0) {
-      results.add(new PartialPath(RSchemaConstants.ROOT));
-      return results;
-    }
-    // TODO: level one usually only contains small numbers, query in serialize
-    Set<String> paths;
-    StringBuilder builder = new StringBuilder();
-    if (nodeLevel <= 5) {
-      char level = (char) (ZERO + nodeLevel);
-      String prefix =
-          builder.append(RSchemaConstants.ROOT).append(PATH_SEPARATOR).append(level).toString();
-      paths = readWriteHandler.getAllByPrefix(prefix);
-    } else {
-      paths = ConcurrentHashMap.newKeySet();
-      char upperLevel = (char) (ZERO + nodeLevel - 1);
-      String prefix =
-          builder
-              .append(RSchemaConstants.ROOT)
-              .append(PATH_SEPARATOR)
-              .append(upperLevel)
-              .toString();
-      Set<String> parentPaths = readWriteHandler.getAllByPrefix(prefix);
-      parentPaths
-          .parallelStream()
-          .forEach(
-              x -> {
-                String targetPrefix = RSchemaUtils.getNextLevelOfPath(x, upperLevel);
-                paths.addAll(readWriteHandler.getAllByPrefix(targetPrefix));
-              });
-    }
-    return RSchemaUtils.convertToPartialPath(paths, nodeLevel);
+  private String formatNotSupportInfo(String methodName) {
+    return String.format("[%s] is not currently supported!", methodName);
+  }
+
+  private List<PartialPath> getNodesListInGivenLevel(PartialPath pathPattern, int nodeLevel) {
+    List<PartialPath> result = Collections.synchronizedList(new ArrayList<>());
+    Arrays.stream(ALL_NODE_TYPE_ARRAY)
+        .forEach(
+            x -> {
+              if (x == NODE_TYPE_ALIAS) {
+                return;
+              }
+              String innerName =
+                  RSchemaUtils.convertPartialPathToInnerByNodes(
+                      pathPattern.getNodes(), nodeLevel, x);
+              readWriteHandler
+                  .getAllByPrefix(innerName)
+                  .forEach(
+                      resultByPrefix -> {
+                        try {
+                          result.add(
+                              new PartialPath(RSchemaUtils.getPathByInnerName(resultByPrefix)));
+                        } catch (IllegalPathException e) {
+                          logger.warn(e.getMessage());
+                        }
+                      });
+            });
+    return result;
   }
 
   @Override
@@ -1109,7 +1122,8 @@ public class RSchemaRegion implements ISchemaRegion {
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithIndex(
       ShowTimeSeriesPlan plan, QueryContext context) {
     // temporarily unsupported
-    throw new UnsupportedOperationException("temporarily unsupported : showTimeseriesWithIndex");
+    throw new UnsupportedOperationException(
+        formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
   }
 
   private Pair<List<ShowTimeSeriesResult>, Integer> showTimeseriesWithoutIndex(
@@ -1203,23 +1217,6 @@ public class RSchemaRegion implements ISchemaRegion {
     } catch (RocksDBException e) {
       throw new MetadataException(e);
     }
-  }
-
-  @Override
-  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    IMeasurementMNode[] mNodes = new IMeasurementMNode[measurements.length];
-    for (int i = 0; i < mNodes.length; i++) {
-      try {
-        mNodes[i] = getMeasurementMNode(deviceId.concatNode(measurements[i]));
-      } catch (PathNotExistException | MNodeTypeMismatchException ignored) {
-        logger.warn("MeasurementMNode {} does not exist in {}", measurements[i], deviceId);
-      }
-      if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-        throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
-      }
-    }
-    return mNodes;
   }
 
   @Override
@@ -1702,18 +1699,6 @@ public class RSchemaRegion implements ISchemaRegion {
     } finally {
       deleteUpdateLock.readLock().unlock();
     }
-  }
-
-  @Override
-  public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
-    throw new UnsupportedOperationException();
   }
 
   @Override

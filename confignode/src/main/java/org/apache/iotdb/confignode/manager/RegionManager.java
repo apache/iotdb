@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.GroupType;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.confignode.cli.TemporaryClient;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -44,9 +42,10 @@ import java.util.List;
 public class RegionManager {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-  private static final int regionReplicaCount = conf.getRegionReplicaCount();
-  private static final int schemaRegionCount = conf.getSchemaRegionCount();
-  private static final int dataRegionCount = conf.getDataRegionCount();
+  private static final int schemaReplicationFactor = conf.getSchemaReplicationFactor();
+  private static final int dataReplicationFactor = conf.getDataReplicationFactor();
+  private static final int initialSchemaRegionCount = conf.getInitialSchemaRegionCount();
+  private static final int initialDataRegionCount = conf.getInitialDataRegionCount();
 
   private static final RegionInfoPersistence regionInfoPersistence =
       RegionInfoPersistence.getInstance();
@@ -71,7 +70,8 @@ public class RegionManager {
    */
   public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result;
-    if (configNodeManager.getDataNodeManager().getOnlineDataNodeCount() < regionReplicaCount) {
+    if (configNodeManager.getDataNodeManager().getOnlineDataNodeCount()
+        < Math.max(initialSchemaRegionCount, initialDataRegionCount)) {
       result = new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
       result.setMessage("DataNode is not enough, please register more.");
     } else {
@@ -84,29 +84,31 @@ public class RegionManager {
         createPlan.setStorageGroup(plan.getSchema().getName());
 
         // Allocate default Regions
-        allocateRegions(GroupType.SchemaRegion, createPlan);
-        allocateRegions(GroupType.DataRegion, createPlan);
+        allocateRegions(TConsensusGroupType.SchemaRegion, createPlan);
+        allocateRegions(TConsensusGroupType.DataRegion, createPlan);
 
         // Persist StorageGroup and Regions
         getConsensusManager().write(plan);
         result = getConsensusManager().write(createPlan).getStatus();
 
         // Create Regions in DataNode
-        for (RegionReplicaSet regionReplicaSet : createPlan.getRegionReplicaSets()) {
-          for (DataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeList()) {
-            if (regionReplicaSet.getConsensusGroupId() instanceof SchemaRegionId) {
-              TemporaryClient.getInstance()
-                  .createSchemaRegion(
-                      dataNodeLocation.getDataNodeId(),
-                      createPlan.getStorageGroup(),
-                      regionReplicaSet);
-            } else if (regionReplicaSet.getConsensusGroupId() instanceof DataRegionId) {
-              TemporaryClient.getInstance()
-                  .createDataRegion(
-                      dataNodeLocation.getDataNodeId(),
-                      createPlan.getStorageGroup(),
-                      regionReplicaSet,
-                      plan.getSchema().getTTL());
+        for (TRegionReplicaSet regionReplicaSet : createPlan.getRegionReplicaSets()) {
+          for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+            switch (regionReplicaSet.getRegionId().getType()) {
+              case SchemaRegion:
+                TemporaryClient.getInstance()
+                    .createSchemaRegion(
+                        dataNodeLocation.getDataNodeId(),
+                        createPlan.getStorageGroup(),
+                        regionReplicaSet);
+                break;
+              case DataRegion:
+                TemporaryClient.getInstance()
+                    .createDataRegion(
+                        dataNodeLocation.getDataNodeId(),
+                        createPlan.getStorageGroup(),
+                        regionReplicaSet,
+                        plan.getSchema().getTTL());
             }
           }
         }
@@ -119,26 +121,27 @@ public class RegionManager {
     return configNodeManager.getDataNodeManager();
   }
 
-  private void allocateRegions(GroupType type, CreateRegionsPlan plan) {
+  private void allocateRegions(TConsensusGroupType type, CreateRegionsPlan plan) {
 
     // TODO: Use CopySet algorithm to optimize region allocation policy
 
-    int regionCount = type.equals(GroupType.SchemaRegion) ? schemaRegionCount : dataRegionCount;
-    List<DataNodeLocation> onlineDataNodes = getDataNodeInfoManager().getOnlineDataNodes();
+    int replicaCount =
+        type.equals(TConsensusGroupType.SchemaRegion)
+            ? schemaReplicationFactor
+            : dataReplicationFactor;
+    int regionCount =
+        type.equals(TConsensusGroupType.SchemaRegion)
+            ? initialSchemaRegionCount
+            : initialDataRegionCount;
+    List<TDataNodeLocation> onlineDataNodes = getDataNodeInfoManager().getOnlineDataNodes();
     for (int i = 0; i < regionCount; i++) {
       Collections.shuffle(onlineDataNodes);
 
-      RegionReplicaSet regionReplicaSet = new RegionReplicaSet();
-      ConsensusGroupId consensusGroupId = null;
-      switch (type) {
-        case SchemaRegion:
-          consensusGroupId = new SchemaRegionId(regionInfoPersistence.generateNextRegionGroupId());
-          break;
-        case DataRegion:
-          consensusGroupId = new DataRegionId(regionInfoPersistence.generateNextRegionGroupId());
-      }
-      regionReplicaSet.setConsensusGroupId(consensusGroupId);
-      regionReplicaSet.setDataNodeList(onlineDataNodes.subList(0, regionReplicaCount));
+      TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+      TConsensusGroupId consensusGroupId =
+          new TConsensusGroupId(type, regionInfoPersistence.generateNextRegionGroupId());
+      regionReplicaSet.setRegionId(consensusGroupId);
+      regionReplicaSet.setDataNodeLocations(onlineDataNodes.subList(0, replicaCount));
       plan.addRegion(regionReplicaSet);
     }
   }

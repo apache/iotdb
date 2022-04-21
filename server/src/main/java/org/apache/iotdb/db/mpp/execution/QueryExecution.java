@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
@@ -290,7 +290,7 @@ public class QueryExecution implements IQueryExecution {
               .createSourceHandle(
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                   context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                  new Endpoint(
+                  new TEndPoint(
                       context.getResultNodeContext().getUpStreamEndpoint().getIp(),
                       IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());

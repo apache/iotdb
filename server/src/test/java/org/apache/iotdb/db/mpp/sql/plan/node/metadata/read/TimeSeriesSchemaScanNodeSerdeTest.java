@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.metadata.read;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -59,13 +59,13 @@ public class TimeSeriesSchemaScanNodeSerdeTest {
     FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
     fragmentSinkNode.addChild(timeSeriesSchemaScanNode);
     fragmentSinkNode.setDownStream(
-        new Endpoint("127.0.0.1", 6667),
+        new TEndPoint("127.0.0.1", 6667),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
         new PlanNodeId("test"));
     exchangeNode.addChild(schemaMergeNode);
     exchangeNode.setRemoteSourceNode(fragmentSinkNode);
     exchangeNode.setUpstream(
-        new Endpoint("127.0.0.1", 6667),
+        new TEndPoint("127.0.0.1", 6667),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
         new PlanNodeId("test"));
     offsetNode.addChild(exchangeNode);

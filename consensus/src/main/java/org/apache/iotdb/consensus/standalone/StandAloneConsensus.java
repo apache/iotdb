@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.consensus.standalone;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -53,13 +53,13 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 class StandAloneConsensus implements IConsensus {
 
-  private final Endpoint thisNode;
+  private final TEndPoint thisNode;
   private final File storageDir;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, StandAloneServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
 
-  public StandAloneConsensus(Endpoint thisNode, File storageDir, Registry registry) {
+  public StandAloneConsensus(TEndPoint thisNode, File storageDir, Registry registry) {
     this.thisNode = thisNode;
     this.storageDir = storageDir;
     this.registry = registry;

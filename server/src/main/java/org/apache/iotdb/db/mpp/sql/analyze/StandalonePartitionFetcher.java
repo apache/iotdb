@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -68,31 +69,33 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     try {
-      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           dataPartitionMap = new HashMap<>();
       for (Map.Entry<String, List<DataPartitionQueryParam>> sgEntry :
           sgNameToQueryParamsMap.entrySet()) {
         // for each sg
         String storageGroupName = sgEntry.getKey();
         List<DataPartitionQueryParam> dataPartitionQueryParams = sgEntry.getValue();
-        Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>
+        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
             deviceToRegionsMap = new HashMap<>();
         for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
           // for each device
           String deviceId = dataPartitionQueryParam.getDevicePath();
           DataRegionId dataRegionId =
               localConfigNode.getBelongedDataRegionRegionId(new PartialPath(deviceId));
-          Map<TimePartitionSlot, List<RegionReplicaSet>> timePartitionToRegionsMap =
+          Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
               new HashMap<>();
-          for (TimePartitionSlot timePartitionSlot :
+          for (TTimePartitionSlot timePartitionSlot :
               dataPartitionQueryParam.getTimePartitionSlotList()) {
             // for each time partition
             timePartitionToRegionsMap.put(
                 timePartitionSlot,
                 Collections.singletonList(
-                    new RegionReplicaSet(dataRegionId, Collections.EMPTY_LIST)));
+                    new TRegionReplicaSet(
+                        new TConsensusGroupId(dataRegionId.getType(), dataRegionId.getId()),
+                        Collections.EMPTY_LIST)));
           }
-          deviceToRegionsMap.put(new SeriesPartitionSlot(), timePartitionToRegionsMap);
+          deviceToRegionsMap.put(new TSeriesPartitionSlot(), timePartitionToRegionsMap);
         }
         dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
       }

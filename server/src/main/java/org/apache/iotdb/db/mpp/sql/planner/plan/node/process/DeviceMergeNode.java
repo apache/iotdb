@@ -33,7 +33,11 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -62,7 +66,7 @@ public class DeviceMergeNode extends ProcessNode implements IOutputPlanNode {
 
   private List<PlanNode> children;
 
-  private final List<ColumnHeader> columnHeaders = new ArrayList<>();;
+  private final List<ColumnHeader> columnHeaders = new ArrayList<>();
 
   public DeviceMergeNode(PlanNodeId id) {
     super(id);
