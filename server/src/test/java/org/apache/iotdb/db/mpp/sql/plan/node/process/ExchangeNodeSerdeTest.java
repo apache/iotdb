@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -65,7 +66,8 @@ public class ExchangeNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
-            new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     aggregateNode.addChild(seriesScanNode);
 
     DeviceMergeNode deviceMergeNode =
@@ -91,14 +93,14 @@ public class ExchangeNodeSerdeTest {
     FragmentSinkNode fragmentSinkNode =
         new FragmentSinkNode(new PlanNodeId("TestFragmentSinkNode"));
     fragmentSinkNode.setDownStream(
-        new Endpoint("127.0.0.1", 6666),
+        new TEndPoint("127.0.0.1", 6666),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
         new PlanNodeId("test"));
     fragmentSinkNode.addChild(seriesScanNode);
     exchangeNode.setRemoteSourceNode(fragmentSinkNode);
     exchangeNode.addChild(deviceMergeNode);
     exchangeNode.setUpstream(
-        new Endpoint("127.0.0.1", 6666),
+        new TEndPoint("127.0.0.1", 6666),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
         new PlanNodeId("test"));
 

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -62,7 +62,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
     SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
-    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap =
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
         schemaPartition.getSchemaPartitionMap();
     List<String> storageGroups = new ArrayList<>(schemaPartitionMap.keySet());
 

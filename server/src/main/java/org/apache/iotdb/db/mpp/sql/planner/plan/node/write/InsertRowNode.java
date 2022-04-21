@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -76,7 +76,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    TimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(time);
+    TTimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(time);
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()

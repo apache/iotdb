@@ -43,10 +43,6 @@ public class DataNodeConfigurationDataSet implements DataSet {
     this.status = status;
   }
 
-  public Integer getDataNodeId() {
-    return dataNodeId;
-  }
-
   public void setDataNodeId(int dataNodeId) {
     this.dataNodeId = dataNodeId;
   }
@@ -59,7 +55,7 @@ public class DataNodeConfigurationDataSet implements DataSet {
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-      resp.setDataNodeID(dataNodeId);
+      resp.setDataNodeId(dataNodeId);
       resp.setGlobalConfig(globalConfig);
     }
   }

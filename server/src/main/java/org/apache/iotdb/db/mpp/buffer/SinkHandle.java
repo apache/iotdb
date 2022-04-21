@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
@@ -53,7 +54,7 @@ public class SinkHandle implements ISinkHandle {
 
   public static final int MAX_ATTEMPT_TIMES = 3;
 
-  private final String remoteHostname;
+  private final TEndPoint remoteEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final String remotePlanNodeId;
   private final TFragmentInstanceId localFragmentInstanceId;
@@ -76,7 +77,7 @@ public class SinkHandle implements ISinkHandle {
   private Throwable throwable;
 
   public SinkHandle(
-      String remoteHostname,
+      TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
       TFragmentInstanceId localFragmentInstanceId,
@@ -85,7 +86,7 @@ public class SinkHandle implements ISinkHandle {
       DataBlockService.Iface client,
       TsBlockSerde serde,
       SinkHandleListener sinkHandleListener) {
-    this.remoteHostname = Validate.notNull(remoteHostname);
+    this.remoteEndpoint = Validate.notNull(remoteEndpoint);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
@@ -220,6 +221,9 @@ public class SinkHandle implements ISinkHandle {
     synchronized (this) {
       sequenceIdToTsBlock.clear();
       closed = true;
+      if (blocked != null && !blocked.isDone()) {
+        blocked.cancel(true);
+      }
       if (bufferRetainedSizeInBytes > 0) {
         localMemoryManager
             .getQueryPool()
@@ -292,8 +296,8 @@ public class SinkHandle implements ISinkHandle {
     localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), freedBytes);
   }
 
-  String getRemoteHostname() {
-    return remoteHostname;
+  TEndPoint getRemoteEndpoint() {
+    return remoteEndpoint;
   }
 
   TFragmentInstanceId getRemoteFragmentInstanceId() {
@@ -311,7 +315,7 @@ public class SinkHandle implements ISinkHandle {
   @Override
   public String toString() {
     return new StringJoiner(", ", SinkHandle.class.getSimpleName() + "[", "]")
-        .add("remoteHostname='" + remoteHostname + "'")
+        .add("remoteEndpoint='" + remoteEndpoint + "'")
         .add("remoteFragmentInstanceId=" + remoteFragmentInstanceId)
         .add("remotePlanNodeId='" + remotePlanNodeId + "'")
         .add("localFragmentInstanceId=" + localFragmentInstanceId)
