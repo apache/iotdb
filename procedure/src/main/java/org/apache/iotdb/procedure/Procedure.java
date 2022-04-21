@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.procedure;
 
-import org.apache.iotdb.procedure.exception.*;
+import org.apache.iotdb.procedure.exception.ProcedureAbortedException;
+import org.apache.iotdb.procedure.exception.ProcedureException;
+import org.apache.iotdb.procedure.exception.ProcedureSuspendedException;
+import org.apache.iotdb.procedure.exception.ProcedureTimeoutException;
+import org.apache.iotdb.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.procedure.store.IProcedureStore;
 import org.apache.iotdb.service.rpc.thrift.ProcedureState;
 

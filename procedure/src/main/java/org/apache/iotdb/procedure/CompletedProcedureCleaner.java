@@ -31,22 +31,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Internal cleaner that removes the completed procedure results after a TTL.
- *
- * <p>NOTE: This is a special case handled in timeoutLoop().
- *
- * <p>Since the client code looks more or less like:
- *
- * <pre>
- *   procId = master.doOperation()
- *   while (master.getProcResult(procId) == ProcInProgress);
- * </pre>
- *
- * The master should not throw away the proc result as soon as the procedure is done but should wait
- * a result request from the client (see executor.removeResult(procId)) The client will call
- * something like master.isProcDone() or master.getProcResult() which will return the result/state
- * to the client, and it will mark the completed proc as ready to delete. note that the client may
- * not receive the response from the master (e.g. master failover) so, if we delay a bit the real
- * deletion of the proc result the client will be able to get the result the next try.
  */
 public class CompletedProcedureCleaner<Env> extends InternalProcedure<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(CompletedProcedureCleaner.class);
