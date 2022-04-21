@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class TestProcedureStore extends TestProcedureBase {
 
-  private static final String TEST_DIR = "./testWAL/";
+  private static final String TEST_DIR = "./target/testWAL/";
   private static final int WORK_THREAD = 2;
 
   @Override

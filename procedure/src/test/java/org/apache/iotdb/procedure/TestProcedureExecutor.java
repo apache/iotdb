@@ -33,6 +33,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestProcedureExecutor extends TestProcedureBase {
 
+  @Override
+  protected void initExecutor() {
+    this.env = new TestProcEnv();
+    this.procStore = new NoopProcedureStore();
+    this.procExecutor = new ProcedureExecutor<>(env, procStore);
+    this.env.setScheduler(this.procExecutor.getScheduler());
+    this.procExecutor.init(2);
+  }
+
   @Test
   public void testSubmitProcedure() {
     IncProcedure incProcedure = new IncProcedure();
@@ -89,12 +98,12 @@ public class TestProcedureExecutor extends TestProcedureBase {
   }
 
   private int waitThreadCount(final int expectedThreads) {
-    while (procExecutor.isRunning()) {
+    long startTime = System.currentTimeMillis();
+    while (procExecutor.isRunning()
+        && TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime) <= 30) {
       if (procExecutor.getWorkerThreadCount() == expectedThreads) {
         break;
       }
-      /*LOG.debug("waiting for thread count=" + expectedThreads +
-      " current=" + procExecutor.getWorkerThreadCount());*/
       ProcedureTestUtil.sleepWithoutInterrupt(250);
     }
     return procExecutor.getWorkerThreadCount();

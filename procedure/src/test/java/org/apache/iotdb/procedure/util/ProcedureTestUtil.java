@@ -23,10 +23,16 @@ import org.apache.iotdb.procedure.ProcedureExecutor;
 import org.apache.iotdb.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.procedure.store.IProcedureStore;
 
+import java.util.concurrent.TimeUnit;
+
 public class ProcedureTestUtil {
   public static void waitForProcedure(ProcedureExecutor executor, long... procIds) {
     for (long procId : procIds) {
-      while (executor.isRunning() && !executor.isFinished(procId)) {
+      long startTimeForProcId = System.currentTimeMillis();
+      while (executor.isRunning()
+          && !executor.isFinished(procId)
+          && TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTimeForProcId)
+              < 35) {
         sleepWithoutInterrupt(250);
       }
     }

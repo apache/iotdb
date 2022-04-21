@@ -838,7 +838,6 @@ public class ProcedureExecutor<Env> {
         final KeepAliveWorkerThread worker = new KeepAliveWorkerThread(threadGroup);
         workerThreads.add(worker);
         worker.start();
-        System.out.println("-------------size:" + workerThreads.size());
         LOG.debug("Added new worker thread {}", worker);
       }
     }
