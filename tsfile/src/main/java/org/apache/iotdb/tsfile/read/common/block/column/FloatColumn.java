@@ -33,8 +33,6 @@ public class FloatColumn implements Column {
   private static final int INSTANCE_SIZE = ClassLayout.parseClass(FloatColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Float.BYTES + Byte.BYTES;
 
-  public static final FloatColumn EMPTY_FLOAT_COLUMN = new FloatColumn(0, 0, null, new float[0]);
-
   private final int arrayOffset;
   private final int positionCount;
   private final boolean[] valueIsNull;

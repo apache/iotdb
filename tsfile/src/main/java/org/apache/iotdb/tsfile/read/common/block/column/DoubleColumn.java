@@ -34,8 +34,6 @@ public class DoubleColumn implements Column {
       ClassLayout.parseClass(DoubleColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Double.BYTES + Byte.BYTES;
 
-  public static final DoubleColumn EMPTY_DOUBLE_COLUMN = new DoubleColumn(0, 0, null, new double[0]);
-
   private final int arrayOffset;
   private final int positionCount;
   private final boolean[] valueIsNull;

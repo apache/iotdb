@@ -30,8 +30,6 @@ public class TimeColumn implements Column {
   private static final int INSTANCE_SIZE = ClassLayout.parseClass(LongColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Long.BYTES;
 
-  public static final TimeColumn EMPTY_TIME_COLUMN = new TimeColumn(0, new long[0]);
-
   private final int arrayOffset;
   private final int positionCount;
   private final long[] values;

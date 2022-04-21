@@ -94,10 +94,9 @@ public class BooleanColumnBuilder implements ColumnBuilder {
       TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
     int count = timeBuilder.getPositionCount();
     int index = offset;
-    BooleanColumn column = (BooleanColumn) valueColumn;
     for (int i = 0; i < count; i++) {
       if (timeColumn.getPositionCount() > index && timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeBoolean(column.getBoolean(index++));
+        writeBoolean(valueColumn.getBoolean(index++));
       } else {
         appendNull();
       }

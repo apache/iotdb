@@ -94,10 +94,9 @@ public class IntColumnBuilder implements ColumnBuilder {
       TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
     int count = timeBuilder.getPositionCount();
     int index = offset;
-    IntColumn column = (IntColumn) valueColumn;
     for (int i = 0; i < count; i++) {
       if (timeColumn.getPositionCount() > index && timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeInt(column.getInt(index++));
+        writeInt(valueColumn.getInt(index++));
       } else {
         appendNull();
       }

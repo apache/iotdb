@@ -34,8 +34,6 @@ public class BinaryColumn implements Column {
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(BinaryColumn.class).instanceSize();
 
-  public static final BinaryColumn EMPTY_BINARY_COLUMN = new BinaryColumn(0, 0, null, new Binary[0]);
-
   private final int arrayOffset;
   private final int positionCount;
   private final boolean[] valueIsNull;
