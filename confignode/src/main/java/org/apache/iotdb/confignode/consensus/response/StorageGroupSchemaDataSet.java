@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -33,7 +32,7 @@ public class StorageGroupSchemaDataSet implements DataSet {
 
   private TSStatus status;
 
-  private List<StorageGroupSchema> schemaList;
+  private List<TStorageGroupSchema> schemaList;
 
   public StorageGroupSchemaDataSet() {}
 
@@ -45,11 +44,11 @@ public class StorageGroupSchemaDataSet implements DataSet {
     this.status = status;
   }
 
-  public List<StorageGroupSchema> getSchemaList() {
+  public List<TStorageGroupSchema> getSchemaList() {
     return schemaList;
   }
 
-  public void setSchemaList(List<StorageGroupSchema> schemaList) {
+  public void setSchemaList(List<TStorageGroupSchema> schemaList) {
     this.schemaList = schemaList;
   }
 
@@ -57,8 +56,8 @@ public class StorageGroupSchemaDataSet implements DataSet {
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       Map<String, TStorageGroupSchema> storageGroupMessageMap = new HashMap<>();
-      for (StorageGroupSchema schema : schemaList) {
-        storageGroupMessageMap.put(schema.getName(), new TStorageGroupSchema(schema.getName()));
+      for (TStorageGroupSchema schema : schemaList) {
+        storageGroupMessageMap.put(schema.getName(), schema);
       }
       resp.setStorageGroupSchemaMap(storageGroupMessageMap);
     }

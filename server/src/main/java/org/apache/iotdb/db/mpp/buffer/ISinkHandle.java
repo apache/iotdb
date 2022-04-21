@@ -38,8 +38,8 @@ public interface ISinkHandle {
 
   /**
    * Send a list of tsblocks to an unpartitioned output buffer. If no-more-tsblocks has been set,
-   * the send tsblock call is ignored. This can happen with limit queries. A {@link
-   * RuntimeException} will be thrown if any exception happened * during the data transmission.
+   * the invocation will be ignored. This can happen with limit queries. A {@link RuntimeException}
+   * will be thrown if any exception happened during the data transmission.
    */
   void send(List<TsBlock> tsBlocks);
 
@@ -72,6 +72,9 @@ public interface ISinkHandle {
    */
   void close();
 
-  /** Abort the sink handle, discarding all tsblocks which may still be in memory buffer. */
+  /**
+   * Abort the sink handle. Discard all tsblocks which may still be in the memory buffer and cancel
+   * the future returned by {@link #isFull()}.
+   */
   void abort();
 }

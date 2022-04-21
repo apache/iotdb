@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.commons.partition.executor.hash;
 
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
 public class SDBMHashExecutor extends SeriesPartitionExecutor {
@@ -28,7 +28,7 @@ public class SDBMHashExecutor extends SeriesPartitionExecutor {
   }
 
   @Override
-  public SeriesPartitionSlot getSeriesPartitionSlot(String device) {
+  public TSeriesPartitionSlot getSeriesPartitionSlot(String device) {
     int hash = 0;
 
     for (int i = 0; i < device.length(); i++) {
@@ -36,6 +36,6 @@ public class SDBMHashExecutor extends SeriesPartitionExecutor {
     }
     hash &= Integer.MAX_VALUE;
 
-    return new SeriesPartitionSlot(hash % seriesPartitionSlotNum);
+    return new TSeriesPartitionSlot(hash % seriesPartitionSlotNum);
   }
 }

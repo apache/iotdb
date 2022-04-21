@@ -59,8 +59,12 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -282,7 +286,11 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
     return node;
   }
 
-  /** @return -1 if all schemas are found, or the first index of the non-exist schema */
+  /**
+   * Get the first index of non-exist schema in the local cache.
+   *
+   * @return -1 if all schemas are found, or the first index of the non-exist schema
+   */
   private int getMNodesLocally(
       PartialPath deviceId, String[] measurements, IMeasurementMNode[] measurementMNodes) {
     int failedMeasurementIndex = -1;

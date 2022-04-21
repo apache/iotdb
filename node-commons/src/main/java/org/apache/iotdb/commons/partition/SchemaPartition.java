@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.commons.partition;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,36 +28,36 @@ import java.util.Map;
 
 public class SchemaPartition extends Partition {
 
-  // Map<StorageGroup, Map<SeriesPartitionSlot, SchemaRegionPlaceInfo>>
-  private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap;
+  // Map<StorageGroup, Map<TSeriesPartitionSlot, TSchemaRegionPlaceInfo>>
+  private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap;
 
   public SchemaPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
     super(seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
   public SchemaPartition(
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap,
+      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap,
       String seriesSlotExecutorName,
       int seriesPartitionSlotNum) {
     this(seriesSlotExecutorName, seriesPartitionSlotNum);
     this.schemaPartitionMap = schemaPartitionMap;
   }
 
-  public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getSchemaPartitionMap() {
+  public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getSchemaPartitionMap() {
     return schemaPartitionMap;
   }
 
   public void setSchemaPartitionMap(
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap) {
+      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap) {
     this.schemaPartitionMap = schemaPartitionMap;
   }
 
-  public RegionReplicaSet getSchemaRegionReplicaSet(String deviceName) {
+  public TRegionReplicaSet getSchemaRegionReplicaSet(String deviceName) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     String storageGroup = getStorageGroupByDevice(deviceName);
-    SeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
+    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceName);
     return schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot);
   }
 
@@ -78,13 +81,13 @@ public class SchemaPartition extends Partition {
    *     RegionReplicaSet>>
    */
   public SchemaPartition getSchemaPartition(
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
     if (partitionSlotsMap.isEmpty()) {
       // Return all SchemaPartitions when the partitionSlotsMap is empty
       return new SchemaPartition(
           new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
     } else {
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> result = new HashMap<>();
+      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
 
       partitionSlotsMap.forEach(
           (storageGroup, seriesPartitionSlots) -> {
@@ -119,9 +122,9 @@ public class SchemaPartition extends Partition {
    * @param partitionSlotsMap Map<StorageGroupName, List<SeriesPartitionSlot>>
    * @return Map<String, List<SeriesPartitionSlot>>, unassigned PartitionSlots
    */
-  public Map<String, List<SeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlot(
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap) {
-    Map<String, List<SeriesPartitionSlot>> result = new HashMap<>();
+  public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlot(
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+    Map<String, List<TSeriesPartitionSlot>> result = new HashMap<>();
 
     partitionSlotsMap.forEach(
         (storageGroup, seriesPartitionSlots) -> {
@@ -147,8 +150,8 @@ public class SchemaPartition extends Partition {
   /** Create a SchemaPartition by ConfigNode */
   public void createSchemaPartition(
       String storageGroup,
-      SeriesPartitionSlot seriesPartitionSlot,
-      RegionReplicaSet regionReplicaSet) {
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TRegionReplicaSet regionReplicaSet) {
     schemaPartitionMap
         .computeIfAbsent(storageGroup, key -> new HashMap<>())
         .put(seriesPartitionSlot, regionReplicaSet);

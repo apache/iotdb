@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
-import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -36,24 +37,24 @@ import java.util.Objects;
 /** Get or create DataPartition by the specific partitionSlotsMap. */
 public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
 
-  private Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap;
+  private Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
 
   public GetOrCreateDataPartitionPlan(PhysicalPlanType physicalPlanType) {
     super(physicalPlanType);
   }
 
-  public Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> getPartitionSlotsMap() {
+  public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> getPartitionSlotsMap() {
     return partitionSlotsMap;
   }
 
   @TestOnly
   public void setPartitionSlotsMap(
-      Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> partitionSlotsMap) {
+      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
     this.partitionSlotsMap = partitionSlotsMap;
   }
 
   /**
-   * Convert TDataPartitionReq to DataPartitionPlan
+   * Convert TDataPartitionReq to GetOrCreateDataPartitionPlan
    *
    * @param req TDataPartitionReq
    */
@@ -68,19 +69,17 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
               tSeriesPartitionTimePartitionSlots.forEach(
                   ((tSeriesPartitionSlot, tTimePartitionSlots) -> {
                     // Extract SeriesPartitionSlot
-                    SeriesPartitionSlot seriesPartitionSlot =
-                        new SeriesPartitionSlot(tSeriesPartitionSlot.getSlotId());
                     partitionSlotsMap
                         .get(storageGroup)
-                        .putIfAbsent(seriesPartitionSlot, new ArrayList<>());
+                        .putIfAbsent(tSeriesPartitionSlot, new ArrayList<>());
 
                     // Extract TimePartitionSlots
                     tTimePartitionSlots.forEach(
                         tTimePartitionSlot ->
                             partitionSlotsMap
                                 .get(storageGroup)
-                                .get(seriesPartitionSlot)
-                                .add(new TimePartitionSlot(tTimePartitionSlot.getStartTime())));
+                                .get(tSeriesPartitionSlot)
+                                .add(tTimePartitionSlot));
                   }));
             }));
   }
@@ -92,14 +91,15 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
     buffer.putInt(partitionSlotsMap.size());
     partitionSlotsMap.forEach(
         ((storageGroup, seriesPartitionTimePartitionSlots) -> {
-          SerializeDeserializeUtil.write(storageGroup, buffer);
+          BasicStructureSerDeUtil.write(storageGroup, buffer);
           buffer.putInt(seriesPartitionTimePartitionSlots.size());
           seriesPartitionTimePartitionSlots.forEach(
               ((seriesPartitionSlot, timePartitionSlots) -> {
-                seriesPartitionSlot.serializeImpl(buffer);
+                ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
                 buffer.putInt(timePartitionSlots.size());
                 timePartitionSlots.forEach(
-                    timePartitionSlot -> timePartitionSlot.serializeImpl(buffer));
+                    timePartitionSlot ->
+                        ThriftCommonsSerDeUtils.writeTTimePartitionSlot(timePartitionSlot, buffer));
               }));
         }));
   }
@@ -109,17 +109,17 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
     partitionSlotsMap = new HashMap<>();
     int storageGroupNum = buffer.getInt();
     for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = SerializeDeserializeUtil.readString(buffer);
+      String storageGroup = BasicStructureSerDeUtil.readString(buffer);
       partitionSlotsMap.put(storageGroup, new HashMap<>());
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot();
-        seriesPartitionSlot.deserializeImpl(buffer);
+        TSeriesPartitionSlot seriesPartitionSlot =
+            ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
         partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
         int timePartitionSlotNum = buffer.getInt();
         for (int k = 0; k < timePartitionSlotNum; k++) {
-          TimePartitionSlot timePartitionSlot = new TimePartitionSlot();
-          timePartitionSlot.deserializeImpl(buffer);
+          TTimePartitionSlot timePartitionSlot =
+              ThriftCommonsSerDeUtils.readTTimePartitionSlot(buffer);
           partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
         }
       }
