@@ -52,13 +52,9 @@ public class FilterNullParameter {
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
-    if (filterNullColumns == null) {
-      ReadWriteIOUtils.write(-1, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(filterNullColumns.size(), byteBuffer);
-      for (InputLocation filterNullColumn : filterNullColumns) {
-        filterNullColumn.serialize(byteBuffer);
-      }
+    ReadWriteIOUtils.write(filterNullColumns.size(), byteBuffer);
+    for (InputLocation filterNullColumn : filterNullColumns) {
+      filterNullColumn.serialize(byteBuffer);
     }
   }
 
@@ -66,12 +62,9 @@ public class FilterNullParameter {
     FilterNullPolicy filterNullPolicy =
         FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<InputLocation> filterNullColumns = null;
-    if (size != -1) {
-      filterNullColumns = new ArrayList<>();
-      for (int i = 0; i < size; i++) {
-        filterNullColumns.add(InputLocation.deserialize(byteBuffer));
-      }
+    List<InputLocation> filterNullColumns = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      filterNullColumns.add(InputLocation.deserialize(byteBuffer));
     }
     return new FilterNullParameter(filterNullPolicy, filterNullColumns);
   }
