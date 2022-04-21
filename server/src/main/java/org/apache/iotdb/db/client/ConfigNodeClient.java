@@ -59,7 +59,7 @@ public class ConfigNodeClient {
   private static final int RETRY_NUM = 5;
 
   public static final String MSG_RECONNECTION_FAIL =
-          "Fail to connect to any config node. Please check server it";
+      "Fail to connect to any config node. Please check server it";
 
   private ConfigIService.Iface client;
 
@@ -72,7 +72,7 @@ public class ConfigNodeClient {
   public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
     // Read config nodes from configuration
     configNodes =
-            CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
+        CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
     init();
   }
 
@@ -82,7 +82,7 @@ public class ConfigNodeClient {
   }
 
   public ConfigNodeClient(List<TEndPoint> configNodes, TEndPoint configLeader)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     this.configNodes = configNodes;
     this.configLeader = configLeader;
     init();
@@ -95,9 +95,9 @@ public class ConfigNodeClient {
   public void connect(TEndPoint endpoint) throws IoTDBConnectionException {
     try {
       transport =
-              RpcTransportFactory.INSTANCE.getTransport(
-                      // as there is a try-catch already, we do not need to use TSocket.wrap
-                      endpoint.getIp(), endpoint.getPort(), TIMEOUT_MS);
+          RpcTransportFactory.INSTANCE.getTransport(
+              // as there is a try-catch already, we do not need to use TSocket.wrap
+              endpoint.getIp(), endpoint.getPort(), TIMEOUT_MS);
       transport.open();
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
@@ -154,7 +154,7 @@ public class ConfigNodeClient {
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       if (status.isSetRedirectNode()) {
         configLeader =
-                new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
+            new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
       } else {
         configLeader = null;
       }
@@ -164,7 +164,7 @@ public class ConfigNodeClient {
   }
 
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
@@ -181,7 +181,7 @@ public class ConfigNodeClient {
   }
 
   public TDataNodeLocationResp getDataNodeLocations(int dataNodeID)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeLocationResp resp = client.getDataNodeLocations(dataNodeID);
@@ -242,7 +242,7 @@ public class ConfigNodeClient {
   }
 
   public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getSchemaPartition(req);
@@ -258,7 +258,7 @@ public class ConfigNodeClient {
   }
 
   public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getOrCreateSchemaPartition(req);
@@ -274,7 +274,7 @@ public class ConfigNodeClient {
   }
 
   public TDataPartitionResp getDataPartition(TDataPartitionReq req)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getDataPartition(req);
@@ -290,7 +290,7 @@ public class ConfigNodeClient {
   }
 
   public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getOrCreateDataPartition(req);

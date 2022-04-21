@@ -54,25 +54,25 @@ public class AuthorizerConfigTask implements IConfigTask {
     try {
       // Construct request using statement
       TAuthorizerReq req =
-              new TAuthorizerReq(
-                      authorStatement.getAuthorType().ordinal(),
-                      authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
-                      authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
-                      authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
-                      authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
-                      AuthorNode.strToPermissions(authorStatement.getPrivilegeList()),
-                      authorStatement.getNodeName() == null
-                              ? ""
-                              : authorStatement.getNodeName().getFullPath());
+          new TAuthorizerReq(
+              authorStatement.getAuthorType().ordinal(),
+              authorStatement.getUserName() == null ? "" : authorStatement.getUserName(),
+              authorStatement.getRoleName() == null ? "" : authorStatement.getRoleName(),
+              authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
+              authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
+              AuthorNode.strToPermissions(authorStatement.getPrivilegeList()),
+              authorStatement.getNodeName() == null
+                  ? ""
+                  : authorStatement.getNodeName().getFullPath());
       configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.operatePermission(req);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
-                "Failed to execute {} in config node, status is {}.",
-                authorStatement.getAuthorType().toString().toLowerCase(Locale.ROOT),
-                tsStatus);
+            "Failed to execute {} in config node, status is {}.",
+            authorStatement.getAuthorType().toString().toLowerCase(Locale.ROOT),
+            tsStatus);
         future.setException(new StatementExecutionException(tsStatus));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
