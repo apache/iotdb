@@ -79,8 +79,8 @@ The internal interface, that is, the invocation logic of other modules within th
 | getAllTimeseriesCount | internal | yes | |
 | getDevicesNum | internal | yes | |
 | getNodesCountInGivenLevel | internal | conditional support | path does not support wildcard |
-| getMeasurementCountGroupByLevel | internal | no | |
-| getNodesListInGivenLevel | internal | part of the support |specified path is not supported |
+| getMeasurementCountGroupByLevel | internal | yes | |
+| getNodesListInGivenLevel | internal | conditional support | path does not support wildcard |
 | getChildNodePathInNextLevel | internal | conditional support | path does not support wildcard |
 | getChildNodeNameInNextLevel | internal | conditional support | path does not support wildcard |
 | getBelongedDevices | internal | yes | |
@@ -90,6 +90,4 @@ The internal interface, that is, the invocation logic of other modules within th
 | getAllMeasurementByDevicePath | internal | yes | |
 | getDeviceNode | internal | yes | |
 | getMeasurementMNodes | internal | yes | |
-| collectMeasurementSchema | internal | no | |
-| collectTimeseriesSchema | internal | no | |
 | getSeriesSchemasAndReadLockDevice | internal | yes | |

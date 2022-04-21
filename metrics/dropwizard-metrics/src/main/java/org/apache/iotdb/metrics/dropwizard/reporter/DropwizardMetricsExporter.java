@@ -21,7 +21,15 @@ package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.dropwizard.MetricName;
 
-import com.codahale.metrics.*;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Metered;
+import com.codahale.metrics.Metric;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Snapshot;
+import com.codahale.metrics.Timer;
 
 import java.io.IOException;
 import java.util.HashMap;
