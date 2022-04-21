@@ -33,6 +33,8 @@ public class LongColumn implements Column {
   private static final int INSTANCE_SIZE = ClassLayout.parseClass(LongColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Long.BYTES + Byte.BYTES;
 
+  public static final LongColumn EMPTY_LONG_COLUMN = new LongColumn(0, 0, null, new long[0]);
+
   private final int arrayOffset;
   private final int positionCount;
   private final boolean[] valueIsNull;

@@ -34,6 +34,8 @@ public class BooleanColumn implements Column {
       ClassLayout.parseClass(BooleanColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Byte.BYTES + Byte.BYTES;
 
+  public static final BooleanColumn EMPTY_BOOLEAN_COLUMN = new BooleanColumn(0, 0, null, new boolean[0]);
+
   private final int arrayOffset;
   private final int positionCount;
   private final boolean[] valueIsNull;

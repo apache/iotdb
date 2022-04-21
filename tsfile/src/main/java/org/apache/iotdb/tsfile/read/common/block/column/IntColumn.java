@@ -33,6 +33,8 @@ public class IntColumn implements Column {
   private static final int INSTANCE_SIZE = ClassLayout.parseClass(IntColumn.class).instanceSize();
   public static final int SIZE_IN_BYTES_PER_POSITION = Integer.BYTES + Byte.BYTES;
 
+  public static final IntColumn EMPTY_INT_COLUMN = new IntColumn(0, 0, null, new int[0]);
+
   private final int arrayOffset;
   private final int positionCount;
   private final boolean[] valueIsNull;

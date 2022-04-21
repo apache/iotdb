@@ -96,7 +96,7 @@ public class DoubleColumnBuilder implements ColumnBuilder {
     int index = offset;
     DoubleColumn column = (DoubleColumn) valueColumn;
     for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
+      if (timeColumn.getPositionCount() > index && timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
         writeDouble(column.getDouble(index++));
       } else {
         appendNull();

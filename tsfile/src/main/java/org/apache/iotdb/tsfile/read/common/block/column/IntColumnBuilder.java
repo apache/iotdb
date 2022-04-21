@@ -96,7 +96,7 @@ public class IntColumnBuilder implements ColumnBuilder {
     int index = offset;
     IntColumn column = (IntColumn) valueColumn;
     for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
+      if (timeColumn.getPositionCount() > index && timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
         writeInt(column.getInt(index++));
       } else {
         appendNull();

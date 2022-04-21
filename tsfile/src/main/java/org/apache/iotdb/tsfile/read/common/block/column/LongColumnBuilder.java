@@ -96,7 +96,7 @@ public class LongColumnBuilder implements ColumnBuilder {
     int index = offset;
     LongColumn column = (LongColumn) valueColumn;
     for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
+      if (timeColumn.getPositionCount() > index && timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
         writeLong(column.getLong(index++));
       } else {
         appendNull();

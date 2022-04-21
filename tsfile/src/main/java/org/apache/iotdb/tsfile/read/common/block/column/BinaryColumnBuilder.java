@@ -94,7 +94,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
     int index = offset;
     BinaryColumn column = (BinaryColumn) valueColumn;
     for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
+      if (timeColumn.getPositionCount() > index && timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
         writeBinary(column.getBinary(index++));
       } else {
         appendNull();
