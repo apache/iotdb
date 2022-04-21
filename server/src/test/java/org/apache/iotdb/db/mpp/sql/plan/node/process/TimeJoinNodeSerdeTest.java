@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.FilterNullParameter;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -40,6 +39,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
@@ -49,6 +49,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -109,7 +110,10 @@ public class TimeJoinNodeSerdeTest {
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
-            new PlanNodeId("TestFilterNullNode"), filterNode, FilterNullPolicy.ALL_NULL, null);
+            new PlanNodeId("TestFilterNullNode"),
+            filterNode,
+            FilterNullPolicy.ALL_NULL,
+            ImmutableList.of());
 
     Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
     groupedPathMap.put(
@@ -134,7 +138,7 @@ public class TimeJoinNodeSerdeTest {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), OrderBy.TIMESTAMP_ASC);
     timeJoinNode.setFilterNullParameter(
-        new FilterNullParameter(FilterNullPolicy.CONTAINS_NULL, null));
+        new FilterNullParameter(FilterNullPolicy.CONTAINS_NULL, ImmutableList.of()));
     timeJoinNode.addChild(sortNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     timeJoinNode.serialize(byteBuffer);

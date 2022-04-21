@@ -20,11 +20,11 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -55,6 +55,7 @@ import java.util.stream.Collectors;
  * <p>If the group by level parameter is [0, 2], then these two columns will not belong to one
  * bucket. And the total buckets are `root.*.d1.s1` and `root.*.d2.s1`
  */
+@Deprecated // TODO: delete later
 public class GroupByLevelNode extends ProcessNode {
 
   private final int[] groupByLevels;
@@ -208,12 +209,13 @@ public class GroupByLevelNode extends ProcessNode {
     GroupByLevelNode that = (GroupByLevelNode) o;
     return Objects.equals(child, that.child)
         && Arrays.equals(groupByLevels, that.groupByLevels)
-        && Objects.equals(groupedPathMap, that.groupedPathMap);
+        && Objects.equals(aggregateFuncList, that.aggregateFuncList)
+        && Objects.equals(outputColumns, that.outputColumns);
   }
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(child, groupedPathMap);
+    int result = Objects.hash(super.hashCode(), aggregateFuncList, outputColumns);
     result = 31 * result + Arrays.hashCode(groupByLevels);
     return result;
   }

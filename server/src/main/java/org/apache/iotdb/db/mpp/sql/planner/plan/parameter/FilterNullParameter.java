@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.common;
+package org.apache.iotdb.db.mpp.sql.planner.plan.parameter;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 

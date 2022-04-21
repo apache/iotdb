@@ -23,12 +23,13 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
-import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.Aggregation;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -71,7 +72,8 @@ public class SeriesAggregateScanNode extends SourceNode {
   // The series path and aggregation functions on this series.
   // (Currently, we only support one series in the aggregation function)
   private final PartialPath seriesPath;
-  private final List<AggregationType> aggregateFuncList;
+  @Deprecated private final List<AggregationType> aggregateFuncList;
+  private Aggregation aggregation;
 
   // all the sensors in seriesPath's device of current query
   private final Set<String> allSensors;

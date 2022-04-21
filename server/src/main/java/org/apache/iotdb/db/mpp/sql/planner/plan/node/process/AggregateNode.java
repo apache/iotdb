@@ -20,14 +20,14 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
-import org.apache.iotdb.db.mpp.common.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.Aggregation;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -60,9 +60,9 @@ public class AggregateNode extends ProcessNode {
   // (Currently, we only support one series in the aggregation function.)
   @Deprecated private final Map<PartialPath, Set<AggregationType>> aggregateFuncMap;
 
-  // The list of aggregation functions, each FunctionExpression will be output as one column of
-  // result TsBlock
-  private List<FunctionExpression> aggregateFuncList;
+  // The list of aggregation functions, each Aggregation will be output as one column of result
+  // TsBlock
+  private List<Aggregation> aggregationList;
 
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
