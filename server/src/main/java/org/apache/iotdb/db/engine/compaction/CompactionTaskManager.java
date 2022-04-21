@@ -175,12 +175,8 @@ public class CompactionTaskManager implements IService {
     while (!taskExecutionPool.isTerminated()) {
       int timeMillis = 0;
       try {
-        Thread.sleep(200);
+        this.wait(200);
       } catch (InterruptedException e) {
-        logger.error(
-            "CompactionMergeTaskPoolManager {} shutdown",
-            ThreadName.COMPACTION_SERVICE.getName(),
-            e);
         Thread.currentThread().interrupt();
       }
       timeMillis += 200;

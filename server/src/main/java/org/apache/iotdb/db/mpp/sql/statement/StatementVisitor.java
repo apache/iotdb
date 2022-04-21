@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
@@ -80,6 +81,10 @@ public abstract class StatementVisitor<R, C> {
 
   // Alter Timeseries
   public R visitAlterTimeseries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
+    return visitStatement(alterTimeSeriesStatement, context);
+  }
+
+  public R visitSetStorageGroup(SetStorageGroupStatement alterTimeSeriesStatement, C context) {
     return visitStatement(alterTimeSeriesStatement, context);
   }
 

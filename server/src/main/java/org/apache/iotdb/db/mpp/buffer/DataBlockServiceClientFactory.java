@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -47,10 +47,10 @@ public class DataBlockServiceClientFactory {
   private static final Logger logger = LoggerFactory.getLogger(DataBlockServiceClientFactory.class);
 
   // TODO need to be replaced by mature client pool in the future
-  private static final Map<Endpoint, DataBlockService.Iface> dataBlockServiceClientMap =
+  private static final Map<TEndPoint, DataBlockService.Iface> dataBlockServiceClientMap =
       new ConcurrentHashMap<>();
 
-  public DataBlockService.Iface getDataBlockServiceClient(Endpoint endpoint) {
+  public DataBlockService.Iface getDataBlockServiceClient(TEndPoint endpoint) {
 
     return dataBlockServiceClientMap.computeIfAbsent(
         endpoint,

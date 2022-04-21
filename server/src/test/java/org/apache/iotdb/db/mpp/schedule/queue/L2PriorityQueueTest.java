@@ -142,6 +142,33 @@ public class L2PriorityQueueTest {
   }
 
   @Test
+  public void testRemoveElement() {
+    IndexedBlockingQueue<QueueElement> queue =
+        new L2PriorityQueue<>(
+            10,
+            (o1, o2) -> {
+              if (o1.equals(o2)) {
+                return 0;
+              }
+              int res = Integer.compare(o1.getValue(), o2.getValue());
+              if (res != 0) {
+                return res;
+              }
+              return String.CASE_INSENSITIVE_ORDER.compare(
+                  o1.getId().toString(), o2.getId().toString());
+            },
+            new QueueElement(new QueueElement.QueueElementID(0), 0));
+    QueueElement e1 = new QueueElement(new QueueElement.QueueElementID(1), 5);
+    queue.push(e1);
+    Assert.assertEquals(1, queue.size());
+    QueueElement e2 = new QueueElement(new QueueElement.QueueElementID(2), 10);
+    queue.push(e2);
+    Assert.assertEquals(2, queue.size());
+    Assert.assertEquals(e2, queue.remove(new QueueElement.QueueElementID(2)));
+    Assert.assertEquals(1, queue.size());
+  }
+
+  @Test
   public void testClear() {
     IndexedBlockingQueue<QueueElement> queue =
         new L2PriorityQueue<>(

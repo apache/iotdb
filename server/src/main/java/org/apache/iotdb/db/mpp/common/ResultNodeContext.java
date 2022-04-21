@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 
 public class ResultNodeContext {
@@ -27,7 +27,7 @@ public class ResultNodeContext {
   private final FragmentInstanceId virtualFragmentInstanceId;
   private final PlanNodeId virtualResultNodeId;
 
-  private Endpoint upStreamEndpoint;
+  private TEndPoint upStreamEndpoint;
   private FragmentInstanceId upStreamFragmentInstanceId;
   private PlanNodeId upStreamPlanNodeId;
 
@@ -37,7 +37,7 @@ public class ResultNodeContext {
   }
 
   public void setUpStream(
-      Endpoint upStreamEndpoint,
+      TEndPoint upStreamEndpoint,
       FragmentInstanceId upStreamFragmentInstanceId,
       PlanNodeId upStreamPlanNodeId) {
     this.upStreamEndpoint = upStreamEndpoint;
@@ -53,7 +53,7 @@ public class ResultNodeContext {
     return virtualResultNodeId;
   }
 
-  public Endpoint getUpStreamEndpoint() {
+  public TEndPoint getUpStreamEndpoint() {
     return upStreamEndpoint;
   }
 

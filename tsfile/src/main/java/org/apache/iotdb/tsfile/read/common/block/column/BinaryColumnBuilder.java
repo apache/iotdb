@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -69,6 +70,16 @@ public class BinaryColumnBuilder implements ColumnBuilder {
     hasNonNullValue = true;
     positionCount++;
     return this;
+  }
+
+  /** Write an Object to the current entry, which should be the Binary type; */
+  @Override
+  public ColumnBuilder writeObject(Object value) {
+    if (value instanceof Binary) {
+      writeBinary((Binary) value);
+      return this;
+    }
+    throw new UnSupportedDataTypeException("BinaryColumn only support Binary data type");
   }
 
   @Override
