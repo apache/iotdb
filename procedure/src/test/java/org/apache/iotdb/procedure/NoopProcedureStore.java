@@ -33,6 +33,11 @@ public class NoopProcedureStore implements IProcedureStore {
   }
 
   @Override
+  public void setRunning(boolean running) {
+    this.running = running;
+  }
+
+  @Override
   public void load(List<Procedure> procedureList) {}
 
   @Override

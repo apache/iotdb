@@ -26,6 +26,8 @@ import java.util.List;
 public interface IProcedureStore {
   boolean isRunning();
 
+  void setRunning(boolean running);
+
   void load(List<Procedure> procedureList);
 
   void update(Procedure procedure);

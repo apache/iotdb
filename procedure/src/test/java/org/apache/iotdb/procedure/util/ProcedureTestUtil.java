@@ -20,6 +20,8 @@
 package org.apache.iotdb.procedure.util;
 
 import org.apache.iotdb.procedure.ProcedureExecutor;
+import org.apache.iotdb.procedure.scheduler.ProcedureScheduler;
+import org.apache.iotdb.procedure.store.IProcedureStore;
 
 public class ProcedureTestUtil {
   public static void waitForProcedure(ProcedureExecutor executor, long... procIds) {
@@ -45,5 +47,14 @@ public class ProcedureTestUtil {
     if (interrupted) {
       Thread.currentThread().interrupt();
     }
+  }
+
+  public static void stopService(
+      ProcedureExecutor procExecutor, ProcedureScheduler scheduler, IProcedureStore store) {
+    procExecutor.stop();
+    procExecutor.join();
+    scheduler.clear();
+    scheduler.stop();
+    store.stop();
   }
 }

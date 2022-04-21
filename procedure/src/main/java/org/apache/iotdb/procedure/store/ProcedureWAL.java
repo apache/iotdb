@@ -37,16 +37,11 @@ public class ProcedureWAL {
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureWAL.class);
 
   private static final String TMP_SUFFIX = ".tmp";
+  private static final int PROCEDURE_WAL_BUFFER_SIZE = 8 * 1024 * 1024;
   private Path walFilePath;
-  private ByteBuffer byteBuffer;
 
-  public ByteBuffer getByteBuffer() {
-    return byteBuffer;
-  }
-
-  public ProcedureWAL(Path walFilePath, ByteBuffer byteBuffer) {
+  public ProcedureWAL(Path walFilePath) {
     this.walFilePath = walFilePath;
-    this.byteBuffer = byteBuffer;
   }
 
   /**
@@ -54,13 +49,15 @@ public class ProcedureWAL {
    *
    * @throws IOException ioe
    */
-  public void save() throws IOException {
+  public void save(Procedure procedure) throws IOException {
     File walTmp = new File(walFilePath + TMP_SUFFIX);
     Path walTmpPath = walTmp.toPath();
     Files.deleteIfExists(walTmpPath);
     Files.createFile(walTmpPath);
     try (FileOutputStream fos = new FileOutputStream(walTmp);
         FileChannel channel = fos.getChannel()) {
+      ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE);
+      procedure.serialize(byteBuffer);
       byteBuffer.flip();
       channel.write(byteBuffer);
     }
@@ -74,24 +71,21 @@ public class ProcedureWAL {
    * @param procedureList procedure list
    */
   public void load(List<Procedure> procedureList) {
-    if (procedureList == null || procedureList.isEmpty()) {
-      LOG.info("None  procedure  wal  found.");
-      return;
-    }
     Procedure procedure = null;
     try (FileInputStream fis = new FileInputStream(walFilePath.toFile());
         FileChannel channel = fis.getChannel()) {
-      while (channel.read(byteBuffer) > 0) {
+      ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE);
+      if (channel.read(byteBuffer) > 0) {
         byteBuffer.flip();
-        while (byteBuffer.hasRemaining()) {
-          if (procedure == null) {
-            procedure = Procedure.newInstance(byteBuffer);
-          } else {
-            procedure.deserialize(byteBuffer);
-          }
+        procedure = Procedure.newInstance(byteBuffer);
+        if (procedure != null) {
+          procedure.deserialize(byteBuffer);
+        } else {
+          throw new IOException("WAL File is corrupted.");
         }
         byteBuffer.clear();
       }
+      procedureList.add(procedure);
     } catch (IOException e) {
       LOG.error("Load {} failed, it will be deleted.", walFilePath, e);
       walFilePath.toFile().delete();

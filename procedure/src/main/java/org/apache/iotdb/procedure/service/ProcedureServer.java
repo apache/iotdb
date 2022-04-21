@@ -30,6 +30,7 @@ import org.apache.iotdb.procedure.conf.ProcedureNodeConfigDescriptor;
 import org.apache.iotdb.procedure.env.ClusterProcedureEnvironment;
 import org.apache.iotdb.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.procedure.scheduler.SimpleProcedureScheduler;
+import org.apache.iotdb.procedure.store.IProcedureStore;
 import org.apache.iotdb.procedure.store.ProcedureStore;
 import org.apache.iotdb.service.rpc.thrift.ProcedureService;
 
@@ -40,7 +41,7 @@ public class ProcedureServer extends ThriftService implements ProcedureNodeMBean
 
   private ProcedureScheduler scheduler = new SimpleProcedureScheduler();
   private ClusterProcedureEnvironment env = new ClusterProcedureEnvironment();
-  private ProcedureStore store = ProcedureStore.getInstance();
+  private IProcedureStore store = new ProcedureStore();
   private ProcedureExecutor executor;
 
   private ProcedureServerProcessor client;

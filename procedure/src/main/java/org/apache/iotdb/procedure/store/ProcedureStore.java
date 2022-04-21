@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.procedure.store;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.procedure.Procedure;
 import org.apache.iotdb.procedure.conf.ProcedureNodeConfigDescriptor;
 import org.apache.iotdb.procedure.conf.ProcedureNodeConstant;
@@ -29,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -39,22 +39,27 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProcedureStore implements IProcedureStore {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureStore.class);
-  private static final String PROCEDURE_WAL_DIR =
+  private String procedureWalDir =
       ProcedureNodeConfigDescriptor.getInstance().getConf().getProcedureWalDir();
-  private static final int PROCEDURE_WAL_BUFFER_SIZE = 16 * 1024 * 1024;
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
   private volatile boolean isRunning = false;
 
-  private ProcedureStore() {
+  public ProcedureStore() {
     try {
-      Files.createDirectories(Paths.get(PROCEDURE_WAL_DIR));
+      Files.createDirectories(Paths.get(procedureWalDir));
     } catch (IOException e) {
       throw new RuntimeException("Create procedure wal directory failed.", e);
     }
   }
 
-  public static ProcedureStore getInstance() {
-    return ProcedureStoreHolder.INSTANCE;
+  @TestOnly
+  public ProcedureStore(String testWALDir) {
+    try {
+      Files.createDirectories(Paths.get(testWALDir));
+      procedureWalDir = testWALDir;
+    } catch (IOException e) {
+      throw new RuntimeException("Create procedure wal directory failed.", e);
+    }
   }
 
   public boolean isRunning() {
@@ -72,22 +77,25 @@ public class ProcedureStore implements IProcedureStore {
    */
   public void load(List<Procedure> procedureList) {
     try {
-      Files.list(Paths.get(PROCEDURE_WAL_DIR))
+      Files.list(Paths.get(procedureWalDir))
+          .filter(
+              path ->
+                  path.getFileName()
+                      .toString()
+                      .endsWith(ProcedureNodeConstant.PROCEDURE_WAL_SUFFIX))
+          .sorted(
+              (p1, p2) ->
+                  Long.compareUnsigned(
+                      Long.parseLong(p1.getFileName().toString().split("\\.")[0]),
+                      Long.parseLong(p2.getFileName().toString().split("\\.")[0])))
           .forEach(
               path -> {
                 String fileName = path.getFileName().toString();
-                if (fileName.endsWith(ProcedureNodeConstant.PROCEDURE_WAL_SUFFIX)) {
-                  long procId = Long.parseLong(fileName.split("\\.")[0]);
-                  ProcedureWAL procedureWAL =
-                      procWALMap.computeIfAbsent(
-                          procId,
-                          id ->
-                              new ProcedureWAL(
-                                  path, ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE)));
-                  procedureWAL.load(procedureList);
-                }
+                long procId = Long.parseLong(fileName.split("\\.")[0]);
+                ProcedureWAL procedureWAL =
+                    procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path));
+                procedureWAL.load(procedureList);
               });
-
     } catch (IOException e) {
       LOG.error("Load procedure wal failed.", e);
     }
@@ -104,15 +112,10 @@ public class ProcedureStore implements IProcedureStore {
       return;
     }
     long procId = procedure.getProcId();
-    Path path = Paths.get(PROCEDURE_WAL_DIR, procId + ProcedureNodeConstant.PROCEDURE_WAL_SUFFIX);
-    ProcedureWAL procedureWAL =
-        procWALMap.computeIfAbsent(
-            procId, id -> new ProcedureWAL(path, ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE)));
+    Path path = Paths.get(procedureWalDir, procId + ProcedureNodeConstant.PROCEDURE_WAL_SUFFIX);
+    ProcedureWAL procedureWAL = procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path));
     try {
-      ByteBuffer byteBuffer = procedureWAL.getByteBuffer();
-      byteBuffer.clear();
-      procedure.serialize(byteBuffer);
-      procedureWAL.save();
+      procedureWAL.save(procedure);
     } catch (IOException e) {
       LOG.error("Update Procedure (pid={}) wal failed", procedure.getProcId());
     }
@@ -169,7 +172,7 @@ public class ProcedureStore implements IProcedureStore {
   /** clean all the wal, used for unit test. */
   public void cleanup() {
     try {
-      FileUtils.cleanDirectory(new File(PROCEDURE_WAL_DIR));
+      FileUtils.cleanDirectory(new File(procedureWalDir));
     } catch (IOException e) {
       LOG.error("Clean wal directory failed", e);
     }

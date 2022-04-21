@@ -61,16 +61,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   private volatile boolean locked = false;
   private boolean lockedWhenLoading = false;
 
-  private volatile boolean bypass = false;
   private int[] stackIndexes = null;
-
-  public boolean isBypass() {
-    return bypass;
-  }
-
-  public void bypass(boolean bypass) {
-    this.bypass = bypass;
-  }
 
   private boolean persist = true;
 
@@ -159,7 +150,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
     // exceptions
     if (hasException()) {
-      byteBuffer.putInt((byte) 1);
+      byteBuffer.put((byte) 1);
       String exceptionClassName = exception.getClass().getName();
       byte[] exceptionClassNameBytes = exceptionClassName.getBytes(StandardCharsets.UTF_8);
       byteBuffer.putInt(exceptionClassNameBytes.length);
@@ -182,8 +173,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
     // has lock
     byteBuffer.put(this.hasLock() ? (byte) 1 : (byte) 0);
-    // bypass
-    byteBuffer.put(this.bypass ? (byte) 1 : (byte) 0);
   }
 
   public void deserialize(ByteBuffer byteBuffer) throws IOException {
@@ -229,13 +218,16 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
 
       setFailure(exception);
     }
+
+    // result
+    int resultLen = byteBuffer.getInt();
+    if (resultLen > 0) {
+      byte[] resultArr = new byte[resultLen];
+      byteBuffer.get(resultArr);
+    }
     //  has  lock
     if (byteBuffer.get() == 1) {
       this.lockedWhenLoading();
-    }
-    // by pass
-    if (byteBuffer.get() == 1) {
-      this.bypass(true);
     }
   }
 
@@ -359,10 +351,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       throws ProcedureYieldException, ProcedureSuspendedException, InterruptedException {
     try {
       updateTimestamp();
-      if (bypass) {
-        LOG.info("{} bypassed, returning null to finish it", this);
-        return null;
-      }
       return execute(env);
     } finally {
       updateTimestamp();
@@ -379,10 +367,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   public void doRollback(Env env) throws IOException, InterruptedException {
     try {
       updateTimestamp();
-      if (bypass) {
-        LOG.info("{} bypassed, skip rollback", this);
-        return;
-      }
       rollback(env);
     } finally {
       updateTimestamp();
@@ -482,11 +466,6 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     if (this.locked) {
       sb.append(", locked=").append(locked);
     }
-
-    if (bypass) {
-      sb.append(", bypass=").append(bypass);
-    }
-
     if (hasException()) {
       sb.append(", exception=" + getException());
     }
@@ -882,11 +861,11 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
   }
 
   /** Helper to lookup the root Procedure ID given a specified procedure. */
-  protected static Long getRootProcedureId(Map<Long, Procedure> procedures, Procedure proc) {
+  protected static long getRootProcedureId(Map<Long, Procedure> procedures, Procedure proc) {
     while (proc.hasParent()) {
       proc = procedures.get(proc.getParentProcId());
       if (proc == null) {
-        return null;
+        return NO_PROC_ID;
       }
     }
     return proc.getProcId();

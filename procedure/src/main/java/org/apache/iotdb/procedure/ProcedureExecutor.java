@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.procedure;
 
-import org.apache.iotdb.commons.concurrent.IoTDBDaemonThreadFactory;
 import org.apache.iotdb.procedure.conf.ProcedureNodeConfigDescriptor;
 import org.apache.iotdb.procedure.exception.ProcedureException;
 import org.apache.iotdb.procedure.exception.ProcedureSuspendedException;
@@ -70,10 +69,6 @@ public class ProcedureExecutor<Env> {
   private volatile long keepAliveTime;
 
   private final ProcedureScheduler scheduler;
-
-  private final Executor forceUpdateExecutor =
-      Executors.newSingleThreadExecutor(
-          new IoTDBDaemonThreadFactory("Force-Update-Procedure-Thread"));
 
   private final AtomicLong lastProcId = new AtomicLong(-1);
   private final AtomicLong workId = new AtomicLong(0);
@@ -140,6 +135,7 @@ public class ProcedureExecutor<Env> {
           rollbackStack.put(proc.getProcId(), new RootProcedureStack<>());
         }
       }
+      procedures.putIfAbsent(proc.getProcId(), proc);
       switch (proc.getState()) {
         case RUNNABLE:
           runnableCount++;
@@ -898,6 +894,10 @@ public class ProcedureExecutor<Env> {
 
   public boolean isFinished(final long procId) {
     return !procedures.containsKey(procId);
+  }
+
+  public ConcurrentHashMap<Long, Procedure> getProcedures() {
+    return procedures;
   }
 
   // -----------------------------CLIENT IMPLEMENTATION-----------------------------------
