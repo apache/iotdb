@@ -487,12 +487,7 @@ public class SinkHandleTest {
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    try {
-      sinkHandle.send(mockTsBlocks);
-    } catch (IOException e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
+    sinkHandle.send(mockTsBlocks);
     Future<?> blocked = sinkHandle.isFull();
     Assert.assertFalse(blocked.isDone());
     Assert.assertFalse(blocked.isCancelled());
