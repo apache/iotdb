@@ -42,6 +42,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * TODO: Warning, currently in Ratis 2.2.0, there is a bug in installSnapshot. In subsequent
+ * installSnapshot, a follower may fail to install while the leader assume it success. This bug will
+ * be triggered when the snapshot threshold is low. This is fixed in current Ratis Master, and
+ * hopefully will be introduced in Ratis 2.3.0.
+ */
 public class SnapshotStorage implements StateMachineStorage {
   private IStateMachine applicationStateMachine;
   private File stateMachineDir;

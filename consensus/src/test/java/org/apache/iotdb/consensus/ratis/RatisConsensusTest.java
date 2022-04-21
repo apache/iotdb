@@ -119,6 +119,11 @@ public class RatisConsensusTest {
 
     @Override
     public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+      /**
+       * When IStateMachine take the snapshot, it can directly use the metadata to name the snapshot
+       * file. It's guaranteed that more up-to-date snapshot will have lexicographically larger
+       * metadata.
+       */
       String tempFilePath = snapshotDir + File.separator + ".tmp";
       String filePath = snapshotDir + File.separator + "snapshot." + new String(metadata.array());
 
@@ -135,6 +140,10 @@ public class RatisConsensusTest {
     }
 
     private Object[] getSortedPaths(File rootDir) {
+      /**
+       * When looking for the latest snapshot inside the directory, just list all filenames and sort
+       * them.
+       */
       ArrayList<Path> paths = new ArrayList<>();
       try {
         DirectoryStream<Path> stream = Files.newDirectoryStream(rootDir.toPath());
@@ -169,6 +178,7 @@ public class RatisConsensusTest {
         Scanner scanner = new Scanner(latest.getSnapshotFiles().get(0));
         int snapshotValue = Integer.parseInt(scanner.next());
         integer.set(snapshotValue);
+        scanner.close();
       } catch (IOException e) {
         logger.error("read file failed ", e);
       }
