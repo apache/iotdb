@@ -54,7 +54,8 @@ public class MRocksDBUnitTest {
     SchemaRegionId schemaRegionId = new SchemaRegionId((int) (Math.random() * 10));
     MNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     IStorageGroupMNode storageGroupMNode = new StorageGroupMNode(root, "test", -1);
-    rSchemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+    rSchemaRegion =
+        new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode, new RSchemaConfLoader());
   }
 
   @Test
