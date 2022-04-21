@@ -134,7 +134,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
-    registerManager.register(new JMXService());
+    registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());

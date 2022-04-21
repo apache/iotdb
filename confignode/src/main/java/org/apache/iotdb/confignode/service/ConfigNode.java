@@ -44,13 +44,11 @@ public class ConfigNode implements ConfigNodeMBean {
   private final RegisterManager registerManager = new RegisterManager();
 
   private final ConfigNodeRPCService configNodeRPCService;
-  private final JMXService jmxService;
 
   private ConfigManager configManager;
 
   private ConfigNode() {
     this.configNodeRPCService = new ConfigNodeRPCService();
-    this.jmxService = new JMXService();
 
     try {
       this.configManager = new ConfigManager();
@@ -68,7 +66,7 @@ public class ConfigNode implements ConfigNodeMBean {
   /** Register services */
   private void setUp() throws StartupException, IOException {
     LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
-    registerManager.register(jmxService);
+    registerManager.register(JMXService.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
 
     configNodeRPCService.initSyncedServiceImpl(new ConfigNodeRPCServiceProcessor(configManager));
