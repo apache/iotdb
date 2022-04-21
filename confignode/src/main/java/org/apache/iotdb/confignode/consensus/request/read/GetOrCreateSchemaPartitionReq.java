@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.crud;
+package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,15 +33,15 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Get or create SchemaPartition by the specific partitionSlotsMap. */
-public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
+public class GetOrCreateSchemaPartitionReq extends ConfigRequest {
 
   // Map<StorageGroup, List<SeriesPartitionSlot>>
   // Get all SchemaPartitions when the partitionSlotsMap is empty
   // Get all exists SchemaPartitions in one StorageGroup when the SeriesPartitionSlot is empty
   private Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap;
 
-  public GetOrCreateSchemaPartitionPlan(PhysicalPlanType physicalPlanType) {
-    super(physicalPlanType);
+  public GetOrCreateSchemaPartitionReq(ConfigRequestType configRequestType) {
+    super(configRequestType);
   }
 
   public void setPartitionSlotsMap(Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
@@ -87,7 +87,7 @@ public class GetOrCreateSchemaPartitionPlan extends PhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetOrCreateSchemaPartitionPlan that = (GetOrCreateSchemaPartitionPlan) o;
+    GetOrCreateSchemaPartitionReq that = (GetOrCreateSchemaPartitionReq) o;
     return partitionSlotsMap.equals(that.partitionSlotsMap);
   }
 

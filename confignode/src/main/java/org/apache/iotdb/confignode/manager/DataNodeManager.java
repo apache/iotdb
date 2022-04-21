@@ -21,11 +21,11 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
+import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
 import org.apache.iotdb.confignode.persistence.DataNodeInfo;
-import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
-import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -53,7 +53,7 @@ public class DataNodeManager {
     this.configManager = configManager;
   }
 
-  private void setGlobalConfig(DataNodeConfigurationDataSet dataSet) {
+  private void setGlobalConfig(DataNodeConfigurationResp dataSet) {
     // Set TGlobalConfig
     TGlobalConfig globalConfig = new TGlobalConfig();
     globalConfig.setDataNodeConsensusProtocolClass(
@@ -74,8 +74,8 @@ public class DataNodeManager {
    * @return DataNodeConfigurationDataSet. The TSStatus will be set to SUCCESS_STATUS when register
    *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
    */
-  public DataSet registerDataNode(RegisterDataNodePlan plan) {
-    DataNodeConfigurationDataSet dataSet = new DataNodeConfigurationDataSet();
+  public DataSet registerDataNode(RegisterDataNodeReq plan) {
+    DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
 
     if (DataNodeInfo.getInstance().containsValue(plan.getLocation())) {
       TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
@@ -100,8 +100,8 @@ public class DataNodeManager {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeLocationsDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
-    return (DataNodeLocationsDataSet) getConsensusManager().read(plan).getDataset();
+  public DataNodeLocationsResp getDataNodeInfo(QueryDataNodeInfoReq plan) {
+    return (DataNodeLocationsResp) getConsensusManager().read(plan).getDataset();
   }
 
   public int getOnlineDataNodeCount() {

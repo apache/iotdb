@@ -26,12 +26,12 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.cli.TemporaryClient;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
+import org.apache.iotdb.confignode.consensus.request.read.QueryStorageGroupSchemaReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
-import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
-import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
-import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -63,7 +63,7 @@ public class ClusterSchemaManager {
    *     NOT_ENOUGH_DATA_NODE if there are not enough DataNode for Region allocation.
    *     STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup is already set.
    */
-  public TSStatus setStorageGroup(SetStorageGroupPlan setPlan) {
+  public TSStatus setStorageGroup(SetStorageGroupReq setPlan) {
     TSStatus result;
     if (configManager.getDataNodeManager().getOnlineDataNodeCount()
         < Math.max(initialSchemaRegionCount, initialDataRegionCount)) {
@@ -75,7 +75,7 @@ public class ClusterSchemaManager {
         result.setMessage(
             String.format("StorageGroup %s is already set.", setPlan.getSchema().getName()));
       } else {
-        CreateRegionsPlan createPlan = new CreateRegionsPlan();
+        CreateRegionsReq createPlan = new CreateRegionsReq();
         createPlan.setStorageGroup(setPlan.getSchema().getName());
 
         // Allocate default Regions
@@ -115,7 +115,7 @@ public class ClusterSchemaManager {
 
   /** TODO: Allocate by LoadManager */
   private void allocateRegions(
-      TConsensusGroupType type, CreateRegionsPlan createPlan, SetStorageGroupPlan setPlan) {
+      TConsensusGroupType type, CreateRegionsReq createPlan, SetStorageGroupReq setPlan) {
 
     // TODO: Use CopySet algorithm to optimize region allocation policy
 
@@ -165,10 +165,10 @@ public class ClusterSchemaManager {
    *
    * @return StorageGroupSchemaDataSet
    */
-  public StorageGroupSchemaDataSet getStorageGroupSchema() {
+  public StorageGroupSchemaResp getStorageGroupSchema() {
     ConsensusReadResponse readResponse =
-        getConsensusManager().read(new QueryStorageGroupSchemaPlan());
-    return (StorageGroupSchemaDataSet) readResponse.getDataset();
+        getConsensusManager().read(new QueryStorageGroupSchemaReq());
+    return (StorageGroupSchemaResp) readResponse.getDataset();
   }
 
   public List<String> getStorageGroupNames() {

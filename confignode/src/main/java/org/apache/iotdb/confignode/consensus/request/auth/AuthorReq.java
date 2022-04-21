@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.sys;
+package org.apache.iotdb.confignode.consensus.request.auth;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.db.auth.AuthException;
 
 import java.nio.ByteBuffer;
@@ -28,9 +28,9 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-public class AuthorPlan extends PhysicalPlan {
+public class AuthorReq extends ConfigRequest {
 
-  private PhysicalPlanType authorType;
+  private ConfigRequestType authorType;
   private String roleName;
   private String password;
   private String newPassword;
@@ -38,7 +38,7 @@ public class AuthorPlan extends PhysicalPlan {
   private String nodeName;
   private String userName;
 
-  public AuthorPlan(PhysicalPlanType type) {
+  public AuthorReq(ConfigRequestType type) {
     super(type);
     authorType = type;
   }
@@ -55,8 +55,8 @@ public class AuthorPlan extends PhysicalPlan {
    * @param nodeName node name in Path structure
    * @throws AuthException Authentication Exception
    */
-  public AuthorPlan(
-      PhysicalPlanType authorType,
+  public AuthorReq(
+      ConfigRequestType authorType,
       String userName,
       String roleName,
       String password,
@@ -74,11 +74,11 @@ public class AuthorPlan extends PhysicalPlan {
     this.nodeName = nodeName;
   }
 
-  public PhysicalPlanType getAuthorType() {
+  public ConfigRequestType getAuthorType() {
     return authorType;
   }
 
-  public void setAuthorType(PhysicalPlanType authorType) {
+  public void setAuthorType(ConfigRequestType authorType) {
     this.authorType = authorType;
   }
 
@@ -168,62 +168,62 @@ public class AuthorPlan extends PhysicalPlan {
     nodeName = BasicStructureSerDeUtil.readString(buffer);
   }
 
-  private int getPlanTypeOrdinal(PhysicalPlanType physicalPlanType) {
+  private int getPlanTypeOrdinal(ConfigRequestType configRequestType) {
     int type;
-    switch (physicalPlanType) {
+    switch (configRequestType) {
       case CREATE_USER:
-        type = PhysicalPlanType.CREATE_USER.ordinal();
+        type = ConfigRequestType.CREATE_USER.ordinal();
         break;
       case CREATE_ROLE:
-        type = PhysicalPlanType.CREATE_ROLE.ordinal();
+        type = ConfigRequestType.CREATE_ROLE.ordinal();
         break;
       case DROP_USER:
-        type = PhysicalPlanType.DROP_USER.ordinal();
+        type = ConfigRequestType.DROP_USER.ordinal();
         break;
       case DROP_ROLE:
-        type = PhysicalPlanType.DROP_ROLE.ordinal();
+        type = ConfigRequestType.DROP_ROLE.ordinal();
         break;
       case GRANT_ROLE:
-        type = PhysicalPlanType.GRANT_ROLE.ordinal();
+        type = ConfigRequestType.GRANT_ROLE.ordinal();
         break;
       case GRANT_USER:
-        type = PhysicalPlanType.GRANT_USER.ordinal();
+        type = ConfigRequestType.GRANT_USER.ordinal();
         break;
       case GRANT_ROLE_TO_USER:
-        type = PhysicalPlanType.GRANT_ROLE_TO_USER.ordinal();
+        type = ConfigRequestType.GRANT_ROLE_TO_USER.ordinal();
         break;
       case REVOKE_USER:
-        type = PhysicalPlanType.REVOKE_USER.ordinal();
+        type = ConfigRequestType.REVOKE_USER.ordinal();
         break;
       case REVOKE_ROLE:
-        type = PhysicalPlanType.REVOKE_ROLE.ordinal();
+        type = ConfigRequestType.REVOKE_ROLE.ordinal();
         break;
       case REVOKE_ROLE_FROM_USER:
-        type = PhysicalPlanType.REVOKE_ROLE_FROM_USER.ordinal();
+        type = ConfigRequestType.REVOKE_ROLE_FROM_USER.ordinal();
         break;
       case UPDATE_USER:
-        type = PhysicalPlanType.UPDATE_USER.ordinal();
+        type = ConfigRequestType.UPDATE_USER.ordinal();
         break;
       case LIST_USER:
-        type = PhysicalPlanType.LIST_USER.ordinal();
+        type = ConfigRequestType.LIST_USER.ordinal();
         break;
       case LIST_ROLE:
-        type = PhysicalPlanType.LIST_ROLE.ordinal();
+        type = ConfigRequestType.LIST_ROLE.ordinal();
         break;
       case LIST_USER_PRIVILEGE:
-        type = PhysicalPlanType.LIST_USER_PRIVILEGE.ordinal();
+        type = ConfigRequestType.LIST_USER_PRIVILEGE.ordinal();
         break;
       case LIST_ROLE_PRIVILEGE:
-        type = PhysicalPlanType.LIST_ROLE_PRIVILEGE.ordinal();
+        type = ConfigRequestType.LIST_ROLE_PRIVILEGE.ordinal();
         break;
       case LIST_USER_ROLES:
-        type = PhysicalPlanType.LIST_USER_ROLES.ordinal();
+        type = ConfigRequestType.LIST_USER_ROLES.ordinal();
         break;
       case LIST_ROLE_USERS:
-        type = PhysicalPlanType.LIST_ROLE_USERS.ordinal();
+        type = ConfigRequestType.LIST_ROLE_USERS.ordinal();
         break;
       default:
-        throw new IllegalArgumentException("Unknown operator: " + physicalPlanType);
+        throw new IllegalArgumentException("Unknown operator: " + configRequestType);
     }
     return type;
   }
@@ -236,7 +236,7 @@ public class AuthorPlan extends PhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    AuthorPlan that = (AuthorPlan) o;
+    AuthorReq that = (AuthorReq) o;
     return Objects.equals(authorType, that.authorType)
         && Objects.equals(userName, that.userName)
         && Objects.equals(roleName, that.roleName)

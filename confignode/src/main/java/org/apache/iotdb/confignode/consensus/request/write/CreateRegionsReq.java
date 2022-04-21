@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.crud;
+package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -31,14 +31,14 @@ import java.util.List;
 import java.util.Objects;
 
 /** Create regions for specific StorageGroup */
-public class CreateRegionsPlan extends PhysicalPlan {
+public class CreateRegionsReq extends ConfigRequest {
 
   private String storageGroup;
 
   private final List<TRegionReplicaSet> regionReplicaSets;
 
-  public CreateRegionsPlan() {
-    super(PhysicalPlanType.CreateRegions);
+  public CreateRegionsReq() {
+    super(ConfigRequestType.CreateRegions);
     this.regionReplicaSets = new ArrayList<>();
   }
 
@@ -60,7 +60,7 @@ public class CreateRegionsPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.CreateRegions.ordinal());
+    buffer.putInt(ConfigRequestType.CreateRegions.ordinal());
 
     BasicStructureSerDeUtil.write(storageGroup, buffer);
 
@@ -84,7 +84,7 @@ public class CreateRegionsPlan extends PhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    CreateRegionsPlan that = (CreateRegionsPlan) o;
+    CreateRegionsReq that = (CreateRegionsReq) o;
     return storageGroup.equals(that.storageGroup)
         && regionReplicaSets.equals(that.regionReplicaSets);
   }

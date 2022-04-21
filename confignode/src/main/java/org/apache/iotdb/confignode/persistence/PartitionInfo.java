@@ -28,13 +28,13 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
-import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
-import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -106,7 +106,7 @@ public class PartitionInfo {
    * @param plan CreateRegionsPlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus createRegions(CreateRegionsPlan plan) {
+  public TSStatus createRegions(CreateRegionsReq plan) {
     TSStatus result;
     regionReadWriteLock.writeLock().lock();
     regionAllocateLock.writeLock().lock();
@@ -130,19 +130,19 @@ public class PartitionInfo {
    * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(GetOrCreateSchemaPartitionPlan physicalPlan) {
-    SchemaPartitionDataSet schemaPartitionDataSet = new SchemaPartitionDataSet();
+  public DataSet getSchemaPartition(GetOrCreateSchemaPartitionReq physicalPlan) {
+    SchemaPartitionResp schemaPartitionResp = new SchemaPartitionResp();
     schemaPartitionReadWriteLock.readLock().lock();
 
     try {
-      schemaPartitionDataSet.setSchemaPartition(
+      schemaPartitionResp.setSchemaPartition(
           schemaPartition.getSchemaPartition(physicalPlan.getPartitionSlotsMap()));
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
-      schemaPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      schemaPartitionResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
 
-    return schemaPartitionDataSet;
+    return schemaPartitionResp;
   }
 
   /**
@@ -151,7 +151,7 @@ public class PartitionInfo {
    * @param physicalPlan CreateSchemaPartitionPlan with SchemaPartition assigned result
    * @return TSStatusCode.SUCCESS_STATUS when creation successful
    */
-  public TSStatus createSchemaPartition(CreateSchemaPartitionPlan physicalPlan) {
+  public TSStatus createSchemaPartition(CreateSchemaPartitionReq physicalPlan) {
     schemaPartitionReadWriteLock.writeLock().lock();
 
     try {
@@ -196,22 +196,22 @@ public class PartitionInfo {
    * @param physicalPlan DataPartitionPlan with partitionSlotsMap
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
-  public DataSet getDataPartition(GetOrCreateDataPartitionPlan physicalPlan) {
-    DataPartitionDataSet dataPartitionDataSet = new DataPartitionDataSet();
+  public DataSet getDataPartition(GetOrCreateDataPartitionReq physicalPlan) {
+    DataPartitionResp dataPartitionResp = new DataPartitionResp();
     dataPartitionReadWriteLock.readLock().lock();
 
     try {
-      dataPartitionDataSet.setDataPartition(
+      dataPartitionResp.setDataPartition(
           dataPartition.getDataPartition(
               physicalPlan.getPartitionSlotsMap(),
               ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
               ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
     } finally {
       dataPartitionReadWriteLock.readLock().unlock();
-      dataPartitionDataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      dataPartitionResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     }
 
-    return dataPartitionDataSet;
+    return dataPartitionResp;
   }
 
   /**
@@ -220,7 +220,7 @@ public class PartitionInfo {
    * @param physicalPlan CreateDataPartitionPlan with DataPartition assigned result
    * @return TSStatusCode.SUCCESS_STATUS when creation successful
    */
-  public TSStatus createDataPartition(CreateDataPartitionPlan physicalPlan) {
+  public TSStatus createDataPartition(CreateDataPartitionReq physicalPlan) {
     dataPartitionReadWriteLock.writeLock().lock();
 
     try {

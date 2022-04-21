@@ -22,8 +22,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
-import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -52,7 +52,7 @@ public class StorageGroupInfo {
    * @param plan SetStorageGroupPlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
+  public TSStatus setStorageGroup(SetStorageGroupReq plan) {
     TSStatus result;
     storageGroupReadWriteLock.writeLock().lock();
     try {
@@ -78,8 +78,8 @@ public class StorageGroupInfo {
   }
 
   /** @return All the StorageGroupSchema */
-  public StorageGroupSchemaDataSet getStorageGroupSchema() {
-    StorageGroupSchemaDataSet result = new StorageGroupSchemaDataSet();
+  public StorageGroupSchemaResp getStorageGroupSchema() {
+    StorageGroupSchemaResp result = new StorageGroupSchemaResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
       result.setSchemaList(new ArrayList<>(storageGroupsMap.values()));

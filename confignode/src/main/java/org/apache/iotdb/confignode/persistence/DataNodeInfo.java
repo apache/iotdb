@@ -21,9 +21,9 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
-import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
-import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
@@ -85,7 +85,7 @@ public class DataNodeInfo {
    * @param plan RegisterDataNodePlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus registerDataNode(RegisterDataNodePlan plan) {
+  public TSStatus registerDataNode(RegisterDataNodeReq plan) {
     TSStatus result;
     TDataNodeLocation info = plan.getLocation();
     dataNodeInfoReadWriteLock.writeLock().lock();
@@ -106,8 +106,8 @@ public class DataNodeInfo {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeLocationsDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
-    DataNodeLocationsDataSet result = new DataNodeLocationsDataSet();
+  public DataNodeLocationsResp getDataNodeInfo(QueryDataNodeInfoReq plan) {
+    DataNodeLocationsResp result = new DataNodeLocationsResp();
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
     int dataNodeId = plan.getDataNodeID();

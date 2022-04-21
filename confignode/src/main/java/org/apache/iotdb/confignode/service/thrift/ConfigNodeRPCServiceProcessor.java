@@ -20,19 +20,19 @@ package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
-import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
-import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -78,24 +78,24 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
-    RegisterDataNodePlan plan = new RegisterDataNodePlan(req.getDataNodeLocation());
-    DataNodeConfigurationDataSet dataSet =
-        (DataNodeConfigurationDataSet) configManager.registerDataNode(plan);
+    RegisterDataNodeReq registerReq = new RegisterDataNodeReq(req.getDataNodeLocation());
+    DataNodeConfigurationResp registerResp =
+        (DataNodeConfigurationResp) configManager.registerDataNode(registerReq);
 
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
-    dataSet.convertToRpcDataNodeRegisterResp(resp);
+    registerResp.convertToRpcDataNodeRegisterResp(resp);
     LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", resp, req);
     return resp;
   }
 
   @Override
   public TDataNodeLocationResp getDataNodeLocations(int dataNodeID) throws TException {
-    QueryDataNodeInfoPlan plan = new QueryDataNodeInfoPlan(dataNodeID);
-    DataNodeLocationsDataSet dataSet =
-        (DataNodeLocationsDataSet) configManager.getDataNodeInfo(plan);
+    QueryDataNodeInfoReq queryReq = new QueryDataNodeInfoReq(dataNodeID);
+    DataNodeLocationsResp queryResp =
+        (DataNodeLocationsResp) configManager.getDataNodeInfo(queryReq);
 
     TDataNodeLocationResp resp = new TDataNodeLocationResp();
-    dataSet.convertToRpcDataNodeLocationResp(resp);
+    queryResp.convertToRpcDataNodeLocationResp(resp);
     return resp;
   }
 
@@ -114,8 +114,8 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 
-    SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroupSchema);
-    return configManager.setStorageGroup(plan);
+    SetStorageGroupReq setReq = new SetStorageGroupReq(storageGroupSchema);
+    return configManager.setStorageGroup(setReq);
   }
 
   @Override
@@ -138,11 +138,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TStorageGroupSchemaResp getStorageGroupsSchema() throws TException {
-    StorageGroupSchemaDataSet dataSet =
-        (StorageGroupSchemaDataSet) configManager.getStorageGroupSchema();
+    StorageGroupSchemaResp storageGroupSchemaResp =
+        (StorageGroupSchemaResp) configManager.getStorageGroupSchema();
 
     TStorageGroupSchemaResp resp = new TStorageGroupSchemaResp();
-    dataSet.convertToRPCStorageGroupSchemaResp(resp);
+    storageGroupSchemaResp.convertToRPCStorageGroupSchemaResp(resp);
     return resp;
   }
 
@@ -150,11 +150,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    SchemaPartitionDataSet dataSet =
-        (SchemaPartitionDataSet) configManager.getSchemaPartition(patternTree);
+    SchemaPartitionResp schemaResp =
+        (SchemaPartitionResp) configManager.getSchemaPartition(patternTree);
 
     TSchemaPartitionResp resp = new TSchemaPartitionResp();
-    dataSet.convertToRpcSchemaPartitionResp(resp);
+    schemaResp.convertToRpcSchemaPartitionResp(resp);
     return resp;
   }
 
@@ -163,37 +163,37 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       throws TException {
     PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    SchemaPartitionDataSet dataSet =
-        (SchemaPartitionDataSet) configManager.getOrCreateSchemaPartition(patternTree);
+    SchemaPartitionResp dataResp =
+        (SchemaPartitionResp) configManager.getOrCreateSchemaPartition(patternTree);
 
     TSchemaPartitionResp resp = new TSchemaPartitionResp();
-    dataSet.convertToRpcSchemaPartitionResp(resp);
+    dataResp.convertToRpcSchemaPartitionResp(resp);
     return resp;
   }
 
   @Override
   public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
-    GetOrCreateDataPartitionPlan getDataPartitionPlan =
-        new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetDataPartition);
-    getDataPartitionPlan.convertFromRpcTDataPartitionReq(req);
-    DataPartitionDataSet dataset =
-        (DataPartitionDataSet) configManager.getDataPartition(getDataPartitionPlan);
+    GetOrCreateDataPartitionReq getDataPartitionReq =
+        new GetOrCreateDataPartitionReq(ConfigRequestType.GetDataPartition);
+    getDataPartitionReq.convertFromRpcTDataPartitionReq(req);
+    DataPartitionResp dataResp =
+        (DataPartitionResp) configManager.getDataPartition(getDataPartitionReq);
 
     TDataPartitionResp resp = new TDataPartitionResp();
-    dataset.convertToRpcDataPartitionResp(resp);
+    dataResp.convertToRpcDataPartitionResp(resp);
     return resp;
   }
 
   @Override
   public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
-    GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan =
-        new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
-    getOrCreateDataPartitionPlan.convertFromRpcTDataPartitionReq(req);
-    DataPartitionDataSet dataset =
-        (DataPartitionDataSet) configManager.getOrCreateDataPartition(getOrCreateDataPartitionPlan);
+    GetOrCreateDataPartitionReq getOrCreateDataPartitionReq =
+        new GetOrCreateDataPartitionReq(ConfigRequestType.GetOrCreateDataPartition);
+    getOrCreateDataPartitionReq.convertFromRpcTDataPartitionReq(req);
+    DataPartitionResp dataResp =
+        (DataPartitionResp) configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
     TDataPartitionResp resp = new TDataPartitionResp();
-    dataset.convertToRpcDataPartitionResp(resp);
+    dataResp.convertToRpcDataPartitionResp(resp);
     return resp;
   }
 
@@ -203,12 +203,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         || req.getAuthorType() >= AuthorOperator.AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
-    AuthorPlan plan = null;
+    AuthorReq plan = null;
     try {
       plan =
-          new AuthorPlan(
-              PhysicalPlanType.values()[
-                  req.getAuthorType() + PhysicalPlanType.AUTHOR.ordinal() + 1],
+          new AuthorReq(
+              ConfigRequestType.values()[
+                  req.getAuthorType() + ConfigRequestType.AUTHOR.ordinal() + 1],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
@@ -227,12 +227,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
         || req.getAuthorType() >= AuthorOperator.AuthorType.values().length) {
       throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
-    AuthorPlan plan = null;
+    AuthorReq plan = null;
     try {
       plan =
-          new AuthorPlan(
-              PhysicalPlanType.values()[
-                  req.getAuthorType() + PhysicalPlanType.AUTHOR.ordinal() + 1],
+          new AuthorReq(
+              ConfigRequestType.values()[
+                  req.getAuthorType() + ConfigRequestType.AUTHOR.ordinal() + 1],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
@@ -242,7 +242,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
     }
-    PermissionInfoDataSet dataSet = (PermissionInfoDataSet) configManager.queryPermission(plan);
+    PermissionInfoResp dataSet = (PermissionInfoResp) configManager.queryPermission(plan);
     return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
   }
 

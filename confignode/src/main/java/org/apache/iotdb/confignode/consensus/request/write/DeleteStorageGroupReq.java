@@ -16,19 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.sys;
+package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.nio.ByteBuffer;
 
-public class DeleteStorageGroupPlan extends PhysicalPlan {
+public class DeleteStorageGroupReq extends ConfigRequest {
 
   // TODO: @YongzaoDan
 
-  public DeleteStorageGroupPlan() {
-    super(PhysicalPlanType.DeleteStorageGroup);
+  public DeleteStorageGroupReq() {
+    super(ConfigRequestType.DeleteStorageGroup);
   }
 
   @Override

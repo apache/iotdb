@@ -16,18 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical;
+package org.apache.iotdb.confignode.consensus.request;
 
-import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
-import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
-import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
-import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
-import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.QueryStorageGroupSchemaReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.slf4j.Logger;
@@ -37,17 +37,17 @@ import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 
-public abstract class PhysicalPlan implements IConsensusRequest {
+public abstract class ConfigRequest implements IConsensusRequest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PhysicalPlan.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRequest.class);
 
-  private final PhysicalPlanType type;
+  private final ConfigRequestType type;
 
-  public PhysicalPlan(PhysicalPlanType type) {
+  public ConfigRequest(ConfigRequestType type) {
     this.type = type;
   }
 
-  public PhysicalPlanType getType() {
+  public ConfigRequestType getType() {
     return this.type;
   }
 
@@ -80,46 +80,46 @@ public abstract class PhysicalPlan implements IConsensusRequest {
 
   public static class Factory {
 
-    public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
+    public static ConfigRequest create(ByteBuffer buffer) throws IOException {
       int typeNum = buffer.getInt();
-      if (typeNum >= PhysicalPlanType.values().length) {
+      if (typeNum >= ConfigRequestType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);
       }
-      PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
-      PhysicalPlan plan;
+      ConfigRequestType type = ConfigRequestType.values()[typeNum];
+      ConfigRequest plan;
       switch (type) {
         case RegisterDataNode:
-          plan = new RegisterDataNodePlan();
+          plan = new RegisterDataNodeReq();
           break;
         case QueryDataNodeInfo:
-          plan = new QueryDataNodeInfoPlan();
+          plan = new QueryDataNodeInfoReq();
           break;
         case SetStorageGroup:
-          plan = new SetStorageGroupPlan();
+          plan = new SetStorageGroupReq();
           break;
         case QueryStorageGroupSchema:
-          plan = new QueryStorageGroupSchemaPlan();
+          plan = new QueryStorageGroupSchemaReq();
           break;
         case CreateRegions:
-          plan = new CreateRegionsPlan();
+          plan = new CreateRegionsReq();
           break;
         case GetSchemaPartition:
-          plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
+          plan = new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetSchemaPartition);
           break;
         case CreateSchemaPartition:
-          plan = new CreateSchemaPartitionPlan();
+          plan = new CreateSchemaPartitionReq();
           break;
         case GetOrCreateSchemaPartition:
-          plan = new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
+          plan = new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetOrCreateSchemaPartition);
           break;
         case GetDataPartition:
-          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetDataPartition);
+          plan = new GetOrCreateDataPartitionReq(ConfigRequestType.GetDataPartition);
           break;
         case CreateDataPartition:
-          plan = new CreateDataPartitionPlan();
+          plan = new CreateDataPartitionReq();
           break;
         case GetOrCreateDataPartition:
-          plan = new GetOrCreateDataPartitionPlan(PhysicalPlanType.GetOrCreateDataPartition);
+          plan = new GetOrCreateDataPartitionReq(ConfigRequestType.GetOrCreateDataPartition);
           break;
         case LIST_USER:
         case LIST_ROLE:
@@ -138,7 +138,7 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case REVOKE_ROLE:
         case REVOKE_ROLE_FROM_USER:
         case UPDATE_USER:
-          plan = new AuthorPlan(type);
+          plan = new AuthorReq(type);
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

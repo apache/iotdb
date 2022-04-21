@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.crud;
+package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 
 import java.nio.ByteBuffer;
@@ -35,12 +35,12 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Get or create DataPartition by the specific partitionSlotsMap. */
-public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
+public class GetOrCreateDataPartitionReq extends ConfigRequest {
 
   private Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
 
-  public GetOrCreateDataPartitionPlan(PhysicalPlanType physicalPlanType) {
-    super(physicalPlanType);
+  public GetOrCreateDataPartitionReq(ConfigRequestType configRequestType) {
+    super(configRequestType);
   }
 
   public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> getPartitionSlotsMap() {
@@ -130,7 +130,7 @@ public class GetOrCreateDataPartitionPlan extends PhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetOrCreateDataPartitionPlan that = (GetOrCreateDataPartitionPlan) o;
+    GetOrCreateDataPartitionReq that = (GetOrCreateDataPartitionReq) o;
     return partitionSlotsMap.equals(that.partitionSlotsMap);
   }
 

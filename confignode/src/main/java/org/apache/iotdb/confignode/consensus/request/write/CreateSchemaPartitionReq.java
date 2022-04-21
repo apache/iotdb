@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.crud;
+package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -32,12 +32,12 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Create SchemaPartition by assignedSchemaPartition */
-public class CreateSchemaPartitionPlan extends PhysicalPlan {
+public class CreateSchemaPartitionReq extends ConfigRequest {
 
   private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition;
 
-  public CreateSchemaPartitionPlan() {
-    super(PhysicalPlanType.CreateSchemaPartition);
+  public CreateSchemaPartitionReq() {
+    super(ConfigRequestType.CreateSchemaPartition);
   }
 
   public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getAssignedSchemaPartition() {
@@ -51,7 +51,7 @@ public class CreateSchemaPartitionPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.CreateSchemaPartition.ordinal());
+    buffer.putInt(ConfigRequestType.CreateSchemaPartition.ordinal());
 
     buffer.putInt(assignedSchemaPartition.size());
     assignedSchemaPartition.forEach(
@@ -89,7 +89,7 @@ public class CreateSchemaPartitionPlan extends PhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    CreateSchemaPartitionPlan that = (CreateSchemaPartitionPlan) o;
+    CreateSchemaPartitionReq that = (CreateSchemaPartitionReq) o;
     return assignedSchemaPartition.equals(that.assignedSchemaPartition);
   }
 

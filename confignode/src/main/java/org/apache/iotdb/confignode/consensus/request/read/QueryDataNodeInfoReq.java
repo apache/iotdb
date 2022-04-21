@@ -16,24 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.sys;
+package org.apache.iotdb.confignode.consensus.request.read;
 
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
-public class QueryDataNodeInfoPlan extends PhysicalPlan {
+public class QueryDataNodeInfoReq extends ConfigRequest {
 
   private int dataNodeID;
 
-  public QueryDataNodeInfoPlan() {
-    super(PhysicalPlanType.QueryDataNodeInfo);
+  public QueryDataNodeInfoReq() {
+    super(ConfigRequestType.QueryDataNodeInfo);
   }
 
-  public QueryDataNodeInfoPlan(int dataNodeID) {
+  public QueryDataNodeInfoReq(int dataNodeID) {
     this();
     this.dataNodeID = dataNodeID;
   }
@@ -44,7 +44,7 @@ public class QueryDataNodeInfoPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.QueryDataNodeInfo.ordinal());
+    buffer.putInt(ConfigRequestType.QueryDataNodeInfo.ordinal());
     buffer.putInt(dataNodeID);
   }
 
@@ -57,7 +57,7 @@ public class QueryDataNodeInfoPlan extends PhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    QueryDataNodeInfoPlan that = (QueryDataNodeInfoPlan) o;
+    QueryDataNodeInfoReq that = (QueryDataNodeInfoReq) o;
     return dataNodeID == that.dataNodeID;
   }
 

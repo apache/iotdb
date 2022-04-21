@@ -20,9 +20,9 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
-import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -56,14 +56,14 @@ public class AuthorInfo {
     }
   }
 
-  public TSStatus authorNonQuery(AuthorPlan authorPlan) throws AuthException {
-    PhysicalPlanType authorType = authorPlan.getAuthorType();
-    String userName = authorPlan.getUserName();
-    String roleName = authorPlan.getRoleName();
-    String password = authorPlan.getPassword();
-    String newPassword = authorPlan.getNewPassword();
-    Set<Integer> permissions = authorPlan.getPermissions();
-    String nodeName = authorPlan.getNodeName();
+  public TSStatus authorNonQuery(AuthorReq authorReq) throws AuthException {
+    ConfigRequestType authorType = authorReq.getAuthorType();
+    String userName = authorReq.getUserName();
+    String roleName = authorReq.getRoleName();
+    String password = authorReq.getPassword();
+    String newPassword = authorReq.getNewPassword();
+    Set<Integer> permissions = authorReq.getPermissions();
+    String nodeName = authorReq.getNodeName();
     try {
       switch (authorType) {
         case UPDATE_USER:
@@ -108,16 +108,16 @@ public class AuthorInfo {
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         default:
-          throw new AuthException("execute " + authorPlan + " failed");
+          throw new AuthException("execute " + authorReq + " failed");
       }
     } catch (AuthException e) {
-      throw new AuthException("execute " + authorPlan + " failed: ", e);
+      throw new AuthException("execute " + authorReq + " failed: ", e);
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public PermissionInfoDataSet executeListRole() throws AuthException {
-    PermissionInfoDataSet result = new PermissionInfoDataSet();
+  public PermissionInfoResp executeListRole() throws AuthException {
+    PermissionInfoResp result = new PermissionInfoResp();
     List<String> roleList = authorizer.listAllRoles();
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
@@ -126,8 +126,8 @@ public class AuthorInfo {
     return result;
   }
 
-  public PermissionInfoDataSet executeListUser() throws AuthException {
-    PermissionInfoDataSet result = new PermissionInfoDataSet();
+  public PermissionInfoResp executeListUser() throws AuthException {
+    PermissionInfoResp result = new PermissionInfoResp();
     List<String> userList = authorizer.listAllUsers();
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
@@ -136,8 +136,8 @@ public class AuthorInfo {
     return result;
   }
 
-  public PermissionInfoDataSet executeListRoleUsers(AuthorPlan plan) throws AuthException {
-    PermissionInfoDataSet result = new PermissionInfoDataSet();
+  public PermissionInfoResp executeListRoleUsers(AuthorReq plan) throws AuthException {
+    PermissionInfoResp result = new PermissionInfoResp();
     Role role = authorizer.getRole(plan.getRoleName());
     if (role == null) {
       throw new AuthException("No such role : " + plan.getRoleName());
@@ -157,8 +157,8 @@ public class AuthorInfo {
     return result;
   }
 
-  public PermissionInfoDataSet executeListUserRoles(AuthorPlan plan) throws AuthException {
-    PermissionInfoDataSet result = new PermissionInfoDataSet();
+  public PermissionInfoResp executeListUserRoles(AuthorReq plan) throws AuthException {
+    PermissionInfoResp result = new PermissionInfoResp();
     User user = authorizer.getUser(plan.getUserName());
     if (user == null) {
       throw new AuthException("No such user : " + plan.getUserName());
@@ -174,8 +174,8 @@ public class AuthorInfo {
     return result;
   }
 
-  public PermissionInfoDataSet executeListRolePrivileges(AuthorPlan plan) throws AuthException {
-    PermissionInfoDataSet result = new PermissionInfoDataSet();
+  public PermissionInfoResp executeListRolePrivileges(AuthorReq plan) throws AuthException {
+    PermissionInfoResp result = new PermissionInfoResp();
     Role role = authorizer.getRole(plan.getRoleName());
     if (role == null) {
       throw new AuthException("No such role : " + plan.getRoleName());
@@ -194,8 +194,8 @@ public class AuthorInfo {
     return result;
   }
 
-  public PermissionInfoDataSet executeListUserPrivileges(AuthorPlan plan) throws AuthException {
-    PermissionInfoDataSet result = new PermissionInfoDataSet();
+  public PermissionInfoResp executeListUserPrivileges(AuthorReq plan) throws AuthException {
+    PermissionInfoResp result = new PermissionInfoResp();
     User user = authorizer.getUser(plan.getUserName());
     if (user == null) {
       throw new AuthException("No such user : " + plan.getUserName());

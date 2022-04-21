@@ -20,19 +20,19 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class SchemaPartitionDataSet implements DataSet {
+public class DataPartitionResp implements DataSet {
 
   private TSStatus status;
 
-  private SchemaPartition schemaPartition;
+  private DataPartition dataPartition;
 
-  public SchemaPartitionDataSet() {
-    // empty constructor
+  public DataPartitionResp() {
+    // Empty constructor
   }
 
   public TSStatus getStatus() {
@@ -43,15 +43,20 @@ public class SchemaPartitionDataSet implements DataSet {
     this.status = status;
   }
 
-  public void setSchemaPartition(SchemaPartition schemaPartition) {
-    this.schemaPartition = schemaPartition;
+  public void setDataPartition(DataPartition dataPartition) {
+    this.dataPartition = dataPartition;
   }
 
-  public void convertToRpcSchemaPartitionResp(TSchemaPartitionResp resp) {
+  /**
+   * Convert DataPartitionDataSet to TDataPartitionResp
+   *
+   * @param resp TDataPartitionResp
+   */
+  public void convertToRpcDataPartitionResp(TDataPartitionResp resp) {
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setSchemaRegionMap(schemaPartition.getSchemaPartitionMap());
+      resp.setDataPartitionMap(dataPartition.getDataPartitionMap());
     }
   }
 }

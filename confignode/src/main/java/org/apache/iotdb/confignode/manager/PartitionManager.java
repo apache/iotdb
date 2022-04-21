@@ -25,14 +25,14 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
-import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 
@@ -72,11 +72,11 @@ public class PartitionManager {
    * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(GetOrCreateSchemaPartitionPlan physicalPlan) {
-    SchemaPartitionDataSet schemaPartitionDataSet;
+  public DataSet getSchemaPartition(GetOrCreateSchemaPartitionReq physicalPlan) {
+    SchemaPartitionResp schemaPartitionResp;
     ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
-    schemaPartitionDataSet = (SchemaPartitionDataSet) consensusReadResponse.getDataset();
-    return schemaPartitionDataSet;
+    schemaPartitionResp = (SchemaPartitionResp) consensusReadResponse.getDataset();
+    return schemaPartitionResp;
   }
 
   /**
@@ -85,7 +85,7 @@ public class PartitionManager {
    * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet
    */
-  public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan physicalPlan) {
+  public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionReq physicalPlan) {
     Map<String, List<TSeriesPartitionSlot>> noAssignedSchemaPartitionSlots =
         partitionInfo.filterNoAssignedSchemaPartitionSlots(physicalPlan.getPartitionSlotsMap());
 
@@ -95,7 +95,7 @@ public class PartitionManager {
           allocateSchemaPartition(noAssignedSchemaPartitionSlots);
 
       // Persist SchemaPartition
-      CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
+      CreateSchemaPartitionReq createPlan = new CreateSchemaPartitionReq();
       createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
       getConsensusManager().write(createPlan);
     }
@@ -141,11 +141,11 @@ public class PartitionManager {
    *     List<TimePartitionSlot>>>
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
-  public DataSet getDataPartition(GetOrCreateDataPartitionPlan physicalPlan) {
-    DataPartitionDataSet dataPartitionDataSet;
+  public DataSet getDataPartition(GetOrCreateDataPartitionReq physicalPlan) {
+    DataPartitionResp dataPartitionResp;
     ConsensusReadResponse consensusReadResponse = getConsensusManager().read(physicalPlan);
-    dataPartitionDataSet = (DataPartitionDataSet) consensusReadResponse.getDataset();
-    return dataPartitionDataSet;
+    dataPartitionResp = (DataPartitionResp) consensusReadResponse.getDataset();
+    return dataPartitionResp;
   }
 
   /**
@@ -155,7 +155,7 @@ public class PartitionManager {
    *     List<TimePartitionSlot>>>
    * @return DataPartitionDataSet
    */
-  public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionPlan physicalPlan) {
+  public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq physicalPlan) {
     Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> noAssignedDataPartitionSlots =
         partitionInfo.filterNoAssignedDataPartitionSlots(physicalPlan.getPartitionSlotsMap());
 
@@ -165,7 +165,7 @@ public class PartitionManager {
           assignedDataPartition = allocateDataPartition(noAssignedDataPartitionSlots);
 
       // Persist DataPartition
-      CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
+      CreateDataPartitionReq createPlan = new CreateDataPartitionReq();
       createPlan.setAssignedDataPartition(assignedDataPartition);
       getConsensusManager().write(createPlan);
     }

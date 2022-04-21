@@ -16,25 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.sys;
+package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class RegisterDataNodePlan extends PhysicalPlan {
+public class RegisterDataNodeReq extends ConfigRequest {
 
   private TDataNodeLocation location;
 
-  public RegisterDataNodePlan() {
-    super(PhysicalPlanType.RegisterDataNode);
+  public RegisterDataNodeReq() {
+    super(ConfigRequestType.RegisterDataNode);
   }
 
-  public RegisterDataNodePlan(TDataNodeLocation location) {
+  public RegisterDataNodeReq(TDataNodeLocation location) {
     this();
     this.location = location;
   }
@@ -45,7 +45,7 @@ public class RegisterDataNodePlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.RegisterDataNode.ordinal());
+    buffer.putInt(ConfigRequestType.RegisterDataNode.ordinal());
     ThriftCommonsSerDeUtils.writeTDataNodeLocation(location, buffer);
   }
 
@@ -58,7 +58,7 @@ public class RegisterDataNodePlan extends PhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    RegisterDataNodePlan plan = (RegisterDataNodePlan) o;
+    RegisterDataNodeReq plan = (RegisterDataNodeReq) o;
     return location.equals(plan.location);
   }
 

@@ -20,19 +20,30 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.rpc.TSStatusCode;
 
-public class DataPartitionDataSet implements DataSet {
+import java.util.List;
+import java.util.Map;
+
+public class PermissionInfoResp implements DataSet {
 
   private TSStatus status;
 
-  private DataPartition dataPartition;
+  private Map<String, List<String>> permissionInfo;
 
-  public DataPartitionDataSet() {
-    // Empty constructor
+  public PermissionInfoResp() {}
+
+  public PermissionInfoResp(TSStatus status, Map<String, List<String>> permissionInfo) {
+    this.status = status;
+    this.permissionInfo = permissionInfo;
+  }
+
+  public Map<String, List<String>> getPermissionInfo() {
+    return permissionInfo;
+  }
+
+  public void setPermissionInfo(Map<String, List<String>> permissionInfo) {
+    this.permissionInfo = permissionInfo;
   }
 
   public TSStatus getStatus() {
@@ -41,22 +52,5 @@ public class DataPartitionDataSet implements DataSet {
 
   public void setStatus(TSStatus status) {
     this.status = status;
-  }
-
-  public void setDataPartition(DataPartition dataPartition) {
-    this.dataPartition = dataPartition;
-  }
-
-  /**
-   * Convert DataPartitionDataSet to TDataPartitionResp
-   *
-   * @param resp TDataPartitionResp
-   */
-  public void convertToRpcDataPartitionResp(TDataPartitionResp resp) {
-    resp.setStatus(status);
-
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setDataPartitionMap(dataPartition.getDataPartitionMap());
-    }
   }
 }

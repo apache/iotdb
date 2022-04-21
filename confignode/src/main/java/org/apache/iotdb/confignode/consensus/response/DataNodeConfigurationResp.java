@@ -18,39 +18,45 @@
  */
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.Map;
-
-public class DataNodeLocationsDataSet implements DataSet {
+public class DataNodeConfigurationResp implements DataSet {
 
   private TSStatus status;
-  private Map<Integer, TDataNodeLocation> dataNodeLocationMap;
+  private Integer dataNodeId;
+  private TGlobalConfig globalConfig;
 
-  public DataNodeLocationsDataSet() {
-    // empty constructor
-  }
-
-  public void setStatus(TSStatus status) {
-    this.status = status;
+  public DataNodeConfigurationResp() {
+    this.dataNodeId = null;
+    this.globalConfig = null;
   }
 
   public TSStatus getStatus() {
     return status;
   }
 
-  public void setDataNodeLocations(Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
-    this.dataNodeLocationMap = dataNodeLocationMap;
+  public void setStatus(TSStatus status) {
+    this.status = status;
   }
 
-  public void convertToRpcDataNodeLocationResp(TDataNodeLocationResp resp) {
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId = dataNodeId;
+  }
+
+  public void setGlobalConfig(TGlobalConfig globalConfig) {
+    this.globalConfig = globalConfig;
+  }
+
+  public void convertToRpcDataNodeRegisterResp(TDataNodeRegisterResp resp) {
     resp.setStatus(status);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setDataNodeLocationMap(dataNodeLocationMap);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+      resp.setDataNodeId(dataNodeId);
+      resp.setGlobalConfig(globalConfig);
     }
   }
 }

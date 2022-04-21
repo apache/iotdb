@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical.crud;
+package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -35,13 +35,13 @@ import java.util.Map;
 import java.util.Objects;
 
 /** Create DataPartition by assignedDataPartition */
-public class CreateDataPartitionPlan extends PhysicalPlan {
+public class CreateDataPartitionReq extends ConfigRequest {
 
   private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       assignedDataPartition;
 
-  public CreateDataPartitionPlan() {
-    super(PhysicalPlanType.CreateDataPartition);
+  public CreateDataPartitionReq() {
+    super(ConfigRequestType.CreateDataPartition);
   }
 
   public Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -57,7 +57,7 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(PhysicalPlanType.CreateDataPartition.ordinal());
+    buffer.putInt(ConfigRequestType.CreateDataPartition.ordinal());
 
     buffer.putInt(assignedDataPartition.size());
     for (Map.Entry<
@@ -118,7 +118,7 @@ public class CreateDataPartitionPlan extends PhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    CreateDataPartitionPlan that = (CreateDataPartitionPlan) o;
+    CreateDataPartitionReq that = (CreateDataPartitionReq) o;
     return assignedDataPartition.equals(that.assignedDataPartition);
   }
 

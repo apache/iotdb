@@ -16,37 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.physical;
+package org.apache.iotdb.confignode.consensus.request.read;
 
-public enum PhysicalPlanType {
-  RegisterDataNode,
-  QueryDataNodeInfo,
-  SetStorageGroup,
-  DeleteStorageGroup,
-  QueryStorageGroupSchema,
-  CreateRegions,
-  GetSchemaPartition,
-  CreateSchemaPartition,
-  GetOrCreateSchemaPartition,
-  GetDataPartition,
-  CreateDataPartition,
-  GetOrCreateDataPartition,
-  AUTHOR,
-  CREATE_USER,
-  CREATE_ROLE,
-  DROP_USER,
-  DROP_ROLE,
-  GRANT_ROLE,
-  GRANT_USER,
-  GRANT_ROLE_TO_USER,
-  REVOKE_USER,
-  REVOKE_ROLE,
-  REVOKE_ROLE_FROM_USER,
-  UPDATE_USER,
-  LIST_USER,
-  LIST_ROLE,
-  LIST_USER_PRIVILEGE,
-  LIST_ROLE_PRIVILEGE,
-  LIST_USER_ROLES,
-  LIST_ROLE_USERS
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+
+import java.nio.ByteBuffer;
+
+public class QueryStorageGroupSchemaReq extends ConfigRequest {
+
+  public QueryStorageGroupSchemaReq() {
+    super(ConfigRequestType.QueryStorageGroupSchema);
+  }
+
+  @Override
+  protected void serializeImpl(ByteBuffer buffer) {
+    // empty body
+  }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) {
+    // empty body
+  }
 }
