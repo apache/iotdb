@@ -35,13 +35,13 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
   private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
-  private ConfigNodeRPCService() {
-    // empty constructor
+  public ConfigNodeRPCService() {
+    // Empty constructor
   }
 
   @Override
   public ThriftService getImplementation() {
-    return ConfigNodeRPCService.getInstance();
+    return this;
   }
 
   @Override
@@ -94,18 +94,5 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
   @Override
   public int getBindPort() {
     return conf.getRpcPort();
-  }
-
-  public static ConfigNodeRPCService getInstance() {
-    return ConfigNodeRPCServerHolder.INSTANCE;
-  }
-
-  private static class ConfigNodeRPCServerHolder {
-
-    private static final ConfigNodeRPCService INSTANCE = new ConfigNodeRPCService();
-
-    private ConfigNodeRPCServerHolder() {
-      // empty constructor
-    }
   }
 }

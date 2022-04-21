@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.DataNodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
@@ -76,7 +77,7 @@ public class ConfigNodeRPCServiceProcessorTest {
 
   @Before
   public void before() throws IOException, InterruptedException {
-    processor = new ConfigNodeRPCServiceProcessor();
+    processor = new ConfigNodeRPCServiceProcessor(new ConfigManager());
     // Sleep 1s to make sure the Consensus group has done leader election
     TimeUnit.SECONDS.sleep(1);
   }

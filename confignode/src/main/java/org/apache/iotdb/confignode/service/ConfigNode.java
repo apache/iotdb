@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 
@@ -42,8 +43,22 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private final RegisterManager registerManager = new RegisterManager();
 
+  private final ConfigNodeRPCService configNodeRPCService;
+  private final JMXService jmxService;
+
+  private ConfigManager configManager;
+
   private ConfigNode() {
-    // empty constructor
+    this.configNodeRPCService = new ConfigNodeRPCService();
+    this.jmxService = new JMXService();
+
+    try {
+      this.configManager = new ConfigManager();
+    } catch (IOException e) {
+      LOGGER.error("Can't start ConfigNode consensus group!", e);
+      stop();
+      System.exit(0);
+    }
   }
 
   public static void main(String[] args) {
@@ -53,11 +68,11 @@ public class ConfigNode implements ConfigNodeMBean {
   /** Register services */
   private void setUp() throws StartupException, IOException {
     LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
-    registerManager.register(JMXService.getInstance());
+    registerManager.register(jmxService);
     JMXService.registerMBean(getInstance(), mbeanName);
 
-    ConfigNodeRPCService.getInstance().initSyncedServiceImpl(new ConfigNodeRPCServiceProcessor());
-    registerManager.register(ConfigNodeRPCService.getInstance());
+    configNodeRPCService.initSyncedServiceImpl(new ConfigNodeRPCServiceProcessor(configManager));
+    registerManager.register(configNodeRPCService);
     LOGGER.info("Init rpc server success");
   }
 

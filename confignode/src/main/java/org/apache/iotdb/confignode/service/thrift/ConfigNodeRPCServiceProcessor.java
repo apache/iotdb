@@ -68,8 +68,8 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   private final ConfigManager configManager;
 
-  public ConfigNodeRPCServiceProcessor() throws IOException {
-    this.configManager = new ConfigManager();
+  public ConfigNodeRPCServiceProcessor(ConfigManager configManager) throws IOException {
+    this.configManager = configManager;
   }
 
   public void close() throws IOException {
