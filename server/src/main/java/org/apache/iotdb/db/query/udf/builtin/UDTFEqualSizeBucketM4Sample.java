@@ -30,7 +30,6 @@ import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotVali
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
 
@@ -45,9 +44,6 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
   @Override
   public void transform(RowWindow rowWindow, PointCollector collector)
       throws UDFException, IOException {
-    if (rowWindow.windowSize() < 3) {
-      throw new UDFException("The bucket size is too small for M4 sampling.");
-    }
     switch (dataType) {
       case INT32:
         transformInt(rowWindow, collector);
@@ -69,6 +65,14 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
   }
 
   public void transformInt(RowWindow rowWindow, PointCollector collector) throws IOException {
+    if (rowWindow.windowSize() < 4) {
+      for (int i = 0; i < rowWindow.windowSize(); i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putInt(row.getTime(), row.getInt(0));
+      }
+      return;
+    }
+
     int minIndex = 1, maxIndex = 1;
     int maxValue = rowWindow.getRow(1).getInt(0);
     int minValue = rowWindow.getRow(1).getInt(0);
@@ -83,16 +87,35 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
         maxIndex = i;
       }
     }
-    int[] arr = new int[] {0, minIndex, maxIndex, rowWindow.windowSize() - 1};
-    Arrays.sort(arr);
-    Row row;
-    for (int i = 0; i < 4; i++) {
-      row = rowWindow.getRow(arr[i]);
-      collector.putInt(row.getTime(), row.getInt(0));
+    if (minIndex == maxIndex) {
+      maxIndex = rowWindow.windowSize() - 2;
     }
+
+    Row row = rowWindow.getRow(0);
+    collector.putInt(row.getTime(), row.getInt(0));
+    if (maxIndex < minIndex) {
+      row = rowWindow.getRow(maxIndex);
+      collector.putInt(row.getTime(), row.getInt(0));
+      row = rowWindow.getRow(minIndex);
+    } else {
+      row = rowWindow.getRow(minIndex);
+      collector.putInt(row.getTime(), row.getInt(0));
+      row = rowWindow.getRow(maxIndex);
+    }
+    collector.putInt(row.getTime(), row.getInt(0));
+    row = rowWindow.getRow(rowWindow.windowSize() - 1);
+    collector.putInt(row.getTime(), row.getInt(0));
   }
 
   public void transformLong(RowWindow rowWindow, PointCollector collector) throws IOException {
+    if (rowWindow.windowSize() < 4) {
+      for (int i = 0; i < rowWindow.windowSize(); i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putLong(row.getTime(), row.getLong(0));
+      }
+      return;
+    }
+
     int minIndex = 1, maxIndex = 1;
     long maxValue = rowWindow.getRow(1).getLong(0);
     long minValue = rowWindow.getRow(1).getLong(0);
@@ -107,16 +130,35 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
         maxIndex = i;
       }
     }
-    int[] arr = new int[] {0, minIndex, maxIndex, rowWindow.windowSize() - 1};
-    Arrays.sort(arr);
-    Row row;
-    for (int i = 0; i < 4; i++) {
-      row = rowWindow.getRow(arr[i]);
-      collector.putLong(row.getTime(), row.getLong(0));
+    if (minIndex == maxIndex) {
+      maxIndex = rowWindow.windowSize() - 2;
     }
+
+    Row row = rowWindow.getRow(0);
+    collector.putLong(row.getTime(), row.getLong(0));
+    if (maxIndex < minIndex) {
+      row = rowWindow.getRow(maxIndex);
+      collector.putLong(row.getTime(), row.getLong(0));
+      row = rowWindow.getRow(minIndex);
+    } else {
+      row = rowWindow.getRow(minIndex);
+      collector.putLong(row.getTime(), row.getLong(0));
+      row = rowWindow.getRow(maxIndex);
+    }
+    collector.putLong(row.getTime(), row.getLong(0));
+    row = rowWindow.getRow(rowWindow.windowSize() - 1);
+    collector.putLong(row.getTime(), row.getLong(0));
   }
 
   public void transformFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
+    if (rowWindow.windowSize() < 4) {
+      for (int i = 0; i < rowWindow.windowSize(); i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putFloat(row.getTime(), row.getFloat(0));
+      }
+      return;
+    }
+
     int minIndex = 1, maxIndex = 1;
     float maxValue = rowWindow.getRow(1).getFloat(0);
     float minValue = rowWindow.getRow(1).getFloat(0);
@@ -131,16 +173,35 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
         maxIndex = i;
       }
     }
-    int[] arr = new int[] {0, minIndex, maxIndex, rowWindow.windowSize() - 1};
-    Arrays.sort(arr);
-    Row row;
-    for (int i = 0; i < 4; i++) {
-      row = rowWindow.getRow(arr[i]);
-      collector.putFloat(row.getTime(), row.getFloat(0));
+    if (minIndex == maxIndex) {
+      maxIndex = rowWindow.windowSize() - 2;
     }
+
+    Row row = rowWindow.getRow(0);
+    collector.putFloat(row.getTime(), row.getFloat(0));
+    if (maxIndex < minIndex) {
+      row = rowWindow.getRow(maxIndex);
+      collector.putFloat(row.getTime(), row.getFloat(0));
+      row = rowWindow.getRow(minIndex);
+    } else {
+      row = rowWindow.getRow(minIndex);
+      collector.putFloat(row.getTime(), row.getFloat(0));
+      row = rowWindow.getRow(maxIndex);
+    }
+    collector.putFloat(row.getTime(), row.getFloat(0));
+    row = rowWindow.getRow(rowWindow.windowSize() - 1);
+    collector.putFloat(row.getTime(), row.getFloat(0));
   }
 
   public void transformDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+    if (rowWindow.windowSize() < 4) {
+      for (int i = 0; i < rowWindow.windowSize(); i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putDouble(row.getTime(), row.getDouble(0));
+      }
+      return;
+    }
+
     int minIndex = 1, maxIndex = 1;
     double maxValue = rowWindow.getRow(1).getDouble(0);
     double minValue = rowWindow.getRow(1).getDouble(0);
@@ -155,12 +216,23 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
         maxIndex = i;
       }
     }
-    int[] arr = new int[] {0, minIndex, maxIndex, rowWindow.windowSize() - 1};
-    Arrays.sort(arr);
-    Row row;
-    for (int i = 0; i < 4; i++) {
-      row = rowWindow.getRow(arr[i]);
-      collector.putDouble(row.getTime(), row.getDouble(0));
+    if (minIndex == maxIndex) {
+      maxIndex = rowWindow.windowSize() - 2;
     }
+
+    Row row = rowWindow.getRow(0);
+    collector.putDouble(row.getTime(), row.getDouble(0));
+    if (maxIndex < minIndex) {
+      row = rowWindow.getRow(maxIndex);
+      collector.putDouble(row.getTime(), row.getDouble(0));
+      row = rowWindow.getRow(minIndex);
+    } else {
+      row = rowWindow.getRow(minIndex);
+      collector.putDouble(row.getTime(), row.getDouble(0));
+      row = rowWindow.getRow(maxIndex);
+    }
+    collector.putDouble(row.getTime(), row.getDouble(0));
+    row = rowWindow.getRow(rowWindow.windowSize() - 1);
+    collector.putDouble(row.getTime(), row.getDouble(0));
   }
 }
