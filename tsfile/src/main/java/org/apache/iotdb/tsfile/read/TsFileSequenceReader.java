@@ -1481,11 +1481,12 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
       truncatedSize = this.position() - 1;
     } catch (Exception e) {
-      logger.info(
+      logger.error(
           "TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",
           file,
           this.position(),
           e.getMessage());
+      throw new IOException();
     }
     // Despite the completeness of the data section, we will discard current FileMetadata
     // so that we can continue to write data into this tsfile.
