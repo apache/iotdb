@@ -58,6 +58,8 @@ public class TimeJoinOperator implements ProcessOperator {
    */
   private final List<TSDataType> dataTypes;
 
+  private List<ColumnMerger> mergers;
+
   private boolean finished;
 
   public TimeJoinOperator(
@@ -136,6 +138,11 @@ public class TimeJoinOperator implements ProcessOperator {
     }
 
     tsBlockBuilder.buildValueColumnBuilders(dataTypes);
+
+    for (int i = 0; i < columnCount; i++) {
+      ColumnMerger merger = mergers.get(i);
+
+    }
 
     for (int i = 0, column = 0; i < inputCount; i++) {
       TsBlock block = inputTsBlocks[i];
