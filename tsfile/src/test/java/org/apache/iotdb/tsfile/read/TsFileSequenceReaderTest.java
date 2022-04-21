@@ -168,6 +168,8 @@ public class TsFileSequenceReaderTest {
 
     // read tsfile with selfCheck method
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    reader.selfCheck(new HashMap<>(), new ArrayList<>(), false);
+    Assert.assertEquals(
+        TsFileCheckStatus.COMPLETE_FILE,
+        reader.selfCheck(new HashMap<>(), new ArrayList<>(), false));
   }
 }
