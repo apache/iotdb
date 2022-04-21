@@ -52,7 +52,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstance;
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.*;
 
 public class TimeJoinOperatorTest {
@@ -90,7 +90,7 @@ public class TimeJoinOperatorTest {
       FragmentInstanceStateMachine stateMachine =
           new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstance(instanceId, stateMachine);
+          createFragmentInstanceContext(instanceId, stateMachine);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, SeriesScanOperator.class.getSimpleName());

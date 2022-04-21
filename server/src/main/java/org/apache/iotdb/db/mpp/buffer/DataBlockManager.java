@@ -62,7 +62,7 @@ public class DataBlockManager implements IDataBlockManager {
 
     void onAborted(SinkHandle sinkHandle);
 
-    void onFailed(Throwable t);
+    void onFailure(Throwable t);
   }
 
   /** Handle thrift communications. */
@@ -229,7 +229,7 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onFailed(Throwable t) {
+    public void onFailure(Throwable t) {
       context.failed(t);
     }
   }

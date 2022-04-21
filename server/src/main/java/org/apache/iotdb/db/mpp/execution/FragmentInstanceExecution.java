@@ -52,7 +52,7 @@ public class FragmentInstanceExecution {
       CounterStat failedInstances) {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(scheduler, instanceId, context, driver, stateMachine);
-    execution.initialize(failedInstances, scheduler, instanceId, driver);
+    execution.initialize(failedInstances);
     return execution;
   }
 
@@ -101,11 +101,7 @@ public class FragmentInstanceExecution {
   }
 
   // this is a separate method to ensure that the `this` reference is not leaked during construction
-  private void initialize(
-      CounterStat failedInstances,
-      IFragmentInstanceScheduler scheduler,
-      FragmentInstanceId instanceId,
-      Driver driver) {
+  private void initialize(CounterStat failedInstances) {
     requireNonNull(failedInstances, "failedInstances is null");
     stateMachine.addStateChangeListener(
         newState -> {

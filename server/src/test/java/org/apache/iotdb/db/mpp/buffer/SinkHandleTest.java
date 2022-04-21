@@ -346,11 +346,12 @@ public class SinkHandleTest {
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
     // Construct a mock client.
     Client mockClient = Mockito.mock(Client.class);
+    TException exception = new TException("Mock exception");
     try {
-      Mockito.doThrow(new TException("Mock exception"))
+      Mockito.doThrow(exception)
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
-      Mockito.doThrow(new TException("Mock exception"))
+      Mockito.doThrow(exception)
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
     } catch (TException e) {
@@ -402,6 +403,8 @@ public class SinkHandleTest {
       e.printStackTrace();
       Assert.fail();
     }
+
+    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFailure(exception);
 
     // Close the SinkHandle.
     try {

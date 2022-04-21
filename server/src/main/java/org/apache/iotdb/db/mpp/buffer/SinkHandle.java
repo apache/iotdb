@@ -360,7 +360,7 @@ public class SinkHandle implements ISinkHandle {
               attempt,
               e);
           if (attempt == MAX_ATTEMPT_TIMES) {
-            sinkHandleListener.onFailed(e);
+            sinkHandleListener.onFailure(e);
           }
         }
       }
