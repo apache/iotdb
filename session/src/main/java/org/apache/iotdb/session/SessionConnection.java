@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
@@ -81,14 +81,14 @@ public class SessionConnection {
   private long sessionId;
   private long statementId;
   private ZoneId zoneId;
-  private EndPoint endPoint;
-  private List<EndPoint> endPointList = new ArrayList<>();
+  private TEndPoint endPoint;
+  private List<TEndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
 
   // TestOnly
   public SessionConnection() {}
 
-  public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
+  public SessionConnection(Session session, TEndPoint endPoint, ZoneId zoneId)
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
@@ -104,7 +104,7 @@ public class SessionConnection {
     initClusterConn();
   }
 
-  private void init(EndPoint endPoint) throws IoTDBConnectionException {
+  private void init(TEndPoint endPoint) throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
@@ -160,7 +160,7 @@ public class SessionConnection {
   }
 
   private void initClusterConn() throws IoTDBConnectionException {
-    for (EndPoint endPoint : endPointList) {
+    for (TEndPoint endPoint : endPointList) {
       try {
         session.defaultEndPoint = endPoint;
         init(endPoint);
@@ -950,11 +950,11 @@ public class SessionConnection {
     this.enableRedirect = enableRedirect;
   }
 
-  public EndPoint getEndPoint() {
+  public TEndPoint getEndPoint() {
     return endPoint;
   }
 
-  public void setEndPoint(EndPoint endPoint) {
+  public void setEndPoint(TEndPoint endPoint) {
     this.endPoint = endPoint;
   }
 

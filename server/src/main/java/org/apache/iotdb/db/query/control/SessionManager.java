@@ -46,6 +46,7 @@ import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
@@ -215,6 +216,10 @@ public class SessionManager {
   }
 
   public boolean releaseSessionResource(long sessionId) {
+    return releaseSessionResource(sessionId, this::releaseQueryResourceNoExceptions);
+  }
+
+  public boolean releaseSessionResource(long sessionId, Consumer<Long> releaseQueryResource) {
     sessionIdToZoneId.remove(sessionId);
     sessionIdToClientVersion.remove(sessionId);
 
@@ -224,7 +229,7 @@ public class SessionManager {
         Set<Long> queryIdSet = statementIdToQueryId.remove(statementId);
         if (queryIdSet != null) {
           for (Long queryId : queryIdSet) {
-            releaseQueryResourceNoExceptions(queryId);
+            releaseQueryResource.accept(queryId);
           }
         }
       }

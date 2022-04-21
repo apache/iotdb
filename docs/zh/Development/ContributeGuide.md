@@ -103,6 +103,23 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) 和 [google
 5. 安装 [Save Actions 插件](https://plugins.jetbrains.com/plugin/7642-save-actions) , 并开启插件，打开 "Optimize imports" and "Reformat file" 选项。
 6. 在“Save Actions”设置页面中，将 "File Path Inclusion" 设置为 .*\.java”, 避免在编辑的其他文件时候发生意外的重新格式化
 
+## 编码风格
+我们使用 [maven-checkstyle-plugin](https://checkstyle.sourceforge.io/config_filefilters.html) 来保证所有的 Java 代码风格都遵循在项目根目录下的 [checkstyle.xml](https://github.com/apache/iotdb/blob/master/checkstyle.xml) 文件中定义的规则集.
+
+您可以从该文件中查阅到所有的代码风格要求。当开发完成后，您可以使用 `mvn validate` 命令来检查您的代码是否符合代码风格的要求。
+
+另外, 当您在集成开发环境开发时，可能会因为环境的默认代码风格配置导致和本项目的风格规则冲突。
+
+在 IDEA 中，您可以通过如下步骤解决风格规则不一致的问题。
+
+### 禁用通配符引用
+
+1. 跳转至 Java 代码风格配置页面 (Preferences... -> 编辑器 -> 代码风格 -> Java)。
+2. 切换到“导入”标签。
+3. 在“常规”部分，启用“使用单个类导入”选项。
+4. 将“将 import 与‘*’搭配使用的类计数”改成 999 或者一个比较大的值。
+5. 将“将静态 import 与‘*’搭配使用的名称计数”改成 999 或者一个比较大的值。
+
 ## 贡献代码
 
 可以到 jira 上领取现有 issue 或者自己创建 issue 再领取，评论说我要做这个 issue 就可以。

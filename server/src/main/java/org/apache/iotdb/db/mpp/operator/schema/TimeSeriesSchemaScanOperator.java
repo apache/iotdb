@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -55,6 +54,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaScanOperator {
   };
 
   public TimeSeriesSchemaScanOperator(
+      PlanNodeId planNodeId,
       OperatorContext operatorContext,
       int limit,
       int offset,
@@ -63,9 +63,8 @@ public class TimeSeriesSchemaScanOperator extends SchemaScanOperator {
       String value,
       boolean isContains,
       boolean orderByHeat,
-      boolean isPrefixPath,
-      List<String> columns) {
-    super(operatorContext, limit, offset, partialPath, isPrefixPath, columns);
+      boolean isPrefixPath) {
+    super(planNodeId, operatorContext, limit, offset, partialPath, isPrefixPath);
     this.isContains = isContains;
     this.key = key;
     this.value = value;
@@ -133,10 +132,5 @@ public class TimeSeriesSchemaScanOperator extends SchemaScanOperator {
     return map.entrySet().stream()
         .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
         .collect(Collectors.joining(","));
-  }
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return null;
   }
 }

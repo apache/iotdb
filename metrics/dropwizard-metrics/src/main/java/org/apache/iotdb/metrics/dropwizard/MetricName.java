@@ -21,7 +21,11 @@ package org.apache.iotdb.metrics.dropwizard;
 
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /** the unique identifier of a metric, include a name and some tags. */

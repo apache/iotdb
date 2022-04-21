@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
@@ -65,7 +65,7 @@ public class ConsensusManager {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
                 conf.getConfigNodeConsensusProtocolClass(),
-                new Endpoint(conf.getRpcAddress(), conf.getInternalPort()),
+                new TEndPoint(conf.getRpcAddress(), conf.getInternalPort()),
                 new File(conf.getConsensusDir()),
                 gid -> new PartitionRegionStateMachine())
             .orElseThrow(
@@ -81,7 +81,7 @@ public class ConsensusManager {
         "Set ConfigNode consensus group {}...",
         Arrays.toString(conf.getConfigNodeGroupAddressList()));
     List<Peer> peerList = new ArrayList<>();
-    for (Endpoint endpoint : conf.getConfigNodeGroupAddressList()) {
+    for (TEndPoint endpoint : conf.getConfigNodeGroupAddressList()) {
       peerList.add(new Peer(consensusGroupId, endpoint));
     }
     consensusImpl.addConsensusGroup(consensusGroupId, peerList);

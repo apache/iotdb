@@ -38,8 +38,8 @@ public interface ISinkHandle extends AutoCloseable {
 
   /**
    * Send a list of tsblocks to an unpartitioned output buffer. If no-more-tsblocks has been set,
-   * the send tsblock call is ignored. This can happen with limit queries. A {@link
-   * RuntimeException} will be thrown if any exception happened * during the data transmission.
+   * the invocation will be ignored. This can happen with limit queries. A {@link RuntimeException}
+   * will be thrown if any exception happened during the data transmission.
    */
   void send(List<TsBlock> tsBlocks) throws IOException;
 
@@ -57,13 +57,13 @@ public interface ISinkHandle extends AutoCloseable {
   void setNoMoreTsBlocks();
 
   /** If the handle is closed. */
-  public boolean isClosed();
+  boolean isClosed();
 
   /**
    * If no more tsblocks will be sent and all the tsblocks have been fetched by downstream fragment
    * instances.
    */
-  public boolean isFinished();
+  boolean isFinished();
 
   /**
    * Close the handle. The output buffer will not be cleared until all tsblocks are fetched by
@@ -73,6 +73,9 @@ public interface ISinkHandle extends AutoCloseable {
   @Override
   void close() throws IOException;
 
-  /** Abort the sink handle, discarding all tsblocks which may still be in memory buffer. */
+  /**
+   * Abort the sink handle. Discard all tsblocks which may still be in the memory buffer and cancel
+   * the future returned by {@link #isFull()}.
+   */
   void abort();
 }

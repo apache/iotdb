@@ -19,19 +19,11 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class DataPartitionDataSet implements DataSet {
 
@@ -61,53 +53,10 @@ public class DataPartitionDataSet implements DataSet {
    * @param resp TDataPartitionResp
    */
   public void convertToRpcDataPartitionResp(TDataPartitionResp resp) {
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        dataPartitionMap = new HashMap<>();
     resp.setStatus(status);
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataPartition
-          .getDataPartitionMap()
-          .forEach(
-              ((storageGroup, seriesPartitionSlotTimePartitionSlotRegionReplicaSetListMap) -> {
-                // Extract StorageGroupName
-                dataPartitionMap.putIfAbsent(storageGroup, new HashMap<>());
-
-                seriesPartitionSlotTimePartitionSlotRegionReplicaSetListMap.forEach(
-                    ((seriesPartitionSlot, timePartitionSlotReplicaSetListMap) -> {
-                      // Extract TSeriesPartitionSlot
-                      TSeriesPartitionSlot tSeriesPartitionSlot =
-                          new TSeriesPartitionSlot(seriesPartitionSlot.getSlotId());
-                      dataPartitionMap
-                          .get(storageGroup)
-                          .putIfAbsent(tSeriesPartitionSlot, new HashMap<>());
-
-                      timePartitionSlotReplicaSetListMap.forEach(
-                          ((timePartitionSlot, regionReplicaSets) -> {
-                            // Extract TTimePartitionSlot
-                            TTimePartitionSlot tTimePartitionSlot =
-                                new TTimePartitionSlot(timePartitionSlot.getStartTime());
-                            dataPartitionMap
-                                .get(storageGroup)
-                                .get(tSeriesPartitionSlot)
-                                .putIfAbsent(tTimePartitionSlot, new ArrayList<>());
-
-                            // Extract TRegionReplicaSets
-                            regionReplicaSets.forEach(
-                                regionReplicaSet -> {
-                                  TRegionReplicaSet tRegionReplicaSet =
-                                      regionReplicaSet.convertToRPCTRegionReplicaSet();
-                                  dataPartitionMap
-                                      .get(storageGroup)
-                                      .get(tSeriesPartitionSlot)
-                                      .get(tTimePartitionSlot)
-                                      .add(tRegionReplicaSet);
-                                });
-                          }));
-                    }));
-              }));
-
-      resp.setDataPartitionMap(dataPartitionMap);
+      resp.setDataPartitionMap(dataPartition.getDataPartitionMap());
     }
   }
 }

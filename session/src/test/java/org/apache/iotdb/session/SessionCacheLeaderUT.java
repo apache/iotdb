@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -51,20 +51,20 @@ import static org.junit.Assert.fail;
 
 public class SessionCacheLeaderUT {
 
-  private static final List<EndPoint> endpoints =
-      new ArrayList<EndPoint>() {
+  private static final List<TEndPoint> endpoints =
+      new ArrayList<TEndPoint>() {
         {
-          add(new EndPoint("127.0.0.1", 55560)); // default endpoint
-          add(new EndPoint("127.0.0.1", 55561)); // meta leader endpoint
-          add(new EndPoint("127.0.0.1", 55562));
-          add(new EndPoint("127.0.0.1", 55563));
+          add(new TEndPoint("127.0.0.1", 55560)); // default endpoint
+          add(new TEndPoint("127.0.0.1", 55561)); // meta leader endpoint
+          add(new TEndPoint("127.0.0.1", 55562));
+          add(new TEndPoint("127.0.0.1", 55563));
         }
       };
 
   private Session session;
 
   // just for simulation
-  public static EndPoint getDeviceIdBelongedEndpoint(String deviceId) {
+  public static TEndPoint getDeviceIdBelongedEndpoint(String deviceId) {
     if (deviceId.startsWith("root.sg1")) {
       return endpoints.get(0);
     } else if (deviceId.startsWith("root.sg2")) {
@@ -849,7 +849,7 @@ public class SessionCacheLeaderUT {
     }
     assertEquals(session.metaSessionConnection, session.defaultSessionConnection);
     assertEquals(3, session.deviceIdToEndpoint.size());
-    for (Map.Entry<String, EndPoint> endPointMap : session.deviceIdToEndpoint.entrySet()) {
+    for (Map.Entry<String, TEndPoint> endPointMap : session.deviceIdToEndpoint.entrySet()) {
       assertEquals(getDeviceIdBelongedEndpoint(endPointMap.getKey()), endPointMap.getValue());
     }
     assertEquals(3, session.endPointToSessionConnection.size());
@@ -1032,7 +1032,7 @@ public class SessionCacheLeaderUT {
 
     assertEquals(session.metaSessionConnection, session.defaultSessionConnection);
     assertEquals(2, session.deviceIdToEndpoint.size());
-    for (Map.Entry<String, EndPoint> endPointEntry : session.deviceIdToEndpoint.entrySet()) {
+    for (Map.Entry<String, TEndPoint> endPointEntry : session.deviceIdToEndpoint.entrySet()) {
       assertEquals(getDeviceIdBelongedEndpoint(endPointEntry.getKey()), endPointEntry.getValue());
     }
     assertEquals(3, session.endPointToSessionConnection.size());
@@ -1090,7 +1090,7 @@ public class SessionCacheLeaderUT {
 
     @Override
     public SessionConnection constructSessionConnection(
-        Session session, EndPoint endpoint, ZoneId zoneId) {
+        Session session, TEndPoint endpoint, ZoneId zoneId) {
       lastConstructedSessionConnection = new MockSessionConnection(session, endpoint, zoneId);
       return lastConstructedSessionConnection;
     }
@@ -1102,11 +1102,11 @@ public class SessionCacheLeaderUT {
 
   static class MockSessionConnection extends SessionConnection {
 
-    private EndPoint endPoint;
+    private TEndPoint endPoint;
     private boolean connectionBroken;
     private IoTDBConnectionException ioTDBConnectionException;
 
-    public MockSessionConnection(Session session, EndPoint endPoint, ZoneId zoneId) {
+    public MockSessionConnection(Session session, TEndPoint endPoint, ZoneId zoneId) {
       super();
       this.endPoint = endPoint;
       ioTDBConnectionException =
@@ -1199,7 +1199,7 @@ public class SessionCacheLeaderUT {
     }
 
     private RedirectException getRedirectException(List<String> deviceIds) {
-      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
+      Map<String, TEndPoint> deviceEndPointMap = new HashMap<>();
       for (String deviceId : deviceIds) {
         deviceEndPointMap.put(deviceId, getDeviceIdBelongedEndpoint(deviceId));
       }

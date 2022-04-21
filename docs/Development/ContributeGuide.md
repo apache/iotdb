@@ -120,6 +120,22 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
    import static all other imports
 ```
 
+## Code Sytle
+We use the [maven-checkstyle-plugin](https://checkstyle.sourceforge.io/config_filefilters.html) to make Java codes obey a consistent ruleset defined in [checkstyle.xml](https://github.com/apache/iotdb/blob/master/checkstyle.xml) under the project root.
+
+You can reference the code style rules in the file. After development, you can use `mvn validate` to check whether your codes satisfy the style rules.
+
+Besides, when you develop in an IDE, some default code style configurations may be conflict with those rules.
+
+In IDEA, you can follow these steps to change those inconsistent style formatting rules:
+
+### Disable using wildcard import
+
+1. Navigate to Java code style configuration page (Preferences... -> Editor -> Code Style -> Java).
+2. Switch to the 'imports' tab.
+3. In the 'General' section, enable 'Use single class import' option.
+4. Change 'Class count to use import with '\*'' to 999 or another very large number.
+5. Change 'Names to count to use static import with '\*'' to 999 or another very large number.
 
 ## Contributing code
 

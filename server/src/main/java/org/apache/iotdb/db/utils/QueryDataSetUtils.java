@@ -192,7 +192,7 @@ public class QueryDataSetUtils {
 
     int rowCount = 0;
     int[] valueOccupation = new int[columnNum];
-    while (rowCount < fetchSize && queryExecution.hasNextResult()) {
+    while (rowCount < fetchSize) {
       TsBlock tsBlock = queryExecution.getBatchResult();
       if (tsBlock == null) {
         break;
