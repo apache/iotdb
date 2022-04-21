@@ -52,8 +52,10 @@ import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.UDAFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.UDTFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
-import org.apache.iotdb.db.qp.logical.sys.*;
+import org.apache.iotdb.db.qp.logical.sys.ActivateTemplateOperator;
+import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
@@ -73,6 +75,7 @@ import org.apache.iotdb.db.qp.logical.sys.DropContinuousQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropPipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropPipeSinkOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
@@ -93,17 +96,25 @@ import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowNodesInTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowPathsSetTemplateOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowPathsUsingTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowPipeServerOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeSinkTypeOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowQueryResourceOperate;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTemplatesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartPipeOperator;
+import org.apache.iotdb.db.qp.logical.sys.StartPipeServerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopPipeOperator;
+import org.apache.iotdb.db.qp.logical.sys.StopPipeServerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
@@ -2566,37 +2577,25 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return parseFunctionExpression(context);
     }
 
+    // unaryBeforeRegularExpression=expression (REGEXP | LIKE) STRING_LITERAL
+    if (context.unaryBeforeRegularExpression != null) {
+      return parseRegularExpression(context);
+    }
+
+    // unaryBeforeInExpression=expression OPERATOR_IN LR_BRACKET constant (COMMA constant)*
+    // RR_BRACKET
+    if (context.unaryBeforeInExpression != null) {
+      return parseInExpression(context);
+    }
+
     // suffixPath
     if (context.suffixPathCanInExpr() != null) {
       return new TimeSeriesOperand(parseSuffixPathCanInExpr(context.suffixPathCanInExpr()));
     }
 
-    if (context.constant() != null) {
-      try {
-        ConstantContext constantContext = context.constant();
-        if (clientVersion.equals(IoTDBConstant.ClientVersion.V_0_13)) {
-          if (constantContext.BOOLEAN_LITERAL() != null) {
-            return new ConstantOperand(
-                TSDataType.BOOLEAN, constantContext.BOOLEAN_LITERAL().getText());
-          } else if (constantContext.STRING_LITERAL() != null) {
-            String text = constantContext.STRING_LITERAL().getText();
-            return new ConstantOperand(TSDataType.TEXT, parseStringLiteral(text));
-          } else if (constantContext.INTEGER_LITERAL() != null) {
-            return new ConstantOperand(
-                TSDataType.INT64, constantContext.INTEGER_LITERAL().getText());
-          } else if (constantContext.realLiteral() != null) {
-            return new ConstantOperand(TSDataType.DOUBLE, constantContext.realLiteral().getText());
-          } else {
-            throw new SQLParserException(
-                "Unsupported constant operand: " + constantContext.getText());
-          }
-        } else if (clientVersion.equals(IoTDBConstant.ClientVersion.V_0_12)) {
-          // if client version is before 0.13, node name in expression may be a constant
-          return new TimeSeriesOperand(convertConstantToPath(context.constant().getText()));
-        }
-      } catch (IllegalPathException e) {
-        throw new SQLParserException(e.getMessage());
-      }
+    // constant
+    if (context.constant() != null && !context.constant().isEmpty()) {
+      return parseConstantOperand(context.constant(0));
     }
 
     throw new UnsupportedOperationException();
@@ -2633,6 +2632,42 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     return functionExpression;
+  }
+
+  private Expression parseRegularExpression(ExpressionContext context) {
+    return null;
+  }
+
+  private Expression parseInExpression(ExpressionContext context) {
+    return null;
+  }
+
+  private Expression parseConstantOperand(ConstantContext constantContext) {
+    try {
+      if (clientVersion.equals(IoTDBConstant.ClientVersion.V_0_13)) {
+        if (constantContext.BOOLEAN_LITERAL() != null) {
+          return new ConstantOperand(
+              TSDataType.BOOLEAN, constantContext.BOOLEAN_LITERAL().getText());
+        } else if (constantContext.STRING_LITERAL() != null) {
+          String text = constantContext.STRING_LITERAL().getText();
+          return new ConstantOperand(TSDataType.TEXT, parseStringLiteral(text));
+        } else if (constantContext.INTEGER_LITERAL() != null) {
+          return new ConstantOperand(TSDataType.INT64, constantContext.INTEGER_LITERAL().getText());
+        } else if (constantContext.realLiteral() != null) {
+          return new ConstantOperand(TSDataType.DOUBLE, constantContext.realLiteral().getText());
+        } else {
+          throw new SQLParserException(
+              "Unsupported constant operand: " + constantContext.getText());
+        }
+      } else if (clientVersion.equals(IoTDBConstant.ClientVersion.V_0_12)) {
+        // if client version is before 0.13, node name in expression may be a constant
+        return new TimeSeriesOperand(convertConstantToPath(constantContext.getText()));
+      } else {
+        throw new UnsupportedOperationException();
+      }
+    } catch (IllegalPathException e) {
+      throw new SQLParserException(e.getMessage());
+    }
   }
 
   private FilterOperator parseOrExpression(IoTDBSqlParser.OrExpressionContext ctx) {
