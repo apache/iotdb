@@ -160,7 +160,9 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   public RSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode storageGroupMNode,
+      PartialPath storageGroup,
+      SchemaRegionId schemaRegionId,
+      IStorageGroupMNode storageGroupMNode,
       RSchemaConfLoader rSchemaConfLoader)
       throws MetadataException {
     this.schemaRegionId = schemaRegionId;
