@@ -602,7 +602,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String functionName = "EQUAL_BUCKET_RANDOM_SAMPLE";
+      String functionName = "EQUAL_SIZE_BUCKET_RANDOM_SAMPLE";
       double proportionValue = 0.1;
       ResultSet resultSet =
           statement.executeQuery(
@@ -678,7 +678,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String functionName = "EQUAL_BUCKET_AGG_SAMPLE";
+      String functionName = "EQUAL_SIZE_BUCKET_AGG_SAMPLE";
       double proportionValue = 0.1;
       ResultSet resultSet =
           statement.executeQuery(
@@ -749,7 +749,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String functionName = "EQUAL_BUCKET_M4_SAMPLE";
+      String functionName = "EQUAL_SIZE_BUCKET_M4_SAMPLE";
       String methodName = "m4";
       double proportionValue = 0.1;
       ResultSet resultSet =

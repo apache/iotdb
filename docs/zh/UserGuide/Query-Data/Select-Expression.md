@@ -529,15 +529,15 @@ select s1, zero_count(s1), non_zero_count(s2), zero_duration(s3), non_zero_durat
 +-----------------------------+-------------+-------------------------+-----------------------------+----------------------------+--------------------------------+
 ```
 
-### 等分桶降采样函数
-本函数对输入序列进行等分桶采样，即根据用户给定的降采样比例和降采样方法将输入序列按固定点数等分为若干桶。在每个桶内通过给定的采样方法进行采样。
+### 等数量分桶降采样函数
+本函数对输入序列进行等数量分桶采样，即根据用户给定的降采样比例和降采样方法将输入序列按固定点数等分为若干桶。在每个桶内通过给定的采样方法进行采样。
 - `proportion`：降采样比例，取值区间为`(0, 1]`。
-#### 等分桶随机采样
-对等分后的桶内进行随机采样。
+#### 等数量分桶随机采样
+对等数量分桶后，桶内进行随机采样。
 
 | 函数名      | 可接收的输入序列类型                     | 必要的属性参数                               | 输出序列类型     | 功能类型                                             |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_BUCKET_RANDOM_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`  | INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶随机采样                |
+| EQUAL_SIZE_BUCKET_RANDOM_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`  | INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶随机采样                |
 
 ##### 演示
 测试数据:`root.ln.wf01.wt01.temperature`从`0.0-99.0`共`100`条有序数据。
@@ -575,7 +575,7 @@ IoTDB> select temperature from root.ln.wf01.wt01;
 ```
 sql:
 ```sql
-select equal_bucket_random_sample(temperature,'proportion'='0.1') as random_sample from root.ln.wf01.wt01;
+select equal_size_bucket_random_sample(temperature,'proportion'='0.1') as random_sample from root.ln.wf01.wt01;
 ```
 结果:
 ```
@@ -597,21 +597,21 @@ Total line number = 10
 It costs 0.024s
 ```
 
-#### 等分桶聚合采样
+#### 等数量分桶聚合采样
 
 采用聚合采样法对输入序列进行采样，用户需要另外提供一个聚合函数参数即
 - `type`：聚合类型，取值为`avg`或`max`或`min`或`sum`或`extreme`或`variance`。在缺省情况下，采用`avg`。其中`extreme`表示等分桶中，绝对值最大的值。`variance`表示采样等分桶中的方差。
 
 | 函数名      | 可接收的输入序列类型                     | 必要的属性参数                               | 输出序列类型     | 功能类型                                             |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_BUCKET_AGG_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`</br>`type`:取值类型有`avg`, `max`, `min`, `sum`, `extreme`, `variance`, 默认为`avg`  | INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶聚合采样                |
+| EQUAL_SIZE_BUCKET_AGG_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`</br>`type`:取值类型有`avg`, `max`, `min`, `sum`, `extreme`, `variance`, 默认为`avg`  | INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶聚合采样                |
 
 ##### 演示
 测试数据:`root.ln.wf01.wt01.temperature`从`0.0-99.0`共`100`条有序数据，同等分桶随机采样的测试数据。
 
 sql:
 ```sql
-select equal_bucket_agg_sample(temperature, 'type'='avg','proportion'='0.1') as agg_avg, equal_bucket_agg_sample(temperature, 'type'='max','proportion'='0.1') as agg_max, equal_bucket_agg_sample(temperature,'type'='min','proportion'='0.1') as agg_min, equal_bucket_agg_sample(temperature, 'type'='sum','proportion'='0.1') as agg_sum, equal_bucket_agg_sample(temperature, 'type'='extreme','proportion'='0.1') as agg_extreme, equal_bucket_agg_sample(temperature, 'type'='variance','proportion'='0.1') as agg_variance from root.ln.wf01.wt01;
+select equal_size_bucket_agg_sample(temperature, 'type'='avg','proportion'='0.1') as agg_avg, equal_size_bucket_agg_sample(temperature, 'type'='max','proportion'='0.1') as agg_max, equal_size_bucket_agg_sample(temperature,'type'='min','proportion'='0.1') as agg_min, equal_size_bucket_agg_sample(temperature, 'type'='sum','proportion'='0.1') as agg_sum, equal_size_bucket_agg_sample(temperature, 'type'='extreme','proportion'='0.1') as agg_extreme, equal_size_bucket_agg_sample(temperature, 'type'='variance','proportion'='0.1') as agg_variance from root.ln.wf01.wt01;
 ```
 结果:
 ```
@@ -632,20 +632,20 @@ select equal_bucket_agg_sample(temperature, 'type'='avg','proportion'='0.1') as 
 Total line number = 10
 It costs 0.044s
 ```
-#### 等分桶M4采样
+#### 等数量分桶M4采样
 
 采用M4采样法对输入序列进行采样。即对于每个桶采样首、尾、最小和最大值。
 
 | 函数名      | 可接收的输入序列类型                     | 必要的属性参数                               | 输出序列类型     | 功能类型                                             |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_BUCKET_M4_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`| INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶M4采样                |
+| EQUAL_SIZE_BUCKET_M4_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion`取值范围为`(0, 1]`，默认为`0.1`| INT32 / INT64 / FLOAT / DOUBLE | 返回符合采样比例的等分桶M4采样                |
 
 ##### 演示
 测试数据:`root.ln.wf01.wt01.temperature`从`0.0-99.0`共`100`条有序数据，同等分桶随机采样的测试数据。
 
 sql:
 ```sql
-select equal_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01;
+select equal_size_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01;
 ```
 结果:
 ```

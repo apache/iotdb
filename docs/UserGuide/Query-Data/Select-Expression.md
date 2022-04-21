@@ -526,15 +526,15 @@ Result:
 +-----------------------------+-------------+-------------------------+-----------------------------+----------------------------+--------------------------------+
 ```
 
-### Equal Bucket Sample Function
-This function samples the input sequence in equal buckets, that is, according to the downsampling ratio and downsampling method given by the user, the input sequence is equally divided into several buckets according to a fixed number of points. Sampling by the given sampling method within each bucket.
+### Equal Size Bucket Sample Function
+This function samples the input sequence in equal size buckets, that is, according to the downsampling ratio and downsampling method given by the user, the input sequence is equally divided into several buckets according to a fixed number of points. Sampling by the given sampling method within each bucket.
 - `proportion`: sample ratio, the value range is `(0, 1]`.
-#### Equal Bucket Random Sample
+#### Equal Size Bucket Random Sample
 Random sampling is performed on the equally divided buckets.
 
 | Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_BUCKET_RANDOM_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns a random sample of equal buckets that matches the sampling ratio |
+| EQUAL_SIZE_BUCKET_RANDOM_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns a random sample of equal buckets that matches the sampling ratio |
 
 ##### Demonstrate
 Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`.
@@ -572,7 +572,7 @@ IoTDB> select temperature from root.ln.wf01.wt01;
 ```
 Sql:
 ```sql
-select equal_bucket_random_sample(temperature,'proportion'='0.1') as random_sample from root.ln.wf01.wt01;
+select equal_size_bucket_random_sample(temperature,'proportion'='0.1') as random_sample from root.ln.wf01.wt01;
 ```
 Result:
 ```
@@ -594,21 +594,21 @@ Total line number = 10
 It costs 0.024s
 ```
 
-#### Equal Bucket Aggregation Sample
+#### Equal Size Bucket Aggregation Sample
 
 The input sequence is sampled by the aggregation sampling method, and the user needs to provide an additional aggregation function parameter, namely
 - `type`: Aggregate type, which can be `avg` or `max` or `min` or `sum` or `extreme` or `variance`. By default, `avg` is used. `extreme` represents the value with the largest absolute value in the equal bucket. `variance` represents the variance in the sampling equal buckets.
 
 | Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_BUCKET_AGG_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1`</br>`type`: The value types are `avg`, `max`, `min`, `sum`, `extreme`, `variance`, the default is `avg` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket aggregation samples that match the sampling ratio |
+| EQUAL_SIZE_BUCKET_AGG_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1`</br>`type`: The value types are `avg`, `max`, `min`, `sum`, `extreme`, `variance`, the default is `avg` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket aggregation samples that match the sampling ratio |
 
 ##### Demonstrate
 Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`, and the test data is randomly sampled in equal buckets.
 
 Sql:
 ```sql
-select equal_bucket_agg_sample(temperature, 'type'='avg','proportion'='0.1') as agg_avg, equal_bucket_agg_sample(temperature, 'type'='max','proportion'='0.1') as agg_max, equal_bucket_agg_sample(temperature,'type'='min','proportion'='0.1') as agg_min, equal_bucket_agg_sample(temperature, 'type'='sum','proportion'='0.1') as agg_sum, equal_bucket_agg_sample(temperature, 'type'='extreme','proportion'='0.1') as agg_extreme, equal_bucket_agg_sample(temperature, 'type'='variance','proportion'='0.1') as agg_variance from root.ln.wf01.wt01;
+select equal_size_bucket_agg_sample(temperature, 'type'='avg','proportion'='0.1') as agg_avg, equal_size_bucket_agg_sample(temperature, 'type'='max','proportion'='0.1') as agg_max, equal_size_bucket_agg_sample(temperature,'type'='min','proportion'='0.1') as agg_min, equal_size_bucket_agg_sample(temperature, 'type'='sum','proportion'='0.1') as agg_sum, equal_size_bucket_agg_sample(temperature, 'type'='extreme','proportion'='0.1') as agg_extreme, equal_size_bucket_agg_sample(temperature, 'type'='variance','proportion'='0.1') as agg_variance from root.ln.wf01.wt01;
 ```
 Result:
 ```
@@ -629,13 +629,13 @@ Result:
 Total line number = 10
 It costs 0.044s
 ```
-#### Equal Bucket M4 Sample
+#### Equal Size Bucket M4 Sample
 
 The input sequence is sampled using the M4 sampling method. That is to sample the head, tail, min and max values for each bucket.
 
 | Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
-| EQUAL_BUCKET_M4_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket M4 samples that match the sampling ratio |
+| EQUAL_SIZE_BUCKET_M4_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket M4 samples that match the sampling ratio |
 
 
 ##### Demonstrate
@@ -643,7 +643,7 @@ Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data 
 
 Sql:
 ```sql
-select equal_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01;
+select equal_size_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01;
 ```
 Result:
 ```
