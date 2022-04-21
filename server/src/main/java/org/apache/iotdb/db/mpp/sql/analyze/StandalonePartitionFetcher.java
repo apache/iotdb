@@ -18,21 +18,40 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.metadata.LocalConfigNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class StandalonePartitionFetcher implements IPartitionFetcher {
 
-  private StandalonePartitionFetcher() {}
+  private final LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+  private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
-  // TODO need to use safe singleton pattern
+  private static final class StandalonePartitionFetcherHolder {
+    private static final StandalonePartitionFetcher INSTANCE = new StandalonePartitionFetcher();
+
+    private StandalonePartitionFetcherHolder() {}
+  }
+
   public static StandalonePartitionFetcher getInstance() {
-    return new StandalonePartitionFetcher();
+    return StandalonePartitionFetcher.StandalonePartitionFetcherHolder.INSTANCE;
   }
 
   @Override
@@ -48,12 +67,47 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    return null;
+    try {
+      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+          dataPartitionMap = new HashMap<>();
+      for (Map.Entry<String, List<DataPartitionQueryParam>> sgEntry :
+          sgNameToQueryParamsMap.entrySet()) {
+        // for each sg
+        String storageGroupName = sgEntry.getKey();
+        List<DataPartitionQueryParam> dataPartitionQueryParams = sgEntry.getValue();
+        Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>
+            deviceToRegionsMap = new HashMap<>();
+        for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
+          // for each device
+          String deviceId = dataPartitionQueryParam.getDevicePath();
+          DataRegionId dataRegionId =
+              localConfigNode.getBelongedDataRegionRegionId(new PartialPath(deviceId));
+          Map<TimePartitionSlot, List<RegionReplicaSet>> timePartitionToRegionsMap =
+              new HashMap<>();
+          for (TimePartitionSlot timePartitionSlot :
+              dataPartitionQueryParam.getTimePartitionSlotList()) {
+            // for each time partition
+            timePartitionToRegionsMap.put(
+                timePartitionSlot,
+                Collections.singletonList(
+                    new RegionReplicaSet(dataRegionId, Collections.EMPTY_LIST)));
+          }
+          deviceToRegionsMap.put(new SeriesPartitionSlot(), timePartitionToRegionsMap);
+        }
+        dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
+      }
+      return new DataPartition(
+          dataPartitionMap,
+          IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+          IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+    } catch (MetadataException | DataRegionException e) {
+      throw new StatementAnalyzeException("An error occurred when executing getDataPartition()");
+    }
   }
 
   @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    return null;
+    return getDataPartition(sgNameToQueryParamsMap);
   }
 }
