@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
@@ -70,6 +71,8 @@ public abstract class Driver {
   }
 
   public Driver(Operator root, ISinkHandle sinkHandle, DriverContext driverContext) {
+    checkNotNull(root, "root Operator should not be null");
+    checkNotNull(sinkHandle, "SinkHandle should not be null");
     this.root = root;
     this.sinkHandle = sinkHandle;
     this.driverContext = driverContext;
@@ -167,7 +170,7 @@ public abstract class Driver {
 
     exclusiveLock.interruptCurrentOwner();
 
-    // if we can get the lock, attempt a clean shutdown; otherwise someone else will shutdown
+    // if we can get the lock, attempt a clean shutdown; otherwise someone else will shut down
     tryWithLockUnInterruptibly(() -> TRUE);
   }
 
@@ -302,6 +305,21 @@ public abstract class Driver {
       }
     }
 
+    // We need to recheck whether the state is NEED_DESTRUCTION, if so, destroy the driver.
+    // We assume that there is another concurrent Thread-A calling close method, it successfully CAS
+    // state from ALIVE to NEED_DESTRUCTION just after current Thread-B do destroyIfNecessary() and
+    // before exclusiveLock.unlock().
+    // Then Thread-A call this method, trying to acquire lock and do destroy things, but it won't
+    // succeed because the lock is still held by Thread-B. So Thread-A exit.
+    // If we don't do this recheck here, Thread-B will exit too. Nobody will do destroy things.
+    if (state.get() == State.NEED_DESTRUCTION && exclusiveLock.tryLock(interruptOnClose)) {
+      try {
+        destroyIfNecessary();
+      } finally {
+        exclusiveLock.unlock();
+      }
+    }
+
     return result;
   }
 
@@ -341,12 +359,8 @@ public abstract class Driver {
     Throwable inFlightException = null;
 
     try {
-      if (root != null) {
-        root.close();
-      }
-      if (sinkHandle != null) {
-        sinkHandle.close();
-      }
+      root.close();
+      sinkHandle.close();
     } catch (InterruptedException t) {
       // don't record the stack
       wasInterrupted = true;
