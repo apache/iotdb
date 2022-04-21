@@ -498,7 +498,7 @@
             <dependency>
                 <groupId>io.airlift</groupId>
                 <artifactId>stats</artifactId>
-                <version>207</version>
+                <version>200</version>
             </dependency>
             <dependency>
                 <groupId>org.openjdk.jol</groupId>
