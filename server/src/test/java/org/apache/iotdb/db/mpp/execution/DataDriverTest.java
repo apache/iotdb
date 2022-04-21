@@ -164,7 +164,7 @@ public class DataDriverTest {
               ImmutableList.of(seriesScanOperator1, seriesScanOperator2));
 
       StubSinkHandle sinkHandle = new StubSinkHandle(fragmentInstanceContext);
-      Driver dataDriver = null;
+      IDriver dataDriver = null;
       try {
         dataDriver = new DataDriver(limitOperator, sinkHandle, driverContext);
         assertEquals(fragmentInstanceContext.getId(), dataDriver.getInfo());

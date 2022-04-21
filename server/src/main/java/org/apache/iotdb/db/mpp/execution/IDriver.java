@@ -16,20 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.schedule;
+package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.IDriver;
 
-/** A common exception to pass to {@link IDriver#failed(Throwable)} */
-public class FragmentInstanceAbortedException extends Exception {
+import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.units.Duration;
 
-  public static final String BY_TIMEOUT = "timeout";
-  public static final String BY_FRAGMENT_ABORT_CALLED = "fragment abort called";
-  public static final String BY_QUERY_CASCADING_ABORTED = "query cascading aborted";
-  public static final String BY_ALREADY_BEING_CANCELLED = "already being cancelled";
+public interface IDriver {
 
-  public FragmentInstanceAbortedException(FragmentInstanceId id, String causeMsg) {
-    super(String.format("FragmentInstance %s is aborted by %s", id.toString(), causeMsg));
-  }
+  boolean isFinished();
+
+  ListenableFuture<Void> processFor(Duration duration);
+
+  FragmentInstanceId getInfo();
+
+  void close();
+
+  void failed(Throwable t);
+
+  ISinkHandle getSinkHandle();
 }

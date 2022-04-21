@@ -22,14 +22,13 @@ import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
 import org.apache.iotdb.db.mpp.schedule.queue.IDIndexedAccessible;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.units.Duration;
 
 import java.util.Comparator;
@@ -45,7 +44,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
   private FragmentInstanceTaskID id;
   private FragmentInstanceTaskStatus status;
-  private final Driver fragmentInstance;
+  private final IDriver fragmentInstance;
 
   // the higher this field is, the higher probability it will be scheduled.
   private volatile double schedulePriority;
@@ -62,7 +61,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     this(new StubFragmentInstance(), 0L, null);
   }
 
-  public FragmentInstanceTask(Driver instance, long timeoutMs, FragmentInstanceTaskStatus status) {
+  public FragmentInstanceTask(IDriver instance, long timeoutMs, FragmentInstanceTaskStatus status) {
     this.fragmentInstance = instance;
     this.id = new FragmentInstanceTaskID(instance.getInfo());
     this.setStatus(status);
@@ -89,7 +88,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
         || status == FragmentInstanceTaskStatus.FINISHED;
   }
 
-  public Driver getFragmentInstance() {
+  public IDriver getFragmentInstance() {
     return fragmentInstance;
   }
 
@@ -187,28 +186,16 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
     }
   }
 
-  private static class StubFragmentInstance extends Driver {
+  private static class StubFragmentInstance implements IDriver {
 
     private static final QueryId stubQueryId = new QueryId("stub_query");
     private static final FragmentInstanceId stubInstance =
         new FragmentInstanceId(new PlanFragmentId(stubQueryId, 0), "stub-instance");
 
-    public StubFragmentInstance() {
-      super(null, null, null);
-    }
-
     @Override
     public boolean isFinished() {
       return false;
     }
-
-    @Override
-    protected boolean init(SettableFuture<Void> blockedFuture) {
-      return true;
-    }
-
-    @Override
-    protected void releaseResource() {}
 
     @Override
     public ListenableFuture<Void> processFor(Duration duration) {

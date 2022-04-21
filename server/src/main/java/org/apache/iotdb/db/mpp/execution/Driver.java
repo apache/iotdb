@@ -51,7 +51,7 @@ import static org.apache.iotdb.db.mpp.operator.Operator.NOT_BLOCKED;
  * Driver encapsulates some methods which are necessary for execution scheduler to run a fragment
  * instance
  */
-public abstract class Driver {
+public abstract class Driver implements IDriver {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(Driver.class);
 
@@ -88,6 +88,7 @@ public abstract class Driver {
    *
    * @return true if the FragmentInstance is done or terminated due to failure, otherwise false.
    */
+  @Override
   public boolean isFinished() {
     checkLockNotHeld("Cannot check finished status while holding the driver lock");
 
@@ -116,6 +117,7 @@ public abstract class Driver {
    *     next processing otherwise, meaning that this fragment instance is blocked and not ready for
    *     next processing.
    */
+  @Override
   public ListenableFuture<Void> processFor(Duration duration) {
 
     SettableFuture<Void> blockedFuture = driverBlockedFuture.get();
@@ -157,11 +159,13 @@ public abstract class Driver {
    *
    * @return a {@link FragmentInstanceId} instance.
    */
+  @Override
   public FragmentInstanceId getInfo() {
     return driverContext.getId();
   }
 
   /** clear resource used by this fragment instance */
+  @Override
   public void close() {
     // mark the service for destruction
     if (!state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION)) {
@@ -179,10 +183,12 @@ public abstract class Driver {
    *
    * @param t reason cause this failure
    */
+  @Override
   public void failed(Throwable t) {
     driverContext.failed(t);
   }
 
+  @Override
   public ISinkHandle getSinkHandle() {
     return sinkHandle;
   }
@@ -191,8 +197,7 @@ public abstract class Driver {
   private boolean isFinishedInternal() {
     checkLockHeld("Lock must be held to call isFinishedInternal");
 
-    boolean finished =
-        state.get() != State.ALIVE || driverContext.isDone() || root == null || root.isFinished();
+    boolean finished = state.get() != State.ALIVE || driverContext.isDone() || root.isFinished();
     if (finished) {
       state.compareAndSet(State.ALIVE, State.NEED_DESTRUCTION);
     }
