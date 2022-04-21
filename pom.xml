@@ -87,6 +87,7 @@
         <module>thrift-cluster</module>
         <module>thrift-sync</module>
         <module>thrift-influxdb</module>
+        <module>thrift-procedure</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>influxdb-protocol</module>
@@ -115,6 +116,7 @@
         <module>metrics</module>
         <module>integration</module>
         <module>consensus</module>
+        <module>procedure</module>
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
