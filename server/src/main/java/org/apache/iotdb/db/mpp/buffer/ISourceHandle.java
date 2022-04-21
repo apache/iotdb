@@ -39,16 +39,16 @@ public interface ISourceHandle extends Closeable {
   /** If there are more tsblocks. */
   boolean isFinished();
 
-  /**
-   * Get a future that will be completed when the input buffer is not empty. The future will not
-   * complete even when the handle is finished or closed.
-   */
+  /** Get a future that will be completed when the input buffer is not empty. */
   ListenableFuture<Void> isBlocked();
 
   /** If this handle is closed. */
   boolean isClosed();
 
-  /** Close the handle. Discarding all tsblocks which may still be in memory buffer. */
+  /**
+   * Close the handle. Discard all tsblocks which may still be in the memory buffer and complete the
+   * future returned by {@link #isBlocked()}.
+   */
   @Override
   void close();
 }
