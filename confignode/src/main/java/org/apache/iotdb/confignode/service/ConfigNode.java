@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServer;
-import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServerProcessor;
+import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
+import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,8 +56,8 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(JMXService.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
 
-    ConfigNodeRPCServer.getInstance().initSyncedServiceImpl(new ConfigNodeRPCServerProcessor());
-    registerManager.register(ConfigNodeRPCServer.getInstance());
+    ConfigNodeRPCService.getInstance().initSyncedServiceImpl(new ConfigNodeRPCServiceProcessor());
+    registerManager.register(ConfigNodeRPCService.getInstance());
     LOGGER.info("Init rpc server success");
   }
 

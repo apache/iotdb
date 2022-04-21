@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service.thrift.server;
+package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -27,9 +27,9 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
-import org.apache.iotdb.confignode.persistence.PartitionInfoPersistence;
-import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
+import org.apache.iotdb.confignode.persistence.DataNodeInfo;
+import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
@@ -70,22 +70,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-public class ConfigNodeRPCServerProcessorTest {
+public class ConfigNodeRPCServiceProcessorTest {
 
-  ConfigNodeRPCServerProcessor processor;
+  ConfigNodeRPCServiceProcessor processor;
 
   @Before
   public void before() throws IOException, InterruptedException {
-    processor = new ConfigNodeRPCServerProcessor();
+    processor = new ConfigNodeRPCServiceProcessor();
     // Sleep 1s to make sure the Consensus group has done leader election
     TimeUnit.SECONDS.sleep(1);
   }
 
   @After
   public void after() throws IOException {
-    DataNodeInfoPersistence.getInstance().clear();
-    PartitionInfoPersistence.getInstance().clear();
-    RegionInfoPersistence.getInstance().clear();
+    DataNodeInfo.getInstance().clear();
+    StorageGroupInfo.getInstance().clear();
+    PartitionInfo.getInstance().clear();
     processor.close();
     FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
   }

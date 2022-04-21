@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -30,24 +31,35 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.physical.crud.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
 import org.apache.iotdb.confignode.physical.crud.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
-public class PartitionInfoPersistence {
+public class PartitionInfo {
 
-  /** schema partition read write lock */
+  // Region allocate lock
+  private final ReentrantReadWriteLock regionAllocateLock;
+  // TODO: Serialize and Deserialize
+  private int nextRegionGroupId = 0;
+
+  // Region read write lock
+  private final ReentrantReadWriteLock regionReadWriteLock;
+  private final Map<TConsensusGroupId, TRegionReplicaSet> regionMap;
+
+  // schema partition read write lock
   private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
 
-  /** data partition read write lock */
+  // data partition read write lock
   private final ReentrantReadWriteLock dataPartitionReadWriteLock;
 
   // TODO: Serialize and Deserialize
@@ -56,19 +68,60 @@ public class PartitionInfoPersistence {
   // TODO: Serialize and Deserialize
   private final DataPartition dataPartition;
 
-  public PartitionInfoPersistence() {
+  private PartitionInfo() {
+    this.regionAllocateLock = new ReentrantReadWriteLock();
+    this.regionReadWriteLock = new ReentrantReadWriteLock();
+    this.regionMap = new HashMap<>();
+
     this.schemaPartitionReadWriteLock = new ReentrantReadWriteLock();
-    this.dataPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.schemaPartition =
         new SchemaPartition(
             ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
             ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
     this.schemaPartition.setSchemaPartitionMap(new HashMap<>());
+
+    this.dataPartitionReadWriteLock = new ReentrantReadWriteLock();
     this.dataPartition =
         new DataPartition(
             ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
             ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
     this.dataPartition.setDataPartitionMap(new HashMap<>());
+  }
+
+  public int generateNextRegionGroupId() {
+    int result;
+    regionAllocateLock.writeLock().lock();
+    try {
+      result = nextRegionGroupId;
+      nextRegionGroupId += 1;
+    } finally {
+      regionAllocateLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  /**
+   * Persistence allocation result of new Regions
+   *
+   * @param plan CreateRegionsPlan
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus createRegions(CreateRegionsPlan plan) {
+    TSStatus result;
+    regionReadWriteLock.writeLock().lock();
+    regionAllocateLock.writeLock().lock();
+    try {
+      for (TRegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
+        nextRegionGroupId = Math.max(nextRegionGroupId, regionReplicaSet.getRegionId().getId());
+        regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+      }
+
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      regionAllocateLock.writeLock().unlock();
+      regionReadWriteLock.writeLock().unlock();
+    }
+    return result;
   }
 
   /**
@@ -118,6 +171,13 @@ public class PartitionInfoPersistence {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  /**
+   * Filter no assigned SchemaPartitionSlots
+   *
+   * @param partitionSlotsMap Map<StorageGroupName, List<TSeriesPartitionSlot>>
+   * @return Map<StorageGroupName, List<TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
+   *     assigned in partitionSlotsMap
+   */
   public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlots(
       Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
     Map<String, List<TSeriesPartitionSlot>> result;
@@ -187,6 +247,14 @@ public class PartitionInfoPersistence {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  /**
+   * Filter no assigned DataPartitionSlots
+   *
+   * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot,
+   *     List<TTimePartitionSlot>>>
+   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>,
+   *     DataPartitionSlots that is not assigned in partitionSlotsMap
+   */
   public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
       filterNoAssignedDataPartitionSlots(
           Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
@@ -200,8 +268,25 @@ public class PartitionInfoPersistence {
     return result;
   }
 
+  /** Get RegionReplicaSet by the specific TConsensusGroupIds */
+  public List<TRegionReplicaSet> getRegionReplicaSets(List<TConsensusGroupId> groupIds) {
+    List<TRegionReplicaSet> result = new ArrayList<>();
+    regionReadWriteLock.readLock().lock();
+    try {
+      for (TConsensusGroupId groupId : groupIds) {
+        result.add(regionMap.get(groupId));
+      }
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
   @TestOnly
   public void clear() {
+    nextRegionGroupId = 0;
+    regionMap.clear();
+
     if (schemaPartition.getSchemaPartitionMap() != null) {
       schemaPartition.getSchemaPartitionMap().clear();
     }
@@ -213,14 +298,14 @@ public class PartitionInfoPersistence {
 
   private static class PartitionInfoPersistenceHolder {
 
-    private static final PartitionInfoPersistence INSTANCE = new PartitionInfoPersistence();
+    private static final PartitionInfo INSTANCE = new PartitionInfo();
 
     private PartitionInfoPersistenceHolder() {
       // empty constructor
     }
   }
 
-  public static PartitionInfoPersistence getInstance() {
-    return PartitionInfoPersistence.PartitionInfoPersistenceHolder.INSTANCE;
+  public static PartitionInfo getInstance() {
+    return PartitionInfo.PartitionInfoPersistenceHolder.INSTANCE;
   }
 }

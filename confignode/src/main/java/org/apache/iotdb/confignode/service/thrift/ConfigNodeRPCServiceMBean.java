@@ -17,6 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.service.thrift.server;
+package org.apache.iotdb.confignode.service.thrift;
 
-public interface ConfigNodeRPCServerMBean {}
+public interface ConfigNodeRPCServiceMBean {}

@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class DataNodeInfoPersistence {
+public class DataNodeInfo {
 
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
 
@@ -52,7 +52,7 @@ public class DataNodeInfoPersistence {
   /** For remove node or draining node */
   private final Set<TDataNodeLocation> drainingDataNodes = new HashSet<>();
 
-  private DataNodeInfoPersistence() {
+  private DataNodeInfo() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
   }
 
@@ -183,14 +183,14 @@ public class DataNodeInfoPersistence {
 
   private static class DataNodeInfoPersistenceHolder {
 
-    private static final DataNodeInfoPersistence INSTANCE = new DataNodeInfoPersistence();
+    private static final DataNodeInfo INSTANCE = new DataNodeInfo();
 
     private DataNodeInfoPersistenceHolder() {
       // empty constructor
     }
   }
 
-  public static DataNodeInfoPersistence getInstance() {
-    return DataNodeInfoPersistence.DataNodeInfoPersistenceHolder.INSTANCE;
+  public static DataNodeInfo getInstance() {
+    return DataNodeInfo.DataNodeInfoPersistenceHolder.INSTANCE;
   }
 }

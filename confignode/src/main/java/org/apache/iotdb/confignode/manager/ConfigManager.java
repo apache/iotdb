@@ -53,24 +53,25 @@ public class ConfigManager implements Manager {
   private static final TSStatus ERROR_TSSTATUS =
       new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
 
-  /** manage consensus, write or read consensus */
+  /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private final ConsensusManager consensusManager;
 
-  /** manage data node */
+  /** Manage cluster DataNode information */
   private final DataNodeManager dataNodeManager;
 
-  /** manage assign data partition and schema partition */
+  /** Manage cluster schema */
+  private final ClusterSchemaManager clusterSchemaManager;
+
+  /** Manage cluster regions and partitions */
   private final PartitionManager partitionManager;
 
-  /** manager assign schema region and data region */
-  private final RegionManager regionManager;
-
+  /** Manage cluster authorization */
   private final PermissionManager permissionManager;
 
   public ConfigManager() throws IOException {
     this.dataNodeManager = new DataNodeManager(this);
     this.partitionManager = new PartitionManager(this);
-    this.regionManager = new RegionManager(this);
+    this.clusterSchemaManager = new ClusterSchemaManager(this);
     this.consensusManager = new ConsensusManager();
     this.permissionManager = new PermissionManager(this);
   }
@@ -112,7 +113,7 @@ public class ConfigManager implements Manager {
   public DataSet getStorageGroupSchema() {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return regionManager.getStorageGroupSchema();
+      return clusterSchemaManager.getStorageGroupSchema();
     } else {
       StorageGroupSchemaDataSet dataSet = new StorageGroupSchemaDataSet();
       dataSet.setStatus(status);
@@ -124,7 +125,7 @@ public class ConfigManager implements Manager {
   public TSStatus setStorageGroup(PhysicalPlan physicalPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return regionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+      return clusterSchemaManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
     } else {
       return status;
     }
@@ -135,7 +136,7 @@ public class ConfigManager implements Manager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<String> devicePaths = patternTree.findAllDevicePaths();
-      List<String> storageGroups = getRegionManager().getStorageGroupNames();
+      List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
 
       GetOrCreateSchemaPartitionPlan getSchemaPartitionPlan =
           new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
@@ -192,7 +193,7 @@ public class ConfigManager implements Manager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<String> devicePaths = patternTree.findAllDevicePaths();
-      List<String> storageGroups = getRegionManager().getStorageGroupNames();
+      List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
 
       GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
           new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
@@ -261,8 +262,8 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public RegionManager getRegionManager() {
-    return regionManager;
+  public ClusterSchemaManager getClusterSchemaManager() {
+    return clusterSchemaManager;
   }
 
   @Override

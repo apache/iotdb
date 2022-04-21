@@ -14,7 +14,7 @@
  * express or implied. See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.confignode.service.thrift.server;
+package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
@@ -22,9 +22,9 @@ import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
 public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
-  private final ConfigNodeRPCServerProcessor processor;
+  private final ConfigNodeRPCServiceProcessor processor;
 
-  public ConfigNodeRPCServiceHandler(ConfigNodeRPCServerProcessor processor) {
+  public ConfigNodeRPCServiceHandler(ConfigNodeRPCServiceProcessor processor) {
     this.processor = processor;
   }
 

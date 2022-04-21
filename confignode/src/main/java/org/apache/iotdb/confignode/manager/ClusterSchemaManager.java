@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
@@ -28,7 +27,8 @@ import org.apache.iotdb.confignode.cli.TemporaryClient;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
-import org.apache.iotdb.confignode.persistence.RegionInfoPersistence;
+import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
 import org.apache.iotdb.confignode.physical.crud.CreateRegionsPlan;
 import org.apache.iotdb.confignode.physical.sys.QueryStorageGroupSchemaPlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
@@ -38,8 +38,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.util.Collections;
 import java.util.List;
 
-/** manage data partition and schema partition */
-public class RegionManager {
+public class ClusterSchemaManager {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
   private static final int schemaReplicationFactor = conf.getSchemaReplicationFactor();
@@ -47,51 +46,48 @@ public class RegionManager {
   private static final int initialSchemaRegionCount = conf.getInitialSchemaRegionCount();
   private static final int initialDataRegionCount = conf.getInitialDataRegionCount();
 
-  private static final RegionInfoPersistence regionInfoPersistence =
-      RegionInfoPersistence.getInstance();
+  private static final StorageGroupInfo storageGroupInfo = StorageGroupInfo.getInstance();
+  private static final PartitionInfo partitionInfo = PartitionInfo.getInstance();
 
-  private final Manager configNodeManager;
+  private final Manager configManager;
 
-  public RegionManager(Manager configNodeManager) {
-    this.configNodeManager = configNodeManager;
-  }
-
-  private ConsensusManager getConsensusManager() {
-    return configNodeManager.getConsensusManager();
+  public ClusterSchemaManager(Manager configManager) {
+    this.configManager = configManager;
   }
 
   /**
    * Set StorageGroup and allocate the default amount Regions
    *
-   * @param plan SetStorageGroupPlan
+   * @param setPlan SetStorageGroupPlan
    * @return SUCCESS_STATUS if the StorageGroup is set and region allocation successful.
    *     NOT_ENOUGH_DATA_NODE if there are not enough DataNode for Region allocation.
    *     STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup is already set.
    */
-  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
+  public TSStatus setStorageGroup(SetStorageGroupPlan setPlan) {
     TSStatus result;
-    if (configNodeManager.getDataNodeManager().getOnlineDataNodeCount()
+    if (configManager.getDataNodeManager().getOnlineDataNodeCount()
         < Math.max(initialSchemaRegionCount, initialDataRegionCount)) {
       result = new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
       result.setMessage("DataNode is not enough, please register more.");
     } else {
-      if (regionInfoPersistence.containsStorageGroup(plan.getSchema().getName())) {
+      if (storageGroupInfo.containsStorageGroup(setPlan.getSchema().getName())) {
         result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
         result.setMessage(
-            String.format("StorageGroup %s is already set.", plan.getSchema().getName()));
+            String.format("StorageGroup %s is already set.", setPlan.getSchema().getName()));
       } else {
         CreateRegionsPlan createPlan = new CreateRegionsPlan();
-        createPlan.setStorageGroup(plan.getSchema().getName());
+        createPlan.setStorageGroup(setPlan.getSchema().getName());
 
         // Allocate default Regions
-        allocateRegions(TConsensusGroupType.SchemaRegion, createPlan);
-        allocateRegions(TConsensusGroupType.DataRegion, createPlan);
+        allocateRegions(TConsensusGroupType.SchemaRegion, createPlan, setPlan);
+        allocateRegions(TConsensusGroupType.DataRegion, createPlan, setPlan);
 
         // Persist StorageGroup and Regions
-        getConsensusManager().write(plan);
+        getConsensusManager().write(setPlan);
         result = getConsensusManager().write(createPlan).getStatus();
 
         // Create Regions in DataNode
+        // TODO: use client pool
         for (TRegionReplicaSet regionReplicaSet : createPlan.getRegionReplicaSets()) {
           for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
             switch (regionReplicaSet.getRegionId().getType()) {
@@ -108,7 +104,7 @@ public class RegionManager {
                         dataNodeLocation.getDataNodeId(),
                         createPlan.getStorageGroup(),
                         regionReplicaSet,
-                        plan.getSchema().getTTL());
+                        setPlan.getSchema().getTTL());
             }
           }
         }
@@ -117,11 +113,9 @@ public class RegionManager {
     return result;
   }
 
-  private DataNodeManager getDataNodeInfoManager() {
-    return configNodeManager.getDataNodeManager();
-  }
-
-  private void allocateRegions(TConsensusGroupType type, CreateRegionsPlan plan) {
+  /** TODO: Allocate by LoadManager */
+  private void allocateRegions(
+      TConsensusGroupType type, CreateRegionsPlan createPlan, SetStorageGroupPlan setPlan) {
 
     // TODO: Use CopySet algorithm to optimize region allocation policy
 
@@ -139,13 +133,38 @@ public class RegionManager {
 
       TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
       TConsensusGroupId consensusGroupId =
-          new TConsensusGroupId(type, regionInfoPersistence.generateNextRegionGroupId());
+          new TConsensusGroupId(type, partitionInfo.generateNextRegionGroupId());
       regionReplicaSet.setRegionId(consensusGroupId);
       regionReplicaSet.setDataNodeLocations(onlineDataNodes.subList(0, replicaCount));
-      plan.addRegion(regionReplicaSet);
+      createPlan.addRegion(regionReplicaSet);
+
+      switch (type) {
+        case SchemaRegion:
+          setPlan.getSchema().addToSchemaRegionGroupIds(consensusGroupId);
+          break;
+        case DataRegion:
+          setPlan.getSchema().addToDataRegionGroupIds(consensusGroupId);
+      }
     }
   }
 
+  /**
+   * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup
+   *
+   * @param storageGroup StorageGroupName
+   * @param type SchemaRegion or DataRegion
+   * @return All SchemaRegionGroupIds when type is SchemaRegion, and all DataRegionGroupIds when
+   *     type is DataRegion
+   */
+  public List<TConsensusGroupId> getRegionGroupIds(String storageGroup, TConsensusGroupType type) {
+    return storageGroupInfo.getRegionGroupIds(storageGroup, type);
+  }
+
+  /**
+   * Get all the StorageGroupSchema
+   *
+   * @return StorageGroupSchemaDataSet
+   */
   public StorageGroupSchemaDataSet getStorageGroupSchema() {
     ConsensusReadResponse readResponse =
         getConsensusManager().read(new QueryStorageGroupSchemaPlan());
@@ -153,6 +172,14 @@ public class RegionManager {
   }
 
   public List<String> getStorageGroupNames() {
-    return regionInfoPersistence.getStorageGroupNames();
+    return storageGroupInfo.getStorageGroupNames();
+  }
+
+  private DataNodeManager getDataNodeInfoManager() {
+    return configManager.getDataNodeManager();
+  }
+
+  private ConsensusManager getConsensusManager() {
+    return configManager.getConsensusManager();
   }
 }

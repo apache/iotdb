@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service.thrift.server;
+package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -29,19 +29,19 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
-public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCServerMBean {
+public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPCServiceMBean {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
-  private ConfigNodeRPCServerProcessor configNodeRPCServerProcessor;
+  private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
-  private ConfigNodeRPCServer() {
+  private ConfigNodeRPCService() {
     // empty constructor
   }
 
   @Override
   public ThriftService getImplementation() {
-    return ConfigNodeRPCServer.getInstance();
+    return ConfigNodeRPCService.getInstance();
   }
 
   @Override
@@ -51,17 +51,18 @@ public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCS
 
   @Override
   public void initSyncedServiceImpl(Object configNodeRPCServerProcessor) {
-    this.configNodeRPCServerProcessor = (ConfigNodeRPCServerProcessor) configNodeRPCServerProcessor;
+    this.configNodeRPCServiceProcessor =
+        (ConfigNodeRPCServiceProcessor) configNodeRPCServerProcessor;
 
     super.mbeanName =
         String.format(
             "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
-    super.initSyncedServiceImpl(this.configNodeRPCServerProcessor);
+    super.initSyncedServiceImpl(this.configNodeRPCServiceProcessor);
   }
 
   @Override
   public void initTProcessor() throws InstantiationException {
-    processor = new ConfigIService.Processor<>(configNodeRPCServerProcessor);
+    processor = new ConfigIService.Processor<>(configNodeRPCServiceProcessor);
   }
 
   @Override
@@ -77,7 +78,7 @@ public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCS
               getBindPort(),
               conf.getRpcMaxConcurrentClientNum(),
               conf.getThriftServerAwaitTimeForStopService(),
-              new ConfigNodeRPCServiceHandler(configNodeRPCServerProcessor),
+              new ConfigNodeRPCServiceHandler(configNodeRPCServiceProcessor),
               conf.isRpcThriftCompressionEnabled());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
@@ -95,13 +96,13 @@ public class ConfigNodeRPCServer extends ThriftService implements ConfigNodeRPCS
     return conf.getRpcPort();
   }
 
-  public static ConfigNodeRPCServer getInstance() {
+  public static ConfigNodeRPCService getInstance() {
     return ConfigNodeRPCServerHolder.INSTANCE;
   }
 
   private static class ConfigNodeRPCServerHolder {
 
-    private static final ConfigNodeRPCServer INSTANCE = new ConfigNodeRPCServer();
+    private static final ConfigNodeRPCService INSTANCE = new ConfigNodeRPCService();
 
     private ConfigNodeRPCServerHolder() {
       // empty constructor

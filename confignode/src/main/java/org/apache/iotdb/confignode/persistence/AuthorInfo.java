@@ -42,9 +42,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class AuthorInfoPersistence {
+public class AuthorInfo {
 
-  private static final Logger logger = LoggerFactory.getLogger(AuthorInfoPersistence.class);
+  private static final Logger logger = LoggerFactory.getLogger(AuthorInfo.class);
 
   private IAuthorizer authorizer;
 
@@ -242,14 +242,14 @@ public class AuthorInfoPersistence {
 
   private static class AuthorInfoPersistenceHolder {
 
-    private static final AuthorInfoPersistence INSTANCE = new AuthorInfoPersistence();
+    private static final AuthorInfo INSTANCE = new AuthorInfo();
 
     private AuthorInfoPersistenceHolder() {
       // empty constructor
     }
   }
 
-  public static AuthorInfoPersistence getInstance() {
-    return AuthorInfoPersistence.AuthorInfoPersistenceHolder.INSTANCE;
+  public static AuthorInfo getInstance() {
+    return AuthorInfo.AuthorInfoPersistenceHolder.INSTANCE;
   }
 }

@@ -51,11 +51,11 @@ public interface Manager {
   ConsensusManager getConsensusManager();
 
   /**
-   * Get RegionManager
+   * Get ClusterSchemaManager
    *
-   * @return RegionManager instance
+   * @return ClusterSchemaManager instance
    */
-  RegionManager getRegionManager();
+  ClusterSchemaManager getClusterSchemaManager();
 
   /**
    * Get PartitionManager

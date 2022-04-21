@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service.thrift.server;
+package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -62,13 +62,13 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
-public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
+public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRPCServerProcessor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeRPCServiceProcessor.class);
 
   private final ConfigManager configManager;
 
-  public ConfigNodeRPCServerProcessor() throws IOException {
+  public ConfigNodeRPCServiceProcessor() throws IOException {
     this.configManager = new ConfigManager();
   }
 
