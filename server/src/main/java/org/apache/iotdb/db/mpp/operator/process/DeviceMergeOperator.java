@@ -40,7 +40,7 @@ import java.util.Map.Entry;
  * device and transform it to the form we need, then get the next device operator until no next
  * operator.
  *
- * <p>Attention! If some columns are not existing in one devices, those columns will be null. e.g.
+ * <p>Attention! If some columns are not existing in one device, those columns will be null. e.g.
  * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be null.
  */
 public class DeviceMergeOperator implements ProcessOperator {
