@@ -37,7 +37,6 @@ import org.apache.thrift.transport.TTransportException;
 
 import java.net.SocketException;
 
-/** We put the client in this module because it is used by both ConfigNode and Datanode */
 public class SyncDataNodeInternalServiceClient extends InternalService.Client {
 
   private final TEndPoint endpoint;

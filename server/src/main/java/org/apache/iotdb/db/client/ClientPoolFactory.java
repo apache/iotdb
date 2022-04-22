@@ -39,6 +39,8 @@ public class ClientPoolFactory {
 
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
+  private ClientPoolFactory() {}
+
   public static class SyncConfigNodeIServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncConfigNodeIServiceClient> {
     @Override

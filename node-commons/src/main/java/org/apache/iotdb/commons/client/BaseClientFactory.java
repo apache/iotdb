@@ -27,7 +27,7 @@ public abstract class BaseClientFactory<K, V> implements KeyedPooledObjectFactor
   protected ClientManager<K, V> clientManager;
   protected ClientManagerProperty<V> clientManagerProperty;
 
-  public BaseClientFactory(
+  protected BaseClientFactory(
       ClientManager<K, V> clientManager, ClientManagerProperty<V> clientManagerProperty) {
     this.clientManager = clientManager;
     this.clientManagerProperty = clientManagerProperty;

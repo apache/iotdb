@@ -34,7 +34,6 @@ import org.apache.thrift.protocol.TProtocolFactory;
 
 import java.io.IOException;
 
-/** We put the client in this module because it is used by both ConfigNode and Datanode */
 public class AsyncDataNodeInternalServiceClient extends InternalService.AsyncClient {
 
   private final TEndPoint endpoint;

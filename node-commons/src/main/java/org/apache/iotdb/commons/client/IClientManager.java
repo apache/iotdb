@@ -19,15 +19,22 @@
 
 package org.apache.iotdb.commons.client;
 
+import javax.annotation.concurrent.ThreadSafe;
+
 import java.io.IOException;
 
+@ThreadSafe
 public interface IClientManager<K, V> {
 
+  // get a V client of the K node from the Manager
   V borrowClient(K node) throws IOException;
 
+  // return a V client of the K node to the Manager
   void returnClient(K node, V client);
 
+  // clear all clients for K node
   void clear(K node);
 
+  // close clientManager
   void close();
 }

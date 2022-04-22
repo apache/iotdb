@@ -86,7 +86,7 @@ class RatisConsensus implements IConsensus {
   private final RaftPeer myself;
   private final RaftServer server;
 
-  private final RaftProperties properties = new RaftProperties();;
+  private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
 
   private final ClientManager<RaftGroup, RaftClient> clientManager =
@@ -521,6 +521,7 @@ class RatisConsensus implements IConsensus {
     return client;
   }
 
+  // TODO use this function to get RaftClient
   private RaftClient getRaftClient(RaftGroup group) {
     try {
       return clientManager.borrowClient(group);

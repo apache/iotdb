@@ -875,7 +875,7 @@ public class IoTDBConfig {
   /** Thread keep alive time in ms of data block manager. */
   private int dataBlockManagerKeepAliveTimeInMs = 1000;
 
-  /** Thrift socket and connection timeout between data node and config node */
+  /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /**

@@ -35,6 +35,8 @@ public class ClientPoolFactory {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
+  private ClientPoolFactory() {}
+
   public static class SyncDataNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
     @Override

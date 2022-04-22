@@ -30,12 +30,11 @@ public class ClientManagerProperty<V> {
 
   private final GenericKeyedObjectPoolConfig<V> config;
 
-  // thrift client config
   private final TProtocolFactory protocolFactory;
   private final int connectionTimeoutMs;
   private final int selectorNumOfAsyncClientPool;
 
-  public ClientManagerProperty(
+  private ClientManagerProperty(
       GenericKeyedObjectPoolConfig<V> config,
       TProtocolFactory protocolFactory,
       int connectionTimeoutMs,
@@ -64,14 +63,21 @@ public class ClientManagerProperty<V> {
 
   public static class Builder<V> {
 
-    // pool config
+    // when the number of the client to a single node exceeds maxTotalConnectionForEachNode, the
+    // current thread will block waitClientTimeoutMS, ClientManager returns NULL if there are no
+    // clients after the block time
     private long waitClientTimeoutMS = DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
+    // the maximum number of clients that can be applied for a node
     private int maxTotalConnectionForEachNode = DefaultProperty.MAX_TOTAL_CONNECTION_FOR_EACH_NODE;
+    // the maximum number of clients that can be idle for a node. When the number of idle clients on
+    // a node exceeds this number, newly returned clients will be released
     private int maxIdleConnectionForEachNode = DefaultProperty.MAX_IDLE_CONNECTION_FOR_EACH_NODE;
 
-    // thrift client config
+    // whether to use thrift compression
     private boolean rpcThriftCompressionEnabled = DefaultProperty.RPC_THRIFT_COMPRESSED_ENABLED;
+    // socket timeout for thrift client
     private int connectionTimeoutMs = DefaultProperty.CONNECTION_TIMEOUT_MS;
+    // number of selector threads for asynchronous thrift client
     private int selectorNumOfAsyncClientPool = DefaultProperty.SELECTOR_NUM_OF_ASYNC_CLIENT_POOL;
 
     public Builder<V> setWaitClientTimeoutMS(long waitClientTimeoutMS) {
@@ -122,6 +128,9 @@ public class ClientManagerProperty<V> {
   }
 
   public static class DefaultProperty {
+
+    private DefaultProperty() {}
+
     // pool config
     public static final long WAIT_CLIENT_TIMEOUT_MS = 10_000;
     public static final int MAX_TOTAL_CONNECTION_FOR_EACH_NODE = 100;
