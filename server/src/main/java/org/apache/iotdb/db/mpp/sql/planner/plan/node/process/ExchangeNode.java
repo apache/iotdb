@@ -90,17 +90,17 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return null;
+    return child.getOutputColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return child.getOutputColumnNames();
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return null;
+    return child.getOutputColumnTypes();
   }
 
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
