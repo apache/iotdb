@@ -23,12 +23,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 
 /** Utils for serialize and deserialize all the data struct defined by thrift-confignode */
@@ -38,39 +36,34 @@ public class ThriftConfigNodeSerDeUtils {
     // Empty constructor
   }
 
-  private static TBinaryProtocol generateWriteProtocol(ByteArrayOutputStream outputStream)
+  private static TBinaryProtocol generateWriteProtocol(ByteBuffer buffer)
       throws TTransportException {
-    TTransport transport = new TIOStreamTransport(outputStream);
+    TTransport transport = new TByteBuffer(buffer);
     return new TBinaryProtocol(transport);
   }
 
-  private static TBinaryProtocol generateReadProtocol(ByteArrayInputStream inputStream)
+  private static TBinaryProtocol generateReadProtocol(ByteBuffer buffer)
       throws TTransportException {
-    TTransport transport = new TIOStreamTransport(inputStream);
+    TTransport transport = new TByteBuffer(buffer);
     return new TBinaryProtocol(transport);
   }
 
   public static void writeTStorageGroupSchema(
       TStorageGroupSchema storageGroupSchema, ByteBuffer buffer) {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
-      storageGroupSchema.write(generateWriteProtocol(outputStream));
+      storageGroupSchema.write(generateWriteProtocol(buffer));
     } catch (TException e) {
       throw new ThriftSerDeException("Write TStorageGroupSchema failed: ", e);
     }
-    buffer.put(outputStream.toByteArray());
   }
 
   public static TStorageGroupSchema readTStorageGroupSchema(ByteBuffer buffer) {
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-    ByteArrayInputStream inputStream =
-        new ByteArrayInputStream(buffer.array(), buffer.position(), buffer.remaining());
     try {
-      storageGroupSchema.read(generateReadProtocol(inputStream));
+      storageGroupSchema.read(generateReadProtocol(buffer));
     } catch (TException e) {
       throw new ThriftSerDeException("Read TStorageGroupSchema failed: ", e);
     }
-    buffer.position(buffer.limit() - inputStream.available());
     return storageGroupSchema;
   }
 }
