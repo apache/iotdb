@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.memory.MemoryPool;
@@ -39,6 +41,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,7 +52,9 @@ public class SourceHandleTest {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
-    final String remoteHostname = "remote";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint(
+            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -84,7 +89,7 @@ public class SourceHandleTest {
 
     SourceHandle sourceHandle =
         new SourceHandle(
-            remoteHostname,
+            remoteEndpoint,
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
@@ -168,7 +173,9 @@ public class SourceHandleTest {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
-    final String remoteHostname = "remote";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint(
+            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -204,7 +211,7 @@ public class SourceHandleTest {
 
     SourceHandle sourceHandle =
         new SourceHandle(
-            remoteHostname,
+            remoteEndpoint,
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
@@ -313,7 +320,9 @@ public class SourceHandleTest {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
-    final String remoteHostname = "remote";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint(
+            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -348,7 +357,7 @@ public class SourceHandleTest {
 
     SourceHandle sourceHandle =
         new SourceHandle(
-            remoteHostname,
+            remoteEndpoint,
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
@@ -504,7 +513,9 @@ public class SourceHandleTest {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
-    final String remoteHostname = "remote";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint(
+            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
     final String localPlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
@@ -530,7 +541,7 @@ public class SourceHandleTest {
 
     SourceHandle sourceHandle =
         new SourceHandle(
-            remoteHostname,
+            remoteEndpoint,
             remoteFragmentInstanceId,
             localFragmentInstanceId,
             localPlanNodeId,
@@ -584,5 +595,71 @@ public class SourceHandleTest {
     sourceHandle.close();
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
+  }
+
+  @Test
+  public void testForceClose() {
+    final String queryId = "q0";
+    final long mockTsBlockSize = 1024L * 1024L;
+    final TEndPoint remoteEndpoint =
+        new TEndPoint(
+            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+    final String localPlanNodeId = "exchange_0";
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+
+    // Construct a mock LocalMemoryManager that do not block any reservation.
+    LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryPool mockMemoryPool = Utils.createMockNonBlockedMemoryPool();
+    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
+    // Construct a mock client.
+    Client mockClient = Mockito.mock(Client.class);
+    try {
+      Mockito.doAnswer(
+              invocation -> {
+                TGetDataBlockRequest req = invocation.getArgument(0);
+                List<ByteBuffer> byteBuffers =
+                    new ArrayList<>(req.getEndSequenceId() - req.getStartSequenceId());
+                for (int i = 0; i < req.getEndSequenceId() - req.getStartSequenceId(); i++) {
+                  byteBuffers.add(ByteBuffer.allocate(0));
+                }
+                return new TGetDataBlockResponse(byteBuffers);
+              })
+          .when(mockClient)
+          .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
+    } catch (TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+    // Construct a mock SourceHandleListener.
+    SourceHandleListener mockSourceHandleListener = Mockito.mock(SourceHandleListener.class);
+    // Construct a mock TsBlockSerde that deserializes any bytebuffer into a mock TsBlock.
+    TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
+
+    SourceHandle sourceHandle =
+        new SourceHandle(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            localFragmentInstanceId,
+            localPlanNodeId,
+            mockLocalMemoryManager,
+            Executors.newSingleThreadExecutor(),
+            mockClient,
+            mockTsBlockSerde,
+            mockSourceHandleListener);
+    Future<?> blocked = sourceHandle.isBlocked();
+    Assert.assertFalse(blocked.isDone());
+    Assert.assertFalse(blocked.isCancelled());
+    Assert.assertFalse(sourceHandle.isClosed());
+    Assert.assertFalse(sourceHandle.isFinished());
+    Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
+
+    sourceHandle.close();
+    Assert.assertTrue(blocked.isDone());
+    Assert.assertTrue(blocked.isCancelled());
+    Assert.assertTrue(sourceHandle.isClosed());
+    Assert.assertFalse(sourceHandle.isFinished());
+    Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(mockSourceHandleListener, Mockito.times(1)).onClosed(sourceHandle);
   }
 }

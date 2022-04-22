@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.memory.MemoryPool;
@@ -34,9 +36,9 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class SinkHandleTest {
 
@@ -45,7 +47,9 @@ public class SinkHandleTest {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
-    final String remoteHostname = "remote";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint(
+            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
@@ -75,7 +79,7 @@ public class SinkHandleTest {
     // Construct SinkHandle.
     SinkHandle sinkHandle =
         new SinkHandle(
-            remoteHostname,
+            remoteEndpoint,
             remoteFragmentInstanceId,
             remotePlanNodeId,
             localFragmentInstanceId,
@@ -91,12 +95,7 @@ public class SinkHandleTest {
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    try {
-      sinkHandle.send(mockTsBlocks);
-    } catch (IOException e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
+    sinkHandle.send(mockTsBlocks);
     sinkHandle.setNoMoreTsBlocks();
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
@@ -145,12 +144,7 @@ public class SinkHandleTest {
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFinish(sinkHandle);
 
     // Close the SinkHandle.
-    try {
-      sinkHandle.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
+    sinkHandle.close();
     Assert.assertTrue(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onClosed(sinkHandle);
     try {
@@ -174,7 +168,9 @@ public class SinkHandleTest {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
-    final String remoteHostname = "remote";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint(
+            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
@@ -206,7 +202,7 @@ public class SinkHandleTest {
     // Construct SinkHandle.
     SinkHandle sinkHandle =
         new SinkHandle(
-            remoteHostname,
+            remoteEndpoint,
             remoteFragmentInstanceId,
             remotePlanNodeId,
             localFragmentInstanceId,
@@ -222,12 +218,7 @@ public class SinkHandleTest {
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    try {
-      sinkHandle.send(mockTsBlocks);
-    } catch (IOException e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
+    sinkHandle.send(mockTsBlocks);
     Assert.assertFalse(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isClosed());
@@ -274,12 +265,7 @@ public class SinkHandleTest {
         .free(queryId, numOfMockTsBlock * mockTsBlockSize);
 
     // Send tsblocks.
-    try {
-      sinkHandle.send(mockTsBlocks);
-    } catch (IOException e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
+    sinkHandle.send(mockTsBlocks);
     Assert.assertFalse(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isClosed());
@@ -307,12 +293,7 @@ public class SinkHandleTest {
     // Close the SinkHandle.
     sinkHandle.setNoMoreTsBlocks();
     Assert.assertFalse(sinkHandle.isFinished());
-    try {
-      sinkHandle.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
+    sinkHandle.close();
     Assert.assertTrue(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onClosed(sinkHandle);
     try {
@@ -356,7 +337,9 @@ public class SinkHandleTest {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
     final int numOfMockTsBlock = 10;
-    final String remoteHostname = "remote";
+    final TEndPoint remoteEndpoint =
+        new TEndPoint(
+            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
     final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
     final String remotePlanNodeId = "exchange_0";
     final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
@@ -372,11 +355,12 @@ public class SinkHandleTest {
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
     // Construct a mock client.
     Client mockClient = Mockito.mock(Client.class);
+    TException exception = new TException("Mock exception");
     try {
-      Mockito.doThrow(new TException("Mock exception"))
+      Mockito.doThrow(exception)
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
-      Mockito.doThrow(new TException("Mock exception"))
+      Mockito.doThrow(exception)
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
     } catch (TException e) {
@@ -387,7 +371,7 @@ public class SinkHandleTest {
     // Construct SinkHandle.
     SinkHandle sinkHandle =
         new SinkHandle(
-            remoteHostname,
+            remoteEndpoint,
             remoteFragmentInstanceId,
             remotePlanNodeId,
             localFragmentInstanceId,
@@ -403,12 +387,7 @@ public class SinkHandleTest {
     Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
 
     // Send tsblocks.
-    try {
-      sinkHandle.send(mockTsBlocks);
-    } catch (IOException e) {
-      e.printStackTrace();
-      Assert.fail();
-    }
+    sinkHandle.send(mockTsBlocks);
     sinkHandle.setNoMoreTsBlocks();
     Assert.assertFalse(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
@@ -434,19 +413,14 @@ public class SinkHandleTest {
       Assert.fail();
     }
 
-    try {
-      sinkHandle.send(Collections.singletonList(Mockito.mock(TsBlock.class)));
-      Assert.fail("Expect an IOException.");
-    } catch (IOException e) {
-      Assert.assertEquals("org.apache.thrift.TException: Mock exception", e.getMessage());
-    }
+    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onFailure(exception);
 
     // Close the SinkHandle.
     try {
       sinkHandle.close();
-      Assert.fail("Expect an IOException.");
-    } catch (IOException e) {
-      Assert.assertEquals("org.apache.thrift.TException: Mock exception", e.getMessage());
+      Assert.fail("Expect an RuntimeException.");
+    } catch (RuntimeException e) {
+      Assert.assertEquals("Send EndOfDataBlockEvent failed", e.getMessage());
     }
     Assert.assertFalse(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(0)).onClosed(sinkHandle);
@@ -456,5 +430,80 @@ public class SinkHandleTest {
     Assert.assertTrue(sinkHandle.isClosed());
     Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onAborted(sinkHandle);
     Mockito.verify(mockSinkHandleListener, Mockito.times(0)).onFinish(sinkHandle);
+  }
+
+  @Test
+  public void testAbort() {
+    final String queryId = "q0";
+    final long mockTsBlockSize = 1024L * 1024L;
+    final int numOfMockTsBlock = 10;
+    final TEndPoint remoteEndpoint =
+        new TEndPoint(
+            "remote", IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
+    final TFragmentInstanceId remoteFragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+    final String remotePlanNodeId = "exchange_0";
+    final TFragmentInstanceId localFragmentInstanceId = new TFragmentInstanceId(queryId, 1, "0");
+
+    // Construct a mock LocalMemoryManager that returns blocked futures.
+    LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryPool mockMemoryPool =
+        Utils.createMockBlockedMemoryPool(queryId, numOfMockTsBlock, mockTsBlockSize);
+    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
+
+    // Construct a mock SinkHandleListener.
+    SinkHandleListener mockSinkHandleListener = Mockito.mock(SinkHandleListener.class);
+    // Construct several mock TsBlock(s).
+    List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
+    // Construct a mock client.
+    Client mockClient = Mockito.mock(Client.class);
+    try {
+      Mockito.doNothing()
+          .when(mockClient)
+          .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
+      Mockito.doNothing()
+          .when(mockClient)
+          .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
+    } catch (TException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+
+    // Construct SinkHandle.
+    SinkHandle sinkHandle =
+        new SinkHandle(
+            remoteEndpoint,
+            remoteFragmentInstanceId,
+            remotePlanNodeId,
+            localFragmentInstanceId,
+            mockLocalMemoryManager,
+            Executors.newSingleThreadExecutor(),
+            mockClient,
+            Utils.createMockTsBlockSerde(mockTsBlockSize),
+            mockSinkHandleListener);
+    Assert.assertTrue(sinkHandle.isFull().isDone());
+    Assert.assertFalse(sinkHandle.isFinished());
+    Assert.assertFalse(sinkHandle.isClosed());
+    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
+
+    // Send tsblocks.
+    sinkHandle.send(mockTsBlocks);
+    Future<?> blocked = sinkHandle.isFull();
+    Assert.assertFalse(blocked.isDone());
+    Assert.assertFalse(blocked.isCancelled());
+    Assert.assertFalse(sinkHandle.isFinished());
+    Assert.assertFalse(sinkHandle.isClosed());
+    Assert.assertEquals(
+        mockTsBlockSize * numOfMockTsBlock, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(numOfMockTsBlock, sinkHandle.getNumOfBufferedTsBlocks());
+
+    sinkHandle.abort();
+    Assert.assertTrue(blocked.isDone());
+    Assert.assertTrue(blocked.isCancelled());
+    Assert.assertFalse(sinkHandle.isFinished());
+    Assert.assertTrue(sinkHandle.isClosed());
+    Assert.assertEquals(0L, sinkHandle.getBufferRetainedSizeInBytes());
+    Assert.assertEquals(0, sinkHandle.getNumOfBufferedTsBlocks());
+    Mockito.verify(mockSinkHandleListener, Mockito.times(1)).onAborted(sinkHandle);
   }
 }
