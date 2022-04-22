@@ -47,7 +47,6 @@
         <module>udf</module>
         <module>trigger</module>
         <module>rabbitmq</module>
-        <module>operationsync</module>
     </modules>
     <build>
         <pluginManagement>

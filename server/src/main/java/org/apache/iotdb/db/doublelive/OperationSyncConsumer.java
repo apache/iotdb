@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 public class OperationSyncConsumer implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncConsumer.class);
@@ -63,15 +62,6 @@ public class OperationSyncConsumer implements Runnable {
         continue;
       }
 
-      if (headType == OperationSyncPlanTypeUtils.OperationSyncPlanType.IPlan) {
-        try {
-          // Sleep 10ms when it's I-Plan
-          TimeUnit.MILLISECONDS.sleep(10);
-        } catch (InterruptedException ignore) {
-          // Ignored
-        }
-      }
-
       headBuffer.position(0);
       boolean transmitStatus = false;
       try {
@@ -95,8 +85,9 @@ public class OperationSyncConsumer implements Runnable {
           dmlLogService.write(headBuffer);
         } catch (IOException e) {
           LOGGER.error("OperationSyncConsumer can't serialize physicalPlan", e);
+        } finally {
+          dmlLogService.releaseLogWriter();
         }
-        dmlLogService.releaseLogWriter();
       }
     }
   }

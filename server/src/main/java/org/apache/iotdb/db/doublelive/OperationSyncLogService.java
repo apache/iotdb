@@ -116,11 +116,14 @@ public class OperationSyncLogService implements Runnable {
     while (true) {
       // Check the validity of logFile
       logWriterLock.lock();
-      if (logWriter != null && System.currentTimeMillis() - logFileCreateTime > logFileValidity) {
-        // Submit logFile when it's expired
-        submitLogFile();
+      try {
+        if (logWriter != null && System.currentTimeMillis() - logFileCreateTime > logFileValidity) {
+          // Submit logFile when it's expired
+          submitLogFile();
+        }
+      } finally {
+        logWriterLock.unlock();
       }
-      logWriterLock.unlock();
 
       try {
         // Sleep 10s before next check

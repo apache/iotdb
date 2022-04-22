@@ -39,18 +39,15 @@ public class OperationSyncPlanTypeUtils {
         || plan instanceof CreateAlignedTimeSeriesPlan
         || plan instanceof DeleteTimeSeriesPlan
         || plan instanceof AlterTimeSeriesPlan) {
-      return OperationSyncPlanType.EPlan;
-    } else if (plan instanceof DeletePlan) {
-      return OperationSyncPlanType.IPlan;
-    } else if (plan instanceof InsertPlan) {
-      return OperationSyncPlanType.NPlan;
+      return OperationSyncPlanType.DDLPlan;
+    } else if (plan instanceof DeletePlan || plan instanceof InsertPlan) {
+      return OperationSyncPlanType.DMLPlan;
     }
     return null;
   }
 
   public enum OperationSyncPlanType {
-    EPlan,
-    IPlan,
-    NPlan
+    DDLPlan, // Create, update and delete schema
+    DMLPlan // insert and delete data
   }
 }

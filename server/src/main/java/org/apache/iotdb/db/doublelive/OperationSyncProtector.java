@@ -69,8 +69,11 @@ public abstract class OperationSyncProtector implements Runnable {
 
   protected void registerLogFile(String logFile) {
     logFileListLock.lock();
-    registeredLogFiles.add(logFile);
-    logFileListLock.unlock();
+    try {
+      registeredLogFiles.add(logFile);
+    } finally {
+      logFileListLock.unlock();
+    }
   }
 
   protected void wrapLogFiles() {
@@ -84,14 +87,16 @@ public abstract class OperationSyncProtector implements Runnable {
       while (true) {
         // Wrap and transmit all OperationSyncLogs
         logFileListLock.lock();
-        if (registeredLogFiles.size() > 0) {
-          isProtectorAtWork = true;
-          wrapLogFiles();
+        try {
+          if (registeredLogFiles.size() > 0) {
+            isProtectorAtWork = true;
+            wrapLogFiles();
+          } else {
+            isProtectorAtWork = false;
+            break;
+          }
+        } finally {
           logFileListLock.unlock();
-        } else {
-          isProtectorAtWork = false;
-          logFileListLock.unlock();
-          break;
         }
         if (isProtectorAtWork) {
           transmitLogFiles();

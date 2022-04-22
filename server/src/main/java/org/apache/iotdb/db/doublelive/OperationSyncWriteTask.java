@@ -33,23 +33,23 @@ public class OperationSyncWriteTask implements Runnable {
 
   private final ByteBuffer physicalPlanBuffer;
   private final SessionPool operationSyncSessionPool;
-  private final OperationSyncDDLProtector eProtector;
-  private final OperationSyncLogService eLogService;
+  private final OperationSyncDDLProtector ddlProtector;
+  private final OperationSyncLogService ddlLogService;
 
   public OperationSyncWriteTask(
       ByteBuffer physicalPlanBuffer,
       SessionPool operationSyncSessionPool,
-      OperationSyncDDLProtector eProtector,
-      OperationSyncLogService eLogService) {
+      OperationSyncDDLProtector ddlProtector,
+      OperationSyncLogService ddlLogService) {
     this.physicalPlanBuffer = physicalPlanBuffer;
     this.operationSyncSessionPool = operationSyncSessionPool;
-    this.eProtector = eProtector;
-    this.eLogService = eLogService;
+    this.ddlProtector = ddlProtector;
+    this.ddlLogService = ddlLogService;
   }
 
   @Override
   public void run() {
-    if (eProtector.isAtWork()) {
+    if (ddlProtector.isAtWork()) {
       serializeEPlan();
     } else {
       boolean transmitStatus = false;
@@ -76,11 +76,12 @@ public class OperationSyncWriteTask implements Runnable {
     try {
       // must set buffer position to limit() before serialization
       physicalPlanBuffer.position(physicalPlanBuffer.limit());
-      eLogService.acquireLogWriter();
-      eLogService.write(physicalPlanBuffer);
+      ddlLogService.acquireLogWriter();
+      ddlLogService.write(physicalPlanBuffer);
     } catch (IOException e) {
       LOGGER.error("can't serialize current PhysicalPlan", e);
+    } finally {
+      ddlLogService.releaseLogWriter();
     }
-    eLogService.releaseLogWriter();
   }
 }

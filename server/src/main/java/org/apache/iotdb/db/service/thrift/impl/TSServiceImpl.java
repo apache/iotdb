@@ -2193,7 +2193,7 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     switch (planType) {
-      case EPlan:
+      case DDLPlan:
         // Create OperationSyncWriteTask and wait
         Thread taskThread =
             new Thread(
@@ -2207,8 +2207,7 @@ public class TSServiceImpl implements TSIService.Iface {
           LOGGER.error("OperationSyncWriteTask been interrupted", e);
         }
         break;
-      case IPlan:
-      case NPlan:
+      case DMLPlan:
         // Put into OperationSyncProducer
         operationSyncProducer.put(new Pair<>(buffer, planType));
     }
