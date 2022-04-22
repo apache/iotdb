@@ -177,7 +177,9 @@ public class ProcedureExecutor<Env> {
         }
       }
       RootProcedureStack rootStack = rollbackStack.get(rootProcedureId);
-      rootStack.loadStack(proc);
+      if (rootStack != null) {
+        rootStack.loadStack(proc);
+      }
       proc.setRootProcedureId(rootProcedureId);
       switch (proc.getState()) {
         case RUNNABLE:
