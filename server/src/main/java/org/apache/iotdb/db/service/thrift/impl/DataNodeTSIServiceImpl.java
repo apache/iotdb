@@ -813,7 +813,10 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   }
 
   private void cleanupQueryExecution(Long queryId) {
-    COORDINATOR.getQueryExecution(genQueryId(queryId)).stopAndCleanup();
+    IQueryExecution queryExecution = COORDINATOR.getQueryExecution(genQueryId(queryId));
+    if (queryExecution != null) {
+      queryExecution.stopAndCleanup();
+    }
   }
 
   private QueryId genQueryId(long id) {
