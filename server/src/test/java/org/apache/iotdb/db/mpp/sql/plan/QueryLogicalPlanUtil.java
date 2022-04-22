@@ -132,11 +132,11 @@ public class QueryLogicalPlanUtil {
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 
-    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_6"), filterNullNode, 100);
-    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_7"), limitNode, 100);
+    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_6"), filterNullNode, 100);
+    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_7"), offsetNode, 100);
 
     querySQLs.add(sql);
-    sqlToPlanMap.put(sql, offsetNode);
+    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 2. Raw Data Query (align by device) */
@@ -208,11 +208,11 @@ public class QueryLogicalPlanUtil {
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 
-    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_10"), filterNullNode, 100);
-    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_11"), limitNode, 100);
+    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_10"), filterNullNode, 100);
+    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_11"), offsetNode, 100);
 
     querySQLs.add(sql);
-    sqlToPlanMap.put(sql, offsetNode);
+    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 3. Aggregation Query (without value filter) */
@@ -231,7 +231,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
-            Sets.newHashSet("s1"),
+            Sets.newHashSet("s1", "s2"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -240,7 +240,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
-            Sets.newHashSet("s2"),
+            Sets.newHashSet("s1", "s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -249,7 +249,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
-            Sets.newHashSet("s1"),
+            Sets.newHashSet("s1", "s2"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -258,7 +258,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
-            Sets.newHashSet("s2"),
+            Sets.newHashSet("s1", "s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -298,11 +298,11 @@ public class QueryLogicalPlanUtil {
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 
-    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_7"), filterNullNode, 100);
-    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_8"), limitNode, 100);
+    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_7"), filterNullNode, 100);
+    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_8"), offsetNode, 100);
 
     querySQLs.add(sql);
-    sqlToPlanMap.put(sql, offsetNode);
+    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 4. Aggregation Query (without value filter and align by device) */
@@ -322,7 +322,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
-            Sets.newHashSet("s1"),
+            Sets.newHashSet("s1", "s2"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -331,7 +331,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
-            Sets.newHashSet("s2"),
+            Sets.newHashSet("s1", "s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -340,7 +340,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
-            Sets.newHashSet("s1"),
+            Sets.newHashSet("s1", "s2"),
             aggregationTypeList1,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -349,7 +349,7 @@ public class QueryLogicalPlanUtil {
         new SeriesAggregateScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
-            Sets.newHashSet("s2"),
+            Sets.newHashSet("s1", "s2"),
             aggregationTypeList2,
             OrderBy.TIMESTAMP_DESC,
             timeFilter,
@@ -372,11 +372,11 @@ public class QueryLogicalPlanUtil {
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 
-    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_8"), filterNullNode, 100);
-    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_9"), limitNode, 100);
+    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_8"), filterNullNode, 100);
+    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_9"), offsetNode, 100);
 
     querySQLs.add(sql);
-    sqlToPlanMap.put(sql, offsetNode);
+    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 5. Aggregation Query (with value filter) */
@@ -473,11 +473,11 @@ public class QueryLogicalPlanUtil {
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 
-    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_8"), filterNullNode, 100);
-    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_9"), limitNode, 100);
+    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_8"), filterNullNode, 100);
+    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_9"), offsetNode, 100);
 
     querySQLs.add(sql);
-    sqlToPlanMap.put(sql, offsetNode);
+    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 6. Aggregation Query (with value filter and align by device) */
@@ -566,10 +566,10 @@ public class QueryLogicalPlanUtil {
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 
-    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_12"), filterNullNode, 100);
-    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_13"), limitNode, 100);
+    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_12"), filterNullNode, 100);
+    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_13"), offsetNode, 100);
 
     querySQLs.add(sql);
-    sqlToPlanMap.put(sql, offsetNode);
+    sqlToPlanMap.put(sql, limitNode);
   }
 }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.Collections;
 import java.util.List;
 
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
@@ -37,6 +38,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
+    schemaTree.setStorageGroups(Collections.singletonList("root.sg"));
     return schemaTree;
   }
 

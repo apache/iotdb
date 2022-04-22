@@ -114,8 +114,8 @@ public class LogicalPlanner {
               analysis.getQueryFilter(),
               queryStatement.getSelectedPathNames())
           .planFilterNull(queryStatement.getFilterNullComponent())
-          .planLimit(queryStatement.getRowLimit())
-          .planOffset(queryStatement.getRowOffset());
+          .planOffset(queryStatement.getRowOffset())
+          .planLimit(queryStatement.getRowLimit());
 
       return planBuilder.getRoot();
     }
@@ -147,8 +147,8 @@ public class LogicalPlanner {
       planBuilder
           .planGroupByLevel(queryStatement.getGroupByLevelComponent())
           .planFilterNull(queryStatement.getFilterNullComponent())
-          .planLimit(queryStatement.getRowLimit())
-          .planOffset(queryStatement.getRowOffset());
+          .planOffset(queryStatement.getRowOffset())
+          .planLimit(queryStatement.getRowLimit());
       return planBuilder.getRoot();
     }
 
