@@ -177,7 +177,6 @@ public class TsFilePlanRedoer {
             (InsertTabletNode) node, 0, ((InsertTabletNode) node).getRowCount());
       }
     }
-    logger.info("");
   }
 
   private void checkDataTypeAndMarkFailed(final IMeasurementMNode[] mNodes, InsertPlan tPlan) {
