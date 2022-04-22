@@ -107,7 +107,7 @@ public class FragmentInstanceContext extends QueryContext {
 
       // use compare and set from initial value to avoid overwriting if there
       // were a duplicate notification, which shouldn't happen
-      executionEndTime.compareAndSet(null, now);
+      executionEndTime.compareAndSet(END_TIME_INITIAL_VALUE, now);
       endNanos.compareAndSet(0, System.nanoTime());
     }
   }
