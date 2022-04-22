@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.server;
 
+import org.apache.iotdb.cluster.query.manage.ClusterSessionManager;
 import org.apache.iotdb.cluster.server.basic.ClusterServiceProvider;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 
@@ -43,5 +45,10 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
   @Override
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     return clusterServiceProvider.executeNonQueryPlan(plan);
+  }
+
+  @Override
+  public SessionManager getSessionManager() {
+    return ClusterSessionManager.getInstance();
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.integration.env;
 
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.jdbc.IoTDBConnection;
@@ -37,7 +38,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
 public abstract class ClusterEnvBase implements BaseEnv {
@@ -212,23 +212,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
 
   @Override
   public Connection getConnection() throws SQLException {
-    Connection connection = null;
-
-    try {
-      Class.forName(Config.JDBC_DRIVER_NAME);
-      connection =
-          DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX
-                  + this.nodes.get(0).getIp()
-                  + ":"
-                  + this.nodes.get(0).getPort(),
-              System.getProperty("User", "root"),
-              System.getProperty("Password", "root"));
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-      fail();
-    }
-    return connection;
+    return new ClusterTestConnection(getWriteConnection(), getReadConnections());
   }
 
   public IoTDBConnection getConnection(int queryTimeout) throws SQLException {
@@ -252,6 +236,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
     return connection;
   }
 
+  // In this demo getConnection only returns the write connection
   @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
     Connection connection = null;
@@ -265,7 +250,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
                   + ":"
                   + this.nodes.get(0).getPort()
                   + "?"
-                  + VERSION
+                  + Config.VERSION
                   + "="
                   + version.toString(),
               System.getProperty("User", "root"),
@@ -275,5 +260,48 @@ public abstract class ClusterEnvBase implements BaseEnv {
       fail();
     }
     return connection;
+  }
+
+  protected Connection getWriteConnection() throws SQLException {
+    Connection connection = null;
+
+    try {
+      Class.forName(Config.JDBC_DRIVER_NAME);
+      connection =
+          DriverManager.getConnection(
+              Config.IOTDB_URL_PREFIX
+                  + this.nodes.get(0).getIp()
+                  + ":"
+                  + this.nodes.get(0).getPort(),
+              System.getProperty("User", "root"),
+              System.getProperty("Password", "root"));
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+      fail();
+    }
+    return connection;
+  }
+
+  protected List<Connection> getReadConnections() throws SQLException {
+    List<Connection> readConnections = new ArrayList<>();
+
+    for (int i = 1; i < this.nodes.size(); i++) {
+      try {
+        Class.forName(Config.JDBC_DRIVER_NAME);
+        Connection readConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX
+                    + this.nodes.get(i).getIp()
+                    + ":"
+                    + this.nodes.get(i).getPort(),
+                System.getProperty("User", "root"),
+                System.getProperty("Password", "root"));
+        readConnections.add(readConnection);
+      } catch (ClassNotFoundException e) {
+        e.printStackTrace();
+        fail();
+      }
+    }
+    return readConnections;
   }
 }

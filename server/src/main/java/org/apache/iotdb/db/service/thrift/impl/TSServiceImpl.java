@@ -161,7 +161,11 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 /** Thrift RPC implementation at server side. */
 public class TSServiceImpl implements TSIEventHandler {
 
-  private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
+
+  public SessionManager getSessionManager() {
+    return SESSION_MANAGER;
+  }
 
   private class QueryTask implements Callable<TSExecuteStatementResp> {
 
@@ -203,13 +207,13 @@ public class TSServiceImpl implements TSIEventHandler {
 
     @Override
     public TSExecuteStatementResp call() throws Exception {
-      String username = SESSION_MANAGER.getUsername(sessionId);
+      String username = getSessionManager().getUsername(sessionId);
       plan.setLoginUserName(username);
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
       AUDIT_LOGGER.debug("Session {} execute Query: {}", sessionId, statement);
 
-      final long queryId = SESSION_MANAGER.requestQueryId(statementId, true);
+      final long queryId = getSessionManager().requestQueryId(statementId, true);
       QueryContext context =
           serviceProvider.genQueryContext(
               queryId, plan.isDebug(), queryStartTime, statement, timeout);
@@ -226,7 +230,7 @@ public class TSServiceImpl implements TSIEventHandler {
         resp.setQueryId(queryId);
         resp.setOperationType(plan.getOperatorType().toString());
       } catch (Exception e) {
-        SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+        getSessionManager().releaseQueryResourceNoExceptions(queryId);
         throw e;
       } finally {
         addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
@@ -255,15 +259,16 @@ public class TSServiceImpl implements TSIEventHandler {
 
     @Override
     public TSFetchResultsResp call() throws Exception {
-      QueryDataSet queryDataSet = SESSION_MANAGER.getDataset(queryId);
+      QueryDataSet queryDataSet = getSessionManager().getDataset(queryId);
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
       try {
         if (isAlign) {
           TSQueryDataSet result =
-              fillRpcReturnData(fetchSize, queryDataSet, SESSION_MANAGER.getUsername(sessionId));
+              fillRpcReturnData(
+                  fetchSize, queryDataSet, getSessionManager().getUsername(sessionId));
           boolean hasResultSet = result.bufferForTime().limit() != 0;
           if (!hasResultSet) {
-            SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+            getSessionManager().releaseQueryResourceNoExceptions(queryId);
           }
           resp.setHasResultSet(hasResultSet);
           resp.setQueryDataSet(result);
@@ -271,7 +276,7 @@ public class TSServiceImpl implements TSIEventHandler {
         } else {
           TSQueryNonAlignDataSet nonAlignResult =
               fillRpcNonAlignReturnData(
-                  fetchSize, queryDataSet, SESSION_MANAGER.getUsername(sessionId));
+                  fetchSize, queryDataSet, getSessionManager().getUsername(sessionId));
           boolean hasResultSet = false;
           for (ByteBuffer timeBuffer : nonAlignResult.getTimeList()) {
             if (timeBuffer.limit() != 0) {
@@ -280,7 +285,7 @@ public class TSServiceImpl implements TSIEventHandler {
             }
           }
           if (!hasResultSet) {
-            SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+            getSessionManager().releaseQueryResourceNoExceptions(queryId);
           }
           resp.setHasResultSet(hasResultSet);
           resp.setNonAlignQueryDataSet(nonAlignResult);
@@ -289,7 +294,7 @@ public class TSServiceImpl implements TSIEventHandler {
         QUERY_TIME_MANAGER.unRegisterQuery(queryId, false);
         return resp;
       } catch (Exception e) {
-        SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+        getSessionManager().releaseQueryResourceNoExceptions(queryId);
         throw e;
       }
     }
@@ -312,8 +317,9 @@ public class TSServiceImpl implements TSIEventHandler {
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
     BasicOpenSessionResp openSessionResp =
-        SESSION_MANAGER.openSession(
-            req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
+        getSessionManager()
+            .openSession(
+                req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
@@ -330,7 +336,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
     return new TSStatus(
-        !SESSION_MANAGER.closeSession(req.sessionId)
+        !getSessionManager().closeSession(req.sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
@@ -343,15 +349,20 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
-    return SESSION_MANAGER.closeOperation(
-        req.sessionId, req.queryId, req.statementId, req.isSetStatementId(), req.isSetQueryId());
+    return getSessionManager()
+        .closeOperation(
+            req.sessionId,
+            req.queryId,
+            req.statementId,
+            req.isSetStatementId(),
+            req.isSetQueryId());
   }
 
   @Override
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
 
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return resp.setStatus(getNotLoggedInStatus());
     }
 
@@ -497,7 +508,7 @@ public class TSServiceImpl implements TSIEventHandler {
     long t1 = System.currentTimeMillis();
     List<TSStatus> result = new ArrayList<>();
     boolean isAllSuccessful = true;
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
@@ -514,8 +525,8 @@ public class TSServiceImpl implements TSIEventHandler {
                 .getPlanner()
                 .parseSQLToPhysicalPlan(
                     statement,
-                    SESSION_MANAGER.getZoneId(req.sessionId),
-                    SESSION_MANAGER.getClientVersion(req.sessionId));
+                    getSessionManager().getZoneId(req.sessionId),
+                    getSessionManager().getClientVersion(req.sessionId));
         if (physicalPlan.isQuery() || physicalPlan.isSelectInto()) {
           throw new QueryInBatchStatementException(statement);
         }
@@ -529,7 +540,7 @@ public class TSServiceImpl implements TSIEventHandler {
             index = 0;
           }
 
-          TSStatus status = SESSION_MANAGER.checkAuthority(physicalPlan, req.getSessionId());
+          TSStatus status = getSessionManager().checkAuthority(physicalPlan, req.getSessionId());
           if (status != null) {
             insertRowsPlan.getResults().put(index, status);
             isAllSuccessful = false;
@@ -551,7 +562,7 @@ public class TSServiceImpl implements TSIEventHandler {
             multiPlan = new CreateMultiTimeSeriesPlan();
             executeList.add(multiPlan);
           }
-          TSStatus status = SESSION_MANAGER.checkAuthority(physicalPlan, req.getSessionId());
+          TSStatus status = getSessionManager().checkAuthority(physicalPlan, req.getSessionId());
           if (status != null) {
             multiPlan.getResults().put(i, status);
             isAllSuccessful = false;
@@ -603,7 +614,7 @@ public class TSServiceImpl implements TSIEventHandler {
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     String statement = req.getStatement();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
@@ -613,8 +624,8 @@ public class TSServiceImpl implements TSIEventHandler {
               .getPlanner()
               .parseSQLToPhysicalPlan(
                   statement,
-                  SESSION_MANAGER.getZoneId(req.getSessionId()),
-                  SESSION_MANAGER.getClientVersion(req.sessionId));
+                  getSessionManager().getZoneId(req.getSessionId()),
+                  getSessionManager().getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         return submitQueryTask(physicalPlan, startTime, req);
@@ -641,7 +652,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
@@ -652,8 +663,8 @@ public class TSServiceImpl implements TSIEventHandler {
               .getPlanner()
               .parseSQLToPhysicalPlan(
                   statement,
-                  SESSION_MANAGER.getZoneId(req.sessionId),
-                  SESSION_MANAGER.getClientVersion(req.sessionId));
+                  getSessionManager().getZoneId(req.sessionId),
+                  getSessionManager().getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         return submitQueryTask(physicalPlan, startTime, req);
@@ -677,7 +688,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
@@ -687,8 +698,8 @@ public class TSServiceImpl implements TSIEventHandler {
               .getPlanner()
               .rawDataQueryReqToPhysicalPlan(
                   req,
-                  SESSION_MANAGER.getZoneId(req.sessionId),
-                  SESSION_MANAGER.getClientVersion(req.sessionId));
+                  getSessionManager().getZoneId(req.sessionId),
+                  getSessionManager().getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -723,7 +734,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
@@ -733,8 +744,8 @@ public class TSServiceImpl implements TSIEventHandler {
               .getPlanner()
               .lastDataQueryReqToPhysicalPlan(
                   req,
-                  SESSION_MANAGER.getZoneId(req.sessionId),
-                  SESSION_MANAGER.getClientVersion(req.sessionId));
+                  getSessionManager().getZoneId(req.sessionId),
+                  getSessionManager().getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -797,7 +808,7 @@ public class TSServiceImpl implements TSIEventHandler {
     List<? extends PartialPath> authPaths = plan.getAuthPaths();
     if (authPaths != null
         && !authPaths.isEmpty()
-        && !SESSION_MANAGER.checkAuthorization(plan, username)) {
+        && !getSessionManager().checkAuthorization(plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
@@ -919,13 +930,13 @@ public class TSServiceImpl implements TSIEventHandler {
       long sessionId)
       throws IoTDBException, TException, SQLException, IOException, InterruptedException,
           QueryFilterOptimizationException {
-    TSStatus status = SESSION_MANAGER.checkAuthority(physicalPlan, sessionId);
+    TSStatus status = getSessionManager().checkAuthority(physicalPlan, sessionId);
     if (status != null) {
       return new TSExecuteStatementResp(status);
     }
 
     final long startTime = System.currentTimeMillis();
-    final long queryId = SESSION_MANAGER.requestQueryId(statementId, true);
+    final long queryId = getSessionManager().requestQueryId(statementId, true);
     QueryContext context =
         serviceProvider.genQueryContext(
             queryId, physicalPlan.isDebug(), startTime, statement, timeout);
@@ -934,7 +945,7 @@ public class TSServiceImpl implements TSIEventHandler {
 
     QUERY_FREQUENCY_RECORDER.incrementAndGet();
     AUDIT_LOGGER.debug(
-        "Session {} execute select into: {}", SESSION_MANAGER.getCurrSessionId(), statement);
+        "Session {} execute select into: {}", getSessionManager().getCurrSessionId(), statement);
     if (queryPlan.isEnableTracing()) {
       TRACING_MANAGER.setSeriesPathNum(queryId, queryPlan.getPaths().size());
     }
@@ -961,7 +972,7 @@ public class TSServiceImpl implements TSIEventHandler {
 
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS).setQueryId(queryId);
     } finally {
-      SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+      getSessionManager().releaseQueryResourceNoExceptions(queryId);
       addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
       long costTime = System.currentTimeMillis() - startTime;
       if (costTime >= CONFIG.getSlowQueryThreshold()) {
@@ -975,7 +986,7 @@ public class TSServiceImpl implements TSIEventHandler {
     InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < insertTabletPlans.size(); i++) {
       InsertTabletPlan insertTabletPlan = insertTabletPlans.get(i);
-      TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, sessionId);
+      TSStatus status = getSessionManager().checkAuthority(insertTabletPlan, sessionId);
 
       if (status != null) {
         // not authorized
@@ -991,11 +1002,11 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
 
-      if (!SESSION_MANAGER.hasDataset(req.queryId)) {
+      if (!getSessionManager().hasDataset(req.queryId)) {
         return RpcUtils.getTSFetchResultsResp(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
       }
@@ -1057,7 +1068,7 @@ public class TSServiceImpl implements TSIEventHandler {
   /** update statement can be: 1. select-into statement 2. non-query statement */
   @Override
   public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
 
@@ -1067,8 +1078,8 @@ public class TSServiceImpl implements TSIEventHandler {
               .getPlanner()
               .parseSQLToPhysicalPlan(
                   req.statement,
-                  SESSION_MANAGER.getZoneId(req.sessionId),
-                  SESSION_MANAGER.getClientVersion(req.sessionId));
+                  getSessionManager().getZoneId(req.sessionId),
+                  getSessionManager().getClientVersion(req.sessionId));
       return physicalPlan.isQuery()
           ? RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is a query statement.")
@@ -1108,16 +1119,16 @@ public class TSServiceImpl implements TSIEventHandler {
   }
 
   private TSExecuteStatementResp executeNonQueryStatement(PhysicalPlan plan, long sessionId) {
-    TSStatus status = SESSION_MANAGER.checkAuthority(plan, sessionId);
+    TSStatus status = getSessionManager().checkAuthority(plan, sessionId);
     return status != null
         ? new TSExecuteStatementResp(status)
         : RpcUtils.getTSExecuteStatementResp(executeNonQueryPlan(plan))
-            .setQueryId(SESSION_MANAGER.requestQueryId(false));
+            .setQueryId(getSessionManager().requestQueryId(false));
   }
 
   @Override
   public void handleClientExit() {
-    Long sessionId = SESSION_MANAGER.getCurrSessionId();
+    Long sessionId = getSessionManager().getCurrSessionId();
     if (sessionId != null) {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
@@ -1127,7 +1138,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSGetTimeZoneResp getTimeZone(long sessionId) {
     try {
-      ZoneId zoneId = SESSION_MANAGER.getZoneId(sessionId);
+      ZoneId zoneId = getSessionManager().getZoneId(sessionId);
       return new TSGetTimeZoneResp(
           RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
           zoneId != null ? zoneId.toString() : "Unknown time zone");
@@ -1142,7 +1153,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus setTimeZone(TSSetTimeZoneReq req) {
     try {
-      SESSION_MANAGER.setTimezone(req.sessionId, req.timeZone);
+      getSessionManager().setTimezone(req.sessionId, req.timeZone);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
@@ -1178,14 +1189,14 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus insertRecords(TSInsertRecordsReq req) {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
-          SESSION_MANAGER.getCurrSessionId(),
+          getSessionManager().getCurrSessionId(),
           req.prefixPaths.get(0),
           req.getTimestamps().get(0));
     }
@@ -1200,7 +1211,7 @@ public class TSServiceImpl implements TSIEventHandler {
                 req.getMeasurementsList().get(i).toArray(new String[0]),
                 req.valuesList.get(i),
                 req.isAligned);
-        TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+        TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
           allCheckSuccess = false;
@@ -1250,14 +1261,14 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, device {}, first time {}",
-          SESSION_MANAGER.getCurrSessionId(),
+          getSessionManager().getCurrSessionId(),
           req.prefixPath,
           req.getTimestamps().get(0));
     }
@@ -1271,7 +1282,7 @@ public class TSServiceImpl implements TSIEventHandler {
               req.getMeasurementsList(),
               req.getValuesList(),
               req.isAligned);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
       statusList.add(status != null ? status : executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
       statusList.add(
@@ -1296,14 +1307,14 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req) {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, device {}, first time {}",
-          SESSION_MANAGER.getCurrSessionId(),
+          getSessionManager().getCurrSessionId(),
           req.prefixPath,
           req.getTimestamps().get(0));
     }
@@ -1319,7 +1330,7 @@ public class TSServiceImpl implements TSIEventHandler {
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setNeedInferType(true);
         plan.setAligned(req.isAligned);
-        TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+        TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
 
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
@@ -1354,14 +1365,14 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus insertStringRecords(TSInsertStringRecordsReq req) {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
-          SESSION_MANAGER.getCurrSessionId(),
+          getSessionManager().getCurrSessionId(),
           req.prefixPaths.get(0),
           req.getTimestamps().get(0));
     }
@@ -1377,7 +1388,7 @@ public class TSServiceImpl implements TSIEventHandler {
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setNeedInferType(true);
         plan.setAligned(req.isAligned);
-        TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+        TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
 
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
@@ -1468,13 +1479,13 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus insertRecord(TSInsertRecordReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
-          SESSION_MANAGER.getCurrSessionId(),
+          getSessionManager().getCurrSessionId(),
           req.getPrefixPath(),
           req.getTimestamp());
 
@@ -1485,7 +1496,7 @@ public class TSServiceImpl implements TSIEventHandler {
               req.getMeasurements().toArray(new String[0]),
               req.values,
               req.isAligned);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
@@ -1498,13 +1509,13 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus insertStringRecord(TSInsertStringRecordReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
-          SESSION_MANAGER.getCurrSessionId(),
+          getSessionManager().getCurrSessionId(),
           req.getPrefixPath(),
           req.getTimestamp());
 
@@ -1516,7 +1527,7 @@ public class TSServiceImpl implements TSIEventHandler {
       plan.setValues(req.getValues().toArray(new Object[0]));
       plan.setNeedInferType(true);
       plan.setAligned(req.isAligned);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
@@ -1529,7 +1540,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus deleteData(TSDeleteDataReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1541,7 +1552,7 @@ public class TSServiceImpl implements TSIEventHandler {
         paths.add(new PartialPath(path));
       }
       plan.addPaths(paths);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
 
       return status != null ? new TSStatus(status) : new TSStatus(executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
@@ -1556,7 +1567,7 @@ public class TSServiceImpl implements TSIEventHandler {
   public TSStatus insertTablet(TSInsertTabletReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1571,7 +1582,7 @@ public class TSServiceImpl implements TSIEventHandler {
       insertTabletPlan.setRowCount(req.size);
       insertTabletPlan.setDataTypes(req.types);
       insertTabletPlan.setAligned(req.isAligned);
-      TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(insertTabletPlan, req.getSessionId());
 
       return status != null ? status : executeNonQueryPlan(insertTabletPlan);
     } catch (IoTDBException e) {
@@ -1588,7 +1599,7 @@ public class TSServiceImpl implements TSIEventHandler {
   public TSStatus insertTablets(TSInsertTabletsReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1633,7 +1644,7 @@ public class TSServiceImpl implements TSIEventHandler {
     InsertMultiTabletsPlan insertMultiTabletsPlan = new InsertMultiTabletsPlan();
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertTabletPlan insertTabletPlan = constructInsertTabletPlan(req, i);
-      TSStatus status = SESSION_MANAGER.checkAuthority(insertTabletPlan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(insertTabletPlan, req.getSessionId());
       if (status != null) {
         // not authorized
         insertMultiTabletsPlan.getResults().put(i, status);
@@ -1648,12 +1659,12 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus setStorageGroup(long sessionId, String storageGroup) {
     try {
-      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+      if (!getSessionManager().checkLogin(sessionId)) {
         return getNotLoggedInStatus();
       }
 
       SetStorageGroupPlan plan = new SetStorageGroupPlan(new PartialPath(storageGroup));
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, sessionId);
+      TSStatus status = getSessionManager().checkAuthority(plan, sessionId);
 
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
@@ -1667,7 +1678,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
     try {
-      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+      if (!getSessionManager().checkLogin(sessionId)) {
         return getNotLoggedInStatus();
       }
 
@@ -1676,7 +1687,7 @@ public class TSServiceImpl implements TSIEventHandler {
         storageGroupList.add(new PartialPath(storageGroup));
       }
       DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(storageGroupList);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, sessionId);
+      TSStatus status = getSessionManager().checkAuthority(plan, sessionId);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.DELETE_STORAGE_GROUPS, e.getErrorCode());
@@ -1689,13 +1700,15 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
-            "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
+            "Session-{} create timeseries {}",
+            getSessionManager().getCurrSessionId(),
+            req.getPath());
       }
 
       CreateTimeSeriesPlan plan =
@@ -1708,7 +1721,7 @@ public class TSServiceImpl implements TSIEventHandler {
               req.tags,
               req.attributes,
               req.measurementAlias);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_TIMESERIES, e.getErrorCode());
@@ -1721,7 +1734,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus createAlignedTimeseries(TSCreateAlignedTimeseriesReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
@@ -1739,7 +1752,7 @@ public class TSServiceImpl implements TSIEventHandler {
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create aligned timeseries {}.{}",
-            SESSION_MANAGER.getCurrSessionId(),
+            getSessionManager().getCurrSessionId(),
             req.getPrefixPath(),
             req.getMeasurements());
       }
@@ -1767,7 +1780,7 @@ public class TSServiceImpl implements TSIEventHandler {
               req.measurementAlias,
               req.tagsList,
               req.attributesList);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.CREATE_ALIGNED_TIMESERIES, e.getErrorCode());
@@ -1781,14 +1794,14 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create {} timeseries, the first is {}",
-            SESSION_MANAGER.getCurrSessionId(),
+            getSessionManager().getCurrSessionId(),
             req.getPaths().size(),
             req.getPaths().get(0));
       }
@@ -1819,7 +1832,7 @@ public class TSServiceImpl implements TSIEventHandler {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
       for (int i = 0; i < req.paths.size(); i++) {
         plan.setPath(new PartialPath(req.paths.get(i)));
-        TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+        TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
         if (status != null) {
           // not authorized
           multiPlan.getResults().put(i, status);
@@ -1868,7 +1881,7 @@ public class TSServiceImpl implements TSIEventHandler {
   @Override
   public TSStatus deleteTimeseries(long sessionId, List<String> paths) {
     try {
-      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+      if (!getSessionManager().checkLogin(sessionId)) {
         return getNotLoggedInStatus();
       }
 
@@ -1877,7 +1890,7 @@ public class TSServiceImpl implements TSIEventHandler {
         pathList.add(new PartialPath(path));
       }
       DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, sessionId);
+      TSStatus status = getSessionManager().checkAuthority(plan, sessionId);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.DELETE_TIMESERIES, e.getErrorCode());
@@ -1889,20 +1902,20 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public long requestStatementId(long sessionId) {
-    return SESSION_MANAGER.requestStatementId(sessionId);
+    return getSessionManager().requestStatementId(sessionId);
   }
 
   @Override
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) throws TException {
     try {
-      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      if (!getSessionManager().checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create schema template {}",
-            SESSION_MANAGER.getCurrSessionId(),
+            getSessionManager().getCurrSessionId(),
             req.getName());
       }
 
@@ -1910,7 +1923,7 @@ public class TSServiceImpl implements TSIEventHandler {
       // Construct plan from serialized request
       ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
       plan = CreateTemplatePlan.deserializeFromReq(buffer);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
 
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (Exception e) {
@@ -1937,7 +1950,7 @@ public class TSServiceImpl implements TSIEventHandler {
     AppendTemplatePlan plan =
         new AppendTemplatePlan(
             req.getName(), req.isAligned, measurements, dataTypes, encodings, compressionTypes);
-    TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+    TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
@@ -1945,7 +1958,7 @@ public class TSServiceImpl implements TSIEventHandler {
   public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
     PruneTemplatePlan plan =
         new PruneTemplatePlan(req.getName(), Collections.singletonList(req.getPath()));
-    TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+    TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
@@ -1999,21 +2012,21 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus setSchemaTemplate(TSSetSchemaTemplateReq req) throws TException {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} set device template {}.{}",
-          SESSION_MANAGER.getCurrSessionId(),
+          getSessionManager().getCurrSessionId(),
           req.getTemplateName(),
           req.getPrefixPath());
     }
 
     try {
       SetTemplatePlan plan = new SetTemplatePlan(req.templateName, req.prefixPath);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IllegalPathException e) {
       return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
@@ -2022,21 +2035,21 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus unsetSchemaTemplate(TSUnsetSchemaTemplateReq req) throws TException {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} unset schema template {}.{}",
-          SESSION_MANAGER.getCurrSessionId(),
+          getSessionManager().getCurrSessionId(),
           req.getPrefixPath(),
           req.getTemplateName());
     }
 
     try {
       UnsetTemplatePlan plan = new UnsetTemplatePlan(req.prefixPath, req.templateName);
-      TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+      TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IllegalPathException e) {
       return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
@@ -2045,19 +2058,19 @@ public class TSServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus dropSchemaTemplate(TSDropSchemaTemplateReq req) throws TException {
-    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+    if (!getSessionManager().checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} drop schema template {}.",
-          SESSION_MANAGER.getCurrSessionId(),
+          getSessionManager().getCurrSessionId(),
           req.getTemplateName());
     }
 
     DropTemplatePlan plan = new DropTemplatePlan(req.templateName);
-    TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
+    TSStatus status = getSessionManager().checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }
 

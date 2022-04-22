@@ -129,13 +129,10 @@ public class IoTDBAggregationIT {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet =
-          statement.execute("SELECT count(temperature) FROM root.ln.wf01.wt01 WHERE time > 3");
-
-      Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT count(temperature) FROM root.ln.wf01.wt01 WHERE time > 3")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -148,11 +145,9 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "SELECT count(temperature) FROM root.ln.wf01.wt01 WHERE time > 3 order by time desc");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT count(temperature) FROM root.ln.wf01.wt01 WHERE time > 3 order by time desc")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -165,11 +160,9 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet =
-          statement.execute("SELECT min_time(temperature) FROM root.ln.wf01.wt01 WHERE time > 3");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT min_time(temperature) FROM root.ln.wf01.wt01 WHERE time > 3")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -181,12 +174,9 @@ public class IoTDBAggregationIT {
         Assert.assertEquals(2, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "SELECT min_time(temperature) FROM root.ln.wf01.wt01 WHERE temperature > 3");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "SELECT min_time(temperature) FROM root.ln.wf01.wt01 WHERE temperature > 3")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
