@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -31,7 +30,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -40,8 +38,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
@@ -52,7 +48,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private final ConfigNodeClient client;
 
-  private SeriesPartitionExecutor partitionExecutor;
+  private final SeriesPartitionExecutor partitionExecutor;
 
   private static final class ClusterPartitionFetcherHolder {
     private static final ClusterPartitionFetcher INSTANCE = new ClusterPartitionFetcher();
@@ -70,28 +66,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
       throw new StatementAnalyzeException("Couldn't connect config node");
     }
-    initPartitionExecutor();
-  }
-
-  private void initPartitionExecutor() {
-    // TODO: @crz move to node-commons
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    try {
-      Class<?> executor = Class.forName(conf.getSeriesPartitionExecutorClass());
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      this.partitionExecutor =
-          (SeriesPartitionExecutor)
-              executorConstructor.newInstance(conf.getSeriesPartitionSlotNum());
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      throw new StatementAnalyzeException(
-          String.format(
-              "Couldn't Constructor SeriesPartitionExecutor class: %s",
-              conf.getSeriesPartitionExecutorClass()));
-    }
+    this.partitionExecutor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
 
   @Override
@@ -192,59 +170,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private SchemaPartition parseSchemaPartitionResp(TSchemaPartitionResp schemaPartitionResp) {
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
-    for (Map.Entry<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> sgEntry :
-        schemaPartitionResp.getSchemaRegionMap().entrySet()) {
-      // for each sg
-      String storageGroupName = sgEntry.getKey();
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> deviceToSchemaRegionMap = new HashMap<>();
-      for (Map.Entry<TSeriesPartitionSlot, TRegionReplicaSet> deviceEntry :
-          sgEntry.getValue().entrySet()) {
-        deviceToSchemaRegionMap.put(
-            new TSeriesPartitionSlot(deviceEntry.getKey().getSlotId()),
-            new TRegionReplicaSet(deviceEntry.getValue()));
-      }
-      schemaPartitionMap.put(storageGroupName, deviceToSchemaRegionMap);
-    }
     return new SchemaPartition(
-        schemaPartitionMap,
+        schemaPartitionResp.getSchemaRegionMap(),
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
 
   private DataPartition parseDataPartitionResp(TDataPartitionResp dataPartitionResp) {
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        dataPartitionMap = new HashMap<>();
-    for (Map.Entry<
-            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        sgEntry : dataPartitionResp.getDataPartitionMap().entrySet()) {
-      // for each sg
-      String storageGroupName = sgEntry.getKey();
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-          respDeviceToRegionsMap = sgEntry.getValue();
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-          deviceToRegionsMap = new HashMap<>();
-      for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-          deviceEntry : respDeviceToRegionsMap.entrySet()) {
-        // for each device
-        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-            new HashMap<>();
-        for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionEntry :
-            deviceEntry.getValue().entrySet()) {
-          // for each time partition
-          timePartitionToRegionsMap.put(
-              new TTimePartitionSlot(timePartitionEntry.getKey().getStartTime()),
-              timePartitionEntry.getValue().stream()
-                  .map(TRegionReplicaSet::new)
-                  .collect(Collectors.toList()));
-        }
-        deviceToRegionsMap.put(
-            new TSeriesPartitionSlot(deviceEntry.getKey().getSlotId()), timePartitionToRegionsMap);
-      }
-      dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
-    }
     return new DataPartition(
-        dataPartitionMap,
+        dataPartitionResp.getDataPartitionMap(),
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
