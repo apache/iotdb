@@ -281,6 +281,7 @@ public class LogicalPlanBuilder {
                 filterNullComponent.getWithoutPolicyType(),
                 new ArrayList<>() // TODO: support filtering based on partial columns
                 ));
+    return this;
   }
 
   public LogicalPlanBuilder planLimit(int rowLimit) {
