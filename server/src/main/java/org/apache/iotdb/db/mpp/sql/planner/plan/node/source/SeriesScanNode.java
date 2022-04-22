@@ -152,7 +152,11 @@ public class SeriesScanNode extends SourceNode {
 
   @Override
   public PlanNode clone() {
-    return new SeriesScanNode(getPlanNodeId(), getSeriesPath(), this.regionReplicaSet);
+    SeriesScanNode seriesScanNode =
+        new SeriesScanNode(getPlanNodeId(), getSeriesPath(), this.regionReplicaSet);
+    seriesScanNode.allSensors = this.allSensors;
+    seriesScanNode.outputColumnHeader = this.outputColumnHeader;
+    return seriesScanNode;
   }
 
   @Override

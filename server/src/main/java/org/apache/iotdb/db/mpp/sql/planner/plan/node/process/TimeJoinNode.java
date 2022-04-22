@@ -61,7 +61,7 @@ public class TimeJoinNode extends ProcessNode {
   private List<OutputColumn> outputColumns = new ArrayList<>();
 
   // column name and datatype of each output column
-  private final List<ColumnHeader> outputColumnHeaders = new ArrayList<>();
+  private List<ColumnHeader> outputColumnHeaders = new ArrayList<>();
 
   private List<PlanNode> children;
 
@@ -85,9 +85,10 @@ public class TimeJoinNode extends ProcessNode {
   @Override
   public PlanNode clone() {
     // TODO: (xingtanzjr)
-    TimeJoinNode cloneNode = new TimeJoinNode(getPlanNodeId(), this.mergeOrder);
-    cloneNode.outputColumns = this.outputColumns;
-    return cloneNode;
+    TimeJoinNode node = new TimeJoinNode(getPlanNodeId(), this.mergeOrder);
+    node.outputColumnHeaders = this.outputColumnHeaders;
+    node.outputColumns = this.outputColumns;
+    return node;
   }
 
   @Override
@@ -99,7 +100,9 @@ public class TimeJoinNode extends ProcessNode {
     return outputColumns;
   }
 
-  private void initOutputColumns() {
+  public void initOutputColumns() {
+    outputColumns.clear();
+    outputColumnHeaders.clear();
     for (int tsBlockIndex = 0; tsBlockIndex < children.size(); tsBlockIndex++) {
       List<ColumnHeader> childColumnHeaders = children.get(tsBlockIndex).getOutputColumnHeaders();
       for (int valueColumnIndex = 0;
@@ -140,7 +143,12 @@ public class TimeJoinNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
-    filterNullParameter.serialize(byteBuffer);
+    if (filterNullParameter == null) {
+      ReadWriteIOUtils.write(true, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write(false, byteBuffer);
+      filterNullParameter.serialize(byteBuffer);
+    }
     ReadWriteIOUtils.write(outputColumns.size(), byteBuffer);
     for (OutputColumn outputColumn : outputColumns) {
       outputColumn.serialize(byteBuffer);
@@ -153,7 +161,10 @@ public class TimeJoinNode extends ProcessNode {
 
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
     OrderBy orderBy = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    FilterNullParameter filterNullParameter = FilterNullParameter.deserialize(byteBuffer);
+    FilterNullParameter filterNullParameter = null;
+    if (!ReadWriteIOUtils.readIsNull(byteBuffer)) {
+      filterNullParameter = FilterNullParameter.deserialize(byteBuffer);
+    }
     int outputColumnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<OutputColumn> outputColumns = new ArrayList<>(outputColumnSize);
     for (int i = 0; i < outputColumnSize; i++) {

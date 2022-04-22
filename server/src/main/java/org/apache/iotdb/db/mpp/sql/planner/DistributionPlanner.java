@@ -188,6 +188,7 @@ public class DistributionPlanner {
         split.setRegionReplicaSet(dataRegion);
         timeJoinNode.addChild(split);
       }
+      timeJoinNode.initOutputColumns();
       return timeJoinNode;
     }
 
@@ -253,6 +254,7 @@ public class DistributionPlanner {
             }
           });
 
+      root.initOutputColumns();
       return root;
     }
 
@@ -373,6 +375,7 @@ public class DistributionPlanner {
       // If the distributionType of all the children are same, no ExchangeNode need to be added.
       if (distributionType == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
         newNode.setChildren(visitedChildren);
+        newNode.initOutputColumns();
         return newNode;
       }
 
@@ -389,6 +392,7 @@ public class DistributionPlanner {
               newNode.addChild(child);
             }
           });
+      newNode.initOutputColumns();
       return newNode;
     }
 
