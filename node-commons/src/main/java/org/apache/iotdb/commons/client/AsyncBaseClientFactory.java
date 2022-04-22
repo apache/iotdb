@@ -33,9 +33,9 @@ public abstract class AsyncBaseClientFactory<K, V> extends BaseClientFactory<K, 
   protected AtomicInteger clientCnt = new AtomicInteger();
 
   protected AsyncBaseClientFactory(
-      ClientManager<K, V> clientManager, ClientManagerProperty<V> clientManagerProperty) {
-    super(clientManager, clientManagerProperty);
-    tManagers = new TAsyncClientManager[clientManagerProperty.getSelectorNumOfAsyncClientPool()];
+      ClientManager<K, V> clientManager, ClientFactoryProperty clientFactoryProperty) {
+    super(clientManager, clientFactoryProperty);
+    tManagers = new TAsyncClientManager[clientFactoryProperty.getSelectorNumOfAsyncClientPool()];
     for (int i = 0; i < tManagers.length; i++) {
       try {
         tManagers[i] = new TAsyncClientManager();

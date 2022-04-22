@@ -36,7 +36,7 @@ public class ConfigNodeConf {
   /** used for communication between config node and config node */
   private int internalPort = 22278;
 
-  /** Thrift socket and connection timeout between data node and config node */
+  /** Thrift socket and connection timeout between nodes */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /** ConfigNode consensus protocol */
@@ -50,10 +50,10 @@ public class ConfigNodeConf {
       Collections.singletonList(new TEndPoint("0.0.0.0", 22278)).toArray(new TEndPoint[0]);
 
   /**
-   * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
    */
-  private final int selectorNumOfClientPool =
+  private int selectorNumOfClientManager =
       Runtime.getRuntime().availableProcessors() / 4 > 0
           ? Runtime.getRuntime().availableProcessors() / 4
           : 1;
@@ -158,8 +158,8 @@ public class ConfigNodeConf {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
   }
 
-  public int getSelectorNumOfClientPool() {
-    return selectorNumOfClientPool;
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
   }
 
   public long getTimePartitionInterval() {
@@ -241,6 +241,10 @@ public class ConfigNodeConf {
   public ConfigNodeConf setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
     return this;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
   public String getConsensusDir() {

@@ -25,12 +25,12 @@ import org.apache.commons.pool2.PooledObject;
 public abstract class BaseClientFactory<K, V> implements KeyedPooledObjectFactory<K, V> {
 
   protected ClientManager<K, V> clientManager;
-  protected ClientManagerProperty<V> clientManagerProperty;
+  protected ClientFactoryProperty clientFactoryProperty;
 
   protected BaseClientFactory(
-      ClientManager<K, V> clientManager, ClientManagerProperty<V> clientManagerProperty) {
+      ClientManager<K, V> clientManager, ClientFactoryProperty clientFactoryProperty) {
     this.clientManager = clientManager;
-    this.clientManagerProperty = clientManagerProperty;
+    this.clientFactoryProperty = clientFactoryProperty;
   }
 
   @Override

@@ -22,7 +22,7 @@ package org.apache.iotdb.consensus.ratis;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientManagerProperty;
+import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
@@ -583,8 +583,8 @@ class RatisConsensus implements IConsensus {
     @Override
     public KeyedObjectPool<RaftGroup, RaftClient> createClientPool(
         ClientManager<RaftGroup, RaftClient> manager) {
-      ClientManagerProperty<RaftClient> property =
-          new ClientManagerProperty.Builder<RaftClient>().build();
+      ClientPoolProperty<RaftClient> property =
+          new ClientPoolProperty.Builder<RaftClient>().build();
       return new GenericKeyedObjectPool<>(
           new RatisClientFactory(manager, property, properties, clientRpc), property.getConfig());
     }

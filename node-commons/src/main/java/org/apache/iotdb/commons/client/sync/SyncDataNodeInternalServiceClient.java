@@ -21,8 +21,8 @@ package org.apache.iotdb.commons.client.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.BaseClientFactory;
+import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientManagerProperty;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -95,8 +95,8 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
 
     public Factory(
         ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager,
-        ClientManagerProperty<SyncDataNodeInternalServiceClient> clientManagerProperty) {
-      super(clientManager, clientManagerProperty);
+        ClientFactoryProperty clientFactoryProperty) {
+      super(clientManager, clientFactoryProperty);
     }
 
     @Override
@@ -110,8 +110,8 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
         throws Exception {
       return new DefaultPooledObject<>(
           new SyncDataNodeInternalServiceClient(
-              clientManagerProperty.getProtocolFactory(),
-              clientManagerProperty.getConnectionTimeoutMs(),
+              clientFactoryProperty.getProtocolFactory(),
+              clientFactoryProperty.getConnectionTimeoutMs(),
               endpoint,
               clientManager));
     }

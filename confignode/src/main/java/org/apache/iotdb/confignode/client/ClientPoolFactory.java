@@ -20,8 +20,9 @@
 package org.apache.iotdb.confignode.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientManagerProperty;
+import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -42,13 +43,15 @@ public class ClientPoolFactory {
     @Override
     public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
-      ClientManagerProperty<SyncDataNodeInternalServiceClient> property =
-          new ClientManagerProperty.Builder<SyncDataNodeInternalServiceClient>()
-              .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-              .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-              .build();
       return new GenericKeyedObjectPool<>(
-          new SyncDataNodeInternalServiceClient.Factory(manager, property), property.getConfig());
+          new SyncDataNodeInternalServiceClient.Factory(
+              manager,
+              new ClientFactoryProperty.Builder()
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .build()),
+          new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }
 
@@ -57,14 +60,15 @@ public class ClientPoolFactory {
     @Override
     public KeyedObjectPool<TEndPoint, AsyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> manager) {
-      ClientManagerProperty<AsyncDataNodeInternalServiceClient> property =
-          new ClientManagerProperty.Builder<AsyncDataNodeInternalServiceClient>()
-              .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
-              .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
-              .setSelectorNumOfAsyncClientPool(conf.getSelectorNumOfClientPool())
-              .build();
       return new GenericKeyedObjectPool<>(
-          new AsyncDataNodeInternalServiceClient.Factory(manager, property), property.getConfig());
+          new AsyncDataNodeInternalServiceClient.Factory(
+              manager,
+              new ClientFactoryProperty.Builder()
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .build()),
+          new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }
 }

@@ -879,10 +879,10 @@ public class IoTDBConfig {
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /**
-   * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
    */
-  private final int selectorNumOfClientPool =
+  private int selectorNumOfClientManager =
       Runtime.getRuntime().availableProcessors() / 4 > 0
           ? Runtime.getRuntime().availableProcessors() / 4
           : 1;
@@ -2789,8 +2789,12 @@ public class IoTDBConfig {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
   }
 
-  public int getSelectorNumOfClientPool() {
-    return selectorNumOfClientPool;
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
   public boolean isMppMode() {

@@ -21,8 +21,8 @@ package org.apache.iotdb.commons.client.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.AsyncBaseClientFactory;
+import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientManagerProperty;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
@@ -88,8 +88,8 @@ public class AsyncDataNodeDataBlockServiceClient extends DataBlockService.AsyncC
 
     public Factory(
         ClientManager<TEndPoint, AsyncDataNodeDataBlockServiceClient> clientManager,
-        ClientManagerProperty<AsyncDataNodeDataBlockServiceClient> clientManagerProperty) {
-      super(clientManager, clientManagerProperty);
+        ClientFactoryProperty clientFactoryProperty) {
+      super(clientManager, clientFactoryProperty);
     }
 
     @Override
@@ -105,8 +105,8 @@ public class AsyncDataNodeDataBlockServiceClient extends DataBlockService.AsyncC
       tManager = tManager == null ? new TAsyncClientManager() : tManager;
       return new DefaultPooledObject<>(
           new AsyncDataNodeDataBlockServiceClient(
-              clientManagerProperty.getProtocolFactory(),
-              clientManagerProperty.getConnectionTimeoutMs(),
+              clientFactoryProperty.getProtocolFactory(),
+              clientFactoryProperty.getConnectionTimeoutMs(),
               endPoint,
               tManager,
               clientManager));
