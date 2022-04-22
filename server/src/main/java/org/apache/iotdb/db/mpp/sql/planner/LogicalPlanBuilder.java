@@ -53,13 +53,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class QueryPlanBuilder {
+public class LogicalPlanBuilder {
 
   private PlanNode root;
 
   private final MPPQueryContext context;
 
-  public QueryPlanBuilder(MPPQueryContext context) {
+  public LogicalPlanBuilder(MPPQueryContext context) {
     this.context = context;
   }
 

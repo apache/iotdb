@@ -108,7 +108,7 @@ public class LogicalPlanner {
 
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
 
       planBuilder.planRawDataQuerySource(
           queryStatement.getDeviceNameToDeduplicatedPathsMap(),
@@ -126,7 +126,7 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitAggregationQuery(
         AggregationQueryStatement queryStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap;
 
       if (analysis.getQueryFilter() != null
@@ -279,7 +279,7 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       planBuilder.planTimeSeriesMetaSource(
           showTimeSeriesStatement.getPathPattern(),
           showTimeSeriesStatement.getKey(),
@@ -300,7 +300,7 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitShowDevices(
         ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       planBuilder.planDeviceSchemaSource(
           showDevicesStatement.getPathPattern(),
           showDevicesStatement.getLimit(),
@@ -528,7 +528,7 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitSchemaFetch(
         SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       planBuilder.planSchemaFetchSource(schemaFetchStatement.getPatternTree());
       planBuilder.planSchemaMerge(false);
       return planBuilder.getRoot();
