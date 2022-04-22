@@ -19,16 +19,22 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
@@ -58,6 +64,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   private long time;
   private Object[] values;
 
+  private boolean isNeedInferType = false;
+
   public InsertRowNode(PlanNodeId id) {
     super(id);
   }
@@ -66,7 +74,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       PlanNodeId id,
       PartialPath devicePath,
       boolean isAligned,
-      MeasurementSchema[] measurements,
+      String[] measurements,
       TSDataType[] dataTypes,
       long time,
       Object[] values) {
@@ -116,6 +124,113 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @Override
   public List<TSDataType> getOutputColumnTypes() {
     return null;
+  }
+
+  public Object[] getValues() {
+    return values;
+  }
+
+  public void setValues(Object[] values) {
+    this.values = values;
+  }
+
+  public long getTime() {
+    return time;
+  }
+
+  public void setTime(long time) {
+    this.time = time;
+  }
+
+  public boolean isNeedInferType() {
+    return isNeedInferType;
+  }
+
+  public void setNeedInferType(boolean needInferType) {
+    isNeedInferType = needInferType;
+  }
+
+  @Override
+  public boolean checkDataType(SchemaTree schemaTree) {
+    List<MeasurementSchema> measurementSchemas =
+        schemaTree
+            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
+            .getMeasurementSchemaList();
+    for (int i = 0; i < measurementSchemas.size(); i++) {
+      if (dataTypes[i] != measurementSchemas.get(i).getType()) {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          return false;
+        } else {
+          markFailedMeasurementInsertion(
+              i,
+              new DataTypeMismatchException(
+                  devicePath.getFullPath(),
+                  measurements[i],
+                  measurementSchemas.get(i).getType(),
+                  dataTypes[i]));
+        }
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
+    super.markFailedMeasurementInsertion(index, e);
+    values[index] = null;
+    dataTypes[index] = null;
+  }
+
+  /**
+   * if inferType is true, transfer String[] values to specific data types (Integer, Long, Float,
+   * Double, Binary)
+   */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void transferType(SchemaTree schemaTree) throws QueryProcessException {
+    List<MeasurementSchema> measurementSchemas =
+        schemaTree
+            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
+            .getMeasurementSchemaList();
+    if (isNeedInferType) {
+      for (int i = 0; i < measurementSchemas.size(); i++) {
+        if (measurementSchemas.get(i) == null) {
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            markFailedMeasurementInsertion(
+                i,
+                new QueryProcessException(
+                    new PathNotExistException(
+                        devicePath.getFullPath()
+                            + IoTDBConstant.PATH_SEPARATOR
+                            + measurements[i])));
+          } else {
+            throw new QueryProcessException(
+                new PathNotExistException(
+                    devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+          }
+          continue;
+        }
+
+        dataTypes[i] = measurementSchemas.get(i).getType();
+        try {
+          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
+        } catch (Exception e) {
+          logger.warn(
+              "{}.{} data type is not consistent, input {}, registered {}",
+              devicePath,
+              measurements[i],
+              values[i],
+              dataTypes[i]);
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            markFailedMeasurementInsertion(i, e);
+          } else {
+            throw e;
+          }
+        }
+      }
+    }
   }
 
   @Override
@@ -174,30 +289,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public int hashCode() {
-    int result = Objects.hash(super.hashCode(), time);
-    result = 31 * result + Arrays.hashCode(values);
-    return result;
-  }
-
-  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INSERT_ROW.serialize(byteBuffer);
     subSerialize(byteBuffer);
-  }
-
-  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
-    // TODO: (xingtanzjr) remove placeholder
-    InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
-    insertNode.setTime(byteBuffer.getLong());
-    try {
-      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(byteBuffer)));
-    } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
-    }
-    insertNode.deserializeMeasurementsAndValues(byteBuffer);
-    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
-    return insertNode;
   }
 
   void subSerialize(ByteBuffer buffer) {
@@ -254,6 +348,74 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           default:
             throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
         }
+      }
+    }
+  }
+
+  public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
+    // TODO: (xingtanzjr) remove placeholder
+    InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
+    insertNode.setTime(byteBuffer.getLong());
+    try {
+      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(byteBuffer)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
+    insertNode.deserializeMeasurementsAndValues(byteBuffer);
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return insertNode;
+  }
+
+  void deserializeMeasurementsAndValues(ByteBuffer buffer) {
+    int measurementSize = buffer.getInt();
+
+    this.measurements = new String[measurementSize];
+    this.measurementSchemas = new MeasurementSchema[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+      measurements[i] = measurementSchemas[i].getMeasurementId();
+    }
+
+    this.dataTypes = new TSDataType[measurementSize];
+    this.values = new Object[measurementSize];
+    try {
+      fillValues(buffer);
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
+    }
+
+    isAligned = buffer.get() == 1;
+  }
+
+  /** Make sure the values is already inited before calling this */
+  public void fillValues(ByteBuffer buffer) throws QueryProcessException {
+    for (int i = 0; i < dataTypes.length; i++) {
+      byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
+      if (typeNum == TYPE_NULL) {
+        continue;
+      }
+      dataTypes[i] = TSDataType.values()[typeNum];
+      switch (dataTypes[i]) {
+        case BOOLEAN:
+          values[i] = ReadWriteIOUtils.readBool(buffer);
+          break;
+        case INT32:
+          values[i] = ReadWriteIOUtils.readInt(buffer);
+          break;
+        case INT64:
+          values[i] = ReadWriteIOUtils.readLong(buffer);
+          break;
+        case FLOAT:
+          values[i] = ReadWriteIOUtils.readFloat(buffer);
+          break;
+        case DOUBLE:
+          values[i] = ReadWriteIOUtils.readDouble(buffer);
+          break;
+        case TEXT:
+          values[i] = ReadWriteIOUtils.readBinary(buffer);
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
       }
     }
   }
@@ -319,76 +481,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  public Object[] getValues() {
-    return values;
-  }
-
-  public void setValues(Object[] values) {
-    this.values = values;
-  }
-
-  public long getTime() {
-    return time;
-  }
-
-  public void setTime(long time) {
-    this.time = time;
-  }
-
-  void deserializeMeasurementsAndValues(ByteBuffer buffer) {
-    int measurementSize = buffer.getInt();
-
-    this.measurements = new String[measurementSize];
-    this.measurementSchemas = new MeasurementSchema[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-      measurements[i] = measurementSchemas[i].getMeasurementId();
-    }
-
-    this.dataTypes = new TSDataType[measurementSize];
-    this.values = new Object[measurementSize];
-    try {
-      fillValues(buffer);
-    } catch (QueryProcessException e) {
-      e.printStackTrace();
-    }
-
-    isAligned = buffer.get() == 1;
-  }
-
-  /** Make sure the values is already inited before calling this */
-  public void fillValues(ByteBuffer buffer) throws QueryProcessException {
-    for (int i = 0; i < dataTypes.length; i++) {
-      byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
-      if (typeNum == TYPE_NULL) {
-        continue;
-      }
-      dataTypes[i] = TSDataType.values()[typeNum];
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          values[i] = ReadWriteIOUtils.readBool(buffer);
-          break;
-        case INT32:
-          values[i] = ReadWriteIOUtils.readInt(buffer);
-          break;
-        case INT64:
-          values[i] = ReadWriteIOUtils.readLong(buffer);
-          break;
-        case FLOAT:
-          values[i] = ReadWriteIOUtils.readFloat(buffer);
-          break;
-        case DOUBLE:
-          values[i] = ReadWriteIOUtils.readDouble(buffer);
-          break;
-        case TEXT:
-          values[i] = ReadWriteIOUtils.readBinary(buffer);
-          break;
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
-      }
-    }
-  }
-
   public static InsertRowNode deserialize(DataInputStream stream)
       throws IOException, IllegalPathException {
     // This method is used for deserialize from wal
@@ -449,6 +541,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
       }
     }
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(super.hashCode(), time);
+    result = 31 * result + Arrays.hashCode(values);
+    return result;
   }
 
   @Override

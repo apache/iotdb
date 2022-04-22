@@ -57,7 +57,6 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -231,7 +230,6 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
-      // set schema in insert node
       // convert insert statement to insert node
       DeviceSchemaInfo deviceSchemaInfo =
           analysis
@@ -239,12 +237,11 @@ public class LogicalPlanner {
               .searchDeviceSchemaInfo(
                   insertTabletStatement.getDevicePath(),
                   Arrays.asList(insertTabletStatement.getMeasurements()));
-      List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
       return new InsertTabletNode(
           context.getQueryId().genPlanNodeId(),
           insertTabletStatement.getDevicePath(),
           insertTabletStatement.isAligned(),
-          measurementSchemas.toArray(new MeasurementSchema[0]),
+          insertTabletStatement.getMeasurements(),
           insertTabletStatement.getDataTypes(),
           insertTabletStatement.getTimes(),
           insertTabletStatement.getBitMaps(),
@@ -254,7 +251,6 @@ public class LogicalPlanner {
 
     @Override
     public PlanNode visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
-      // set schema in insert node
       // convert insert statement to insert node
       DeviceSchemaInfo deviceSchemaInfo =
           analysis
@@ -262,15 +258,102 @@ public class LogicalPlanner {
               .searchDeviceSchemaInfo(
                   insertRowStatement.getDevicePath(),
                   Arrays.asList(insertRowStatement.getMeasurements()));
-      List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
       return new InsertRowNode(
           context.getQueryId().genPlanNodeId(),
           insertRowStatement.getDevicePath(),
           insertRowStatement.isAligned(),
-          measurementSchemas.toArray(new MeasurementSchema[0]),
+          insertRowStatement.getMeasurements(),
           insertRowStatement.getDataTypes(),
           insertRowStatement.getTime(),
           insertRowStatement.getValues());
+    }
+
+    @Override
+    public PlanNode visitInsertRows(
+        InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
+      // convert insert statement to insert node
+      InsertRowsNode insertRowsNode = new InsertRowsNode(context.getQueryId().genPlanNodeId());
+      for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
+        InsertRowStatement insertRowStatement =
+            insertRowsStatement.getInsertRowStatementList().get(i);
+        DeviceSchemaInfo deviceSchemaInfo =
+            analysis
+                .getSchemaTree()
+                .searchDeviceSchemaInfo(
+                    insertRowStatement.getDevicePath(),
+                    Arrays.asList(insertRowStatement.getMeasurements()));
+        insertRowsNode.addOneInsertRowNode(
+            new InsertRowNode(
+                insertRowsNode.getPlanNodeId(),
+                insertRowStatement.getDevicePath(),
+                insertRowStatement.isAligned(),
+                insertRowStatement.getMeasurements(),
+                insertRowStatement.getDataTypes(),
+                insertRowStatement.getTime(),
+                insertRowStatement.getValues()),
+            i);
+      }
+      return insertRowsNode;
+    }
+
+    @Override
+    public PlanNode visitInsertMultiTablets(
+        InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
+      // convert insert statement to insert node
+      InsertMultiTabletsNode insertMultiTabletsNode =
+          new InsertMultiTabletsNode(context.getQueryId().genPlanNodeId());
+      List<InsertTabletNode> insertTabletNodeList = new ArrayList<>();
+      for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
+        InsertTabletStatement insertTabletStatement =
+            insertMultiTabletsStatement.getInsertTabletStatementList().get(i);
+        DeviceSchemaInfo deviceSchemaInfo =
+            analysis
+                .getSchemaTree()
+                .searchDeviceSchemaInfo(
+                    insertTabletStatement.getDevicePath(),
+                    Arrays.asList(insertTabletStatement.getMeasurements()));
+        insertTabletNodeList.add(
+            new InsertTabletNode(
+                insertMultiTabletsNode.getPlanNodeId(),
+                insertTabletStatement.getDevicePath(),
+                insertTabletStatement.isAligned(),
+                insertTabletStatement.getMeasurements(),
+                insertTabletStatement.getDataTypes(),
+                insertTabletStatement.getTimes(),
+                insertTabletStatement.getBitMaps(),
+                insertTabletStatement.getColumns(),
+                insertTabletStatement.getRowCount()));
+      }
+      insertMultiTabletsNode.setInsertTabletNodeList(insertTabletNodeList);
+      return insertMultiTabletsNode;
+    }
+
+    @Override
+    public PlanNode visitInsertRowsOfOneDevice(
+        InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
+      // convert insert statement to insert node
+      InsertRowsNode insertRowsNode = new InsertRowsNode(context.getQueryId().genPlanNodeId());
+      for (int i = 0; i < insertRowsOfOneDeviceStatement.getInsertRowStatementList().size(); i++) {
+        InsertRowStatement insertRowStatement =
+            insertRowsOfOneDeviceStatement.getInsertRowStatementList().get(i);
+        DeviceSchemaInfo deviceSchemaInfo =
+            analysis
+                .getSchemaTree()
+                .searchDeviceSchemaInfo(
+                    insertRowStatement.getDevicePath(),
+                    Arrays.asList(insertRowStatement.getMeasurements()));
+        insertRowsNode.addOneInsertRowNode(
+            new InsertRowNode(
+                insertRowsNode.getPlanNodeId(),
+                insertRowStatement.getDevicePath(),
+                insertRowStatement.isAligned(),
+                insertRowStatement.getMeasurements(),
+                insertRowStatement.getDataTypes(),
+                insertRowStatement.getTime(),
+                insertRowStatement.getValues()),
+            i);
+      }
+      return insertRowsNode;
     }
 
     @Override
@@ -426,100 +509,6 @@ public class LogicalPlanner {
       } catch (AuthException e) {
         return null;
       }
-    }
-
-    @Override
-    public PlanNode visitInsertRows(
-        InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
-      // set schema in insert node
-      // convert insert statement to insert node
-      InsertRowsNode insertRowsNode = new InsertRowsNode(context.getQueryId().genPlanNodeId());
-      for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
-        InsertRowStatement insertRowStatement =
-            insertRowsStatement.getInsertRowStatementList().get(i);
-        DeviceSchemaInfo deviceSchemaInfo =
-            analysis
-                .getSchemaTree()
-                .searchDeviceSchemaInfo(
-                    insertRowStatement.getDevicePath(),
-                    Arrays.asList(insertRowStatement.getMeasurements()));
-        List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
-        insertRowsNode.addOneInsertRowNode(
-            new InsertRowNode(
-                insertRowsNode.getPlanNodeId(),
-                insertRowStatement.getDevicePath(),
-                insertRowStatement.isAligned(),
-                measurementSchemas.toArray(new MeasurementSchema[0]),
-                insertRowStatement.getDataTypes(),
-                insertRowStatement.getTime(),
-                insertRowStatement.getValues()),
-            i);
-      }
-      return insertRowsNode;
-    }
-
-    @Override
-    public PlanNode visitInsertMultiTablets(
-        InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
-      // set schema in insert node
-      // convert insert statement to insert node
-      InsertMultiTabletsNode insertMultiTabletsNode =
-          new InsertMultiTabletsNode(context.getQueryId().genPlanNodeId());
-      List<InsertTabletNode> insertTabletNodeList = new ArrayList<>();
-      for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
-        InsertTabletStatement insertTabletStatement =
-            insertMultiTabletsStatement.getInsertTabletStatementList().get(i);
-        DeviceSchemaInfo deviceSchemaInfo =
-            analysis
-                .getSchemaTree()
-                .searchDeviceSchemaInfo(
-                    insertTabletStatement.getDevicePath(),
-                    Arrays.asList(insertTabletStatement.getMeasurements()));
-        List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
-        insertTabletNodeList.add(
-            new InsertTabletNode(
-                insertMultiTabletsNode.getPlanNodeId(),
-                insertTabletStatement.getDevicePath(),
-                insertTabletStatement.isAligned(),
-                measurementSchemas.toArray(new MeasurementSchema[0]),
-                insertTabletStatement.getDataTypes(),
-                insertTabletStatement.getTimes(),
-                insertTabletStatement.getBitMaps(),
-                insertTabletStatement.getColumns(),
-                insertTabletStatement.getRowCount()));
-      }
-      insertMultiTabletsNode.setInsertTabletNodeList(insertTabletNodeList);
-      return insertMultiTabletsNode;
-    }
-
-    @Override
-    public PlanNode visitInsertRowsOfOneDevice(
-        InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
-      // set schema in insert node
-      // convert insert statement to insert node
-      InsertRowsNode insertRowsNode = new InsertRowsNode(context.getQueryId().genPlanNodeId());
-      for (int i = 0; i < insertRowsOfOneDeviceStatement.getInsertRowStatementList().size(); i++) {
-        InsertRowStatement insertRowStatement =
-            insertRowsOfOneDeviceStatement.getInsertRowStatementList().get(i);
-        DeviceSchemaInfo deviceSchemaInfo =
-            analysis
-                .getSchemaTree()
-                .searchDeviceSchemaInfo(
-                    insertRowStatement.getDevicePath(),
-                    Arrays.asList(insertRowStatement.getMeasurements()));
-        List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
-        insertRowsNode.addOneInsertRowNode(
-            new InsertRowNode(
-                insertRowsNode.getPlanNodeId(),
-                insertRowStatement.getDevicePath(),
-                insertRowStatement.isAligned(),
-                measurementSchemas.toArray(new MeasurementSchema[0]),
-                insertRowStatement.getDataTypes(),
-                insertRowStatement.getTime(),
-                insertRowStatement.getValues()),
-            i);
-      }
-      return insertRowsNode;
     }
 
     @Override

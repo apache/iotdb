@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -72,20 +73,13 @@ public abstract class InsertNode extends WritePlanNode {
       PlanNodeId id,
       PartialPath devicePath,
       boolean isAligned,
-      MeasurementSchema[] measurementSchemas,
+      String[] measurements,
       TSDataType[] dataTypes) {
     super(id);
     this.devicePath = devicePath;
     this.isAligned = isAligned;
-    this.measurementSchemas = measurementSchemas;
+    this.measurements = measurements;
     this.dataTypes = dataTypes;
-
-    this.measurements = new String[measurementSchemas.length];
-    for (int i = 0; i < measurementSchemas.length; i++) {
-      if (measurementSchemas[i] != null) {
-        measurements[i] = measurementSchemas[i].getMeasurementId();
-      }
-    }
   }
 
   public TRegionReplicaSet getDataRegionReplicaSet() {
@@ -214,6 +208,26 @@ public abstract class InsertNode extends WritePlanNode {
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return dataRegionReplicaSet;
+  }
+
+  public abstract boolean checkDataType(SchemaTree schemaTree);
+
+  /**
+   * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed
+   * measurements, the failed values or columns would be null as well. We'd better use
+   * "measurements[index] == null" to determine if the measurement failed.
+   *
+   * @param index failed measurement index
+   */
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
+    //    if (failedMeasurements == null) {
+    //      failedMeasurements = new ArrayList<>();
+    //    }
+    //    failedMeasurements.add(measurements[index]);
+    measurements[index] = null;
   }
 
   @Override

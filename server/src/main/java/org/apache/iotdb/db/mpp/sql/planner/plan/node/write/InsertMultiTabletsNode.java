@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -112,6 +113,16 @@ public class InsertMultiTabletsNode extends InsertNode {
   public void addInsertTabletNode(InsertTabletNode node, Integer parentIndex) {
     insertTabletNodeList.add(node);
     parentInsertTabletNodeIndexList.add(parentIndex);
+  }
+
+  @Override
+  public boolean checkDataType(SchemaTree schemaTree) {
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      if (!insertTabletNode.checkDataType(schemaTree)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

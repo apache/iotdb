@@ -20,10 +20,13 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -83,13 +86,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       PlanNodeId id,
       PartialPath devicePath,
       boolean isAligned,
-      MeasurementSchema[] measurementSchemas,
+      String[] measurements,
       TSDataType[] dataTypes,
       long[] times,
       BitMap[] bitMaps,
       Object[] columns,
       int rowCount) {
-    super(id, devicePath, isAligned, measurementSchemas, dataTypes);
+    super(id, devicePath, isAligned, measurements, dataTypes);
     this.times = times;
     this.bitMaps = bitMaps;
     this.columns = columns;
@@ -167,6 +170,137 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   @Override
   public List<TSDataType> getOutputColumnTypes() {
     return null;
+  }
+
+  @Override
+  public boolean checkDataType(SchemaTree schemaTree) {
+    List<MeasurementSchema> measurementSchemas =
+        schemaTree
+            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
+            .getMeasurementSchemaList();
+    for (int i = 0; i < measurementSchemas.size(); i++) {
+      if (dataTypes[i] != measurementSchemas.get(i).getType()) {
+        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          return false;
+        } else {
+          markFailedMeasurementInsertion(
+              i,
+              new DataTypeMismatchException(
+                  devicePath.getFullPath(),
+                  measurements[i],
+                  measurementSchemas.get(i).getType(),
+                  dataTypes[i]));
+        }
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+    // only single device in single storage group
+    List<WritePlanNode> result = new ArrayList<>();
+    if (times.length == 0) {
+      return Collections.emptyList();
+    }
+    long startTime =
+        (times[0] / StorageEngine.getTimePartitionInterval())
+            * StorageEngine.getTimePartitionInterval(); // included
+    long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
+    TTimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
+    int startLoc = 0; // included
+
+    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
+    // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
+    List<Integer> ranges = new ArrayList<>();
+    for (int i = 1; i < times.length; i++) { // times are sorted in session API.
+      if (times[i] >= endTime) {
+        // a new range.
+        ranges.add(startLoc); // included
+        ranges.add(i); // excluded
+        timePartitionSlots.add(timePartitionSlot);
+        // next init
+        startLoc = i;
+        startTime = endTime;
+        endTime =
+            (times[i] / StorageEngine.getTimePartitionInterval() + 1)
+                * StorageEngine.getTimePartitionInterval();
+        timePartitionSlot = StorageEngine.getTimePartitionSlot(times[i]);
+      }
+    }
+
+    // the final range
+    ranges.add(startLoc); // included
+    ranges.add(times.length); // excluded
+    timePartitionSlots.add(timePartitionSlot);
+
+    // data region for each time partition
+    List<TRegionReplicaSet> dataRegionReplicaSets =
+        analysis
+            .getDataPartitionInfo()
+            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlots);
+
+    Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
+    for (int i = 0; i < dataRegionReplicaSets.size(); i++) {
+      List<Integer> sub_ranges =
+          splitMap.computeIfAbsent(dataRegionReplicaSets.get(i), x -> new ArrayList<>());
+      sub_ranges.add(ranges.get(i));
+      sub_ranges.add(ranges.get(i + 1));
+    }
+
+    List<Integer> locs;
+    for (Map.Entry<TRegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
+      // generate a new times and values
+      locs = entry.getValue();
+      int count = 0;
+      for (int i = 0; i < locs.size(); i += 2) {
+        int start = locs.get(i);
+        int end = locs.get(i + 1);
+        count += end - start;
+      }
+      long[] subTimes = new long[count];
+      int destLoc = 0;
+      Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
+      BitMap[] bitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
+      for (int i = 0; i < locs.size(); i += 2) {
+        int start = locs.get(i);
+        int end = locs.get(i + 1);
+        System.arraycopy(times, start, subTimes, destLoc, end - start);
+        for (int k = 0; k < values.length; k++) {
+          System.arraycopy(columns[k], start, values[k], destLoc, end - start);
+          if (bitMaps != null && this.bitMaps[k] != null) {
+            BitMap.copyOfRange(this.bitMaps[k], start, bitMaps[k], destLoc, end - start);
+          }
+        }
+        destLoc += end - start;
+      }
+      InsertTabletNode subNode =
+          new InsertTabletNode(
+              getPlanNodeId(),
+              devicePath,
+              isAligned,
+              measurements,
+              dataTypes,
+              subTimes,
+              bitMaps,
+              values,
+              subTimes.length);
+      subNode.setRange(locs);
+      subNode.setDataRegionReplicaSet(entry.getKey());
+      result.add(subNode);
+    }
+    return result;
+  }
+
+  @Override
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
+    super.markFailedMeasurementInsertion(index, e);
+    dataTypes[index] = null;
+    columns[index] = null;
+    bitMaps[index] = null;
   }
 
   @Override
@@ -387,82 +521,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     serializeMeasurementSchemaToWAL(buffer);
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
-    InsertTabletNode that = (InsertTabletNode) o;
-    return rowCount == that.rowCount
-        && Arrays.equals(times, that.times)
-        && Arrays.equals(bitMaps, that.bitMaps)
-        && equals(that.columns)
-        && Objects.equals(range, that.range);
-  }
-
-  private boolean equals(Object[] columns) {
-    if (this.columns == columns) {
-      return true;
-    }
-
-    if (columns == null || this.columns == null || columns.length != this.columns.length) {
-      return false;
-    }
-
-    for (int i = 0; i < columns.length; i++) {
-      if (dataTypes[i] != null) {
-        switch (dataTypes[i]) {
-          case INT32:
-            if (!Arrays.equals((int[]) this.columns[i], (int[]) columns[i])) {
-              return false;
-            }
-            break;
-          case INT64:
-            if (!Arrays.equals((long[]) this.columns[i], (long[]) columns[i])) {
-              return false;
-            }
-            break;
-          case FLOAT:
-            if (!Arrays.equals((float[]) this.columns[i], (float[]) columns[i])) {
-              return false;
-            }
-            break;
-          case DOUBLE:
-            if (!Arrays.equals((double[]) this.columns[i], (double[]) columns[i])) {
-              return false;
-            }
-            break;
-          case BOOLEAN:
-            if (!Arrays.equals((boolean[]) this.columns[i], (boolean[]) columns[i])) {
-              return false;
-            }
-            break;
-          case TEXT:
-            if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
-              return false;
-            }
-            break;
-          default:
-            throw new UnSupportedDataTypeException(
-                String.format(DATATYPE_UNSUPPORTED, dataTypes[i]));
-        }
-      } else if (!columns[i].equals(columns)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  @Override
-  public int hashCode() {
-    int result = Objects.hash(super.hashCode(), rowCount, range);
-    result = 31 * result + Arrays.hashCode(times);
-    result = 31 * result + Arrays.hashCode(bitMaps);
-    result = 31 * result + Arrays.hashCode(columns);
-    return result;
-  }
-
   private void writeDataTypes(IWALByteBufferView buffer) {
     for (TSDataType dataType : dataTypes) {
       if (dataType == null) {
@@ -552,102 +610,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       default:
         throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
     }
-  }
-
-  @Override
-  public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    // only single device in single storage group
-    List<WritePlanNode> result = new ArrayList<>();
-    if (times.length == 0) {
-      return Collections.emptyList();
-    }
-    long startTime =
-        (times[0] / StorageEngine.getTimePartitionInterval())
-            * StorageEngine.getTimePartitionInterval(); // included
-    long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
-    TTimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
-    int startLoc = 0; // included
-
-    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
-    // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
-    List<Integer> ranges = new ArrayList<>();
-    for (int i = 1; i < times.length; i++) { // times are sorted in session API.
-      if (times[i] >= endTime) {
-        // a new range.
-        ranges.add(startLoc); // included
-        ranges.add(i); // excluded
-        timePartitionSlots.add(timePartitionSlot);
-        // next init
-        startLoc = i;
-        startTime = endTime;
-        endTime =
-            (times[i] / StorageEngine.getTimePartitionInterval() + 1)
-                * StorageEngine.getTimePartitionInterval();
-        timePartitionSlot = StorageEngine.getTimePartitionSlot(times[i]);
-      }
-    }
-
-    // the final range
-    ranges.add(startLoc); // included
-    ranges.add(times.length); // excluded
-    timePartitionSlots.add(timePartitionSlot);
-
-    // data region for each time partition
-    List<TRegionReplicaSet> dataRegionReplicaSets =
-        analysis
-            .getDataPartitionInfo()
-            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlots);
-
-    Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
-    for (int i = 0; i < dataRegionReplicaSets.size(); i++) {
-      List<Integer> sub_ranges =
-          splitMap.computeIfAbsent(dataRegionReplicaSets.get(i), x -> new ArrayList<>());
-      sub_ranges.add(ranges.get(i));
-      sub_ranges.add(ranges.get(i + 1));
-    }
-
-    List<Integer> locs;
-    for (Map.Entry<TRegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
-      // generate a new times and values
-      locs = entry.getValue();
-      int count = 0;
-      for (int i = 0; i < locs.size(); i += 2) {
-        int start = locs.get(i);
-        int end = locs.get(i + 1);
-        count += end - start;
-      }
-      long[] subTimes = new long[count];
-      int destLoc = 0;
-      Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
-      BitMap[] bitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
-      for (int i = 0; i < locs.size(); i += 2) {
-        int start = locs.get(i);
-        int end = locs.get(i + 1);
-        System.arraycopy(times, start, subTimes, destLoc, end - start);
-        for (int k = 0; k < values.length; k++) {
-          System.arraycopy(columns[k], start, values[k], destLoc, end - start);
-          if (bitMaps != null && this.bitMaps[k] != null) {
-            BitMap.copyOfRange(this.bitMaps[k], start, bitMaps[k], destLoc, end - start);
-          }
-        }
-        destLoc += end - start;
-      }
-      InsertTabletNode subNode =
-          new InsertTabletNode(
-              getPlanNodeId(),
-              devicePath,
-              isAligned,
-              measurementSchemas,
-              dataTypes,
-              subTimes,
-              bitMaps,
-              values,
-              subTimes.length);
-      subNode.setRange(locs);
-      subNode.setDataRegionReplicaSet(entry.getKey());
-      result.add(subNode);
-    }
-    return result;
   }
 
   private Object[] initTabletValues(int columnSize, int rowSize, TSDataType[] dataTypes) {
@@ -759,5 +721,81 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     columns =
         QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, measurementSize, rows);
     this.isAligned = stream.readByte() == 1;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(super.hashCode(), rowCount, range);
+    result = 31 * result + Arrays.hashCode(times);
+    result = 31 * result + Arrays.hashCode(bitMaps);
+    result = 31 * result + Arrays.hashCode(columns);
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    InsertTabletNode that = (InsertTabletNode) o;
+    return rowCount == that.rowCount
+        && Arrays.equals(times, that.times)
+        && Arrays.equals(bitMaps, that.bitMaps)
+        && equals(that.columns)
+        && Objects.equals(range, that.range);
+  }
+
+  private boolean equals(Object[] columns) {
+    if (this.columns == columns) {
+      return true;
+    }
+
+    if (columns == null || this.columns == null || columns.length != this.columns.length) {
+      return false;
+    }
+
+    for (int i = 0; i < columns.length; i++) {
+      if (dataTypes[i] != null) {
+        switch (dataTypes[i]) {
+          case INT32:
+            if (!Arrays.equals((int[]) this.columns[i], (int[]) columns[i])) {
+              return false;
+            }
+            break;
+          case INT64:
+            if (!Arrays.equals((long[]) this.columns[i], (long[]) columns[i])) {
+              return false;
+            }
+            break;
+          case FLOAT:
+            if (!Arrays.equals((float[]) this.columns[i], (float[]) columns[i])) {
+              return false;
+            }
+            break;
+          case DOUBLE:
+            if (!Arrays.equals((double[]) this.columns[i], (double[]) columns[i])) {
+              return false;
+            }
+            break;
+          case BOOLEAN:
+            if (!Arrays.equals((boolean[]) this.columns[i], (boolean[]) columns[i])) {
+              return false;
+            }
+            break;
+          case TEXT:
+            if (!Arrays.equals((Binary[]) this.columns[i], (Binary[]) columns[i])) {
+              return false;
+            }
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format(DATATYPE_UNSUPPORTED, dataTypes[i]));
+        }
+      } else if (!columns[i].equals(columns)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
