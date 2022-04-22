@@ -57,9 +57,9 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
 
       double sum = 0;
       for (int i = 0; i < windowSize; i++) {
-        sum += rowWindow.getRow(i).getInt(0) * 1.0 / windowSize;
+        sum += rowWindow.getRow(i).getInt(0);
       }
-      collector.putDouble(time, sum);
+      collector.putDouble(time, sum / windowSize);
     }
 
     @Override
@@ -69,9 +69,9 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
 
       double sum = 0;
       for (int i = 0; i < windowSize; i++) {
-        sum += rowWindow.getRow(i).getLong(0) * 1.0 / windowSize;
+        sum += rowWindow.getRow(i).getLong(0);
       }
-      collector.putDouble(time, sum);
+      collector.putDouble(time, sum / windowSize);
     }
 
     @Override
@@ -81,9 +81,9 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
 
       double sum = 0;
       for (int i = 0; i < windowSize; i++) {
-        sum += rowWindow.getRow(i).getFloat(0) * 1.0 / windowSize;
+        sum += rowWindow.getRow(i).getFloat(0);
       }
-      collector.putDouble(time, sum);
+      collector.putDouble(time, sum / windowSize);
     }
 
     @Override
@@ -93,9 +93,9 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
 
       double sum = 0;
       for (int i = 0; i < windowSize; i++) {
-        sum += rowWindow.getRow(i).getDouble(0) / windowSize;
+        sum += rowWindow.getRow(i).getDouble(0);
       }
-      collector.putDouble(time, sum);
+      collector.putDouble(time, sum / windowSize);
     }
   }
 
@@ -347,10 +347,12 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
 
       double avg = 0, sum = 0;
       for (int i = 0; i < windowSize; i++) {
-        avg += rowWindow.getRow(i).getInt(0) * 1.0 / windowSize;
+        avg += rowWindow.getRow(i).getInt(0);
       }
+      avg /= windowSize;
       for (int i = 0; i < windowSize; i++) {
-        sum += (rowWindow.getRow(i).getInt(0) - avg) * (rowWindow.getRow(i).getInt(0) - avg);
+        double delta = rowWindow.getRow(i).getInt(0) - avg;
+        sum += delta * delta;
       }
       collector.putDouble(time, sum / windowSize);
     }
@@ -362,10 +364,12 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
 
       double avg = 0, sum = 0;
       for (int i = 0; i < windowSize; i++) {
-        avg += rowWindow.getRow(i).getLong(0) * 1.0 / windowSize;
+        avg += rowWindow.getRow(i).getLong(0);
       }
+      avg /= windowSize;
       for (int i = 0; i < windowSize; i++) {
-        sum += (rowWindow.getRow(i).getLong(0) - avg) * (rowWindow.getRow(i).getLong(0) - avg);
+        double delta = rowWindow.getRow(i).getLong(0) - avg;
+        sum += delta * delta;
       }
       collector.putDouble(time, sum / windowSize);
     }
@@ -377,10 +381,12 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
 
       double avg = 0, sum = 0;
       for (int i = 0; i < windowSize; i++) {
-        avg += rowWindow.getRow(i).getFloat(0) / windowSize;
+        avg += rowWindow.getRow(i).getFloat(0);
       }
+      avg /= windowSize;
       for (int i = 0; i < windowSize; i++) {
-        sum += (rowWindow.getRow(i).getFloat(0) - avg) * (rowWindow.getRow(i).getFloat(0) - avg);
+        double delta = rowWindow.getRow(i).getFloat(0) - avg;
+        sum += delta * delta;
       }
       collector.putDouble(time, sum / windowSize);
     }
@@ -392,10 +398,12 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
 
       double avg = 0, sum = 0;
       for (int i = 0; i < windowSize; i++) {
-        avg += rowWindow.getRow(i).getDouble(0) / windowSize;
+        avg += rowWindow.getRow(i).getDouble(0);
       }
+      avg /= windowSize;
       for (int i = 0; i < windowSize; i++) {
-        sum += (rowWindow.getRow(i).getDouble(0) - avg) * (rowWindow.getRow(i).getDouble(0) - avg);
+        double delta = rowWindow.getRow(i).getDouble(0) - avg;
+        sum += delta * delta;
       }
       collector.putDouble(time, sum / windowSize);
     }

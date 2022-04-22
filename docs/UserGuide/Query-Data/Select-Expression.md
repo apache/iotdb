@@ -599,6 +599,8 @@ It costs 0.024s
 The input sequence is sampled by the aggregation sampling method, and the user needs to provide an additional aggregation function parameter, namely
 - `type`: Aggregate type, which can be `avg` or `max` or `min` or `sum` or `extreme` or `variance`. By default, `avg` is used. `extreme` represents the value with the largest absolute value in the equal bucket. `variance` represents the variance in the sampling equal buckets.
 
+The timestamp of the sampling output of each bucket is the timestamp of the first point of the bucket.
+
 | Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
 |----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
 | EQUAL_SIZE_BUCKET_AGG_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1`</br>`type`: The value types are `avg`, `max`, `min`, `sum`, `extreme`, `variance`, the default is `avg` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket aggregation samples that match the sampling ratio |
