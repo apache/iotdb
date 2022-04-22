@@ -79,8 +79,8 @@ schema_engine_mode=Rocksdb_based
 | getAllTimeseriesCount | 内部接口 | 支持 | |
 | getDevicesNum | 内部接口 | 支持 | |
 | getNodesCountInGivenLevel | 内部接口 | 有条件支持 | 路径不支持通配 |
-| getMeasurementCountGroupByLevel | 内部接口 | 不支持 | |
-| getNodesListInGivenLevel | 内部接口 | 部分支持 | 暂不支持指定路径 |
+| getMeasurementCountGroupByLevel | 内部接口 | 支持 | |
+| getNodesListInGivenLevel | 内部接口 | 有条件支持 | 路径不支持通配 |
 | getChildNodePathInNextLevel | 内部接口 | 有条件支持 | 路径不支持通配 |
 | getChildNodeNameInNextLevel | 内部接口 | 有条件支持 | 路径不支持通配 |
 | getBelongedDevices | 内部接口 | 支持 | |
@@ -90,6 +90,4 @@ schema_engine_mode=Rocksdb_based
 | getAllMeasurementByDevicePath | 内部接口 | 支持 | |
 | getDeviceNode | 内部接口 | 支持 | |
 | getMeasurementMNodes | 内部接口 | 支持 | |
-| collectMeasurementSchema | 内部接口 | 不支持 | |
-| collectTimeseriesSchema | 内部接口 | 不支持 | |
 | getSeriesSchemasAndReadLockDevice | 内部接口 | 支持 | |
