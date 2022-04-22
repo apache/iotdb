@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
 import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -62,7 +63,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   // indicate each output column should use which value column of which input TsBlock and the
   // overlapped situation
   // size of outputColumns must be equal to the size of columnHeaders
-  private List<OutputColumn> outputColumns = new ArrayList<>();
+  private List<OutputColumn> outputColumns;
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
@@ -74,6 +75,11 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     this(id, mergeOrder);
     this.children = children;
     initColumnHeaders();
+    outputColumns = new ArrayList<>(columnHeaders.size());
+    // TODO need to be fixed by minghui, construct outputColumns in LogicalPlanner
+    for (int i = 0; i < columnHeaders.size(); i++) {
+      outputColumns.add(new OutputColumn(new InputLocation(i, 0)));
+    }
   }
 
   @Override
