@@ -67,7 +67,7 @@ public class LogicalPlanBuilder {
     return root;
   }
 
-  public void planRawDataQuerySource(
+  public LogicalPlanBuilder planRawDataQuerySource(
       Map<String, Set<PartialPath>> deviceNameToPathsMap,
       OrderBy scanOrder,
       boolean isAlignByDevice,
@@ -93,9 +93,11 @@ public class LogicalPlanBuilder {
     } else {
       planTimeJoin(deviceNameToSourceNodesMap, scanOrder, queryFilter, selectedPathList);
     }
+
+    return this;
   }
 
-  public void planAggregationSourceWithoutValueFilter(
+  public LogicalPlanBuilder planAggregationSourceWithoutValueFilter(
       Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap,
       OrderBy scanOrder,
       boolean isAlignByDevice,
@@ -134,9 +136,11 @@ public class LogicalPlanBuilder {
     } else {
       planTimeJoin(deviceNameToSourceNodesMap, scanOrder, null, null);
     }
+
+    return this;
   }
 
-  public void planAggregationSourceWithValueFilter(
+  public LogicalPlanBuilder planAggregationSourceWithValueFilter(
       Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap,
       Map<String, Set<PartialPath>> deviceNameToPathsMap,
       OrderBy scanOrder,
@@ -173,6 +177,8 @@ public class LogicalPlanBuilder {
           new AggregateNode(
               context.getQueryId().genPlanNodeId(), this.getRoot(), aggregateFuncMap, null);
     }
+
+    return this;
   }
 
   public void planTimeJoin(
@@ -248,9 +254,9 @@ public class LogicalPlanBuilder {
     return tmpNode;
   }
 
-  public void planGroupByLevel(GroupByLevelComponent groupByLevelComponent) {
+  public LogicalPlanBuilder planGroupByLevel(GroupByLevelComponent groupByLevelComponent) {
     if (groupByLevelComponent == null) {
-      return;
+      return this;
     }
 
     this.root =
@@ -259,11 +265,12 @@ public class LogicalPlanBuilder {
             this.getRoot(),
             groupByLevelComponent.getLevels(),
             groupByLevelComponent.getGroupedHeaderMap());
+    return this;
   }
 
-  public void planFilterNull(FilterNullComponent filterNullComponent) {
+  public LogicalPlanBuilder planFilterNull(FilterNullComponent filterNullComponent) {
     if (filterNullComponent == null) {
-      return;
+      return this;
     }
 
     this.root =
@@ -274,26 +281,30 @@ public class LogicalPlanBuilder {
             filterNullComponent.getWithoutNullColumns().stream()
                 .map(Expression::getExpressionString)
                 .collect(Collectors.toList()));
+
+    return this;
   }
 
-  public void planLimit(int rowLimit) {
+  public LogicalPlanBuilder planLimit(int rowLimit) {
     if (rowLimit == 0) {
-      return;
+      return this;
     }
 
     this.root = new LimitNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowLimit);
+    return this;
   }
 
-  public void planOffset(int rowOffset) {
+  public LogicalPlanBuilder planOffset(int rowOffset) {
     if (rowOffset == 0) {
-      return;
+      return this;
     }
 
     this.root = new OffsetNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowOffset);
+    return this;
   }
 
   /** Meta Query* */
-  public void planTimeSeriesMetaSource(
+  public LogicalPlanBuilder planTimeSeriesMetaSource(
       PartialPath pathPattern,
       String key,
       String value,
@@ -314,24 +325,28 @@ public class LogicalPlanBuilder {
             contains,
             prefixPath);
     this.root = timeSeriesMetaScanNode;
+    return this;
   }
 
-  public void planDeviceSchemaSource(
+  public LogicalPlanBuilder planDeviceSchemaSource(
       PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
     DevicesSchemaScanNode devicesSchemaScanNode =
         new DevicesSchemaScanNode(
             context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
     this.root = devicesSchemaScanNode;
+    return this;
   }
 
-  public void planSchemaMerge(boolean orderByHeat) {
+  public LogicalPlanBuilder planSchemaMerge(boolean orderByHeat) {
     SchemaMergeNode schemaMergeNode =
         new SchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
     schemaMergeNode.addChild(this.getRoot());
     this.root = schemaMergeNode;
+    return this;
   }
 
-  public void planSchemaFetchSource(PathPatternTree patternTree) {
+  public LogicalPlanBuilder planSchemaFetchSource(PathPatternTree patternTree) {
     this.root = new SchemaFetchNode(context.getQueryId().genPlanNodeId(), patternTree);
+    return this;
   }
 }

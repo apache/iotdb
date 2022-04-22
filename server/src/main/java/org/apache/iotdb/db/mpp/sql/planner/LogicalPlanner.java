@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -56,15 +55,12 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -110,16 +106,17 @@ public class LogicalPlanner {
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
 
-      planBuilder.planRawDataQuerySource(
-          queryStatement.getDeviceNameToDeduplicatedPathsMap(),
-          queryStatement.getResultOrder(),
-          queryStatement.isAlignByDevice(),
-          analysis.getQueryFilter(),
-          queryStatement.getSelectedPathNames());
+      planBuilder
+          .planRawDataQuerySource(
+              queryStatement.getDeviceNameToDeduplicatedPathsMap(),
+              queryStatement.getResultOrder(),
+              queryStatement.isAlignByDevice(),
+              analysis.getQueryFilter(),
+              queryStatement.getSelectedPathNames())
+          .planFilterNull(queryStatement.getFilterNullComponent())
+          .planLimit(queryStatement.getRowLimit())
+          .planOffset(queryStatement.getRowOffset());
 
-      planBuilder.planFilterNull(queryStatement.getFilterNullComponent());
-      planBuilder.planLimit(queryStatement.getRowLimit());
-      planBuilder.planOffset(queryStatement.getRowOffset());
       return planBuilder.getRoot();
     }
 
@@ -127,7 +124,6 @@ public class LogicalPlanner {
     public PlanNode visitAggregationQuery(
         AggregationQueryStatement queryStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap;
 
       if (analysis.getQueryFilter() != null
           && analysis.getQueryFilter().getType() != ExpressionType.GLOBAL_TIME) {
@@ -148,10 +144,11 @@ public class LogicalPlanner {
             analysis.getQueryFilter());
       }
 
-      planBuilder.planGroupByLevel(queryStatement.getGroupByLevelComponent());
-      planBuilder.planFilterNull(queryStatement.getFilterNullComponent());
-      planBuilder.planLimit(queryStatement.getRowLimit());
-      planBuilder.planOffset(queryStatement.getRowOffset());
+      planBuilder
+          .planGroupByLevel(queryStatement.getGroupByLevelComponent())
+          .planFilterNull(queryStatement.getFilterNullComponent())
+          .planLimit(queryStatement.getRowLimit())
+          .planOffset(queryStatement.getRowOffset());
       return planBuilder.getRoot();
     }
 
@@ -280,20 +277,19 @@ public class LogicalPlanner {
     public PlanNode visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      planBuilder.planTimeSeriesMetaSource(
-          showTimeSeriesStatement.getPathPattern(),
-          showTimeSeriesStatement.getKey(),
-          showTimeSeriesStatement.getValue(),
-          showTimeSeriesStatement.getLimit(),
-          showTimeSeriesStatement.getOffset(),
-          showTimeSeriesStatement.isOrderByHeat(),
-          showTimeSeriesStatement.isContains(),
-          showTimeSeriesStatement.isPrefixPath());
-      planBuilder.planSchemaMerge(showTimeSeriesStatement.isOrderByHeat());
-      if (showTimeSeriesStatement.getLimit() > 0) {
-        planBuilder.planOffset(showTimeSeriesStatement.getOffset());
-        planBuilder.planLimit(showTimeSeriesStatement.getLimit());
-      }
+      planBuilder
+          .planTimeSeriesMetaSource(
+              showTimeSeriesStatement.getPathPattern(),
+              showTimeSeriesStatement.getKey(),
+              showTimeSeriesStatement.getValue(),
+              showTimeSeriesStatement.getLimit(),
+              showTimeSeriesStatement.getOffset(),
+              showTimeSeriesStatement.isOrderByHeat(),
+              showTimeSeriesStatement.isContains(),
+              showTimeSeriesStatement.isPrefixPath())
+          .planSchemaMerge(showTimeSeriesStatement.isOrderByHeat())
+          .planOffset(showTimeSeriesStatement.getOffset())
+          .planLimit(showTimeSeriesStatement.getLimit());
       return planBuilder.getRoot();
     }
 
@@ -301,15 +297,16 @@ public class LogicalPlanner {
     public PlanNode visitShowDevices(
         ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      planBuilder.planDeviceSchemaSource(
-          showDevicesStatement.getPathPattern(),
-          showDevicesStatement.getLimit(),
-          showDevicesStatement.getOffset(),
-          showDevicesStatement.isPrefixPath(),
-          showDevicesStatement.hasSgCol());
-      planBuilder.planSchemaMerge(false);
-      planBuilder.planOffset(showDevicesStatement.getOffset());
-      planBuilder.planLimit(showDevicesStatement.getLimit());
+      planBuilder
+          .planDeviceSchemaSource(
+              showDevicesStatement.getPathPattern(),
+              showDevicesStatement.getLimit(),
+              showDevicesStatement.getOffset(),
+              showDevicesStatement.isPrefixPath(),
+              showDevicesStatement.hasSgCol())
+          .planSchemaMerge(false)
+          .planOffset(showDevicesStatement.getOffset())
+          .planLimit(showDevicesStatement.getLimit());
       return planBuilder.getRoot();
     }
 
@@ -529,8 +526,9 @@ public class LogicalPlanner {
     public PlanNode visitSchemaFetch(
         SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      planBuilder.planSchemaFetchSource(schemaFetchStatement.getPatternTree());
-      planBuilder.planSchemaMerge(false);
+      planBuilder
+          .planSchemaFetchSource(schemaFetchStatement.getPatternTree())
+          .planSchemaMerge(false);
       return planBuilder.getRoot();
     }
   }
