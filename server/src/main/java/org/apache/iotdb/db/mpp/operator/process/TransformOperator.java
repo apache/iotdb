@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TransformOperator implements ProcessOperator {
@@ -143,7 +144,11 @@ public class TransformOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
-    tsBlockBuilder.buildValueColumnBuilders(inputDataTypes);
+    List<TSDataType> outputDataType = new ArrayList<>();
+    for (LayerPointReader reader : transformers) {
+      outputDataType.add(reader.getDataType());
+    }
+    tsBlockBuilder.buildValueColumnBuilders(outputDataType);
 
     final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
