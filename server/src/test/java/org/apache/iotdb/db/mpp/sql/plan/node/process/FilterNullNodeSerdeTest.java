@@ -34,7 +34,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -69,9 +68,6 @@ public class FilterNullNodeSerdeTest {
     DeviceMergeNode deviceMergeNode =
         new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
 
-    FilterNullComponent filterNullComponent = new FilterNullComponent();
-    deviceMergeNode.setFilterNullComponent(filterNullComponent);
-
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
     Set<AggregationType> aggregationTypes = new HashSet<>();
     aggregationTypes.add(AggregationType.MAX_TIME);
@@ -104,7 +100,10 @@ public class FilterNullNodeSerdeTest {
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
-            new PlanNodeId("TestFilterNullNode"), filterNode, FilterNullPolicy.ALL_NULL, null);
+            new PlanNodeId("TestFilterNullNode"),
+            filterNode,
+            FilterNullPolicy.ALL_NULL,
+            new ArrayList<>());
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     filterNullNode.serialize(byteBuffer);
     byteBuffer.flip();
