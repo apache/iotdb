@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.ClientPoolProperty.DefaultProperty;
@@ -138,13 +139,13 @@ public class ClientManagerTest extends BaseClientTest {
               @Override
               public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
                   ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
-                ClientPoolProperty<SyncDataNodeInternalServiceClient> property =
+                return new GenericKeyedObjectPool<>(
+                    new SyncDataNodeInternalServiceClient.Factory(
+                        manager, new ClientFactoryProperty.Builder().build()),
                     new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
                         .setMaxIdleClientForEachNode(maxIdleClientForEachNode)
-                        .build();
-                return new GenericKeyedObjectPool<>(
-                    new SyncDataNodeInternalServiceClient.Factory(manager, property),
-                    property.getConfig());
+                        .build()
+                        .getConfig());
               }
             });
 
@@ -195,13 +196,13 @@ public class ClientManagerTest extends BaseClientTest {
               @Override
               public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
                   ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
-                ClientPoolProperty<SyncDataNodeInternalServiceClient> property =
+                return new GenericKeyedObjectPool<>(
+                    new SyncDataNodeInternalServiceClient.Factory(
+                        manager, new ClientFactoryProperty.Builder().build()),
                     new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
                         .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
-                        .build();
-                return new GenericKeyedObjectPool<>(
-                    new SyncDataNodeInternalServiceClient.Factory(manager, property),
-                    property.getConfig());
+                        .build()
+                        .getConfig());
               }
             });
 
@@ -255,14 +256,14 @@ public class ClientManagerTest extends BaseClientTest {
               @Override
               public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
                   ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
-                ClientPoolProperty<SyncDataNodeInternalServiceClient> property =
+                return new GenericKeyedObjectPool<>(
+                    new SyncDataNodeInternalServiceClient.Factory(
+                        manager, new ClientFactoryProperty.Builder().build()),
                     new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
                         .setWaitClientTimeoutMS(waitClientTimeoutMS)
                         .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
-                        .build();
-                return new GenericKeyedObjectPool<>(
-                    new SyncDataNodeInternalServiceClient.Factory(manager, property),
-                    property.getConfig());
+                        .build()
+                        .getConfig());
               }
             });
 
@@ -299,10 +300,10 @@ public class ClientManagerTest extends BaseClientTest {
     @Override
     public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
-      ClientPoolProperty<SyncDataNodeInternalServiceClient> property =
-          new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>().build();
       return new GenericKeyedObjectPool<>(
-          new SyncDataNodeInternalServiceClient.Factory(manager, property), property.getConfig());
+          new SyncDataNodeInternalServiceClient.Factory(
+              manager, new ClientFactoryProperty.Builder().build()),
+          new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }
 
@@ -311,10 +312,10 @@ public class ClientManagerTest extends BaseClientTest {
     @Override
     public KeyedObjectPool<TEndPoint, AsyncDataNodeInternalServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> manager) {
-      ClientPoolProperty<AsyncDataNodeInternalServiceClient> property =
-          new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build();
       return new GenericKeyedObjectPool<>(
-          new AsyncDataNodeInternalServiceClient.Factory(manager, property), property.getConfig());
+          new AsyncDataNodeInternalServiceClient.Factory(
+              manager, new ClientFactoryProperty.Builder().build()),
+          new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }
 }
