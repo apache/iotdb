@@ -20,8 +20,8 @@
 package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.commons.client.BaseClientFactory;
+import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
@@ -37,10 +37,10 @@ public class RatisClientFactory extends BaseClientFactory<RaftGroup, RaftClient>
 
   public RatisClientFactory(
       ClientManager<RaftGroup, RaftClient> clientManager,
-      ClientPoolProperty<RaftClient> clientManagerProperty,
+      ClientFactoryProperty clientPoolProperty,
       RaftProperties raftProperties,
       RaftClientRpc clientRpc) {
-    super(clientManager, clientManagerProperty);
+    super(clientManager, clientPoolProperty);
     this.raftProperties = raftProperties;
     this.clientRpc = clientRpc;
   }
