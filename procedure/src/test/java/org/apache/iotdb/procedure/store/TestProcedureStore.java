@@ -28,9 +28,12 @@ import org.apache.iotdb.procedure.entity.StuckSTMProcedure;
 import org.apache.iotdb.procedure.util.ProcedureTestUtil;
 import org.apache.iotdb.service.rpc.thrift.ProcedureState;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,8 +64,12 @@ public class TestProcedureStore extends TestProcedureBase {
         procedureList.get(0).getClass(),
         procedureList.get(0).getProcId(),
         procedureList.get(0).getState());
-
     this.procStore.cleanup();
+    try {
+      FileUtils.cleanDirectory(new File(TEST_DIR));
+    } catch (IOException e) {
+      System.out.println("clean dir failed." + e);
+    }
   }
 
   @Test
