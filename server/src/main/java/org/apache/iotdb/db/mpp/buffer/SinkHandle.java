@@ -74,7 +74,6 @@ public class SinkHandle implements ISinkHandle {
   private long bufferRetainedSizeInBytes;
   private boolean closed;
   private boolean noMoreTsBlocks;
-  private Throwable throwable;
 
   public SinkHandle(
       TEndPoint remoteEndpoint,
@@ -114,11 +113,8 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) throws IOException {
+  public void send(List<TsBlock> tsBlocks) {
     Validate.notNull(tsBlocks, "tsBlocks is null");
-    if (throwable != null) {
-      throw new IOException(throwable);
-    }
     if (closed) {
       throw new IllegalStateException("Sink handle is closed.");
     }
@@ -194,24 +190,21 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     logger.info("Sink handle {} is being closed.", this);
-    if (throwable != null) {
-      throw new IOException(throwable);
-    }
     if (closed) {
       return;
+    }
+    try {
+      sendEndOfDataBlockEvent();
+    } catch (TException e) {
+      throw new RuntimeException("Send EndOfDataBlockEvent failed", e);
     }
     synchronized (this) {
       closed = true;
       noMoreTsBlocks = true;
     }
     sinkHandleListener.onClosed(this);
-    try {
-      sendEndOfDataBlockEvent();
-    } catch (TException e) {
-      throw new IOException(e);
-    }
     logger.info("Sink handle {} is closed.", this);
   }
 
@@ -247,7 +240,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public boolean isFinished() {
-    return throwable == null && noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
+    return noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
   }
 
   @Override
@@ -362,7 +355,7 @@ public class SinkHandle implements ISinkHandle {
         try {
           client.onNewDataBlockEvent(newDataBlockEvent);
           break;
-        } catch (TException e) {
+        } catch (Throwable e) {
           logger.error(
               "Failed to send new data block event to plan node {} of {} due to {}, attempt times: {}",
               remotePlanNodeId,
@@ -371,9 +364,7 @@ public class SinkHandle implements ISinkHandle {
               attempt,
               e);
           if (attempt == MAX_ATTEMPT_TIMES) {
-            synchronized (this) {
-              throwable = e;
-            }
+            sinkHandleListener.onFailure(e);
           }
         }
       }

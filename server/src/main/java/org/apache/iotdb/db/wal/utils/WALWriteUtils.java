@@ -19,9 +19,14 @@
 package org.apache.iotdb.db.wal.utils;
 
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.Map;
 
 /** Like {@link org.apache.iotdb.tsfile.utils.ReadWriteIOUtils} */
 public class WALWriteUtils {
@@ -130,5 +135,42 @@ public class WALWriteUtils {
   public static int write(TSDataType dataType, IWALByteBufferView buffer) {
     byte n = dataType.serialize();
     return write(n, buffer);
+  }
+
+  /** TSEncoding. */
+  public static int write(TSEncoding encoding, IWALByteBufferView buffer) {
+    byte n = encoding.serialize();
+    return write(n, buffer);
+  }
+
+  /** CompressionType. */
+  public static int write(CompressionType compressionType, IWALByteBufferView buffer) {
+    byte n = compressionType.serialize();
+    return write(n, buffer);
+  }
+
+  /** MeasurementSchema. */
+  public static int write(MeasurementSchema measurementSchema, IWALByteBufferView buffer) {
+    int len = 0;
+
+    len += write(measurementSchema.getMeasurementId(), buffer);
+
+    len += write(measurementSchema.getType(), buffer);
+
+    len += write(measurementSchema.getEncodingType(), buffer);
+
+    len += write(measurementSchema.getCompressor(), buffer);
+
+    Map<String, String> props = measurementSchema.getProps();
+    if (props == null) {
+      len += write(0, buffer);
+    } else {
+      len += write(props.size(), buffer);
+      for (Map.Entry<String, String> entry : props.entrySet()) {
+        len += write(entry.getKey(), buffer);
+        len += write(entry.getValue(), buffer);
+      }
+    }
+    return len;
   }
 }
