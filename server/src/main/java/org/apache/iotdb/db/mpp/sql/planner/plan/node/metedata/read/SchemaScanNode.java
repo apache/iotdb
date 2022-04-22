@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
 import java.util.Objects;
@@ -49,6 +50,12 @@ public abstract class SchemaScanNode extends SourceNode {
     this.path = partialPath;
     setLimit(limit);
     this.offset = offset;
+    this.isPrefixPath = isPrefixPath;
+  }
+
+  protected SchemaScanNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
+    super(id);
+    this.path = partialPath;
     this.isPrefixPath = isPrefixPath;
   }
 
@@ -112,6 +119,11 @@ public abstract class SchemaScanNode extends SourceNode {
 
   public void setHasLimit(boolean hasLimit) {
     this.hasLimit = hasLimit;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitSchemaScan(this, context);
   }
 
   @Override

@@ -19,9 +19,13 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.NodeTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
@@ -79,7 +83,10 @@ public enum PlanNodeType {
   TIME_SERIES_SCHEMA_SCAN((short) 24),
   SCHEMA_FETCH((short) 25),
   SCHEMA_MERGE((short) 26),
-  STORAGE_GROUP_SCHEMA_SCAN((short) 27);
+  DEVICES_COUNT((short) 27),
+  TIME_SERIES_COUNT((short) 28),
+  NODE_TIME_SERIES_COUNT((short) 29),
+  COUNT_MERGE((short) 30);
 
   private final short nodeType;
 
@@ -161,6 +168,14 @@ public enum PlanNodeType {
         return SchemaFetchNode.deserialize(buffer);
       case 26:
         return SchemaMergeNode.deserialize(buffer);
+      case 27:
+        return DevicesCountNode.deserialize(buffer);
+      case 28:
+        return TimeSeriesCountNode.deserialize(buffer);
+      case 29:
+        return NodeTimeSeriesCountNode.deserialize(buffer);
+      case 30:
+        return CountMergeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

@@ -49,6 +49,9 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountNodeTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
@@ -363,6 +366,45 @@ public class Analyzer {
           showDevicesStatement.hasSgCol()
               ? HeaderConstant.showDevicesWithSgHeader
               : HeaderConstant.showDevicesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCountDevices(
+        CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(countDevicesStatement);
+      SchemaPartition schemaPartition =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(countDevicesStatement.getPartialPath().concatNode("*")));
+      analysis.setSchemaPartitionInfo(schemaPartition);
+      analysis.setRespDatasetHeader(HeaderConstant.countDevicesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCountTimeSeries(
+        CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(countTimeSeriesStatement);
+      SchemaPartition schemaPartition =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(countTimeSeriesStatement.getPartialPath()));
+      analysis.setSchemaPartitionInfo(schemaPartition);
+      analysis.setRespDatasetHeader(HeaderConstant.countTimeSeriesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCountNodeTimeSeries(
+        CountNodeTimeSeriesStatement countNodeTimeSeriesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(countNodeTimeSeriesStatement);
+      SchemaPartition schemaPartition =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(countNodeTimeSeriesStatement.getPartialPath()));
+      analysis.setSchemaPartitionInfo(schemaPartition);
+      analysis.setRespDatasetHeader(HeaderConstant.countNodeTimeSeriesHeader);
       return analysis;
     }
 

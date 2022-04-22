@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.NodeTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -114,6 +118,22 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDevicesSchemaScan(DevicesSchemaScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDevicesCount(DevicesCountNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTimeSeriesCount(TimeSeriesCountNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitNodeTimeSeriesCount(NodeTimeSeriesCountNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitCountMerge(CountMergeNode node, C context) {
     return visitPlan(node, context);
   }
 

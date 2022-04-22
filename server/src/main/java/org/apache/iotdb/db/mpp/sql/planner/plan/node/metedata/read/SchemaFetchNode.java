@@ -57,11 +57,6 @@ public class SchemaFetchNode extends SchemaScanNode {
   }
 
   @Override
-  public int allowedChildCount() {
-    return 0;
-  }
-
-  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SCHEMA_FETCH.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
@@ -72,12 +67,6 @@ public class SchemaFetchNode extends SchemaScanNode {
     PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
     return new SchemaFetchNode(id, patternTree);
   }
-
-  @Override
-  public void open() throws Exception {}
-
-  @Override
-  public void close() throws Exception {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {

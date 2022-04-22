@@ -37,9 +37,13 @@ import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.operator.schema.CountMergeOperator;
+import org.apache.iotdb.db.mpp.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.operator.schema.NodeTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaFetchOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaMergeOperator;
+import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
@@ -47,9 +51,13 @@ import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.NodeTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -209,7 +217,60 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               SchemaMergeOperator.class.getSimpleName());
-      return new SchemaMergeOperator(operatorContext, children);
+      return new SchemaMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    }
+
+    @Override
+    public Operator visitCountMerge(CountMergeNode node, LocalExecutionPlanContext context) {
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(n -> n.accept(this, context))
+              .collect(Collectors.toList());
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              CountMergeNode.class.getSimpleName());
+      return new CountMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    }
+
+    @Override
+    public Operator visitDevicesCount(DevicesCountNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              CountMergeNode.class.getSimpleName());
+      return new DevicesCountOperator(
+          node.getPlanNodeId(), operatorContext, node.getPath(), node.isPrefixPath());
+    }
+
+    @Override
+    public Operator visitTimeSeriesCount(
+        TimeSeriesCountNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              TimeSeriesCountNode.class.getSimpleName());
+      return new TimeSeriesCountOperator(
+          node.getPlanNodeId(), operatorContext, node.getPath(), node.isPrefixPath());
+    }
+
+    @Override
+    public Operator visitNodeTimeSeriesCount(
+        NodeTimeSeriesCountNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              NodeTimeSeriesCountNode.class.getSimpleName());
+      return new NodeTimeSeriesCountOperator(
+          node.getPlanNodeId(),
+          operatorContext,
+          node.getPath(),
+          node.isPrefixPath(),
+          node.getLevel());
     }
 
     @Override

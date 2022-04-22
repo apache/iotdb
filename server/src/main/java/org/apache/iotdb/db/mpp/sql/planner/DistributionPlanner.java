@@ -36,6 +36,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.AbstractSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
@@ -49,8 +51,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -169,6 +173,29 @@ public class DistributionPlanner {
               schemaScanNode.setLimit(schemaScanNode.getOffset() + schemaScanNode.getLimit());
               schemaScanNode.setOffset(0);
             }
+            root.addChild(schemaScanNode);
+          });
+      return root;
+    }
+
+    @Override
+    public PlanNode visitCountMerge(CountMergeNode node, DistributionPlanContext context) {
+      CountMergeNode root = (CountMergeNode) node.clone();
+      SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
+      Set<TRegionReplicaSet> schemaRegions = new HashSet<>();
+      analysis
+          .getSchemaPartitionInfo()
+          .getSchemaPartitionMap()
+          .forEach(
+              (storageGroup, deviceGroup) -> {
+                deviceGroup.forEach(
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        schemaRegions.add(schemaRegionReplicaSet));
+              });
+      schemaRegions.forEach(
+          region -> {
+            SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setRegionReplicaSet(region);
             root.addChild(schemaScanNode);
           });
       return root;
@@ -300,6 +327,11 @@ public class DistributionPlanner {
 
     @Override
     public PlanNode visitSchemaMerge(SchemaMergeNode node, NodeGroupContext context) {
+      return internalVisitSchemaMerge(node, context);
+    }
+
+    private PlanNode internalVisitSchemaMerge(
+        AbstractSchemaMergeNode node, NodeGroupContext context) {
       node.getChildren()
           .forEach(
               child -> {
@@ -324,6 +356,11 @@ public class DistributionPlanner {
                 }
               });
       return newNode;
+    }
+
+    @Override
+    public PlanNode visitCountMerge(CountMergeNode node, NodeGroupContext context) {
+      return internalVisitSchemaMerge(node, context);
     }
 
     @Override

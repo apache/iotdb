@@ -34,6 +34,9 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountNodeTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
@@ -239,6 +242,18 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowDevices(ShowDevicesStatement showDevicesStatement, C context) {
     return visitStatement(showDevicesStatement, context);
+  }
+
+  public R visitCountDevices(CountDevicesStatement countStatement, C context) {
+    return visitStatement(countStatement, context);
+  }
+
+  public R visitCountTimeSeries(CountTimeSeriesStatement countStatement, C context) {
+    return visitStatement(countStatement, context);
+  }
+
+  public R visitCountNodeTimeSeries(CountNodeTimeSeriesStatement countStatement, C context) {
+    return visitStatement(countStatement, context);
   }
 
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
