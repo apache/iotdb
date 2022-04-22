@@ -101,11 +101,6 @@ public class TestProcedureStore extends TestProcedureBase {
     ProcedureTestUtil.waitForProcedure(procExecutor, rootId);
     Assert.assertEquals(
         procExecutor.getResultOrProcedure(rootId).getState(), ProcedureState.SUCCESS);
-    try {
-      FileUtils.cleanDirectory(new File(TEST_DIR));
-    } catch (IOException e) {
-      System.out.println("clean dir failed." + e);
-    }
   }
 
   private void assertProc(Procedure proc, Class clazz, long procId, ProcedureState state) {

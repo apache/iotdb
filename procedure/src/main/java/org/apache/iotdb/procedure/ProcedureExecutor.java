@@ -257,7 +257,7 @@ public class ProcedureExecutor<Env> {
         .values()
         .forEach(
             procedure -> {
-              while (true) {
+              while (procedure != null) {
                 if (restored.contains(procedure.getProcId())) {
                   restoreLocks(stack, restored);
                   return;
