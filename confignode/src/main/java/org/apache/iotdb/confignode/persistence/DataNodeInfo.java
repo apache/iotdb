@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DataNodeInfo {
@@ -42,7 +43,7 @@ public class DataNodeInfo {
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
 
   // TODO: serialize and deserialize
-  private int nextDataNodeId = 0;
+  private AtomicInteger nextDataNodeId = new AtomicInteger(0);
 
   /** online data nodes */
   // TODO: serialize and deserialize
@@ -90,7 +91,6 @@ public class DataNodeInfo {
     TDataNodeLocation info = plan.getLocation();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
-      nextDataNodeId = Math.max(nextDataNodeId, info.getDataNodeId());
       onlineDataNodes.put(info.getDataNodeId(), info);
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
@@ -161,22 +161,12 @@ public class DataNodeInfo {
   }
 
   public int generateNextDataNodeId() {
-    int result;
-
-    try {
-      dataNodeInfoReadWriteLock.writeLock().lock();
-      result = nextDataNodeId;
-      nextDataNodeId += 1;
-    } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
-    }
-
-    return result;
+    return nextDataNodeId.getAndIncrement();
   }
 
   @TestOnly
   public void clear() {
-    nextDataNodeId = 0;
+    nextDataNodeId = new AtomicInteger(0);
     onlineDataNodes.clear();
     drainingDataNodes.clear();
   }

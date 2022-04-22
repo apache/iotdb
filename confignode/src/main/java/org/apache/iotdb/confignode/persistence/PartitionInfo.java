@@ -42,15 +42,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
 public class PartitionInfo {
 
-  // Region allocate lock
-  private final ReentrantReadWriteLock regionAllocateLock;
   // TODO: Serialize and Deserialize
-  private int nextRegionGroupId = 0;
+  private AtomicInteger nextRegionGroupId = new AtomicInteger(0);
 
   // Region read write lock
   private final ReentrantReadWriteLock regionReadWriteLock;
@@ -69,7 +68,6 @@ public class PartitionInfo {
   private final DataPartition dataPartition;
 
   private PartitionInfo() {
-    this.regionAllocateLock = new ReentrantReadWriteLock();
     this.regionReadWriteLock = new ReentrantReadWriteLock();
     this.regionMap = new HashMap<>();
 
@@ -89,15 +87,7 @@ public class PartitionInfo {
   }
 
   public int generateNextRegionGroupId() {
-    int result;
-    regionAllocateLock.writeLock().lock();
-    try {
-      result = nextRegionGroupId;
-      nextRegionGroupId += 1;
-    } finally {
-      regionAllocateLock.writeLock().unlock();
-    }
-    return result;
+    return nextRegionGroupId.getAndIncrement();
   }
 
   /**
@@ -109,16 +99,13 @@ public class PartitionInfo {
   public TSStatus createRegions(CreateRegionsReq plan) {
     TSStatus result;
     regionReadWriteLock.writeLock().lock();
-    regionAllocateLock.writeLock().lock();
     try {
       for (TRegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
-        nextRegionGroupId = Math.max(nextRegionGroupId, regionReplicaSet.getRegionId().getId());
         regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
       }
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
-      regionAllocateLock.writeLock().unlock();
       regionReadWriteLock.writeLock().unlock();
     }
     return result;
@@ -284,7 +271,7 @@ public class PartitionInfo {
 
   @TestOnly
   public void clear() {
-    nextRegionGroupId = 0;
+    nextRegionGroupId = new AtomicInteger(0);
     regionMap.clear();
 
     if (schemaPartition.getSchemaPartitionMap() != null) {
