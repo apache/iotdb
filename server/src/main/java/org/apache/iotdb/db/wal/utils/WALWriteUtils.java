@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.wal.utils;
 
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -129,6 +131,16 @@ public class WALWriteUtils {
   /** TSDataType. */
   public static int write(TSDataType dataType, IWALByteBufferView buffer) {
     byte n = dataType.serialize();
+    return write(n, buffer);
+  }
+
+  public static int write(TSEncoding encoding, IWALByteBufferView buffer) {
+    byte n = encoding.serialize();
+    return write(n, buffer);
+  }
+
+  public static int write(CompressionType compressionType, IWALByteBufferView buffer) {
+    byte n = compressionType.serialize();
     return write(n, buffer);
   }
 }

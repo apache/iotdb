@@ -44,7 +44,13 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
@@ -155,7 +161,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public int serializedSize(int start, int end) {
     int size = 0;
     size += Short.BYTES;
-    size += this.getPlanNodeId().serializedSize();
     return size + subSerializeSize(start, end);
   }
 
@@ -164,11 +169,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     // measurements size
     size += Integer.BYTES;
-    for (String m : measurements) {
-      if (m != null) {
-        size += ReadWriteIOUtils.sizeToWrite(m);
-      }
-    }
+
+    size += serializeMeasurementSchemaSize();
+
     // data types size
     size += Integer.BYTES;
     for (int i = 0; i < dataTypes.length; i++) {
@@ -232,9 +235,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putShort((short) PlanNodeType.INSERT_TABLET.ordinal());
-    getPlanNodeId().serialize(byteBuffer);
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.INSERT_TABLET.serialize(byteBuffer);
     subSerialize(byteBuffer);
   }
 
@@ -351,7 +353,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public void serializeToWAL(IWALByteBufferView buffer, int start, int end) {
     buffer.putShort((short) PlanNodeType.INSERT_TABLET.ordinal());
-    getPlanNodeId().serializeToWAL(buffer);
     subSerialize(buffer, start, end);
   }
 
@@ -367,11 +368,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private void writeMeasurements(IWALByteBufferView buffer) {
     buffer.putInt(measurementSchemas.length - countFailedMeasurements());
-    for (String m : measurements) {
-      if (m != null) {
-        WALWriteUtils.write(m, buffer);
-      }
-    }
+    serializeMeasurementSchemaToWAL(buffer);
   }
 
   @Override
@@ -673,12 +670,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
-    InsertTabletNode insertNode = new InsertTabletNode(PlanNodeId.deserialize(byteBuffer));
+    InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     try {
       insertNode.subDeserialize(byteBuffer);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
     }
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return insertNode;
   }
 
@@ -714,7 +712,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public static InsertTabletNode deserialize(DataInputStream stream)
       throws IllegalPathException, IOException {
-    InsertTabletNode insertNode = new InsertTabletNode(PlanNodeId.deserialize(stream));
+    // This method is used for deserialize from wal
+    // we do not store plan node id in wal entry
+    InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     insertNode.subDeserialize(stream);
     return insertNode;
   }
@@ -723,10 +723,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     this.devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
 
     int measurementSize = stream.readInt();
-    this.measurements = new String[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = ReadWriteIOUtils.readString(stream);
-    }
+    this.measurementSchemas = new MeasurementSchema[measurementSize];
+    deserializeMeasurementSchema(stream);
 
     this.dataTypes = new TSDataType[measurementSize];
     for (int i = 0; i < measurementSize; i++) {

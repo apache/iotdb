@@ -39,6 +39,8 @@ import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesCountOperator;
+import org.apache.iotdb.db.mpp.operator.process.merge.ColumnMerger;
+import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.schema.NodeTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaFetchOperator;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountMergeNode;
@@ -369,8 +372,31 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               TimeJoinOperator.class.getSimpleName());
+      List<OutputColumn> outputColumns = node.getOutputColumns();
+      List<ColumnMerger> mergers = createColumnMergers(outputColumns);
       return new TimeJoinOperator(
-          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes());
+          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes(), mergers);
+    }
+
+    private List<ColumnMerger> createColumnMergers(List<OutputColumn> outputColumns) {
+      List<ColumnMerger> mergers = new ArrayList<>(outputColumns.size());
+      for (OutputColumn outputColumn : outputColumns) {
+        ColumnMerger merger;
+        // only has one input column
+        if (outputColumn.isSingleInputColumn()) {
+          merger = new SingleColumnMerger(outputColumn.getInputLocation(0));
+        } else if (!outputColumn.isOverlapped()) {
+          // has more than one input columns but time of these input columns is not overlapped
+          throw new UnsupportedOperationException(
+              "has more than one input columns but time of these input columns is not overlapped is not supported");
+        } else {
+          // has more than one input columns and time of these input columns is overlapped
+          throw new UnsupportedOperationException(
+              "has more than one input columns and time of these input columns is overlapped is not supported");
+        }
+        mergers.add(merger);
+      }
+      return mergers;
     }
 
     @Override

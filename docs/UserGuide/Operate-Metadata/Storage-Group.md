@@ -75,3 +75,63 @@ IoTDB > DELETE STORAGE GROUP root.sgcc
 // delete all data, all timeseries and all storage groups
 IoTDB > DELETE STORAGE GROUP root.**
 ```
+
+## Count Storage Group
+
+User can use the `COUNT STORAGE GROUP <PathPattern>` statement to count the number of storage groups. It is allowed to specify `PathPattern` to count the number of storage groups matching the `PathPattern`.
+
+SQL statement is as follows:
+
+```
+IoTDB> show storage group
+IoTDB> count storage group
+IoTDB> count storage group root.*
+IoTDB> count storage group root.sgcc.*
+IoTDB> count storage group root.sgcc
+```
+
+The result is as follows:
+
+```
++-------------+
+|storage group|
++-------------+
+|    root.sgcc|
+| root.turbine|
+|      root.ln|
++-------------+
+Total line number = 3
+It costs 0.003s
+
++-------------+
+|storage group|
++-------------+
+|            3|
++-------------+
+Total line number = 1
+It costs 0.003s
+
++-------------+
+|storage group|
++-------------+
+|            3|
++-------------+
+Total line number = 1
+It costs 0.002s
+
++-------------+
+|storage group|
++-------------+
+|            0|
++-------------+
+Total line number = 1
+It costs 0.002s
+
++-------------+
+|storage group|
++-------------+
+|            1|
++-------------+
+Total line number = 1
+It costs 0.002s
+```
