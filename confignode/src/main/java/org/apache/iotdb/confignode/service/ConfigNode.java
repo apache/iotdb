@@ -66,7 +66,7 @@ public class ConfigNode implements ConfigNodeMBean {
   /** Register services */
   private void setUp() throws StartupException, IOException {
     LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
-    registerManager.register(JMXService.getInstance());
+    registerManager.register(new JMXService());
     JMXService.registerMBean(getInstance(), mbeanName);
 
     configNodeRPCService.initSyncedServiceImpl(new ConfigNodeRPCServiceProcessor(configManager));
