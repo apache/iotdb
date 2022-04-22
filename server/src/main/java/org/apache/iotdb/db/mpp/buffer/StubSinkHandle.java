@@ -59,7 +59,7 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) throws IOException {
+  public void send(List<TsBlock> tsBlocks) {
     this.tsBlocks.addAll(tsBlocks);
   }
 
@@ -87,7 +87,7 @@ public class StubSinkHandle implements ISinkHandle {
       return;
     }
     closed = true;
-    instanceContext.flushing();
+    instanceContext.transitionToFlushing();
   }
 
   @Override

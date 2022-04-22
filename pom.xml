@@ -499,6 +499,11 @@
                 <version>0.41</version>
             </dependency>
             <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>stats</artifactId>
+                <version>200</version>
+            </dependency>
+            <dependency>
                 <groupId>org.openjdk.jol</groupId>
                 <artifactId>jol-core</artifactId>
                 <version>0.2</version>
