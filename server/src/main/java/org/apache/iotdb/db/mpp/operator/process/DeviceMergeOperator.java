@@ -25,8 +25,9 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilderStatus;
 import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -101,11 +102,10 @@ public class DeviceMergeOperator implements ProcessOperator {
       newValueColumns[indexes.get(i)] = tsBlock.getColumn(i);
     }
     // construct device column
-    ColumnBuilder deviceColumnBuilder =
-        new BinaryColumnBuilder(new ColumnBuilderStatus(), tsBlock.getPositionCount());
-    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      deviceColumnBuilder.writeObject(curDeviceEntry.getKey());
-    }
+    ColumnBuilder deviceColumnBuilder = new BinaryColumnBuilder(null, 1);
+    deviceColumnBuilder.writeObject(new Binary(curDeviceEntry.getKey()));
+    newValueColumns[0] =
+        new RunLengthEncodedColumn(deviceColumnBuilder.build(), tsBlock.getPositionCount());
     // construct other null columns
     for (int i = 0; i < dataTypes.size(); i++) {
       if (newValueColumns[i] == null) {
