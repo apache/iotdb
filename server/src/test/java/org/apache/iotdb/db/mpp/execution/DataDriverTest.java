@@ -33,7 +33,9 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
@@ -141,7 +143,10 @@ public class DataDriverTest {
               fragmentInstanceContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               OrderBy.TIMESTAMP_ASC,
-              Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+              Arrays.asList(TSDataType.INT32, TSDataType.INT32),
+              Arrays.asList(
+                  new SingleColumnMerger(new InputLocation(0, 0)),
+                  new SingleColumnMerger(new InputLocation(1, 0))));
 
       LimitOperator limitOperator =
           new LimitOperator(

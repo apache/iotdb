@@ -44,9 +44,9 @@ public class TestProcedureBase {
   @After
   public void tearDown() {
     this.procStore.stop();
-    this.procStore.cleanup();
     this.procExecutor.stop();
     this.procExecutor.join();
+    this.procStore.cleanup();
   }
 
   protected void initExecutor() {
