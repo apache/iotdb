@@ -37,11 +37,11 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -277,12 +277,10 @@ public class LogicalPlanBuilder {
         new FilterNullNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
-            filterNullComponent.getWithoutPolicyType(),
-            filterNullComponent.getWithoutNullColumns().stream()
-                .map(Expression::getExpressionString)
-                .collect(Collectors.toList()));
-
-    return this;
+            new FilterNullParameter(
+                filterNullComponent.getWithoutPolicyType(),
+                new ArrayList<>() // TODO: support filtering based on partial columns
+                ));
   }
 
   public LogicalPlanBuilder planLimit(int rowLimit) {
