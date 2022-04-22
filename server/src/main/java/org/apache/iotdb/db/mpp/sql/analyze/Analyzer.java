@@ -176,7 +176,7 @@ public class Analyzer {
       } catch (StatementAnalyzeException
           | PathNumOverLimitException
           | QueryFilterOptimizationException e) {
-        e.printStackTrace();
+        throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
     }
