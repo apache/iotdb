@@ -19,16 +19,14 @@
 package org.apache.iotdb.confignode.service.thrift.server;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.partition.StorageGroupSchema;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
@@ -37,7 +35,8 @@ import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeMessageResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
@@ -47,9 +46,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -57,6 +59,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
@@ -75,10 +78,7 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
-    RegisterDataNodePlan plan =
-        new RegisterDataNodePlan(
-            new DataNodeLocation(
-                -1, new Endpoint(req.getEndPoint().getIp(), req.getEndPoint().getPort())));
+    RegisterDataNodePlan plan = new RegisterDataNodePlan(req.getDataNodeLocation());
     DataNodeConfigurationDataSet dataSet =
         (DataNodeConfigurationDataSet) configManager.registerDataNode(plan);
 
@@ -89,23 +89,32 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TDataNodeMessageResp getDataNodesMessage(int dataNodeID) throws TException {
+  public TDataNodeLocationResp getDataNodeLocations(int dataNodeID) throws TException {
     QueryDataNodeInfoPlan plan = new QueryDataNodeInfoPlan(dataNodeID);
-    DataNodesInfoDataSet dataSet = (DataNodesInfoDataSet) configManager.getDataNodeInfo(plan);
+    DataNodeLocationsDataSet dataSet =
+        (DataNodeLocationsDataSet) configManager.getDataNodeInfo(plan);
 
-    TDataNodeMessageResp resp = new TDataNodeMessageResp();
-    dataSet.convertToRPCDataNodeMessageResp(resp);
+    TDataNodeLocationResp resp = new TDataNodeLocationResp();
+    dataSet.convertToRpcDataNodeLocationResp(resp);
     return resp;
   }
 
   @Override
   public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
-    SetStorageGroupPlan plan =
-        new SetStorageGroupPlan(new StorageGroupSchema(req.getStorageGroup()));
+    TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
+    // TODO: Set this filed by optional fields in TSetStorageGroupReq
+    storageGroupSchema.setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
+    storageGroupSchema.setSchemaReplicationFactor(
+        ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+    storageGroupSchema.setDataReplicationFactor(
+        ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+    storageGroupSchema.setTimePartitionInterval(
+        ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
 
-    // TODO: Set TTL by optional field TSetStorageGroupReq.TTL
-    plan.getSchema().setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
+    storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
+    storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 
+    SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroupSchema);
     return configManager.setStorageGroup(plan);
   }
 
@@ -118,6 +127,12 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
     // TODO: Set TTL
+    return null;
+  }
+
+  @Override
+  public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
+    // TODO: Set TimePartitionInterval
     return null;
   }
 
@@ -184,14 +199,16 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus operatePermission(TAuthorizerReq req) throws TException {
-    if (req.getAuthorType() < 0 || req.getAuthorType() >= PhysicalPlanType.values().length) {
-      throw new IndexOutOfBoundsException("Invalid ordinal");
+    if (req.getAuthorType() < 0
+        || req.getAuthorType() >= AuthorOperator.AuthorType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
     }
     AuthorPlan plan = null;
     try {
       plan =
           new AuthorPlan(
-              PhysicalPlanType.values()[req.getAuthorType()],
+              PhysicalPlanType.values()[
+                  req.getAuthorType() + PhysicalPlanType.AUTHOR.ordinal() + 1],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
@@ -202,6 +219,31 @@ public class ConfigNodeRPCServerProcessor implements ConfigIService.Iface {
       LOGGER.error(e.getMessage());
     }
     return configManager.operatePermission(plan);
+  }
+
+  @Override
+  public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
+    if (req.getAuthorType() < 0
+        || req.getAuthorType() >= AuthorOperator.AuthorType.values().length) {
+      throw new IndexOutOfBoundsException("Invalid Author Type ordinal");
+    }
+    AuthorPlan plan = null;
+    try {
+      plan =
+          new AuthorPlan(
+              PhysicalPlanType.values()[
+                  req.getAuthorType() + PhysicalPlanType.AUTHOR.ordinal() + 1],
+              req.getUserName(),
+              req.getRoleName(),
+              req.getPassword(),
+              req.getNewPassword(),
+              req.getPermissions(),
+              req.getNodeName());
+    } catch (AuthException e) {
+      LOGGER.error(e.getMessage());
+    }
+    PermissionInfoDataSet dataSet = (PermissionInfoDataSet) configManager.queryPermission(plan);
+    return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
   }
 
   public void handleClientExit() {}

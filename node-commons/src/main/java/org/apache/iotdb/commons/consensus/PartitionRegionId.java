@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.commons.consensus;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+
 import java.util.Objects;
 
 public class PartitionRegionId implements ConsensusGroupId {
@@ -33,18 +34,6 @@ public class PartitionRegionId implements ConsensusGroupId {
   }
 
   @Override
-  public void serializeImpl(ByteBuffer buffer) {
-    buffer.put((byte) GroupType.PartitionRegion.ordinal());
-    buffer.putInt(id);
-  }
-
-  @Override
-  public void deserializeImpl(ByteBuffer buffer) {
-    // TODO: (xingtanzjr) should we add validation for the ordinal ?
-    id = buffer.getInt();
-  }
-
-  @Override
   public int getId() {
     return id;
   }
@@ -55,8 +44,8 @@ public class PartitionRegionId implements ConsensusGroupId {
   }
 
   @Override
-  public GroupType getType() {
-    return GroupType.PartitionRegion;
+  public TConsensusGroupType getType() {
+    return TConsensusGroupType.PartitionRegion;
   }
 
   @Override
@@ -73,7 +62,7 @@ public class PartitionRegionId implements ConsensusGroupId {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, GroupType.PartitionRegion);
+    return Objects.hash(id, TConsensusGroupType.PartitionRegion);
   }
 
   public String toString() {

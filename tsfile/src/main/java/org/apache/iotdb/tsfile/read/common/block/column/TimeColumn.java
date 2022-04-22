@@ -104,6 +104,10 @@ public class TimeColumn implements Column {
     return new TimeColumn(positionOffset + arrayOffset, length, values);
   }
 
+  public long getStartTime() {
+    return values[arrayOffset];
+  }
+
   public long getEndTime() {
     return values[getPositionCount() + arrayOffset - 1];
   }

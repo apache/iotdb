@@ -50,14 +50,10 @@ public class TsBlock {
    * Visible to give trusted classes like {@link TsBlockBuilder} access to a constructor that
    * doesn't defensively copy the valueColumns
    */
-  static TsBlock wrapBlocksWithoutCopy(
+  public static TsBlock wrapBlocksWithoutCopy(
       int positionCount, TimeColumn timeColumn, Column[] valueColumns) {
     return new TsBlock(false, positionCount, timeColumn, valueColumns);
   }
-
-  // TODO rethink about if we really need this field
-  // Describe the column info
-  private TsBlockMetadata metadata;
 
   private final TimeColumn timeColumn;
 
@@ -102,12 +98,12 @@ public class TsBlock {
 
   public void next() {}
 
-  public TsBlockMetadata getMetadata() {
-    return metadata;
-  }
-
   public int getPositionCount() {
     return positionCount;
+  }
+
+  public long getStartTime() {
+    return timeColumn.getStartTime();
   }
 
   public long getEndTime() {
@@ -191,7 +187,7 @@ public class TsBlock {
     return new AlignedTsBlockIterator(0, subIndex);
   }
 
-  private class TsBlockSingleColumnIterator implements IPointReader, IBatchDataIterator {
+  public class TsBlockSingleColumnIterator implements IPointReader, IBatchDataIterator {
 
     protected int rowIndex;
     protected int columnIndex;
@@ -261,6 +257,22 @@ public class TsBlock {
 
     @Override
     public void close() {}
+
+    public long getEndTime() {
+      return TsBlock.this.getEndTime();
+    }
+
+    public long getStartTime() {
+      return TsBlock.this.getStartTime();
+    }
+
+    public int getRowIndex() {
+      return rowIndex;
+    }
+
+    public void setRowIndex(int rowIndex) {
+      this.rowIndex = rowIndex;
+    }
   }
 
   /** Mainly used for UDF framework. Note that the timestamps are at the last column. */

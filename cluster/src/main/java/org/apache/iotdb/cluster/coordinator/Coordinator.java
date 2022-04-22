@@ -38,7 +38,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -512,7 +512,7 @@ public class Coordinator {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
     boolean allRedirect = true;
-    EndPoint endPoint = null;
+    TEndPoint endPoint = null;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
       if (tmpStatus.isSetRedirectNode()) {
@@ -767,7 +767,7 @@ public class Coordinator {
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
         if (!status.isSetRedirectNode()) {
-          status.setRedirectNode(new EndPoint(node.getClientIp(), node.getClientPort()));
+          status.setRedirectNode(new TEndPoint(node.getClientIp(), node.getClientPort()));
         }
         return status;
       } else {

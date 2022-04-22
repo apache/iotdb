@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -28,7 +28,11 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class InsertMultiTabletsNode extends InsertNode {
 
@@ -110,12 +114,12 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    Map<RegionReplicaSet, InsertMultiTabletsNode> splitMap = new HashMap<>();
+    Map<TRegionReplicaSet, InsertMultiTabletsNode> splitMap = new HashMap<>();
     for (int i = 0; i < insertTabletNodeList.size(); i++) {
       InsertTabletNode insertTabletNode = insertTabletNodeList.get(i);
       List<WritePlanNode> tmpResult = insertTabletNode.splitByPartition(analysis);
       for (WritePlanNode subNode : tmpResult) {
-        RegionReplicaSet dataRegionReplicaSet = ((InsertNode) subNode).getDataRegionReplicaSet();
+        TRegionReplicaSet dataRegionReplicaSet = ((InsertNode) subNode).getDataRegionReplicaSet();
         if (splitMap.containsKey(dataRegionReplicaSet)) {
           InsertMultiTabletsNode tmpNode = splitMap.get(dataRegionReplicaSet);
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);

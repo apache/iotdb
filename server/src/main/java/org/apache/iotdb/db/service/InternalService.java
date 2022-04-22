@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.thrift.handler.InternalServiceThriftHandler;
+import org.apache.iotdb.db.service.thrift.impl.InternalServiceImpl;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService.Processor;
 
 public class InternalService extends ThriftService implements InternalServiceMBean {
@@ -61,7 +63,7 @@ public class InternalService extends ThriftService implements InternalServiceMBe
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.INTERNAL_SERVICE_CLIENT.getName(),
+              ThreadName.INTERNAL_SERVICE_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -72,7 +74,7 @@ public class InternalService extends ThriftService implements InternalServiceMBe
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.INTERNAL_SERVICE_CLIENT.getName());
+    thriftServiceThread.setName(ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
   }
 
   @Override
@@ -82,7 +84,7 @@ public class InternalService extends ThriftService implements InternalServiceMBe
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getMppPort();
+    return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
   private static class InternalServiceHolder {

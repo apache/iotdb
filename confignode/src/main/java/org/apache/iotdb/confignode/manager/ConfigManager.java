@@ -20,10 +20,11 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
@@ -101,7 +102,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
     } else {
-      DataNodesInfoDataSet dataSet = new DataNodesInfoDataSet();
+      DataNodeLocationsDataSet dataSet = new DataNodeLocationsDataSet();
       dataSet.setStatus(status);
       return dataSet;
     }
@@ -138,7 +139,7 @@ public class ConfigManager implements Manager {
 
       GetOrCreateSchemaPartitionPlan getSchemaPartitionPlan =
           new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
       boolean getAll = false;
       Set<String> getAllSet = new HashSet<>();
@@ -195,7 +196,7 @@ public class ConfigManager implements Manager {
 
       GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
           new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
       for (String devicePath : devicePaths) {
         if (!devicePath.contains("*")) {
@@ -276,9 +277,23 @@ public class ConfigManager implements Manager {
 
   @Override
   public TSStatus operatePermission(PhysicalPlan physicalPlan) {
-    if (physicalPlan instanceof AuthorPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.operatePermission((AuthorPlan) physicalPlan);
+    } else {
+      return status;
     }
-    return ERROR_TSSTATUS;
+  }
+
+  @Override
+  public DataSet queryPermission(PhysicalPlan physicalPlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return permissionManager.queryPermission((AuthorPlan) physicalPlan);
+    } else {
+      PermissionInfoDataSet dataSet = new PermissionInfoDataSet();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
   }
 }

@@ -32,7 +32,12 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class AggregationQueryStatement extends QueryStatement {
 

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
@@ -42,11 +43,14 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -60,6 +64,8 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
  * corresponding physical nodes. 3. Collect and monitor the progress/states of this query.
  */
 public class QueryExecution implements IQueryExecution {
+  private static final Logger LOG = LoggerFactory.getLogger(Coordinator.class);
+
   private final MPPQueryContext context;
   private IScheduler scheduler;
   private final QueryStateMachine stateMachine;
@@ -96,8 +102,6 @@ public class QueryExecution implements IQueryExecution {
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
-    // TODO: (xingtanzjr) Initialize the result handle after the DataBlockManager is merged.
-    //    resultHandle = xxxx
 
     // We add the abort logic inside the QueryExecution.
     // So that the other components can only focus on the state change.
@@ -107,6 +111,13 @@ public class QueryExecution implements IQueryExecution {
             return;
           }
           this.stop();
+          // TODO: (xingtanzjr) If the query is in abnormal state, the releaseResource() should be
+          // invoked
+          if (state == QueryState.FAILED
+              || state == QueryState.ABORTED
+              || state == QueryState.CANCELED) {
+            releaseResource();
+          }
         });
   }
 
@@ -139,7 +150,6 @@ public class QueryExecution implements IQueryExecution {
             context.getQueryType(),
             executor,
             scheduledExecutor);
-    // TODO: (xingtanzjr) how to make the schedule running asynchronously
     this.scheduler.start();
   }
 
@@ -155,16 +165,30 @@ public class QueryExecution implements IQueryExecution {
     this.distributedPlan = planner.planFragments();
   }
 
-  /** Abort the query and do cleanup work including QuerySchedule aborting and resource releasing */
+  // Stop the workers for this query
   public void stop() {
     if (this.scheduler != null) {
       this.scheduler.stop();
     }
+  }
+
+  // Stop the query and clean up all the resources this query occupied
+  public void stopAndCleanup() {
+    stop();
     releaseResource();
   }
 
   /** Release the resources that current QueryExecution hold. */
-  private void releaseResource() {}
+  private void releaseResource() {
+    // close ResultHandle to unblock client's getResult request
+    // Actually, we should not close the ResultHandle when the QueryExecution is Finished.
+    // There are only two scenarios where the ResultHandle should be closed:
+    //   1. The client fetch all the result and the ResultHandle is finished.
+    //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
+    if (resultHandle != null && resultHandle.isFinished()) {
+      resultHandle.close();
+    }
+  }
 
   /**
    * This method will be called by the request thread from client connection. This method will block
@@ -176,18 +200,23 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public TsBlock getBatchResult() {
     try {
+      if (resultHandle.isClosed() || resultHandle.isFinished()) {
+        return null;
+      }
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
       if (resultHandle.isFinished()) {
+        releaseResource();
         return null;
       }
       return resultHandle.receive();
 
-    } catch (ExecutionException | IOException e) {
+    } catch (ExecutionException | IOException | CancellationException e) {
+      stateMachine.transitionToFailed(e);
       throwIfUnchecked(e.getCause());
       throw new RuntimeException(e.getCause());
     } catch (InterruptedException e) {
-      stateMachine.transitionToFailed();
+      stateMachine.transitionToFailed(e);
       Thread.currentThread().interrupt();
       throw new RuntimeException(new SQLException("ResultSet thread was interrupted", e));
     }
@@ -246,19 +275,16 @@ public class QueryExecution implements IQueryExecution {
 
   private void initResultHandle() {
     if (this.resultHandle == null) {
-      try {
-        this.resultHandle =
-            DataBlockService.getInstance()
-                .getDataBlockManager()
-                .createSourceHandle(
-                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                    context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                    context.getResultNodeContext().getUpStreamEndpoint().getIp(),
-                    IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort(),
-                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
-      } catch (IOException e) {
-        stateMachine.transitionToFailed();
-      }
+      this.resultHandle =
+          DataBlockService.getInstance()
+              .getDataBlockManager()
+              .createSourceHandle(
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                  context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                  new TEndPoint(
+                      context.getResultNodeContext().getUpStreamEndpoint().getIp(),
+                      IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
     }
   }
 
@@ -273,5 +299,9 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public boolean isQuery() {
     return context.getQueryType() == QueryType.READ;
+  }
+
+  public String toString() {
+    return String.format("QueryExecution[%s]", context.getQueryId());
   }
 }

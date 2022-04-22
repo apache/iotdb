@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.openjdk.jol.info.ClassLayout;
@@ -65,14 +66,28 @@ public class TimeColumnBuilder implements ColumnBuilder {
     return this;
   }
 
+  /** Write an Object to the current entry, which should be the Long type; */
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    throw new UnsupportedOperationException(getClass().getName());
+  public ColumnBuilder writeObject(Object value) {
+    if (value instanceof Long) {
+      writeLong((Long) value);
+      return this;
+    }
+    throw new UnSupportedDataTypeException("LongColumn only support Long data type");
+  }
+
+  @Override
+  public ColumnBuilder write(Column column, int index) {
+    return writeLong(column.getLong(index));
   }
 
   @Override
   public ColumnBuilder appendNull() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  @Override
+  public ColumnBuilder appendNull(int nullCount) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 

@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.mpp.schedule.queue;
 
 import java.util.Comparator;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /**
  * An efficient subclass of {@link IndexedBlockingQueue} with 2-level priority groups. The
@@ -38,10 +40,10 @@ import java.util.TreeMap;
  */
 public class L2PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlockingQueue<E> {
 
-  // Here we use a map not a set to act as a queue because we need to get the element reference
-  // after it was removed.
-  private SortedMap<E, E> workingElements;
-  private SortedMap<E, E> idleElements;
+  private SortedSet<E> workingSortedElements;
+  private SortedSet<E> idleSortedElements;
+  private Map<ID, E> workingKeyedElements;
+  private Map<ID, E> idleKeyedElements;
 
   /**
    * Init the queue with max capacity and specified comparator.
@@ -54,56 +56,74 @@ public class L2PriorityQueue<E extends IDIndexedAccessible> extends IndexedBlock
    */
   public L2PriorityQueue(int maxCapacity, Comparator<E> comparator, E queryHolder) {
     super(maxCapacity, queryHolder);
-    this.workingElements = new TreeMap<>(comparator);
-    this.idleElements = new TreeMap<>(comparator);
+    this.workingSortedElements = new TreeSet<>(comparator);
+    this.idleSortedElements = new TreeSet<>(comparator);
+    this.workingKeyedElements = new HashMap<>();
+    this.idleKeyedElements = new HashMap<>();
   }
 
   @Override
   protected boolean isEmpty() {
-    return workingElements.isEmpty() && idleElements.isEmpty();
+    return workingKeyedElements.isEmpty() && idleKeyedElements.isEmpty();
   }
 
   @Override
   protected E pollFirst() {
-    if (workingElements.isEmpty()) {
-      SortedMap<E, E> tmp = workingElements;
-      workingElements = idleElements;
-      idleElements = tmp;
+    if (workingKeyedElements.isEmpty()) {
+      // Switch the two queues
+      Map<ID, E> tmp = workingKeyedElements;
+      workingKeyedElements = idleKeyedElements;
+      idleKeyedElements = tmp;
+      SortedSet<E> tmpSet = workingSortedElements;
+      workingSortedElements = idleSortedElements;
+      idleSortedElements = tmpSet;
     }
-    return workingElements.remove(workingElements.firstKey());
+    E element = workingSortedElements.first();
+    workingSortedElements.remove(element);
+    workingKeyedElements.remove(element.getId());
+    return element;
   }
 
   @Override
   protected void pushToQueue(E element) {
-    idleElements.put(element, element);
+    idleKeyedElements.put(element.getId(), element);
+    idleSortedElements.add(element);
   }
 
   @Override
   protected E remove(E element) {
-    E e = workingElements.remove(element);
-    if (e == null) {
-      e = idleElements.remove(element);
+    E e = workingKeyedElements.remove(element.getId());
+    if (e != null) {
+      workingSortedElements.remove(e);
+      return e;
+    }
+    e = idleKeyedElements.remove(element.getId());
+    if (e != null) {
+      idleSortedElements.remove(e);
     }
     return e;
   }
 
   @Override
   protected boolean contains(E element) {
-    return workingElements.containsKey(element) || idleElements.containsKey(element);
+    return workingKeyedElements.containsKey(element.getId())
+        || idleKeyedElements.containsKey(element.getId());
   }
 
   @Override
   protected E get(E element) {
-    E e = workingElements.get(element);
+    E e = workingKeyedElements.get(element.getId());
     if (e != null) {
       return e;
     }
-    return idleElements.get(element);
+    return idleKeyedElements.get(element.getId());
   }
 
   @Override
   protected void clearAllElements() {
-    workingElements.clear();
-    idleElements.clear();
+    workingKeyedElements.clear();
+    workingSortedElements.clear();
+    idleKeyedElements.clear();
+    idleSortedElements.clear();
   }
 }

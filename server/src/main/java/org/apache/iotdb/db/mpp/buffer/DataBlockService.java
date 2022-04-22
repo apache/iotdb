@@ -84,7 +84,7 @@ public class DataBlockService extends ThriftService implements DataBlockServiceM
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.DATA_BLOCK_MANAGER_CLIENT.getName(),
+              ThreadName.DATA_BLOCK_MANAGER_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -95,7 +95,7 @@ public class DataBlockService extends ThriftService implements DataBlockServiceM
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.DATA_BLOCK_MANAGER_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.DATA_BLOCK_MANAGER_RPC_SERVER.getName());
   }
 
   @Override
