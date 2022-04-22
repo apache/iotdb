@@ -145,19 +145,29 @@ public class TimeJoinNode extends ProcessNode {
     for (OutputColumn outputColumn : outputColumns) {
       outputColumn.serialize(byteBuffer);
     }
+    ReadWriteIOUtils.write(outputColumnHeaders.size(), byteBuffer);
+    for (ColumnHeader columnHeader : outputColumnHeaders) {
+      columnHeader.serialize(byteBuffer);
+    }
   }
 
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
     OrderBy orderBy = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     FilterNullParameter filterNullParameter = FilterNullParameter.deserialize(byteBuffer);
     int outputColumnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<OutputColumn> outputColumns = new ArrayList<>();
+    List<OutputColumn> outputColumns = new ArrayList<>(outputColumnSize);
     for (int i = 0; i < outputColumnSize; i++) {
       outputColumns.add(OutputColumn.deserialize(byteBuffer));
+    }
+    int outputColumnHeadersSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<ColumnHeader> outputColumnHeaders = new ArrayList<>(outputColumnHeadersSize);
+    for (int i = 0; i < outputColumnHeadersSize; i++) {
+      outputColumnHeaders.add(ColumnHeader.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     TimeJoinNode timeJoinNode = new TimeJoinNode(planNodeId, orderBy);
     timeJoinNode.outputColumns.addAll(outputColumns);
+    timeJoinNode.outputColumnHeaders.addAll(outputColumnHeaders);
     timeJoinNode.setFilterNullParameter(filterNullParameter);
 
     return timeJoinNode;
