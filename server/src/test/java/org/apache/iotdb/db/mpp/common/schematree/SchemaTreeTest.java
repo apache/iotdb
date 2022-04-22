@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,6 +41,19 @@ public class SchemaTreeTest {
     SchemaNode root = generateSchemaTree();
 
     testSchemaTree(root);
+  }
+
+  @Test
+  public void testMultiWildcard() throws IllegalPathException {
+    SchemaNode root = generateSchemaTree();
+    SchemaTreeVisitor visitor =
+        new SchemaTreeVisitor(root, new PartialPath("root.**.s1"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        3,
+        new String[] {"root.sg.d1.s1", "root.sg.d2.s1", "root.sg.d2.a.s1"},
+        null,
+        new boolean[] {false, false, true});
   }
 
   private void testSchemaTree(SchemaNode root) throws Exception {
