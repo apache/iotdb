@@ -739,6 +739,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     this.devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
 
     int measurementSize = stream.readInt();
+    this.measurements = new String[measurementSize];
     this.measurementSchemas = new MeasurementSchema[measurementSize];
     deserializeMeasurementSchema(stream);
 

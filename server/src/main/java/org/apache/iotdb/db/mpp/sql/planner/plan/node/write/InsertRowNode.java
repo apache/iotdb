@@ -404,6 +404,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   void deserializeMeasurementsAndValues(DataInputStream stream) throws IOException {
     int measurementSize = stream.readInt();
 
+    this.measurements = new String[measurementSize];
     this.measurementSchemas = new MeasurementSchema[measurementSize];
     deserializeMeasurementSchema(stream);
 
