@@ -845,10 +845,10 @@ expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
-    | leftExpression=expression (OPERATOR_AND | OPERATOR_OR) rightExpression=expression
-    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | unaryBeforeRegularExpression=expression (REGEXP | LIKE) STRING_LITERAL
     | unaryBeforeInExpression=expression OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    | leftExpression=expression (OPERATOR_AND | OPERATOR_OR) rightExpression=expression
+    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPathCanInExpr
     | time=(TIME | TIMESTAMP)
     | constant
