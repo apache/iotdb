@@ -36,7 +36,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
-
+  private static final long END_TIME_INITIAL_VALUE = -1L;
   private final FragmentInstanceId id;
 
   // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
@@ -75,6 +75,7 @@ public class FragmentInstanceContext extends QueryContext {
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     this.id = id;
     this.stateMachine = stateMachine;
+    this.executionEndTime.set(END_TIME_INITIAL_VALUE);
   }
 
   public void start() {
