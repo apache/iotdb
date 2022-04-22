@@ -28,7 +28,6 @@ public class SchemaMeasurementNode extends SchemaNode {
 
   private String alias;
   private MeasurementSchema schema;
-  private SchemaNode parent;
 
   public SchemaMeasurementNode(String name, MeasurementSchema schema) {
     super(name);
@@ -45,16 +44,6 @@ public class SchemaMeasurementNode extends SchemaNode {
 
   public MeasurementSchema getSchema() {
     return schema;
-  }
-
-  @Override
-  public SchemaNode getParent() {
-    return parent;
-  }
-
-  @Override
-  public void setParent(SchemaNode parent) {
-    this.parent = parent;
   }
 
   @Override

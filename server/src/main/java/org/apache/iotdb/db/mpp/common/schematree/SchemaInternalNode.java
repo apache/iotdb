@@ -30,20 +30,8 @@ public class SchemaInternalNode extends SchemaNode {
 
   protected Map<String, SchemaNode> children;
 
-  private SchemaNode parent;
-
   public SchemaInternalNode(String name) {
     super(name);
-  }
-
-  @Override
-  public SchemaNode getParent() {
-    return parent;
-  }
-
-  @Override
-  public void setParent(SchemaNode parent) {
-    this.parent = parent;
   }
 
   @Override
@@ -56,10 +44,6 @@ public class SchemaInternalNode extends SchemaNode {
       children = new HashMap<>();
     }
     children.put(name, child);
-  }
-
-  public void deleteChild(String name, SchemaNode child) {
-    children.remove(name, child);
   }
 
   @Override

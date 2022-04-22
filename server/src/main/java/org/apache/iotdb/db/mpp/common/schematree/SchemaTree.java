@@ -88,7 +88,7 @@ public class SchemaTree {
     }
   }
 
-  public SchemaNode appendSingleMeasurementPath(MeasurementPath measurementPath) {
+  private void appendSingleMeasurementPath(MeasurementPath measurementPath) {
     String[] nodes = measurementPath.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
@@ -118,10 +118,8 @@ public class SchemaTree {
         cur.replaceChild(nodes[i], entityNode);
         child = entityNode;
       }
-      child.setParent(cur);
       cur = child;
     }
-    return cur;
   }
 
   public void mergeSchemaTree(SchemaTree schemaTree) {
@@ -229,7 +227,7 @@ public class SchemaTree {
   }
 
   @TestOnly
-  public SchemaNode getRoot() {
+  SchemaNode getRoot() {
     return root;
   }
 }

@@ -40,19 +40,11 @@ public abstract class SchemaNode {
     return name;
   }
 
-  public SchemaNode getParent() {
-    return null;
-  }
-
-  public void setParent(SchemaNode parent) {}
-
   public SchemaNode getChild(String name) {
     return null;
   }
 
   public void addChild(String name, SchemaNode child) {}
-
-  public void deleteChild(String name, SchemaNode child) {}
 
   public abstract void replaceChild(String name, SchemaNode newChild);
 
