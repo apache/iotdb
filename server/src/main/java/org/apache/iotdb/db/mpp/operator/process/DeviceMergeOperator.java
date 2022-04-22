@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilderStatus;
+import org.apache.iotdb.tsfile.read.common.block.column.NullColumn;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -38,10 +39,11 @@ import java.util.Map.Entry;
  * Since childDeviceOperatorMap should be sorted by the merge order as expected, what
  * DeviceMergeOperator need to do is traversing the device child operators, get all tsBlocks of one
  * device and transform it to the form we need, then get the next device operator until no next
- * operator.
+ * device.
  *
  * <p>Attention! If some columns are not existing in one device, those columns will be null. e.g.
- * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be null.
+ * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be filled
+ * with NullColumn.
  */
 public class DeviceMergeOperator implements ProcessOperator {
 
@@ -104,7 +106,12 @@ public class DeviceMergeOperator implements ProcessOperator {
     for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       deviceColumnBuilder.writeObject(curDeviceEntry.getKey());
     }
-    // leave other columns null
+    // construct other null columns
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (newValueColumns[i] == null) {
+        newValueColumns[i] = NullColumn.create(dataTypes.get(i), tsBlock.getPositionCount());
+      }
+    }
     return new TsBlock(tsBlock.getPositionCount(), tsBlock.getTimeColumn(), newValueColumns);
   }
 

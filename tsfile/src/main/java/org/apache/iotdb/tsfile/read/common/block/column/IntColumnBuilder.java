@@ -34,7 +34,7 @@ public class IntColumnBuilder implements ColumnBuilder {
 
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(IntColumnBuilder.class).instanceSize();
-  private static final IntColumn NULL_VALUE_BLOCK =
+  public static final IntColumn NULL_VALUE_BLOCK =
       new IntColumn(0, 1, new boolean[] {true}, new int[1]);
 
   private final ColumnBuilderStatus columnBuilderStatus;

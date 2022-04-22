@@ -34,7 +34,7 @@ public class LongColumnBuilder implements ColumnBuilder {
 
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(LongColumnBuilder.class).instanceSize();
-  private static final LongColumn NULL_VALUE_BLOCK =
+  public static final LongColumn NULL_VALUE_BLOCK =
       new LongColumn(0, 1, new boolean[] {true}, new long[1]);
 
   private final ColumnBuilderStatus columnBuilderStatus;

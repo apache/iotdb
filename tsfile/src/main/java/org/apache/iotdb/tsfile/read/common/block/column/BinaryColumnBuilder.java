@@ -37,7 +37,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
       ClassLayout.parseClass(BinaryColumnBuilder.class).instanceSize();
 
   private final ColumnBuilderStatus columnBuilderStatus;
-  private static final BinaryColumn NULL_VALUE_BLOCK =
+  public static final BinaryColumn NULL_VALUE_BLOCK =
       new BinaryColumn(0, 1, new boolean[] {true}, new Binary[1]);
 
   private boolean initialized;

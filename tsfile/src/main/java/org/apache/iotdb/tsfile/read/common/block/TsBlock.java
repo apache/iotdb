@@ -195,9 +195,6 @@ public class TsBlock {
   }
 
   public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator(int columnIndex) {
-    if (valueColumns[columnIndex] == null) {
-      throw new UnsupportedOperationException("Can not get the iterator of null columns");
-    }
     return new TsBlockSingleColumnIterator(0, columnIndex);
   }
 
@@ -320,11 +317,7 @@ public class TsBlock {
       int columnCount = getValueColumnCount();
       Object[] row = new Object[columnCount + 1];
       for (int i = 0; i < columnCount; ++i) {
-        if (valueColumns[i] == null) {
-          row[i] = null;
-        } else {
-          row[i] = valueColumns[i].getObject(rowIndex);
-        }
+        row[i] = valueColumns[i].getObject(rowIndex);
       }
       row[columnCount] = timeColumn.getObject(rowIndex);
 
