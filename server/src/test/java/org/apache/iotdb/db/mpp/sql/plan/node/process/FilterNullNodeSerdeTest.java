@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
 
-import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -104,7 +103,7 @@ public class FilterNullNodeSerdeTest {
             new PlanNodeId("TestFilterNullNode"),
             filterNode,
             FilterNullPolicy.ALL_NULL,
-            ImmutableList.of());
+            new ArrayList<>());
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     filterNullNode.serialize(byteBuffer);
     byteBuffer.flip();

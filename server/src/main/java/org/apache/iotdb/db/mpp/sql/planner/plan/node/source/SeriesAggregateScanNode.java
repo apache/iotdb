@@ -73,7 +73,7 @@ public class SeriesAggregateScanNode extends SourceNode {
   // (Currently, we only support one series in the aggregation function)
   private final PartialPath seriesPath;
   @Deprecated private final List<AggregationType> aggregateFuncList;
-  private Aggregation aggregation;
+  private List<Aggregation> aggregationList;
 
   // all the sensors in seriesPath's device of current query
   private final Set<String> allSensors;

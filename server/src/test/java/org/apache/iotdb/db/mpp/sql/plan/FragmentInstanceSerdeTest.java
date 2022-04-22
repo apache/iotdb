@@ -124,7 +124,7 @@ public class FragmentInstanceSerdeTest {
             new PlanNodeId("TestFilterNullNode"),
             null,
             FilterNullPolicy.ALL_NULL,
-            ImmutableList.of());
+            new ArrayList<>());
     IExpression expression =
         BinaryExpression.and(
             new SingleSeriesExpression(
@@ -141,7 +141,7 @@ public class FragmentInstanceSerdeTest {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("TimeJoinNode"), OrderBy.TIMESTAMP_DESC);
     timeJoinNode.setFilterNullParameter(
-        new FilterNullParameter(FilterNullPolicy.CONTAINS_NULL, ImmutableList.of()));
+        new FilterNullParameter(FilterNullPolicy.CONTAINS_NULL, new ArrayList<>()));
     SeriesScanNode seriesScanNode1 =
         new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
     seriesScanNode1.setRegionReplicaSet(

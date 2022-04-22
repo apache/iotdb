@@ -46,8 +46,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import com.google.common.collect.ImmutableList;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -273,7 +271,9 @@ public class QueryPlanBuilder {
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
             new FilterNullParameter(
-                filterNullComponent.getWithoutPolicyType(), ImmutableList.of()));
+                filterNullComponent.getWithoutPolicyType(),
+                new ArrayList<>() // TODO: support filtering based on partial columns
+                ));
   }
 
   public void planLimit(int rowLimit) {

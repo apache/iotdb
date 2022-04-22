@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
 
-import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -113,7 +112,7 @@ public class TimeJoinNodeSerdeTest {
             new PlanNodeId("TestFilterNullNode"),
             filterNode,
             FilterNullPolicy.ALL_NULL,
-            ImmutableList.of());
+            new ArrayList<>());
 
     Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
     groupedPathMap.put(
@@ -138,7 +137,7 @@ public class TimeJoinNodeSerdeTest {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), OrderBy.TIMESTAMP_ASC);
     timeJoinNode.setFilterNullParameter(
-        new FilterNullParameter(FilterNullPolicy.CONTAINS_NULL, ImmutableList.of()));
+        new FilterNullParameter(FilterNullPolicy.CONTAINS_NULL, new ArrayList<>()));
     timeJoinNode.addChild(sortNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     timeJoinNode.serialize(byteBuffer);
