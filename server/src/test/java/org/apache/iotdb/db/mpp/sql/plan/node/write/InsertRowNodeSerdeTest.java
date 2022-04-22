@@ -24,12 +24,16 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class InsertRowNodeSerdeTest {
@@ -58,6 +62,30 @@ public class InsertRowNodeSerdeTest {
 
     Assert.assertEquals(tmpNode.getTime(), insertRowNode.getTime());
     Assert.assertEquals(tmpNode.getMeasurements(), new String[] {"s1", "s3", "s5"});
+  }
+
+  @Test
+  public void TestSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
+    InsertRowNode insertRowNode = getInsertRowNode();
+
+    int serializedSize = insertRowNode.serializedSize();
+    byte[] bytes = new byte[serializedSize];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+
+    insertRowNode.serializeToWAL(walBuffer);
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), dataInputStream.readShort());
+
+    InsertRowNode tmpNode = InsertRowNode.deserialize(dataInputStream);
+
+    Assert.assertEquals(tmpNode.getTime(), insertRowNode.getTime());
+    Assert.assertEquals(tmpNode.getDevicePath(), insertRowNode.getDevicePath());
+    Assert.assertEquals(tmpNode.isAligned(), insertRowNode.isAligned());
+    Assert.assertArrayEquals(tmpNode.getValues(), insertRowNode.getValues());
+    Assert.assertArrayEquals(
+        tmpNode.getMeasurementSchemas(), insertRowNode.getMeasurementSchemas());
   }
 
   private InsertRowNode getInsertRowNode() throws IllegalPathException {

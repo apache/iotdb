@@ -24,12 +24,16 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class InsertTabletNodeSerdeTest {
@@ -45,6 +49,31 @@ public class InsertTabletNodeSerdeTest {
     Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), byteBuffer.getShort());
 
     Assert.assertEquals(InsertTabletNode.deserialize(byteBuffer), insertTabletNode);
+  }
+
+  @Test
+  public void TestSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
+    InsertTabletNode insertTabletNode = getInsertTabletNode();
+
+    int serializedSize = insertTabletNode.serializedSize();
+    byte[] bytes = new byte[serializedSize];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+
+    insertTabletNode.serializeToWAL(walBuffer);
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), dataInputStream.readShort());
+
+    InsertTabletNode tmpNode = InsertTabletNode.deserialize(dataInputStream);
+
+    Assert.assertArrayEquals(tmpNode.getTimes(), insertTabletNode.getTimes());
+    Assert.assertEquals(tmpNode.getDevicePath(), insertTabletNode.getDevicePath());
+    Assert.assertEquals(tmpNode.isAligned(), insertTabletNode.isAligned());
+    Assert.assertArrayEquals(tmpNode.getColumns(), insertTabletNode.getColumns());
+    Assert.assertArrayEquals(tmpNode.getBitMaps(), insertTabletNode.getBitMaps());
+    Assert.assertArrayEquals(
+        tmpNode.getMeasurementSchemas(), insertTabletNode.getMeasurementSchemas());
   }
 
   private InsertTabletNode getInsertTabletNode() throws IllegalPathException {
