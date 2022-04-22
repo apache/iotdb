@@ -19,27 +19,22 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
-import org.apache.iotdb.db.mpp.operator.Operator;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 
-import com.google.common.util.concurrent.SettableFuture;
+import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.units.Duration;
 
-import javax.annotation.concurrent.NotThreadSafe;
+public interface IDriver {
 
-/** One SchemaDriver is used to execute one FragmentInstance which is for metadata query. */
-@NotThreadSafe
-public class SchemaDriver extends Driver {
+  boolean isFinished();
 
-  public SchemaDriver(Operator root, ISinkHandle sinkHandle, SchemaDriverContext driverContext) {
-    super(root, sinkHandle, driverContext);
-  }
+  ListenableFuture<Void> processFor(Duration duration);
 
-  @Override
-  protected boolean init(SettableFuture<Void> blockedFuture) {
-    return true;
-  }
+  FragmentInstanceId getInfo();
 
-  @Override
-  protected void releaseResource() {
-    // do nothing
-  }
+  void close();
+
+  void failed(Throwable t);
+
+  ISinkHandle getSinkHandle();
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
@@ -53,7 +54,7 @@ public class SinkHandle implements ISinkHandle {
 
   public static final int MAX_ATTEMPT_TIMES = 3;
 
-  private final String remoteHostname;
+  private final TEndPoint remoteEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final String remotePlanNodeId;
   private final TFragmentInstanceId localFragmentInstanceId;
@@ -73,10 +74,9 @@ public class SinkHandle implements ISinkHandle {
   private long bufferRetainedSizeInBytes;
   private boolean closed;
   private boolean noMoreTsBlocks;
-  private Throwable throwable;
 
   public SinkHandle(
-      String remoteHostname,
+      TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
       TFragmentInstanceId localFragmentInstanceId,
@@ -85,7 +85,7 @@ public class SinkHandle implements ISinkHandle {
       DataBlockService.Iface client,
       TsBlockSerde serde,
       SinkHandleListener sinkHandleListener) {
-    this.remoteHostname = Validate.notNull(remoteHostname);
+    this.remoteEndpoint = Validate.notNull(remoteEndpoint);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
@@ -113,11 +113,8 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) throws IOException {
+  public void send(List<TsBlock> tsBlocks) {
     Validate.notNull(tsBlocks, "tsBlocks is null");
-    if (throwable != null) {
-      throw new IOException(throwable);
-    }
     if (closed) {
       throw new IllegalStateException("Sink handle is closed.");
     }
@@ -193,24 +190,21 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     logger.info("Sink handle {} is being closed.", this);
-    if (throwable != null) {
-      throw new IOException(throwable);
-    }
     if (closed) {
       return;
+    }
+    try {
+      sendEndOfDataBlockEvent();
+    } catch (TException e) {
+      throw new RuntimeException("Send EndOfDataBlockEvent failed", e);
     }
     synchronized (this) {
       closed = true;
       noMoreTsBlocks = true;
     }
     sinkHandleListener.onClosed(this);
-    try {
-      sendEndOfDataBlockEvent();
-    } catch (TException e) {
-      throw new IOException(e);
-    }
     logger.info("Sink handle {} is closed.", this);
   }
 
@@ -220,6 +214,9 @@ public class SinkHandle implements ISinkHandle {
     synchronized (this) {
       sequenceIdToTsBlock.clear();
       closed = true;
+      if (blocked != null && !blocked.isDone()) {
+        blocked.cancel(true);
+      }
       if (bufferRetainedSizeInBytes > 0) {
         localMemoryManager
             .getQueryPool()
@@ -243,7 +240,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public boolean isFinished() {
-    return throwable == null && noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
+    return noMoreTsBlocks && sequenceIdToTsBlock.isEmpty();
   }
 
   @Override
@@ -292,8 +289,8 @@ public class SinkHandle implements ISinkHandle {
     localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), freedBytes);
   }
 
-  String getRemoteHostname() {
-    return remoteHostname;
+  TEndPoint getRemoteEndpoint() {
+    return remoteEndpoint;
   }
 
   TFragmentInstanceId getRemoteFragmentInstanceId() {
@@ -311,7 +308,7 @@ public class SinkHandle implements ISinkHandle {
   @Override
   public String toString() {
     return new StringJoiner(", ", SinkHandle.class.getSimpleName() + "[", "]")
-        .add("remoteHostname='" + remoteHostname + "'")
+        .add("remoteEndpoint='" + remoteEndpoint + "'")
         .add("remoteFragmentInstanceId=" + remoteFragmentInstanceId)
         .add("remotePlanNodeId='" + remotePlanNodeId + "'")
         .add("localFragmentInstanceId=" + localFragmentInstanceId)
@@ -358,7 +355,7 @@ public class SinkHandle implements ISinkHandle {
         try {
           client.onNewDataBlockEvent(newDataBlockEvent);
           break;
-        } catch (TException e) {
+        } catch (Throwable e) {
           logger.error(
               "Failed to send new data block event to plan node {} of {} due to {}, attempt times: {}",
               remotePlanNodeId,
@@ -367,9 +364,7 @@ public class SinkHandle implements ISinkHandle {
               attempt,
               e);
           if (attempt == MAX_ATTEMPT_TIMES) {
-            synchronized (this) {
-              throwable = e;
-            }
+            sinkHandleListener.onFailure(e);
           }
         }
       }

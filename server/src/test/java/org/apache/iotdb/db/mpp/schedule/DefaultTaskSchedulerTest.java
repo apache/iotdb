@@ -22,7 +22,7 @@ import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
@@ -52,7 +52,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -103,7 +103,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
 
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
@@ -151,7 +151,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -204,7 +204,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -257,7 +257,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -313,9 +313,9 @@ public class DefaultTaskSchedulerTest {
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId1 =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Driver mockDriver1 = Mockito.mock(Driver.class);
+    IDriver mockDriver1 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
-    Driver mockDriver2 = Mockito.mock(Driver.class);
+    IDriver mockDriver2 = Mockito.mock(IDriver.class);
     FragmentInstanceId instanceId2 =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-1");
     Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
