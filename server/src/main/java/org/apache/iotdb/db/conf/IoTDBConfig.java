@@ -877,9 +877,9 @@ public class IoTDBConfig {
 
   /**
    * Cache size of dataNodeSchemaCache in {@link
-   * org.apache.iotdb.db.mpp.sql.analyze.DataNodeSchemaCache}.
+   * org.apache.iotdb.db.metadata.cache.DataNodeSchemaEntryCache}.
    */
-  private int dataNodeSchemaCacheSize = 10000;
+  private int dataNodeSchemaEntryCacheSize = 10000;
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -2783,11 +2783,11 @@ public class IoTDBConfig {
     this.mppMode = mppMode;
   }
 
-  public int getDataNodeSchemaCacheSize() {
-    return dataNodeSchemaCacheSize;
+  public int getDataNodeSchemaEntryCacheSize() {
+    return dataNodeSchemaEntryCacheSize;
   }
 
-  public void setDataNodeSchemaCacheSize(int dataNodeSchemaCacheSize) {
-    this.dataNodeSchemaCacheSize = dataNodeSchemaCacheSize;
+  public void setDataNodeSchemaEntryCacheSize(int dataNodeSchemaEntryCacheSize) {
+    this.dataNodeSchemaEntryCacheSize = dataNodeSchemaEntryCacheSize;
   }
 }

@@ -815,11 +815,11 @@ public class IoTDBDescriptor {
               "iotdb_server_encrypt_decrypt_provider_parameter",
               conf.getEncryptDecryptProviderParameter()));
 
-      conf.setDataNodeSchemaCacheSize(
+      conf.setDataNodeSchemaEntryCacheSize(
           Integer.parseInt(
               properties.getProperty(
                   "datanode_schema_cache_size",
-                  String.valueOf(conf.getDataNodeSchemaCacheSize()))));
+                  String.valueOf(conf.getDataNodeSchemaEntryCacheSize()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
