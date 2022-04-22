@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -51,7 +51,7 @@ import java.util.Set;
  *
  * <p>Children type: no child is allowed for SeriesScanNode
  */
-public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
+public class SeriesScanNode extends SourceNode {
 
   // The path of the target series which will be scanned.
   private final PartialPath seriesPath;
@@ -76,10 +76,11 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
   // offset for result set. The default value is 0
   private int offset;
 
-  private ColumnHeader columnHeader;
+  // contain output column header of this node
+  private ColumnHeader outputColumnHeader;
 
   // The id of DataRegion where the node will run
-  private RegionReplicaSet regionReplicaSet;
+  private TRegionReplicaSet regionReplicaSet;
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath) {
     super(id);
@@ -92,10 +93,11 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
     this.scanOrder = scanOrder;
-    this.columnHeader = new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType());
+    this.outputColumnHeader =
+        new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType());
   }
 
-  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, RegionReplicaSet regionReplicaSet) {
+  public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, TRegionReplicaSet regionReplicaSet) {
     this(id, seriesPath);
     this.regionReplicaSet = regionReplicaSet;
   }
@@ -115,12 +117,12 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
   public void open() throws Exception {}
 
   @Override
-  public RegionReplicaSet getRegionReplicaSet() {
+  public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }
 
   @Override
-  public void setRegionReplicaSet(RegionReplicaSet dataRegion) {
+  public void setRegionReplicaSet(TRegionReplicaSet dataRegion) {
     this.regionReplicaSet = dataRegion;
   }
 
@@ -160,17 +162,17 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return ImmutableList.of(columnHeader);
+    return ImmutableList.of(outputColumnHeader);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ImmutableList.of(columnHeader.getColumnName());
+    return ImmutableList.of(outputColumnHeader.getColumnName());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return ImmutableList.of(columnHeader.getColumnType());
+    return ImmutableList.of(outputColumnHeader.getColumnType());
   }
 
   public Set<String> getAllSensors() {
@@ -209,7 +211,8 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     if (isNull == 1) valueFilter = FilterFactory.deserialize(byteBuffer);
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
-    RegionReplicaSet dataRegionReplicaSet = RegionReplicaSet.deserializeImpl(byteBuffer);
+    TRegionReplicaSet dataRegionReplicaSet =
+        ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesScanNode seriesScanNode = new SeriesScanNode(planNodeId, partialPath);
     seriesScanNode.allSensors = allSensors;
@@ -250,7 +253,7 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
-    regionReplicaSet.serializeImpl(byteBuffer);
+    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public PartialPath getSeriesPath() {

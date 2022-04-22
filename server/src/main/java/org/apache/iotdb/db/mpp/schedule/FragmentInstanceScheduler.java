@@ -26,7 +26,7 @@ import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L2PriorityQueue;
@@ -78,9 +78,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
             new FragmentInstanceTask());
     this.timeoutQueue =
         new L1PriorityQueue<>(
-            MAX_CAPACITY,
-            new FragmentInstanceTask.SchedulePriorityComparator(),
-            new FragmentInstanceTask());
+            MAX_CAPACITY, new FragmentInstanceTask.TimeoutComparator(), new FragmentInstanceTask());
     this.queryMap = new ConcurrentHashMap<>();
     this.blockedTasks = Collections.synchronizedSet(new HashSet<>());
     this.scheduler = new Scheduler();
@@ -123,7 +121,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   }
 
   @Override
-  public void submitFragmentInstances(QueryId queryId, List<Driver> instances) {
+  public void submitFragmentInstances(QueryId queryId, List<IDriver> instances) {
     List<FragmentInstanceTask> tasks =
         instances.stream()
             .map(
@@ -154,6 +152,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
       for (FragmentInstanceTask task : queryRelatedTasks) {
         task.lock();
         try {
+          task.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
           clearFragmentInstanceTask(task);
         } finally {
           task.unlock();
@@ -170,6 +169,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     }
     task.lock();
     try {
+      task.setAbortCause(FragmentInstanceAbortedException.BY_FRAGMENT_ABORT_CALLED);
       clearFragmentInstanceTask(task);
     } finally {
       task.unlock();
@@ -189,6 +189,12 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   private void clearFragmentInstanceTask(FragmentInstanceTask task) {
     if (task.getStatus() != FragmentInstanceTaskStatus.FINISHED) {
       task.setStatus(FragmentInstanceTaskStatus.ABORTED);
+    }
+    if (task.getAbortCause() != null) {
+      task.getFragmentInstance()
+          .failed(
+              new FragmentInstanceAbortedException(
+                  task.getFragmentInstance().getInfo(), task.getAbortCause()));
     }
     if (task.getStatus() == FragmentInstanceTaskStatus.ABORTED) {
       blockManager.forceDeregisterFragmentInstance(
@@ -345,6 +351,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
           }
           otherTask.lock();
           try {
+            otherTask.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
             clearFragmentInstanceTask(otherTask);
           } finally {
             otherTask.unlock();

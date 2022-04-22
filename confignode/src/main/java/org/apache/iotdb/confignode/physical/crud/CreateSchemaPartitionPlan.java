@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.confignode.physical.crud;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
-import org.apache.iotdb.confignode.util.SerializeDeserializeUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,18 +34,18 @@ import java.util.Objects;
 /** Create SchemaPartition by assignedSchemaPartition */
 public class CreateSchemaPartitionPlan extends PhysicalPlan {
 
-  private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> assignedSchemaPartition;
+  private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition;
 
   public CreateSchemaPartitionPlan() {
     super(PhysicalPlanType.CreateSchemaPartition);
   }
 
-  public Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> getAssignedSchemaPartition() {
+  public Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> getAssignedSchemaPartition() {
     return assignedSchemaPartition;
   }
 
   public void setAssignedSchemaPartition(
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> assignedSchemaPartition) {
+      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition) {
     this.assignedSchemaPartition = assignedSchemaPartition;
   }
 
@@ -55,12 +56,12 @@ public class CreateSchemaPartitionPlan extends PhysicalPlan {
     buffer.putInt(assignedSchemaPartition.size());
     assignedSchemaPartition.forEach(
         (storageGroup, partitionSlots) -> {
-          SerializeDeserializeUtil.write(storageGroup, buffer);
+          BasicStructureSerDeUtil.write(storageGroup, buffer);
           buffer.putInt(partitionSlots.size());
           partitionSlots.forEach(
               (seriesPartitionSlot, regionReplicaSet) -> {
-                seriesPartitionSlot.serializeImpl(buffer);
-                regionReplicaSet.serializeImpl(buffer);
+                ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
+                ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
               });
         });
   }
@@ -71,15 +72,15 @@ public class CreateSchemaPartitionPlan extends PhysicalPlan {
 
     int storageGroupNum = buffer.getInt();
     for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = SerializeDeserializeUtil.readString(buffer);
+      String storageGroup = BasicStructureSerDeUtil.readString(buffer);
       assignedSchemaPartition.put(storageGroup, new HashMap<>());
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        SeriesPartitionSlot seriesPartitionSlot = new SeriesPartitionSlot();
-        seriesPartitionSlot.deserializeImpl(buffer);
+        TSeriesPartitionSlot seriesPartitionSlot =
+            ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
         assignedSchemaPartition
             .get(storageGroup)
-            .put(seriesPartitionSlot, RegionReplicaSet.deserializeImpl(buffer));
+            .put(seriesPartitionSlot, ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer));
       }
     }
   }

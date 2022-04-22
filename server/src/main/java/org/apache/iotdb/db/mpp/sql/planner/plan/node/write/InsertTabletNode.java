@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -44,7 +45,13 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
@@ -148,6 +155,21 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return null;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return null;
+  }
+
+  @Override
   public int serializedSize() {
     return serializedSize(0, rowCount);
   }
@@ -155,7 +177,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public int serializedSize(int start, int end) {
     int size = 0;
     size += Short.BYTES;
-    size += this.getPlanNodeId().serializedSize();
     return size + subSerializeSize(start, end);
   }
 
@@ -164,11 +185,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
     // measurements size
     size += Integer.BYTES;
-    for (String m : measurements) {
-      if (m != null) {
-        size += ReadWriteIOUtils.sizeToWrite(m);
-      }
-    }
+
+    size += serializeMeasurementSchemaSize();
+
     // data types size
     size += Integer.BYTES;
     for (int i = 0; i < dataTypes.length; i++) {
@@ -232,9 +251,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putShort((short) PlanNodeType.INSERT_TABLET.ordinal());
-    getPlanNodeId().serialize(byteBuffer);
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.INSERT_TABLET.serialize(byteBuffer);
     subSerialize(byteBuffer);
   }
 
@@ -351,7 +369,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public void serializeToWAL(IWALByteBufferView buffer, int start, int end) {
     buffer.putShort((short) PlanNodeType.INSERT_TABLET.ordinal());
-    getPlanNodeId().serializeToWAL(buffer);
     subSerialize(buffer, start, end);
   }
 
@@ -367,11 +384,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   private void writeMeasurements(IWALByteBufferView buffer) {
     buffer.putInt(measurementSchemas.length - countFailedMeasurements());
-    for (String m : measurements) {
-      if (m != null) {
-        WALWriteUtils.write(m, buffer);
-      }
-    }
+    serializeMeasurementSchemaToWAL(buffer);
   }
 
   @Override
@@ -552,10 +565,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         (times[0] / StorageEngine.getTimePartitionInterval())
             * StorageEngine.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
-    TimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
+    TTimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
 
-    List<TimePartitionSlot> timePartitionSlots = new ArrayList<>();
+    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     List<Integer> ranges = new ArrayList<>();
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
@@ -580,12 +593,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     timePartitionSlots.add(timePartitionSlot);
 
     // data region for each time partition
-    List<RegionReplicaSet> dataRegionReplicaSets =
+    List<TRegionReplicaSet> dataRegionReplicaSets =
         analysis
             .getDataPartitionInfo()
             .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlots);
 
-    Map<RegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
+    Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
     for (int i = 0; i < dataRegionReplicaSets.size(); i++) {
       List<Integer> sub_ranges =
           splitMap.computeIfAbsent(dataRegionReplicaSets.get(i), x -> new ArrayList<>());
@@ -594,7 +607,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
 
     List<Integer> locs;
-    for (Map.Entry<RegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
+    for (Map.Entry<TRegionReplicaSet, List<Integer>> entry : splitMap.entrySet()) {
       // generate a new times and values
       locs = entry.getValue();
       int count = 0;
@@ -673,12 +686,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
-    InsertTabletNode insertNode = new InsertTabletNode(PlanNodeId.deserialize(byteBuffer));
+    InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     try {
       insertNode.subDeserialize(byteBuffer);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
     }
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return insertNode;
   }
 
@@ -714,7 +728,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public static InsertTabletNode deserialize(DataInputStream stream)
       throws IllegalPathException, IOException {
-    InsertTabletNode insertNode = new InsertTabletNode(PlanNodeId.deserialize(stream));
+    // This method is used for deserialize from wal
+    // we do not store plan node id in wal entry
+    InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     insertNode.subDeserialize(stream);
     return insertNode;
   }
@@ -723,10 +739,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     this.devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
 
     int measurementSize = stream.readInt();
-    this.measurements = new String[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      measurements[i] = ReadWriteIOUtils.readString(stream);
-    }
+    this.measurementSchemas = new MeasurementSchema[measurementSize];
+    deserializeMeasurementSchema(stream);
 
     this.dataTypes = new TSDataType[measurementSize];
     for (int i = 0; i < measurementSize; i++) {

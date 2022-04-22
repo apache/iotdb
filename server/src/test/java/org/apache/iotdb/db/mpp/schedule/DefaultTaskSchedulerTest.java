@@ -22,7 +22,7 @@ import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
@@ -52,7 +52,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -94,6 +94,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -102,7 +103,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
 
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
@@ -141,6 +142,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -149,7 +151,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -193,6 +195,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -201,7 +204,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -245,6 +248,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNotNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -253,7 +257,7 @@ public class DefaultTaskSchedulerTest {
     IDataBlockManager mockDataBlockManager = Mockito.mock(IDataBlockManager.class);
     manager.setBlockManager(mockDataBlockManager);
     ITaskScheduler defaultScheduler = manager.getScheduler();
-    Driver mockDriver = Mockito.mock(Driver.class);
+    IDriver mockDriver = Mockito.mock(IDriver.class);
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
@@ -296,6 +300,7 @@ public class DefaultTaskSchedulerTest {
     Assert.assertNull(manager.getReadyQueue().get(testTask.getId()));
     Assert.assertNull(manager.getTimeoutQueue().get(testTask.getId()));
     Assert.assertFalse(manager.getQueryMap().containsKey(queryId));
+    Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
     clear();
   }
 
@@ -308,9 +313,9 @@ public class DefaultTaskSchedulerTest {
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId1 =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-0");
-    Driver mockDriver1 = Mockito.mock(Driver.class);
+    IDriver mockDriver1 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
-    Driver mockDriver2 = Mockito.mock(Driver.class);
+    IDriver mockDriver2 = Mockito.mock(IDriver.class);
     FragmentInstanceId instanceId2 =
         new FragmentInstanceId(new PlanFragmentId(queryId, 0), "inst-1");
     Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
@@ -342,6 +347,9 @@ public class DefaultTaskSchedulerTest {
       Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
       Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask1));
       Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask2));
+
+      Mockito.verify(mockDriver1, Mockito.never()).failed(Mockito.any());
+      Mockito.verify(mockDriver2, Mockito.never()).failed(Mockito.any());
       clear();
     }
     FragmentInstanceTaskStatus[] validStates =
@@ -351,6 +359,11 @@ public class DefaultTaskSchedulerTest {
           FragmentInstanceTaskStatus.BLOCKED,
         };
     for (FragmentInstanceTaskStatus status : validStates) {
+      Mockito.reset(mockDriver1);
+      Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
+      Mockito.reset(mockDriver2);
+      Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
+
       FragmentInstanceTask testTask1 = new FragmentInstanceTask(mockDriver1, 100L, status);
 
       FragmentInstanceTask testTask2 =
@@ -377,6 +390,11 @@ public class DefaultTaskSchedulerTest {
       Assert.assertNull(manager.getTimeoutQueue().get(testTask1.getId()));
       Assert.assertNull(manager.getTimeoutQueue().get(testTask2.getId()));
       Assert.assertFalse(manager.getQueryMap().containsKey(queryId));
+
+      // The mockDriver1.failed() will be called outside the scheduler
+      Mockito.verify(mockDriver1, Mockito.never()).failed(Mockito.any());
+      Mockito.verify(mockDriver2, Mockito.times(1)).failed(Mockito.any());
+
       clear();
     }
   }

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.schedule;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.IDriver;
 
 import java.util.List;
 
@@ -28,13 +28,13 @@ import java.util.List;
 public interface IFragmentInstanceScheduler {
 
   /**
-   * Submit one or more {@link org.apache.iotdb.db.mpp.execution.Driver} in one query for later
+   * Submit one or more {@link org.apache.iotdb.db.mpp.execution.IDriver} in one query for later
    * scheduling.
    *
    * @param queryId the queryId these instances belong to.
    * @param instances the submitted instances.
    */
-  void submitFragmentInstances(QueryId queryId, List<Driver> instances);
+  void submitFragmentInstances(QueryId queryId, List<IDriver> instances);
 
   /**
    * Abort all the instances in this query.

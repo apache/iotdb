@@ -96,6 +96,7 @@ public class ClusterScheduler implements IScheduler {
       }
     } catch (InterruptedException | ExecutionException e) {
       // If the dispatch failed, we make the QueryState as failed, and return.
+      Thread.currentThread().interrupt();
       stateMachine.transitionToFailed(e);
       return;
     }

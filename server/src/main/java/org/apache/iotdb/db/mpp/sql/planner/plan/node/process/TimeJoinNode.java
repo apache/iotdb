@@ -20,13 +20,13 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  * TimeJoinOperator is sorted by timestamp
  */
 // TODO: define the TimeJoinMergeNode for distributed plan
-public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
+public class TimeJoinNode extends ProcessNode {
 
   // This parameter indicates the order when executing multiway merge sort.
   private final OrderBy mergeOrder;
@@ -53,16 +53,17 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   // The without policy is able to be push down to the TimeJoinOperator because we can know whether
   // a row contains
   // null or not.
-  private FilterNullPolicy filterNullPolicy = FilterNullPolicy.NO_FILTER;
-
-  private List<PlanNode> children;
-
-  private List<ColumnHeader> columnHeaders = new ArrayList<>();
+  private FilterNullParameter filterNullParameter;
 
   // indicate each output column should use which value column of which input TsBlock and the
   // overlapped situation
   // size of outputColumns must be equal to the size of columnHeaders
   private List<OutputColumn> outputColumns = new ArrayList<>();
+
+  // column name and datatype of each output column
+  private final List<ColumnHeader> outputColumnHeaders = new ArrayList<>();
+
+  private List<PlanNode> children;
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
     super(id);
@@ -73,7 +74,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, List<PlanNode> children) {
     this(id, mergeOrder);
     this.children = children;
-    initColumnHeaders();
+    initOutputColumns();
   }
 
   @Override
@@ -85,7 +86,7 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   public PlanNode clone() {
     // TODO: (xingtanzjr)
     TimeJoinNode cloneNode = new TimeJoinNode(getPlanNodeId(), this.mergeOrder);
-    cloneNode.columnHeaders = this.columnHeaders;
+    cloneNode.outputColumns = this.outputColumns;
     return cloneNode;
   }
 
@@ -94,25 +95,40 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     return CHILD_COUNT_NO_LIMIT;
   }
 
-  private void initColumnHeaders() {
-    for (PlanNode child : children) {
-      columnHeaders.addAll(((IOutputPlanNode) child).getOutputColumnHeaders());
+  public List<OutputColumn> getOutputColumns() {
+    return outputColumns;
+  }
+
+  private void initOutputColumns() {
+    for (int tsBlockIndex = 0; tsBlockIndex < children.size(); tsBlockIndex++) {
+      List<ColumnHeader> childColumnHeaders = children.get(tsBlockIndex).getOutputColumnHeaders();
+      for (int valueColumnIndex = 0;
+          valueColumnIndex < childColumnHeaders.size();
+          valueColumnIndex++) {
+        InputLocation inputLocation = new InputLocation(tsBlockIndex, valueColumnIndex);
+        outputColumns.add(new OutputColumn(inputLocation));
+      }
+      outputColumnHeaders.addAll(childColumnHeaders);
     }
   }
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return columnHeaders;
+    return outputColumnHeaders;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+    return outputColumnHeaders.stream()
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    return outputColumnHeaders.stream()
+        .map(ColumnHeader::getColumnType)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -124,30 +140,35 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(columnHeaders.size(), byteBuffer);
-    for (ColumnHeader columnHeader : columnHeaders) {
+    filterNullParameter.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputColumns.size(), byteBuffer);
+    for (OutputColumn outputColumn : outputColumns) {
+      outputColumn.serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(outputColumnHeaders.size(), byteBuffer);
+    for (ColumnHeader columnHeader : outputColumnHeaders) {
       columnHeader.serialize(byteBuffer);
     }
   }
 
-  public List<OutputColumn> getOutputColumns() {
-    return outputColumns;
-  }
-
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {
     OrderBy orderBy = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    FilterNullPolicy filterNullPolicy =
-        FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    int columnHeaderSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<ColumnHeader> columnHeaders = new ArrayList<>();
-    for (int i = 0; i < columnHeaderSize; i++) {
-      columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
+    FilterNullParameter filterNullParameter = FilterNullParameter.deserialize(byteBuffer);
+    int outputColumnSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<OutputColumn> outputColumns = new ArrayList<>(outputColumnSize);
+    for (int i = 0; i < outputColumnSize; i++) {
+      outputColumns.add(OutputColumn.deserialize(byteBuffer));
+    }
+    int outputColumnHeadersSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<ColumnHeader> outputColumnHeaders = new ArrayList<>(outputColumnHeadersSize);
+    for (int i = 0; i < outputColumnHeadersSize; i++) {
+      outputColumnHeaders.add(ColumnHeader.deserialize(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     TimeJoinNode timeJoinNode = new TimeJoinNode(planNodeId, orderBy);
-    timeJoinNode.columnHeaders.addAll(columnHeaders);
-    timeJoinNode.filterNullPolicy = filterNullPolicy;
+    timeJoinNode.outputColumns.addAll(outputColumns);
+    timeJoinNode.outputColumnHeaders.addAll(outputColumnHeaders);
+    timeJoinNode.setFilterNullParameter(filterNullParameter);
 
     return timeJoinNode;
   }
@@ -165,12 +186,12 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     return mergeOrder;
   }
 
-  public FilterNullPolicy getFilterNullPolicy() {
-    return filterNullPolicy;
+  public FilterNullParameter getFilterNullParameter() {
+    return filterNullParameter;
   }
 
-  public void setWithoutPolicy(FilterNullPolicy filterNullPolicy) {
-    this.filterNullPolicy = filterNullPolicy;
+  public void setFilterNullParameter(FilterNullParameter filterNullParameter) {
+    this.filterNullParameter = filterNullParameter;
   }
 
   public String toString() {
@@ -184,7 +205,9 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
     attributes.add("MergeOrder: " + (this.getMergeOrder() == null ? "null" : this.getMergeOrder()));
     attributes.add(
         "FilterNullPolicy: "
-            + (this.getFilterNullPolicy() == null ? "null" : this.getFilterNullPolicy()));
+            + (this.getFilterNullParameter() == null
+                ? "null"
+                : this.getFilterNullParameter().getFilterNullPolicy()));
     return new Pair<>(title, attributes);
   }
 
@@ -200,12 +223,12 @@ public class TimeJoinNode extends ProcessNode implements IOutputPlanNode {
 
     TimeJoinNode that = (TimeJoinNode) o;
     return mergeOrder == that.mergeOrder
-        && filterNullPolicy == that.filterNullPolicy
+        && Objects.equals(filterNullParameter, that.filterNullParameter)
         && Objects.equals(children, that.children);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(mergeOrder, filterNullPolicy, children);
+    return Objects.hash(mergeOrder, filterNullParameter, children);
   }
 }

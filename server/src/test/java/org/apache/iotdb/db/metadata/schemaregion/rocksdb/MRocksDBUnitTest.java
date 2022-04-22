@@ -41,6 +41,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Ignore
 public class MRocksDBUnitTest {
@@ -54,7 +55,8 @@ public class MRocksDBUnitTest {
     SchemaRegionId schemaRegionId = new SchemaRegionId((int) (Math.random() * 10));
     MNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     IStorageGroupMNode storageGroupMNode = new StorageGroupMNode(root, "test", -1);
-    rSchemaRegion = new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+    rSchemaRegion =
+        new RSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode, new RSchemaConfLoader());
   }
 
   @Test
@@ -229,6 +231,31 @@ public class MRocksDBUnitTest {
 
     IMeasurementMNode m3 = rSchemaRegion.getMeasurementMNode(new PartialPath("root.tt.sg.dd.test"));
     Assert.assertEquals(m3.getAlias(), "test");
+  }
+
+  @Test
+  public void testGetMeasurementCountGroupByLevel() throws MetadataException {
+    PartialPath path1 = new PartialPath("root.test.sg.dd.m1");
+    rSchemaRegion.createTimeseries(
+        path1, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.GZIP, null, "ma");
+    PartialPath path2 = new PartialPath("root.test.sg.dd.m2");
+    rSchemaRegion.createTimeseries(
+        path2, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.GZIP, null, null);
+    PartialPath path3 = new PartialPath("root.test.sg.dd.m3");
+    rSchemaRegion.createTimeseries(
+        path3, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.GZIP, null, null);
+    PartialPath path4 = new PartialPath("root.test.sg.m4");
+    rSchemaRegion.createTimeseries(
+        path4, TSDataType.DOUBLE, TSEncoding.PLAIN, CompressionType.GZIP, null, null);
+
+    Map<PartialPath, Integer> result =
+        rSchemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.**"), 3, false);
+    Assert.assertEquals(3, (int) result.get(new PartialPath("root.test.sg.dd")));
+    Assert.assertEquals(1, (int) result.get(new PartialPath("root.test.sg.m4")));
+
+    result =
+        rSchemaRegion.getMeasurementCountGroupByLevel(new PartialPath("root.test.**"), 2, false);
+    Assert.assertEquals(4, (int) result.get(new PartialPath("root.test.sg")));
   }
 
   @After

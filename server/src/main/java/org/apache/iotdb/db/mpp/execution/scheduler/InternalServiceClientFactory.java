@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 
@@ -44,10 +44,10 @@ public class InternalServiceClientFactory {
   private static final Logger logger = LoggerFactory.getLogger(InternalServiceClientFactory.class);
 
   // TODO need to be replaced by mature client pool in the future
-  private static final Map<Endpoint, InternalService.Iface> internalServiceClientMap =
+  private static final Map<TEndPoint, InternalService.Iface> internalServiceClientMap =
       new ConcurrentHashMap<>();
 
-  public static InternalService.Iface getInternalServiceClient(Endpoint endpoint)
+  public static InternalService.Iface getInternalServiceClient(TEndPoint endpoint)
       throws TTransportException {
     return internalServiceClientMap.computeIfAbsent(
         endpoint,

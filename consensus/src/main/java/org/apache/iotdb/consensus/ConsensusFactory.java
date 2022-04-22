@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
 
 import org.slf4j.Logger;
@@ -37,11 +37,12 @@ public class ConsensusFactory {
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 
   public static Optional<IConsensus> getConsensusImpl(
-      String className, Endpoint endpoint, File storageDir, IStateMachine.Registry registry) {
+      String className, TEndPoint endpoint, File storageDir, IStateMachine.Registry registry) {
     try {
       Class<?> executor = Class.forName(className);
       Constructor<?> executorConstructor =
-          executor.getDeclaredConstructor(Endpoint.class, File.class, IStateMachine.Registry.class);
+          executor.getDeclaredConstructor(
+              TEndPoint.class, File.class, IStateMachine.Registry.class);
       executorConstructor.setAccessible(true);
       return Optional.of(
           (IConsensus) executorConstructor.newInstance(endpoint, storageDir, registry));

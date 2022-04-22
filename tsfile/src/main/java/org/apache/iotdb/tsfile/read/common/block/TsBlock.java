@@ -50,14 +50,10 @@ public class TsBlock {
    * Visible to give trusted classes like {@link TsBlockBuilder} access to a constructor that
    * doesn't defensively copy the valueColumns
    */
-  static TsBlock wrapBlocksWithoutCopy(
+  public static TsBlock wrapBlocksWithoutCopy(
       int positionCount, TimeColumn timeColumn, Column[] valueColumns) {
     return new TsBlock(false, positionCount, timeColumn, valueColumns);
   }
-
-  // TODO rethink about if we really need this field
-  // Describe the column info
-  private TsBlockMetadata metadata;
 
   private final TimeColumn timeColumn;
 
@@ -101,10 +97,6 @@ public class TsBlock {
   }
 
   public void next() {}
-
-  public TsBlockMetadata getMetadata() {
-    return metadata;
-  }
 
   public int getPositionCount() {
     return positionCount;

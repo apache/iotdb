@@ -85,24 +85,13 @@ public class LongColumnBuilder implements ColumnBuilder {
   }
 
   @Override
-  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
-    return writeLong(value.getLong());
+  public ColumnBuilder write(Column column, int index) {
+    return writeLong(column.getLong(index));
   }
 
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    LongColumn column = (LongColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeLong(column.getLong(index++));
-      } else {
-        appendNull();
-      }
-    }
-    return index;
+  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
+    return writeLong(value.getLong());
   }
 
   @Override

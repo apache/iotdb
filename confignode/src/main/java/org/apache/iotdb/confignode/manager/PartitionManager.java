@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -85,13 +85,13 @@ public class PartitionManager {
    * @return SchemaPartitionDataSet
    */
   public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan physicalPlan) {
-    Map<String, List<SeriesPartitionSlot>> noAssignedSchemaPartitionSlots =
+    Map<String, List<TSeriesPartitionSlot>> noAssignedSchemaPartitionSlots =
         partitionInfoPersistence.filterNoAssignedSchemaPartitionSlots(
             physicalPlan.getPartitionSlotsMap());
 
     if (noAssignedSchemaPartitionSlots.size() > 0) {
       // Allocate SchemaPartition
-      Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> assignedSchemaPartition =
+      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition =
           allocateSchemaPartition(noAssignedSchemaPartitionSlots);
 
       // Persist SchemaPartition
@@ -109,18 +109,18 @@ public class PartitionManager {
    * @param noAssignedSchemaPartitionSlotsMap Map<StorageGroupName, List<SeriesPartitionSlot>>
    * @return assign result, Map<StorageGroupName, Map<SeriesPartitionSlot, RegionReplicaSet>>
    */
-  private Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> allocateSchemaPartition(
-      Map<String, List<SeriesPartitionSlot>> noAssignedSchemaPartitionSlotsMap) {
-    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> result = new HashMap<>();
+  private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> allocateSchemaPartition(
+      Map<String, List<TSeriesPartitionSlot>> noAssignedSchemaPartitionSlotsMap) {
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
 
     for (String storageGroup : noAssignedSchemaPartitionSlotsMap.keySet()) {
-      List<SeriesPartitionSlot> noAssignedPartitionSlots =
+      List<TSeriesPartitionSlot> noAssignedPartitionSlots =
           noAssignedSchemaPartitionSlotsMap.get(storageGroup);
-      List<RegionReplicaSet> schemaRegionEndPoints =
+      List<TRegionReplicaSet> schemaRegionEndPoints =
           RegionInfoPersistence.getInstance().getSchemaRegionEndPoint(storageGroup);
       Random random = new Random();
 
-      Map<SeriesPartitionSlot, RegionReplicaSet> allocateResult = new HashMap<>();
+      Map<TSeriesPartitionSlot, TRegionReplicaSet> allocateResult = new HashMap<>();
       noAssignedPartitionSlots.forEach(
           seriesPartitionSlot ->
               allocateResult.put(
@@ -155,13 +155,13 @@ public class PartitionManager {
    * @return DataPartitionDataSet
    */
   public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionPlan physicalPlan) {
-    Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>> noAssignedDataPartitionSlots =
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> noAssignedDataPartitionSlots =
         partitionInfoPersistence.filterNoAssignedDataPartitionSlots(
             physicalPlan.getPartitionSlotsMap());
 
     if (noAssignedDataPartitionSlots.size() > 0) {
       // Allocate DataPartition
-      Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           assignedDataPartition = allocateDataPartition(noAssignedDataPartitionSlots);
 
       // Persist DataPartition
@@ -181,27 +181,27 @@ public class PartitionManager {
    * @return assign result, Map<StorageGroupName, Map<SeriesPartitionSlot, Map<TimePartitionSlot,
    *     List<RegionReplicaSet>>>>
    */
-  private Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+  private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
       allocateDataPartition(
-          Map<String, Map<SeriesPartitionSlot, List<TimePartitionSlot>>>
+          Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
               noAssignedDataPartitionSlotsMap) {
 
-    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>> result =
-        new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        result = new HashMap<>();
 
     for (String storageGroup : noAssignedDataPartitionSlotsMap.keySet()) {
-      Map<SeriesPartitionSlot, List<TimePartitionSlot>> noAssignedPartitionSlotsMap =
+      Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> noAssignedPartitionSlotsMap =
           noAssignedDataPartitionSlotsMap.get(storageGroup);
-      List<RegionReplicaSet> dataRegionEndPoints =
+      List<TRegionReplicaSet> dataRegionEndPoints =
           RegionInfoPersistence.getInstance().getDataRegionEndPoint(storageGroup);
       Random random = new Random();
 
-      Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> allocateResult =
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> allocateResult =
           new HashMap<>();
-      for (Map.Entry<SeriesPartitionSlot, List<TimePartitionSlot>> seriesPartitionEntry :
+      for (Map.Entry<TSeriesPartitionSlot, List<TTimePartitionSlot>> seriesPartitionEntry :
           noAssignedPartitionSlotsMap.entrySet()) {
         allocateResult.put(seriesPartitionEntry.getKey(), new HashMap<>());
-        for (TimePartitionSlot timePartitionSlot : seriesPartitionEntry.getValue()) {
+        for (TTimePartitionSlot timePartitionSlot : seriesPartitionEntry.getValue()) {
           allocateResult
               .get(seriesPartitionEntry.getKey())
               .computeIfAbsent(timePartitionSlot, key -> new ArrayList<>())
@@ -223,12 +223,12 @@ public class PartitionManager {
   }
 
   /**
-   * Get SeriesPartitionSlot
+   * Get TSeriesPartitionSlot
    *
    * @param devicePath Full path ending with device name
    * @return SeriesPartitionSlot
    */
-  public SeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
+  public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
     return executor.getSeriesPartitionSlot(devicePath);
   }
 }

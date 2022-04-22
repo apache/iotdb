@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.source;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,8 +53,8 @@ public class SeriesAggregateScanNodeSerdeTest {
     st.add("s2");
     List<AggregationType> aggregateFuncList = new ArrayList<>();
     aggregateFuncList.add(AggregationType.MAX_TIME);
-    GroupByTimeComponent groupByTimeComponent =
-        new GroupByTimeComponent(1, 100, 1, 1, true, true, true);
+    GroupByTimeParameter groupByTimeComponent =
+        new GroupByTimeParameter(1, 100, 1, 1, true, true, true);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
@@ -64,7 +65,8 @@ public class SeriesAggregateScanNodeSerdeTest {
             new In<String>(st, VALUE_FILTER, true),
             groupByTimeComponent);
     seriesAggregateScanNode.setRegionReplicaSet(
-        new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     seriesAggregateScanNode.serialize(byteBuffer);
