@@ -85,24 +85,13 @@ public class BooleanColumnBuilder implements ColumnBuilder {
   }
 
   @Override
-  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
-    return writeBoolean(value.getBoolean());
+  public ColumnBuilder write(Column column, int index) {
+    return writeBoolean(column.getBoolean(index));
   }
 
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    BooleanColumn column = (BooleanColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeBoolean(column.getBoolean(index++));
-      } else {
-        appendNull();
-      }
-    }
-    return index;
+  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
+    return writeBoolean(value.getBoolean());
   }
 
   @Override
