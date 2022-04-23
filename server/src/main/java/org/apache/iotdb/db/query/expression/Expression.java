@@ -228,7 +228,7 @@ public abstract class Expression {
     }
   }
 
-  public abstract void serialize(ByteBuffer byteBuffer);
+  protected abstract void serialize(ByteBuffer byteBuffer);
 
   public static Expression deserialize(ByteBuffer byteBuffer) {
     short type = ReadWriteIOUtils.readShort(byteBuffer);

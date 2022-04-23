@@ -173,7 +173,7 @@ public class RegularExpression extends Expression {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serialize(ByteBuffer byteBuffer) {
     Expression.serialize(expression, byteBuffer);
     ReadWriteIOUtils.write(patternString, byteBuffer);
   }

@@ -207,7 +207,7 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serialize(ByteBuffer byteBuffer) {
     Expression.serialize(expression, byteBuffer);
   }
 }
