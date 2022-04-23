@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.statement.component;
 
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -78,7 +77,7 @@ public class FilterNullComponent extends StatementNode {
     ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(withoutNullColumns.size(), byteBuffer);
     for (Expression expression : withoutNullColumns) {
-      expression.serialize(byteBuffer);
+      Expression.serialize(expression, byteBuffer);
     }
   }
 
@@ -88,7 +87,7 @@ public class FilterNullComponent extends StatementNode {
     int withoutNullSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Expression> withoutNullColumns = new ArrayList<>();
     for (int i = 0; i < withoutNullSize; i++) {
-      withoutNullColumns.add(ExpressionType.deserialize(byteBuffer));
+      withoutNullColumns.add(Expression.deserialize(byteBuffer));
     }
     FilterNullComponent filterNullComponent = new FilterNullComponent();
     filterNullComponent.withoutNullColumns = withoutNullColumns;

@@ -20,9 +20,11 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -119,6 +121,21 @@ public class TimeSeriesSchemaScanNode extends SchemaScanNode {
   public PlanNode clone() {
     return new TimeSeriesSchemaScanNode(
         getPlanNodeId(), path, key, value, limit, offset, orderByHeat, isContains, isPrefixPath);
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return null;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return null;
   }
 
   @Override
