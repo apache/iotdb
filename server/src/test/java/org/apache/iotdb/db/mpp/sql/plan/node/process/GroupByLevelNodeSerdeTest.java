@@ -119,7 +119,7 @@ public class GroupByLevelNodeSerdeTest {
             new int[] {1, 3},
             groupedPathMap);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     groupByLevelNode.serialize(byteBuffer);
     byteBuffer.flip();
     assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), groupByLevelNode);
