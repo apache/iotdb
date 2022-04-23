@@ -208,6 +208,8 @@ public class OperationSyncLogService implements Runnable {
         createLogFile();
       }
       logWriter.write(buffer);
+    } else {
+      LOGGER.error("The OperationSyncLog is full, new PhysicalPlans will be discarded.");
     }
   }
 

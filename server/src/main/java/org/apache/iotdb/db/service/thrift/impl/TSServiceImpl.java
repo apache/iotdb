@@ -2195,17 +2195,13 @@ public class TSServiceImpl implements TSIService.Iface {
     switch (planType) {
       case DDLPlan:
         // Create OperationSyncWriteTask and wait
-        Thread taskThread =
-            new Thread(
-                new OperationSyncWriteTask(
-                    buffer, operationSyncsessionPool,
-                    operationSyncDDLProtector, operationSyncDDLLogService));
-        taskThread.start();
-        try {
-          taskThread.join();
-        } catch (InterruptedException e) {
-          LOGGER.error("OperationSyncWriteTask been interrupted", e);
-        }
+        OperationSyncWriteTask ddlTask =
+            new OperationSyncWriteTask(
+                buffer,
+                operationSyncsessionPool,
+                operationSyncDDLProtector,
+                operationSyncDDLLogService);
+        ddlTask.run();
         break;
       case DMLPlan:
         // Put into OperationSyncProducer
