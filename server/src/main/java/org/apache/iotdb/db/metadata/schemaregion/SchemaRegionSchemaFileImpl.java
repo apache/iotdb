@@ -1436,9 +1436,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     // get logical device node, may be in template. will be multiple if overlap is allowed.
     if (!isDeviceInTemplate) {
       deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
-      if (!deviceMNode.getCacheEntry().isPinned()) {
-        throw new RuntimeException("The device must pinned");
-      }
     }
     try {
       // check insert non-aligned InsertPlan for aligned timeseries
