@@ -98,7 +98,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
     for (File file : logDir.listFiles())
       if (file.getName().endsWith(SyncConstant.PIPE_LOG_NAME_SUFFIX) && file.length() > 0) {
-        startNumbers.add(SyncConstant.getSerialNumberFromPipeLogName(file.getName()));
+        startNumbers.add(SyncPathUtil.getSerialNumberFromPipeLogName(file.getName()));
       }
     if (startNumbers.size() != 0) {
       Collections.sort(startNumbers);
@@ -114,7 +114,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     }
 
     File writingPipeLog =
-        new File(pipeLogDir, SyncConstant.getPipeLogName(pipeLogStartNumber.peekLast()));
+        new File(pipeLogDir, SyncPathUtil.getPipeLogName(pipeLogStartNumber.peekLast()));
     try {
       List<PipeData> recoverPipeData = parsePipeLog(writingPipeLog);
       int recoverPipeDataSize = recoverPipeData.size();
@@ -157,7 +157,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     }
 
     File readingPipeLog =
-        new File(pipeLogDir, SyncConstant.getPipeLogName(pipeLogStartNumber.peek()));
+        new File(pipeLogDir, SyncPathUtil.getPipeLogName(pipeLogStartNumber.peek()));
     try {
       List<PipeData> recoverPipeData = parsePipeLog(readingPipeLog);
       int recoverPipeDataSize = recoverPipeData.size();
@@ -214,7 +214,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     if (outputStream != null) {
       outputStream.close();
     }
-    File newPipeLog = new File(pipeLogDir, SyncConstant.getPipeLogName(startSerialNumber));
+    File newPipeLog = new File(pipeLogDir, SyncPathUtil.getPipeLogName(startSerialNumber));
     SyncPathUtil.createFile(newPipeLog);
 
     outputStream = new DataOutputStream(new FileOutputStream(newPipeLog));
@@ -250,7 +250,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
         outputDeque = inputDeque;
       } else {
         List<PipeData> parsePipeData =
-            parsePipeLog(new File(pipeLogDir, SyncConstant.getPipeLogName(serialNumber)));
+            parsePipeLog(new File(pipeLogDir, SyncPathUtil.getPipeLogName(serialNumber)));
         int parsePipeDataSize = parsePipeData.size();
         outputDeque = new LinkedBlockingDeque<>();
         for (int i = 0; i < parsePipeDataSize; i++) {
@@ -351,7 +351,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
         if (!pipeLogStartNumber.isEmpty() && pipeLogStartNumber.peek() <= commitSerialNumber) {
           try {
             Files.deleteIfExists(
-                new File(pipeLogDir, SyncConstant.getPipeLogName(nowPipeLogStartNumber)).toPath());
+                new File(pipeLogDir, SyncPathUtil.getPipeLogName(nowPipeLogStartNumber)).toPath());
           } catch (IOException e) {
             logger.warn(
                 String.format("Delete %s-pipe.log error, because %s.", nowPipeLogStartNumber, e));
@@ -434,7 +434,6 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
         pipeData.add(PipeData.deserialize(inputStream));
       }
     } catch (EOFException e) {
-      // logger.info(String.format("Finish parsing pipeLog %s.", file.getPath()));
     } catch (IllegalPathException e) {
       logger.error(String.format("Parsing pipeLog %s error, because %s", file.getPath(), e));
       throw new IOException(e);

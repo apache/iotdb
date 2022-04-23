@@ -124,7 +124,7 @@ public class ReceiverManager {
     if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
       synchronized (pipeInfoMap.get(pipeName).get(remoteIp)) {
         String pipeIdentifier =
-            SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+            SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
         try {
           log.writePipeMsg(pipeIdentifier, message);
         } catch (IOException e) {
@@ -155,7 +155,7 @@ public class ReceiverManager {
     if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
       synchronized (pipeInfoMap.get(pipeName).get(remoteIp)) {
         String pipeIdentifier =
-            SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+            SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
         if (consume) {
           try {
             log.comsumePipeMsg(pipeIdentifier);

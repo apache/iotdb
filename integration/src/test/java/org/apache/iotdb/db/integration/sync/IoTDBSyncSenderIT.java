@@ -375,7 +375,7 @@ public class IoTDBSyncSenderIT {
   }
 
   @Test
-  public void testRealTimeSchemaAndStopInsert() {
+  public void testRealTimeAndStopInsert() {
     try {
       preparePipeAndSetMock(); // realtime
       startPipe();
