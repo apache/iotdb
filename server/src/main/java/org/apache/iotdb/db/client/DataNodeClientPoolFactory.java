@@ -36,11 +36,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
-public class ClientPoolFactory {
+public class DataNodeClientPoolFactory {
 
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
-  private ClientPoolFactory() {}
+  private DataNodeClientPoolFactory() {}
 
   public static class SyncConfigNodeIServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncConfigNodeIServiceClient> {

@@ -32,11 +32,11 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
-public class ClientPoolFactory {
+public class ConfigNodeClientPoolFactory {
 
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
-  private ClientPoolFactory() {}
+  private ConfigNodeClientPoolFactory() {}
 
   public static class SyncDataNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncDataNodeInternalServiceClient> {

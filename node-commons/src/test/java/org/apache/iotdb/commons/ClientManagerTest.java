@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.ClientPoolProperty.DefaultProperty;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
@@ -59,7 +60,9 @@ public class ClientManagerTest {
   public void normalSyncClientManagersTest() throws Exception {
     // init syncClientManager
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
-        new ClientManager<>(new TestSyncDataNodeInternalServiceClientPoolFactory());
+        (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+                .createClientManager(new TestSyncDataNodeInternalServiceClientPoolFactory());
 
     // get one sync client
     SyncDataNodeInternalServiceClient syncClient1 = syncClusterManager.borrowClient(endPoint);
@@ -101,7 +104,9 @@ public class ClientManagerTest {
   public void normalAsyncClientManagersTest() throws Exception {
     // init asyncClientManager
     ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
-        new ClientManager<>(new TestAsyncDataNodeInternalServiceClientPoolFactory());
+        (ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+                .createClientManager(new TestAsyncDataNodeInternalServiceClientPoolFactory());
 
     // get one async client
     AsyncDataNodeInternalServiceClient asyncClient1 = asyncClusterManager.borrowClient(endPoint);
@@ -143,20 +148,23 @@ public class ClientManagerTest {
 
     // init syncClientManager and set maxIdleClientForEachNode to 1
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
-        new ClientManager<>(
-            new TestSyncDataNodeInternalServiceClientPoolFactory() {
-              @Override
-              public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
-                  ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
-                return new GenericKeyedObjectPool<>(
-                    new SyncDataNodeInternalServiceClient.Factory(
-                        manager, new ClientFactoryProperty.Builder().build()),
-                    new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                        .setMaxIdleClientForEachNode(maxIdleClientForEachNode)
-                        .build()
-                        .getConfig());
-              }
-            });
+        (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+                .createClientManager(
+                    new TestSyncDataNodeInternalServiceClientPoolFactory() {
+                      @Override
+                      public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient>
+                          createClientPool(
+                              ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
+                        return new GenericKeyedObjectPool<>(
+                            new SyncDataNodeInternalServiceClient.Factory(
+                                manager, new ClientFactoryProperty.Builder().build()),
+                            new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
+                                .setMaxIdleClientForEachNode(maxIdleClientForEachNode)
+                                .build()
+                                .getConfig());
+                      }
+                    });
 
     // get one sync client
     SyncDataNodeInternalServiceClient syncClient1 = syncClusterManager.borrowClient(endPoint);
@@ -200,20 +208,23 @@ public class ClientManagerTest {
 
     // init syncClientManager and set maxTotalClientForEachNode to 1
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
-        new ClientManager<>(
-            new TestSyncDataNodeInternalServiceClientPoolFactory() {
-              @Override
-              public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
-                  ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
-                return new GenericKeyedObjectPool<>(
-                    new SyncDataNodeInternalServiceClient.Factory(
-                        manager, new ClientFactoryProperty.Builder().build()),
-                    new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                        .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
-                        .build()
-                        .getConfig());
-              }
-            });
+        (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+                .createClientManager(
+                    new TestSyncDataNodeInternalServiceClientPoolFactory() {
+                      @Override
+                      public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient>
+                          createClientPool(
+                              ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
+                        return new GenericKeyedObjectPool<>(
+                            new SyncDataNodeInternalServiceClient.Factory(
+                                manager, new ClientFactoryProperty.Builder().build()),
+                            new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
+                                .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
+                                .build()
+                                .getConfig());
+                      }
+                    });
 
     // get one sync client
     SyncDataNodeInternalServiceClient syncClient1 = syncClusterManager.borrowClient(endPoint);
@@ -260,21 +271,24 @@ public class ClientManagerTest {
     // init syncClientManager and set maxTotalClientForEachNode to 1, set waitClientTimeoutMS to
     // DefaultProperty.WAIT_CLIENT_TIMEOUT_MS * 2
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
-        new ClientManager<>(
-            new TestSyncDataNodeInternalServiceClientPoolFactory() {
-              @Override
-              public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient> createClientPool(
-                  ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
-                return new GenericKeyedObjectPool<>(
-                    new SyncDataNodeInternalServiceClient.Factory(
-                        manager, new ClientFactoryProperty.Builder().build()),
-                    new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
-                        .setWaitClientTimeoutMS(waitClientTimeoutMS)
-                        .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
-                        .build()
-                        .getConfig());
-              }
-            });
+        (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+                .createClientManager(
+                    new TestSyncDataNodeInternalServiceClientPoolFactory() {
+                      @Override
+                      public KeyedObjectPool<TEndPoint, SyncDataNodeInternalServiceClient>
+                          createClientPool(
+                              ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> manager) {
+                        return new GenericKeyedObjectPool<>(
+                            new SyncDataNodeInternalServiceClient.Factory(
+                                manager, new ClientFactoryProperty.Builder().build()),
+                            new ClientPoolProperty.Builder<SyncDataNodeInternalServiceClient>()
+                                .setWaitClientTimeoutMS(waitClientTimeoutMS)
+                                .setMaxTotalClientForEachNode(maxTotalClientForEachNode)
+                                .build()
+                                .getConfig());
+                      }
+                    });
 
     // get one sync client
     SyncDataNodeInternalServiceClient syncClient1 = syncClusterManager.borrowClient(endPoint);
@@ -308,7 +322,9 @@ public class ClientManagerTest {
   public void InvalidSyncClientReturnClientManagersTest() throws Exception {
     // init syncClientManager
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
-        new ClientManager<>(new TestSyncDataNodeInternalServiceClientPoolFactory());
+        (ClientManager<TEndPoint, SyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+                .createClientManager(new TestSyncDataNodeInternalServiceClientPoolFactory());
 
     // get one sync client
     SyncDataNodeInternalServiceClient syncClient1 = syncClusterManager.borrowClient(endPoint);
@@ -350,7 +366,9 @@ public class ClientManagerTest {
   public void InvalidAsyncClientReturnClientManagersTest() throws Exception {
     // init asyncClientManager
     ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
-        new ClientManager<>(new TestAsyncDataNodeInternalServiceClientPoolFactory());
+        (ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>)
+            new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
+                .createClientManager(new TestAsyncDataNodeInternalServiceClientPoolFactory());
 
     // get one async client
     AsyncDataNodeInternalServiceClient asyncClient1 = asyncClusterManager.borrowClient(endPoint);

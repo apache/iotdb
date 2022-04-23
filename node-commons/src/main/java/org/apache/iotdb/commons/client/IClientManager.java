@@ -29,12 +29,15 @@ public interface IClientManager<K, V> {
   // get a V client of the K node from the Manager
   V borrowClient(K node) throws IOException;
 
-  // return a V client of the K node to the Manager
-  void returnClient(K node, V client);
-
   // clear all clients for K node
   void clear(K node);
 
   // close clientManager
   void close();
+
+  class Factory<K, V> {
+    public IClientManager<K, V> createClientManager(IClientPoolFactory<K, V> clientPoolFactory) {
+      return new ClientManager<>(clientPoolFactory);
+    }
+  }
 }

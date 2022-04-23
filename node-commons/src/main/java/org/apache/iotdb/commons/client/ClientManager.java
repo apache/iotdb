@@ -34,7 +34,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   private final KeyedObjectPool<K, V> pool;
 
-  public ClientManager(IClientPoolFactory<K, V> factory) {
+  protected ClientManager(IClientPoolFactory<K, V> factory) {
     pool = factory.createClientPool(this);
   }
 
@@ -61,7 +61,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
     return client;
   }
 
-  @Override
+  // return a V client of the K node to the Manager
   public void returnClient(K node, V client) {
     if (client != null && node != null) {
       try {
