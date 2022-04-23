@@ -79,6 +79,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
@@ -1159,7 +1160,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    * created yet. The result is used for getDeviceNodeWithAutoCreate, which return corresponding
    * IMNode on MTree.
    *
-   * @return index on full path of the node which matches all measurements path with its
+   * @return index on full path of the node which matches all measurements' path with its
    *     upperTemplate.
    */
   @Override
@@ -1194,6 +1195,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             throw new TemplateImcompatibeException(
                 measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]);
           }
+
         } else {
           // no matched child, no template, need to create device node as logical device path
           return fullPathNodes.length - 1;
@@ -1206,6 +1208,76 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
     // all nodes on path exist in MTree, device node should be the penultimate one
     return fullPathNodes.length - 1;
+  }
+
+  public int getMountedNodeIndexOnMeasurementPath(PartialPath devicePath, String[] measurements)
+      throws MetadataException {
+    String[] nodes = devicePath.getNodes();
+    IMNode cur = storageGroupMNode;
+    IMNode child;
+    Template upperTemplate = cur.getSchemaTemplate();
+    int index;
+    boolean attemptToUseTemplate = false;
+
+    // If there are nodes of target path on MTree, use it as possible.
+    for (index = levelOfSG + 1; index < nodes.length; index++) {
+      upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
+      child = cur.getChild(nodes[index]);
+      if (child == null) {
+        if (upperTemplate == null) {
+          // no matched child, no template, need to create device node as logical device path
+          return nodes.length;
+        } else {
+          attemptToUseTemplate = true;
+          break;
+        }
+      } else {
+        // has child on MTree
+        cur = child;
+      }
+    }
+
+    if (!attemptToUseTemplate) {
+      // all nodes on path exist in MTree, device node should be the penultimate one
+      return nodes.length;
+    }
+
+    // The resting part of target path not exists on MTree, thus try to use template.
+    for (; index < nodes.length; index++) {
+      int fullPathLength = nodes.length - index + 1;
+      String[] suffixNodes = new String[fullPathLength];
+      System.arraycopy(nodes, index, suffixNodes, 0, nodes.length - index);
+      boolean hasAllMeasurements = true;
+
+      for (String measurement : measurements) {
+        // for this fullPath, cur is the last node on MTree
+        // since upperTemplate exists, need to find the matched suffix path of fullPath and
+        // template
+        suffixNodes[fullPathLength - 1] = measurement;
+        String suffixPath = String.join(String.valueOf(PATH_SEPARATOR), suffixNodes);
+
+        if (upperTemplate.hasSchema(suffixPath)) {
+          continue;
+        }
+
+        // if suffix doesn't match, but first node name matched, it's an overlap with template
+        // cast exception for now
+        if (upperTemplate.getDirectNode(nodes[index]) != null) {
+          throw new TemplateImcompatibeException(
+              devicePath.concatNode(measurement).getFullPath(),
+              upperTemplate.getName(),
+              nodes[index]);
+        }
+
+        hasAllMeasurements = false;
+      }
+
+      if (hasAllMeasurements) {
+        return index - 1;
+      }
+    }
+
+    return nodes.length;
   }
 
   @Override
