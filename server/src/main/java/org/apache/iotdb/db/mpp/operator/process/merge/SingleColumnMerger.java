@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.operator.process.merge;
 
-import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;

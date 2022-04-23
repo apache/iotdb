@@ -16,24 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.commons.exception.runtime;
 
-public class InputLocation {
-  // which input tsblock
-  private final int tsBlockIndex;
-  // which value column of that tsblock
-  private final int valueColumnIndex;
+public class ThriftSerDeException extends RuntimeException {
 
-  public InputLocation(int tsBlockIndex, int valueColumnIndex) {
-    this.tsBlockIndex = tsBlockIndex;
-    this.valueColumnIndex = valueColumnIndex;
-  }
-
-  public int getTsBlockIndex() {
-    return tsBlockIndex;
-  }
-
-  public int getValueColumnIndex() {
-    return valueColumnIndex;
+  public ThriftSerDeException(String msg, Throwable e) {
+    super(msg + e.toString());
   }
 }

@@ -207,3 +207,48 @@ It costs 0.003s
 Total line number = 2
 It costs 0.001s
 ```
+
+## Count Devices
+
+* COUNT DEVICES <PathPattern>
+
+The above statement is used to count the number of devices. At the same time, it is allowed to specify `PathPattern` to count the number of devices matching the `PathPattern`.
+
+SQL statement is as follows:
+
+```
+IoTDB> show devices
+IoTDB> count devices
+IoTDB> count devices root.ln.**
+```
+
+You can get results below:
+
+```
++-------------------+---------+
+|            devices|isAligned|
++-------------------+---------+
+|root.sgcc.wf03.wt03|    false|
+|    root.turbine.d1|    false|
+|  root.ln.wf02.wt02|    false|
+|  root.ln.wf01.wt01|    false|
++-------------------+---------+
+Total line number = 4
+It costs 0.024s
+
++-------+
+|devices|
++-------+
+|      4|
++-------+
+Total line number = 1
+It costs 0.004s
+
++-------+
+|devices|
++-------+
+|      2|
++-------+
+Total line number = 1
+It costs 0.004s
+```

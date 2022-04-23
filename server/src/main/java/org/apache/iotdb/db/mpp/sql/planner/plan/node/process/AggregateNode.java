@@ -21,12 +21,12 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.Aggregation;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,19 +52,24 @@ import java.util.stream.Collectors;
  * input as a TsBlock, it may be raw data or partial aggregation result. This node will output the
  * final series aggregated result represented by TsBlock.
  */
-public class AggregateNode extends ProcessNode implements IOutputPlanNode {
+public class AggregateNode extends ProcessNode {
 
   // The map from columns to corresponding aggregation functions on that column.
   //    KEY: The index of a column in the input {@link TsBlock}.
   //    VALUE: Aggregation functions on this column.
   // (Currently, we only support one series in the aggregation function.)
-  private final Map<PartialPath, Set<AggregationType>> aggregateFuncMap;
+  @Deprecated private final Map<PartialPath, Set<AggregationType>> aggregateFuncMap;
+
+  // The list of aggregation functions, each Aggregation will be output as one column of result
+  // TsBlock
+  private List<Aggregation> aggregationList;
 
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
-  private final GroupByTimeComponent groupByTimeParameter;
+  private final GroupByTimeParameter groupByTimeParameter;
 
-  private final List<ColumnHeader> columnHeaders = new ArrayList<>();
+  // column name and datatype of each output column
+  private final List<ColumnHeader> outputColumnHeaders = new ArrayList<>();
 
   private PlanNode child;
 
@@ -72,14 +77,14 @@ public class AggregateNode extends ProcessNode implements IOutputPlanNode {
       PlanNodeId id,
       PlanNode child,
       Map<PartialPath, Set<AggregationType>> aggregateFuncMap,
-      GroupByTimeComponent groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter) {
     super(id);
     this.child = child;
     this.aggregateFuncMap = aggregateFuncMap;
     this.groupByTimeParameter = groupByTimeParameter;
     for (Map.Entry<PartialPath, Set<AggregationType>> entry : aggregateFuncMap.entrySet()) {
       PartialPath path = entry.getKey();
-      columnHeaders.addAll(
+      outputColumnHeaders.addAll(
           entry.getValue().stream()
               .map(
                   functionName ->
@@ -111,17 +116,21 @@ public class AggregateNode extends ProcessNode implements IOutputPlanNode {
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return columnHeaders;
+    return outputColumnHeaders;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+    return outputColumnHeaders.stream()
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    return outputColumnHeaders.stream()
+        .map(ColumnHeader::getColumnType)
+        .collect(Collectors.toList());
   }
 
   @Override
