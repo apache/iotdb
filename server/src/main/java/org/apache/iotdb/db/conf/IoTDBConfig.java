@@ -900,7 +900,7 @@ public class IoTDBConfig {
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.mpp.sql.analyze.ClusterPartitionFetcher}
    */
-  private int partitionCacheSize = 1000;
+  private int partitionCacheSize = 10000;
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
