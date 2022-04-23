@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -52,7 +51,7 @@ import java.util.Set;
  *
  * <p>Children type: no child is allowed for SeriesScanNode
  */
-public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
+public class SeriesScanNode extends SourceNode {
 
   // The path of the target series which will be scanned.
   private final PartialPath seriesPath;
@@ -77,7 +76,8 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
   // offset for result set. The default value is 0
   private int offset;
 
-  private ColumnHeader columnHeader;
+  // contain output column header of this node
+  private ColumnHeader outputColumnHeader;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
@@ -93,7 +93,8 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
     this.scanOrder = scanOrder;
-    this.columnHeader = new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType());
+    this.outputColumnHeader =
+        new ColumnHeader(seriesPath.getFullPath(), seriesPath.getSeriesType());
   }
 
   public SeriesScanNode(PlanNodeId id, PartialPath seriesPath, TRegionReplicaSet regionReplicaSet) {
@@ -151,7 +152,11 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
 
   @Override
   public PlanNode clone() {
-    return new SeriesScanNode(getPlanNodeId(), getSeriesPath(), this.regionReplicaSet);
+    SeriesScanNode seriesScanNode =
+        new SeriesScanNode(getPlanNodeId(), getSeriesPath(), this.regionReplicaSet);
+    seriesScanNode.allSensors = this.allSensors;
+    seriesScanNode.outputColumnHeader = this.outputColumnHeader;
+    return seriesScanNode;
   }
 
   @Override
@@ -161,17 +166,17 @@ public class SeriesScanNode extends SourceNode implements IOutputPlanNode {
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return ImmutableList.of(columnHeader);
+    return ImmutableList.of(outputColumnHeader);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ImmutableList.of(columnHeader.getColumnName());
+    return ImmutableList.of(outputColumnHeader.getColumnName());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return ImmutableList.of(columnHeader.getColumnType());
+    return ImmutableList.of(outputColumnHeader.getColumnType());
   }
 
   public Set<String> getAllSensors() {

@@ -97,8 +97,13 @@ public class SchemaEngine {
       }
 
       for (File schemaRegionDir : schemaRegionDirs) {
-        SchemaRegionId schemaRegionId =
-            new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
+        SchemaRegionId schemaRegionId;
+        try {
+          schemaRegionId = new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
+        } catch (NumberFormatException e) {
+          // the dir/file is not schemaRegionDir, ignore this.
+          continue;
+        }
         createSchemaRegion(storageGroup, schemaRegionId);
         schemaRegionIdList.add(schemaRegionId);
       }
