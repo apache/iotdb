@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -875,11 +876,8 @@ public class IoTDBConfig {
   /** Thread keep alive time in ms of data block manager. */
   private int dataBlockManagerKeepAliveTimeInMs = 1000;
 
-  /**
-   * Cache size of dataNodeSchemaCache in {@link
-   * org.apache.iotdb.db.metadata.cache.DataNodeSchemaEntryCache}.
-   */
-  private int dataNodeSchemaEntryCacheSize = 10000;
+  /** Cache size of dataNodeSchemaCache in {@link DataNodeSchemaCache}. */
+  private int dataNodeSchemaCacheSize = 10000;
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -2783,11 +2781,11 @@ public class IoTDBConfig {
     this.mppMode = mppMode;
   }
 
-  public int getDataNodeSchemaEntryCacheSize() {
-    return dataNodeSchemaEntryCacheSize;
+  public int getDataNodeSchemaCacheSize() {
+    return dataNodeSchemaCacheSize;
   }
 
-  public void setDataNodeSchemaEntryCacheSize(int dataNodeSchemaEntryCacheSize) {
-    this.dataNodeSchemaEntryCacheSize = dataNodeSchemaEntryCacheSize;
+  public void setDataNodeSchemaCacheSize(int dataNodeSchemaCacheSize) {
+    this.dataNodeSchemaCacheSize = dataNodeSchemaCacheSize;
   }
 }

@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -99,6 +100,15 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
     // todo implement auto create schema
     return fetchSchema(new PathPatternTree(devicePath, measurements));
+  }
+
+  @Override
+  public SchemaTree fetchSchemaWithAutoCreate(
+      PartialPath devicePath,
+      List<String> measurements,
+      List<IMeasurementSchema> measurementSchemas,
+      boolean aligned) {
+    return null;
   }
 
   @Override

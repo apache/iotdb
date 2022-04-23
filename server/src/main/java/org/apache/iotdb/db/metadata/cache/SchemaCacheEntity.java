@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-public class SchemaEntry {
+public class SchemaCacheEntity {
   private final String schemaEntryId;
 
   private TSDataType tsDataType;
@@ -38,11 +38,11 @@ public class SchemaEntry {
   private boolean isAligned;
 
   @TestOnly
-  public SchemaEntry() {
+  public SchemaCacheEntity() {
     this.schemaEntryId = "1";
   }
 
-  public SchemaEntry(
+  public SchemaCacheEntity(
       String schemaEntryId,
       TSDataType tsDataType,
       TSEncoding tsEncoding,

@@ -128,6 +128,12 @@ public class AlignedPath extends PartialPath {
     schemaList = new ArrayList<>();
   }
 
+  public AlignedPath(PartialPath vectorPath) {
+    super(vectorPath.getNodes());
+    measurementList = new ArrayList<>();
+    schemaList = new ArrayList<>();
+  }
+
   public PartialPath getDevicePath() {
     return new PartialPath(Arrays.copyOf(nodes, nodes.length));
   }
@@ -146,12 +152,20 @@ public class AlignedPath extends PartialPath {
     return measurementList;
   }
 
+  public int getMeasurementListSize() {
+    return measurementList.size();
+  }
+
   public String getMeasurement(int index) {
     return measurementList.get(index);
   }
 
   public PartialPath getPathWithMeasurement(int index) {
     return new PartialPath(nodes).concatNode(measurementList.get(index));
+  }
+
+  public MeasurementPath getMeasurementPath(int index) {
+    return new MeasurementPath(getPathWithMeasurement(index), schemaList.get(index));
   }
 
   public void setMeasurementList(List<String> measurementList) {
