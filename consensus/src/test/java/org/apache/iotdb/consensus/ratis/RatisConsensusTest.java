@@ -268,7 +268,6 @@ public class RatisConsensusTest {
       for (int i = 0; i < 3; i++) {
         if (servers.get(i).isLeader(gid)) {
           leader = servers.get(i);
-          System.out.println("FUCK LEADER " + i);
         }
       }
     }
