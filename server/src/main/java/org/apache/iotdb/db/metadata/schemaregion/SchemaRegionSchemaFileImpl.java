@@ -742,7 +742,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    *
    * @param path path
    */
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
+  private IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws IOException, MetadataException {
     IMNode node;
     try {
@@ -756,7 +756,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       }
     } catch (Exception e) {
       if (e.getCause() instanceof MetadataException) {
-        if (!autoCreateSchema) {
+        if (!config.isAutoCreateSchemaEnabled()) {
           throw new PathNotExistException(path.getFullPath());
         }
       } else {
@@ -769,11 +769,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
     }
     return node;
-  }
-
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path)
-      throws MetadataException, IOException {
-    return getDeviceNodeWithAutoCreate(path, config.isAutoCreateSchemaEnabled());
   }
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
@@ -1441,6 +1436,9 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     // get logical device node, may be in template. will be multiple if overlap is allowed.
     if (!isDeviceInTemplate) {
       deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
+      if (!deviceMNode.getCacheEntry().isPinned()) {
+        throw new RuntimeException("The device must pinned");
+      }
     }
     try {
       // check insert non-aligned InsertPlan for aligned timeseries

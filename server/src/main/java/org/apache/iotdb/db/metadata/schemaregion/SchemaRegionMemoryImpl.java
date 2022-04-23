@@ -718,14 +718,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    *
    * @param path path
    */
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
+  private IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws IOException, MetadataException {
     IMNode node;
     try {
       return mNodeCache.get(path);
     } catch (Exception e) {
       if (e.getCause() instanceof MetadataException) {
-        if (!autoCreateSchema) {
+        if (!config.isAutoCreateSchemaEnabled()) {
           throw new PathNotExistException(path.getFullPath());
         }
       } else {
@@ -740,13 +740,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return node;
   }
 
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path)
-      throws MetadataException, IOException {
-    return getDeviceNodeWithAutoCreate(path, config.isAutoCreateSchemaEnabled());
-  }
-
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    IMNode node = mtree.getDeviceNodeWithAutoCreating(plan.getPath());
+    mtree.getDeviceNodeWithAutoCreating(plan.getPath());
     if (!isRecovering) {
       try {
         logWriter.autoCreateDeviceMNode(plan);

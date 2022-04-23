@@ -1296,12 +1296,12 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     IMNode cur = storageGroupMNode;
     IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
-    int index;
+    int index = levelOfSG + 1;
     boolean attemptToUseTemplate = false;
 
     try {
       // If there are nodes of target path on MTree, use it as possible.
-      for (index = levelOfSG + 1; index < nodes.length; index++) {
+      for (; index < nodes.length; index++) {
         upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
         child = store.getChild(cur, nodes[index]);
         if (child == null) {
@@ -1318,7 +1318,9 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
         }
       }
     } finally {
-      unPinPath(cur);
+      if (index > levelOfSG + 1) {
+        unPinPath(cur);
+      }
     }
 
     if (!attemptToUseTemplate) {
