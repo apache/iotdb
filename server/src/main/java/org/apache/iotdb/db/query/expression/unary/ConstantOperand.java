@@ -50,9 +50,14 @@ public class ConstantOperand extends Expression {
   private final String valueString;
   private final TSDataType dataType;
 
-  public ConstantOperand(TSDataType dataType, String str) {
+  public ConstantOperand(TSDataType dataType, String valueString) {
     this.dataType = Validate.notNull(dataType);
-    this.valueString = Validate.notNull(str);
+    this.valueString = Validate.notNull(valueString);
+  }
+
+  public ConstantOperand(ByteBuffer byteBuffer) {
+    dataType = TSDataType.deserializeFrom(byteBuffer);
+    valueString = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   public TSDataType getDataType() {
@@ -140,20 +145,14 @@ public class ConstantOperand extends Expression {
     return valueString;
   }
 
-  public static ConstantOperand deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    String valueStr = ReadWriteIOUtils.readString(buffer);
-    TSDataType tsDataType = TSDataType.deserializeFrom(buffer);
-    ConstantOperand constantOperand = new ConstantOperand(tsDataType, valueStr);
-    constantOperand.isConstantOperandCache = isConstantOperandCache;
-    return constantOperand;
+  @Override
+  protected short getExpressionType() {
+    return ExpressionType.CONSTANT.getExpressionType();
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Constant.serialize(byteBuffer);
-    super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(valueString, byteBuffer);
     dataType.serializeTo(byteBuffer);
+    ReadWriteIOUtils.write(valueString, byteBuffer);
   }
 }

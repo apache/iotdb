@@ -26,7 +26,25 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.query.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.query.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.query.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.query.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
+import org.apache.iotdb.db.query.expression.unary.RegularExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -197,7 +215,60 @@ public abstract class Expression {
     }
   }
 
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(isConstantOperandCache, byteBuffer);
+  protected abstract short getExpressionType();
+
+  public static void serialize(Expression expression, ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(expression.getExpressionType(), byteBuffer);
+    expression.serialize(byteBuffer);
+  }
+
+  public abstract void serialize(ByteBuffer byteBuffer);
+
+  public static Expression deserialize(ByteBuffer byteBuffer) {
+    short type = ReadWriteIOUtils.readShort(byteBuffer);
+    switch (type) {
+      case 0:
+        return new AdditionExpression(byteBuffer);
+      case 1:
+        return new DivisionExpression(byteBuffer);
+      case 2:
+        return new EqualToExpression(byteBuffer);
+      case 3:
+        return new GreaterEqualExpression(byteBuffer);
+      case 4:
+        return new GreaterThanExpression(byteBuffer);
+      case 5:
+        return new LessEqualExpression(byteBuffer);
+      case 6:
+        return new LessThanExpression(byteBuffer);
+      case 7:
+        return new LogicAndExpression(byteBuffer);
+      case 8:
+        return new LogicOrExpression(byteBuffer);
+      case 9:
+        return new ModuloExpression(byteBuffer);
+      case 10:
+        return new MultiplicationExpression(byteBuffer);
+      case 11:
+        return new NonEqualExpression(byteBuffer);
+      case 12:
+        return new SubtractionExpression(byteBuffer);
+      case 13:
+        return new FunctionExpression(byteBuffer);
+      case 14:
+        return new LogicNotExpression(byteBuffer);
+      case 15:
+        return new NegationExpression(byteBuffer);
+      case 16:
+        return new TimeSeriesOperand(byteBuffer);
+      case 17:
+        return new ConstantOperand(byteBuffer);
+      case 18:
+        throw new IllegalArgumentException("Invalid expression type: " + type);
+      case 19:
+        return new RegularExpression(byteBuffer);
+      default:
+        throw new IllegalArgumentException("Invalid expression type: " + type);
+    }
   }
 }

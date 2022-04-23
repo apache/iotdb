@@ -27,12 +27,16 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -60,6 +64,12 @@ public class RegularExpression extends Expression {
     this.expression = expression;
     this.patternString = patternString;
     this.pattern = pattern;
+  }
+
+  public RegularExpression(ByteBuffer byteBuffer) {
+    expression = Expression.deserialize(byteBuffer);
+    patternString = ReadWriteIOUtils.readString(byteBuffer);
+    pattern = Pattern.compile(Validate.notNull(patternString));
   }
 
   @Override
@@ -158,6 +168,17 @@ public class RegularExpression extends Expression {
   }
 
   @Override
+  protected short getExpressionType() {
+    return ExpressionType.REGULAR.getExpressionType();
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    Expression.serialize(expression, byteBuffer);
+    ReadWriteIOUtils.write(patternString, byteBuffer);
+  }
+
+  @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return !isUserDefinedAggregationFunctionExpression();
   }
@@ -166,16 +187,5 @@ public class RegularExpression extends Expression {
   public boolean isUserDefinedAggregationFunctionExpression() {
     return expression.isUserDefinedAggregationFunctionExpression()
         || expression.isBuiltInAggregationFunctionExpression();
-  }
-
-  public static RegularExpression deserialize(ByteBuffer buffer) {
-    // TODO
-    throw new RuntimeException();
-  }
-
-  @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    // TODO
-    throw new RuntimeException();
   }
 }

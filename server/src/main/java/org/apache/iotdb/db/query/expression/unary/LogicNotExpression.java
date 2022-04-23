@@ -38,7 +38,6 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReference
 import org.apache.iotdb.db.query.udf.core.transformer.LogicNotTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -50,10 +49,15 @@ import java.util.Map;
 import java.util.Set;
 
 public class LogicNotExpression extends Expression {
-  protected Expression expression;
+
+  private final Expression expression;
 
   public LogicNotExpression(Expression expression) {
     this.expression = expression;
+  }
+
+  public LogicNotExpression(ByteBuffer byteBuffer) {
+    expression = Expression.deserialize(byteBuffer);
   }
 
   public Expression getExpression() {
@@ -197,18 +201,13 @@ public class LogicNotExpression extends Expression {
     }
   }
 
-  public static LogicNotExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    Expression expression = ExpressionType.deserialize(buffer);
-    LogicNotExpression logicNotExpression = new LogicNotExpression(expression);
-    logicNotExpression.isConstantOperandCache = isConstantOperandCache;
-    return logicNotExpression;
+  @Override
+  protected short getExpressionType() {
+    return ExpressionType.LOGIC_NOT.getExpressionType();
   }
 
   @Override
   public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Logic_Not.serialize(byteBuffer);
-    super.serialize(byteBuffer);
-    expression.serialize(byteBuffer);
+    Expression.serialize(expression, byteBuffer);
   }
 }
