@@ -68,9 +68,23 @@ public class AsyncConfigNodeIServiceClient extends ConfigIService.AsyncClient {
     }
   }
 
+  /**
+   * This method will be automatically called by the thrift selector thread, and we'll just simulate
+   * the behavior in our test
+   */
   @Override
   public void onComplete() {
     super.onComplete();
+    returnSelf();
+  }
+
+  /**
+   * This method will be automatically called by the thrift selector thread, and we'll just simulate
+   * the behavior in our test
+   */
+  @Override
+  public void onError(Exception e) {
+    super.onError(e);
     returnSelf();
   }
 

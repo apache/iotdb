@@ -36,8 +36,14 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 
-public class ClientManagerTest extends BaseClientTest {
+public class ClientManagerTest {
+
+  private final TEndPoint endPoint = new TEndPoint("localhost", 9003);
+
+  private ServerSocket metaServer;
+  private Thread metaServerListeningThread;
 
   @Before
   public void setUp() throws IOException {
@@ -50,7 +56,7 @@ public class ClientManagerTest extends BaseClientTest {
   }
 
   @Test
-  public void normalClientManagersTest() throws Exception {
+  public void normalSyncClientManagersTest() throws Exception {
     // init syncClientManager
     ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
         new ClientManager<>(new TestSyncDataNodeInternalServiceClientPoolFactory());
@@ -89,7 +95,10 @@ public class ClientManagerTest extends BaseClientTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
     Assert.assertFalse(syncClient1.getInputProtocol().getTransport().isOpen());
     Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
+  }
 
+  @Test
+  public void normalAsyncClientManagersTest() throws Exception {
     // init asyncClientManager
     ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
         new ClientManager<>(new TestAsyncDataNodeInternalServiceClientPoolFactory());
@@ -97,7 +106,7 @@ public class ClientManagerTest extends BaseClientTest {
     // get one async client
     AsyncDataNodeInternalServiceClient asyncClient1 = asyncClusterManager.borrowClient(endPoint);
     Assert.assertNotNull(asyncClient1);
-    Assert.assertEquals(asyncClient1.getEndpoint(), endPoint);
+    Assert.assertEquals(asyncClient1.getTEndpoint(), endPoint);
     Assert.assertEquals(asyncClient1.getClientManager(), asyncClusterManager);
     Assert.assertTrue(asyncClient1.isReady());
     Assert.assertEquals(1, asyncClusterManager.getPool().getNumActive(endPoint));
@@ -106,7 +115,7 @@ public class ClientManagerTest extends BaseClientTest {
     // get another async client
     AsyncDataNodeInternalServiceClient asyncClient2 = asyncClusterManager.borrowClient(endPoint);
     Assert.assertNotNull(asyncClient2);
-    Assert.assertEquals(asyncClient2.getEndpoint(), endPoint);
+    Assert.assertEquals(asyncClient2.getTEndpoint(), endPoint);
     Assert.assertEquals(asyncClient2.getClientManager(), asyncClusterManager);
     Assert.assertTrue(asyncClient2.isReady());
     Assert.assertEquals(2, asyncClusterManager.getPool().getNumActive(endPoint));
@@ -280,7 +289,7 @@ public class ClientManagerTest extends BaseClientTest {
     long start = System.currentTimeMillis();
     SyncDataNodeInternalServiceClient syncClient2 = syncClusterManager.borrowClient(endPoint);
     long end = System.currentTimeMillis();
-    Assert.assertTrue(end - start > waitClientTimeoutMS);
+    Assert.assertTrue(end - start >= waitClientTimeoutMS);
     Assert.assertNull(syncClient2);
 
     // return one sync client
@@ -293,6 +302,114 @@ public class ClientManagerTest extends BaseClientTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
     Assert.assertFalse(syncClient1.getInputProtocol().getTransport().isOpen());
+  }
+
+  @Test
+  public void InvalidSyncClientReturnClientManagersTest() throws Exception {
+    // init syncClientManager
+    ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncClusterManager =
+        new ClientManager<>(new TestSyncDataNodeInternalServiceClientPoolFactory());
+
+    // get one sync client
+    SyncDataNodeInternalServiceClient syncClient1 = syncClusterManager.borrowClient(endPoint);
+    Assert.assertNotNull(syncClient1);
+    Assert.assertEquals(syncClient1.getTEndpoint(), endPoint);
+    Assert.assertEquals(syncClient1.getClientManager(), syncClusterManager);
+    Assert.assertTrue(syncClient1.getInputProtocol().getTransport().isOpen());
+    Assert.assertEquals(1, syncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
+
+    // get another sync client
+    SyncDataNodeInternalServiceClient syncClient2 = syncClusterManager.borrowClient(endPoint);
+    Assert.assertNotNull(syncClient2);
+    Assert.assertEquals(syncClient2.getTEndpoint(), endPoint);
+    Assert.assertEquals(syncClient2.getClientManager(), syncClusterManager);
+    Assert.assertTrue(syncClient2.getInputProtocol().getTransport().isOpen());
+    Assert.assertEquals(2, syncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
+
+    // return one sync client
+    syncClient1.returnSelf();
+    Assert.assertEquals(1, syncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
+
+    // invalid another sync client and return
+    syncClient2.getInputProtocol().getTransport().close();
+    syncClient2.returnSelf();
+    Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
+
+    // close syncClientManager, syncClientManager should destroy all client
+    syncClusterManager.close();
+    Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
+    Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
+  }
+
+  @Test
+  public void InvalidAsyncClientReturnClientManagersTest() throws Exception {
+    // init asyncClientManager
+    ClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> asyncClusterManager =
+        new ClientManager<>(new TestAsyncDataNodeInternalServiceClientPoolFactory());
+
+    // get one async client
+    AsyncDataNodeInternalServiceClient asyncClient1 = asyncClusterManager.borrowClient(endPoint);
+    Assert.assertNotNull(asyncClient1);
+    Assert.assertEquals(asyncClient1.getTEndpoint(), endPoint);
+    Assert.assertEquals(asyncClient1.getClientManager(), asyncClusterManager);
+    Assert.assertTrue(asyncClient1.isReady());
+    Assert.assertEquals(1, asyncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
+
+    // get another async client
+    AsyncDataNodeInternalServiceClient asyncClient2 = asyncClusterManager.borrowClient(endPoint);
+    Assert.assertNotNull(asyncClient2);
+    Assert.assertEquals(asyncClient2.getTEndpoint(), endPoint);
+    Assert.assertEquals(asyncClient2.getClientManager(), asyncClusterManager);
+    Assert.assertTrue(asyncClient2.isReady());
+    Assert.assertEquals(2, asyncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
+
+    // return one async client
+    asyncClient1.onComplete();
+    Assert.assertEquals(1, asyncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(1, asyncClusterManager.getPool().getNumIdle(endPoint));
+
+    // invalid another async client and return
+    asyncClient2.onError(new Exception("socket time out"));
+    Assert.assertEquals(0, asyncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(1, asyncClusterManager.getPool().getNumIdle(endPoint));
+
+    // close asyncClientManager, asyncClientManager should destroy all client
+    asyncClusterManager.close();
+    Assert.assertEquals(0, asyncClusterManager.getPool().getNumActive(endPoint));
+    Assert.assertEquals(0, asyncClusterManager.getPool().getNumIdle(endPoint));
+  }
+
+  public void startServer() throws IOException {
+    metaServer = new ServerSocket(9003);
+    metaServerListeningThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  metaServer.accept();
+                } catch (IOException e) {
+                  return;
+                }
+              }
+            });
+    metaServerListeningThread.start();
+  }
+
+  public void stopServer() throws InterruptedException, IOException {
+    if (metaServer != null) {
+      metaServer.close();
+    }
+    if (metaServerListeningThread != null) {
+      metaServerListeningThread.interrupt();
+      metaServerListeningThread.join();
+    }
   }
 
   public static class TestSyncDataNodeInternalServiceClientPoolFactory
