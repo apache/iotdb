@@ -433,7 +433,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
     /** invalid schemaPartitionCache by device */
     public void invalidSchemaPartitionCache(String device) {
-      // TODO this method should be called in two situation: 1. redirect status 2. config node trigger
+      // TODO should be called in two situation: 1. redirect status 2. config node trigger
       schemaPartitionCache.invalidate(device);
     }
 
@@ -442,7 +442,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         String storageGroup,
         TSeriesPartitionSlot seriesPartitionSlot,
         TTimePartitionSlot timePartitionSlot) {
-      // TODO this method should be called in two situation: 1. redirect status 2. config node trigger
+      // TODO should be called in two situation: 1. redirect status 2. config node trigger
       DataPartitionCacheKey dataPartitionCacheKey =
           new DataPartitionCacheKey(storageGroup, seriesPartitionSlot, timePartitionSlot);
       dataPartitionCache.invalidate(dataPartitionCacheKey);
