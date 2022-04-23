@@ -127,7 +127,7 @@ triggerAttributeClause
     ;
 
 triggerAttribute
-    : key=STRING_LITERAL operator_eq value=STRING_LITERAL
+    : key=attributeKey operator_eq value=attributeValue
     ;
 
 // Create Continuous Query
@@ -154,16 +154,16 @@ alterTimeseries
     ;
 
 alterClause
-    : RENAME beforeName=identifier TO currentName=identifier
-    | SET propertyClause (COMMA propertyClause)*
-    | DROP identifier (COMMA identifier)*
-    | ADD TAGS propertyClause (COMMA propertyClause)*
-    | ADD ATTRIBUTES propertyClause (COMMA propertyClause)*
+    : RENAME beforeName=STRING_LITERAL TO currentName=STRING_LITERAL
+    | SET attributePair (COMMA attributePair)*
+    | DROP STRING_LITERAL (COMMA STRING_LITERAL)*
+    | ADD TAGS attributePair (COMMA attributePair)*
+    | ADD ATTRIBUTES attributePair (COMMA attributePair)*
     | UPSERT aliasClause? tagClause? attributeClause?
     ;
 
 aliasClause
-    : ALIAS operator_eq identifier
+    : ALIAS operator_eq STRING_LITERAL
     ;
 
 // Delete Storage Group
@@ -247,7 +247,7 @@ showTimeseries
     ;
 
 showWhereClause
-    : WHERE (propertyClause | containsExpression)
+    : WHERE (attributePair | containsExpression)
     ;
 
 // Show Child Paths
@@ -467,12 +467,12 @@ whereClause
 
 // Create User
 createUser
-    : CREATE USER userName=ID password=STRING_LITERAL
+    : CREATE USER userName=identifier password=STRING_LITERAL
     ;
 
 // Create Role
 createRole
-    : CREATE ROLE roleName=ID
+    : CREATE ROLE roleName=identifier
     ;
 
 // Alter Password
@@ -482,42 +482,42 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=ID PRIVILEGES privileges ON prefixPath
+    : GRANT USER userName=identifier PRIVILEGES privileges ON prefixPath
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=ID PRIVILEGES privileges ON prefixPath
+    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
     ;
 
 // Grant User Role
 grantRoleToUser
-    : GRANT roleName=ID TO userName=ID
+    : GRANT roleName=identifier TO userName=identifier
     ;
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=ID PRIVILEGES privileges ON prefixPath
+    : REVOKE USER userName=identifier PRIVILEGES privileges ON prefixPath
     ;
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=ID PRIVILEGES privileges ON prefixPath
+    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
     ;
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE roleName=ID FROM userName=ID
+    : REVOKE roleName=identifier FROM userName=identifier
     ;
 
 // Drop User
 dropUser
-    : DROP USER userName=ID
+    : DROP USER userName=identifier
     ;
 
 // Drop Role
 dropRole
-    : DROP ROLE roleName=ID
+    : DROP ROLE roleName=identifier
     ;
 
 // List Users
@@ -537,7 +537,7 @@ listPrivilegesUser
 
 // List Privileges of Roles On Specific Path
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=ID ON prefixPath
+    : LIST PRIVILEGES ROLE roleName=identifier ON prefixPath
     ;
 
 // List Privileges of Users
@@ -547,7 +547,7 @@ listUserPrivileges
 
 // List Privileges of Roles
 listRolePrivileges
-    : LIST ROLE PRIVILEGES roleName=ID
+    : LIST ROLE PRIVILEGES roleName=identifier
     ;
 
 // List Roles of Users
@@ -557,7 +557,7 @@ listAllRoleOfUser
 
 // List Users of Role
 listAllUserOfRole
-    : LIST ALL USER OF ROLE roleName=ID
+    : LIST ALL USER OF ROLE roleName=identifier
     ;
 
 privileges
@@ -571,7 +571,7 @@ privilegeValue
 
 usernameWithRoot
     : ROOT
-    | ID
+    | identifier
     ;
 
 
@@ -687,7 +687,7 @@ unloadFile
 
 // pipesink statement
 createPipeSink
-    : CREATE PIPESINK pipeSinkName=ID AS pipeSinkType=ID (LR_BRACKET syncAttributeClauses RR_BRACKET)?
+    : CREATE PIPESINK pipeSinkName=identifier AS pipeSinkType=identifier (LR_BRACKET syncAttributeClauses RR_BRACKET)?
     ;
 
 showPipeSinkType
@@ -695,37 +695,37 @@ showPipeSinkType
     ;
 
 showPipeSink
-    : SHOW ((PIPESINK (pipeSinkName=ID)?) | PIPESINKS)
+    : SHOW ((PIPESINK (pipeSinkName=identifier)?) | PIPESINKS)
     ;
 
 dropPipeSink
-    : DROP PIPESINK pipeSinkName=ID
+    : DROP PIPESINK pipeSinkName=identifier
     ;
 
 // pipe statement
 createPipe
-    : CREATE PIPE pipeName=ID TO pipeSinkName=ID (FROM LR_BRACKET selectStatement RR_BRACKET)? (WITH syncAttributeClauses)?
+    : CREATE PIPE pipeName=identifier TO pipeSinkName=identifier (FROM LR_BRACKET selectStatement RR_BRACKET)? (WITH syncAttributeClauses)?
     ;
 
 showPipe
-    : SHOW ((PIPE (pipeName=ID)?) | PIPES)
+    : SHOW ((PIPE (pipeName=identifier)?) | PIPES)
     ;
 
 stopPipe
-    : STOP PIPE pipeName=ID
+    : STOP PIPE pipeName=identifier
     ;
 
 startPipe
-    : START PIPE pipeName=ID
+    : START PIPE pipeName=identifier
     ;
 
 dropPipe
-    : DROP PIPE pipeName=ID
+    : DROP PIPE pipeName=identifier
     ;
 
 // attribute clauses
 syncAttributeClauses
-    : propertyClause (COMMA propertyClause)*
+    : attributePair (COMMA attributePair)*
     ;
 
 // sync receiver
@@ -762,27 +762,11 @@ suffixPath
 nodeName
     : wildcard
     | wildcard? ID wildcard?
-    | wildcard? INTEGER_LITERAL wildcard?
-    | QUTOED_ID_IN_NODE_NAME
-    | STRING_LITERAL
+    | QUOTED_ID
     ;
 
 nodeNameWithoutWildcard
-    : ID
-    | INTEGER_LITERAL
-    | QUTOED_ID_IN_NODE_NAME
-    | STRING_LITERAL
-    ;
-
-suffixPathCanInExpr
-    : nodeNameCanInExpr (DOT nodeNameCanInExpr)*
-    ;
-
-nodeNameCanInExpr
-    : wildcard
-    | wildcard? ID wildcard?
-    | QUTOED_ID
-    | QUTOED_ID_IN_NODE_NAME
+    : identifier
     ;
 
 wildcard
@@ -795,9 +779,7 @@ wildcard
 
 identifier
     : ID
-    | QUTOED_ID
-    | QUTOED_ID_IN_NODE_NAME
-    | INTEGER_LITERAL
+    | QUOTED_ID
     ;
 
 
@@ -847,7 +829,7 @@ expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
     | leftExpression=expression (OPERATOR_AND | OPERATOR_OR) rightExpression=expression
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-    | suffixPathCanInExpr
+    | suffixPath
     | constant
     ;
 
@@ -857,11 +839,11 @@ functionName
     ;
 
 functionAttribute
-    : COMMA functionAttributeKey=STRING_LITERAL OPERATOR_SEQ functionAttributeValue=STRING_LITERAL
+    : COMMA functionAttributeKey=attributeKey OPERATOR_SEQ functionAttributeValue=attributeValue
     ;
 
 containsExpression
-    : name=identifier OPERATOR_CONTAINS value=propertyValue
+    : name=attributeKey OPERATOR_CONTAINS value=attributeValue
     ;
 
 orExpression
@@ -920,7 +902,7 @@ topClause
     ;
 
 resultColumn
-    : expression (AS identifier)?
+    : expression (AS (identifier | STRING_LITERAL))?
     ;
 
 
@@ -937,38 +919,44 @@ attributeClauses
     : alias? WITH DATATYPE operator_eq dataType=DATATYPE_VALUE
     (COMMA ENCODING operator_eq encoding=ENCODING_VALUE)?
     (COMMA (COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
-    (COMMA propertyClause)*
+    (COMMA attributePair)*
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
     | alias? WITH? (DATATYPE operator_eq)? dataType=DATATYPE_VALUE
     (ENCODING operator_eq encoding=ENCODING_VALUE)?
     ((COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
-    propertyClause*
+    attributePair*
     tagClause?
     attributeClause?
     ;
 
 alias
-    : LR_BRACKET nodeNameCanInExpr RR_BRACKET
+    : LR_BRACKET nodeName RR_BRACKET
     ;
 
 tagClause
-    : TAGS LR_BRACKET propertyClause (COMMA propertyClause)* RR_BRACKET
-    ;
-
-propertyClause
-    : name=identifier (OPERATOR_SEQ | OPERATOR_DEQ) value=propertyValue
-    ;
-
-propertyValue
-    : identifier
-    | constant
+    : TAGS LR_BRACKET attributePair (COMMA attributePair)* RR_BRACKET
     ;
 
 attributeClause
-    : ATTRIBUTES LR_BRACKET propertyClause (COMMA propertyClause)* RR_BRACKET
+    : ATTRIBUTES LR_BRACKET attributePair (COMMA attributePair)* RR_BRACKET
     ;
+
+attributePair
+    : key=attributeKey (OPERATOR_SEQ | OPERATOR_DEQ) value=attributeValue
+    ;
+
+// attribute is treated as string in html
+attributeKey
+    : STRING_LITERAL
+    ;
+
+attributeValue
+    : STRING_LITERAL
+    ;
+
+
 
 // Limit & Offset Clause
 
