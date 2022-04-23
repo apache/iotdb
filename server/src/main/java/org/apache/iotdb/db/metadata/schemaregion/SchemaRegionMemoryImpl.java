@@ -1134,8 +1134,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
-    return measurementMNode;
+    return mtree.getMeasurementMNode(fullPath);
   }
 
   /**

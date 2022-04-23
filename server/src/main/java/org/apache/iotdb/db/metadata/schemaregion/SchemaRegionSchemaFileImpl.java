@@ -1433,41 +1433,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
-    IMNode deviceMNode = null;
+    IMNode deviceMNode;
 
     // 1. get device node, set using template if accessed.
-    boolean mountedNodeFound = false;
-    boolean isDeviceInTemplate = false;
-    // check every measurement path
-    for (String measurementId : measurementList) {
-      PartialPath fullPath = devicePath.concatNode(measurementId);
-      int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
-      if ((index != fullPath.getNodeLength() - 1) && !mountedNodeFound) {
-        // this measurement is in template, need to assure mounted node exists and set using
-        // template.
-        // Without allowing overlap of template and MTree, this block run only once
-        String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
-        IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
-        try {
-          if (!mountedNode.isUseTemplate()) {
-            mountedNode = setUsingSchemaTemplate(mountedNode);
-          }
-          mountedNodeFound = true;
-          if (index < devicePath.getNodeLength() - 1) {
-            deviceMNode =
-                mountedNode
-                    .getUpperTemplate()
-                    .getPathNodeInTemplate(
-                        new PartialPath(
-                            Arrays.copyOfRange(
-                                devicePath.getNodes(), index + 1, devicePath.getNodeLength())));
-            isDeviceInTemplate = true;
-          }
-        } finally {
-          mtree.unPinMNode(mountedNode);
-        }
-      }
-    }
+    deviceMNode = getDeviceInTemplateIfUsingTemplate(devicePath, measurementList);
+    boolean isDeviceInTemplate = deviceMNode != null;
     // get logical device node, may be in template. will be multiple if overlap is allowed.
     if (!isDeviceInTemplate) {
       deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
@@ -1546,6 +1516,43 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       if (!isDeviceInTemplate) {
         mtree.unPinMNode(deviceMNode);
       }
+    }
+
+    return deviceMNode;
+  }
+
+  private IMNode getDeviceInTemplateIfUsingTemplate(
+      PartialPath devicePath, String[] measurementList) throws MetadataException, IOException {
+    // 1. get device node, set using template if accessed.
+    IMNode deviceMNode = null;
+
+    // check every measurement path
+    int index = mtree.getMountedNodeIndexOnMeasurementPath(devicePath, measurementList);
+    if (index == devicePath.getNodeLength()) {
+      return null;
+    }
+
+    // this measurement is in template, need to assure mounted node exists and set using
+    // template.
+    // Without allowing overlap of template and MTree, this block run only once
+    String[] mountedPathNodes = Arrays.copyOfRange(devicePath.getNodes(), 0, index + 1);
+    IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+    try {
+      if (!mountedNode.isUseTemplate()) {
+        mountedNode = setUsingSchemaTemplate(mountedNode);
+      }
+    } finally {
+      mtree.unPinMNode(mountedNode);
+    }
+
+    if (index < devicePath.getNodeLength() - 1) {
+      deviceMNode =
+          mountedNode
+              .getUpperTemplate()
+              .getPathNodeInTemplate(
+                  new PartialPath(
+                      Arrays.copyOfRange(
+                          devicePath.getNodes(), index + 1, devicePath.getNodeLength())));
     }
 
     return deviceMNode;
