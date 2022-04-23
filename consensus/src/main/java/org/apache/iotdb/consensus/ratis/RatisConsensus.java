@@ -375,6 +375,10 @@ class RatisConsensus implements IConsensus {
     RaftGroupId raftGroupId = Utils.toRatisGroupId(groupId);
     RaftGroup raftGroup = getGroupInfo(raftGroupId);
 
+    if (raftGroup == null) {
+      return failed(new ConsensusGroupNotExistException(groupId));
+    }
+
     RaftPeer newRaftLeader = Utils.toRaftPeer(newLeader, LEADER_PRIORITY);
 
     ArrayList<RaftPeer> newConfiguration = new ArrayList<>();
