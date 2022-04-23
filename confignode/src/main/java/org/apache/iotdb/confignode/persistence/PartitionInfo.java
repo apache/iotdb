@@ -283,16 +283,16 @@ public class PartitionInfo {
     }
   }
 
-  private static class PartitionInfoPersistenceHolder {
+  private static class PartitionInfoHolder {
 
     private static final PartitionInfo INSTANCE = new PartitionInfo();
 
-    private PartitionInfoPersistenceHolder() {
+    private PartitionInfoHolder() {
       // empty constructor
     }
   }
 
   public static PartitionInfo getInstance() {
-    return PartitionInfo.PartitionInfoPersistenceHolder.INSTANCE;
+    return PartitionInfoHolder.INSTANCE;
   }
 }

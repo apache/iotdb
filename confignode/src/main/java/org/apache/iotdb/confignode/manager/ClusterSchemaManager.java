@@ -115,7 +115,7 @@ public class ClusterSchemaManager {
 
   /** TODO: Allocate by LoadManager */
   private void allocateRegions(
-      TConsensusGroupType type, CreateRegionsReq createPlan, SetStorageGroupReq setPlan) {
+      TConsensusGroupType type, CreateRegionsReq createRegionsReq, SetStorageGroupReq setSGReq) {
 
     // TODO: Use CopySet algorithm to optimize region allocation policy
 
@@ -136,14 +136,14 @@ public class ClusterSchemaManager {
           new TConsensusGroupId(type, partitionInfo.generateNextRegionGroupId());
       regionReplicaSet.setRegionId(consensusGroupId);
       regionReplicaSet.setDataNodeLocations(onlineDataNodes.subList(0, replicaCount));
-      createPlan.addRegion(regionReplicaSet);
+      createRegionsReq.addRegion(regionReplicaSet);
 
       switch (type) {
         case SchemaRegion:
-          setPlan.getSchema().addToSchemaRegionGroupIds(consensusGroupId);
+          setSGReq.getSchema().addToSchemaRegionGroupIds(consensusGroupId);
           break;
         case DataRegion:
-          setPlan.getSchema().addToDataRegionGroupIds(consensusGroupId);
+          setSGReq.getSchema().addToDataRegionGroupIds(consensusGroupId);
       }
     }
   }

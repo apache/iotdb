@@ -90,7 +90,7 @@ public interface Manager {
   /**
    * Set StorageGroup
    *
-   * @param configRequest SetStorageGroupPlan
+   * @param configRequest SetStorageGroupReq
    * @return status
    */
   TSStatus setStorageGroup(ConfigRequest configRequest);
