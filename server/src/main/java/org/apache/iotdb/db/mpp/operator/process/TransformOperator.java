@@ -48,25 +48,26 @@ import java.util.List;
 
 public class TransformOperator implements ProcessOperator {
 
-  private static final int FETCH_SIZE = 10000;
+  protected static final int FETCH_SIZE = 10000;
 
-  private final float udfReaderMemoryBudgetInMB =
+  protected final float udfReaderMemoryBudgetInMB =
       IoTDBDescriptor.getInstance().getConfig().getUdfReaderMemoryBudgetInMB();
-  private final float udfTransformerMemoryBudgetInMB =
+  protected final float udfTransformerMemoryBudgetInMB =
       IoTDBDescriptor.getInstance().getConfig().getUdfTransformerMemoryBudgetInMB();
-  private final float udfCollectorMemoryBudgetInMB =
+  protected final float udfCollectorMemoryBudgetInMB =
       IoTDBDescriptor.getInstance().getConfig().getUdfCollectorMemoryBudgetInMB();
 
-  private final OperatorContext operatorContext;
-  private final Operator inputOperator;
-  private final List<TSDataType> inputDataTypes;
-  private final Expression[] outputExpressions;
-  private final UDTFContext udtfContext;
-  private final boolean keepNull;
+  protected final OperatorContext operatorContext;
+  protected final Operator inputOperator;
+  protected final List<TSDataType> inputDataTypes;
+  protected final Expression[] outputExpressions;
+  protected final UDTFContext udtfContext;
+  protected final boolean keepNull;
 
-  private IUDFInputDataSet inputDataset;
-  private LayerPointReader[] transformers;
-  private TimeSelector timeHeap;
+  protected IUDFInputDataSet inputDataset;
+  protected LayerPointReader[] transformers;
+  protected TimeSelector timeHeap;
+  protected List<TSDataType> outputDataTypes;
 
   public TransformOperator(
       OperatorContext operatorContext,
@@ -88,11 +89,11 @@ public class TransformOperator implements ProcessOperator {
     initTimeHeap();
   }
 
-  private void initInputDataset(List<TSDataType> inputDataTypes) {
+  protected void initInputDataset(List<TSDataType> inputDataTypes) {
     inputDataset = new TsBlockInputDataSet(inputOperator, inputDataTypes);
   }
 
-  private void initTransformers() throws QueryProcessException, IOException {
+  protected void initTransformers() throws QueryProcessException, IOException {
     UDFRegistrationService.getInstance().acquireRegistrationLock();
     // This statement must be surrounded by the registration lock.
     UDFClassLoaderManager.getInstance().initializeUDFQuery(operatorContext.getOperatorId());
@@ -114,14 +115,14 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
-  private void initTimeHeap() throws QueryProcessException, IOException {
+  protected void initTimeHeap() throws QueryProcessException, IOException {
     timeHeap = new TimeSelector(transformers.length << 1, true);
     for (LayerPointReader reader : transformers) {
       iterateReaderToNextValid(reader);
     }
   }
 
-  private void iterateReaderToNextValid(LayerPointReader reader)
+  protected void iterateReaderToNextValid(LayerPointReader reader)
       throws QueryProcessException, IOException {
     // Since a constant operand is not allowed to be a result column, the reader will not be
     // a ConstantLayerPointReader.
@@ -144,11 +145,14 @@ public class TransformOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
-    List<TSDataType> outputDataType = new ArrayList<>();
-    for (LayerPointReader reader : transformers) {
-      outputDataType.add(reader.getDataType());
+
+    if (outputDataTypes == null) {
+      outputDataTypes = new ArrayList<>();
+      for (LayerPointReader reader : transformers) {
+        outputDataTypes.add(reader.getDataType());
+      }
     }
-    tsBlockBuilder.buildValueColumnBuilders(outputDataType);
+    tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
 
     final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
@@ -157,48 +161,7 @@ public class TransformOperator implements ProcessOperator {
     int rowCount = 0;
     try {
       while (rowCount < FETCH_SIZE && !timeHeap.isEmpty()) {
-        long minTime = timeHeap.pollFirst();
-
-        timeBuilder.writeLong(minTime);
-
-        for (int i = 0; i < columnCount; ++i) {
-          LayerPointReader reader = transformers[i];
-
-          if (!reader.next() || reader.currentTime() != minTime || reader.isCurrentNull()) {
-            columnBuilders[i].appendNull();
-            continue;
-          }
-
-          TSDataType type = reader.getDataType();
-          switch (type) {
-            case INT32:
-              columnBuilders[i].writeInt(reader.currentInt());
-              break;
-            case INT64:
-              columnBuilders[i].writeLong(reader.currentLong());
-              break;
-            case FLOAT:
-              columnBuilders[i].writeFloat(reader.currentFloat());
-              break;
-            case DOUBLE:
-              columnBuilders[i].writeDouble(reader.currentDouble());
-              break;
-            case BOOLEAN:
-              columnBuilders[i].writeBoolean(reader.currentBoolean());
-              break;
-            case TEXT:
-              columnBuilders[i].writeBinary(reader.currentBinary());
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", type));
-          }
-
-          reader.readyForNext();
-
-          iterateReaderToNextValid(reader);
-        }
-
+        collectCurrentRow(timeBuilder, columnBuilders, timeHeap.pollFirst(), columnCount);
         ++rowCount;
       }
     } catch (Exception e) {
@@ -207,6 +170,55 @@ public class TransformOperator implements ProcessOperator {
     }
 
     return tsBlockBuilder.build();
+  }
+
+  protected void collectCurrentRow(
+      TimeColumnBuilder timeBuilder,
+      ColumnBuilder[] columnBuilders,
+      long currentTime,
+      int outputColumnCount)
+      throws QueryProcessException, IOException {
+    // time
+    timeBuilder.writeLong(currentTime);
+
+    // values
+    for (int i = 0; i < outputColumnCount; ++i) {
+      LayerPointReader reader = transformers[i];
+
+      if (!reader.next() || reader.currentTime() != currentTime || reader.isCurrentNull()) {
+        columnBuilders[i].appendNull();
+        continue;
+      }
+
+      TSDataType type = reader.getDataType();
+      switch (type) {
+        case INT32:
+          columnBuilders[i].writeInt(reader.currentInt());
+          break;
+        case INT64:
+          columnBuilders[i].writeLong(reader.currentLong());
+          break;
+        case FLOAT:
+          columnBuilders[i].writeFloat(reader.currentFloat());
+          break;
+        case DOUBLE:
+          columnBuilders[i].writeDouble(reader.currentDouble());
+          break;
+        case BOOLEAN:
+          columnBuilders[i].writeBoolean(reader.currentBoolean());
+          break;
+        case TEXT:
+          columnBuilders[i].writeBinary(reader.currentBinary());
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", type));
+      }
+
+      reader.readyForNext();
+
+      iterateReaderToNextValid(reader);
+    }
   }
 
   @Override
