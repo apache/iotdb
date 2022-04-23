@@ -33,11 +33,10 @@ import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
-import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -47,42 +46,30 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
-public class NegationExpression extends Expression {
+public class RegularExpression extends Expression {
 
   private final Expression expression;
+  private final String patternString;
+  private final Pattern pattern;
 
-  public NegationExpression(Expression expression) {
+  public RegularExpression(Expression expression, String patternString) {
     this.expression = expression;
+    this.patternString = patternString;
+    pattern = Pattern.compile(patternString);
   }
 
-  public NegationExpression(ByteBuffer byteBuffer) {
+  public RegularExpression(Expression expression, String patternString, Pattern pattern) {
+    this.expression = expression;
+    this.patternString = patternString;
+    this.pattern = pattern;
+  }
+
+  public RegularExpression(ByteBuffer byteBuffer) {
     expression = Expression.deserialize(byteBuffer);
-  }
-
-  public Expression getExpression() {
-    return expression;
-  }
-
-  @Override
-  public boolean isConstantOperandInternal() {
-    return expression.isConstantOperand();
-  }
-
-  @Override
-  public List<Expression> getExpressions() {
-    return Collections.singletonList(expression);
-  }
-
-  @Override
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationFunctionExpression();
-  }
-
-  @Override
-  public boolean isUserDefinedAggregationFunctionExpression() {
-    return expression.isUserDefinedAggregationFunctionExpression()
-        || expression.isBuiltInAggregationFunctionExpression();
+    patternString = ReadWriteIOUtils.readString(byteBuffer);
+    pattern = Pattern.compile(Validate.notNull(patternString));
   }
 
   @Override
@@ -93,7 +80,7 @@ public class NegationExpression extends Expression {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressionsForRecursion, patternTree);
     for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new NegationExpression(resultExpression));
+      resultExpressions.add(new RegularExpression(resultExpression, patternString, pattern));
     }
   }
 
@@ -102,7 +89,7 @@ public class NegationExpression extends Expression {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressionsForRecursion);
     for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new NegationExpression(resultExpression));
+      resultExpressions.add(new RegularExpression(resultExpression, patternString, pattern));
     }
   }
 
@@ -112,7 +99,7 @@ public class NegationExpression extends Expression {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);
     for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new NegationExpression(resultExpression));
+      resultExpressions.add(new RegularExpression(resultExpression, patternString, pattern));
     }
   }
 
@@ -124,7 +111,7 @@ public class NegationExpression extends Expression {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);
     for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new NegationExpression(resultExpression));
+      resultExpressions.add(new RegularExpression(resultExpression, patternString, pattern));
     }
   }
 
@@ -160,54 +147,45 @@ public class NegationExpression extends Expression {
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
-
-      IntermediateLayer parentLayerPointReader =
-          expression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      Transformer transformer =
-          new ArithmeticNegationTransformer(parentLayerPointReader.constructPointReader());
-      expressionDataTypeMap.put(this, transformer.getDataType());
-
-      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
-      // yet. And since a ConstantLayerPointReader won't produce too much IO,
-      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1 || isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
+    // TODO
+    throw new RuntimeException();
   }
 
   @Override
-  public String getExpressionStringInternal() {
-    if (expression instanceof FunctionExpression
-        || expression instanceof ConstantOperand
-        || expression instanceof TimeSeriesOperand) {
-      return "-" + expression.toString();
-    } else {
-      return "-(" + expression.toString() + ")";
-    }
+  protected boolean isConstantOperandInternal() {
+    return expression.isConstantOperand();
+  }
+
+  @Override
+  public List<Expression> getExpressions() {
+    return Collections.singletonList(expression);
+  }
+
+  @Override
+  protected String getExpressionStringInternal() {
+    // TODO
+    throw new RuntimeException();
   }
 
   @Override
   protected short getExpressionType() {
-    return ExpressionType.NEGATION.getExpressionType();
+    return ExpressionType.REGULAR.getExpressionType();
   }
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     Expression.serialize(expression, byteBuffer);
+    ReadWriteIOUtils.write(patternString, byteBuffer);
+  }
+
+  @Override
+  public boolean isTimeSeriesGeneratingFunctionExpression() {
+    return !isUserDefinedAggregationFunctionExpression();
+  }
+
+  @Override
+  public boolean isUserDefinedAggregationFunctionExpression() {
+    return expression.isUserDefinedAggregationFunctionExpression()
+        || expression.isBuiltInAggregationFunctionExpression();
   }
 }
