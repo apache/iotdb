@@ -199,9 +199,11 @@ public class SchemaTreeVisitor implements Iterator<MeasurementPath> {
     SchemaNode child = node.getChild(childName);
     if (child != null) {
       stack.push(Collections.singletonList(child).iterator());
-      context.push(node);
-      indexStack.push(patternIndex);
+    } else {
+      stack.push(Collections.emptyIterator());
     }
+    context.push(node);
+    indexStack.push(patternIndex);
   }
 
   private boolean checkOneLevelWildcardMatch(String regex, SchemaNode node) {

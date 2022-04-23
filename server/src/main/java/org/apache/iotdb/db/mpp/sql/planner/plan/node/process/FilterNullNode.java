@@ -20,15 +20,15 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
@@ -37,29 +37,36 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** WithoutNode is used to discard specific rows from upstream node. */
-public class FilterNullNode extends ProcessNode implements IOutputPlanNode {
+/** FilterNullNode is used to discard specific rows from upstream node. */
+public class FilterNullNode extends ProcessNode {
 
-  // The policy to discard the result from upstream operator
-  private final FilterNullPolicy discardPolicy;
-
-  private final List<String> filterNullColumnNames;
+  FilterNullParameter filterNullParameter;
 
   private PlanNode child;
 
-  public FilterNullNode(
-      PlanNodeId id, FilterNullPolicy policy, List<String> filterNullColumnNames) {
+  public FilterNullNode(PlanNodeId id, FilterNullParameter filterNullParameter) {
     super(id);
-    this.discardPolicy = policy;
-    this.filterNullColumnNames = filterNullColumnNames;
+    this.filterNullParameter = filterNullParameter;
+  }
+
+  public FilterNullNode(
+      PlanNodeId id, FilterNullPolicy filterNullPolicy, List<InputLocation> filterNullColumns) {
+    super(id);
+    this.filterNullParameter = new FilterNullParameter(filterNullPolicy, filterNullColumns);
   }
 
   public FilterNullNode(
       PlanNodeId id,
       PlanNode child,
-      FilterNullPolicy discardPolicy,
-      List<String> filterNullColumnNames) {
-    this(id, discardPolicy, filterNullColumnNames);
+      FilterNullPolicy filterNullPolicy,
+      List<InputLocation> filterNullColumns) {
+    super(id);
+    this.child = child;
+    this.filterNullParameter = new FilterNullParameter(filterNullPolicy, filterNullColumns);
+  }
+
+  public FilterNullNode(PlanNodeId id, PlanNode child, FilterNullParameter filterNullParameter) {
+    this(id, filterNullParameter);
     this.child = child;
   }
 
@@ -75,7 +82,7 @@ public class FilterNullNode extends ProcessNode implements IOutputPlanNode {
 
   @Override
   public PlanNode clone() {
-    return new FilterNullNode(getPlanNodeId(), discardPolicy, filterNullColumnNames);
+    return new FilterNullNode(getPlanNodeId(), filterNullParameter);
   }
 
   @Override
@@ -85,25 +92,25 @@ public class FilterNullNode extends ProcessNode implements IOutputPlanNode {
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return ((IOutputPlanNode) child).getOutputColumnHeaders();
+    return child.getOutputColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ((IOutputPlanNode) child).getOutputColumnNames();
+    return child.getOutputColumnNames();
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return ((IOutputPlanNode) child).getOutputColumnTypes();
+    return child.getOutputColumnTypes();
   }
 
   public FilterNullPolicy getDiscardPolicy() {
-    return discardPolicy;
+    return filterNullParameter.getFilterNullPolicy();
   }
 
-  public List<String> getFilterNullColumnNames() {
-    return filterNullColumnNames;
+  public List<InputLocation> getFilterNullColumns() {
+    return filterNullParameter.getFilterNullColumns();
   }
 
   @Override
@@ -114,30 +121,13 @@ public class FilterNullNode extends ProcessNode implements IOutputPlanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FILTER_NULL.serialize(byteBuffer);
-    ReadWriteIOUtils.write(discardPolicy.ordinal(), byteBuffer);
-    if (filterNullColumnNames == null) {
-      ReadWriteIOUtils.write(-1, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(filterNullColumnNames.size(), byteBuffer);
-      for (String filterNullColumnName : filterNullColumnNames) {
-        ReadWriteIOUtils.write(filterNullColumnName, byteBuffer);
-      }
-    }
+    filterNullParameter.serialize(byteBuffer);
   }
 
   public static FilterNullNode deserialize(ByteBuffer byteBuffer) {
-    FilterNullPolicy filterNullPolicy =
-        FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> filterNullColumnNames = null;
-    if (size != -1) {
-      filterNullColumnNames = new ArrayList<>();
-      for (int i = 0; i < size; i++) {
-        filterNullColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
-      }
-    }
+    FilterNullParameter filterNullParameter = FilterNullParameter.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FilterNullNode(planNodeId, filterNullPolicy, filterNullColumnNames);
+    return new FilterNullNode(planNodeId, filterNullParameter);
   }
 
   @TestOnly
@@ -145,7 +135,7 @@ public class FilterNullNode extends ProcessNode implements IOutputPlanNode {
     String title = String.format("[FilterNullNode (%s)]", this.getPlanNodeId());
     List<String> attributes = new ArrayList<>();
     attributes.add("FilterNullPolicy: " + this.getDiscardPolicy());
-    attributes.add("FilterNullColumnNames: " + this.getFilterNullColumnNames());
+    attributes.add("FilterNullColumns: " + this.getFilterNullColumns());
     return new Pair<>(title, attributes);
   }
 
@@ -160,13 +150,12 @@ public class FilterNullNode extends ProcessNode implements IOutputPlanNode {
     }
 
     FilterNullNode that = (FilterNullNode) o;
-    return discardPolicy == that.discardPolicy
-        && Objects.equals(child, that.child)
-        && Objects.equals(filterNullColumnNames, that.filterNullColumnNames);
+    return Objects.equals(filterNullParameter, that.filterNullParameter)
+        && Objects.equals(child, that.child);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(discardPolicy, child, filterNullColumnNames);
+    return Objects.hash(child, filterNullParameter);
   }
 }
