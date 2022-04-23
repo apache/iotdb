@@ -31,7 +31,6 @@ import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 
-import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,9 +103,7 @@ public class Coordinator {
   }
 
   public IQueryExecution getQueryExecution(QueryId queryId) {
-    IQueryExecution execution = queryExecutionMap.get(queryId);
-    Validate.notNull(execution, "invalid queryId %s", queryId.getId());
-    return execution;
+    return queryExecutionMap.get(queryId);
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management

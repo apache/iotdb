@@ -16,24 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-public class InputLocation {
-  // which input tsblock
-  private final int tsBlockIndex;
-  // which value column of that tsblock
-  private final int valueColumnIndex;
+package org.apache.iotdb.procedure.exception;
 
-  public InputLocation(int tsBlockIndex, int valueColumnIndex) {
-    this.tsBlockIndex = tsBlockIndex;
-    this.valueColumnIndex = valueColumnIndex;
+public class ProcedureYieldException extends ProcedureException {
+  /** default constructor */
+  public ProcedureYieldException() {
+    super();
   }
 
-  public int getTsBlockIndex() {
-    return tsBlockIndex;
-  }
-
-  public int getValueColumnIndex() {
-    return valueColumnIndex;
+  /**
+   * Constructor
+   *
+   * @param s message
+   */
+  public ProcedureYieldException(String s) {
+    super(s);
   }
 }

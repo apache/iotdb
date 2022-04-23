@@ -17,18 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.procedure;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.List;
-
-public interface IOutputPlanNode {
-
-  List<ColumnHeader> getOutputColumnHeaders();
-
-  List<String> getOutputColumnNames();
-
-  List<TSDataType> getOutputColumnTypes();
+public enum ProcedureLockState {
+  LOCK_ACQUIRED,
+  LOCK_YIELD_WAIT,
+  LOCK_EVENT_WAIT
 }

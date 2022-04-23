@@ -219,56 +219,91 @@ public abstract class Expression {
 
   public static void serialize(Expression expression, ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(expression.getExpressionType(), byteBuffer);
+
     expression.serialize(byteBuffer);
+
+    ReadWriteIOUtils.write(expression.inputColumnIndex != null, byteBuffer);
+    if (expression.inputColumnIndex != null) {
+      ReadWriteIOUtils.write(expression.inputColumnIndex, byteBuffer);
+    }
   }
 
   public abstract void serialize(ByteBuffer byteBuffer);
 
   public static Expression deserialize(ByteBuffer byteBuffer) {
     short type = ReadWriteIOUtils.readShort(byteBuffer);
+
+    Expression expression;
     switch (type) {
       case 0:
-        return new AdditionExpression(byteBuffer);
+        expression = new AdditionExpression(byteBuffer);
+        break;
       case 1:
-        return new DivisionExpression(byteBuffer);
+        expression = new DivisionExpression(byteBuffer);
+        break;
       case 2:
-        return new EqualToExpression(byteBuffer);
+        expression = new EqualToExpression(byteBuffer);
+        break;
       case 3:
-        return new GreaterEqualExpression(byteBuffer);
+        expression = new GreaterEqualExpression(byteBuffer);
+        break;
       case 4:
-        return new GreaterThanExpression(byteBuffer);
+        expression = new GreaterThanExpression(byteBuffer);
+        break;
       case 5:
-        return new LessEqualExpression(byteBuffer);
+        expression = new LessEqualExpression(byteBuffer);
+        break;
       case 6:
-        return new LessThanExpression(byteBuffer);
+        expression = new LessThanExpression(byteBuffer);
+        break;
       case 7:
-        return new LogicAndExpression(byteBuffer);
+        expression = new LogicAndExpression(byteBuffer);
+        break;
       case 8:
-        return new LogicOrExpression(byteBuffer);
+        expression = new LogicOrExpression(byteBuffer);
+        break;
       case 9:
-        return new ModuloExpression(byteBuffer);
+        expression = new ModuloExpression(byteBuffer);
+        break;
       case 10:
-        return new MultiplicationExpression(byteBuffer);
+        expression = new MultiplicationExpression(byteBuffer);
+        break;
       case 11:
-        return new NonEqualExpression(byteBuffer);
+        expression = new NonEqualExpression(byteBuffer);
+        break;
       case 12:
-        return new SubtractionExpression(byteBuffer);
+        expression = new SubtractionExpression(byteBuffer);
+        break;
       case 13:
-        return new FunctionExpression(byteBuffer);
+        expression = new FunctionExpression(byteBuffer);
+        break;
       case 14:
-        return new LogicNotExpression(byteBuffer);
+        expression = new LogicNotExpression(byteBuffer);
+        break;
       case 15:
-        return new NegationExpression(byteBuffer);
+        expression = new NegationExpression(byteBuffer);
+        break;
       case 16:
-        return new TimeSeriesOperand(byteBuffer);
+        expression = new TimeSeriesOperand(byteBuffer);
+        break;
       case 17:
-        return new ConstantOperand(byteBuffer);
+        expression = new ConstantOperand(byteBuffer);
+        break;
       case 18:
-        throw new IllegalArgumentException("Invalid expression type: " + type);
+        expression = null;
+        break;
       case 19:
-        return new RegularExpression(byteBuffer);
+        expression = new RegularExpression(byteBuffer);
+        break;
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
     }
+
+    boolean hasInputColumnIndex = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasInputColumnIndex) {
+      expression.inputColumnIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    }
+
+    return expression;
   }
 }
