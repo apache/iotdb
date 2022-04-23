@@ -1604,19 +1604,23 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private IMeasurementMNode findMeasurementInTemplate(IMNode deviceMNode, String measurement)
       throws MetadataException {
     Template curTemplate = deviceMNode.getUpperTemplate();
-    if (curTemplate != null) {
-      IMeasurementSchema schema = curTemplate.getSchema(measurement);
-      if (!deviceMNode.isUseTemplate()) {
-        deviceMNode = setUsingSchemaTemplate(deviceMNode);
-      }
 
-      if (schema != null) {
-        return MeasurementMNode.getMeasurementMNode(
-            deviceMNode.getAsEntityMNode(), measurement, schema, null);
-      }
+    if (curTemplate == null) {
       return null;
     }
-    return null;
+
+    IMeasurementSchema schema = curTemplate.getSchema(measurement);
+
+    if (schema == null) {
+      return null;
+    }
+
+    if (!deviceMNode.isUseTemplate()) {
+      deviceMNode = setUsingSchemaTemplate(deviceMNode);
+    }
+
+    return MeasurementMNode.getMeasurementMNode(
+        deviceMNode.getAsEntityMNode(), measurement, schema, null);
   }
 
   /** create timeseries ignoring PathAlreadyExistException */
