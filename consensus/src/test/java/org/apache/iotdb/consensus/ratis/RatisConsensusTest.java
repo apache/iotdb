@@ -190,15 +190,15 @@ public class RatisConsensusTest {
 
     // 6. Remove two Peers from Group (peer 0 and peer 2)
     // transfer the leader to peer1
-    // servers.get(0).transferLeader(gid, peer1);
-    // Assert.assertTrue(servers.get(1).isLeader(gid));
+    servers.get(0).transferLeader(gid, peer1);
+    Assert.assertTrue(servers.get(1).isLeader(gid));
     // first use removePeer to inform the group leader of configuration change
     servers.get(1).removePeer(gid, peer0);
     servers.get(1).removePeer(gid, peer2);
     // then use removeConsensusGroup to clean up removed Consensus-Peer's states
     servers.get(0).removeConsensusGroup(gid);
     servers.get(2).removeConsensusGroup(gid);
-    Assert.assertEquals(servers.get(1).getLeader(gid), peers.get(1));
+    Assert.assertEquals(servers.get(1).getLeader(gid).getEndpoint(), peers.get(1).getEndpoint());
 
     // 7. try consensus again with one peer
     doConsensus(servers.get(1), gid, 10, 20);
@@ -215,6 +215,7 @@ public class RatisConsensusTest {
     doConsensus(servers.get(2), gid, 10, 30);
 
     // 10. again, group contains only peer0
+    servers.get(0).transferLeader(group.getGroupId(), peer0);
     servers.get(0).changePeer(group.getGroupId(), Collections.singletonList(peer0));
     servers.get(1).removeConsensusGroup(group.getGroupId());
     servers.get(2).removeConsensusGroup(group.getGroupId());
@@ -267,6 +268,7 @@ public class RatisConsensusTest {
       for (int i = 0; i < 3; i++) {
         if (servers.get(i).isLeader(gid)) {
           leader = servers.get(i);
+          System.out.println("FUCK LEADER " + i);
         }
       }
     }
