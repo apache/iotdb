@@ -304,6 +304,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
           new HashMap<>();
+      patternTree.constructTree();
       // check cache for each device
       for (String device : patternTree.findAllDevicePaths()) {
         TSeriesPartitionSlot seriesPartitionSlot = partitionExecutor.getSeriesPartitionSlot(device);
@@ -311,14 +312,19 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             schemaPartitionCache.getIfPresent(device);
         if (null == schemaPartitionCacheValue) {
           // if one device not find, then return cache miss.
+          logger.error("Failed to find schema partition");
           return null;
         }
         String storageGroupName = schemaPartitionCacheValue.getStorageGroup();
+        if (!schemaPartitionMap.containsKey(storageGroupName)) {
+          schemaPartitionMap.put(storageGroupName, new HashMap<>());
+        }
         Map<TSeriesPartitionSlot, TRegionReplicaSet> regionReplicaSetMap =
-            schemaPartitionMap.getOrDefault(storageGroupName, new HashMap<>());
+            schemaPartitionMap.get(storageGroupName);
         regionReplicaSetMap.put(
             seriesPartitionSlot, schemaPartitionCacheValue.getRegionReplicaSet());
       }
+      logger.error("Hit schema partition");
       // cache hit
       return new SchemaPartition(
           schemaPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
@@ -333,15 +339,26 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
           sgNameToQueryParamsMap.entrySet()) {
         String storageGroupName = entry.getKey();
+        if (!dataPartitionMap.containsKey(storageGroupName)) {
+          dataPartitionMap.put(storageGroupName, new HashMap<>());
+        }
         Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-            seriesPartitionSlotMapMap =
-                dataPartitionMap.getOrDefault(storageGroupName, new HashMap<>());
+            seriesSlotToTimePartitionMap = dataPartitionMap.get(storageGroupName);
         // check cache for each query param
         for (DataPartitionQueryParam dataPartitionQueryParam : entry.getValue()) {
+          if (null == dataPartitionQueryParam.getTimePartitionSlotList()
+              || 0 == dataPartitionQueryParam.getTimePartitionSlotList().size()) {
+            // if query all data, cache miss
+            logger.error("Failed to find data partition");
+            return null;
+          }
           TSeriesPartitionSlot seriesPartitionSlot =
               partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
+          if (!seriesSlotToTimePartitionMap.containsKey(seriesPartitionSlot)) {
+            seriesSlotToTimePartitionMap.put(seriesPartitionSlot, new HashMap<>());
+          }
           Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
-              seriesPartitionSlotMapMap.getOrDefault(seriesPartitionSlot, new HashMap<>());
+              seriesSlotToTimePartitionMap.get(seriesPartitionSlot);
           // check cache for each time partition
           for (TTimePartitionSlot timePartitionSlot :
               dataPartitionQueryParam.getTimePartitionSlotList()) {
@@ -351,12 +368,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                 dataPartitionCache.getIfPresent(dataPartitionCacheKey);
             if (null == regionReplicaSets) {
               // if one time partition not find, cache miss
+              logger.error("Failed to find data partition");
               return null;
             }
             timePartitionSlotListMap.put(timePartitionSlot, regionReplicaSets);
           }
         }
       }
+      logger.error("Hit data partition");
       // cache hit
       return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     }
