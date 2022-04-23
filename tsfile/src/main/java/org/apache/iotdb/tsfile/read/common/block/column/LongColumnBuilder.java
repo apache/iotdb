@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -73,25 +74,24 @@ public class LongColumnBuilder implements ColumnBuilder {
     return this;
   }
 
+  /** Write an Object to the current entry, which should be the Long type; */
   @Override
-  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
-    return writeLong(value.getLong());
+  public ColumnBuilder writeObject(Object value) {
+    if (value instanceof Long) {
+      writeLong((Long) value);
+      return this;
+    }
+    throw new UnSupportedDataTypeException("LongColumn only support Long data type");
   }
 
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    LongColumn column = (LongColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeLong(column.getLong(index++));
-      } else {
-        appendNull();
-      }
-    }
-    return index;
+  public ColumnBuilder write(Column column, int index) {
+    return writeLong(column.getLong(index));
+  }
+
+  @Override
+  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
+    return writeLong(value.getLong());
   }
 
   @Override

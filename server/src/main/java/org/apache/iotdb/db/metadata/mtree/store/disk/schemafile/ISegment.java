@@ -92,4 +92,6 @@ public interface ISegment {
   void extendsTo(ByteBuffer newBuffer);
 
   String toString();
+
+  String inspect();
 }

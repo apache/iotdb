@@ -69,14 +69,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -951,11 +949,6 @@ public class LocalSchemaProcessor {
     return getBelongedSchemaRegion(path).getDeviceNode(path);
   }
 
-  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    return getBelongedSchemaRegion(deviceId).getMeasurementMNodes(deviceId, measurements);
-  }
-
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     try {
       return getBelongedSchemaRegion(fullPath).getMeasurementMNode(fullPath);
@@ -1071,38 +1064,6 @@ public class LocalSchemaProcessor {
   // endregion
 
   // region Interfaces only for Cluster module usage
-
-  /**
-   * Collect the timeseries schemas as IMeasurementSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
-    try {
-      for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(prefixPath, true)) {
-        schemaRegion.collectMeasurementSchema(prefixPath, measurementSchemas);
-      }
-    } catch (MetadataException ignored) {
-      // do nothing
-    }
-  }
-
-  /**
-   * Collect the timeseries schemas as TimeseriesSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
-    try {
-      for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(prefixPath, true)) {
-        schemaRegion.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
-      }
-    } catch (MetadataException ignored) {
-      // do nothing
-    }
-  }
 
   /**
    * For a path, infer all storage groups it may belong to. The path can have wildcards. Resolve the
@@ -1391,19 +1352,16 @@ public class LocalSchemaProcessor {
 
   // region Interfaces for Trigger
 
-  public IMeasurementMNode getMeasurementMNodeForTrigger(PartialPath fullPath)
-      throws MetadataException {
+  public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
     try {
-      return getBelongedSchemaRegion(fullPath).getMeasurementMNodeForTrigger(fullPath);
+      return getBelongedSchemaRegion(fullPath).getMNodeForTrigger(fullPath);
     } catch (StorageGroupNotSetException e) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
   }
 
-  public void releaseMeasurementMNodeAfterDropTrigger(IMeasurementMNode measurementMNode)
-      throws MetadataException {
-    getBelongedSchemaRegion(measurementMNode.getPartialPath())
-        .releaseMeasurementMNodeAfterDropTrigger(measurementMNode);
+  public void releaseMNodeAfterDropTrigger(IMNode imNode) throws MetadataException {
+    getBelongedSchemaRegion(imNode.getPartialPath()).releaseMNodeAfterDropTrigger(imNode);
   }
 
   // endregion

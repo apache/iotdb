@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALWriter;
@@ -34,9 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractWALBuffer implements IWALBuffer {
   private static final Logger logger = LoggerFactory.getLogger(AbstractWALBuffer.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  /** use size limit to control WALEntry number in each file */
-  protected static final long FILE_SIZE_THRESHOLD = config.getWalFileSizeThresholdInByte();
 
   /** WALNode identifier of this buffer */
   protected final String identifier;

@@ -26,18 +26,15 @@ import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L2PriorityQueue;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskID;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
-import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,9 +66,8 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
 
   private static final int MAX_CAPACITY = 1000; // TODO: load from config files
   private static final int WORKER_THREAD_NUM = 4; // TODO: load from config files
-  private static final int QUERY_TIMEOUT_MS = 10000; // TODO: load from config files or requests
+  private static final int QUERY_TIMEOUT_MS = 10_000; // TODO: load from config files or requests
   private final ThreadGroup workerGroups;
-  private InternalService.Client mppServiceClient; // TODO: use from client pool
   private final List<AbstractExecutor> threads;
 
   private FragmentInstanceScheduler() {
@@ -82,9 +78,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
             new FragmentInstanceTask());
     this.timeoutQueue =
         new L1PriorityQueue<>(
-            MAX_CAPACITY,
-            new FragmentInstanceTask.SchedulePriorityComparator(),
-            new FragmentInstanceTask());
+            MAX_CAPACITY, new FragmentInstanceTask.TimeoutComparator(), new FragmentInstanceTask());
     this.queryMap = new ConcurrentHashMap<>();
     this.blockedTasks = Collections.synchronizedSet(new HashSet<>());
     this.scheduler = new Scheduler();
@@ -127,7 +121,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   }
 
   @Override
-  public void submitFragmentInstances(QueryId queryId, List<Driver> instances) {
+  public void submitFragmentInstances(QueryId queryId, List<IDriver> instances) {
     List<FragmentInstanceTask> tasks =
         instances.stream()
             .map(
@@ -158,6 +152,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
       for (FragmentInstanceTask task : queryRelatedTasks) {
         task.lock();
         try {
+          task.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
           clearFragmentInstanceTask(task);
         } finally {
           task.unlock();
@@ -174,6 +169,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     }
     task.lock();
     try {
+      task.setAbortCause(FragmentInstanceAbortedException.BY_FRAGMENT_ABORT_CALLED);
       clearFragmentInstanceTask(task);
     } finally {
       task.unlock();
@@ -193,6 +189,12 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   private void clearFragmentInstanceTask(FragmentInstanceTask task) {
     if (task.getStatus() != FragmentInstanceTaskStatus.FINISHED) {
       task.setStatus(FragmentInstanceTaskStatus.ABORTED);
+    }
+    if (task.getAbortCause() != null) {
+      task.getFragmentInstance()
+          .failed(
+              new FragmentInstanceAbortedException(
+                  task.getFragmentInstance().getInfo(), task.getAbortCause()));
     }
     if (task.getStatus() == FragmentInstanceTaskStatus.ABORTED) {
       blockManager.forceDeregisterFragmentInstance(
@@ -240,11 +242,6 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   @TestOnly
   void setBlockManager(IDataBlockManager blockManager) {
     this.blockManager = blockManager;
-  }
-
-  @TestOnly
-  void setMppServiceClient(InternalService.Client client) {
-    this.mppServiceClient = client;
   }
 
   private static class InstanceHolder {
@@ -348,18 +345,13 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
       QueryId queryId = task.getId().getQueryId();
       Set<FragmentInstanceTask> queryRelatedTasks = queryMap.remove(queryId);
       if (queryRelatedTasks != null) {
-        try {
-          mppServiceClient.cancelQuery(new TCancelQueryReq(queryId.getId()));
-        } catch (TException e) {
-          // If coordinator cancel query failed, we should continue clean other tasks.
-          logger.error("cancel query " + queryId.getId() + " failed", e);
-        }
         for (FragmentInstanceTask otherTask : queryRelatedTasks) {
           if (task.equals(otherTask)) {
             continue;
           }
           otherTask.lock();
           try {
+            otherTask.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
             clearFragmentInstanceTask(otherTask);
           } finally {
             otherTask.unlock();

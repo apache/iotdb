@@ -636,8 +636,4 @@ public class TsFileWriter implements AutoCloseable {
   public TsFileIOWriter getIOWriter() {
     return this.fileWriter;
   }
-
-  public void setIsUnseq(boolean unseq) {
-    this.isUnseq = unseq;
-  }
 }

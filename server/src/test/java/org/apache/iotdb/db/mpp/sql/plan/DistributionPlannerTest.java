@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -45,6 +45,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -66,6 +67,45 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 
 public class DistributionPlannerTest {
+
+  @Test
+  public void TestSingleSeriesScan() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query");
+    SeriesScanNode root =
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC);
+
+    Analysis analysis = constructAnalysis();
+
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
+    DistributedQueryPlan plan = planner.planFragments();
+    plan.getInstances().forEach(System.out::println);
+    assertEquals(2, plan.getInstances().size());
+  }
+
+  @Test
+  public void TestSingleSeriesScanRewriteSource() throws IllegalPathException {
+    QueryId queryId = new QueryId("test_query");
+    SeriesScanNode root =
+        new SeriesScanNode(
+            queryId.genPlanNodeId(),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_ASC);
+
+    Analysis analysis = constructAnalysis();
+
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
+    PlanNode rootAfterRewrite = planner.rewriteSource();
+    assertEquals(2, rootAfterRewrite.getChildren().size());
+  }
 
   @Test
   public void TestRewriteSourceNode() throws IllegalPathException {
@@ -99,7 +139,7 @@ public class DistributionPlannerTest {
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
     PlanNode newRoot = planner.rewriteSource();
-    assertEquals(newRoot.getChildren().get(0).getChildren().size(), 3);
+    assertEquals(4, newRoot.getChildren().get(0).getChildren().size());
   }
 
   @Test
@@ -181,7 +221,12 @@ public class DistributionPlannerTest {
         new DistributionPlanner(analysis, new LogicalQueryPlan(new MPPQueryContext(queryId), root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
     PlanNode rootWithExchange = planner.addExchangeNode(rootAfterRewrite);
-    assertEquals(rootWithExchange.getChildren().get(0).getChildren().size(), 3);
+    assertEquals(4, rootWithExchange.getChildren().get(0).getChildren().size());
+    int exchangeNodeCount = 0;
+    for (PlanNode child : rootWithExchange.getChildren().get(0).getChildren()) {
+      exchangeNodeCount += child instanceof ExchangeNode ? 1 : 0;
+    }
+    assertEquals(2, exchangeNodeCount);
   }
 
   @Test
@@ -212,7 +257,7 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
@@ -249,11 +294,10 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
-    plan.getInstances().forEach(System.out::println);
     assertEquals(3, plan.getInstances().size());
   }
 
@@ -274,7 +318,7 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
     context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, insertRowNode));
@@ -316,7 +360,7 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new Endpoint());
+    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
     context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, node));
@@ -341,56 +385,73 @@ public class DistributionPlannerTest {
         new DataPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
-    Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> sgPartitionMap =
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
 
-    List<RegionReplicaSet> d1DataRegion1 = new ArrayList<>();
-    d1DataRegion1.add(
-        new RegionReplicaSet(
-            new DataRegionId(1),
+    List<TRegionReplicaSet> d1DataRegions = new ArrayList<>();
+    d1DataRegions.add(
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
             Arrays.asList(
-                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
-                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
-
-    List<RegionReplicaSet> d1DataRegion2 = new ArrayList<>();
-    d1DataRegion2.add(
-        new RegionReplicaSet(
-            new DataRegionId(2),
+                new TDataNodeLocation()
+                    .setDataNodeId(11)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(12)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.2", 9000)))));
+    d1DataRegions.add(
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2),
             Arrays.asList(
-                new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)),
-                new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
+                new TDataNodeLocation()
+                    .setDataNodeId(21)
+                    .setExternalEndPoint(new TEndPoint("192.0.2.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(22)
+                    .setExternalEndPoint(new TEndPoint("192.0.2.2", 9000)))));
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> d1DataRegionMap = new HashMap<>();
+    d1DataRegionMap.put(new TTimePartitionSlot(), d1DataRegions);
 
-    Map<TimePartitionSlot, List<RegionReplicaSet>> d1DataRegionMap = new HashMap<>();
-    d1DataRegionMap.put(new TimePartitionSlot(0), d1DataRegion1);
-    d1DataRegionMap.put(new TimePartitionSlot(1), d1DataRegion2);
-
-    List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
+    List<TRegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
-        new RegionReplicaSet(
-            new DataRegionId(3),
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 3),
             Arrays.asList(
-                new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)),
-                new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
-    Map<TimePartitionSlot, List<RegionReplicaSet>> d2DataRegionMap = new HashMap<>();
-    d2DataRegionMap.put(new TimePartitionSlot(0), d2DataRegions);
+                new TDataNodeLocation()
+                    .setDataNodeId(31)
+                    .setExternalEndPoint(new TEndPoint("192.0.3.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(32)
+                    .setExternalEndPoint(new TEndPoint("192.0.3.2", 9000)))));
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> d2DataRegionMap = new HashMap<>();
+    d2DataRegionMap.put(new TTimePartitionSlot(), d2DataRegions);
 
-    List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
+    List<TRegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
-        new RegionReplicaSet(
-            new DataRegionId(1),
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
             Arrays.asList(
-                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
-                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
+                new TDataNodeLocation()
+                    .setDataNodeId(11)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(12)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.2", 9000)))));
     d3DataRegions.add(
-        new RegionReplicaSet(
-            new DataRegionId(4),
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 4),
             Arrays.asList(
-                new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)),
-                new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));
-    Map<TimePartitionSlot, List<RegionReplicaSet>> d3DataRegionMap = new HashMap<>();
-    d3DataRegionMap.put(new TimePartitionSlot(0), d3DataRegions);
+                new TDataNodeLocation()
+                    .setDataNodeId(41)
+                    .setExternalEndPoint(new TEndPoint("192.0.4.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(42)
+                    .setExternalEndPoint(new TEndPoint("192.0.4.2", 9000)))));
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> d3DataRegionMap = new HashMap<>();
+    d3DataRegionMap.put(new TTimePartitionSlot(), d3DataRegions);
 
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
@@ -407,22 +468,30 @@ public class DistributionPlannerTest {
         new SchemaPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    Map<String, Map<SeriesPartitionSlot, RegionReplicaSet>> schemaPartitionMap = new HashMap<>();
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
 
-    RegionReplicaSet schemaRegion1 =
-        new RegionReplicaSet(
-            new SchemaRegionId(11),
+    TRegionReplicaSet schemaRegion1 =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 11),
             Arrays.asList(
-                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
-                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000))));
-    Map<SeriesPartitionSlot, RegionReplicaSet> schemaRegionMap = new HashMap<>();
+                new TDataNodeLocation()
+                    .setDataNodeId(11)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(12)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.2", 9000))));
+    Map<TSeriesPartitionSlot, TRegionReplicaSet> schemaRegionMap = new HashMap<>();
 
-    RegionReplicaSet schemaRegion2 =
-        new RegionReplicaSet(
-            new SchemaRegionId(21),
+    TRegionReplicaSet schemaRegion2 =
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 21),
             Arrays.asList(
-                new DataNodeLocation(21, new Endpoint("192.0.1.1", 9000)),
-                new DataNodeLocation(22, new Endpoint("192.0.1.2", 9000))));
+                new TDataNodeLocation()
+                    .setDataNodeId(21)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(22)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.2", 9000))));
 
     schemaRegionMap.put(executor.getSeriesPartitionSlot(device1), schemaRegion1);
     schemaRegionMap.put(executor.getSeriesPartitionSlot(device2), schemaRegion2);

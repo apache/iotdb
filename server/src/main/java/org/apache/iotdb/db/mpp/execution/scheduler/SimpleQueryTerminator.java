@@ -19,22 +19,24 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class SimpleQueryTerminator implements IQueryTerminator {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleQueryTerminator.class);
   private final ExecutorService executor;
   private final QueryId queryId;
   private final List<FragmentInstance> fragmentInstances;
@@ -47,33 +49,29 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   }
 
   @Override
-  public boolean terminate() {
-    List<Endpoint> relatedHost = getRelatedHost(fragmentInstances);
-    Future<Boolean> future =
-        executor.submit(
-            () -> {
-              try {
-                for (Endpoint endpoint : relatedHost) {
-                  InternalService.Client client =
-                      InternalServiceClientFactory.getInternalServiceClient(
-                          endpoint.getIp(), endpoint.getPort());
-                  client.cancelQuery(new TCancelQueryReq(queryId.getId()));
-                }
-              } catch (TException e) {
-                return false;
-              }
-              return true;
-            });
-    try {
-      return future.get();
-    } catch (InterruptedException | ExecutionException e) {
-      // TODO: (xingtanzjr) Record the error info with logger
-      Thread.currentThread().interrupt();
-      return false;
-    }
+  public Future<Boolean> terminate() {
+    List<TEndPoint> relatedHost = getRelatedHost(fragmentInstances);
+
+    return executor.submit(
+        () -> {
+          try {
+            for (TEndPoint endpoint : relatedHost) {
+              // TODO (jackie tien) change the port
+              InternalService.Iface client =
+                  InternalServiceClientFactory.getInternalServiceClient(
+                      new TEndPoint(
+                          endpoint.getIp(),
+                          IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
+              client.cancelQuery(new TCancelQueryReq(queryId.getId()));
+            }
+          } catch (TException e) {
+            return false;
+          }
+          return true;
+        });
   }
 
-  private List<Endpoint> getRelatedHost(List<FragmentInstance> instances) {
+  private List<TEndPoint> getRelatedHost(List<FragmentInstance> instances) {
     return instances.stream()
         .map(FragmentInstance::getHostEndpoint)
         .distinct()

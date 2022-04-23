@@ -18,18 +18,21 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.config.ConfigExecution;
+import org.apache.iotdb.db.mpp.sql.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 
-import org.apache.commons.lang3.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -41,15 +44,17 @@ import java.util.concurrent.ScheduledExecutorService;
  * QueryExecution.
  */
 public class Coordinator {
-  private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
-  private static final int COORDINATOR_EXECUTOR_SIZE = 10;
-  private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
-  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
+  private static final Logger LOG = LoggerFactory.getLogger(Coordinator.class);
 
-  private static final Endpoint LOCAL_HOST =
-      new Endpoint(
+  private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
+  private static final int COORDINATOR_EXECUTOR_SIZE = 1;
+  private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
+  private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 1;
+
+  private static final TEndPoint LOCAL_HOST =
+      new TEndPoint(
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMppPort());
+          IoTDBDescriptor.getInstance().getConfig().getInternalPort());
 
   private final ExecutorService executor;
   private final ScheduledExecutorService scheduledExecutor;
@@ -64,31 +69,41 @@ public class Coordinator {
     this.scheduledExecutor = getScheduledExecutor();
   }
 
-  private IQueryExecution createQueryExecution(Statement statement, MPPQueryContext queryContext) {
-    if (statement instanceof SetStorageGroupStatement) {
+  private IQueryExecution createQueryExecution(
+      Statement statement,
+      MPPQueryContext queryContext,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    if (statement instanceof ConfigStatement) {
       queryContext.setQueryType(QueryType.WRITE);
       return new ConfigExecution(queryContext, statement, executor);
     }
-    return new QueryExecution(statement, queryContext, executor, scheduledExecutor);
+    return new QueryExecution(
+        statement, queryContext, executor, scheduledExecutor, partitionFetcher, schemaFetcher);
   }
 
   public ExecutionResult execute(
-      Statement statement, QueryId queryId, SessionInfo session, String sql) {
+      Statement statement,
+      QueryId queryId,
+      SessionInfo session,
+      String sql,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
 
     IQueryExecution execution =
         createQueryExecution(
-            statement, new MPPQueryContext(sql, queryId, session, getHostEndpoint()));
+            statement,
+            new MPPQueryContext(sql, queryId, session, getHostEndpoint()),
+            partitionFetcher,
+            schemaFetcher);
     queryExecutionMap.put(queryId, execution);
-
     execution.start();
 
     return execution.getStatus();
   }
 
   public IQueryExecution getQueryExecution(QueryId queryId) {
-    IQueryExecution execution = queryExecutionMap.get(queryId);
-    Validate.notNull(execution, "invalid queryId %s", queryId.getId());
-    return execution;
+    return queryExecutionMap.get(queryId);
   }
 
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
@@ -103,14 +118,11 @@ public class Coordinator {
   }
 
   // Get the hostname of current coordinator
-  private Endpoint getHostEndpoint() {
+  private TEndPoint getHostEndpoint() {
     return LOCAL_HOST;
   }
 
   public static Coordinator getInstance() {
     return INSTANCE;
   }
-  //    private TQueryResponse executeQuery(TQueryRequest request) {
-  //
-  //    }
 }

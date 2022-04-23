@@ -25,7 +25,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
@@ -45,7 +44,7 @@ import java.util.concurrent.ExecutorService;
 
 /** First set allVsgScannedLatch, then call recover method. */
 public class WALRecoverManager {
-  private static final Logger logger = LoggerFactory.getLogger(WALManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(WALRecoverManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /** start recovery after all virtual storage groups have submitted unsealed zero-level TsFiles */
@@ -59,6 +58,7 @@ public class WALRecoverManager {
   private WALRecoverManager() {}
 
   public void recover() throws WALRecoverException {
+    logger.info("Start recovering wal.");
     try {
       // collect wal nodes' information
       List<File> walNodeDirs = new ArrayList<>();
@@ -82,6 +82,8 @@ public class WALRecoverManager {
         Thread.currentThread().interrupt();
         throw new WALRecoverException("Fail to recover wal.", e);
       }
+      logger.info(
+          "Data regions have submitted all unsealed TsFiles, start recovering TsFiles in each wal node.");
       // recover each wal node's TsFiles
       if (!walNodeDirs.isEmpty()) {
         recoverThreadPool =
@@ -132,6 +134,7 @@ public class WALRecoverManager {
       }
       clear();
     }
+    logger.info("Successfully recover all wal nodes.");
   }
 
   public WALRecoverListener addRecoverPerformer(UnsealedTsFileRecoverPerformer recoverPerformer) {

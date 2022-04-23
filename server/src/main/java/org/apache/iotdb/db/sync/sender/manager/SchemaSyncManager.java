@@ -23,7 +23,6 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.metadata.schemaregion.SchemaRegion;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -98,7 +97,7 @@ public class SchemaSyncManager {
     for (ISchemaRegion schemaRegion : SchemaEngine.getInstance().getAllSchemaRegions()) {
       try {
         for (MeasurementPath measurementPath :
-            ((SchemaRegion) schemaRegion).getMeasurementPaths(new PartialPath(ALL_RESULT_NODES))) {
+            schemaRegion.getMeasurementPaths(new PartialPath(ALL_RESULT_NODES), false)) {
           if (measurementPath.isUnderAlignedEntity()) {
             historyMetadata.add(
                 new CreateAlignedTimeSeriesPlan(
@@ -115,8 +114,7 @@ public class SchemaSyncManager {
         logger.warn(
             String.format(
                 "Collect history schema from schemaRegion: %s of sg %s error. Skip this schemaRegion.",
-                ((SchemaRegion) schemaRegion).getSchemaRegionId(),
-                ((SchemaRegion) schemaRegion).getStorageGroupFullPath()));
+                schemaRegion.getSchemaRegionId(), schemaRegion.getStorageGroupFullPath()));
       }
     }
 

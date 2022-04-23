@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.confignode.physical.sys;
 
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
@@ -28,40 +28,30 @@ import java.util.Objects;
 
 public class RegisterDataNodePlan extends PhysicalPlan {
 
-  private DataNodeLocation info;
+  private TDataNodeLocation location;
 
   public RegisterDataNodePlan() {
     super(PhysicalPlanType.RegisterDataNode);
   }
 
-  public RegisterDataNodePlan(DataNodeLocation info) {
+  public RegisterDataNodePlan(TDataNodeLocation location) {
     this();
-    this.info = info;
+    this.location = location;
   }
 
-  public DataNodeLocation getInfo() {
-    return info;
+  public TDataNodeLocation getLocation() {
+    return location;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(PhysicalPlanType.RegisterDataNode.ordinal());
-    buffer.putInt(info.getDataNodeId());
-    buffer.putInt(info.getEndPoint().getIp().length());
-    buffer.put(info.getEndPoint().getIp().getBytes());
-    buffer.putInt(info.getEndPoint().getPort());
+    ThriftCommonsSerDeUtils.writeTDataNodeLocation(location, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    int dataNodeID = buffer.getInt();
-    int ipLength = buffer.getInt();
-    byte[] byteIp = new byte[ipLength];
-    buffer.get(byteIp, 0, ipLength);
-    String ip = new String(byteIp, 0, ipLength);
-    int port = buffer.getInt();
-
-    this.info = new DataNodeLocation(dataNodeID, new Endpoint(ip, port));
+    location = ThriftCommonsSerDeUtils.readTDataNodeLocation(buffer);
   }
 
   @Override
@@ -69,11 +59,11 @@ public class RegisterDataNodePlan extends PhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     RegisterDataNodePlan plan = (RegisterDataNodePlan) o;
-    return info.equals(plan.info);
+    return location.equals(plan.location);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(info);
+    return Objects.hash(location);
   }
 }
