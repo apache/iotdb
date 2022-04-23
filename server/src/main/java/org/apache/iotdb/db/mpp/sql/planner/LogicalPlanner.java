@@ -252,12 +252,6 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       // convert insert statement to insert node
-      DeviceSchemaInfo deviceSchemaInfo =
-          analysis
-              .getSchemaTree()
-              .searchDeviceSchemaInfo(
-                  insertRowStatement.getDevicePath(),
-                  Arrays.asList(insertRowStatement.getMeasurements()));
       return new InsertRowNode(
           context.getQueryId().genPlanNodeId(),
           insertRowStatement.getDevicePath(),

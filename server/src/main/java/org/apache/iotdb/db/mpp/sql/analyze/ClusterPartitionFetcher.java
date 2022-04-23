@@ -156,6 +156,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return null;
   }
 
+  @Override
+  public DataPartition getOrCreateDataPartition(PathPatternTree patternTree) {
+    return null;
+  }
+
   private TSchemaPartitionReq constructSchemaPartitionReq(PathPatternTree patternTree) {
     PublicBAOS baos = new PublicBAOS();
     try {

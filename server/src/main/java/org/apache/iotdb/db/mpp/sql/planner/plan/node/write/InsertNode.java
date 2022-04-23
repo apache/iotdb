@@ -136,24 +136,22 @@ public abstract class InsertNode extends WritePlanNode {
 
   public void serializeMeasurementSchemaToWAL(IWALByteBufferView buffer) {
     for (MeasurementSchema measurementSchema : measurementSchemas) {
-      if (measurementSchema != null) {
-        WALWriteUtils.write(measurementSchema.getMeasurementId(), buffer);
+      WALWriteUtils.write(measurementSchema.getMeasurementId(), buffer);
 
-        WALWriteUtils.write(measurementSchema.getType(), buffer);
+      WALWriteUtils.write(measurementSchema.getType(), buffer);
 
-        WALWriteUtils.write(measurementSchema.getEncodingType(), buffer);
+      WALWriteUtils.write(measurementSchema.getEncodingType(), buffer);
 
-        WALWriteUtils.write(measurementSchema.getCompressor(), buffer);
+      WALWriteUtils.write(measurementSchema.getCompressor(), buffer);
 
-        Map<String, String> props = measurementSchema.getProps();
-        if (props == null) {
-          WALWriteUtils.write(0, buffer);
-        } else {
-          WALWriteUtils.write(props.size(), buffer);
-          for (Map.Entry<String, String> entry : props.entrySet()) {
-            WALWriteUtils.write(entry.getKey(), buffer);
-            WALWriteUtils.write(entry.getValue(), buffer);
-          }
+      Map<String, String> props = measurementSchema.getProps();
+      if (props == null) {
+        WALWriteUtils.write(0, buffer);
+      } else {
+        WALWriteUtils.write(props.size(), buffer);
+        for (Map.Entry<String, String> entry : props.entrySet()) {
+          WALWriteUtils.write(entry.getKey(), buffer);
+          WALWriteUtils.write(entry.getValue(), buffer);
         }
       }
     }
@@ -162,18 +160,16 @@ public abstract class InsertNode extends WritePlanNode {
   public int serializeMeasurementSchemaSize() {
     int byteLen = 0;
     for (MeasurementSchema measurementSchema : measurementSchemas) {
-      if (measurementSchema != null) {
-        byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementId());
-        byteLen += 3 * Byte.BYTES;
-        Map<String, String> props = measurementSchema.getProps();
-        if (props == null) {
-          byteLen += Integer.BYTES;
-        } else {
-          byteLen += Integer.BYTES;
-          for (Map.Entry<String, String> entry : props.entrySet()) {
-            byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
-            byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
-          }
+      byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementId());
+      byteLen += 3 * Byte.BYTES;
+      Map<String, String> props = measurementSchema.getProps();
+      if (props == null) {
+        byteLen += Integer.BYTES;
+      } else {
+        byteLen += Integer.BYTES;
+        for (Map.Entry<String, String> entry : props.entrySet()) {
+          byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+          byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
         }
       }
     }
@@ -220,6 +216,7 @@ public abstract class InsertNode extends WritePlanNode {
    * @param index failed measurement index
    */
   public void markFailedMeasurementInsertion(int index, Exception e) {
+    // todo partial insert
     if (measurements[index] == null) {
       return;
     }
@@ -233,16 +230,6 @@ public abstract class InsertNode extends WritePlanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
-  }
-
-  protected int countFailedMeasurements() {
-    int result = 0;
-    for (MeasurementSchema measurement : measurementSchemas) {
-      if (measurement == null) {
-        result++;
-      }
-    }
-    return result;
   }
 
   @Override

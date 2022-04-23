@@ -56,4 +56,9 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return null;
   }
+
+  @Override
+  public DataPartition getOrCreateDataPartition(PathPatternTree patternTree) {
+    return null;
+  }
 }

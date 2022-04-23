@@ -190,11 +190,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType(SchemaTree schemaTree) throws QueryProcessException {
-    List<MeasurementSchema> measurementSchemas =
-        schemaTree
-            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
-            .getMeasurementSchemaList();
     if (isNeedInferType) {
+      List<MeasurementSchema> measurementSchemas =
+          schemaTree
+              .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
+              .getMeasurementSchemaList();
       for (int i = 0; i < measurementSchemas.size(); i++) {
         if (measurementSchemas.get(i) == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -301,11 +301,17 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
-    buffer.putInt(measurementSchemas.length - countFailedMeasurements());
+    buffer.putInt(measurementSchemas.length);
 
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      if (measurementSchema != null) {
+    // check whether has measurement schemas or not
+    buffer.put((byte) (measurementSchemas != null ? 1 : 0));
+    if (measurementSchemas != null) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         measurementSchema.serializeTo(buffer);
+      }
+    } else {
+      for (String measurement : measurements) {
+        ReadWriteIOUtils.write(measurement, buffer);
       }
     }
 
@@ -315,39 +321,38 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       logger.error("Failed to serialize values for {}", this, e);
     }
 
+    buffer.put((byte) (isNeedInferType ? 1 : 0));
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] != null) {
-        if (values[i] == null) {
-          ReadWriteIOUtils.write(TYPE_NULL, buffer);
-          continue;
-        }
-        ReadWriteIOUtils.write(dataTypes[i], buffer);
-        switch (dataTypes[i]) {
-          case BOOLEAN:
-            ReadWriteIOUtils.write((Boolean) values[i], buffer);
-            break;
-          case INT32:
-            ReadWriteIOUtils.write((Integer) values[i], buffer);
-            break;
-          case INT64:
-            ReadWriteIOUtils.write((Long) values[i], buffer);
-            break;
-          case FLOAT:
-            ReadWriteIOUtils.write((Float) values[i], buffer);
-            break;
-          case DOUBLE:
-            ReadWriteIOUtils.write((Double) values[i], buffer);
-            break;
-          case TEXT:
-            ReadWriteIOUtils.write((Binary) values[i], buffer);
-            break;
-          default:
-            throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
-        }
+      if (values[i] == null) {
+        ReadWriteIOUtils.write(TYPE_NULL, buffer);
+        continue;
+      }
+      ReadWriteIOUtils.write(dataTypes[i], buffer);
+      switch (dataTypes[i]) {
+        case BOOLEAN:
+          ReadWriteIOUtils.write((Boolean) values[i], buffer);
+          break;
+        case INT32:
+          ReadWriteIOUtils.write((Integer) values[i], buffer);
+          break;
+        case INT64:
+          ReadWriteIOUtils.write((Long) values[i], buffer);
+          break;
+        case FLOAT:
+          ReadWriteIOUtils.write((Float) values[i], buffer);
+          break;
+        case DOUBLE:
+          ReadWriteIOUtils.write((Double) values[i], buffer);
+          break;
+        case TEXT:
+          ReadWriteIOUtils.write((Binary) values[i], buffer);
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
       }
     }
   }
@@ -370,10 +375,17 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     int measurementSize = buffer.getInt();
 
     this.measurements = new String[measurementSize];
-    this.measurementSchemas = new MeasurementSchema[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-      measurements[i] = measurementSchemas[i].getMeasurementId();
+    boolean hasSchema = buffer.get() == 1;
+    if (hasSchema) {
+      this.measurementSchemas = new MeasurementSchema[measurementSize];
+      for (int i = 0; i < measurementSize; i++) {
+        measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+      }
+    } else {
+      for (int i = 0; i < measurementSize; i++) {
+        measurements[i] = ReadWriteIOUtils.readString(buffer);
+      }
     }
 
     this.dataTypes = new TSDataType[measurementSize];
@@ -384,6 +396,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       e.printStackTrace();
     }
 
+    isNeedInferType = buffer.get() == 1;
     isAligned = buffer.get() == 1;
   }
 
@@ -433,7 +446,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   void serializeMeasurementsAndValues(IWALByteBufferView buffer) {
-    buffer.putInt(measurementSchemas.length - countFailedMeasurements());
+    buffer.putInt(measurementSchemas.length);
 
     serializeMeasurementSchemaToWAL(buffer);
 
@@ -449,34 +462,32 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   private void putValues(IWALByteBufferView buffer) throws QueryProcessException {
     // todo remove serialize datatype after serializing measurement schema
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] != null) {
-        if (values[i] == null) {
-          WALWriteUtils.write(TYPE_NULL, buffer);
-          continue;
-        }
-        WALWriteUtils.write(dataTypes[i], buffer);
-        switch (dataTypes[i]) {
-          case BOOLEAN:
-            WALWriteUtils.write((Boolean) values[i], buffer);
-            break;
-          case INT32:
-            WALWriteUtils.write((Integer) values[i], buffer);
-            break;
-          case INT64:
-            WALWriteUtils.write((Long) values[i], buffer);
-            break;
-          case FLOAT:
-            WALWriteUtils.write((Float) values[i], buffer);
-            break;
-          case DOUBLE:
-            WALWriteUtils.write((Double) values[i], buffer);
-            break;
-          case TEXT:
-            WALWriteUtils.write((Binary) values[i], buffer);
-            break;
-          default:
-            throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
-        }
+      if (values[i] == null) {
+        WALWriteUtils.write(TYPE_NULL, buffer);
+        continue;
+      }
+      WALWriteUtils.write(dataTypes[i], buffer);
+      switch (dataTypes[i]) {
+        case BOOLEAN:
+          WALWriteUtils.write((Boolean) values[i], buffer);
+          break;
+        case INT32:
+          WALWriteUtils.write((Integer) values[i], buffer);
+          break;
+        case INT64:
+          WALWriteUtils.write((Long) values[i], buffer);
+          break;
+        case FLOAT:
+          WALWriteUtils.write((Float) values[i], buffer);
+          break;
+        case DOUBLE:
+          WALWriteUtils.write((Double) values[i], buffer);
+          break;
+        case TEXT:
+          WALWriteUtils.write((Binary) values[i], buffer);
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
       }
     }
   }
@@ -544,18 +555,20 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public int hashCode() {
-    int result = Objects.hash(super.hashCode(), time);
-    result = 31 * result + Arrays.hashCode(values);
-    return result;
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     InsertRowNode that = (InsertRowNode) o;
-    return time == that.time && Arrays.equals(values, that.values);
+    return time == that.time
+        && isNeedInferType == that.isNeedInferType
+        && Arrays.equals(values, that.values);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(super.hashCode(), time, isNeedInferType);
+    result = 31 * result + Arrays.hashCode(values);
+    return result;
   }
 }
