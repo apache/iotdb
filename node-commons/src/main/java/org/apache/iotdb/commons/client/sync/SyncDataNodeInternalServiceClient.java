@@ -90,6 +90,11 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
     return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
+  @Override
+  public String toString() {
+    return String.format("SyncDataNodeInternalServiceClient{%s}", endpoint);
+  }
+
   public static class Factory
       extends BaseClientFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
 

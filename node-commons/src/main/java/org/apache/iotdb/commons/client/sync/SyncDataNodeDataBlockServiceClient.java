@@ -79,6 +79,11 @@ public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client 
     return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
+  @Override
+  public String toString() {
+    return String.format("SyncDataNodeDataBlockServiceClient{%s}", endpoint);
+  }
+
   public static class Factory
       extends BaseClientFactory<TEndPoint, SyncDataNodeDataBlockServiceClient> {
 

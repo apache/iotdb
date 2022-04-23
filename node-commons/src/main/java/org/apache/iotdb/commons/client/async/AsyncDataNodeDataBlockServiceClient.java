@@ -30,10 +30,15 @@ import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 public class AsyncDataNodeDataBlockServiceClient extends DataBlockService.AsyncClient {
+
+  private static final Logger logger =
+      LoggerFactory.getLogger(AsyncDataNodeDataBlockServiceClient.class);
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncDataNodeDataBlockServiceClient> clientManager;
@@ -93,8 +98,14 @@ public class AsyncDataNodeDataBlockServiceClient extends DataBlockService.AsyncC
       checkReady();
       return true;
     } catch (Exception e) {
+      logger.info("Unexpected exception occurs in {} :", this, e);
       return false;
     }
+  }
+
+  @Override
+  public String toString() {
+    return String.format("AsyncDataNodeDataBlockServiceClient{%s}", endpoint);
   }
 
   public static class Factory

@@ -79,6 +79,11 @@ public class SyncConfigNodeIServiceClient extends ConfigIService.Client {
     return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
+  @Override
+  public String toString() {
+    return String.format("SyncConfigNodeIServiceClient{%s}", endpoint);
+  }
+
   public static class Factory extends BaseClientFactory<TEndPoint, SyncConfigNodeIServiceClient> {
 
     public Factory(
