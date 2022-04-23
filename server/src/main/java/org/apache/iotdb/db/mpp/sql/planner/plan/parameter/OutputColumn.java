@@ -16,10 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.db.mpp.sql.planner.plan.parameter;
+
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -65,5 +68,24 @@ public class OutputColumn {
   public InputLocation getInputLocation(int index) {
     checkArgument(index < sourceLocations.size(), "index is not valid");
     return sourceLocations.get(index);
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(sourceLocations.size(), byteBuffer);
+    for (InputLocation sourceLocation : sourceLocations) {
+      sourceLocation.serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(overlapped, byteBuffer);
+  }
+
+  public static OutputColumn deserialize(ByteBuffer byteBuffer) {
+    int sourceLocationSize = ReadWriteIOUtils.readInt(byteBuffer);
+    ImmutableList.Builder<InputLocation> sourceLocations = ImmutableList.builder();
+    while (sourceLocationSize > 0) {
+      sourceLocations.add(InputLocation.deserialize(byteBuffer));
+      sourceLocationSize--;
+    }
+    boolean overlapped = ReadWriteIOUtils.readBool(byteBuffer);
+    return new OutputColumn(sourceLocations.build(), overlapped);
   }
 }

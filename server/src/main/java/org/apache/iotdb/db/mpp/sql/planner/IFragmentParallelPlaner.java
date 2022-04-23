@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.db.mpp.sql.planner;
+
+import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import java.util.List;
 
