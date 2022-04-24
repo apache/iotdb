@@ -27,14 +27,15 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 public class CountMergeOperator implements ProcessOperator {
-
   private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
   private boolean isFinished;
@@ -63,13 +64,29 @@ public class CountMergeOperator implements ProcessOperator {
   }
 
   private TsBlock nextWithoutGroupByLevel() {
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    CountDownLatch countDownLatch = new CountDownLatch(children.size());
+    List<TsBlock> tsBlocks = new ArrayList<>(children.size());
+    for (Operator child : children) {
+      new Thread(
+              () -> {
+                TsBlock tsBlock = child.next();
+                tsBlocks.add(tsBlock);
+                countDownLatch.countDown();
+              })
+          .start();
+    }
+    try {
+      countDownLatch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
+    }
     int totalCount = 0;
-    for (int i = 0; i < children.size(); i++) {
-      TsBlock tsBlock = children.get(i).next();
+    for (TsBlock tsBlock : tsBlocks) {
       int count = tsBlock.getColumn(0).getInt(0);
       totalCount += count;
     }
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(totalCount);
     tsBlockBuilder.declarePosition();
@@ -77,14 +94,31 @@ public class CountMergeOperator implements ProcessOperator {
   }
 
   private TsBlock nextWithGroupByLevel() {
+    CountDownLatch countDownLatch = new CountDownLatch(children.size());
+    List<TsBlock> tsBlocks = new ArrayList<>(children.size());
+    for (Operator child : children) {
+      new Thread(
+              () -> {
+                TsBlock tsBlock = child.next();
+                tsBlocks.add(tsBlock);
+                countDownLatch.countDown();
+              })
+          .start();
+    }
+    try {
+      countDownLatch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
+    }
+
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     Map<String, Integer> countMap = new HashMap<>();
-    for (int i = 0; i < children.size(); i++) {
-      TsBlock tsBlock = children.get(i).next();
-      for (int j = 0; j < tsBlock.getPositionCount(); i++) {
-        String columnName = tsBlock.getColumn(0).getBinary(j).getStringValue();
-        int count = tsBlock.getColumn(1).getInt(j);
+    for (TsBlock tsBlock : tsBlocks) {
+      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+        String columnName = tsBlock.getColumn(0).getBinary(i).getStringValue();
+        int count = tsBlock.getColumn(1).getInt(i);
         countMap.put(columnName, countMap.getOrDefault(columnName, 0) + count);
       }
     }

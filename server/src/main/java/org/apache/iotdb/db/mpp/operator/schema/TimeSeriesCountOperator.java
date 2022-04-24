@@ -69,12 +69,13 @@ public class TimeSeriesCountOperator implements SourceOperator {
       count =
           ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
               .getSchemaRegion()
-              .getDevicesNum(partialPath, isPrefixPath);
+              .getAllTimeseriesCount(partialPath, isPrefixPath);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(count);
+    tsBlockBuilder.declarePosition();
     return tsBlockBuilder.build();
   }
 

@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
-import java.io.IOException;
 import java.util.Collections;
 
 public class DevicesCountOperator implements SourceOperator {
@@ -76,6 +75,7 @@ public class DevicesCountOperator implements SourceOperator {
     }
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(count);
+    tsBlockBuilder.declarePosition();
     return tsBlockBuilder.build();
   }
 
@@ -85,7 +85,7 @@ public class DevicesCountOperator implements SourceOperator {
   }
 
   @Override
-  public boolean isFinished() throws IOException {
+  public boolean isFinished() {
     return isFinished;
   }
 }

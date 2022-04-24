@@ -30,8 +30,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.io.IOException;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Map;
 
 public class NodeTimeSeriesCountOperator implements SourceOperator {
@@ -69,7 +68,8 @@ public class NodeTimeSeriesCountOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     Map<PartialPath, Integer> countMap;
     try {
       countMap =
@@ -95,7 +95,7 @@ public class NodeTimeSeriesCountOperator implements SourceOperator {
   }
 
   @Override
-  public boolean isFinished() throws IOException {
+  public boolean isFinished() {
     return isFinished;
   }
 }
