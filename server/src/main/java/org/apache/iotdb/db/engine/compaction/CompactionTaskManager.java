@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import com.google.common.util.concurrent.RateLimiter;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedScheduledExecutorService;
@@ -32,6 +31,8 @@ import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskCom
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
+
+import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
