@@ -52,7 +52,7 @@ public class ProcedureNode implements ProcedureNodeMBean {
 
   public void setUp() throws StartupException, IOException {
     LOGGER.info("Setting up {}...", ProcedureNodeConstant.GLOBAL_NAME);
-    registerManager.register(JMXService.getInstance());
+    registerManager.register(new JMXService());
     JMXService.registerMBean(getInstance(), mbeanName);
     ProcedureServer.getInstance().initSyncedServiceImpl(new ProcedureServerProcessor());
     registerManager.register(ProcedureServer.getInstance());
