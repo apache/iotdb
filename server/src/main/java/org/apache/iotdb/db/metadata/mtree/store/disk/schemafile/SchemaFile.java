@@ -48,13 +48,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -662,6 +660,10 @@ public class SchemaFile implements ISchemaFile {
 
     ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr));
 
+    if (curPage == null) {
+      throw new NullPointerException("");
+    }
+
     if (curPage.hasRecordKeyInSegment(recKey, curSegId)) {
       return curSegAddr;
     }
@@ -780,6 +782,9 @@ public class SchemaFile implements ISchemaFile {
       }
 
       if (pageInstCache.containsKey(pageIdx)) {
+        if (pageInstCache.get(pageIdx) == null) {
+          throw new NullPointerException("");
+        }
         return pageInstCache.get(pageIdx);
       }
     } finally {
@@ -822,7 +827,13 @@ public class SchemaFile implements ISchemaFile {
 
           for (Integer id : rmvIds) {
             // dirty pages only flushed from dirtyPages
-            pageInstCache.remove(id);
+            if (pageLocks.findLock(id).writeLock().tryLock()) {
+              try {
+                pageInstCache.remove(id);
+              } finally {
+                pageLocks.findLock(id).writeLock().unlock();
+              }
+            }
           }
         }
       } finally {
