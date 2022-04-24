@@ -30,7 +30,15 @@ import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.sync.transport.conf.TransportConstant;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.service.transport.thrift.*;
+import org.apache.iotdb.service.transport.thrift.IdentityInfo;
+import org.apache.iotdb.service.transport.thrift.MetaInfo;
+import org.apache.iotdb.service.transport.thrift.RequestType;
+import org.apache.iotdb.service.transport.thrift.ResponseType;
+import org.apache.iotdb.service.transport.thrift.SyncRequest;
+import org.apache.iotdb.service.transport.thrift.SyncResponse;
+import org.apache.iotdb.service.transport.thrift.TransportService;
+import org.apache.iotdb.service.transport.thrift.TransportStatus;
+import org.apache.iotdb.service.transport.thrift.Type;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
