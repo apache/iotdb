@@ -37,25 +37,18 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.sql.analyze.ClusterSchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
@@ -73,14 +66,12 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class InternalServiceImpl implements InternalService.Iface {
@@ -110,53 +101,25 @@ public class InternalServiceImpl implements InternalService.Iface {
         return new TSendFragmentInstanceResp(!info.getState().isFailed());
       case WRITE:
         TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
+        ConsensusWriteResponse resp;
 
-        // schema validation
         FragmentInstance fragmentInstance =
             FragmentInstance.deserializeFrom(req.fragmentInstance.body);
         PlanNode planNode = fragmentInstance.getFragment().getRoot();
-        if (planNode instanceof InsertRowNode) {
-          InsertRowNode insertRowNode = (InsertRowNode) planNode;
-          SchemaTree schemaTree =
-              schemaFetcher.fetchSchemaWithAutoCreate(
-                  insertRowNode.getDevicePath(),
-                  insertRowNode.getMeasurements(),
-                  insertRowNode.getDataTypes(),
-                  insertRowNode.isAligned());
+        if (planNode instanceof InsertNode) {
+          if (SchemaValidator.validate((InsertNode) planNode)) {
+            resp = ConsensusImpl.getInstance().write(groupId, fragmentInstance);
 
-          try {
-            insertRowNode.transferType(schemaTree);
-          } catch (QueryProcessException e) {
-            throw new SemanticException(e.getMessage());
+          } else {
+            response.setAccepted(false);
+            response.setMessage("Data type mismatch");
+            return response;
           }
-
-          if (!insertRowNode.checkDataType(schemaTree)) {
-            throw new SemanticException("Data type mismatch");
-          }
-
-          DeviceSchemaInfo deviceSchemaInfo =
-              schemaTree.searchDeviceSchemaInfo(
-                  insertRowNode.getDevicePath(), Arrays.asList(insertRowNode.getMeasurements()));
-          insertRowNode.setMeasurementSchemas(
-              deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]));
-          // ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-          // fragmentInstance.serializeRequest(buffer);
-          // req.fragmentInstance.body = buffer;
-
-          ConsensusWriteResponse resp =
-              ConsensusImpl.getInstance().write(groupId, fragmentInstance);
-        } else if (planNode instanceof InsertTabletNode) {
-
-        } else if (planNode instanceof InsertRowsNode) {
-
-        } else if (planNode instanceof InsertMultiTabletsNode) {
-
-        } else if (planNode instanceof InsertRowsOfOneDeviceNode) {
-
+        } else {
+          resp =
+              ConsensusImpl.getInstance()
+                  .write(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         }
-        ConsensusWriteResponse resp =
-            ConsensusImpl.getInstance()
-                .write(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         // TODO need consider more status
         response.setAccepted(
             TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode());

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -303,9 +302,9 @@ public class Analyzer {
               insertTabletStatement.getDataTypes(),
               insertTabletStatement.isAligned());
 
-      if (!insertTabletStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
+      //      if (!insertTabletStatement.checkDataType(schemaTree)) {
+      //        throw new SemanticException("Data type mismatch");
+      //      }
 
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
@@ -333,16 +332,16 @@ public class Analyzer {
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
       dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
-      sgNameToQueryParamsMap.put(
-          schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
-          Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition =
-          partitionFetcher.getOrCreateDataPartition(sgNameToQueryParamsMap);
+      //      sgNameToQueryParamsMap.put(
+      //          schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
+      //          Collections.singletonList(dataPartitionQueryParam));
+      //      DataPartition dataPartition =
+      //          partitionFetcher.getOrCreateDataPartition(sgNameToQueryParamsMap);
 
       Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
+      // analysis.setSchemaTree(schemaTree);
       analysis.setStatement(insertRowStatement);
-      analysis.setDataPartitionInfo(dataPartition);
+      // analysis.setDataPartitionInfo(dataPartition);
 
       return analysis;
     }
@@ -359,15 +358,15 @@ public class Analyzer {
               insertRowsStatement.getDataTypesList(),
               insertRowsStatement.getAlignedList());
 
-      try {
-        insertRowsStatement.transferType(schemaTree);
-      } catch (QueryProcessException e) {
-        throw new SemanticException(e.getMessage());
-      }
-
-      if (!insertRowsStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
+      //      try {
+      //        insertRowsStatement.transferType(schemaTree);
+      //      } catch (QueryProcessException e) {
+      //        throw new SemanticException(e.getMessage());
+      //      }
+      //
+      //      if (!insertRowsStatement.checkDataType(schemaTree)) {
+      //        throw new SemanticException("Data type mismatch");
+      //      }
 
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
       for (InsertRowStatement insertRowStatement :
@@ -404,9 +403,9 @@ public class Analyzer {
               insertMultiTabletsStatement.getDataTypesList(),
               insertMultiTabletsStatement.getAlignedList());
 
-      if (!insertMultiTabletsStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
+      //      if (!insertMultiTabletsStatement.checkDataType(schemaTree)) {
+      //        throw new SemanticException("Data type mismatch");
+      //      }
 
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
       for (InsertTabletStatement insertTabletStatement :
@@ -443,15 +442,15 @@ public class Analyzer {
               insertRowsOfOneDeviceStatement.getDataTypes(),
               insertRowsOfOneDeviceStatement.isAligned());
 
-      try {
-        insertRowsOfOneDeviceStatement.transferType(schemaTree);
-      } catch (QueryProcessException e) {
-        throw new SemanticException(e.getMessage());
-      }
-
-      if (!insertRowsOfOneDeviceStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
+      //      try {
+      //        insertRowsOfOneDeviceStatement.transferType(schemaTree);
+      //      } catch (QueryProcessException e) {
+      //        throw new SemanticException(e.getMessage());
+      //      }
+      //
+      //      if (!insertRowsOfOneDeviceStatement.checkDataType(schemaTree)) {
+      //        throw new SemanticException("Data type mismatch");
+      //      }
 
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();

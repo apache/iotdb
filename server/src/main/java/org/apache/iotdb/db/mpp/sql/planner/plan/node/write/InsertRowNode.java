@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -152,25 +153,37 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public boolean checkDataType(SchemaTree schemaTree) {
-    List<MeasurementSchema> measurementSchemas =
-        schemaTree
-            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
-            .getMeasurementSchemaList();
-    for (int i = 0; i < measurementSchemas.size(); i++) {
-      if (dataTypes[i] != measurementSchemas.get(i).getType()) {
-        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          return false;
-        } else {
-          markFailedMeasurementInsertion(
-              i,
-              new DataTypeMismatchException(
-                  devicePath.getFullPath(),
-                  measurements[i],
-                  measurementSchemas.get(i).getType(),
-                  dataTypes[i]));
+    if (!isNeedInferType) {
+      DeviceSchemaInfo deviceSchemaInfo =
+          schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+      // todo partial insert
+      if (deviceSchemaInfo.isAligned() != isAligned) {
+        return false;
+      }
+
+      List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
+      for (int i = 0; i < measurementSchemas.size(); i++) {
+        if (dataTypes[i] != measurementSchemas.get(i).getType()) {
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            return false;
+          } else {
+            markFailedMeasurementInsertion(
+                i,
+                new DataTypeMismatchException(
+                    devicePath.getFullPath(),
+                    measurements[i],
+                    measurementSchemas.get(i).getType(),
+                    dataTypes[i]));
+          }
         }
       }
     }
+
+    // filter failed measurements
+    measurements = Arrays.stream(measurements).filter(Objects::nonNull).toArray(String[]::new);
+    dataTypes = Arrays.stream(dataTypes).filter(Objects::nonNull).toArray(TSDataType[]::new);
+    values = Arrays.stream(values).filter(Objects::nonNull).toArray(Object[]::new);
+
     return true;
   }
 
@@ -301,7 +314,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
-    buffer.putInt(measurementSchemas.length);
+    buffer.putInt(measurements.length);
 
     // check whether has measurement schemas or not
     buffer.put((byte) (measurementSchemas != null ? 1 : 0));

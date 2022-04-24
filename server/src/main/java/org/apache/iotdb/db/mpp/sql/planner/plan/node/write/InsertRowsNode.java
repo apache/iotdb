@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -109,6 +110,12 @@ public class InsertRowsNode extends InsertNode {
       }
     }
     return true;
+  }
+
+  public void transferType(SchemaTree schemaTree) throws QueryProcessException {
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      insertRowNode.transferType(schemaTree);
+    }
   }
 
   @Override

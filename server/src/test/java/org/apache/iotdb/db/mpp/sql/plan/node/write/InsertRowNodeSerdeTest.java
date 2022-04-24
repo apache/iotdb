@@ -50,25 +50,24 @@ public class InsertRowNodeSerdeTest {
 
     Assert.assertEquals(InsertRowNode.deserialize(byteBuffer), insertRowNode);
 
-    // Test with failed column
-    insertRowNode = getInsertRowNodeWithFailedColumn();
+    insertRowNode = getInsertRowNodeWithMeasurementSchemas();
     byteBuffer = ByteBuffer.allocate(10000);
     insertRowNode.serialize(byteBuffer);
     byteBuffer.flip();
 
     Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
 
-    InsertRowNode tmpNode = InsertRowNode.deserialize(byteBuffer);
-
-    Assert.assertEquals(tmpNode.getTime(), insertRowNode.getTime());
-    Assert.assertEquals(tmpNode.getMeasurements(), new String[] {"s1", "s3", "s5"});
+    Assert.assertEquals(InsertRowNode.deserialize(byteBuffer), insertRowNode);
   }
 
   @Test
   public void TestSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
-    InsertRowNode insertRowNode = getInsertRowNode();
+    InsertRowNode insertRowNode = getInsertRowNodeWithMeasurementSchemas();
 
     int serializedSize = insertRowNode.serializedSize();
+
+    Assert.assertEquals(serializedSize, 125);
+
     byte[] bytes = new byte[serializedSize];
     WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
 
@@ -110,45 +109,49 @@ public class InsertRowNodeSerdeTest {
         new PlanNodeId("plannode 1"),
         new PartialPath("root.isp.d1"),
         false,
+        new String[] {"s1", "s2", "s3", "s4", "s5"},
+        dataTypes,
+        time,
+        columns);
+  }
+
+  private InsertRowNode getInsertRowNodeWithMeasurementSchemas() throws IllegalPathException {
+    long time = 80L;
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+        };
+
+    Object[] columns = new Object[5];
+    columns[0] = 5.0;
+    columns[1] = 6.0f;
+    columns[2] = 1000l;
+    columns[3] = 10;
+    columns[4] = true;
+
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("plannode 2"),
+            new PartialPath("root.isp.d2"),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            dataTypes,
+            time,
+            columns);
+
+    insertRowNode.setMeasurementSchemas(
         new MeasurementSchema[] {
           new MeasurementSchema("s1", TSDataType.DOUBLE),
           new MeasurementSchema("s2", TSDataType.FLOAT),
           new MeasurementSchema("s3", TSDataType.INT64),
           new MeasurementSchema("s4", TSDataType.INT32),
           new MeasurementSchema("s5", TSDataType.BOOLEAN)
-        },
-        dataTypes,
-        time,
-        columns);
-  }
+        });
 
-  private InsertRowNode getInsertRowNodeWithFailedColumn() throws IllegalPathException {
-    long time = 110L;
-    TSDataType[] dataTypes =
-        new TSDataType[] {
-          TSDataType.DOUBLE, null, TSDataType.INT64, null, TSDataType.BOOLEAN,
-        };
-
-    Object[] columns = new Object[5];
-    columns[0] = 1.0;
-    columns[1] = null;
-    columns[2] = 10000l;
-    columns[3] = null;
-    columns[4] = false;
-
-    return new InsertRowNode(
-        new PlanNodeId("plannode 1"),
-        new PartialPath("root.isp.d1"),
-        false,
-        new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          null,
-          new MeasurementSchema("s3", TSDataType.INT64),
-          null,
-          new MeasurementSchema("s5", TSDataType.BOOLEAN)
-        },
-        dataTypes,
-        time,
-        columns);
+    return insertRowNode;
   }
 }
