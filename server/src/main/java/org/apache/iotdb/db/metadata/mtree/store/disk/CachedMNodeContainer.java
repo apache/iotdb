@@ -107,6 +107,21 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     return newChildBuffer.put(key, value);
   }
 
+  @Nullable
+  @Override
+  public synchronized IMNode putIfAbsent(String key, IMNode value) {
+
+    IMNode node = get(key);
+    if (node == null) {
+      if (newChildBuffer == null) {
+        newChildBuffer = new ConcurrentHashMap<>();
+      }
+      node = newChildBuffer.put(key, value);
+    }
+
+    return node;
+  }
+
   @Override
   public synchronized IMNode remove(Object key) {
     IMNode result = remove(childCache, key);

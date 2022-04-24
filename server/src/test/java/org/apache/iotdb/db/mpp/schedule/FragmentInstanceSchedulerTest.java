@@ -22,7 +22,7 @@ import org.apache.iotdb.db.mpp.buffer.IDataBlockManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
-import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskID;
 import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
@@ -56,12 +56,12 @@ public class FragmentInstanceSchedulerTest {
     QueryId queryId = new QueryId("test");
     PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
     FragmentInstanceId instanceId1 = new FragmentInstanceId(fragmentId, "inst-0");
-    Driver mockDriver1 = Mockito.mock(Driver.class);
+    IDriver mockDriver1 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver1.getInfo()).thenReturn(instanceId1);
     FragmentInstanceId instanceId2 = new FragmentInstanceId(fragmentId, "inst-1");
-    Driver mockDriver2 = Mockito.mock(Driver.class);
+    IDriver mockDriver2 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
-    List<Driver> instances = Arrays.asList(mockDriver1, mockDriver2);
+    List<IDriver> instances = Arrays.asList(mockDriver1, mockDriver2);
     manager.submitFragmentInstances(queryId, instances);
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());
@@ -81,7 +81,7 @@ public class FragmentInstanceSchedulerTest {
     Assert.assertEquals(FragmentInstanceTaskStatus.READY, task2.getStatus());
 
     // Submit another task of the same query
-    Driver mockDriver3 = Mockito.mock(Driver.class);
+    IDriver mockDriver3 = Mockito.mock(IDriver.class);
     FragmentInstanceId instanceId3 = new FragmentInstanceId(fragmentId, "inst-2");
     Mockito.when(mockDriver3.getInfo()).thenReturn(instanceId3);
     manager.submitFragmentInstances(queryId, Collections.singletonList(mockDriver3));
@@ -101,7 +101,7 @@ public class FragmentInstanceSchedulerTest {
     QueryId queryId2 = new QueryId("test2");
     PlanFragmentId fragmentId2 = new PlanFragmentId(queryId2, 0);
     FragmentInstanceId instanceId4 = new FragmentInstanceId(fragmentId2, "inst-0");
-    Driver mockDriver4 = Mockito.mock(Driver.class);
+    IDriver mockDriver4 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver4.getInfo()).thenReturn(instanceId4);
     manager.submitFragmentInstances(queryId2, Collections.singletonList(mockDriver4));
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());

@@ -16,21 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.execution;
 
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 
-import java.util.List;
-
-/**
- * The interface is used to transform one PlanFragment into one or more FragmentInstances which
- * could run in parallel
- */
-public interface IFragmentParallelPlaner {
-  /**
-   * The relation between each PlanFragment is necessary because sometimes we need to change the
-   * source/sink for each FragmentInstance according to its upstream/downstream
-   *
-   * @return All the FragmentInstances which can run in parallel
-   */
-  List<FragmentInstance> parallelPlan();
+public interface FragmentInstanceFailureListener {
+  void onTaskFailed(FragmentInstanceId taskId, Throwable failure);
 }

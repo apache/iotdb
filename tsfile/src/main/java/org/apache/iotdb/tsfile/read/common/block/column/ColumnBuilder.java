@@ -64,11 +64,24 @@ public interface ColumnBuilder {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder);
+  /**
+   * Write value at index of passing column
+   *
+   * @param column source column whose type should be same as ColumnBuilder
+   * @param index index of source column to read from
+   */
+  ColumnBuilder write(Column column, int index);
 
   /** Appends a null value to the block. */
   ColumnBuilder appendNull();
+
+  /** Appends nullCount null value to the block. */
+  default ColumnBuilder appendNull(int nullCount) {
+    for (int i = 0; i < nullCount; i++) {
+      appendNull();
+    }
+    return this;
+  }
 
   /** Builds the block. This method can be called multiple times. */
   Column build();

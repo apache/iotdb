@@ -16,24 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.sql.planner.plan;
+package org.apache.iotdb.db.mpp.execution;
 
-public class InputLocation {
-  // which input tsblock
-  private final int tsBlockIndex;
-  // which value column of that tsblock
-  private final int valueColumnIndex;
+import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 
-  public InputLocation(int tsBlockIndex, int valueColumnIndex) {
-    this.tsBlockIndex = tsBlockIndex;
-    this.valueColumnIndex = valueColumnIndex;
-  }
+import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.units.Duration;
 
-  public int getTsBlockIndex() {
-    return tsBlockIndex;
-  }
+public interface IDriver {
 
-  public int getValueColumnIndex() {
-    return valueColumnIndex;
-  }
+  boolean isFinished();
+
+  ListenableFuture<Void> processFor(Duration duration);
+
+  FragmentInstanceId getInfo();
+
+  void close();
+
+  void failed(Throwable t);
+
+  ISinkHandle getSinkHandle();
 }

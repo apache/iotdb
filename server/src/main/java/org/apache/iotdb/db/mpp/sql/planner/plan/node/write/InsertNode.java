@@ -23,12 +23,21 @@ import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public abstract class InsertNode extends WritePlanNode {
@@ -129,6 +138,63 @@ public abstract class InsertNode extends WritePlanNode {
 
   public void setDeviceID(IDeviceID deviceID) {
     this.deviceID = deviceID;
+  }
+
+  protected void serializeMeasurementSchemaToWAL(IWALByteBufferView buffer) {
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
+      if (measurementSchema != null) {
+        WALWriteUtils.write(measurementSchema, buffer);
+      }
+    }
+  }
+
+  protected int serializeMeasurementSchemaSize() {
+    int byteLen = 0;
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
+      if (measurementSchema != null) {
+        byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementId());
+        byteLen += 3 * Byte.BYTES;
+        Map<String, String> props = measurementSchema.getProps();
+        if (props == null) {
+          byteLen += Integer.BYTES;
+        } else {
+          byteLen += Integer.BYTES;
+          for (Map.Entry<String, String> entry : props.entrySet()) {
+            byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+            byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
+          }
+        }
+      }
+    }
+    return byteLen;
+  }
+
+  /** Make sure the measurement schema is already inited before calling this */
+  protected void deserializeMeasurementSchema(DataInputStream stream) throws IOException {
+    for (int i = 0; i < measurementSchemas.length; i++) {
+
+      measurementSchemas[i] =
+          new MeasurementSchema(
+              ReadWriteIOUtils.readString(stream),
+              TSDataType.deserialize(ReadWriteIOUtils.readByte(stream)),
+              TSEncoding.deserialize(ReadWriteIOUtils.readByte(stream)),
+              CompressionType.deserialize(ReadWriteIOUtils.readByte(stream)));
+
+      int size = ReadWriteIOUtils.readInt(stream);
+      if (size > 0) {
+        Map<String, String> props = new HashMap<>();
+        String key;
+        String value;
+        for (int j = 0; j < size; j++) {
+          key = ReadWriteIOUtils.readString(stream);
+          value = ReadWriteIOUtils.readString(stream);
+          props.put(key, value);
+        }
+        measurementSchemas[i].setProps(props);
+      }
+
+      measurements[i] = measurementSchemas[i].getMeasurementId();
+    }
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {
