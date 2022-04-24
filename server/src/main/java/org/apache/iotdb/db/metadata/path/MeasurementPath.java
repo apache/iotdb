@@ -102,10 +102,12 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = schema;
   }
 
+  @Override
   public IMeasurementSchema getMeasurementSchema() {
     return measurementSchema;
   }
 
+  @Override
   public TSDataType getSeriesType() {
     return getMeasurementSchema().getType();
   }
@@ -118,23 +120,26 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = measurementSchema;
   }
 
+  @Override
   public String getMeasurementAlias() {
     return measurementAlias;
   }
 
+  @Override
   public void setMeasurementAlias(String measurementAlias) {
     if (measurementAlias != null) {
       this.measurementAlias = measurementAlias;
     }
   }
 
+  @Override
   public boolean isMeasurementAliasExists() {
     return measurementAlias != null && !measurementAlias.isEmpty();
   }
 
   @Override
   public String getFullPathWithAlias() {
-    return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
+    return getDeviceIdString() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
   }
 
   public boolean isUnderAlignedEntity() {
@@ -177,6 +182,7 @@ public class MeasurementPath extends PartialPath {
         this, dataType, deviceMeasurements, context, dataSource, queryTime, timeFilter);
   }
 
+  @Override
   public SeriesReader createSeriesReader(
       Set<String> allSensors,
       TSDataType dataType,
@@ -198,6 +204,7 @@ public class MeasurementPath extends PartialPath {
         ascending);
   }
 
+  @Override
   @TestOnly
   public SeriesReader createSeriesReader(
       Set<String> allSensors,
@@ -238,6 +245,7 @@ public class MeasurementPath extends PartialPath {
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
+  @Override
   public ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
@@ -319,7 +327,8 @@ public class MeasurementPath extends PartialPath {
     MeasurementPath newMeasurementPath = null;
     try {
       newMeasurementPath =
-          new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
+          new MeasurementPath(
+              this.getDeviceIdString(), this.getMeasurement(), this.getMeasurementSchema());
       newMeasurementPath.setUnderAlignedEntity(this.isUnderAlignedEntity);
     } catch (IllegalPathException e) {
       logger.warn("path is illegal: {}", this.getFullPath(), e);
@@ -335,7 +344,7 @@ public class MeasurementPath extends PartialPath {
 
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(
-            writer.getVisibleMetadataList(getDevice(), getMeasurement(), getSeriesType()));
+            writer.getVisibleMetadataList(getDeviceIdString(), getMeasurement(), getSeriesType()));
 
     QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
     chunkMetadataList.removeIf(context::chunkNotSatisfy);
@@ -375,7 +384,7 @@ public class MeasurementPath extends PartialPath {
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
     measurementPath.nodes = partialPath.nodes;
-    measurementPath.device = partialPath.getDevice();
+    measurementPath.device = partialPath.getDeviceIdString();
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;
   }

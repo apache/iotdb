@@ -128,12 +128,13 @@ public class AlignedPath extends PartialPath {
     schemaList = new ArrayList<>();
   }
 
+  @Override
   public PartialPath getDevicePath() {
     return new PartialPath(Arrays.copyOf(nodes, nodes.length));
   }
 
   @Override
-  public String getDevice() {
+  public String getDeviceIdString() {
     return getFullPath();
   }
 
@@ -199,6 +200,7 @@ public class AlignedPath extends PartialPath {
     return this.schemaList == null ? Collections.emptyList() : this.schemaList;
   }
 
+  @Override
   public VectorMeasurementSchema getMeasurementSchema() {
     TSDataType[] types = new TSDataType[measurementList.size()];
     TSEncoding[] encodings = new TSEncoding[measurementList.size()];
@@ -215,6 +217,7 @@ public class AlignedPath extends PartialPath {
         VECTOR_PLACEHOLDER, array, types, encodings, schemaList.get(0).getCompressor());
   }
 
+  @Override
   public TSDataType getSeriesType() {
     return TSDataType.VECTOR;
   }
@@ -324,6 +327,7 @@ public class AlignedPath extends PartialPath {
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
+  @Override
   public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
@@ -456,12 +460,12 @@ public class AlignedPath extends PartialPath {
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
-        writer.getVisibleMetadataList(getDevice(), "", getSeriesType());
+        writer.getVisibleMetadataList(this.getDeviceIdString(), "", getSeriesType());
     List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
     for (int i = 0; i < measurementList.size(); i++) {
       valueChunkMetadataList.add(
           writer.getVisibleMetadataList(
-              getDevice(), measurementList.get(i), schemaList.get(i).getType()));
+              this.getDeviceIdString(), measurementList.get(i), schemaList.get(i).getType()));
     }
 
     for (int i = 0; i < timeChunkMetadataList.size(); i++) {
@@ -495,7 +499,7 @@ public class AlignedPath extends PartialPath {
     try {
       alignedPath =
           new AlignedPath(
-              this.getDevice(),
+              this.getDeviceIdString(),
               new ArrayList<>(this.measurementList),
               new ArrayList<>(this.schemaList));
     } catch (IllegalPathException e) {
@@ -551,7 +555,7 @@ public class AlignedPath extends PartialPath {
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
     alignedPath.nodes = partialPath.nodes;
-    alignedPath.device = partialPath.getDevice();
+    alignedPath.device = partialPath.getDeviceIdString();
     alignedPath.fullPath = partialPath.getFullPath();
     return alignedPath;
   }

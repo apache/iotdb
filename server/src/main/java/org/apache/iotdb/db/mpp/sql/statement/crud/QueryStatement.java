@@ -257,7 +257,7 @@ public class QueryStatement extends Statement {
               .filter(SQLConstant::isNotReservedPath)
               .collect(Collectors.toList())) {
         deviceNameToDeduplicatedPathsMap
-            .computeIfAbsent(path.getDevice(), k -> new HashSet<>())
+            .computeIfAbsent(path.getDeviceIdString(), k -> new HashSet<>())
             .add(path);
       }
     }

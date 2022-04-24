@@ -986,8 +986,6 @@ fragment NAME_CHAR
     | '$'
     | '{'
     | '}'
-    | '['
-    | ']'
     | CN_CHAR
     ;
 

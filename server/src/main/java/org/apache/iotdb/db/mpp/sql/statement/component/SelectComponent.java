@@ -150,7 +150,7 @@ public class SelectComponent extends StatementNode {
       for (ResultColumn resultColumn : resultColumns) {
         for (PartialPath path : resultColumn.collectPaths()) {
           deviceNameToDeduplicatedPathsCache
-              .computeIfAbsent(path.getDevice(), k -> new HashSet<>())
+              .computeIfAbsent(path.getDeviceIdString(), k -> new HashSet<>())
               .add(path);
         }
       }
@@ -164,7 +164,7 @@ public class SelectComponent extends StatementNode {
       for (ResultColumn resultColumn : resultColumns) {
         for (PartialPath path : resultColumn.collectPaths()) {
           deviceNameToPathsCache
-              .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
+              .computeIfAbsent(path.getDeviceIdString(), k -> new ArrayList<>())
               .add(path);
         }
       }

@@ -1557,7 +1557,7 @@ public class PlanExecutor implements IPlanExecutor {
         if (!registeredSeries.contains(series)) {
           registeredSeries.add(series);
           IMeasurementSchema schema =
-              knownSchemas.get(new Path(series.getDevice(), series.getMeasurement()));
+              knownSchemas.get(new Path(series.getDeviceIdString(), series.getMeasurement()));
           if (schema == null) {
             throw new MetadataException(
                 String.format(

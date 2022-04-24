@@ -389,7 +389,7 @@ public class LogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDeviceIdString());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
       Assert.assertFalse(showTimeSeriesNode.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
@@ -407,7 +407,7 @@ public class LogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode2);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDeviceIdString());
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
       Assert.assertFalse(showTimeSeriesNode2.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());

@@ -129,7 +129,7 @@ public class DataDriver extends Driver {
       // when all the selected series are under the same device, the QueryDataSource will be
       // filtered according to timeIndex
       Set<String> selectedDeviceIdSet =
-          pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
+          pathList.stream().map(PartialPath::getDeviceIdString).collect(Collectors.toSet());
 
       QueryDataSource dataSource =
           dataRegion.query(

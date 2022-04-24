@@ -956,8 +956,6 @@ attributeValue
     : STRING_LITERAL
     ;
 
-
-
 // Limit & Offset Clause
 
 limitClause

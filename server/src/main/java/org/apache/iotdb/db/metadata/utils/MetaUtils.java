@@ -150,7 +150,7 @@ public class MetaUtils {
         result.add(measurementPath);
         alignedPath = null;
       } else {
-        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getDeviceIdString())) {
           alignedPath = new AlignedPath(measurementPath);
           result.add(alignedPath);
         } else {
@@ -242,10 +242,10 @@ public class MetaUtils {
       } else if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
         // for without value filter
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getDevice());
+        AlignedPath groupPath = temp.get(seriesPath.getDeviceIdString());
         if (groupPath == null) {
           groupPath = new AlignedPath((MeasurementPath) seriesPath);
-          temp.put(seriesPath.getDevice(), groupPath);
+          temp.put(seriesPath.getDeviceIdString(), groupPath);
           alignedPathToAggrIndexesMap
               .computeIfAbsent(groupPath, key -> new ArrayList<>())
               .add(indexes);

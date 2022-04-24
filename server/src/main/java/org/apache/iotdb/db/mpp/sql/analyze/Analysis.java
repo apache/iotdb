@@ -60,7 +60,7 @@ public class Analysis {
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
+    return dataPartition.getDataRegionReplicaSet(seriesPath.getDeviceIdString(), null);
   }
 
   public Statement getStatement() {

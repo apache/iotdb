@@ -276,7 +276,8 @@ public class ClusterReaderFactory {
       partialPaths.forEach(
           partialPath -> {
             Set<String> measurements =
-                deviceMeasurements.getOrDefault(partialPath.getDevice(), Collections.emptySet());
+                deviceMeasurements.getOrDefault(
+                    partialPath.getDeviceIdString(), Collections.emptySet());
             partitionGroupDeviceMeasurements.put(partialPath.getFullPath(), measurements);
             partitionGroupTSDataType.add(dataTypes.get(paths.lastIndexOf(partialPath)));
           });
