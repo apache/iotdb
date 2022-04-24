@@ -121,10 +121,10 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  public boolean hasNext(){
+  public boolean hasNext() {
     try {
       return filterPointReader.next();
-    }catch (Exception e){
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
