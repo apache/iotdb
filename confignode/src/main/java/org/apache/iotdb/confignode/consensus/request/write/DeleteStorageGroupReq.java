@@ -16,30 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.consensus.request.write;
 
-package org.apache.iotdb.confignode.manager;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import java.nio.ByteBuffer;
 
-public class PermissionManager {
+public class DeleteStorageGroupReq extends ConfigRequest {
 
-  private Manager configNodeManager;
+  // TODO: @YongzaoDan
 
-  public PermissionManager(Manager configManager) {
-    this.configNodeManager = configManager;
+  public DeleteStorageGroupReq() {
+    super(ConfigRequestType.DeleteStorageGroup);
   }
 
-  public TSStatus operatePermission(AuthorReq authorReq) {
-    return getConsensusManager().write(authorReq).getStatus();
-  }
+  @Override
+  protected void serializeImpl(ByteBuffer buffer) {}
 
-  public PermissionInfoResp queryPermission(AuthorReq authorReq) {
-    return (PermissionInfoResp) getConsensusManager().read(authorReq).getDataset();
-  }
-
-  private ConsensusManager getConsensusManager() {
-    return configNodeManager.getConsensusManager();
-  }
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) {}
 }

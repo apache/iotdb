@@ -17,29 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.service.thrift;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-
-public class PermissionManager {
-
-  private Manager configNodeManager;
-
-  public PermissionManager(Manager configManager) {
-    this.configNodeManager = configManager;
-  }
-
-  public TSStatus operatePermission(AuthorReq authorReq) {
-    return getConsensusManager().write(authorReq).getStatus();
-  }
-
-  public PermissionInfoResp queryPermission(AuthorReq authorReq) {
-    return (PermissionInfoResp) getConsensusManager().read(authorReq).getDataset();
-  }
-
-  private ConsensusManager getConsensusManager() {
-    return configNodeManager.getConsensusManager();
-  }
-}
+public interface ConfigNodeRPCServiceMBean {}

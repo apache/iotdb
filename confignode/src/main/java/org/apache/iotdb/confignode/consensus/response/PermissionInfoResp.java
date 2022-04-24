@@ -17,29 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.consensus.common.DataSet;
 
-public class PermissionManager {
+import java.util.List;
+import java.util.Map;
 
-  private Manager configNodeManager;
+public class PermissionInfoResp implements DataSet {
 
-  public PermissionManager(Manager configManager) {
-    this.configNodeManager = configManager;
+  private TSStatus status;
+
+  private Map<String, List<String>> permissionInfo;
+
+  public PermissionInfoResp() {}
+
+  public PermissionInfoResp(TSStatus status, Map<String, List<String>> permissionInfo) {
+    this.status = status;
+    this.permissionInfo = permissionInfo;
   }
 
-  public TSStatus operatePermission(AuthorReq authorReq) {
-    return getConsensusManager().write(authorReq).getStatus();
+  public Map<String, List<String>> getPermissionInfo() {
+    return permissionInfo;
   }
 
-  public PermissionInfoResp queryPermission(AuthorReq authorReq) {
-    return (PermissionInfoResp) getConsensusManager().read(authorReq).getDataset();
+  public void setPermissionInfo(Map<String, List<String>> permissionInfo) {
+    this.permissionInfo = permissionInfo;
   }
 
-  private ConsensusManager getConsensusManager() {
-    return configNodeManager.getConsensusManager();
+  public TSStatus getStatus() {
+    return status;
+  }
+
+  public void setStatus(TSStatus status) {
+    this.status = status;
   }
 }

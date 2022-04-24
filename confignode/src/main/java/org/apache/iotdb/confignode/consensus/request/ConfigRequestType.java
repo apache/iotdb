@@ -16,30 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.consensus.request;
 
-package org.apache.iotdb.confignode.manager;
-
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-
-public class PermissionManager {
-
-  private Manager configNodeManager;
-
-  public PermissionManager(Manager configManager) {
-    this.configNodeManager = configManager;
-  }
-
-  public TSStatus operatePermission(AuthorReq authorReq) {
-    return getConsensusManager().write(authorReq).getStatus();
-  }
-
-  public PermissionInfoResp queryPermission(AuthorReq authorReq) {
-    return (PermissionInfoResp) getConsensusManager().read(authorReq).getDataset();
-  }
-
-  private ConsensusManager getConsensusManager() {
-    return configNodeManager.getConsensusManager();
-  }
+public enum ConfigRequestType {
+  RegisterDataNode,
+  QueryDataNodeInfo,
+  SetStorageGroup,
+  DeleteStorageGroup,
+  QueryStorageGroupSchema,
+  CreateRegions,
+  GetSchemaPartition,
+  CreateSchemaPartition,
+  GetOrCreateSchemaPartition,
+  GetDataPartition,
+  CreateDataPartition,
+  GetOrCreateDataPartition,
+  AUTHOR,
+  CREATE_USER,
+  CREATE_ROLE,
+  DROP_USER,
+  DROP_ROLE,
+  GRANT_ROLE,
+  GRANT_USER,
+  GRANT_ROLE_TO_USER,
+  REVOKE_USER,
+  REVOKE_ROLE,
+  REVOKE_ROLE_FROM_USER,
+  UPDATE_USER,
+  LIST_USER,
+  LIST_ROLE,
+  LIST_USER_PRIVILEGE,
+  LIST_ROLE_PRIVILEGE,
+  LIST_USER_ROLES,
+  LIST_ROLE_USERS
 }
