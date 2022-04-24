@@ -100,8 +100,17 @@ public class PartitionInfo {
     TSStatus result;
     regionReadWriteLock.writeLock().lock();
     try {
+      int maxRegionId = Integer.MIN_VALUE;
+
       for (TRegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
         regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+        maxRegionId = Math.max(maxRegionId, regionReplicaSet.getRegionId().getId());
+      }
+
+      if (nextRegionGroupId.get() < maxRegionId) {
+        // In this case, at least one Region is created with the leader node,
+        // so the nextRegionGroupID of the followers needs to be added
+        nextRegionGroupId.getAndAdd(plan.getRegionReplicaSets().size());
       }
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

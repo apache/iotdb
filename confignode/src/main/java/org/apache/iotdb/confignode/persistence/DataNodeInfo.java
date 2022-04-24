@@ -92,6 +92,11 @@ public class DataNodeInfo {
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
       onlineDataNodes.put(info.getDataNodeId(), info);
+      if (nextDataNodeId.get() < plan.getLocation().getDataNodeId()) {
+        // In this case, at least one Datanode is registered with the leader node,
+        // so the nextDataNodeID of the followers needs to be added
+        nextDataNodeId.getAndIncrement();
+      }
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
