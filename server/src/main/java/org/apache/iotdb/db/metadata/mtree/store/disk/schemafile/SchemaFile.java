@@ -945,6 +945,7 @@ public class SchemaFile implements ISchemaFile {
     for (ISchemaPage page : dirtyPages.values()) {
       flushPageToFile(page);
     }
+    updateHeader();
     dirtyPages.clear();
   }
 
