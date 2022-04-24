@@ -312,7 +312,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             schemaPartitionCache.getIfPresent(device);
         if (null == schemaPartitionCacheValue) {
           // if one device not find, then return cache miss.
-          logger.error("Failed to find schema partition");
+          logger.debug("Failed to find schema partition");
           return null;
         }
         String storageGroupName = schemaPartitionCacheValue.getStorageGroup();
@@ -324,7 +324,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         regionReplicaSetMap.put(
             seriesPartitionSlot, schemaPartitionCacheValue.getRegionReplicaSet());
       }
-      logger.error("Hit schema partition");
+      logger.debug("Hit schema partition");
       // cache hit
       return new SchemaPartition(
           schemaPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
@@ -349,7 +349,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           if (null == dataPartitionQueryParam.getTimePartitionSlotList()
               || 0 == dataPartitionQueryParam.getTimePartitionSlotList().size()) {
             // if query all data, cache miss
-            logger.error("Failed to find data partition");
+            logger.debug("Failed to find data partition");
             return null;
           }
           TSeriesPartitionSlot seriesPartitionSlot =
@@ -368,14 +368,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                 dataPartitionCache.getIfPresent(dataPartitionCacheKey);
             if (null == regionReplicaSets) {
               // if one time partition not find, cache miss
-              logger.error("Failed to find data partition");
+              logger.debug("Failed to find data partition");
               return null;
             }
             timePartitionSlotListMap.put(timePartitionSlot, regionReplicaSets);
           }
         }
       }
-      logger.error("Hit data partition");
+      logger.debug("Hit data partition");
       // cache hit
       return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     }
