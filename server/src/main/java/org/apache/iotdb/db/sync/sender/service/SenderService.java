@@ -215,7 +215,6 @@ public class SenderService implements IService {
   public synchronized void stopPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
-      sendMsg(RequestType.STOP);
       runningPipe.stop();
       transportHandler.stop();
     }
@@ -225,7 +224,6 @@ public class SenderService implements IService {
   public synchronized void startPipe(String pipeName) throws PipeException {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
-      sendMsg(RequestType.START);
       runningPipe.start();
       transportHandler.start();
     }

@@ -25,12 +25,9 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IFragmentParallelPlaner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
-import org.apache.iotdb.db.mpp.sql.planner.plan.SimpleFragmentParallelPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
-import org.apache.iotdb.db.mpp.sql.planner.plan.WriteFragmentParallelPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
@@ -218,6 +215,7 @@ public class DistributionPlanner {
         split.setRegionReplicaSet(dataRegion);
         timeJoinNode.addChild(split);
       }
+      timeJoinNode.initOutputColumns();
       return timeJoinNode;
     }
 
@@ -283,6 +281,7 @@ public class DistributionPlanner {
             }
           });
 
+      root.initOutputColumns();
       return root;
     }
 
@@ -413,6 +412,7 @@ public class DistributionPlanner {
       // If the distributionType of all the children are same, no ExchangeNode need to be added.
       if (distributionType == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
         newNode.setChildren(visitedChildren);
+        newNode.initOutputColumns();
         return newNode;
       }
 
@@ -429,6 +429,7 @@ public class DistributionPlanner {
               newNode.addChild(child);
             }
           });
+      newNode.initOutputColumns();
       return newNode;
     }
 

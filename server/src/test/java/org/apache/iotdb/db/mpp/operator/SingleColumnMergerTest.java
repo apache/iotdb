@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.operator;
 
 import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
-import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
