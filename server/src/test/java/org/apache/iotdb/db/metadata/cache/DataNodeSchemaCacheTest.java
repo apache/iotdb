@@ -53,9 +53,7 @@ public class DataNodeSchemaCacheTest {
 
   @Test
   public void testGetSingleSchemaEntity() throws IllegalPathException {
-    MeasurementSchema measurementSchema1 =
-        new MeasurementSchema(
-            "temperature", TSDataType.INT32);
+    MeasurementSchema measurementSchema1 = new MeasurementSchema("temperature", TSDataType.INT32);
     PartialPath path1 = new PartialPath("root.sg1.d1.temperature");
     MeasurementPath measurementPath1 = new MeasurementPath(path1, measurementSchema1);
 
@@ -80,9 +78,7 @@ public class DataNodeSchemaCacheTest {
     Assert.assertNull(schemaCacheEntity3);
     Assert.assertEquals(1, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
 
-    MeasurementSchema measurementSchema4 =
-        new MeasurementSchema(
-            "cpu", TSDataType.INT64);
+    MeasurementSchema measurementSchema4 = new MeasurementSchema("cpu", TSDataType.INT64);
     PartialPath path4 = new PartialPath("root.sg1.d1.cpu");
     MeasurementPath measurementPath4 = new MeasurementPath(path4, measurementSchema4);
     SchemaCacheEntity schemaCacheEntity4 =
@@ -99,19 +95,13 @@ public class DataNodeSchemaCacheTest {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
 
     measurementList.add("s1");
-    schemaList.add(
-        new MeasurementSchema(
-            "s1", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
 
     measurementList.add("s2");
-    schemaList.add(
-        new MeasurementSchema(
-            "s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
 
     measurementList.add("s3");
-    schemaList.add(
-        new MeasurementSchema(
-            "s3", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
 
     AlignedPath alignedPath1 = new AlignedPath("root.sg1.d2", measurementList, schemaList);
     Map<PartialPath, SchemaCacheEntity> schemaEntityMap1 =
@@ -119,14 +109,10 @@ public class DataNodeSchemaCacheTest {
     Assert.assertEquals(3, schemaEntityMap1.size());
 
     measurementList.add("s4");
-    schemaList.add(
-        new MeasurementSchema(
-            "s4", TSDataType.BOOLEAN));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.BOOLEAN));
 
     measurementList.add("s5");
-    schemaList.add(
-        new MeasurementSchema(
-            "s5", TSDataType.TEXT));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.TEXT));
     AlignedPath alignedPath2 = new AlignedPath("root.sg1.d2", measurementList, schemaList);
     Map<PartialPath, SchemaCacheEntity> schemaEntityMap2 =
         dataNodeSchemaCache.getAlignedSchemaEntity(alignedPath2, false);

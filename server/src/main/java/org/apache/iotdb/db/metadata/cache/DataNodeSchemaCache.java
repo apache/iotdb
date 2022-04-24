@@ -39,7 +39,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -137,7 +136,7 @@ public class DataNodeSchemaCache {
       TSDataType[] tsDataType = new TSDataType[] {measurementPath.getSeriesType()};
       schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
-                  measurementPath.getDevicePath(), measurement, tsDataType, false);
+              measurementPath.getDevicePath(), measurement, tsDataType, false);
 
       // TODO need to construct schemaEntry from schemaTree, currently just from partialPath for
       // test
@@ -170,17 +169,17 @@ public class DataNodeSchemaCache {
 
     } else {
       // TODO need to use schemaFetcher.fetcheSchemaWithAutoCreate()
-      String[] measurements = alignedPath.getMeasurementList().toArray(new String[alignedPath.getMeasurementListSize()]);
+      String[] measurements =
+          alignedPath
+              .getMeasurementList()
+              .toArray(new String[alignedPath.getMeasurementListSize()]);
       TSDataType[] tsDataTypes = new TSDataType[alignedPath.getMeasurementListSize()];
       for (int i = 0; i < tsDataTypes.length; i++) {
         tsDataTypes[i] = alignedPath.getSchemaList().get(i).getType();
       }
       schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
-              alignedPath.getDevicePath(),
-                  measurements,
-                  tsDataTypes,
-              true);
+              alignedPath.getDevicePath(), measurements, tsDataTypes, true);
 
       List<IMeasurementSchema> schemaList = alignedPath.getSchemaList();
       for (int i = 0; i < schemaList.size(); i++) {
