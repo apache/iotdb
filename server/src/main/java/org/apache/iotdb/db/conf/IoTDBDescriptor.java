@@ -793,6 +793,8 @@ public class IoTDBDescriptor {
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
+      conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
+
       conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
           Integer.parseInt(
               properties.getProperty(

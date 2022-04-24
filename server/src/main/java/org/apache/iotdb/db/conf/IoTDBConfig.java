@@ -256,6 +256,10 @@ public class IoTDBConfig {
   private String triggerDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TRIGGER_FOLDER_NAME;
 
+  /** External lib directory for ext Pipe plugins, stores user-defined JAR files */
+  private String extPipeDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXT_PIPE_FOLDER_NAME;
+
   /** External lib directory for MQTT, stores user-uploaded JAR files */
   private String mqttDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.MQTT_FOLDER_NAME;
@@ -998,6 +1002,7 @@ public class IoTDBConfig {
     for (int i = 0; i < walDirs.length; i++) {
       walDirs[i] = addHomeDir(walDirs[i]);
     }
+    extPipeDir = addHomeDir(extPipeDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -2761,6 +2766,14 @@ public class IoTDBConfig {
 
   public int getPartitionCacheSize() {
     return partitionCacheSize;
+  }
+
+  public String getExtPipeDir() {
+    return extPipeDir;
+  }
+
+  public void setExtPipeDir(String extPipeDir) {
+    this.extPipeDir = extPipeDir;
   }
 
   public void setPartitionCacheSize(int partitionCacheSize) {
