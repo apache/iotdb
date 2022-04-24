@@ -103,15 +103,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public SchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath,
-      List<String> measurements,
-      List<IMeasurementSchema> measurementSchemas,
-      boolean aligned) {
-    return null;
-  }
-
-  @Override
   public SchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,
       List<String[]> measurements,

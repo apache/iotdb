@@ -37,12 +37,6 @@ public interface ISchemaFetcher {
   SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned);
 
-  SchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath,
-      List<String> measurements,
-      List<IMeasurementSchema> measurementSchemas,
-      boolean aligned);
-
   SchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,
       List<String[]> measurements,

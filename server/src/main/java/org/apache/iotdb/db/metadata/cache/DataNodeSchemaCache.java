@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -132,13 +133,11 @@ public class DataNodeSchemaCache {
       return null;
     } else {
       MeasurementPath measurementPath = (MeasurementPath) partialPath;
-      List<String> measurement = new ArrayList<>();
-      measurement.add(measurementPath.getMeasurement());
-      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(measurementPath.getMeasurementSchema());
+      String[] measurement = new String[] {measurementPath.getMeasurement()};
+      TSDataType[] tsDataType = new TSDataType[] {measurementPath.getSeriesType()};
       schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
-              partialPath.getDevicePath(), measurement, measurementSchemas, false);
+                  measurementPath.getDevicePath(), measurement, tsDataType, false);
 
       // TODO need to construct schemaEntry from schemaTree, currently just from partialPath for
       // test
@@ -171,11 +170,16 @@ public class DataNodeSchemaCache {
 
     } else {
       // TODO need to use schemaFetcher.fetcheSchemaWithAutoCreate()
+      String[] measurements = alignedPath.getMeasurementList().toArray(new String[alignedPath.getMeasurementListSize()]);
+      TSDataType[] tsDataTypes = new TSDataType[alignedPath.getMeasurementListSize()];
+      for (int i = 0; i < tsDataTypes.length; i++) {
+        tsDataTypes[i] = alignedPath.getSchemaList().get(i).getType();
+      }
       schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
               alignedPath.getDevicePath(),
-              alignedPath.getMeasurementList(),
-              alignedPath.getSchemaList(),
+                  measurements,
+                  tsDataTypes,
               true);
 
       List<IMeasurementSchema> schemaList = alignedPath.getSchemaList();

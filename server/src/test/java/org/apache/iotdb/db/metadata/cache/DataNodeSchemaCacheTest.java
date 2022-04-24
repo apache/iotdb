@@ -55,7 +55,7 @@ public class DataNodeSchemaCacheTest {
   public void testGetSingleSchemaEntity() throws IllegalPathException {
     MeasurementSchema measurementSchema1 =
         new MeasurementSchema(
-            "temperature", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null);
+            "temperature", TSDataType.INT32);
     PartialPath path1 = new PartialPath("root.sg1.d1.temperature");
     MeasurementPath measurementPath1 = new MeasurementPath(path1, measurementSchema1);
 
@@ -82,14 +82,14 @@ public class DataNodeSchemaCacheTest {
 
     MeasurementSchema measurementSchema4 =
         new MeasurementSchema(
-            "cpu", TSDataType.INT64, TSEncoding.BITMAP, CompressionType.GZIP, null);
+            "cpu", TSDataType.INT64);
     PartialPath path4 = new PartialPath("root.sg1.d1.cpu");
     MeasurementPath measurementPath4 = new MeasurementPath(path4, measurementSchema4);
     SchemaCacheEntity schemaCacheEntity4 =
         dataNodeSchemaCache.getSingleSchemaEntity(measurementPath4, true);
     Assert.assertEquals(TSDataType.INT64, schemaCacheEntity4.getTsDataType());
-    Assert.assertEquals(TSEncoding.BITMAP, schemaCacheEntity4.getTsEncoding());
-    Assert.assertEquals(CompressionType.GZIP, schemaCacheEntity4.getCompressionType());
+    Assert.assertEquals(TSEncoding.PLAIN, schemaCacheEntity4.getTsEncoding());
+    Assert.assertEquals(CompressionType.SNAPPY, schemaCacheEntity4.getCompressionType());
     Assert.assertEquals(2, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
   }
 
@@ -101,17 +101,17 @@ public class DataNodeSchemaCacheTest {
     measurementList.add("s1");
     schemaList.add(
         new MeasurementSchema(
-            "s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY, null));
+            "s1", TSDataType.INT32));
 
     measurementList.add("s2");
     schemaList.add(
         new MeasurementSchema(
-            "s2", TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY, null));
+            "s2", TSDataType.INT64));
 
     measurementList.add("s3");
     schemaList.add(
         new MeasurementSchema(
-            "s3", TSDataType.FLOAT, TSEncoding.PLAIN, CompressionType.SNAPPY, null));
+            "s3", TSDataType.FLOAT));
 
     AlignedPath alignedPath1 = new AlignedPath("root.sg1.d2", measurementList, schemaList);
     Map<PartialPath, SchemaCacheEntity> schemaEntityMap1 =
@@ -121,12 +121,12 @@ public class DataNodeSchemaCacheTest {
     measurementList.add("s4");
     schemaList.add(
         new MeasurementSchema(
-            "s4", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.SNAPPY, null));
+            "s4", TSDataType.BOOLEAN));
 
     measurementList.add("s5");
     schemaList.add(
         new MeasurementSchema(
-            "s5", TSDataType.FLOAT, TSEncoding.BITMAP, CompressionType.SNAPPY, null));
+            "s5", TSDataType.TEXT));
     AlignedPath alignedPath2 = new AlignedPath("root.sg1.d2", measurementList, schemaList);
     Map<PartialPath, SchemaCacheEntity> schemaEntityMap2 =
         dataNodeSchemaCache.getAlignedSchemaEntity(alignedPath2, false);
