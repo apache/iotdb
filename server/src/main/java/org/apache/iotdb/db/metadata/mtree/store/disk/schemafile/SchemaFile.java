@@ -456,9 +456,6 @@ public class SchemaFile implements ISchemaFile {
               childName, parent.getName(), actualSegAddr, pIdx, sIdx));
       e.printStackTrace();
       throw e;
-    } catch (NullPointerException e) {
-      e.printStackTrace();
-      throw e;
     }
   }
 
@@ -660,10 +657,6 @@ public class SchemaFile implements ISchemaFile {
 
     ISchemaPage curPage = getPageInstance(getPageIndex(curSegAddr));
 
-    if (curPage == null) {
-      throw new NullPointerException("");
-    }
-
     if (curPage.hasRecordKeyInSegment(recKey, curSegId)) {
       return curSegAddr;
     }
@@ -782,9 +775,6 @@ public class SchemaFile implements ISchemaFile {
       }
 
       if (pageInstCache.containsKey(pageIdx)) {
-        if (pageInstCache.get(pageIdx) == null) {
-          throw new NullPointerException("");
-        }
         return pageInstCache.get(pageIdx);
       }
     } finally {
