@@ -24,11 +24,16 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.QueryStorageGroupSchemaReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.DataNodeInfo;
@@ -37,7 +42,7 @@ import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.auth.AuthException;
 
-public class PlanExecutor {
+public class ConfigRequestExecutor {
 
   private final DataNodeInfo dataNodeInfo;
 
@@ -47,56 +52,64 @@ public class PlanExecutor {
 
   private final AuthorInfo authorInfo;
 
-  public PlanExecutor() {
+  public ConfigRequestExecutor() {
     this.dataNodeInfo = DataNodeInfo.getInstance();
     this.storageGroupInfo = StorageGroupInfo.getInstance();
     this.partitionInfo = PartitionInfo.getInstance();
     this.authorInfo = AuthorInfo.getInstance();
   }
 
-  public DataSet executorQueryPlan(ConfigRequest plan)
+  public DataSet executorQueryPlan(ConfigRequest req)
       throws UnknownPhysicalPlanTypeException, AuthException {
-    switch (plan.getType()) {
+    switch (req.getType()) {
       case QueryDataNodeInfo:
-        return dataNodeInfo.getDataNodeInfo((QueryDataNodeInfoReq) plan);
+        return dataNodeInfo.getDataNodeInfo((QueryDataNodeInfoReq) req);
       case QueryStorageGroupSchema:
-        return storageGroupInfo.getStorageGroupSchema();
+        return storageGroupInfo.getMatchedStorageGroupSchemas((QueryStorageGroupSchemaReq) req);
       case GetDataPartition:
       case GetOrCreateDataPartition:
-        return partitionInfo.getDataPartition((GetOrCreateDataPartitionReq) plan);
+        return partitionInfo.getDataPartition((GetOrCreateDataPartitionReq) req);
       case GetSchemaPartition:
       case GetOrCreateSchemaPartition:
-        return partitionInfo.getSchemaPartition((GetOrCreateSchemaPartitionReq) plan);
+        return partitionInfo.getSchemaPartition((GetOrCreateSchemaPartitionReq) req);
       case LIST_USER:
         return authorInfo.executeListUser();
       case LIST_ROLE:
         return authorInfo.executeListRole();
       case LIST_USER_PRIVILEGE:
-        return authorInfo.executeListUserPrivileges((AuthorReq) plan);
+        return authorInfo.executeListUserPrivileges((AuthorReq) req);
       case LIST_ROLE_PRIVILEGE:
-        return authorInfo.executeListRolePrivileges((AuthorReq) plan);
+        return authorInfo.executeListRolePrivileges((AuthorReq) req);
       case LIST_USER_ROLES:
-        return authorInfo.executeListUserRoles((AuthorReq) plan);
+        return authorInfo.executeListUserRoles((AuthorReq) req);
       case LIST_ROLE_USERS:
-        return authorInfo.executeListRoleUsers((AuthorReq) plan);
+        return authorInfo.executeListRoleUsers((AuthorReq) req);
       default:
-        throw new UnknownPhysicalPlanTypeException(plan.getType());
+        throw new UnknownPhysicalPlanTypeException(req.getType());
     }
   }
 
-  public TSStatus executorNonQueryPlan(ConfigRequest plan)
+  public TSStatus executorNonQueryPlan(ConfigRequest req)
       throws UnknownPhysicalPlanTypeException, AuthException {
-    switch (plan.getType()) {
+    switch (req.getType()) {
       case RegisterDataNode:
-        return dataNodeInfo.registerDataNode((RegisterDataNodeReq) plan);
+        return dataNodeInfo.registerDataNode((RegisterDataNodeReq) req);
       case SetStorageGroup:
-        return storageGroupInfo.setStorageGroup((SetStorageGroupReq) plan);
+        return storageGroupInfo.setStorageGroup((SetStorageGroupReq) req);
+      case SetTTL:
+        return storageGroupInfo.setTTL((SetTTLReq) req);
+      case SetSchemaReplicationFactor:
+        return storageGroupInfo.setSchemaReplicationFactor((SetSchemaReplicationFactorReq) req);
+      case SetDataReplicationFactor:
+        return storageGroupInfo.setDataReplicationFactor((SetDataReplicationFactorReq) req);
+      case SetTimePartitionInterval:
+        return storageGroupInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
       case CreateRegions:
-        return partitionInfo.createRegions((CreateRegionsReq) plan);
+        return partitionInfo.createRegions((CreateRegionsReq) req);
       case CreateSchemaPartition:
-        return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) plan);
+        return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
       case CreateDataPartition:
-        return partitionInfo.createDataPartition((CreateDataPartitionReq) plan);
+        return partitionInfo.createDataPartition((CreateDataPartitionReq) req);
       case CREATE_USER:
       case CREATE_ROLE:
       case DROP_USER:
@@ -108,9 +121,9 @@ public class PlanExecutor {
       case REVOKE_ROLE:
       case REVOKE_ROLE_FROM_USER:
       case UPDATE_USER:
-        return authorInfo.authorNonQuery((AuthorReq) plan);
+        return authorInfo.authorNonQuery((AuthorReq) req);
       default:
-        throw new UnknownPhysicalPlanTypeException(plan.getType());
+        throw new UnknownPhysicalPlanTypeException(req.getType());
     }
   }
 }

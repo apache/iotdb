@@ -28,11 +28,16 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.QueryStorageGroupSchemaReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
@@ -160,14 +165,34 @@ public class ClusterSchemaManager {
     return storageGroupInfo.getRegionGroupIds(storageGroup, type);
   }
 
+  public TSStatus setTTL(SetTTLReq setTTLReq) {
+    // TODO: Inform DataNodes
+    return getConsensusManager().write(setTTLReq).getStatus();
+  }
+
+  public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorReq setSchemaReplicationFactorReq) {
+    // TODO: Inform DataNodes
+    return getConsensusManager().write(setSchemaReplicationFactorReq).getStatus();
+  }
+
+  public TSStatus setDataReplicationFactor(SetDataReplicationFactorReq setDataReplicationFactorReq) {
+    // TODO: Inform DataNodes
+    return getConsensusManager().write(setDataReplicationFactorReq).getStatus();
+  }
+
+  public TSStatus setTimePartitionInterval(SetTimePartitionIntervalReq setTimePartitionIntervalReq) {
+    // TODO: Inform DataNodes
+    return getConsensusManager().write(setTimePartitionIntervalReq).getStatus();
+  }
+
   /**
-   * Get all the StorageGroupSchema
+   * Get StorageGroupSchemas by specific PathPatternTree
    *
    * @return StorageGroupSchemaDataSet
    */
-  public StorageGroupSchemaResp getStorageGroupSchema() {
+  public StorageGroupSchemaResp getMatchedStorageGroupSchema(QueryStorageGroupSchemaReq queryStorageGroupSchemaReq) {
     ConsensusReadResponse readResponse =
-        getConsensusManager().read(new QueryStorageGroupSchemaReq());
+        getConsensusManager().read(queryStorageGroupSchemaReq);
     return (StorageGroupSchemaResp) readResponse.getDataset();
   }
 

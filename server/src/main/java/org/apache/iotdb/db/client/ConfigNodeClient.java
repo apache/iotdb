@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -226,10 +227,10 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TStorageGroupSchemaResp getStorageGroupsSchema() throws IoTDBConnectionException {
+  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(TStorageGroupReq req) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TStorageGroupSchemaResp resp = client.getStorageGroupsSchema();
+        TStorageGroupSchemaResp resp = client.getMatchedStorageGroupSchemas(req);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }

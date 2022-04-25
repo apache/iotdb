@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
@@ -27,15 +28,22 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
 
   private static final long serialVersionUID = 7999036474525817732L;
 
-  /**
-   * when the data file in a storage group is older than dataTTL, it is considered invalid and will
-   * be eventually deleted.
-   */
-  private long dataTTL;
+  private TStorageGroupSchema schema;
 
+  public StorageGroupMNode(IMNode parent, String name) {
+    super(parent, name);
+  }
+
+  // TODO: @yukun, remove this constructor
   public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
-    this.dataTTL = dataTTL;
+    this.schema = new TStorageGroupSchema();
+    schema.setTTL(dataTTL);
+  }
+
+  public StorageGroupMNode(IMNode parent, String name, TStorageGroupSchema schema) {
+    super(parent, name);
+    this.schema = schema;
   }
 
   @Override
@@ -48,12 +56,47 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
 
   @Override
   public long getDataTTL() {
-    return dataTTL;
+    return schema.getTTL();
   }
 
   @Override
   public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
+    schema.setTTL(dataTTL);
+  }
+
+  @Override
+  public int getSchemaReplicationFactor() {
+    return schema.getSchemaReplicationFactor();
+  }
+
+  @Override
+  public void setSchemaReplicationFactor(int schemaReplicationFactor) {
+    schema.setSchemaReplicationFactor(schemaReplicationFactor);
+  }
+
+  @Override
+  public int getDataReplicationFactor() {
+    return schema.getDataReplicationFactor();
+  }
+
+  @Override
+  public void setDataReplicationFactor(int dataReplicationFactor) {
+    schema.setDataReplicationFactor(dataReplicationFactor);
+  }
+
+  @Override
+  public long getTimePartitionInterval() {
+    return schema.getTimePartitionInterval();
+  }
+
+  @Override
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    schema.setTimePartitionInterval(timePartitionInterval);
+  }
+
+  @Override
+  public TStorageGroupSchema getStorageGroupSchema() {
+    return schema;
   }
 
   @Override

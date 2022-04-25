@@ -25,7 +25,12 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
@@ -36,6 +41,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -44,9 +50,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.auth.AuthException;
@@ -102,14 +111,23 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
     TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
-    // TODO: Set this filed by optional fields in TSetStorageGroupReq
-    storageGroupSchema.setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
-    storageGroupSchema.setSchemaReplicationFactor(
-        ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
-    storageGroupSchema.setDataReplicationFactor(
-        ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
-    storageGroupSchema.setTimePartitionInterval(
-        ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+
+    // Set default configurations
+    if (!storageGroupSchema.isSetTTL()) {
+      storageGroupSchema.setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
+    }
+    if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
+      storageGroupSchema.setSchemaReplicationFactor(
+              ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+    }
+    if (!storageGroupSchema.isSetDataReplicationFactor()) {
+      storageGroupSchema.setDataReplicationFactor(
+              ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+    }
+    if (!storageGroupSchema.isSetTimePartitionInterval()) {
+      storageGroupSchema.setTimePartitionInterval(
+              ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+    }
 
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
@@ -126,20 +144,40 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
-    // TODO: Set TTL
-    return null;
+    return configManager.setTTL(new SetTTLReq(req.getStorageGroup(), req.getTTL()));
+  }
+
+  @Override
+  public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
+    return configManager.setSchemaReplicationFactor(new SetSchemaReplicationFactorReq(req.getStorageGroup(), req.getSchemaReplicationFactor()));
+  }
+
+  @Override
+  public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
+    return configManager.setDataReplicationFactor(new SetDataReplicationFactorReq(req.getStorageGroup(), req.getDataReplicationFactor()));
   }
 
   @Override
   public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
-    // TODO: Set TimePartitionInterval
-    return null;
+    return configManager.setTimePartitionInterval(new SetTimePartitionIntervalReq(req.getStorageGroup(), req.getTimePartitionInterval()));
   }
 
   @Override
-  public TStorageGroupSchemaResp getStorageGroupsSchema() throws TException {
+  public TCountStorageGroupResp countMatchedStorageGroups(TStorageGroupReq req) throws TException {
+    PathPatternTree patternTree = PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+    CountStorageGroupResp countStorageGroupResp =
+            (CountStorageGroupResp) configManager.countMatchedStorageGroupSchema(patternTree);
+
+    TCountStorageGroupResp resp = new TCountStorageGroupResp();
+    countStorageGroupResp.convertToRPCCountStorageGroupResp(resp);
+    return resp;
+  }
+
+  @Override
+  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(TStorageGroupReq req) throws TException {
+    PathPatternTree patternTree = PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     StorageGroupSchemaResp storageGroupSchemaResp =
-        (StorageGroupSchemaResp) configManager.getStorageGroupSchema();
+        (StorageGroupSchemaResp) configManager.getMatchedStorageGroupSchemas(patternTree);
 
     TStorageGroupSchemaResp resp = new TStorageGroupSchemaResp();
     storageGroupSchemaResp.convertToRPCStorageGroupSchemaResp(resp);

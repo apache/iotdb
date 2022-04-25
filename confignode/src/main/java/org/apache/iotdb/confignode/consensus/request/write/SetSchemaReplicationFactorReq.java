@@ -16,49 +16,46 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
-public class QueryStorageGroupSchemaReq extends ConfigRequest {
+public class SetSchemaReplicationFactorReq extends ConfigRequest {
 
-  private final List<String> storageGroups;
+  private String storageGroup;
 
-  public QueryStorageGroupSchemaReq() {
-    super(ConfigRequestType.QueryStorageGroupSchema);
-    this.storageGroups = new ArrayList<>();
+  private int schemaReplicationFactor;
+
+  public SetSchemaReplicationFactorReq(String storageGroup, int schemaReplicationFactor) {
+    super(ConfigRequestType.SetSchemaReplicationFactor);
+    this.storageGroup = storageGroup;
+    this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  public String getStorageGroup() {
+    return storageGroup;
   }
 
-  public void addStorageGroup(String storageGroup) {
-    storageGroups.add(storageGroup);
+  public int getSchemaReplicationFactor() {
+    return schemaReplicationFactor;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(getType().ordinal());
 
-    buffer.putInt(storageGroups.size());
-    for (String storageGroup : storageGroups) {
-      BasicStructureSerDeUtil.write(storageGroup, buffer);
-    }
+    BasicStructureSerDeUtil.write(storageGroup, buffer);
+    buffer.putInt(schemaReplicationFactor);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
-      storageGroups.add(BasicStructureSerDeUtil.readString(buffer));
-    }
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    schemaReplicationFactor = buffer.getInt();
   }
 }

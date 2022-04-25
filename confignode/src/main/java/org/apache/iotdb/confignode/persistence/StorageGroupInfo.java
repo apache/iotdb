@@ -22,10 +22,22 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.request.read.QueryStorageGroupSchemaReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,30 +47,128 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class StorageGroupInfo {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(StorageGroupInfo.class);
+
   // StorageGroup read write lock
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
-  // TODO: Serialize and Deserialize
-  // Map<StorageGroupName, StorageGroupSchema>
-  private final Map<String, TStorageGroupSchema> storageGroupsMap;
+
+  private MTreeAboveSG mTree;
 
   private StorageGroupInfo() {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
-    storageGroupsMap = new HashMap<>();
+
+    try {
+      mTree = new MTreeAboveSG();
+    } catch (MetadataException e) {
+      LOGGER.error("Can't construct StorageGroupInfo", e);
+    }
   }
 
   /**
    * Persistence new StorageGroupSchema
    *
-   * @param plan SetStorageGroupPlan
+   * @param req SetStorageGroupReq
    * @return SUCCESS_STATUS
    */
-  public TSStatus setStorageGroup(SetStorageGroupReq plan) {
+  public TSStatus setStorageGroup(SetStorageGroupReq req) {
     TSStatus result;
     storageGroupReadWriteLock.writeLock().lock();
     try {
-      TStorageGroupSchema storageGroupSchema = plan.getSchema();
-      storageGroupsMap.put(storageGroupSchema.getName(), storageGroupSchema);
+      // Set StorageGroup
+      TStorageGroupSchema storageGroupSchema = req.getSchema();
+      PartialPath partialPathName = new PartialPath(storageGroupSchema.getName());
+      mTree.setStorageGroup(partialPathName);
+
+      // Set StorageGroupSchema
+      StorageGroupMNode mNode = (StorageGroupMNode) mTree.getStorageGroupNodeByPath(partialPathName);
+      mNode.setDataTTL(storageGroupSchema.getTTL());
+      mNode.setSchemaReplicationFactor(storageGroupSchema.getSchemaReplicationFactor());
+      mNode.setDataReplicationFactor(storageGroupSchema.getDataReplicationFactor());
+      mNode.setTimePartitionInterval(storageGroupSchema.getTimePartitionInterval());
+
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      result = new TSStatus();
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  public TSStatus setTTL(SetTTLReq req) {
+    TSStatus result;
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      PartialPath path = new PartialPath(req.getStorageGroup());
+      if (mTree.isStorageGroupAlreadySet(path)) {
+        mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema().setTTL(req.getTTL());
+        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        result = new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+      }
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      return new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()).setMessage("Error StorageGroup name");
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorReq req) {
+    TSStatus result;
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      PartialPath path = new PartialPath(req.getStorageGroup());
+      if (mTree.isStorageGroupAlreadySet(path)) {
+        mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema().setSchemaReplicationFactor(req.getSchemaReplicationFactor());
+        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        result = new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+      }
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      return new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()).setMessage("Error StorageGroup name");
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  public TSStatus setDataReplicationFactor(SetDataReplicationFactorReq req) {
+    TSStatus result;
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      PartialPath path = new PartialPath(req.getStorageGroup());
+      if (mTree.isStorageGroupAlreadySet(path)) {
+        mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema().setDataReplicationFactor(req.getDataReplicationFactor());
+        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        result = new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+      }
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      return new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()).setMessage("Error StorageGroup name");
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  public TSStatus setTimePartitionInterval(SetTimePartitionIntervalReq req) {
+    TSStatus result;
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      PartialPath path = new PartialPath(req.getStorageGroup());
+      if (mTree.isStorageGroupAlreadySet(path)) {
+        mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema().setTimePartitionInterval(req.getTimePartitionInterval());
+        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        result = new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+      }
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      return new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()).setMessage("Error StorageGroup name");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -67,10 +177,13 @@ public class StorageGroupInfo {
 
   /** @return List<StorageGroupName>, all storageGroups' name */
   public List<String> getStorageGroupNames() {
-    List<String> storageGroups;
+    List<String> storageGroups = new ArrayList<>();
     storageGroupReadWriteLock.readLock().lock();
     try {
-      storageGroups = new ArrayList<>(storageGroupsMap.keySet());
+      List<PartialPath> namePaths = mTree.getAllStorageGroupPaths();
+      for (PartialPath path : namePaths) {
+        storageGroups.add(path.getFullPath());
+      }
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -78,11 +191,18 @@ public class StorageGroupInfo {
   }
 
   /** @return All the StorageGroupSchema */
-  public StorageGroupSchemaResp getStorageGroupSchema() {
+  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(QueryStorageGroupSchemaReq req) {
     StorageGroupSchemaResp result = new StorageGroupSchemaResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
-      result.setSchemaList(new ArrayList<>(storageGroupsMap.values()));
+      Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
+      for (String storageGroup : req.getStorageGroups()) {
+        PartialPath sgPath = new PartialPath(storageGroup);
+        schemaMap.put(storageGroup, mTree.getStorageGroupNodeByPath(sgPath).getStorageGroupSchema());
+      }
+      result.setSchemaMap(schemaMap);
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -95,7 +215,10 @@ public class StorageGroupInfo {
     boolean result;
     storageGroupReadWriteLock.readLock().lock();
     try {
-      result = storageGroupsMap.containsKey(storageName);
+      result = mTree.isStorageGroupAlreadySet(new PartialPath(storageName));
+    } catch (IllegalPathException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      return false;
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -114,16 +237,20 @@ public class StorageGroupInfo {
     List<TConsensusGroupId> result;
     storageGroupReadWriteLock.readLock().lock();
     try {
+      StorageGroupMNode mNode = (StorageGroupMNode) mTree.getStorageGroupNodeByPath(new PartialPath(storageGroup));
       switch (type) {
         case SchemaRegion:
-          result = storageGroupsMap.get(storageGroup).getSchemaRegionGroupIds();
+          result = mNode.getStorageGroupSchema().getSchemaRegionGroupIds();
           break;
         case DataRegion:
-          result = storageGroupsMap.get(storageGroup).getDataRegionGroupIds();
+          result = mNode.getStorageGroupSchema().getDataRegionGroupIds();
           break;
         default:
           result = new ArrayList<>();
       }
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      return new ArrayList<>();
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
@@ -132,7 +259,7 @@ public class StorageGroupInfo {
 
   @TestOnly
   public void clear() {
-    storageGroupsMap.clear();
+    mTree.clear();
   }
 
   private static class StorageGroupInfoHolder {

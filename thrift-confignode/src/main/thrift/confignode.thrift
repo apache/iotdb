@@ -62,9 +62,29 @@ struct TSetTTLReq {
   2: required i64 TTL
 }
 
+
+struct TSetSchemaReplicationFactorReq {
+  1: required string storageGroup
+  2: required i32 schemaReplicationFactor
+}
+
+struct TSetDataReplicationFactorReq {
+  1: required string storageGroup
+  2: required i32 dataReplicationFactor
+}
+
 struct TSetTimePartitionIntervalReq {
   1: required string storageGroup
   2: required i64 timePartitionInterval
+}
+
+struct TStorageGroupReq {
+  1: required binary pathPatternTree
+}
+
+struct TCountStorageGroupResp {
+  1: required common.TSStatus status
+  2: optional i32 count
 }
 
 struct TStorageGroupSchemaResp {
@@ -138,9 +158,15 @@ service ConfigIService {
 
   common.TSStatus setTTL(TSetTTLReq req)
 
+  common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
+
+  common.TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req)
+
   common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
-  TStorageGroupSchemaResp getStorageGroupsSchema()
+  TCountStorageGroupResp countMatchedStorageGroups(TStorageGroupReq req)
+
+  TStorageGroupSchemaResp getMatchedStorageGroupSchemas(TStorageGroupReq req)
 
   /* Schema */
 

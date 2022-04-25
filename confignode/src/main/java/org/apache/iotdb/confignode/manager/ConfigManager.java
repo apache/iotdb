@@ -27,8 +27,14 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.QueryStorageGroupSchemaReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
@@ -86,10 +92,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet registerDataNode(ConfigRequest configRequest) {
+  public DataSet registerDataNode(RegisterDataNodeReq registerDataNodeReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return dataNodeManager.registerDataNode((RegisterDataNodeReq) configRequest);
+      return dataNodeManager.registerDataNode(registerDataNodeReq);
     } else {
       DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
       dataSet.setStatus(status);
@@ -98,10 +104,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getDataNodeInfo(ConfigRequest configRequest) {
+  public DataSet getDataNodeInfo(QueryDataNodeInfoReq queryDataNodeInfoReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoReq) configRequest);
+      return dataNodeManager.getDataNodeInfo(queryDataNodeInfoReq);
     } else {
       DataNodeLocationsResp dataSet = new DataNodeLocationsResp();
       dataSet.setStatus(status);
@@ -110,10 +116,73 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getStorageGroupSchema() {
+  public TSStatus setTTL(SetTTLReq setTTLReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.getStorageGroupSchema();
+      return clusterSchemaManager.setTTL(setTTLReq);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorReq setSchemaReplicationFactorReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.setSchemaReplicationFactor(setSchemaReplicationFactorReq);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus setDataReplicationFactor(SetDataReplicationFactorReq setDataReplicationFactorReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.setDataReplicationFactor(setDataReplicationFactorReq);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus setTimePartitionInterval(SetTimePartitionIntervalReq setTimePartitionIntervalReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.setTimePartitionInterval(setTimePartitionIntervalReq);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public DataSet countMatchedStorageGroupSchema(PathPatternTree patternTree) {
+    TSStatus status = confirmLeader();
+    CountStorageGroupResp result = new CountStorageGroupResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> paths = patternTree.findAllDevicePaths();
+      List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
+      int count = 0;
+      // TODO: Match SG
+
+      result.setCount(count);
+    } else {
+      result.setStatus(status);
+    }
+    return result;
+  }
+
+  @Override
+  public DataSet getMatchedStorageGroupSchemas(PathPatternTree patternTree) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<String> paths = patternTree.findAllDevicePaths();
+      List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
+      QueryStorageGroupSchemaReq queryStorageGroupSchemaReq = new QueryStorageGroupSchemaReq();
+
+      // TODO: Match SG
+
+      return clusterSchemaManager.getMatchedStorageGroupSchema(queryStorageGroupSchemaReq);
     } else {
       StorageGroupSchemaResp dataSet = new StorageGroupSchemaResp();
       dataSet.setStatus(status);
@@ -122,10 +191,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus setStorageGroup(ConfigRequest configRequest) {
+  public TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setStorageGroup((SetStorageGroupReq) configRequest);
+      return clusterSchemaManager.setStorageGroup(setStorageGroupReq);
     } else {
       return status;
     }
@@ -138,7 +207,7 @@ public class ConfigManager implements Manager {
       List<String> devicePaths = patternTree.findAllDevicePaths();
       List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
 
-      GetOrCreateSchemaPartitionReq getSchemaPartitionPlan =
+      GetOrCreateSchemaPartitionReq getSchemaPartitionReq =
           new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetSchemaPartition);
       Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
@@ -179,8 +248,8 @@ public class ConfigManager implements Manager {
         }
       }
 
-      getSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
-      return partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+      getSchemaPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
+      return partitionManager.getSchemaPartition(getSchemaPartitionReq);
     } else {
       SchemaPartitionResp dataSet = new SchemaPartitionResp();
       dataSet.setStatus(status);
@@ -223,10 +292,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getDataPartition(ConfigRequest configRequest) {
+  public DataSet getDataPartition(GetOrCreateDataPartitionReq getDataPartitionReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getDataPartition((GetOrCreateDataPartitionReq) configRequest);
+      return partitionManager.getDataPartition(getDataPartitionReq);
     } else {
       DataPartitionResp dataSet = new DataPartitionResp();
       dataSet.setStatus(status);
@@ -235,10 +304,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getOrCreateDataPartition(ConfigRequest configRequest) {
+  public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq getOrCreateDataPartitionReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getOrCreateDataPartition((GetOrCreateDataPartitionReq) configRequest);
+      return partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
     } else {
       DataPartitionResp dataSet = new DataPartitionResp();
       dataSet.setStatus(status);
