@@ -73,7 +73,6 @@ export class QueryEditor extends PureComponent<Props, State> {
     prefixPath: paths,
     condition: '',
     control: '',
-
     timeSeries: [],
     options: [[toOption('')]],
     aggregateFun: '',
@@ -137,6 +136,11 @@ export class QueryEditor extends PureComponent<Props, State> {
     onChange({ ...query });
   };
 
+  onSelectRawChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query });
+  };
+
   onTimeSeriesChange = (t: string[], options: Array<Array<SelectableValue<string>>>, isRemove: boolean) => {
     const { onChange, query } = this.props;
     if (t.length === options.length) {
@@ -144,7 +148,7 @@ export class QueryEditor extends PureComponent<Props, State> {
         .nodeQuery(['root', ...t])
         .then((a) => {
           const b = a.map((a) => a.text).map(toOption);
-          onChange({ ...query, paths: t });
+          onChange({ ...query, paths: t, options: [...options, b] });
           if (isRemove) {
             this.setState({ timeSeries: t, options: [...options, b], shouldAdd: true });
           } else {
@@ -166,7 +170,11 @@ export class QueryEditor extends PureComponent<Props, State> {
   };
 
   componentDidMount() {
-    this.props.query.aggregated = selectRaw[0];
+    if (this.props.query.aggregated) {
+      this.setState({ isAggregated: this.props.query.isAggregated, aggregated: this.props.query.aggregated });
+    } else {
+      this.props.query.aggregated = selectRaw[0];
+    }
     if (this.state.options.length === 1 && this.state.options[0][0].value === '') {
       this.props.datasource.nodeQuery(['root']).then((a) => {
         const b = a.map((a) => a.text).map(toOption);
@@ -177,8 +185,8 @@ export class QueryEditor extends PureComponent<Props, State> {
 
   render() {
     const query = defaults(this.props.query);
-    const { expression, prefixPath, condition, control, fillClauses } = query;
-
+    var { expression, prefixPath, condition, control, fillClauses, aggregateFun, paths, options, aggregated, groupBy } =
+      query;
     return (
       <>
         {
@@ -186,16 +194,54 @@ export class QueryEditor extends PureComponent<Props, State> {
             <div className="gf-form">
               <Segment
                 onChange={({ value: value = '' }) => {
+                  const { onChange, query } = this.props;
                   if (value === selectRaw[0]) {
                     this.props.query.aggregated = selectRaw[0];
-                    this.setState({ isAggregated: false, aggregated: selectRaw[0] });
+                    this.props.query.aggregateFun = '';
+                    const nextTimeSeries = this.props.query.paths.filter((_, i) => i < 0);
+                    const nextOptions = this.props.query.options.filter((_, i) => i < 0);
+                    this.onTimeSeriesChange(nextTimeSeries, nextOptions, true);
+                    if (this.props.query.groupBy?.samplingInterval) {
+                      this.props.query.groupBy.samplingInterval = '';
+                    }
+                    if (this.props.query.groupBy?.groupByLevel) {
+                      this.props.query.groupBy.groupByLevel = '';
+                    }
+                    if (this.props.query.groupBy?.step) {
+                      this.props.query.groupBy.step = '';
+                    }
+                    this.props.query.condition = '';
+                    this.props.query.fillClauses = '';
+                    this.props.query.isAggregated = false;
+                    this.setState({
+                      isAggregated: false,
+                      aggregated: selectRaw[0],
+                      shouldAdd: true,
+                      aggregateFun: '',
+                      fillClauses: '',
+                      condition: '',
+                    });
+                    onChange({ ...query, aggregated: value, isAggregated: false });
                   } else {
                     this.props.query.aggregated = selectRaw[1];
-                    this.setState({ isAggregated: true, aggregated: selectRaw[1] });
+                    this.props.query.expression = [''];
+                    this.props.query.prefixPath = [''];
+                    this.props.query.condition = '';
+                    this.props.query.control = '';
+                    this.props.query.isAggregated = true;
+                    this.setState({
+                      isAggregated: true,
+                      aggregated: selectRaw[1],
+                      expression: [''],
+                      prefixPath: [''],
+                      condition: '',
+                      control: '',
+                    });
+                    onChange({ ...query, aggregated: value, isAggregated: true });
                   }
                 }}
                 options={selectRaw.map(toOption)}
-                value={this.state.aggregated}
+                value={aggregated ? aggregated : this.state.aggregated}
                 className="query-keyword width-6"
               />
             </div>
@@ -219,12 +265,18 @@ export class QueryEditor extends PureComponent<Props, State> {
                 </div>
                 <div className="gf-form">
                   <QueryInlineField label={'WHERE'}>
-                    <WhereValue condition={condition} onChange={this.onWhereValueChange} />
+                    <WhereValue
+                      condition={condition ? condition : this.state.condition}
+                      onChange={this.onWhereValueChange}
+                    />
                   </QueryInlineField>
                 </div>
                 <div className="gf-form">
                   <QueryInlineField label={'CONTROL'}>
-                    <ControlValue control={control} onChange={this.onControlValueChange} />
+                    <ControlValue
+                      control={control ? control : this.state.control}
+                      onChange={this.onControlValueChange}
+                    />
                   </QueryInlineField>
                 </div>
               </>
@@ -234,9 +286,9 @@ export class QueryEditor extends PureComponent<Props, State> {
                 <div className="gf-form">
                   <QueryInlineField label={'TIME-SERIES'}>
                     <TimeSeries
-                      timeSeries={this.state.timeSeries}
+                      timeSeries={paths ? paths : this.state.timeSeries}
                       onChange={this.onTimeSeriesChange}
-                      variableOptionGroup={this.state.options}
+                      variableOptionGroup={options ? options : this.state.options}
                       shouldAdd={this.state.shouldAdd}
                     />
                   </QueryInlineField>
@@ -244,7 +296,7 @@ export class QueryEditor extends PureComponent<Props, State> {
                 <div className="gf-form">
                   <QueryInlineField label={'FUNCTION'}>
                     <AggregateFun
-                      aggregateFun={this.state.aggregateFun}
+                      aggregateFun={aggregateFun ? aggregateFun : this.state.aggregateFun}
                       onChange={this.onAggregationsChange}
                       variableOptionGroup={selectElement.map(toOption)}
                     />
@@ -252,18 +304,24 @@ export class QueryEditor extends PureComponent<Props, State> {
                 </div>
                 <div className="gf-form">
                   <QueryInlineField label={'WHERE'}>
-                    <WhereValue condition={condition} onChange={this.onWhereValueChange} />
+                    <WhereValue
+                      condition={condition ? condition : this.state.condition}
+                      onChange={this.onWhereValueChange}
+                    />
                   </QueryInlineField>
                 </div>
                 <div className="gf-form">
                   <QueryInlineField label={'GROUP BY'}>
                     <QueryField label={'SAMPLING INTERVAL'} />
-                    <GroupByLabel groupBy={this.state.groupBy} onChange={this.onGroupByChange} />
+                    <GroupByLabel groupBy={groupBy ? groupBy : this.state.groupBy} onChange={this.onGroupByChange} />
                   </QueryInlineField>
                 </div>
                 <div className="gf-form">
                   <QueryInlineField label={'FILL'}>
-                    <FillValue fill={fillClauses} onChange={this.onFillsChange} />
+                    <FillValue
+                      fill={fillClauses ? fillClauses : this.state.fillClauses}
+                      onChange={this.onFillsChange}
+                    />
                   </QueryInlineField>
                 </div>
               </>

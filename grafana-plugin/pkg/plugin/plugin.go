@@ -24,6 +24,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
@@ -99,7 +101,27 @@ type dataSourceModel struct {
 	Url      string `json:"url"`
 }
 
+type groupBy struct {
+	GroupByLevel     string `json:"groupByLevel"`
+	SamplingInterval string `json:"samplingInterval"`
+	Step             string `json:"step"`
+}
+
 type queryParam struct {
+	Expression   []string `json:"expression"`
+	PrefixPath   []string `json:"prefixPath"`
+	StartTime    int64    `json:"startTime"`
+	EndTime      int64    `json:"endTime"`
+	Condition    string   `json:"condition"`
+	Control      string   `json:"control"`
+	Aggregated   string   `json:"aggregated"`
+	Paths        []string `json:"paths"`
+	AggregateFun string   `json:"aggregateFun"`
+	FillClauses  string   `json:"fillClauses"`
+	GroupBy      groupBy  `json:"groupBy"`
+}
+
+type QueryDataReq struct {
 	Expression []string `json:"expression"`
 	PrefixPath []string `json:"prefixPath"`
 	StartTime  int64    `json:"startTime"`
@@ -122,12 +144,17 @@ type loginStatus struct {
 	Message string `json:"message"`
 }
 
+func NewQueryDataReq(expression []string, prefixPath []string, startTime int64, endTime int64, condition string, control string) *QueryDataReq {
+	return &QueryDataReq{Expression: expression, PrefixPath: prefixPath, StartTime: startTime, EndTime: endTime, Condition: condition, Control: control}
+}
+
 func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
 	response := backend.DataResponse{}
 	var authorization = "Basic " + base64.StdEncoding.EncodeToString([]byte(d.Username+":"+d.Password))
 
 	// Unmarshal the JSON into our queryModel.
 	var qp queryParam
+	var qdReq QueryDataReq
 	response.Error = json.Unmarshal(query.JSON, &qp)
 	if response.Error != nil {
 		return response
@@ -136,7 +163,32 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 	qp.EndTime = query.TimeRange.To.UnixNano() / 1000000
 
 	client := &http.Client{}
-	qpJson, _ := json.Marshal(qp)
+	if qp.Aggregated == "Aggregation" {
+		qp.Control = ""
+		var expressions []string = qp.Paths[len(qp.Paths)-1:]
+		var paths []string = qp.Paths[0 : len(qp.Paths)-1]
+		path := "root." + strings.Join(paths, ".")
+		var prefixPaths = []string{path}
+		if qp.AggregateFun != "" {
+			expressions[0] = qp.AggregateFun + "(" + expressions[0] + ")"
+		}
+		if qp.GroupBy.SamplingInterval != "" && qp.GroupBy.Step == "" {
+			qp.Control += " group by([" + strconv.FormatInt(qp.StartTime, 10) + "," + strconv.FormatInt(qp.EndTime, 10) + ")," + qp.GroupBy.SamplingInterval + ")"
+		}
+		if qp.GroupBy.SamplingInterval != "" && qp.GroupBy.Step != "" {
+			qp.Control += " group by([" + strconv.FormatInt(qp.StartTime, 10) + "," + strconv.FormatInt(qp.EndTime, 10) + ")," + qp.GroupBy.SamplingInterval + "," + qp.GroupBy.Step + ")"
+		}
+		if qp.GroupBy.GroupByLevel != "" {
+			qp.Control += " " + qp.GroupBy.GroupByLevel
+		}
+		if qp.FillClauses != "" {
+			qp.Control += " fill" + qp.FillClauses
+		}
+		qdReq = *NewQueryDataReq(expressions, prefixPaths, qp.StartTime, qp.EndTime, qp.Condition, qp.Control)
+	} else {
+		qdReq = *NewQueryDataReq(qp.Expression, qp.PrefixPath, qp.StartTime, qp.EndTime, qp.Condition, qp.Control)
+	}
+	qpJson, _ := json.Marshal(qdReq)
 	reader := bytes.NewReader(qpJson)
 
 	var dataSourceUrl = DataSourceUrlHandler(d.Ulr)

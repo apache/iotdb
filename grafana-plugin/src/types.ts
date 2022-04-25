@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { DataQuery, DataSourceJsonData } from '@grafana/data';
+import { DataQuery, DataSourceJsonData, SelectableValue } from '@grafana/data';
 
 export interface IoTDBQuery extends DataQuery {
   startTime: number;
@@ -27,9 +27,11 @@ export interface IoTDBQuery extends DataQuery {
   paths: string[];
   aggregateFun?: string;
   aggregated: string;
+  isAggregated: boolean;
   fillClauses: string;
   groupBy?: GroupBy;
   limitAll?: LimitAll;
+  options: Array<Array<SelectableValue<string>>>;
 }
 
 export interface GroupBy {

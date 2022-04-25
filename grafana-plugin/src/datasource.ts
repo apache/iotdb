@@ -46,51 +46,17 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
         query.control = getTemplateSrv().replace(query.control, scopedVars);
       }
     } else {
-      let prefixPathArr = new Array(query.paths.length - 1);
-      query.paths.map((_, index) => {
-        if (index === query.paths.length - 1) {
-          query.expression = new Array(1);
-          if (query.aggregateFun != null) {
-            query.expression[0] =
-              query.aggregateFun + '(' + getTemplateSrv().replace(query.paths[index], scopedVars) + ')';
-          } else {
-            query.expression[0] = getTemplateSrv().replace(query.paths[index], scopedVars);
-          }
-        } else {
-          prefixPathArr[index] = getTemplateSrv().replace(query.paths[index], scopedVars);
-        }
-      });
-      let from = getTemplateSrv().replace('$__from', scopedVars);
-      let to = getTemplateSrv().replace('$__to', scopedVars);
-      query.prefixPath = new Array(1);
-      query.prefixPath[0] = 'root.' + prefixPathArr.join('.');
-      if (!!query.groupBy?.samplingInterval) {
-        query.control =
-          ' group by ([' +
-          from +
-          ',' +
-          to +
-          '),' +
-          getTemplateSrv().replace(query.groupBy.samplingInterval, scopedVars) +
-          ')';
-        if (!!query.groupBy?.step) {
-          query.control =
-            ' group by ([' +
-            from +
-            ',' +
-            to +
-            '),' +
-            getTemplateSrv().replace(query.groupBy.samplingInterval, scopedVars) +
-            ',' +
-            getTemplateSrv().replace(query.groupBy.step, scopedVars) +
-            ')';
-        }
+      if (query.groupBy?.samplingInterval) {
+        query.groupBy.samplingInterval = getTemplateSrv().replace(query.groupBy.samplingInterval, scopedVars);
       }
-      if (!!query.fillClauses) {
-        query.control += ' fill(' + getTemplateSrv().replace(query.fillClauses, scopedVars) + ')';
+      if (query.groupBy?.step) {
+        query.groupBy.step = getTemplateSrv().replace(query.groupBy.step, scopedVars);
       }
-      if (!!query.groupBy?.groupByLevel) {
-        query.control += ' group by level =' + getTemplateSrv().replace(query.groupBy?.groupByLevel, scopedVars);
+      if (query.groupBy?.groupByLevel) {
+        query.groupBy.groupByLevel = getTemplateSrv().replace(query.groupBy.groupByLevel, scopedVars);
+      }
+      if (query.fillClauses) {
+        query.fillClauses = getTemplateSrv().replace(query.fillClauses, scopedVars);
       }
     }
     return query;
