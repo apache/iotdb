@@ -328,11 +328,7 @@ public class IoTDBInterpreterTest {
             + "root.test.wf01.wt01.hardware\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
-    List<String> actual_list =
-        new ArrayList<String>(Arrays.asList(actual.message().get(0).getData().split("\n")));
-    List<String> expected_list = new ArrayList<String>(Arrays.asList(gt.split("\n")));
-    Assert.assertEquals(expected_list.get(0), actual_list.get(0));
-    Assert.assertEquals(new HashSet<String>(expected_list), new HashSet<String>(actual_list));
+    assertEqualsNonStrict(gt, actual.message().get(0).getData());
   }
 
   @Test
@@ -342,11 +338,7 @@ public class IoTDBInterpreterTest {
         "devices\tisAligned\n" + "root.test.wf02.wt02\tfalse\n" + "root.test.wf01.wt01\tfalse";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
-    List<String> actual_list =
-        new ArrayList<String>(Arrays.asList(actual.message().get(0).getData().split("\n")));
-    List<String> expected_list = new ArrayList<String>(Arrays.asList(gt.split("\n")));
-    Assert.assertEquals(expected_list.get(0), actual_list.get(0));
-    Assert.assertEquals(new HashSet<String>(expected_list), new HashSet<String>(actual_list));
+    assertEqualsNonStrict(gt, actual.message().get(0).getData());
   }
 
   @Test
@@ -360,11 +352,7 @@ public class IoTDBInterpreterTest {
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     System.out.println(actual.message().get(0).getData());
-    List<String> actual_list =
-        new ArrayList<String>(Arrays.asList(actual.message().get(0).getData().split("\n")));
-    List<String> expected_list = new ArrayList<String>(Arrays.asList(gt.split("\n")));
-    Assert.assertEquals(expected_list.get(0), actual_list.get(0));
-    Assert.assertEquals(new HashSet<String>(expected_list), new HashSet<String>(actual_list));
+    assertEqualsNonStrict(gt, actual.message().get(0).getData());
   }
 
   @Test
@@ -374,11 +362,7 @@ public class IoTDBInterpreterTest {
     String gt = "storage group\tttl\n" + "root.test.wf02\tnull\n" + "root.test.wf01\t12345";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
-    List<String> actual_list =
-        new ArrayList<String>(Arrays.asList(actual.message().get(0).getData().split("\n")));
-    List<String> expected_list = new ArrayList<String>(Arrays.asList(gt.split("\n")));
-    Assert.assertEquals(expected_list.get(0), actual_list.get(0));
-    Assert.assertEquals(new HashSet<String>(expected_list), new HashSet<String>(actual_list));
+    assertEqualsNonStrict(gt, actual.message().get(0).getData());
   }
 
   @Test
@@ -397,11 +381,7 @@ public class IoTDBInterpreterTest {
     String gt = "storage group\n" + "root.test.wf02\n" + "root.test.wf01";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
-    List<String> actual_list =
-        new ArrayList<String>(Arrays.asList(actual.message().get(0).getData().split("\n")));
-    List<String> expected_list = new ArrayList<String>(Arrays.asList(gt.split("\n")));
-    Assert.assertEquals(expected_list.get(0), actual_list.get(0));
-    Assert.assertEquals(new HashSet<String>(expected_list), new HashSet<String>(actual_list));
+    assertEqualsNonStrict(gt, actual.message().get(0).getData());
   }
 
   @Test
@@ -412,5 +392,12 @@ public class IoTDBInterpreterTest {
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  private void assertEqualsNonStrict(String gt, String actual) {
+    List<String> actualList = new ArrayList<String>(Arrays.asList(actual.split("\n")));
+    List<String> expectedList = new ArrayList<String>(Arrays.asList(gt.split("\n")));
+    Assert.assertEquals(expectedList.get(0), actualList.get(0));
+    Assert.assertEquals(new HashSet<String>(expectedList), new HashSet<String>(actualList));
   }
 }
