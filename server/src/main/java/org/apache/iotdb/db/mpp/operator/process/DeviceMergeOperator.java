@@ -31,16 +31,16 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 /**
- * Since childDeviceOperatorMap should be sorted by the merge order as expected, what
- * DeviceMergeOperator need to do is traversing the device child operators, get all tsBlocks of one
- * device and transform it to the form we need, then get the next device operator until no next
- * device.
+ * Since devices have been sorted by the merge order as expected, what DeviceMergeOperator need to
+ * do is traversing the device child operators, get all tsBlocks of one device and transform it to
+ * the form we need, adding the device column and allocating value column to its expected location,
+ * then get the next device operator until no next device.
+ *
+ * <p>The deviceOperators can be timeJoinOperator or seriesScanOperator that have not transformed
+ * the result form.
  *
  * <p>Attention! If some columns are not existing in one device, those columns will be null. e.g.
  * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be filled
@@ -49,32 +49,43 @@ import java.util.Map.Entry;
 public class DeviceMergeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  // <deviceName, corresponding query result operator responsible for that device>
-  private Map<String, Operator> childDeviceOperatorMap;
-  // Column dataTypes that includes device column
-  private final List<TSDataType> dataTypes;
+  // The size devices and deviceOperators should be the same.
+  private final List<String> devices;
+  private final List<Operator> deviceOperators;
   // Used to fill columns and leave null columns which doesn't exist in some devices.
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
-  private Map<String, List<Integer>> deviceToColumnIndexMap;
+  private final List<List<Integer>> deviceColumnIndex;
+  // Column dataTypes that includes device column
+  private final List<TSDataType> dataTypes;
 
-  private Iterator<Entry<String, Operator>> deviceIterator;
-  private Entry<String, Operator> curDeviceEntry;
+  private int deviceIndex;
 
   public DeviceMergeOperator(
       OperatorContext operatorContext,
-      Map<String, Operator> childDeviceOperatorMap,
-      List<TSDataType> dataTypes,
-      Map<String, List<Integer>> deviceToColumnIndexMap) {
+      List<String> devices,
+      List<Operator> deviceOperators,
+      List<List<Integer>> deviceColumnIndex,
+      List<TSDataType> dataTypes) {
     this.operatorContext = operatorContext;
-    this.childDeviceOperatorMap = childDeviceOperatorMap;
+    this.devices = devices;
+    this.deviceOperators = deviceOperators;
+    this.deviceColumnIndex = deviceColumnIndex;
     this.dataTypes = dataTypes;
-    this.deviceToColumnIndexMap = deviceToColumnIndexMap;
 
-    this.deviceIterator = childDeviceOperatorMap.entrySet().iterator();
-    if (deviceIterator.hasNext()) {
-      curDeviceEntry = deviceIterator.next();
-    }
+    this.deviceIndex = 0;
+  }
+
+  private String getCurDeviceName() {
+    return devices.get(deviceIndex);
+  }
+
+  private Operator getCurDeviceOperator() {
+    return deviceOperators.get(deviceIndex);
+  }
+
+  private List<Integer> getCurDeviceIndexes() {
+    return deviceColumnIndex.get(deviceIndex);
   }
 
   @Override
@@ -84,7 +95,7 @@ public class DeviceMergeOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    ListenableFuture<Void> blocked = curDeviceEntry.getValue().isBlocked();
+    ListenableFuture<Void> blocked = getCurDeviceOperator().isBlocked();
     if (!blocked.isDone()) {
       return blocked;
     }
@@ -93,8 +104,8 @@ public class DeviceMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    TsBlock tsBlock = curDeviceEntry.getValue().next();
-    List<Integer> indexes = deviceToColumnIndexMap.get(curDeviceEntry.getKey());
+    TsBlock tsBlock = getCurDeviceOperator().next();
+    List<Integer> indexes = getCurDeviceIndexes();
 
     // fill existing columns
     Column[] newValueColumns = new Column[dataTypes.size()];
@@ -103,7 +114,7 @@ public class DeviceMergeOperator implements ProcessOperator {
     }
     // construct device column
     ColumnBuilder deviceColumnBuilder = new BinaryColumnBuilder(null, 1);
-    deviceColumnBuilder.writeObject(new Binary(curDeviceEntry.getKey()));
+    deviceColumnBuilder.writeObject(new Binary(getCurDeviceName()));
     newValueColumns[0] =
         new RunLengthEncodedColumn(deviceColumnBuilder.build(), tsBlock.getPositionCount());
     // construct other null columns
@@ -117,9 +128,9 @@ public class DeviceMergeOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    while (!curDeviceEntry.getValue().hasNext()) {
-      if (deviceIterator.hasNext()) {
-        curDeviceEntry = deviceIterator.next();
+    while (!getCurDeviceOperator().hasNext()) {
+      if (deviceIndex + 1 < devices.size()) {
+        deviceIndex++;
       } else {
         return false;
       }
@@ -129,7 +140,7 @@ public class DeviceMergeOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (Operator child : childDeviceOperatorMap.values()) {
+    for (Operator child : deviceOperators) {
       child.close();
     }
   }

@@ -154,6 +154,10 @@ public class TsBlock {
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 
+  /**
+   * Attention. This method uses System.arraycopy() to extend the valueColumn array, so its
+   * performance is not ensured if you have many insert operations.
+   */
   public TsBlock insertValueColumn(int index, Column column) {
     requireNonNull(column, "Column is null");
     if (positionCount != column.getPositionCount()) {

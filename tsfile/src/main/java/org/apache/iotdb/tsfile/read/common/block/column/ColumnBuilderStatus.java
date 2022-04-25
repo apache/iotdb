@@ -41,10 +41,6 @@ public class ColumnBuilderStatus {
         requireNonNull(tsBlockBuilderStatus, "tsBlockBuilderStatus must not be null");
   }
 
-  public ColumnBuilderStatus() {
-    this.tsBlockBuilderStatus = new TsBlockBuilderStatus();
-  }
-
   public int getMaxTsBlockSizeInBytes() {
     return tsBlockBuilderStatus.getMaxTsBlockSizeInBytes();
   }

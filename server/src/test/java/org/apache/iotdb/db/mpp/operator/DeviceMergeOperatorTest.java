@@ -46,8 +46,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstanceContext;
@@ -130,25 +128,27 @@ public class DeviceMergeOperatorTest {
               true);
       seriesScanOperator2.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
 
-      Map<String, Operator> childDeviceOperatorMap = new TreeMap<>();
-      childDeviceOperatorMap.put(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0", seriesScanOperator1);
-      childDeviceOperatorMap.put(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1", seriesScanOperator2);
+      List<String> devices = new ArrayList<>();
+      devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0");
+      devices.add(DEVICE_MERGE_OPERATOR_TEST_SG + ".device1");
+      List<Operator> deviceOperators = new ArrayList<>();
+      deviceOperators.add(seriesScanOperator1);
+      deviceOperators.add(seriesScanOperator2);
+      List<List<Integer>> deviceColumnIndex = new ArrayList<>();
+      deviceColumnIndex.add(Collections.singletonList(1));
+      deviceColumnIndex.add(Collections.singletonList(2));
       List<TSDataType> dataTypes = new ArrayList<>();
       dataTypes.add(TSDataType.TEXT);
       dataTypes.add(TSDataType.INT32);
       dataTypes.add(TSDataType.INT32);
-      Map<String, List<Integer>> deviceToColumnIndexMap = new TreeMap<>();
-      deviceToColumnIndexMap.put(
-          DEVICE_MERGE_OPERATOR_TEST_SG + ".device0", Collections.singletonList(1));
-      deviceToColumnIndexMap.put(
-          DEVICE_MERGE_OPERATOR_TEST_SG + ".device1", Collections.singletonList(2));
 
       DeviceMergeOperator deviceMergeOperator =
           new DeviceMergeOperator(
               fragmentInstanceContext.getOperatorContexts().get(2),
-              childDeviceOperatorMap,
-              dataTypes,
-              deviceToColumnIndexMap);
+              devices,
+              deviceOperators,
+              deviceColumnIndex,
+              dataTypes);
       int count = 0;
       while (deviceMergeOperator.hasNext()) {
         TsBlock tsBlock = deviceMergeOperator.next();
