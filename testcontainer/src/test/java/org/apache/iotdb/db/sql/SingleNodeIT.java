@@ -21,7 +21,9 @@ package org.apache.iotdb.db.sql;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.session.Session;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
@@ -32,7 +34,9 @@ import org.testcontainers.images.PullPolicy;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 
 // do not add tests here.
 // add tests into Cases.java instead.
