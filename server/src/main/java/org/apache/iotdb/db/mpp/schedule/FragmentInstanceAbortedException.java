@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.mpp.schedule;
 
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.Driver;
+import org.apache.iotdb.db.mpp.execution.IDriver;
 
-/** A common exception to pass to {@link Driver#failed(Throwable)} */
+/** A common exception to pass to {@link IDriver#failed(Throwable)} */
 public class FragmentInstanceAbortedException extends Exception {
 
   public static final String BY_TIMEOUT = "timeout";

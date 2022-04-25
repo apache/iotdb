@@ -42,7 +42,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class WALFileTest {
   private final File walFile = new File(TestConstant.BASE_OUTPUT_PATH.concat("_0.wal"));

@@ -87,6 +87,7 @@
         <module>thrift-cluster</module>
         <module>thrift-sync</module>
         <module>thrift-influxdb</module>
+        <module>thrift-procedure</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>influxdb-protocol</module>
@@ -115,6 +116,7 @@
         <module>metrics</module>
         <module>integration</module>
         <module>consensus</module>
+        <module>procedure</module>
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
@@ -495,6 +497,11 @@
                 <groupId>io.airlift</groupId>
                 <artifactId>slice</artifactId>
                 <version>0.41</version>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>stats</artifactId>
+                <version>200</version>
             </dependency>
             <dependency>
                 <groupId>org.openjdk.jol</groupId>
@@ -911,6 +918,7 @@
                 </executions>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
                 </configuration>
             </plugin>
             <!--

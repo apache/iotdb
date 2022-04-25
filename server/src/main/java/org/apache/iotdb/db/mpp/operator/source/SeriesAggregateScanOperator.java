@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
@@ -85,7 +85,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       List<AggregationType> aggregateFuncList,
       Filter timeFilter,
       boolean ascending,
-      GroupByTimeComponent groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.ascending = ascending;
@@ -121,7 +121,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
    * Aggregation query has only one time window and the result set of it does not contain a
    * timestamp, so it doesn't matter what the time range returns.
    */
-  public ITimeRangeIterator initTimeRangeIterator(GroupByTimeComponent groupByTimeParameter) {
+  public ITimeRangeIterator initTimeRangeIterator(GroupByTimeParameter groupByTimeParameter) {
     if (groupByTimeParameter == null) {
       return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
     } else {

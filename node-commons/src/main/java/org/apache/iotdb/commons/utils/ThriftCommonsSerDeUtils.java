@@ -19,18 +19,21 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TByteBuffer;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
-// TODO: Serialize and deserialize by thrift structure
 /** Utils for serialize and deserialize all the data struct defined by thrift-commons */
 public class ThriftCommonsSerDeUtils {
 
@@ -38,107 +41,125 @@ public class ThriftCommonsSerDeUtils {
     // Empty constructor
   }
 
+  private static TBinaryProtocol generateWriteProtocol(ByteBuffer buffer)
+      throws TTransportException {
+    TTransport transport = new TByteBuffer(buffer);
+    return new TBinaryProtocol(transport);
+  }
+
+  private static TBinaryProtocol generateReadProtocol(ByteBuffer buffer)
+      throws TTransportException {
+    TTransport transport = new TByteBuffer(buffer);
+    return new TBinaryProtocol(transport);
+  }
+
   public static void writeTEndPoint(TEndPoint endPoint, ByteBuffer buffer) {
-    BasicStructureSerDeUtil.write(endPoint.getIp(), buffer);
-    buffer.putInt(endPoint.getPort());
+    try {
+      endPoint.write(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TEndPoint failed: ", e);
+    }
   }
 
   public static TEndPoint readTEndPoint(ByteBuffer buffer) {
     TEndPoint endPoint = new TEndPoint();
-    endPoint.setIp(BasicStructureSerDeUtil.readString(buffer));
-    endPoint.setPort(buffer.getInt());
+    try {
+      endPoint.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TEndPoint failed: ", e);
+    }
     return endPoint;
   }
 
   public static void writeTDataNodeLocation(TDataNodeLocation dataNodeLocation, ByteBuffer buffer) {
-    buffer.putInt(dataNodeLocation.getDataNodeId());
-
-    buffer.put(dataNodeLocation.isSetExternalEndPoint() ? (byte) 1 : (byte) 0);
-    if (dataNodeLocation.isSetExternalEndPoint()) {
-      writeTEndPoint(dataNodeLocation.getExternalEndPoint(), buffer);
-    }
-
-    buffer.put(dataNodeLocation.isSetInternalEndPoint() ? (byte) 1 : (byte) 0);
-    if (dataNodeLocation.isSetInternalEndPoint()) {
-      writeTEndPoint(dataNodeLocation.getInternalEndPoint(), buffer);
-    }
-
-    buffer.put(dataNodeLocation.isSetDataBlockManagerEndPoint() ? (byte) 1 : (byte) 0);
-    if (dataNodeLocation.isSetDataBlockManagerEndPoint()) {
-      writeTEndPoint(dataNodeLocation.getDataBlockManagerEndPoint(), buffer);
-    }
-
-    buffer.put(dataNodeLocation.isSetConsensusEndPoint() ? (byte) 1 : (byte) 0);
-    if (dataNodeLocation.isSetConsensusEndPoint()) {
-      writeTEndPoint(dataNodeLocation.getConsensusEndPoint(), buffer);
+    try {
+      dataNodeLocation.write(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TDataNodeLocation failed: ", e);
     }
   }
 
   public static TDataNodeLocation readTDataNodeLocation(ByteBuffer buffer) {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
-    dataNodeLocation.setDataNodeId(buffer.getInt());
-
-    if (buffer.get() > 0) {
-      dataNodeLocation.setExternalEndPoint(readTEndPoint(buffer));
-    }
-
-    if (buffer.get() > 0) {
-      dataNodeLocation.setInternalEndPoint(readTEndPoint(buffer));
-    }
-
-    if (buffer.get() > 0) {
-      dataNodeLocation.setDataBlockManagerEndPoint(readTEndPoint(buffer));
-    }
-
-    if (buffer.get() > 0) {
-      dataNodeLocation.setConsensusEndPoint(readTEndPoint(buffer));
+    try {
+      dataNodeLocation.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TDataNodeLocation failed: ", e);
     }
     return dataNodeLocation;
   }
 
   public static void writeTSeriesPartitionSlot(
       TSeriesPartitionSlot seriesPartitionSlot, ByteBuffer buffer) {
-    buffer.putInt(seriesPartitionSlot.getSlotId());
+    try {
+      seriesPartitionSlot.write(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TSeriesPartitionSlot failed: ", e);
+    }
   }
 
   public static TSeriesPartitionSlot readTSeriesPartitionSlot(ByteBuffer buffer) {
-    return new TSeriesPartitionSlot(buffer.getInt());
+    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot();
+    try {
+      seriesPartitionSlot.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TSeriesPartitionSlot failed: ", e);
+    }
+    return seriesPartitionSlot;
   }
 
   public static void writeTTimePartitionSlot(
       TTimePartitionSlot timePartitionSlot, ByteBuffer buffer) {
-    buffer.putLong(timePartitionSlot.getStartTime());
+    try {
+      timePartitionSlot.write(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TTimePartitionSlot failed: ", e);
+    }
   }
 
   public static TTimePartitionSlot readTTimePartitionSlot(ByteBuffer buffer) {
-    return new TTimePartitionSlot(buffer.getLong());
+    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
+    try {
+      timePartitionSlot.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TTimePartitionSlot failed: ", e);
+    }
+    return timePartitionSlot;
   }
 
   public static void writeTConsensusGroupId(TConsensusGroupId consensusGroupId, ByteBuffer buffer) {
-    buffer.putInt(consensusGroupId.getType().ordinal());
-    buffer.putInt(consensusGroupId.getId());
+    try {
+      consensusGroupId.write(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TConsensusGroupId failed: ", e);
+    }
   }
 
   public static TConsensusGroupId readTConsensusGroupId(ByteBuffer buffer) {
-    TConsensusGroupType type = TConsensusGroupType.values()[buffer.getInt()];
-    return new TConsensusGroupId(type, buffer.getInt());
+    TConsensusGroupId consensusGroupId = new TConsensusGroupId();
+    try {
+      consensusGroupId.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TConsensusGroupId failed: ", e);
+    }
+    return consensusGroupId;
   }
 
   public static void writeTRegionReplicaSet(TRegionReplicaSet regionReplicaSet, ByteBuffer buffer) {
-    writeTConsensusGroupId(regionReplicaSet.getRegionId(), buffer);
-    buffer.putInt(regionReplicaSet.getDataNodeLocationsSize());
-    regionReplicaSet
-        .getDataNodeLocations()
-        .forEach(dataNodeLocation -> writeTDataNodeLocation(dataNodeLocation, buffer));
+    try {
+      regionReplicaSet.write(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TRegionReplicaSet failed: ", e);
+    }
   }
 
   public static TRegionReplicaSet readTRegionReplicaSet(ByteBuffer buffer) {
-    TConsensusGroupId consensusGroupId = readTConsensusGroupId(buffer);
-    int dataNodeLocationNum = buffer.getInt();
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-    for (int i = 0; i < dataNodeLocationNum; i++) {
-      dataNodeLocations.add(readTDataNodeLocation(buffer));
+    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+    try {
+      regionReplicaSet.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TRegionReplicaSet failed: ", e);
     }
-    return new TRegionReplicaSet(consensusGroupId, dataNodeLocations);
+    return regionReplicaSet;
   }
 }
