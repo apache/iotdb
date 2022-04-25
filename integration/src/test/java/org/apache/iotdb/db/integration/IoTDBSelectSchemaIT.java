@@ -92,14 +92,15 @@ public class IoTDBSelectSchemaIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              String.format("select %s, %s, %s, %s, %s, %s, %s from root.sg.d1", 
-              expressions[0], 
-              expressions[1], 
-              expressions[2], 
-              expressions[3], 
-              expressions[4], 
-              expressions[5], 
-              expressions[6]));
+              String.format(
+                  "select %s, %s, %s, %s, %s, %s, %s from root.sg.d1",
+                  expressions[0],
+                  expressions[1],
+                  expressions[2],
+                  expressions[3],
+                  expressions[4],
+                  expressions[5],
+                  expressions[6]));
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + expressions.length, columnCount);
 
