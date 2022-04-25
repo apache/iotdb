@@ -41,12 +41,15 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
   private final IStateMachine applicationStateMachine;
-  private File statemachineDir; // Raft Storage sub dir for statemachine data, default (_sm)
-  private SnapshotStorage snapshotStorage;
+
+  // Raft Storage sub dir for statemachine data, default (_sm)
+  private File statemachineDir;
+  private final SnapshotStorage snapshotStorage;
   private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine) {
@@ -61,8 +64,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     getLifeCycle()
         .startAndTransition(
             () -> {
-              this.statemachineDir = storage.getStorageDir().getStateMachineDir();
               snapshotStorage.init(storage);
+              this.statemachineDir = snapshotStorage.getStateMachineDir();
               loadSnapshot(applicationStateMachine.getLatestSnapshot(statemachineDir));
             });
   }
@@ -133,7 +136,8 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     // require the application statemachine to take the latest snapshot
-    snapshotStorage.takeSnapshot(lastApplied);
+    ByteBuffer metadata = Utils.getMetadataFromTermIndex(lastApplied);
+    applicationStateMachine.takeSnapshot(metadata, statemachineDir);
 
     return lastApplied.getIndex();
   }
@@ -144,7 +148,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     // require the application statemachine to load the latest snapshot
-    TermIndex snapshotTermIndex = snapshotStorage.loadSnapshot(snapshot);
+    applicationStateMachine.loadSnapshot(snapshot);
+    ByteBuffer metadata = snapshot.getMetadata();
+    TermIndex snapshotTermIndex = Utils.getTermIndexFromMetadata(metadata);
     updateLastAppliedTermIndex(snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
   }
 

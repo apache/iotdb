@@ -35,9 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,25 +47,12 @@ import java.util.List;
  */
 public class SnapshotStorage implements StateMachineStorage {
   private IStateMachine applicationStateMachine;
+
   private File stateMachineDir;
-  private Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
+  private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
 
   public SnapshotStorage(IStateMachine applicationStateMachine) {
     this.applicationStateMachine = applicationStateMachine;
-  }
-
-  private ByteBuffer getMetadataFromTermIndex(TermIndex termIndex) {
-    String ordinal = String.format("%d_%d", termIndex.getTerm(), termIndex.getIndex());
-    ByteBuffer metadata = ByteBuffer.wrap(ordinal.getBytes());
-    return metadata;
-  }
-
-  private TermIndex getTermIndexFromMetadata(ByteBuffer metadata) {
-    Charset charset = Charset.defaultCharset();
-    CharBuffer charBuffer = charset.decode(metadata);
-    String ordinal = charBuffer.toString();
-    String[] items = ordinal.split("_");
-    return TermIndex.valueOf(Long.parseLong(items[0]), Long.parseLong(items[1]));
   }
 
   @Override
@@ -82,33 +66,23 @@ public class SnapshotStorage implements StateMachineStorage {
     if (snapshotMeta == null) {
       return null;
     }
-    TermIndex snapshotTermIndex = getTermIndexFromMetadata(snapshotMeta.getMetadata());
+    TermIndex snapshotTermIndex = Utils.getTermIndexFromMetadata(snapshotMeta.getMetadata());
 
     List<FileInfo> fileInfos = new ArrayList<>();
-    try {
-      for (File file : snapshotMeta.getSnapshotFiles()) {
-        Path filePath = file.toPath();
-        MD5Hash fileHash = MD5FileUtil.computeMd5ForFile(file);
-        FileInfo fileInfo = new FileInfo(filePath, fileHash);
-        fileInfos.add(fileInfo);
+    for (File file : snapshotMeta.getSnapshotFiles()) {
+      Path filePath = file.toPath();
+      MD5Hash fileHash = null;
+      try {
+        fileHash = MD5FileUtil.computeMd5ForFile(file);
+      } catch (IOException e) {
+        logger.error("read file info failed for snapshot file ", e);
       }
-    } catch (IOException ioException) {
-      logger.error("read file info failed for snapshot file ", ioException);
+      FileInfo fileInfo = new FileInfo(filePath, fileHash);
+      fileInfos.add(fileInfo);
     }
 
     return new FileListSnapshotInfo(
         fileInfos, snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
-  }
-
-  public void takeSnapshot(TermIndex lastApplied) {
-    ByteBuffer metadata = getMetadataFromTermIndex(lastApplied);
-    applicationStateMachine.takeSnapshot(metadata, stateMachineDir);
-  }
-
-  public TermIndex loadSnapshot(SnapshotMeta snapshot) {
-    applicationStateMachine.loadSnapshot(snapshot);
-    ByteBuffer metadata = snapshot.getMetadata();
-    return getTermIndexFromMetadata(metadata);
   }
 
   @Override
@@ -118,5 +92,9 @@ public class SnapshotStorage implements StateMachineStorage {
   public void cleanupOldSnapshots(SnapshotRetentionPolicy snapshotRetentionPolicy)
       throws IOException {
     applicationStateMachine.cleanUpOldSnapshots(stateMachineDir);
+  }
+
+  public File getStateMachineDir() {
+    return stateMachineDir;
   }
 }
