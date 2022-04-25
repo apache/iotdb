@@ -67,11 +67,11 @@ public class SourceHandle implements ISourceHandle {
   private final Map<Integer, Long> sequenceIdToDataBlockSize = new HashMap<>();
 
   private volatile SettableFuture<Void> blocked = SettableFuture.create();
-  private long bufferRetainedSizeInBytes;
+  private long bufferRetainedSizeInBytes = 0L;
   private int currSequenceId = 0;
   private int nextSequenceId = 0;
   private int lastSequenceId = Integer.MAX_VALUE;
-  private boolean closed;
+  private boolean closed = false;
 
   public SourceHandle(
       TEndPoint remoteEndpoint,
