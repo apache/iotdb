@@ -65,14 +65,14 @@ public class LogicalPlannerTest {
 
   @Test
   @Ignore // TODO: @zyk implement getBelongedStorageGroup() in SchemaTree
-  public void queryPlanTest() {
+  public void testQueryPlan() {
     for (String sql : querySQLs) {
       Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
     }
   }
 
   @Test
-  public void createTimeseriesPlanTest() {
+  public void testCreateTimeseriesPlan() {
     String sql =
         "CREATE TIMESERIES root.ln.wf01.wt01.status(状态) BOOLEAN ENCODING=PLAIN COMPRESSOR=SNAPPY TAGS(tag1=v1, tag2=v2) ATTRIBUTES(attr1=v1, attr2=v2)";
     try {
@@ -100,6 +100,15 @@ public class LogicalPlannerTest {
             }
           },
           createTimeSeriesNode.getAttributes());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      createTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      CreateTimeSeriesNode createTimeSeriesNode1 =
+          (CreateTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertTrue(createTimeSeriesNode.equals(createTimeSeriesNode1));
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -107,7 +116,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void createAlignedTimeseriesPlanTest() {
+  public void testCreateAlignedTimeseriesPlan() {
     String sql =
         "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude(meter1) FLOAT encoding=PLAIN compressor=SNAPPY tags(tag1=t1) attributes(attr1=a1), longitude FLOAT encoding=PLAIN compressor=SNAPPY)";
     try {
@@ -190,7 +199,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void alterTimeseriesPlanTest() {
+  public void testAlterTimeseriesPlan() {
     String sql = "ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
@@ -455,7 +464,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void authorTest() {
+  public void testAuthor() {
 
     String sql = null;
     String[] privilegeList = {"DELETE_TIMESERIES"};

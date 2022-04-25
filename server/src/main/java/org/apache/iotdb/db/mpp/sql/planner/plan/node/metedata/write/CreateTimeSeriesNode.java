@@ -198,7 +198,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     Map<String, String> tags = null;
     Map<String, String> attributes = null;
 
-    id = ReadWriteIOUtils.readString(byteBuffer);
     int length = byteBuffer.getInt();
     byte[] bytes = new byte[length];
     byteBuffer.get(bytes);
@@ -241,14 +240,15 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       attributes = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
+    id = ReadWriteIOUtils.readString(byteBuffer);
     return new CreateTimeSeriesNode(
         new PlanNodeId(id), path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
     byteBuffer.putShort((short) PlanNodeType.CREATE_TIME_SERIES.ordinal());
-    ReadWriteIOUtils.write(this.getPlanNodeId().getId(), byteBuffer);
+
     byte[] bytes = path.getFullPath().getBytes();
     byteBuffer.putInt(bytes.length);
     byteBuffer.put(bytes);
@@ -294,13 +294,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(attributes, byteBuffer);
     }
-
-    // no children node, need to set 0
-    byteBuffer.putInt(0);
   }
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
