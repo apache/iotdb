@@ -39,6 +39,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -144,7 +145,18 @@ public class TestUtils {
       }
 
       Object[] pathArray = paths.toArray();
-      Arrays.sort(pathArray);
+      Arrays.sort(
+          pathArray,
+          new Comparator<Object>() {
+            @Override
+            public int compare(Object o1, Object o2) {
+              Path path1 = (Path) o1;
+              Path path2 = (Path) o2;
+              String index1 = path1.toFile().getName().split("_")[1];
+              String index2 = path2.toFile().getName().split("_")[1];
+              return Long.compare(Long.parseLong(index1), Long.parseLong(index2));
+            }
+          });
       return pathArray;
     }
 
