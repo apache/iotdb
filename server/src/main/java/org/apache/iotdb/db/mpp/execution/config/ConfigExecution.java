@@ -94,7 +94,6 @@ public class ConfigExecution implements IQueryExecution {
           executor);
     } catch (Throwable e) {
       Thread.currentThread().interrupt();
-      e.printStackTrace();
       fail(e);
     }
   }
