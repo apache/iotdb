@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.sql.statement.crud.BatchInsert;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -38,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertMultiTabletsNode extends InsertNode {
+public class InsertMultiTabletsNode extends InsertNode implements BatchInsert {
 
   /**
    * the value is used to indict the parent InsertTabletNode's index when the parent
@@ -187,6 +189,42 @@ public class InsertMultiTabletsNode extends InsertNode {
   @Override
   public List<TSDataType> getOutputColumnTypes() {
     return null;
+  }
+
+  @Override
+  public List<PartialPath> getDevicePaths() {
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      partialPaths.add(insertTabletNode.devicePath);
+    }
+    return partialPaths;
+  }
+
+  @Override
+  public List<String[]> getMeasurementsList() {
+    List<String[]> measurementsList = new ArrayList<>();
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      measurementsList.add(insertTabletNode.measurements);
+    }
+    return measurementsList;
+  }
+
+  @Override
+  public List<TSDataType[]> getDataTypesList() {
+    List<TSDataType[]> dataTypesList = new ArrayList<>();
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      dataTypesList.add(insertTabletNode.dataTypes);
+    }
+    return dataTypesList;
+  }
+
+  @Override
+  public List<Boolean> getAlignedList() {
+    List<Boolean> alignedList = new ArrayList<>();
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      alignedList.add(insertTabletNode.isAligned);
+    }
+    return alignedList;
   }
 
   public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.sql.statement.crud.BatchInsert;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -40,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertRowsNode extends InsertNode {
+public class InsertRowsNode extends InsertNode implements BatchInsert {
 
   /**
    * Suppose there is an InsertRowsNode, which contains 5 InsertRowNodes,
@@ -157,6 +159,42 @@ public class InsertRowsNode extends InsertNode {
   @Override
   public List<TSDataType> getOutputColumnTypes() {
     return null;
+  }
+
+  @Override
+  public List<PartialPath> getDevicePaths() {
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      partialPaths.add(insertRowNode.devicePath);
+    }
+    return partialPaths;
+  }
+
+  @Override
+  public List<String[]> getMeasurementsList() {
+    List<String[]> measurementsList = new ArrayList<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      measurementsList.add(insertRowNode.measurements);
+    }
+    return measurementsList;
+  }
+
+  @Override
+  public List<TSDataType[]> getDataTypesList() {
+    List<TSDataType[]> dataTypesList = new ArrayList<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      dataTypesList.add(insertRowNode.dataTypes);
+    }
+    return dataTypesList;
+  }
+
+  @Override
+  public List<Boolean> getAlignedList() {
+    List<Boolean> alignedList = new ArrayList<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      alignedList.add(insertRowNode.isAligned);
+    }
+    return alignedList;
   }
 
   public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
