@@ -30,9 +30,19 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.Statement;
 
-import static org.apache.iotdb.db.constant.TestConstant.*;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.d0;
+import static org.apache.iotdb.db.constant.TestConstant.d1;
+import static org.apache.iotdb.db.constant.TestConstant.s0;
+import static org.apache.iotdb.db.constant.TestConstant.s1;
+import static org.apache.iotdb.db.constant.TestConstant.s2;
+import static org.apache.iotdb.db.constant.TestConstant.s3;
+import static org.apache.iotdb.db.constant.TestConstant.s4;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 

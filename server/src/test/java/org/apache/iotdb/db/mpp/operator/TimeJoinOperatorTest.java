@@ -56,7 +56,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TimeJoinOperatorTest {
   private static final String TIME_JOIN_OPERATOR_TEST_SG = "root.TimeJoinOperatorTest";
