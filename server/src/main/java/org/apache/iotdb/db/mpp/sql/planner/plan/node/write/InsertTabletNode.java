@@ -646,17 +646,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
-    try {
-      insertNode.subDeserialize(byteBuffer);
-    } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
-    }
+    insertNode.subDeserialize(byteBuffer);
     insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
     return insertNode;
   }
 
-  private void subDeserialize(ByteBuffer buffer) throws IllegalPathException {
-    this.devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+  public void subDeserialize(ByteBuffer buffer) {
+    try {
+      this.devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+    }
 
     int measurementSize = buffer.getInt();
     this.measurements = new String[measurementSize];

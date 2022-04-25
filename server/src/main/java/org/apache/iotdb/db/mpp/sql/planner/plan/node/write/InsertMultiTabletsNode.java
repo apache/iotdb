@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -189,11 +190,44 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   public static InsertMultiTabletsNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    PlanNodeId planNodeId;
+    List<InsertTabletNode> insertTabletNodeList = new ArrayList<>();
+    List<Integer> parentIndex = new ArrayList<>();
+
+    int size = byteBuffer.getInt();
+    for (int i = 0; i < size; i++) {
+      InsertTabletNode insertTabletNode = new InsertTabletNode(new PlanNodeId(""));
+      insertTabletNode.subDeserialize(byteBuffer);
+      insertTabletNodeList.add(insertTabletNode);
+    }
+    for (int i = 0; i < size; i++) {
+      parentIndex.add(byteBuffer.getInt());
+    }
+
+    planNodeId = PlanNodeId.deserialize(byteBuffer);
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      insertTabletNode.setPlanNodeId(planNodeId);
+    }
+
+    InsertMultiTabletsNode insertMultiTabletsNode = new InsertMultiTabletsNode(planNodeId);
+    insertMultiTabletsNode.setInsertTabletNodeList(insertTabletNodeList);
+    insertMultiTabletsNode.setParentInsertTabletNodeIndexList(parentIndex);
+    return insertMultiTabletsNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.INSERT_MULTI_TABLET.serialize(byteBuffer);
+
+    byteBuffer.putInt(insertTabletNodeList.size());
+
+    for (InsertTabletNode node : insertTabletNodeList) {
+      node.subSerialize(byteBuffer);
+    }
+    for (Integer index : parentInsertTabletNodeIndexList) {
+      byteBuffer.putInt(index);
+    }
+  }
 
   @Override
   public boolean equals(Object o) {

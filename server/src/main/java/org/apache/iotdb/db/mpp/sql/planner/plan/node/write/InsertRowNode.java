@@ -373,15 +373,19 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public static InsertRowNode deserialize(ByteBuffer byteBuffer) {
     // TODO: (xingtanzjr) remove placeholder
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
-    insertNode.setTime(byteBuffer.getLong());
+    insertNode.subDeserialize(byteBuffer);
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return insertNode;
+  }
+
+  public void subDeserialize(ByteBuffer byteBuffer) {
+    time = byteBuffer.getLong();
     try {
-      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(byteBuffer)));
+      devicePath = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
     }
-    insertNode.deserializeMeasurementsAndValues(byteBuffer);
-    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
-    return insertNode;
+    deserializeMeasurementsAndValues(byteBuffer);
   }
 
   void deserializeMeasurementsAndValues(ByteBuffer buffer) {
