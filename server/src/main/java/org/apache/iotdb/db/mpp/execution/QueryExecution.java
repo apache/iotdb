@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -208,7 +209,7 @@ public class QueryExecution implements IQueryExecution {
         return null;
       }
       return resultHandle.receive();
-    } catch (ExecutionException e) {
+    } catch (ExecutionException | CancellationException e) {
       stateMachine.transitionToFailed(e);
       throwIfUnchecked(e.getCause());
       throw new RuntimeException(e.getCause());
