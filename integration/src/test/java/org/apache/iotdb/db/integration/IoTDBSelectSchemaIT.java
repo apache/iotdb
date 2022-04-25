@@ -86,7 +86,7 @@ public class IoTDBSelectSchemaIT {
       "-(-root.sg.d1.s1)",
       "(root.sg.d1.s1+root.sg.d1.s2)*root.sg.d1.s3",
       "-2+root.sg.d1.s1",
-      "-(-1)+root.sg.d1.s1",
+      "-(-1)+root.sg.d1.s1"
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
