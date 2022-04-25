@@ -51,9 +51,9 @@ public class MetricConfig {
   private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
 
   public static class IoTDBReporterConfig {
-    /** The host of iotdb */
+    /** The host of iotdb that store metric value */
     private String host = "127.0.0.1";
-    /** The port of iotdb */
+    /** The port of iotdb that store metric value */
     private Integer port = 6667;
     /** The username of iotdb */
     private String username = "root";
@@ -145,10 +145,10 @@ public class MetricConfig {
     }
   }
 
-  /** the host of Instance */
-  private String InstanceHost = "127.0.0.1";
-  /** the port of Instance */
-  private Integer InstancePort = 8086;
+  /** the host of iotdb instance that is monitored */
+  private String instanceHost = "127.0.0.1";
+  /** the port of iotdb instance that is monitored */
+  private Integer instancePort = 6667;
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
@@ -217,19 +217,19 @@ public class MetricConfig {
   }
 
   public String getInstanceHost() {
-    return InstanceHost;
+    return instanceHost;
   }
 
   public void setInstanceHost(String instanceHost) {
-    InstanceHost = instanceHost;
+    this.instanceHost = instanceHost;
   }
 
   public Integer getInstancePort() {
-    return InstancePort;
+    return instancePort;
   }
 
   public void setInstancePort(Integer instancePort) {
-    InstancePort = instancePort;
+    this.instancePort = instancePort;
   }
 
   @Override

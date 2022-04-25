@@ -36,7 +36,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -137,12 +136,9 @@ public class SourceHandleTest {
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
-      try {
-        sourceHandle.receive();
-      } catch (IOException e) {
-        e.printStackTrace();
-        Assert.fail();
-      }
+
+      sourceHandle.receive();
+
       if (i < numOfMockTsBlock - 1) {
         Assert.assertTrue(sourceHandle.isBlocked().isDone());
       } else {
@@ -260,12 +256,7 @@ public class SourceHandleTest {
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
       Mockito.verify(spyMemoryPool, Mockito.times(i)).free(queryId, mockTsBlockSize);
-      try {
-        sourceHandle.receive();
-      } catch (IOException e) {
-        e.printStackTrace();
-        Assert.fail();
-      }
+      sourceHandle.receive();
       try {
         Thread.sleep(100L);
         if (i < 5) {
@@ -425,12 +416,7 @@ public class SourceHandleTest {
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < 2 * numOfMockTsBlock; i++) {
-      try {
-        sourceHandle.receive();
-      } catch (IOException e) {
-        e.printStackTrace();
-        Assert.fail();
-      }
+      sourceHandle.receive();
       if (i < 2 * numOfMockTsBlock - 1) {
         Assert.assertTrue(sourceHandle.isBlocked().isDone());
       } else {
@@ -477,12 +463,7 @@ public class SourceHandleTest {
 
     // The local fragment instance consumes the data blocks.
     for (int i = 0; i < numOfMockTsBlock; i++) {
-      try {
-        sourceHandle.receive();
-      } catch (IOException e) {
-        e.printStackTrace();
-        Assert.fail();
-      }
+      sourceHandle.receive();
       if (i < numOfMockTsBlock - 1) {
         Assert.assertTrue(sourceHandle.isBlocked().isDone());
       } else {
@@ -530,8 +511,9 @@ public class SourceHandleTest {
     TsBlockSerde mockTsBlockSerde = Utils.createMockTsBlockSerde(mockTsBlockSize);
     // Construct a mock client.
     Client mockClient = Mockito.mock(Client.class);
+    TException mockException = new TException("Mock exception");
     try {
-      Mockito.doThrow(new TException("Mock exception"))
+      Mockito.doThrow(mockException)
           .when(mockClient)
           .getDataBlock(Mockito.any(TGetDataBlockRequest.class));
     } catch (TException e) {
@@ -550,7 +532,8 @@ public class SourceHandleTest {
             mockClient,
             mockTsBlockSerde,
             mockSourceHandleListener);
-    Assert.assertFalse(sourceHandle.isBlocked().isDone());
+    Future<?> blocked = sourceHandle.isBlocked();
+    Assert.assertFalse(blocked.isDone());
     Assert.assertFalse(sourceHandle.isClosed());
     Assert.assertFalse(sourceHandle.isFinished());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
@@ -564,36 +547,20 @@ public class SourceHandleTest {
             .collect(Collectors.toList()));
     try {
       Thread.sleep(100L);
-    } catch (InterruptedException e) {
+      Mockito.verify(mockClient, Mockito.times(SourceHandle.MAX_ATTEMPT_TIMES))
+          .getDataBlock(Mockito.any());
+    } catch (InterruptedException | TException e) {
       e.printStackTrace();
       Assert.fail();
     }
-    try {
-      Assert.assertFalse(sourceHandle.isBlocked().isDone());
-      Assert.fail("Expect an IOException.");
-    } catch (RuntimeException e) {
-      Assert.assertEquals("org.apache.thrift.TException: Mock exception", e.getMessage());
-    }
-    Assert.assertFalse(sourceHandle.isClosed());
-    Assert.assertFalse(sourceHandle.isFinished());
-    Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
 
-    // The local fragment instance consumes the data blocks.
-    try {
-      sourceHandle.receive();
-      Assert.fail("Expect an IOException.");
-    } catch (IOException e) {
-      Assert.assertEquals("org.apache.thrift.TException: Mock exception", e.getMessage());
-    }
-
-    // Receive EndOfDataBlock event from upstream fragment instance.
-    sourceHandle.setNoMoreTsBlocks(numOfMockTsBlock - 1);
-    Assert.assertFalse(sourceHandle.isClosed());
-    Assert.assertFalse(sourceHandle.isFinished());
-    Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
+    Mockito.verify(mockSourceHandleListener, Mockito.times(1))
+        .onFailure(sourceHandle, mockException);
+    Assert.assertFalse(blocked.isDone());
 
     sourceHandle.close();
     Assert.assertFalse(sourceHandle.isFinished());
+    Assert.assertTrue(blocked.isDone());
     Assert.assertEquals(0L, sourceHandle.getBufferRetainedSizeInBytes());
   }
 
