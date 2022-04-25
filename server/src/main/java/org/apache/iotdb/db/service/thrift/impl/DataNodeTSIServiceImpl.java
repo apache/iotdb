@@ -119,7 +119,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   private final ISchemaFetcher SCHEMA_FETCHER;
 
   public DataNodeTSIServiceImpl() {
-    if (IoTDB.getInstance().isClusterMode()) {
+    if (IoTDB.getInstance().isMppClusterMode()) {
       PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
       SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
     } else {

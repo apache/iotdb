@@ -170,6 +170,7 @@ public class DataNode implements DataNodeMBean {
   public void active() throws StartupException {
     // set the mpp mode to true
     IoTDBDescriptor.getInstance().getConfig().setMppMode(true);
+    IoTDB.getInstance().setMppClusterMode();
     // start iotdb server first
     IoTDB.getInstance().active();
 

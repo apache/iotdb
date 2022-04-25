@@ -145,7 +145,7 @@ public class QueryExecution implements IQueryExecution {
   private void schedule() {
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     this.scheduler =
-        IoTDB.getInstance().isClusterMode()
+        IoTDB.getInstance().isMppClusterMode()
             ? new ClusterScheduler(
                 context,
                 stateMachine,
