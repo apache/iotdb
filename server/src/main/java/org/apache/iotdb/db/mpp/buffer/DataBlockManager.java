@@ -291,6 +291,7 @@ public class DataBlockManager implements IDataBlockManager {
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
+      // TODO: replace with callbacks to decouple DataBlockManager from FragmentInstanceContext
       FragmentInstanceContext instanceContext) {
     if (sinkHandles.containsKey(localFragmentInstanceId)) {
       throw new IllegalStateException("Sink handle for " + localFragmentInstanceId + " exists.");
