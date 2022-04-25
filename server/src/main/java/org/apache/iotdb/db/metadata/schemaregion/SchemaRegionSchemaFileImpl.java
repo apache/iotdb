@@ -742,7 +742,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    *
    * @param path path
    */
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
+  private IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws IOException, MetadataException {
     IMNode node;
     try {
@@ -756,7 +756,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       }
     } catch (Exception e) {
       if (e.getCause() instanceof MetadataException) {
-        if (!autoCreateSchema) {
+        if (!config.isAutoCreateSchemaEnabled()) {
           throw new PathNotExistException(path.getFullPath());
         }
       } else {
@@ -769,11 +769,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.getPartialPath()));
     }
     return node;
-  }
-
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path)
-      throws MetadataException, IOException {
-    return getDeviceNodeWithAutoCreate(path, config.isAutoCreateSchemaEnabled());
   }
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
@@ -1433,41 +1428,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
-    IMNode deviceMNode = null;
+    IMNode deviceMNode;
 
     // 1. get device node, set using template if accessed.
-    boolean mountedNodeFound = false;
-    boolean isDeviceInTemplate = false;
-    // check every measurement path
-    for (String measurementId : measurementList) {
-      PartialPath fullPath = devicePath.concatNode(measurementId);
-      int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
-      if ((index != fullPath.getNodeLength() - 1) && !mountedNodeFound) {
-        // this measurement is in template, need to assure mounted node exists and set using
-        // template.
-        // Without allowing overlap of template and MTree, this block run only once
-        String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
-        IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
-        try {
-          if (!mountedNode.isUseTemplate()) {
-            mountedNode = setUsingSchemaTemplate(mountedNode);
-          }
-          mountedNodeFound = true;
-          if (index < devicePath.getNodeLength() - 1) {
-            deviceMNode =
-                mountedNode
-                    .getUpperTemplate()
-                    .getPathNodeInTemplate(
-                        new PartialPath(
-                            Arrays.copyOfRange(
-                                devicePath.getNodes(), index + 1, devicePath.getNodeLength())));
-            isDeviceInTemplate = true;
-          }
-        } finally {
-          mtree.unPinMNode(mountedNode);
-        }
-      }
-    }
+    deviceMNode = getDeviceInTemplateIfUsingTemplate(devicePath, measurementList);
+    boolean isDeviceInTemplate = deviceMNode != null;
     // get logical device node, may be in template. will be multiple if overlap is allowed.
     if (!isDeviceInTemplate) {
       deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
@@ -1551,6 +1516,43 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return deviceMNode;
   }
 
+  private IMNode getDeviceInTemplateIfUsingTemplate(
+      PartialPath devicePath, String[] measurementList) throws MetadataException, IOException {
+    // 1. get device node, set using template if accessed.
+    IMNode deviceMNode = null;
+
+    // check every measurement path
+    int index = mtree.getMountedNodeIndexOnMeasurementPath(devicePath, measurementList);
+    if (index == devicePath.getNodeLength()) {
+      return null;
+    }
+
+    // this measurement is in template, need to assure mounted node exists and set using
+    // template.
+    // Without allowing overlap of template and MTree, this block run only once
+    String[] mountedPathNodes = Arrays.copyOfRange(devicePath.getNodes(), 0, index + 1);
+    IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+    try {
+      if (!mountedNode.isUseTemplate()) {
+        mountedNode = setUsingSchemaTemplate(mountedNode);
+      }
+    } finally {
+      mtree.unPinMNode(mountedNode);
+    }
+
+    if (index < devicePath.getNodeLength() - 1) {
+      deviceMNode =
+          mountedNode
+              .getUpperTemplate()
+              .getPathNodeInTemplate(
+                  new PartialPath(
+                      Arrays.copyOfRange(
+                          devicePath.getNodes(), index + 1, devicePath.getNodeLength())));
+    }
+
+    return deviceMNode;
+  }
+
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
       InsertPlan plan, int loc, IMNode deviceMNode, boolean isDeviceInTemplate)
       throws MetadataException {
@@ -1597,19 +1599,23 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   private IMeasurementMNode findMeasurementInTemplate(IMNode deviceMNode, String measurement)
       throws MetadataException {
     Template curTemplate = deviceMNode.getUpperTemplate();
-    if (curTemplate != null) {
-      IMeasurementSchema schema = curTemplate.getSchema(measurement);
-      if (!deviceMNode.isUseTemplate()) {
-        deviceMNode = setUsingSchemaTemplate(deviceMNode);
-      }
 
-      if (schema != null) {
-        return MeasurementMNode.getMeasurementMNode(
-            deviceMNode.getAsEntityMNode(), measurement, schema, null);
-      }
+    if (curTemplate == null) {
       return null;
     }
-    return null;
+
+    IMeasurementSchema schema = curTemplate.getSchema(measurement);
+
+    if (schema == null) {
+      return null;
+    }
+
+    if (!deviceMNode.isUseTemplate()) {
+      deviceMNode = setUsingSchemaTemplate(deviceMNode);
+    }
+
+    return MeasurementMNode.getMeasurementMNode(
+        deviceMNode.getAsEntityMNode(), measurement, schema, null);
   }
 
   /** create timeseries ignoring PathAlreadyExistException */

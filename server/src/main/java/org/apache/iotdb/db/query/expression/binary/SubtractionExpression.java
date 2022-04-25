@@ -24,7 +24,6 @@ import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticSubtractionTransformer;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 
@@ -32,6 +31,10 @@ public class SubtractionExpression extends BinaryExpression {
 
   public SubtractionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public SubtractionExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -46,18 +49,8 @@ public class SubtractionExpression extends BinaryExpression {
     return "-";
   }
 
-  public static SubtractionExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    SubtractionExpression subtractionExpression =
-        new SubtractionExpression(
-            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
-    subtractionExpression.isConstantOperandCache = isConstantOperandCache;
-    return subtractionExpression;
-  }
-
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Subtraction.serialize(byteBuffer);
-    super.serialize(byteBuffer);
+  protected short getExpressionType() {
+    return ExpressionType.SUBTRACTION.getExpressionType();
   }
 }

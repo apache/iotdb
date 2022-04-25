@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -51,11 +51,11 @@ public interface Manager {
   ConsensusManager getConsensusManager();
 
   /**
-   * Get RegionManager
+   * Get ClusterSchemaManager
    *
-   * @return RegionManager instance
+   * @return ClusterSchemaManager instance
    */
-  RegionManager getRegionManager();
+  ClusterSchemaManager getClusterSchemaManager();
 
   /**
    * Get PartitionManager
@@ -67,18 +67,18 @@ public interface Manager {
   /**
    * Register DataNode
    *
-   * @param physicalPlan RegisterDataNodePlan
+   * @param configRequest RegisterDataNodePlan
    * @return DataNodeConfigurationDataSet
    */
-  DataSet registerDataNode(PhysicalPlan physicalPlan);
+  DataSet registerDataNode(ConfigRequest configRequest);
 
   /**
    * Get DataNode info
    *
-   * @param physicalPlan QueryDataNodeInfoPlan
+   * @param configRequest QueryDataNodeInfoPlan
    * @return DataNodesInfoDataSet
    */
-  DataSet getDataNodeInfo(PhysicalPlan physicalPlan);
+  DataSet getDataNodeInfo(ConfigRequest configRequest);
 
   /**
    * Get StorageGroupSchemas
@@ -90,10 +90,10 @@ public interface Manager {
   /**
    * Set StorageGroup
    *
-   * @param physicalPlan SetStorageGroupPlan
+   * @param configRequest SetStorageGroupReq
    * @return status
    */
-  TSStatus setStorageGroup(PhysicalPlan physicalPlan);
+  TSStatus setStorageGroup(ConfigRequest configRequest);
 
   /**
    * Get SchemaPartition
@@ -112,32 +112,32 @@ public interface Manager {
   /**
    * Get DataPartition
    *
-   * @param physicalPlan DataPartitionPlan
+   * @param configRequest DataPartitionPlan
    * @return DataPartitionDataSet
    */
-  DataSet getDataPartition(PhysicalPlan physicalPlan);
+  DataSet getDataPartition(ConfigRequest configRequest);
 
   /**
    * Get or create DataPartition
    *
-   * @param physicalPlan DataPartitionPlan
+   * @param configRequest DataPartitionPlan
    * @return DataPartitionDataSet
    */
-  DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan);
+  DataSet getOrCreateDataPartition(ConfigRequest configRequest);
 
   /**
    * Operate Permission
    *
-   * @param physicalPlan AuthorPlan
+   * @param configRequest AuthorPlan
    * @return status
    */
-  TSStatus operatePermission(PhysicalPlan physicalPlan);
+  TSStatus operatePermission(ConfigRequest configRequest);
 
   /**
    * Query Permission
    *
-   * @param physicalPlan AuthorPlan
+   * @param configRequest AuthorPlan
    * @return PermissionInfoDataSet
    */
-  DataSet queryPermission(PhysicalPlan physicalPlan);
+  DataSet queryPermission(ConfigRequest configRequest);
 }
