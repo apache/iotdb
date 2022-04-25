@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.confignode.exception.physical;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.exception.ConfigNodeException;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
 
 public class UnknownPhysicalPlanTypeException extends ConfigNodeException {
 
-  public UnknownPhysicalPlanTypeException(PhysicalPlanType type) {
+  public UnknownPhysicalPlanTypeException(ConfigRequestType type) {
     super(String.format("Unknown PhysicalPlanType: %d", type.ordinal()));
   }
 }

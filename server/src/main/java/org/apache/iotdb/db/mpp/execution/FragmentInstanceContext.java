@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -35,20 +36,25 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class FragmentInstanceContext extends QueryContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FragmentInstanceContext.class);
-
+  private static final long END_TIME_INITIAL_VALUE = -1L;
   private final FragmentInstanceId id;
 
   // TODO if we split one fragment instance into multiple pipelines to run, we need to replace it
   // with CopyOnWriteArrayList or some other thread safe data structure
   private final List<OperatorContext> operatorContexts = new ArrayList<>();
-  private final long createNanos = System.nanoTime();
 
   private DriverContext driverContext;
 
-  // TODO we may use StateMachine<FragmentInstanceState> to replace it
-  private final AtomicReference<FragmentInstanceState> state;
+  private final FragmentInstanceStateMachine stateMachine;
 
-  private long endTime = -1;
+  private final long createNanos = System.nanoTime();
+
+  private final AtomicLong startNanos = new AtomicLong();
+  private final AtomicLong endNanos = new AtomicLong();
+
+  private final AtomicReference<Long> executionStartTime = new AtomicReference<>();
+  private final AtomicReference<Long> lastExecutionStartTime = new AtomicReference<>();
+  private final AtomicReference<Long> executionEndTime = new AtomicReference<>();
 
   //    private final GcMonitor gcMonitor;
   //    private final AtomicLong startNanos = new AtomicLong();
@@ -58,10 +64,52 @@ public class FragmentInstanceContext extends QueryContext {
   //    private final AtomicLong endFullGcCount = new AtomicLong(-1);
   //    private final AtomicLong endFullGcTimeNanos = new AtomicLong(-1);
 
-  public FragmentInstanceContext(
-      FragmentInstanceId id, AtomicReference<FragmentInstanceState> state) {
+  public static FragmentInstanceContext createFragmentInstanceContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
+    FragmentInstanceContext instanceContext = new FragmentInstanceContext(id, stateMachine);
+    instanceContext.initialize();
+    return instanceContext;
+  }
+
+  private FragmentInstanceContext(
+      FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     this.id = id;
-    this.state = state;
+    this.stateMachine = stateMachine;
+    this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+  }
+
+  public void start() {
+    long now = System.currentTimeMillis();
+    executionStartTime.compareAndSet(null, now);
+    startNanos.compareAndSet(0, System.nanoTime());
+
+    // always update last execution start time
+    lastExecutionStartTime.set(now);
+  }
+
+  // the state change listener is added here in a separate initialize() method
+  // instead of the constructor to prevent leaking the "this" reference to
+  // another thread, which will cause unsafe publication of this instance.
+  private void initialize() {
+    stateMachine.addStateChangeListener(this::updateStatsIfDone);
+  }
+
+  private void updateStatsIfDone(FragmentInstanceState newState) {
+    if (newState.isDone()) {
+      long now = System.currentTimeMillis();
+
+      // before setting the end times, make sure a start has been recorded
+      executionStartTime.compareAndSet(null, now);
+      startNanos.compareAndSet(0, System.nanoTime());
+
+      // Only update last start time, if the nothing was started
+      lastExecutionStartTime.compareAndSet(null, now);
+
+      // use compare and set from initial value to avoid overwriting if there
+      // were a duplicate notification, which shouldn't happen
+      executionEndTime.compareAndSet(END_TIME_INITIAL_VALUE, now);
+      endNanos.compareAndSet(0, System.nanoTime());
+    }
   }
 
   public OperatorContext addOperatorContext(
@@ -98,40 +146,18 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public void failed(Throwable cause) {
-    LOGGER.warn("Fragment Instance {} failed.", id, cause);
-    state.set(FragmentInstanceState.FAILED);
+    stateMachine.failed(cause);
   }
 
-  public void cancel() {
-    state.set(FragmentInstanceState.CANCELED);
-    this.endTime = System.currentTimeMillis();
+  public void finished() {
+    stateMachine.finished();
   }
 
-  public void abort() {
-    state.set(FragmentInstanceState.ABORTED);
-    this.endTime = System.currentTimeMillis();
-  }
-
-  public void finish() {
-    if (state.get().isDone()) {
-      return;
-    }
-    state.set(FragmentInstanceState.FINISHED);
-    this.endTime = System.currentTimeMillis();
-  }
-
-  public void flushing() {
-    if (state.get().isDone()) {
-      return;
-    }
-    state.set(FragmentInstanceState.FLUSHING);
+  public void transitionToFlushing() {
+    stateMachine.transitionToFlushing();
   }
 
   public long getEndTime() {
-    return endTime;
-  }
-
-  public void setEndTime(long endTime) {
-    this.endTime = endTime;
+    return executionEndTime.get();
   }
 }

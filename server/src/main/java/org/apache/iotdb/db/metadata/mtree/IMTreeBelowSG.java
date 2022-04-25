@@ -292,7 +292,8 @@ public interface IMTreeBelowSG {
    * @return index on full path of the node which matches all measurements path with its
    *     upperTemplate.
    */
-  int getMountedNodeIndexOnMeasurementPath(PartialPath measurementPath) throws MetadataException;
+  int getMountedNodeIndexOnMeasurementPath(PartialPath devicePath, String[] measurements)
+      throws MetadataException;
 
   List<String> getPathsSetOnTemplate(String templateName) throws MetadataException;
 

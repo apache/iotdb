@@ -84,7 +84,7 @@ struct SyncResponse{
 
 service TransportService{
   TransportStatus handshake(IdentityInfo info);
-  TransportStatus transportData(1:IdentityInfo identityInfo, 2:MetaInfo metaInfo, 3:binary buff, 4:binary digest);
-  TransportStatus checkFileDigest(1:IdentityInfo identityInfo, 2:MetaInfo metaInfo, 3:binary digest);
-  SyncResponse heartbeat(1:IdentityInfo identityInfo, 2:SyncRequest syncRequest)
+  TransportStatus transportData(1:MetaInfo metaInfo, 2:binary buff, 3:binary digest);
+  TransportStatus checkFileDigest(1:MetaInfo metaInfo, 2:binary digest);
+  SyncResponse heartbeat(SyncRequest syncRequest)
 }
