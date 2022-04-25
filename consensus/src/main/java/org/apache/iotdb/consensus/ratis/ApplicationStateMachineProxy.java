@@ -137,7 +137,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
 
     // require the application statemachine to take the latest snapshot
     ByteBuffer metadata = Utils.getMetadataFromTermIndex(lastApplied);
-    applicationStateMachine.takeSnapshot(metadata, statemachineDir);
+    boolean success = applicationStateMachine.takeSnapshot(metadata, statemachineDir);
+    if (!success) {
+      return RaftLog.INVALID_LOG_INDEX;
+    }
 
     return lastApplied.getIndex();
   }
