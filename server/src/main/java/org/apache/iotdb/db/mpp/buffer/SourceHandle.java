@@ -37,7 +37,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -73,7 +72,6 @@ public class SourceHandle implements ISourceHandle {
   private int nextSequenceId = 0;
   private int lastSequenceId = Integer.MAX_VALUE;
   private boolean closed;
-  private Throwable throwable;
 
   public SourceHandle(
       TEndPoint remoteEndpoint,
@@ -98,10 +96,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   @Override
-  public TsBlock receive() throws IOException {
-    if (throwable != null) {
-      throw new IOException(throwable);
-    }
+  public TsBlock receive() {
     if (closed) {
       throw new IllegalStateException("Source handle is closed.");
     }
@@ -196,9 +191,6 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    if (throwable != null) {
-      throw new RuntimeException(throwable);
-    }
     if (closed) {
       throw new IllegalStateException("Source handle is closed.");
     }
@@ -240,7 +232,7 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public boolean isFinished() {
-    return throwable == null && remoteTsBlockedConsumedUp();
+    return remoteTsBlockedConsumedUp();
   }
 
   // Return true indicates two points:
@@ -250,19 +242,19 @@ public class SourceHandle implements ISourceHandle {
     return currSequenceId - 1 == lastSequenceId;
   }
 
-  TEndPoint getRemoteEndpoint() {
+  public TEndPoint getRemoteEndpoint() {
     return remoteEndpoint;
   }
 
-  TFragmentInstanceId getRemoteFragmentInstanceId() {
+  public TFragmentInstanceId getRemoteFragmentInstanceId() {
     return remoteFragmentInstanceId.deepCopy();
   }
 
-  TFragmentInstanceId getLocalFragmentInstanceId() {
+  public TFragmentInstanceId getLocalFragmentInstanceId() {
     return localFragmentInstanceId;
   }
 
-  String getLocalPlanNodeId() {
+  public String getLocalPlanNodeId() {
     return localPlanNodeId;
   }
 
@@ -352,17 +344,11 @@ public class SourceHandle implements ISourceHandle {
               attempt);
           if (attempt == MAX_ATTEMPT_TIMES) {
             synchronized (SourceHandle.this) {
-              throwable = e;
               bufferRetainedSizeInBytes -= reservedBytes;
               localMemoryManager
                   .getQueryPool()
                   .free(localFragmentInstanceId.getQueryId(), reservedBytes);
-              // That GetDataBlocksTask throws exception means some TsBlock cannot be
-              // fetched permanently. Someone maybe waiting the SourceHandle to be
-              // unblocked after fetching data. So the blocked should be released.
-              if (blocked != null && !blocked.isDone()) {
-                blocked.cancel(true);
-              }
+              sourceHandleListener.onFailure(SourceHandle.this, e);
             }
           }
         }
@@ -406,7 +392,7 @@ public class SourceHandle implements ISourceHandle {
               attempt);
           if (attempt == MAX_ATTEMPT_TIMES) {
             synchronized (this) {
-              throwable = e;
+              sourceHandleListener.onFailure(SourceHandle.this, e);
             }
           }
         }

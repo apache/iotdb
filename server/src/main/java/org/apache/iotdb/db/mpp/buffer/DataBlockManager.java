@@ -50,19 +50,21 @@ public class DataBlockManager implements IDataBlockManager {
   private static final Logger logger = LoggerFactory.getLogger(DataBlockManager.class);
 
   public interface SourceHandleListener {
-    void onFinished(SourceHandle sourceHandle);
+    void onFinished(ISourceHandle sourceHandle);
 
-    void onClosed(SourceHandle sourceHandle);
+    void onClosed(ISourceHandle sourceHandle);
+
+    void onFailure(ISourceHandle sourceHandle, Throwable t);
   }
 
   public interface SinkHandleListener {
-    void onFinish(SinkHandle sinkHandle);
+    void onFinish(ISinkHandle sinkHandle);
 
-    void onClosed(SinkHandle sinkHandle);
+    void onClosed(ISinkHandle sinkHandle);
 
-    void onAborted(SinkHandle sinkHandle);
+    void onAborted(ISinkHandle sinkHandle);
 
-    void onFailure(Throwable t);
+    void onFailure(ISinkHandle sinkHandle, Throwable t);
   }
 
   /** Handle thrift communications. */
@@ -169,8 +171,14 @@ public class DataBlockManager implements IDataBlockManager {
   /** Listen to the state changes of a source handle. */
   class SourceHandleListenerImpl implements SourceHandleListener {
 
+    private final IDataBlockManagerCallback<Throwable> onFailureCallback;
+
+    public SourceHandleListenerImpl(IDataBlockManagerCallback<Throwable> onFailureCallback) {
+      this.onFailureCallback = onFailureCallback;
+    }
+
     @Override
-    public void onFinished(SourceHandle sourceHandle) {
+    public void onFinished(ISourceHandle sourceHandle) {
       logger.info("Release resources of finished source handle {}", sourceHandle);
       if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
           || !sourceHandles
@@ -190,8 +198,16 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onClosed(SourceHandle sourceHandle) {
+    public void onClosed(ISourceHandle sourceHandle) {
       onFinished(sourceHandle);
+    }
+
+    @Override
+    public void onFailure(ISourceHandle sourceHandle, Throwable t) {
+      logger.error("Source handle {} failed due to {}", sourceHandle, t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
     }
   }
 
@@ -199,13 +215,16 @@ public class DataBlockManager implements IDataBlockManager {
   class SinkHandleListenerImpl implements SinkHandleListener {
 
     private final FragmentInstanceContext context;
+    private final IDataBlockManagerCallback<Throwable> onFailureCallback;
 
-    public SinkHandleListenerImpl(FragmentInstanceContext context) {
+    public SinkHandleListenerImpl(
+        FragmentInstanceContext context, IDataBlockManagerCallback<Throwable> onFailureCallback) {
       this.context = context;
+      this.onFailureCallback = onFailureCallback;
     }
 
     @Override
-    public void onFinish(SinkHandle sinkHandle) {
+    public void onFinish(ISinkHandle sinkHandle) {
       logger.info("Release resources of finished sink handle {}", sourceHandles);
       if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
         logger.info("Resources of finished sink handle {} has already been released", sinkHandle);
@@ -215,12 +234,12 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onClosed(SinkHandle sinkHandle) {
+    public void onClosed(ISinkHandle sinkHandle) {
       context.transitionToFlushing();
     }
 
     @Override
-    public void onAborted(SinkHandle sinkHandle) {
+    public void onAborted(ISinkHandle sinkHandle) {
       logger.info("Release resources of aborted sink handle {}", sourceHandles);
       if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
         logger.info("Resources of aborted sink handle {} has already been released", sinkHandle);
@@ -229,8 +248,11 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onFailure(Throwable t) {
-      context.failed(t);
+    public void onFailure(ISinkHandle sinkHandle, Throwable t) {
+      logger.error("Sink handle {} failed due to {}", sinkHandle, t);
+      if (onFailureCallback != null) {
+        onFailureCallback.call(t);
+      }
     }
   }
 
@@ -290,7 +312,7 @@ public class DataBlockManager implements IDataBlockManager {
             executorService,
             clientFactory.getDataBlockServiceClient(remoteEndpoint),
             tsBlockSerdeFactory.get(),
-            new SinkHandleListenerImpl(instanceContext));
+            new SinkHandleListenerImpl(instanceContext, instanceContext::failed));
     sinkHandles.put(localFragmentInstanceId, sinkHandle);
     return sinkHandle;
   }
@@ -300,7 +322,8 @@ public class DataBlockManager implements IDataBlockManager {
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       TEndPoint remoteEndpoint,
-      TFragmentInstanceId remoteFragmentInstanceId) {
+      TFragmentInstanceId remoteFragmentInstanceId,
+      IDataBlockManagerCallback<Throwable> onFailureCallback) {
     if (sourceHandles.containsKey(localFragmentInstanceId)
         && sourceHandles.get(localFragmentInstanceId).containsKey(localPlanNodeId)) {
       throw new IllegalStateException(
@@ -327,7 +350,7 @@ public class DataBlockManager implements IDataBlockManager {
             executorService,
             clientFactory.getDataBlockServiceClient(remoteEndpoint),
             tsBlockSerdeFactory.get(),
-            new SourceHandleListenerImpl());
+            new SourceHandleListenerImpl(onFailureCallback));
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
         .put(localPlanNodeId, sourceHandle);
