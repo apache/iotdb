@@ -38,7 +38,6 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReference
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -51,10 +50,14 @@ import java.util.Set;
 
 public class NegationExpression extends Expression {
 
-  protected Expression expression;
+  private final Expression expression;
 
   public NegationExpression(Expression expression) {
     this.expression = expression;
+  }
+
+  public NegationExpression(ByteBuffer byteBuffer) {
+    expression = Expression.deserialize(byteBuffer);
   }
 
   public Expression getExpression() {
@@ -198,18 +201,13 @@ public class NegationExpression extends Expression {
     }
   }
 
-  public static NegationExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    Expression expression = ExpressionType.deserialize(buffer);
-    NegationExpression negationExpression = new NegationExpression(expression);
-    negationExpression.isConstantOperandCache = isConstantOperandCache;
-    return negationExpression;
+  @Override
+  protected short getExpressionType() {
+    return ExpressionType.NEGATION.getExpressionType();
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Negation.serialize(byteBuffer);
-    super.serialize(byteBuffer);
-    expression.serialize(byteBuffer);
+  protected void serialize(ByteBuffer byteBuffer) {
+    Expression.serialize(expression, byteBuffer);
   }
 }

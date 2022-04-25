@@ -87,6 +87,12 @@ public class ResultColumn {
     alias = null;
   }
 
+  public ResultColumn(ByteBuffer byteBuffer) {
+    expression = Expression.deserialize(byteBuffer);
+    alias = ReadWriteIOUtils.readString(byteBuffer);
+    dataType = TSDataType.deserializeFrom(byteBuffer);
+  }
+
   /**
    * @param prefixPaths prefix paths in the from clause
    * @param resultColumns used to collect the result columns
@@ -189,18 +195,13 @@ public class ResultColumn {
     return getResultColumnName().equals(((ResultColumn) o).getResultColumnName());
   }
 
-  public void serialize(ByteBuffer byteBuffer) {
-    expression.serialize(byteBuffer);
-    ReadWriteIOUtils.write(alias, byteBuffer);
-    dataType.serializeTo(byteBuffer);
+  public static void serialize(ResultColumn resultColumn, ByteBuffer byteBuffer) {
+    Expression.serialize(resultColumn.expression, byteBuffer);
+    ReadWriteIOUtils.write(resultColumn.alias, byteBuffer);
+    resultColumn.dataType.serializeTo(byteBuffer);
   }
 
   public static ResultColumn deserialize(ByteBuffer byteBuffer) {
-    Expression expression = ExpressionType.deserialize(byteBuffer);
-    String alias = ReadWriteIOUtils.readString(byteBuffer);
-    TSDataType tsDataType = TSDataType.deserializeFrom(byteBuffer);
-    ResultColumn resultColumn = new ResultColumn(expression, alias);
-    resultColumn.dataType = tsDataType;
-    return resultColumn;
+    return new ResultColumn(byteBuffer);
   }
 }

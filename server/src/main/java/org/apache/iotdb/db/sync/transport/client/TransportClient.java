@@ -32,6 +32,7 @@ import org.apache.iotdb.db.sync.transport.conf.TransportConstant;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
+import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.service.transport.thrift.ResponseType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
@@ -299,7 +300,7 @@ public class TransportClient implements ITransportClient {
             try {
               status =
                   serviceClient.transportData(
-                      identityInfo, metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+                      metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
             } catch (TException e) {
               // retry
               logger.error("TException happened! ", e);
@@ -377,9 +378,7 @@ public class TransportClient implements ITransportClient {
                 file.getAbsoluteFile(), config.getMaxNumberOfSyncFileRetry()));
       }
       try {
-        status =
-            serviceClient.checkFileDigest(
-                identityInfo, metaInfo, ByteBuffer.wrap(messageDigest.digest()));
+        status = serviceClient.checkFileDigest(metaInfo, ByteBuffer.wrap(messageDigest.digest()));
       } catch (TException e) {
         // retry
         logger.error("TException happens! ", e);
@@ -420,7 +419,7 @@ public class TransportClient implements ITransportClient {
             new MetaInfo(Type.findByValue(pipeData.getType().ordinal()), "fileName", 0);
         TransportStatus status =
             serviceClient.transportData(
-                identityInfo, metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
+                metaInfo, buffToSend, ByteBuffer.wrap(messageDigest.digest()));
 
         if (status.code == SUCCESS_CODE) {
           break;
@@ -451,6 +450,14 @@ public class TransportClient implements ITransportClient {
         throw new SyncConnectionException(
             String.format("Handshake with receiver %s:%d error.", ipAddress, port));
       }
+      SenderService.getInstance()
+          .receiveMsg(
+              heartbeat(
+                  new SyncRequest(
+                      RequestType.START,
+                      pipe.getName(),
+                      InetAddress.getLocalHost().getHostAddress(),
+                      pipe.getCreateTime())));
       while (!Thread.currentThread().isInterrupted()) {
         PipeData pipeData = pipe.take();
         if (!senderTransport(pipeData)) {
@@ -468,7 +475,7 @@ public class TransportClient implements ITransportClient {
       }
     } catch (InterruptedException e) {
       logger.info("Interrupted by pipe, exit transport.");
-    } catch (SyncConnectionException e) {
+    } catch (SyncConnectionException | UnknownHostException e) {
       logger.error(
           String.format("Connect to receiver %s:%d error, because %s.", ipAddress, port, e));
       SenderService.getInstance()
@@ -509,7 +516,7 @@ public class TransportClient implements ITransportClient {
           heartbeatTransport.open();
         }
 
-        return heartbeatClient.heartbeat(identityInfo, syncRequest);
+        return heartbeatClient.heartbeat(syncRequest);
       } catch (TException e) {
         logger.info(
             String.format(

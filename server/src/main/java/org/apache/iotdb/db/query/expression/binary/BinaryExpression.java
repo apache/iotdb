@@ -58,6 +58,11 @@ public abstract class BinaryExpression extends Expression {
     this.rightExpression = rightExpression;
   }
 
+  protected BinaryExpression(ByteBuffer byteBuffer) {
+    this.leftExpression = Expression.deserialize(byteBuffer);
+    this.rightExpression = Expression.deserialize(byteBuffer);
+  }
+
   public Expression getLeftExpression() {
     return leftExpression;
   }
@@ -294,9 +299,8 @@ public abstract class BinaryExpression extends Expression {
   protected abstract String operator();
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
-    leftExpression.serialize(byteBuffer);
-    rightExpression.serialize(byteBuffer);
+  protected void serialize(ByteBuffer byteBuffer) {
+    Expression.serialize(leftExpression, byteBuffer);
+    Expression.serialize(rightExpression, byteBuffer);
   }
 }

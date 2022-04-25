@@ -20,6 +20,7 @@ package org.apache.iotdb.db.sync.conf;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 
 import java.io.File;
 import java.io.IOException;
@@ -71,6 +72,16 @@ public class SyncPathUtil {
   }
 
   /** receiver */
+  public static String getFileDataDirPath(IdentityInfo identityInfo) {
+    return SyncPathUtil.getReceiverFileDataDir(
+        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
+  }
+
+  public static String getPipeLogDirPath(IdentityInfo identityInfo) {
+    return SyncPathUtil.getReceiverPipeLogDir(
+        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
+  }
+
   public static String getReceiverDir() {
     return IoTDBDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator

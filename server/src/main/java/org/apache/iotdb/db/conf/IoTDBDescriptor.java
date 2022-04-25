@@ -164,6 +164,17 @@ public class IoTDBDescriptor {
                   "rpc_advanced_compression_enable",
                   Boolean.toString(conf.isRpcAdvancedCompressionEnable()))));
 
+      conf.setConnectionTimeoutInMS(
+          Integer.parseInt(
+              properties.getProperty(
+                  "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+
+      conf.setSelectorNumOfClientManager(
+          Integer.parseInt(
+              properties.getProperty(
+                  "selector_thread_nums_of_client_manager",
+                  String.valueOf(conf.getSelectorNumOfClientManager()))));
+
       conf.setRpcPort(
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
