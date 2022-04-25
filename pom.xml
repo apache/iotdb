@@ -1192,11 +1192,11 @@
                 </file>
             </activation>
             <properties>
-                <thrift.exec.absolute.path>${project.build.directory}/tools/${thrift.executable}</thrift.exec.absolute.path>
+                <thrift.exec.absolute.path>D:\dev\thrift\thrift-0.14.1.exe</thrift.exec.absolute.path>
             </properties>
             <build>
                 <plugins>
-                    <plugin>
+                    <!--<plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
                         <version>1.6.7</version>
@@ -1214,7 +1214,7 @@
                                 </configuration>
                             </execution>
                         </executions>
-                    </plugin>
+                    </plugin>-->
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>

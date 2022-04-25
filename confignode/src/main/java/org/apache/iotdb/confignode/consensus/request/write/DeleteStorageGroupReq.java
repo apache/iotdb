@@ -18,22 +18,52 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DeleteStorageGroupReq extends ConfigRequest {
 
-  // TODO: @YongzaoDan
+  private List<TStorageGroupSchema> deleteSgSchemaList;
+
+  public List<TStorageGroupSchema> getDeleteSgSchemaList() {
+    return deleteSgSchemaList;
+  }
+
+  public void setDeleteSgSchemaList(List<TStorageGroupSchema> deleteSgSchemaList) {
+    this.deleteSgSchemaList = deleteSgSchemaList;
+  }
 
   public DeleteStorageGroupReq() {
     super(ConfigRequestType.DeleteStorageGroup);
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {}
+  protected void serializeImpl(ByteBuffer buffer) {
+    buffer.putInt(ConfigRequestType.DeleteStorageGroup.ordinal());
+    if (deleteSgSchemaList != null && !deleteSgSchemaList.isEmpty()) {
+      buffer.putInt(deleteSgSchemaList.size());
+      for (TStorageGroupSchema schema : deleteSgSchemaList) {
+        ThriftConfigNodeSerDeUtils.writeTStorageGroupSchema(schema, buffer);
+      }
+    } else {
+      buffer.putInt(0);
+    }
+  }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {}
+  protected void deserializeImpl(ByteBuffer buffer) {
+    int size = buffer.getInt();
+    if (size > 0) {
+      deleteSgSchemaList = new ArrayList<>(size);
+      for (int i = 0; i < size; i++) {
+        deleteSgSchemaList.add(ThriftConfigNodeSerDeUtils.readTStorageGroupSchema(buffer));
+      }
+    }
+  }
 }

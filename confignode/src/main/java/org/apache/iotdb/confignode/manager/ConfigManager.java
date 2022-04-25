@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
@@ -68,12 +69,16 @@ public class ConfigManager implements Manager {
   /** Manage cluster authorization */
   private final PermissionManager permissionManager;
 
+  /** Manage procedure */
+  private final ProcedureManager procedureManager;
+
   public ConfigManager() throws IOException {
     this.dataNodeManager = new DataNodeManager(this);
     this.partitionManager = new PartitionManager(this);
     this.clusterSchemaManager = new ClusterSchemaManager(this);
     this.consensusManager = new ConsensusManager();
     this.permissionManager = new PermissionManager(this);
+    this.procedureManager = new ProcedureManager(this);
   }
 
   public void close() throws IOException {
@@ -126,6 +131,16 @@ public class ConfigManager implements Manager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setStorageGroup((SetStorageGroupReq) configRequest);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus deleteStorageGroup(ConfigRequest configRequest) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.deleteStorageGroup((DeleteStorageGroupReq) configRequest);
     } else {
       return status;
     }

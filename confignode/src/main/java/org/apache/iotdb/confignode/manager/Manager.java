@@ -96,6 +96,14 @@ public interface Manager {
   TSStatus setStorageGroup(ConfigRequest configRequest);
 
   /**
+   * Delete StorageGroup
+   *
+   * @param configRequest DeleteStorageGroupReq
+   * @return status
+   */
+  TSStatus deleteStorageGroup(ConfigRequest configRequest);
+
+  /**
    * Get SchemaPartition
    *
    * @return SchemaPartitionDataSet

@@ -54,7 +54,7 @@ struct TSetStorageGroupReq {
 }
 
 struct TDeleteStorageGroupReq {
-  1: required string storageGroup
+  1: required string prefixPath
 }
 
 struct TSetTTLReq {

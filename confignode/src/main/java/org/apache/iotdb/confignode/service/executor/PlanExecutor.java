@@ -24,16 +24,9 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.*;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
-import org.apache.iotdb.confignode.persistence.AuthorInfo;
-import org.apache.iotdb.confignode.persistence.DataNodeInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
+import org.apache.iotdb.confignode.persistence.*;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.auth.AuthException;
 
@@ -47,11 +40,14 @@ public class PlanExecutor {
 
   private final AuthorInfo authorInfo;
 
+  private final ProcedureInfo procedureInfo;
+
   public PlanExecutor() {
     this.dataNodeInfo = DataNodeInfo.getInstance();
     this.storageGroupInfo = StorageGroupInfo.getInstance();
     this.partitionInfo = PartitionInfo.getInstance();
     this.authorInfo = AuthorInfo.getInstance();
+    this.procedureInfo = ProcedureInfo.getInstance();
   }
 
   public DataSet executorQueryPlan(ConfigRequest plan)
@@ -91,6 +87,8 @@ public class PlanExecutor {
         return dataNodeInfo.registerDataNode((RegisterDataNodeReq) plan);
       case SetStorageGroup:
         return storageGroupInfo.setStorageGroup((SetStorageGroupReq) plan);
+      case DeleteStorageGroup:
+        return procedureInfo.deleteStorageGroup((DeleteStorageGroupReq) plan);
       case CreateRegions:
         return partitionInfo.createRegions((CreateRegionsReq) plan);
       case CreateSchemaPartition:
