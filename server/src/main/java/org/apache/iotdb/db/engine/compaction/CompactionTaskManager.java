@@ -53,7 +53,7 @@ public class CompactionTaskManager implements IService {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
-  private static long MAX_WAITING_TIME = 120_000L;
+  private static final long MAX_WAITING_TIME = 120_000L;
 
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
 
