@@ -77,13 +77,12 @@ public class IoTDBSelectSchemaIT {
   @Test
   public void testSchemaExpression() {
     String[] expressions = {
-      "s1+s2", "-s1+s2", "-(s1+s3)", "!(s1>s2)", "-(-(s1))", "((s1+s2)*s3)", "-2+s1", "-(-1)+s1"
+      "s1+s2", "-s1+s2", "-(s1+s3)", "-(-(s1))", "((s1+s2)*s3)", "-2+s1", "-(-1)+s1"
     };
     String[] completeExpressions = {
       "root.sg.d1.s1+root.sg.d1.s2",
       "-root.sg.d1.s1+root.sg.d1.s2",
       "-(root.sg.d1.s1+root.sg.d1.s3)",
-      "!(root.sg.d1.s1>root.sg.d1.s2)",
       "-(-root.sg.d1.s1)",
       "(root.sg.d1.s1+root.sg.d1.s2)*root.sg.d1.s3",
       "-2+root.sg.d1.s1",
