@@ -38,7 +38,7 @@ import java.util.List;
 
 public class FilterOperator extends TransformOperator {
 
-  private final LayerPointReader filterPointReader;
+  private LayerPointReader filterPointReader;
 
   public FilterOperator(
       OperatorContext operatorContext,
@@ -46,8 +46,7 @@ public class FilterOperator extends TransformOperator {
       List<TSDataType> inputDataTypes,
       Expression filterExpression,
       Expression[] outputExpressions,
-      UDTFContext udtfContext,
-      boolean keepNull)
+      UDTFContext udtfContext)
       throws QueryProcessException, IOException {
     super(
         operatorContext,
@@ -55,9 +54,7 @@ public class FilterOperator extends TransformOperator {
         inputDataTypes,
         bindExpressions(filterExpression, outputExpressions),
         udtfContext,
-        keepNull);
-    filterPointReader = transformers[transformers.length - 1];
-    checkFilterExpressionOutputDatatype();
+        false);
   }
 
   private static Expression[] bindExpressions(
@@ -68,7 +65,11 @@ public class FilterOperator extends TransformOperator {
     return expressions;
   }
 
-  private void checkFilterExpressionOutputDatatype() {
+  @Override
+  protected void initTransformers() throws QueryProcessException, IOException {
+    super.initTransformers();
+
+    filterPointReader = transformers[transformers.length - 1];
     if (filterPointReader.getDataType() != TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException(
           String.format(
@@ -78,8 +79,15 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  protected void initTimeHeap() {
-    // Just do nothing
+  protected void initLayerPointReaders() throws QueryProcessException, IOException {
+    iterateFilterReaderToNextValid();
+  }
+
+  private void iterateFilterReaderToNextValid() throws QueryProcessException, IOException {
+    while (filterPointReader.next()
+        && (filterPointReader.isCurrentNull() || !filterPointReader.currentBoolean())) {
+      filterPointReader.readyForNext();
+    }
   }
 
   @Override
@@ -99,25 +107,41 @@ public class FilterOperator extends TransformOperator {
     final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
-    int rowCount = 0;
     try {
+      int rowCount = 0;
       while (rowCount < FETCH_SIZE && filterPointReader.next()) {
+        final long currentTime = filterPointReader.currentTime();
 
-        long minTime = filterPointReader.currentTime();
+        boolean hasAtLeastOneValid = false;
+        for (int i = 0; i < outputColumnCount; ++i) {
+          if (currentTime == iterateValueReadersToNextValid(transformers[i], currentTime)) {
+            hasAtLeastOneValid = true;
+          }
+        }
 
-        if (!filterPointReader.isCurrentNull() && filterPointReader.currentBoolean()) {
-          collectCurrentRow(timeBuilder, columnBuilders, minTime, outputColumnCount, false);
+        if (hasAtLeastOneValid) {
+          timeBuilder.writeLong(currentTime);
+          for (int i = 0; i < outputColumnCount; ++i) {
+            collectDataPoint(transformers[i], columnBuilders[i], currentTime);
+          }
           ++rowCount;
         }
 
-        filterPointReader.readyForNext();
+        iterateFilterReaderToNextValid();
       }
     } catch (Exception e) {
-      // TODO: throw here?
       throw new RuntimeException(e);
     }
 
     return tsBlockBuilder.build();
+  }
+
+  private long iterateValueReadersToNextValid(LayerPointReader reader, long currentTime)
+      throws QueryProcessException, IOException {
+    while (reader.next() && (reader.isCurrentNull() || reader.currentTime() < currentTime)) {
+      reader.readyForNext();
+    }
+    return reader.currentTime();
   }
 
   @Override
