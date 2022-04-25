@@ -23,12 +23,10 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 // This class is used for data partition maintaining the map between storage group and
@@ -37,7 +35,7 @@ public class LocalDataPartitionTable {
 
   private AtomicInteger dataRegionIdGenerator;
 
-  private Map<PartialPath, Set<DataRegionId>> table;
+  private Map<PartialPath, List<DataRegionId>> table;
 
   private static class LocalDataPartitionTableHolder {
     private static final LocalDataPartitionTable INSTANCE = new LocalDataPartitionTable();
@@ -51,9 +49,10 @@ public class LocalDataPartitionTable {
     return LocalDataPartitionTableHolder.INSTANCE;
   }
 
-  public synchronized void init() {
+  public synchronized void init(Map<PartialPath, List<DataRegionId>> recoveredLocalDataRegionInfo) {
     table = new ConcurrentHashMap<>();
     dataRegionIdGenerator = new AtomicInteger(0);
+    // TODO:(recovery)
   }
 
   public synchronized void clear() {
@@ -102,14 +101,17 @@ public class LocalDataPartitionTable {
     return new ArrayList<>(table.get(storageGroup));
   }
 
-  public synchronized void setStorageGroup(PartialPath storageGroup) {
+  public synchronized List<DataRegionId> setStorageGroup(PartialPath storageGroup) {
     if (table.containsKey(storageGroup)) {
-      return;
+      return table.get(storageGroup);
     }
-    table.put(storageGroup, Collections.synchronizedSet(new HashSet<>()));
+    List<DataRegionId> dataRegionIdList = new CopyOnWriteArrayList<>();
+    dataRegionIdList.add(new DataRegionId(dataRegionIdGenerator.getAndIncrement()));
+    table.put(storageGroup, dataRegionIdList);
+    return dataRegionIdList;
   }
 
-  public synchronized Set<DataRegionId> deleteStorageGroup(PartialPath storageGroup) {
+  public synchronized List<DataRegionId> deleteStorageGroup(PartialPath storageGroup) {
     return table.remove(storageGroup);
   }
 

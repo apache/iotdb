@@ -55,6 +55,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -137,6 +138,7 @@ public class LocalConfigNode {
 
       Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo = schemaEngine.init();
       schemaPartitionTable.init(recoveredLocalSchemaRegionInfo);
+      dataPartitionTable.init(null);
 
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
@@ -214,6 +216,17 @@ public class LocalConfigNode {
 
     if (!config.isEnableMemControl()) {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
+    }
+
+    if (IoTDBDescriptor.getInstance().getConfig().isMppMode() && !IoTDB.isMppClusterMode()) {
+      for (DataRegionId dataRegionId : dataPartitionTable.setStorageGroup(storageGroup)) {
+        try {
+          storageEngine.createDataRegion(dataRegionId, storageGroup.getFullPath(), Long.MAX_VALUE);
+        } catch (DataRegionException e) {
+          // TODO (Fix exception type)
+          throw new MetadataException(e);
+        }
+      }
     }
   }
 

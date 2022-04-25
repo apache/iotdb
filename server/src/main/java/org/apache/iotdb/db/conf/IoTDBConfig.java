@@ -494,7 +494,7 @@ public class IoTDBConfig {
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
   /** indicate whether current mode is mpp */
-  private boolean mppMode = false;
+  private boolean mppMode = true;
 
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();

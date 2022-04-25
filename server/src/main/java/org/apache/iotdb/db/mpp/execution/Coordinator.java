@@ -76,7 +76,8 @@ public class Coordinator {
       ISchemaFetcher schemaFetcher) {
     if (statement instanceof ConfigStatement) {
       queryContext.setQueryType(QueryType.WRITE);
-      return new ConfigExecution(queryContext, statement, executor);
+      return new ConfigExecution(
+          queryContext, statement, executor, partitionFetcher, schemaFetcher);
     }
     return new QueryExecution(
         statement, queryContext, executor, scheduledExecutor, partitionFetcher, schemaFetcher);
