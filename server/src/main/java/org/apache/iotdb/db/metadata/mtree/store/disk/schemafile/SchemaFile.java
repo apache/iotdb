@@ -53,6 +53,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -110,6 +111,8 @@ public class SchemaFile implements ISchemaFile {
   private final PageLocks pageLocks;
   private ISchemaPage rootPage;
 
+  private final Map<Integer, ISchemaPage> dirtyPages;
+
   // attributes for file
   private File pmtFile;
   private FileChannel channel;
@@ -150,6 +153,7 @@ public class SchemaFile implements ISchemaFile {
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
     pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
+    dirtyPages = new ConcurrentHashMap<>();
     evictLock = new ReentrantLock();
     pageLocks = new PageLocks();
     // will be overwritten if to init
@@ -164,6 +168,7 @@ public class SchemaFile implements ISchemaFile {
     channel = new RandomAccessFile(file, "rw").getChannel();
     headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
     pageInstCache = Collections.synchronizedMap(new LinkedHashMap<>(PAGE_CACHE_SIZE, 1, true));
+    dirtyPages = new ConcurrentHashMap<>();
     evictLock = new ReentrantLock();
     pageLocks = new PageLocks();
 
@@ -284,6 +289,8 @@ public class SchemaFile implements ISchemaFile {
       // throw exception if record larger than one page
       try {
         curPage = getPageInstance(pageIndex);
+
+        dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
         long npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
 
         while (npAddress > 0) {
@@ -294,6 +301,8 @@ public class SchemaFile implements ISchemaFile {
           curPage = getPageInstance(pageIndex);
           npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
         }
+
+        dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
 
       } catch (SchemaPageOverflowException e) {
         // there is no more next page, need allocate new page
@@ -320,6 +329,9 @@ public class SchemaFile implements ISchemaFile {
           setNodeAddress(node, curSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
         }
+
+        dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
+        dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
 
         curPage = newPage;
         pageIndex = curPage.getPageIndex();
@@ -348,6 +360,7 @@ public class SchemaFile implements ISchemaFile {
         curPage = getPageInstance(getPageIndex(actualSegAddr));
         curSegIdx = getSegIndex(actualSegAddr);
 
+        dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
         // if current segment has no more space for new record, it will re-allocate segment, if
         // failed, throw exception
         curPage.update(curSegIdx, entry.getKey(), childBuffer);
@@ -365,6 +378,8 @@ public class SchemaFile implements ISchemaFile {
           curPage.deleteSegment(curSegIdx);
           setNodeAddress(node, newSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), newSegAddr);
+          dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
+          dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
         } else {
           // already full page segment, write updated record to another applicable segment or a
           // blank new one
@@ -380,20 +395,26 @@ public class SchemaFile implements ISchemaFile {
             if (nextSegAddr != -1) {
               ISchemaPage nextPage = getPageInstance(getPageIndex(nextSegAddr));
               nextPage.setPrevSegAddress(getSegIndex(nextSegAddr), existedSegAddr);
+              dirtyPages.putIfAbsent(nextPage.getPageIndex(), nextPage);
             }
 
             newPage.setNextSegAddress(getSegIndex(existedSegAddr), nextSegAddr);
             newPage.setPrevSegAddress(getSegIndex(existedSegAddr), actualSegAddr);
 
             curPage.setNextSegAddress(getSegIndex(actualSegAddr), existedSegAddr);
+            dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
           }
 
-          getPageInstance(getPageIndex(existedSegAddr))
-              .write(getSegIndex(existedSegAddr), entry.getKey(), childBuffer);
+          ISchemaPage existedPage = getPageInstance(getPageIndex(existedSegAddr));
+          existedPage.write(getSegIndex(existedSegAddr), entry.getKey(), childBuffer);
           curPage.removeRecord(getSegIndex(actualSegAddr), entry.getKey());
+          dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
+          dirtyPages.putIfAbsent(existedPage.getPageIndex(), existedPage);
         }
       }
     }
+
+    flushAllDirtyPages();
   }
 
   @Override
@@ -491,7 +512,7 @@ public class SchemaFile implements ISchemaFile {
   public void close() throws IOException {
     updateHeader();
     flushPageToFile(rootPage);
-    for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
+    for (Map.Entry<Integer, ISchemaPage> entry : dirtyPages.entrySet()) {
       flushPageToFile(entry.getValue());
     }
     channel.close();
@@ -501,7 +522,7 @@ public class SchemaFile implements ISchemaFile {
   public void sync() throws IOException {
     updateHeader();
     flushPageToFile(rootPage);
-    for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
+    for (Map.Entry<Integer, ISchemaPage> entry : dirtyPages.entrySet()) {
       flushPageToFile(entry.getValue());
     }
   }
@@ -509,6 +530,7 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public void clear() throws IOException, MetadataException {
     pageInstCache.clear();
+    dirtyPages.clear();
     channel.close();
     rootPage = null;
     if (pmtFile.exists()) {
@@ -607,6 +629,7 @@ public class SchemaFile implements ISchemaFile {
       lastPageIndex = 0;
 
       pageInstCache.put(rootPage.getPageIndex(), rootPage);
+      dirtyPages.putIfAbsent(rootPage.getPageIndex(), rootPage);
     }
   }
 
@@ -746,6 +769,10 @@ public class SchemaFile implements ISchemaFile {
     try {
       pageLocks.readLock(pageIdx);
 
+      if (dirtyPages.containsKey(pageIdx)) {
+        return dirtyPages.get(pageIdx);
+      }
+
       if (pageInstCache.containsKey(pageIdx)) {
         return pageInstCache.get(pageIdx);
       }
@@ -759,8 +786,7 @@ public class SchemaFile implements ISchemaFile {
       ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
 
       loadFromFile(newBuf, pageIdx);
-      addPageToCache(pageIdx, SchemaPage.loadPage(newBuf, pageIdx));
-      return pageInstCache.get(pageIdx);
+      return addPageToCache(pageIdx, SchemaPage.loadPage(newBuf, pageIdx));
     } finally {
       pageLocks.writeUnlock(pageIdx);
     }
@@ -771,14 +797,14 @@ public class SchemaFile implements ISchemaFile {
     return channel.read(dst, getPageAddress(pageIndex));
   }
 
-  private ISchemaPage allocateNewPage() throws IOException {
+  private synchronized ISchemaPage allocateNewPage() throws IOException {
     lastPageIndex += 1;
     ISchemaPage newPage = SchemaPage.initPage(ByteBuffer.allocate(PAGE_LENGTH), lastPageIndex);
-    addPageToCache(newPage.getPageIndex(), newPage);
-    return newPage;
+    dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
+    return addPageToCache(newPage.getPageIndex(), newPage);
   }
 
-  private void addPageToCache(int pageIndex, ISchemaPage page) throws IOException {
+  private ISchemaPage addPageToCache(int pageIndex, ISchemaPage page) throws IOException {
     pageInstCache.put(pageIndex, page);
     // only one thread evicts and flushes pages
     if (evictLock.tryLock()) {
@@ -789,15 +815,12 @@ public class SchemaFile implements ISchemaFile {
           List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
 
           for (Integer id : rmvIds) {
-            // TODO: improve concurrent control
-            //  for any page involved in concurrent operation, it will not be evicted
-            //  this may produce an inefficient eviction
+            // dirty pages only flushed from dirtyPages
             if (pageLocks.findLock(id).writeLock().tryLock()) {
               try {
-                flushPageToFile(pageInstCache.get(id));
                 pageInstCache.remove(id);
               } finally {
-                pageLocks.writeUnlock(id);
+                pageLocks.findLock(id).writeLock().unlock();
               }
             }
           }
@@ -806,6 +829,7 @@ public class SchemaFile implements ISchemaFile {
         evictLock.unlock();
       }
     }
+    return page;
   }
 
   // endregion
@@ -832,6 +856,7 @@ public class SchemaFile implements ISchemaFile {
     parSegAddr = getTargetSegmentAddress(parSegAddr, key);
     ISchemaPage page = getPageInstance(getPageIndex(parSegAddr));
     ((SchemaPage) page).updateRecordSegAddr(getSegIndex(parSegAddr), key, newSegAddr);
+    dirtyPages.putIfAbsent(page.getPageIndex(), page);
   }
 
   static short reEstimateSegSize(int oldSize) {
@@ -913,6 +938,14 @@ public class SchemaFile implements ISchemaFile {
     src.getPageBuffer(srcBuf);
     srcBuf.clear();
     channel.write(srcBuf, getPageAddress(src.getPageIndex()));
+  }
+
+  private synchronized void flushAllDirtyPages() throws IOException {
+    for (ISchemaPage page : dirtyPages.values()) {
+      flushPageToFile(page);
+    }
+    updateHeader();
+    dirtyPages.clear();
   }
 
   @TestOnly
