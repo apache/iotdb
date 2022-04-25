@@ -96,15 +96,23 @@ public class TestUtils {
       return dataSet;
     }
 
+    public static synchronized String ensureSnapshotFileName(File snapshotDir, String metadata) {
+      File dir = new File(snapshotDir + File.separator + metadata);
+      if (!(dir.exists() && dir.isDirectory())) {
+        dir.mkdirs();
+      }
+      return dir.getPath() + File.separator + "snapshot." + metadata;
+    }
+
     @Override
-    public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+    public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
       /**
        * When IStateMachine take the snapshot, it can directly use the metadata to name the snapshot
        * file. It's guaranteed that more up-to-date snapshot will have lexicographically larger
        * metadata.
        */
       String tempFilePath = snapshotDir + File.separator + ".tmp";
-      String filePath = snapshotDir + File.separator + "snapshot." + new String(metadata.array());
+      String filePath = ensureSnapshotFileName(snapshotDir, new String(metadata.array()));
 
       File tempFile = new File(tempFilePath);
 
@@ -115,7 +123,9 @@ public class TestUtils {
         tempFile.renameTo(new File(filePath));
       } catch (IOException e) {
         logger.error("take snapshot failed ", e);
+        return false;
       }
+      return true;
     }
 
     private Object[] getSortedPaths(File rootDir) {
@@ -145,10 +155,13 @@ public class TestUtils {
         return null;
       }
       Path max = (Path) pathArray[pathArray.length - 1];
+      String dirName = max.toFile().getName();
+      File snapshotFile =
+          new File(max.toFile().getAbsolutePath() + File.separator + "snapshot." + dirName);
 
-      String ordinal = max.getFileName().toString().split("\\.")[1];
+      String ordinal = snapshotFile.getName().split("\\.")[1];
       ByteBuffer metadata = ByteBuffer.wrap(ordinal.getBytes());
-      return new SnapshotMeta(metadata, Collections.singletonList(max.toFile()));
+      return new SnapshotMeta(metadata, Collections.singletonList(snapshotFile));
     }
 
     @Override

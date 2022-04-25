@@ -93,14 +93,15 @@ public class SnapshotTest {
 
     // take a snapshot at 421-616
     proxy.notifyTermIndexUpdated(421, 616);
-    String snapshotFilename = testDir + File.separator + "snapshot.421_616";
+    String snapshotFilename = TestUtils.IntegerCounter.ensureSnapshotFileName(testDir, "421_616");
     long index = proxy.takeSnapshot();
     Assert.assertEquals(index, 616);
     Assert.assertTrue(new File(snapshotFilename).exists());
 
     // take a snapshot at 616-4217
     proxy.notifyTermIndexUpdated(616, 4217);
-    String snapshotFilenameLatest = testDir + File.separator + "snapshot.616_4217";
+    String snapshotFilenameLatest =
+        TestUtils.IntegerCounter.ensureSnapshotFileName(testDir, "616_4217");
     long indexLatest = proxy.takeSnapshot();
     Assert.assertEquals(indexLatest, 4217);
     Assert.assertTrue(new File(snapshotFilenameLatest).exists());

@@ -57,10 +57,12 @@ public interface IStateMachine {
    * @param metadata the metadata IConsensus want IStateMachine to preserve. NOTICE: the more
    *     updated snapshot will have lexicographically larger metadata. This property should be
    *     guaranteed by every IConsensus implementation. IStateMachine can use the metadata to sort
-   *     or label snapshot.
+   *     or label snapshot. e.g, metadata is byteBuffer("123_456"), the statemachine can create a
+   *     directory ${snapshotDir}/123_456/ and store all files under this directory
    * @param snapshotDir the root dir of snapshot files
+   * @return true if snapshot successfully taken
    */
-  void takeSnapshot(ByteBuffer metadata, File snapshotDir);
+  boolean takeSnapshot(ByteBuffer metadata, File snapshotDir);
 
   /**
    * When recover from crash / leader installSnapshot to follower, this method is called.
