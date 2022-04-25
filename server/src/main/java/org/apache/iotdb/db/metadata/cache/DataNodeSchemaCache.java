@@ -75,6 +75,7 @@ public class DataNodeSchemaCache {
       PartialPath partialPath, boolean isAutoCreateSchema) {
     SchemaCacheEntity schemaCacheEntity;
     if (partialPath instanceof AlignedPath) {
+      logger.warn("Please use getAlignedSchemaEntity() function to obtain cache.");
       return null;
     }
     schemaCacheEntity = schemaEntityCache.getIfPresent(partialPath);
@@ -84,7 +85,7 @@ public class DataNodeSchemaCache {
         try {
           cacheKey = new PartialPath(partialPath.getFullPath());
         } catch (IllegalPathException e) {
-          e.printStackTrace();
+          logger.error("Create PartialPath:{} failed.", partialPath.getFullPath());
           return null;
         }
       } else {
@@ -129,6 +130,9 @@ public class DataNodeSchemaCache {
       // TODO need to construct schemaEntry from schemaTree
 
     } else if (!(partialPath instanceof MeasurementPath)) {
+      logger.warn(
+          "Auto create Schema is enable, partialPath:{} should be a MeasurementPath which contains TSDataType.",
+          partialPath.getFullPath());
       return null;
     } else {
       MeasurementPath measurementPath = (MeasurementPath) partialPath;
