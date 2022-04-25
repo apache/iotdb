@@ -356,7 +356,8 @@ public class LocalExecutionPlanner {
               new TEndPoint(
                   source.getIp(),
                   IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
-              remoteInstanceId.toThrift());
+              remoteInstanceId.toThrift(),
+              context.instanceContext::failed);
       return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     }
 
