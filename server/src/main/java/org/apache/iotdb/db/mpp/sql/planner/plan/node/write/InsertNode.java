@@ -136,26 +136,7 @@ public abstract class InsertNode extends WritePlanNode {
 
   protected void serializeMeasurementSchemaToWAL(IWALByteBufferView buffer) {
     for (MeasurementSchema measurementSchema : measurementSchemas) {
-      WALWriteUtils.write(measurementSchema.getMeasurementId(), buffer);
-
-      WALWriteUtils.write(measurementSchema.getType(), buffer);
-
-      WALWriteUtils.write(measurementSchema.getEncodingType(), buffer);
-
-      WALWriteUtils.write(measurementSchema.getCompressor(), buffer);
-
-      Map<String, String> props = measurementSchema.getProps();
-      if (props == null) {
-        WALWriteUtils.write(0, buffer);
-      } else {
-        WALWriteUtils.write(props.size(), buffer);
-        for (Map.Entry<String, String> entry : props.entrySet()) {
-          WALWriteUtils.write(entry.getKey(), buffer);
-          WALWriteUtils.write(entry.getValue(), buffer);
-        }
-      if (measurementSchema != null) {
-        WALWriteUtils.write(measurementSchema, buffer);
-      }
+      WALWriteUtils.write(measurementSchema, buffer);
     }
   }
 
