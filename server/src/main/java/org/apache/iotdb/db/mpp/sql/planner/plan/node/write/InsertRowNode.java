@@ -60,6 +60,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowNode.class);
 
+  private static final byte TYPE_RAW_STRING = -1;
+
   private static final byte TYPE_NULL = -2;
 
   private long time;
@@ -344,28 +346,35 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         ReadWriteIOUtils.write(TYPE_NULL, buffer);
         continue;
       }
-      ReadWriteIOUtils.write(dataTypes[i], buffer);
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values[i], buffer);
-          break;
-        case INT32:
-          ReadWriteIOUtils.write((Integer) values[i], buffer);
-          break;
-        case INT64:
-          ReadWriteIOUtils.write((Long) values[i], buffer);
-          break;
-        case FLOAT:
-          ReadWriteIOUtils.write((Float) values[i], buffer);
-          break;
-        case DOUBLE:
-          ReadWriteIOUtils.write((Double) values[i], buffer);
-          break;
-        case TEXT:
-          ReadWriteIOUtils.write((Binary) values[i], buffer);
-          break;
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (dataTypes == null || dataTypes[i] == null) {
+        ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
+        ReadWriteIOUtils.write(values[i].toString(), buffer);
+      } else {
+        ReadWriteIOUtils.write(dataTypes[i], buffer);
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            ReadWriteIOUtils.write((Boolean) values[i], buffer);
+            break;
+          case INT32:
+            ReadWriteIOUtils.write((Integer) values[i], buffer);
+            break;
+          case INT64:
+            ReadWriteIOUtils.write((Long) values[i], buffer);
+            break;
+          case FLOAT:
+            ReadWriteIOUtils.write((Float) values[i], buffer);
+            break;
+          case DOUBLE:
+            ReadWriteIOUtils.write((Double) values[i], buffer);
+            break;
+          case TEXT:
+            ReadWriteIOUtils.write((Binary) values[i], buffer);
+            break;
+          default:
+            throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+        }
       }
     }
   }
@@ -420,8 +429,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   /** Make sure the values is already inited before calling this */
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < dataTypes.length; i++) {
+      // types are not determined, the situation mainly occurs when the node uses string values
+      // and is forwarded to other nodes
       byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
-      if (typeNum == TYPE_NULL) {
+      if (typeNum == TYPE_RAW_STRING || typeNum == TYPE_NULL) {
+        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(buffer) : null;
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];

@@ -58,6 +58,15 @@ public class InsertRowNodeSerdeTest {
     Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
 
     Assert.assertEquals(InsertRowNode.deserialize(byteBuffer), insertRowNode);
+
+    insertRowNode = getInsertRowNodeWithStringValue();
+    byteBuffer = ByteBuffer.allocate(10000);
+    insertRowNode.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
+
+    Assert.assertEquals(InsertRowNode.deserialize(byteBuffer), insertRowNode);
   }
 
   @Test
@@ -152,6 +161,37 @@ public class InsertRowNodeSerdeTest {
           new MeasurementSchema("s5", TSDataType.BOOLEAN)
         });
 
+    return insertRowNode;
+  }
+
+  private InsertRowNode getInsertRowNodeWithStringValue() throws IllegalPathException {
+    long time = 110L;
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+        };
+
+    Object[] columns = new Object[5];
+    columns[0] = "1.0";
+    columns[1] = "2.0";
+    columns[2] = "10000";
+    columns[3] = "100";
+    columns[4] = "false";
+
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId("plannode 1"),
+            new PartialPath("root.isp.d1"),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            new TSDataType[5],
+            time,
+            columns);
+    insertRowNode.setNeedInferType(true);
     return insertRowNode;
   }
 }
