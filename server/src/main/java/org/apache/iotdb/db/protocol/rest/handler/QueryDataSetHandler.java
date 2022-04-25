@@ -327,6 +327,6 @@ public class QueryDataSetHandler {
         nodes.add(nodeSubPath[nodeSubPath.length - 1]);
       }
     }
-     return Response.ok().entity(nodes).build();
+    return Response.ok().entity(nodes).build();
   }
 }

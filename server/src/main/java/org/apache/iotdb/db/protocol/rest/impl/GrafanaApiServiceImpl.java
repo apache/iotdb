@@ -17,7 +17,6 @@
 
 package org.apache.iotdb.db.protocol.rest.impl;
 
-import java.util.List;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -48,6 +47,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
+import java.util.List;
 
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
@@ -200,7 +200,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         }
 
         final long queryId = ServiceProvider.SESSION_MANAGER.requestQueryId(true);
-        try{
+        try {
           QueryContext queryContext =
               serviceProvider.genQueryContext(
                   queryId,
@@ -212,13 +212,13 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
               serviceProvider.createQueryDataSet(
                   queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
           return QueryDataSetHandler.fillGrafanaNodesResult(queryDataSet);
-        }finally {
-            ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+        } finally {
+          ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
         }
-      }else{
+      } else {
         return QueryDataSetHandler.fillGrafanaNodesResult(null);
       }
-    }catch (Exception e){
+    } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
   }
