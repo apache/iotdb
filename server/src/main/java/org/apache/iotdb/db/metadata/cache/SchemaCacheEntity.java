@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -40,6 +41,16 @@ public class SchemaCacheEntity {
   @TestOnly
   public SchemaCacheEntity() {
     this.schemaEntryId = "1";
+  }
+
+  public SchemaCacheEntity(String schemaEntryId, TSDataType tsDataType, boolean isAligned) {
+    this.schemaEntryId = schemaEntryId;
+    this.tsDataType = tsDataType;
+    this.isAligned = isAligned;
+    this.tsEncoding =
+        TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder());
+    this.compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    this.alias = "";
   }
 
   public SchemaCacheEntity(
