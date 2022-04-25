@@ -61,7 +61,7 @@ public class SenderService implements IService {
   private List<Pipe> pipes;
 
   private Pipe runningPipe;
-  private String runningMsg;
+  private MsgManager msgManager;
 
   private TransportHandler transportHandler;
 
@@ -183,7 +183,7 @@ public class SenderService implements IService {
       throw e;
     }
 
-    runningMsg = "";
+    msgManager.addPipe(runningPipe);
     pipes.add(runningPipe);
     senderLogger.addPipe(plan, currentTime);
   }
@@ -237,6 +237,7 @@ public class SenderService implements IService {
       }
 
       runningPipe.drop();
+      msgManager.removeAllPipe();
       sendMsg(RequestType.DROP);
       senderLogger.operatePipe(pipeName, Operator.OperatorType.DROP_PIPE);
     } catch (InterruptedException e) {
@@ -252,7 +253,7 @@ public class SenderService implements IService {
   }
 
   public synchronized String getPipeMsg(Pipe pipe) {
-    return pipe == runningPipe ? runningMsg : "";
+    return msgManager.getPipeMsg(pipe);
   }
 
   private void checkRunningPipeExistAndName(String pipeName) throws PipeException {
@@ -302,15 +303,12 @@ public class SenderService implements IService {
               e);
         }
       case WARN:
-        if (runningMsg.length() > 0) {
-          runningMsg += System.lineSeparator();
-        }
-        runningMsg += (response.type.name() + " " + response.msg);
-        senderLogger.recordMsg(
-            runningPipe.getName(),
+        msgManager.recordMsg(
+            runningPipe,
             runningPipe.getStatus() == Pipe.PipeStatus.RUNNING
                 ? Operator.OperatorType.START_PIPE
                 : Operator.OperatorType.STOP_PIPE,
+            response.type,
             response.msg);
         break;
     }
@@ -322,7 +320,6 @@ public class SenderService implements IService {
     this.pipeSinks = new HashMap<>();
     this.pipes = new ArrayList<>();
     this.senderLogger = new SenderLogger();
-    this.runningMsg = "";
 
     File senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SENDER_LOG_NAME);
     if (senderLog.exists()) {
@@ -353,7 +350,7 @@ public class SenderService implements IService {
   public void shutdown(long milliseconds) throws ShutdownException {
     pipeSinks = null;
     pipes = null;
-    runningMsg = null;
+    msgManager = null;
     senderLogger.close();
 
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
@@ -382,7 +379,7 @@ public class SenderService implements IService {
     this.pipeSinks = analyzer.getRecoveryAllPipeSinks();
     this.pipes = analyzer.getRecoveryAllPipes();
     this.runningPipe = analyzer.getRecoveryRunningPipe();
-    this.runningMsg = analyzer.getRecoveryRunningMsg();
+    this.msgManager = analyzer.getMsgManager();
 
     if (runningPipe != null && !Pipe.PipeStatus.DROP.equals(runningPipe.getStatus())) {
       this.transportHandler =

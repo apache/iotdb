@@ -27,7 +27,6 @@ public class SyncConstant {
   public static final String SYNC_SYS_DIR = "sys";
   public static final String FILE_DATA_DIR_NAME = "file-data";
 
-
   // pipe log: serialNumber + SEPARATOR + SUFFIX
   public static final String PIPE_LOG_DIR_NAME = "pipe-log";
   public static final String PIPE_LOG_NAME_SEPARATOR = "_";
@@ -58,7 +57,7 @@ public class SyncConstant {
   public static final Long DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER = 10L;
   public static final Long DEFAULT_WAITING_FOR_STOP_MILLISECONDS = 100L;
 
-  public static final int MESSAGE_LENGTH_LIMIT = 200;
+  public static final int MESSAGE_NUMBER_LIMIT = 3;
 
   /** transport */
 

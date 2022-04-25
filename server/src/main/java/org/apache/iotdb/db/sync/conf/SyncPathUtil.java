@@ -34,17 +34,9 @@ public class SyncPathUtil {
   /**
    * sync data structure
    *
-   * data/sync
-   *  |----sender dir
-   *  |      |----sender pipe dir
-   *  |             |----history pipe log dir
-   *  |             |----realtime pipe log dir
-   *  |             |----file data dir
-   *  |----receiver dir
-   *         |-----receiver pipe dir
-   *                |----receiver pipe log dir
-   *                |----file data dir
-   *
+   * <p>data/sync |----sender dir | |----sender pipe dir | |----history pipe log dir | |----realtime
+   * pipe log dir | |----file data dir |----receiver dir |-----receiver pipe dir |----receiver pipe
+   * log dir |----file data dir
    */
 
   /** sender */
@@ -73,7 +65,9 @@ public class SyncPathUtil {
   }
 
   public static String getSenderFileDataDir(String pipeName, long createTime) {
-    return getSenderPipeDir(pipeName, createTime) + File.separator + SyncConstant.FILE_DATA_DIR_NAME;
+    return getSenderPipeDir(pipeName, createTime)
+        + File.separator
+        + SyncConstant.FILE_DATA_DIR_NAME;
   }
 
   /** receiver */
@@ -89,8 +83,7 @@ public class SyncPathUtil {
         + getReceiverPipeDirName(pipeName, remoteIp, createTime);
   }
 
-  public static String getReceiverPipeDirName(
-      String pipeName, String remoteIp, long createTime) {
+  public static String getReceiverPipeDirName(String pipeName, String remoteIp, long createTime) {
     return String.format("%s-%d-%s", pipeName, createTime, remoteIp);
   }
 
