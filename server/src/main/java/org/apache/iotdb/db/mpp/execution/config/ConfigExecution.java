@@ -26,13 +26,9 @@ import org.apache.iotdb.db.mpp.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
-import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
-import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -161,21 +157,5 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public boolean isQuery() {
     return context.getQueryType() == QueryType.READ;
-  }
-
-  /**
-   * Determine whether the operation to be performed is read or write
-   *
-   * @param statement ConfigStatement
-   * @return QueryType
-   */
-  public static QueryType operateIsQuery(ConfigStatement statement) {
-    if (statement instanceof SetStorageGroupStatement) {
-      return QueryType.WRITE;
-    } else if (statement instanceof AuthorStatement) {
-      return AuthorStatement.permissionIsQuery(((AuthorStatement) statement).getAuthorType());
-    } else {
-      throw new NotImplementedException();
-    }
   }
 }

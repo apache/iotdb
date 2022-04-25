@@ -60,7 +60,7 @@ public class AuthorizerConfigTask implements IConfigTask {
                   : authorStatement.getNodeName().getFullPath());
 
       // Send request to some API server
-      if (AuthorStatement.permissionIsQuery(authorStatement.getAuthorType()) == QueryType.WRITE) {
+      if (authorStatement.operatorIsQuery() == QueryType.WRITE) {
         future = authorizerManager.operatePermission(req);
       } else {
         future = authorizerManager.queryPermission(req);

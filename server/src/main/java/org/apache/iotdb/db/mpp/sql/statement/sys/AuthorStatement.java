@@ -114,13 +114,8 @@ public class AuthorStatement extends ConfigStatement {
     return visitor.visitAuthor(this, context);
   }
 
-  /**
-   * Determine whether the operation of the permission is read or write
-   *
-   * @param authorType AuthorType
-   * @return QueryType
-   */
-  public static QueryType permissionIsQuery(AuthorOperator.AuthorType authorType) {
+  @Override
+  public QueryType operatorIsQuery() {
     QueryType queryType;
     switch (authorType) {
       case CREATE_USER:
