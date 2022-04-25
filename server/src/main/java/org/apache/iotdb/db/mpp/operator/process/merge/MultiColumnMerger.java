@@ -68,13 +68,12 @@ public class MultiColumnMerger implements ColumnMerger {
         if (!empty(tsBlockIndex, inputTsBlocks, updatedInputIndex)) {
           TimeColumn timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
           Column valueColumn = inputTsBlocks[tsBlockIndex].getColumn(columnIndex);
-          // time of current location's input column is equal to current row's time and value of
-          // current location's input column is not null
+          // time of current location's input column is equal to current row's time
           if (timeColumn.getLong(index) == timeBuilder.getTime(i)) {
-            if (valueColumn.isNull(index)) {
-              columnBuilder.appendNull();
-            } else {
+            // value of current location's input column is not null
+            if (!valueColumn.isNull(index)) {
               columnBuilder.write(valueColumn, index);
+              appendValue = true;
             }
             // increase the index
             index++;
@@ -82,8 +81,9 @@ public class MultiColumnMerger implements ColumnMerger {
             updatedInputIndex[tsBlockIndex] = index;
             // we can safely set appendValue to true and then break the loop, because these input
             // columns' time is not overlapped
-            appendValue = true;
-            break;
+            if (appendValue) {
+              break;
+            }
           }
         }
       }

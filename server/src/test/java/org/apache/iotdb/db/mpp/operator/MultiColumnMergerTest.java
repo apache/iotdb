@@ -124,16 +124,37 @@ public class MultiColumnMergerTest {
     inputBuilder1.getTimeColumnBuilder().writeLong(4);
     inputBuilder1.getColumnBuilder(0).writeInt(40);
     inputBuilder1.declarePosition();
+    inputBuilder1.getTimeColumnBuilder().writeLong(5);
+    inputBuilder1.getColumnBuilder(0).appendNull();
+    inputBuilder1.declarePosition();
     inputBuilder1.getTimeColumnBuilder().writeLong(6);
-    inputBuilder1.getColumnBuilder(0).writeInt(60);
+    inputBuilder1.getColumnBuilder(0).appendNull();
+    inputBuilder1.declarePosition();
+    inputBuilder1.getTimeColumnBuilder().writeLong(7);
+    inputBuilder1.getColumnBuilder(0).appendNull();
+    inputBuilder1.declarePosition();
+    inputBuilder1.getTimeColumnBuilder().writeLong(8);
+    inputBuilder1.getColumnBuilder(0).appendNull();
+    inputBuilder1.declarePosition();
+    inputBuilder1.getTimeColumnBuilder().writeLong(9);
+    inputBuilder1.getColumnBuilder(0).appendNull();
+    inputBuilder1.declarePosition();
+    inputBuilder1.getTimeColumnBuilder().writeLong(10);
+    inputBuilder1.getColumnBuilder(0).writeInt(100);
     inputBuilder1.declarePosition();
 
     TsBlockBuilder inputBuilder2 = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
-    inputBuilder2.getTimeColumnBuilder().writeLong(8);
-    inputBuilder2.getColumnBuilder(0).writeInt(800);
+    inputBuilder2.getTimeColumnBuilder().writeLong(6);
+    inputBuilder2.getColumnBuilder(0).writeInt(60);
     inputBuilder2.declarePosition();
-    inputBuilder2.getTimeColumnBuilder().writeLong(10);
-    inputBuilder2.getColumnBuilder(0).writeInt(1000);
+    inputBuilder2.getTimeColumnBuilder().writeLong(7);
+    inputBuilder2.getColumnBuilder(0).writeInt(70);
+    inputBuilder2.declarePosition();
+    inputBuilder2.getTimeColumnBuilder().writeLong(8);
+    inputBuilder2.getColumnBuilder(0).writeInt(80);
+    inputBuilder2.declarePosition();
+    inputBuilder2.getTimeColumnBuilder().writeLong(9);
+    inputBuilder2.getColumnBuilder(0).writeInt(90);
     inputBuilder2.declarePosition();
 
     TsBlock[] inputTsBlocks = new TsBlock[] {inputBuilder1.build(), inputBuilder2.build()};
@@ -163,8 +184,8 @@ public class MultiColumnMergerTest {
     merger.mergeColumn(
         inputTsBlocks, inputIndex, updatedInputIndex, timeColumnBuilder, 11, valueColumnBuilder);
 
-    assertEquals(3, updatedInputIndex[0]);
-    assertEquals(2, updatedInputIndex[1]);
+    assertEquals(8, updatedInputIndex[0]);
+    assertEquals(4, updatedInputIndex[1]);
 
     Column result = valueColumnBuilder.build();
 
@@ -174,12 +195,14 @@ public class MultiColumnMergerTest {
     assertTrue(result.isNull(1));
     assertFalse(result.isNull(2));
     assertEquals(60, result.getInt(2));
-    assertTrue(result.isNull(3));
+    assertFalse(result.isNull(3));
+    assertEquals(70, result.getInt(3));
     assertFalse(result.isNull(4));
-    assertEquals(800, result.getInt(4));
-    assertTrue(result.isNull(5));
+    assertEquals(80, result.getInt(4));
+    assertFalse(result.isNull(5));
+    assertEquals(90, result.getInt(5));
     assertFalse(result.isNull(6));
-    assertEquals(1000, result.getInt(6));
+    assertEquals(100, result.getInt(6));
     assertTrue(result.isNull(7));
   }
 }
