@@ -20,6 +20,7 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -41,7 +42,6 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Operation;
@@ -110,6 +110,8 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTSIServiceImpl.class);
 
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
@@ -119,7 +121,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   private final ISchemaFetcher SCHEMA_FETCHER;
 
   public DataNodeTSIServiceImpl() {
-    if (IoTDB.getInstance().isMppClusterMode()) {
+    if (config.isClusterMode()) {
       PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
       SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
     } else {
