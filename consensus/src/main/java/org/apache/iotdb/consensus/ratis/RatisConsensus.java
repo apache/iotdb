@@ -173,10 +173,9 @@ class RatisConsensus implements IConsensus {
     }
 
     // 2. try raft client
-    RaftClient client = null;
     TSStatus writeResult;
     try {
-      client = buildClient(raftGroup);
+      RaftClient client = getRaftClient(raftGroup);
       RaftClientReply reply = client.io().send(message);
       writeResult = Utils.deserializeFrom(reply.getMessage().getContent().asReadOnlyByteBuffer());
       client.close();
@@ -235,12 +234,10 @@ class RatisConsensus implements IConsensus {
       return failed(new ConsensusGroupNotExistException(groupId));
     }
 
-    // build and store the corresponding client
-    RaftClient client = buildClient(group);
-
     // add RaftPeer myself to this RaftGroup
     RaftClientReply reply;
     try {
+      RaftClient client = getRaftClient(group);
       reply = client.getGroupManagementApi(myself.getId()).add(group);
       client.close();
     } catch (IOException e) {
@@ -267,11 +264,10 @@ class RatisConsensus implements IConsensus {
       return failed(new PeerNotInConsensusGroupException(groupId, myself));
     }
 
-    RaftClient client;
     // send remove group to myself
     RaftClientReply reply;
     try {
-      client = buildClient(raftGroup);
+      RaftClient client = getRaftClient(raftGroup);
       reply = client.getGroupManagementApi(myself.getId()).remove(raftGroupId, false, false);
       client.close();
     } catch (IOException e) {
@@ -362,9 +358,6 @@ class RatisConsensus implements IConsensus {
       return failed(new ConsensusGroupNotExistException(groupId));
     }
 
-    // build the client and store it
-    buildClient(raftGroup);
-
     // add RaftPeer myself to this RaftGroup
     RaftClientReply reply;
     try {
@@ -402,9 +395,9 @@ class RatisConsensus implements IConsensus {
       }
     }
 
-    RaftClient client = buildClient(raftGroup);
     RaftClientReply reply = null;
     try {
+      RaftClient client = getRaftClient(raftGroup);
       RaftClientReply configChangeReply = client.admin().setConfiguration(newConfiguration);
       if (!configChangeReply.isSuccess()) {
         return failed(new RatisRequestFailedException(configChangeReply.getException()));
@@ -498,34 +491,22 @@ class RatisConsensus implements IConsensus {
     return RaftGroup.valueOf(Utils.toRatisGroupId(groupId), raftPeers);
   }
 
-  private RaftClient buildClient(RaftGroup group) {
-    RaftProperties raftProperties = new RaftProperties();
-    RaftClient.Builder builder =
-        RaftClient.newBuilder()
-            .setProperties(raftProperties)
-            .setRaftGroup(group)
-            .setClientRpc(
-                new GrpcFactory(new Parameters())
-                    .newRaftClientRpc(ClientId.randomId(), raftProperties));
-    return builder.build();
-  }
-
-  // TODO use this function to get RaftClient
-  private RaftClient getRaftClient(RaftGroup group) {
+  private RaftClient getRaftClient(RaftGroup group) throws IOException{
     try {
       return clientManager.borrowClient(group);
     } catch (IOException e) {
       logger.error(String.format("Borrow client from pool for group %s failed.", group), e);
-      return null;
+      // rethrow the exception
+      throw e;
     }
   }
 
   private RaftClientReply sendReconfiguration(RaftGroup newGroupConf)
       throws RatisRequestFailedException {
-    RaftClient client = buildClient(newGroupConf);
     // notify the group leader of configuration change
     RaftClientReply reply;
     try {
+      RaftClient client = getRaftClient(newGroupConf);
       reply = client.admin().setConfiguration(new ArrayList<>(newGroupConf.getPeers()));
       client.close();
     } catch (IOException e) {
