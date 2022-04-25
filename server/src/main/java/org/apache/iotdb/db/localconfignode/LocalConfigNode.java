@@ -55,7 +55,6 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -218,7 +217,7 @@ public class LocalConfigNode {
       MemTableManager.getInstance().addOrDeleteStorageGroup(1);
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isMppMode() && !IoTDB.isMppClusterMode()) {
+    if (config.isMppMode() && !config.isClusterMode()) {
       for (DataRegionId dataRegionId : dataPartitionTable.setStorageGroup(storageGroup)) {
         try {
           storageEngine.createDataRegion(dataRegionId, storageGroup.getFullPath(), Long.MAX_VALUE);

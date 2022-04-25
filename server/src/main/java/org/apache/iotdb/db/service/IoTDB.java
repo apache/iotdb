@@ -71,7 +71,6 @@ public class IoTDB implements IoTDBMBean {
   public static LocalConfigNode configManager = LocalConfigNode.getInstance();
   public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
-  private static boolean isMppClusterMode = false;
 
   public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
@@ -103,14 +102,6 @@ public class IoTDB implements IoTDBMBean {
 
   public static boolean isClusterMode() {
     return IoTDB.clusterMode;
-  }
-
-  public static void setMppClusterMode() {
-    IoTDB.isMppClusterMode = true;
-  }
-
-  public static boolean isMppClusterMode() {
-    return IoTDB.isMppClusterMode;
   }
 
   public void active() {

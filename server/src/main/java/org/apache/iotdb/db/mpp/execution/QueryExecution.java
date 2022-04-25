@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -67,6 +67,8 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
  */
 public class QueryExecution implements IQueryExecution {
   private static final Logger LOG = LoggerFactory.getLogger(Coordinator.class);
+
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final MPPQueryContext context;
   private IScheduler scheduler;
@@ -145,7 +147,7 @@ public class QueryExecution implements IQueryExecution {
   private void schedule() {
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     this.scheduler =
-        IoTDB.getInstance().isMppClusterMode()
+        config.isClusterMode()
             ? new ClusterScheduler(
                 context,
                 stateMachine,
