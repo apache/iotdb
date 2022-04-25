@@ -32,13 +32,17 @@ public class SyncPathUtil {
     // forbidding instantiation
   }
 
-  /**
-   * sync data structure
-   *
-   * <p>data/sync |----sender dir | |----sender pipe dir | |----history pipe log dir | |----realtime
-   * pipe log dir | |----file data dir |----receiver dir |-----receiver pipe dir |----receiver pipe
-   * log dir |----file data dir
-   */
+  // sync data structure
+  // data/sync
+  // |----sender dir
+  // |      |----sender pipe dir
+  // |             |----history pipe log dir
+  // |             |----realtime pipe log dir
+  // |             |----file data dir
+  // |----receiver dir
+  //        |-----receiver pipe dir
+  //                |----receiver pipe log dir
+  //                |----file data dir
 
   /** sender */
   public static String getSenderDir() {
@@ -72,16 +76,6 @@ public class SyncPathUtil {
   }
 
   /** receiver */
-  public static String getFileDataDirPath(IdentityInfo identityInfo) {
-    return SyncPathUtil.getReceiverFileDataDir(
-        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
-  }
-
-  public static String getPipeLogDirPath(IdentityInfo identityInfo) {
-    return SyncPathUtil.getReceiverPipeLogDir(
-        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
-  }
-
   public static String getReceiverDir() {
     return IoTDBDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator
@@ -108,6 +102,16 @@ public class SyncPathUtil {
     return getReceiverPipeDir(pipeName, remoteIp, createTime)
         + File.separator
         + SyncConstant.FILE_DATA_DIR_NAME;
+  }
+
+  public static String getFileDataDirPath(IdentityInfo identityInfo) {
+    return SyncPathUtil.getReceiverFileDataDir(
+        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
+  }
+
+  public static String getPipeLogDirPath(IdentityInfo identityInfo) {
+    return SyncPathUtil.getReceiverPipeLogDir(
+        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
   }
 
   /** common */

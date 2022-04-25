@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
@@ -461,14 +460,14 @@ public class TransportClient implements ITransportClient {
       while (!Thread.currentThread().isInterrupted()) {
         PipeData pipeData = pipe.take();
         if (!senderTransport(pipeData)) {
-          logger.warn(String.format("Can not transfer pipedata %s, skip it.", pipeData));
+          logger.error(String.format("Can not transfer pipedata %s, skip it.", pipeData));
           // can do something.
           SenderService.getInstance()
               .receiveMsg(
                   new SyncResponse(
                       ResponseType.WARN,
-                      SyncPathUtil.createMsg(
-                          String.format("Transfer piepdata %s error, skip it.", pipeData))));
+                      String.format(
+                          "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber())));
           continue;
         }
         pipe.commit();
@@ -482,10 +481,9 @@ public class TransportClient implements ITransportClient {
           .receiveMsg(
               new SyncResponse(
                   ResponseType.ERROR,
-                  SyncPathUtil.createMsg(
-                      String.format(
-                          "Can not connect to %s:%d, because %s, please check receiver and internet.",
-                          ipAddress, port, e.getMessage()))));
+                  String.format(
+                      "Can not connect to %s:%d, please check receiver and internet.",
+                      ipAddress, port)));
     } finally {
       close();
     }

@@ -318,6 +318,7 @@ public class SenderService implements IService {
     this.pipeSinks = new HashMap<>();
     this.pipes = new ArrayList<>();
     this.senderLogger = new SenderLogger();
+    this.msgManager = new MsgManager(senderLogger);
 
     File senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SENDER_LOG_NAME);
     if (senderLog.exists()) {
