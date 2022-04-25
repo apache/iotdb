@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.localconfignode;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.metadata.path.PartialPath;
