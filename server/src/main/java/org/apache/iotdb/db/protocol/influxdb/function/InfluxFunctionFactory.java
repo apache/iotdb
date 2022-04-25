@@ -19,7 +19,13 @@
 package org.apache.iotdb.db.protocol.influxdb.function;
 
 import org.apache.iotdb.db.protocol.influxdb.constant.InfluxSQLConstant;
-import org.apache.iotdb.db.protocol.influxdb.function.aggregator.*;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxCountFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxMeanFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxMedianFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxModeFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxSpreadFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxStddevFunction;
+import org.apache.iotdb.db.protocol.influxdb.function.aggregator.InfluxSumFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxFirstFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxLastFunction;
 import org.apache.iotdb.db.protocol.influxdb.function.selector.InfluxMaxFunction;

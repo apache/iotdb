@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.confignode.cli;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
-import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
+import org.apache.iotdb.confignode.persistence.DataNodeInfo;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -59,7 +59,7 @@ public class TemporaryClient {
     this.clients = new HashMap<>();
   }
 
-  public void buildClient(int dataNodeId, Endpoint endpoint) {
+  public void buildClient(int dataNodeId, TEndPoint endpoint) {
     for (int i = 0; i < retryNum; i++) {
       try {
         TTransport transport =
@@ -83,20 +83,20 @@ public class TemporaryClient {
   }
 
   private TCreateSchemaRegionReq genCreateSchemaRegionReq(
-      String storageGroup, RegionReplicaSet regionReplicaSet) {
+      String storageGroup, TRegionReplicaSet regionReplicaSet) {
     TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
     req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet.convertToRPCTRegionReplicaSet());
+    req.setRegionReplicaSet(regionReplicaSet);
     return req;
   }
 
   public void createSchemaRegion(
-      int dataNodeId, String storageGroup, RegionReplicaSet regionReplicaSet) {
+      int dataNodeId, String storageGroup, TRegionReplicaSet regionReplicaSet) {
 
     if (clients.get(dataNodeId) == null) {
       buildClient(
           dataNodeId,
-          DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+          DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint());
     }
 
     TCreateSchemaRegionReq req = genCreateSchemaRegionReq(storageGroup, regionReplicaSet);
@@ -107,19 +107,19 @@ public class TemporaryClient {
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOGGER.info(
                 "Create SchemaRegion on DataNode: {} success",
-                DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+                DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint());
             return;
           } else {
             LOGGER.error(
                 "Create SchemaRegion on DataNode: {} failed, {}. Retrying...",
-                DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
+                DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint(),
                 status);
           }
         } catch (TException e) {
           // TODO: Handler SocketTimeOutException
           LOGGER.error(
               "Create SchemaRegion on DataNode: {} failed, {}. Retrying...",
-              DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
+              DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint(),
               e.toString());
           try {
             TimeUnit.MILLISECONDS.sleep(retryWait);
@@ -131,25 +131,25 @@ public class TemporaryClient {
     }
     LOGGER.error(
         "Create SchemaRegion on DataNode: {} failed.",
-        DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+        DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint());
   }
 
   private TCreateDataRegionReq genCreateDataRegionReq(
-      String storageGroup, RegionReplicaSet regionReplicaSet, long TTL) {
+      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
     TCreateDataRegionReq req = new TCreateDataRegionReq();
     req.setStorageGroup(storageGroup);
-    req.setRegionReplicaSet(regionReplicaSet.convertToRPCTRegionReplicaSet());
+    req.setRegionReplicaSet(regionReplicaSet);
     req.setTtl(TTL);
     return req;
   }
 
   public void createDataRegion(
-      int dataNodeId, String storageGroup, RegionReplicaSet regionReplicaSet, long TTL) {
+      int dataNodeId, String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
 
     if (clients.get(dataNodeId) == null) {
       buildClient(
           dataNodeId,
-          DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+          DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint());
     }
 
     TCreateDataRegionReq req = genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL);
@@ -160,19 +160,19 @@ public class TemporaryClient {
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOGGER.info(
                 "Create DataRegion on DataNode: {} success",
-                DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+                DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint());
             return;
           } else {
             LOGGER.error(
                 "Create DataRegion on DataNode: {} failed, {}. Retrying...",
-                DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
+                DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint(),
                 status);
           }
         } catch (TException e) {
           // TODO: Handler SocketTimeOutException
           LOGGER.error(
               "Create DataRegion on DataNode: {} failed, {}. Retrying...",
-              DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint(),
+              DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint(),
               e.toString());
           try {
             TimeUnit.MILLISECONDS.sleep(retryWait);
@@ -184,7 +184,7 @@ public class TemporaryClient {
     }
     LOGGER.error(
         "Create DataRegion on DataNode: {} failed.",
-        DataNodeInfoPersistence.getInstance().getOnlineDataNode(dataNodeId).getEndPoint());
+        DataNodeInfo.getInstance().getOnlineDataNode(dataNodeId).getInternalEndPoint());
   }
 
   private static class TemporaryClientHolder {

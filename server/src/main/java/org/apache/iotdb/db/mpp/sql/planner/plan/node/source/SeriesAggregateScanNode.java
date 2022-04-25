@@ -18,17 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.Aggregation;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -66,31 +67,34 @@ import java.util.stream.Collectors;
  * represent the whole aggregation result of this series. And the timestamp will be 0, which is
  * meaningless.
  */
-public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNode {
+public class SeriesAggregateScanNode extends SourceNode {
 
   // The series path and aggregation functions on this series.
   // (Currently, we only support one series in the aggregation function)
   private final PartialPath seriesPath;
-  private final List<AggregationType> aggregateFuncList;
+  @Deprecated private final List<AggregationType> aggregateFuncList;
+  private List<Aggregation> aggregationList;
 
   // all the sensors in seriesPath's device of current query
-  private Set<String> allSensors;
+  private final Set<String> allSensors;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
   private final OrderBy scanOrder;
 
+  // time filter for current series, could be null if doesn't exist
   private final Filter timeFilter;
 
   // The parameter of `group by time`
   // Its value will be null if there is no `group by time` clause,
-  private final GroupByTimeComponent groupByTimeParameter;
+  private final GroupByTimeParameter groupByTimeParameter;
 
-  private List<ColumnHeader> columnHeaders;
+  // contain output column headers of this node
+  private final List<ColumnHeader> outputColumnHeaders;
 
   // The id of DataRegion where the node will run
-  private RegionReplicaSet regionReplicaSet;
+  private TRegionReplicaSet regionReplicaSet;
 
   public SeriesAggregateScanNode(
       PlanNodeId id,
@@ -99,7 +103,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
       List<AggregationType> aggregateFuncList,
       OrderBy scanOrder,
       Filter timeFilter,
-      GroupByTimeComponent groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter) {
     super(id);
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
@@ -107,7 +111,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     this.scanOrder = scanOrder;
     this.timeFilter = timeFilter;
     this.groupByTimeParameter = groupByTimeParameter;
-    this.columnHeaders =
+    this.outputColumnHeaders =
         aggregateFuncList.stream()
             .map(
                 functionType ->
@@ -128,7 +132,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     return timeFilter;
   }
 
-  public GroupByTimeComponent getGroupByTimeParameter() {
+  public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
   }
 
@@ -152,29 +156,33 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return columnHeaders;
+    return outputColumnHeaders;
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+    return outputColumnHeaders.stream()
+        .map(ColumnHeader::getColumnName)
+        .collect(Collectors.toList());
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    return outputColumnHeaders.stream()
+        .map(ColumnHeader::getColumnType)
+        .collect(Collectors.toList());
   }
 
   @Override
   public void open() throws Exception {}
 
   @Override
-  public RegionReplicaSet getRegionReplicaSet() {
+  public TRegionReplicaSet getRegionReplicaSet() {
     return this.regionReplicaSet;
   }
 
   @Override
-  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
   }
 
@@ -208,7 +216,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     timeFilter.serialize(byteBuffer);
     groupByTimeParameter.serialize(byteBuffer);
-    regionReplicaSet.serializeImpl(byteBuffer);
+    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public static SeriesAggregateScanNode deserialize(ByteBuffer byteBuffer) {
@@ -226,8 +234,8 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     Filter timeFilter = FilterFactory.deserialize(byteBuffer);
 
-    GroupByTimeComponent groupByTimeComponent = GroupByTimeComponent.deserialize(byteBuffer);
-    RegionReplicaSet regionReplicaSet = RegionReplicaSet.deserializeImpl(byteBuffer);
+    GroupByTimeParameter groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
+    TRegionReplicaSet regionReplicaSet = ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     SeriesAggregateScanNode seriesAggregateScanNode =
         new SeriesAggregateScanNode(
@@ -237,7 +245,7 @@ public class SeriesAggregateScanNode extends SourceNode implements IOutputPlanNo
             aggregateFuncList,
             scanOrder,
             timeFilter,
-            groupByTimeComponent);
+            groupByTimeParameter);
     seriesAggregateScanNode.regionReplicaSet = regionReplicaSet;
     return seriesAggregateScanNode;
   }

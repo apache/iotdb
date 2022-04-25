@@ -125,10 +125,9 @@ public class LocalConfigNode {
 
       templateManager.init();
       storageGroupSchemaManager.init();
-      partitionTable.init();
-      schemaEngine.init();
 
-      initSchemaRegion();
+      Map<PartialPath, List<SchemaRegionId>> recoveredLocalSchemaRegionInfo = schemaEngine.init();
+      partitionTable.init(recoveredLocalSchemaRegionInfo);
 
       if (config.getSyncMlogPeriodInMs() != 0) {
         timedForceMLogThread =
@@ -146,30 +145,6 @@ public class LocalConfigNode {
     }
 
     initialized = true;
-  }
-
-  private void initSchemaRegion() throws MetadataException {
-    for (PartialPath storageGroup : storageGroupSchemaManager.getAllStorageGroupPaths()) {
-      partitionTable.setStorageGroup(storageGroup);
-
-      File sgDir = new File(config.getSchemaDir(), storageGroup.getFullPath());
-
-      if (!sgDir.exists()) {
-        continue;
-      }
-
-      File[] schemaRegionDirs = sgDir.listFiles();
-      if (schemaRegionDirs == null) {
-        continue;
-      }
-
-      for (File schemaRegionDir : schemaRegionDirs) {
-        SchemaRegionId schemaRegionId =
-            new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
-        schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
-        partitionTable.putSchemaRegionId(storageGroup, schemaRegionId);
-      }
-    }
   }
 
   public synchronized void clear() {
@@ -220,10 +195,10 @@ public class LocalConfigNode {
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     storageGroupSchemaManager.setStorageGroup(storageGroup);
-    partitionTable.setStorageGroup(storageGroup);
+    for (SchemaRegionId schemaRegionId : partitionTable.setStorageGroup(storageGroup)) {
+      schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
+    }
 
-    schemaEngine.createSchemaRegion(
-        storageGroup, partitionTable.allocateSchemaRegionId(storageGroup));
     if (SchemaSyncManager.getInstance().isEnableSync()) {
       SchemaSyncManager.getInstance().syncMetadataPlan(new SetStorageGroupPlan(storageGroup));
     }
@@ -284,9 +259,9 @@ public class LocalConfigNode {
     }
   }
 
-  private void ensureStorageGroup(PartialPath path) throws MetadataException {
+  private PartialPath ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
-      getBelongedStorageGroup(path);
+      return getBelongedStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
       if (!config.isAutoCreateSchemaEnabled()) {
         throw e;
@@ -295,16 +270,17 @@ public class LocalConfigNode {
           MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
       try {
         setStorageGroup(storageGroupPath);
+        return storageGroupPath;
       } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
-        // do nothing
-        // concurrent timeseries creation may result concurrent ensureStorageGroup
-        // it's ok that the storageGroup has already been set
-
         if (storageGroupAlreadySetException.isHasChild()) {
           // if setStorageGroup failure is because of child, the deviceNode should not be created.
           // Timeseries can't be created under a deviceNode without storageGroup.
           throw storageGroupAlreadySetException;
         }
+
+        // concurrent timeseries creation may result concurrent ensureStorageGroup
+        // it's ok that the storageGroup has already been set
+        return getBelongedStorageGroup(path);
       }
     }
   }
@@ -534,19 +510,23 @@ public class LocalConfigNode {
    */
   public SchemaRegionId getBelongedSchemaRegionId(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
+    return partitionTable.getSchemaRegionId(storageGroup, path);
+  }
+
+  // This interface involves storage group and schema region auto creation
+  public SchemaRegionId getBelongedSchemaRegionIdWithAutoCreate(PartialPath path)
+      throws MetadataException {
+    PartialPath storageGroup = ensureStorageGroup(path);
     SchemaRegionId schemaRegionId = partitionTable.getSchemaRegionId(storageGroup, path);
+    if (schemaRegionId == null) {
+      partitionTable.setStorageGroup(storageGroup);
+      schemaRegionId = partitionTable.getSchemaRegionId(storageGroup, path);
+    }
     ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
     if (schemaRegion == null) {
       schemaEngine.createSchemaRegion(storageGroup, schemaRegionId);
     }
-    return partitionTable.getSchemaRegionId(storageGroup, path);
-  }
-
-  // This interface involves storage group auto creation
-  public SchemaRegionId getBelongedSchemaRegionIdWithAutoCreate(PartialPath path)
-      throws MetadataException {
-    ensureStorageGroup(path);
-    return getBelongedSchemaRegionId(path);
+    return schemaRegionId;
   }
 
   /**

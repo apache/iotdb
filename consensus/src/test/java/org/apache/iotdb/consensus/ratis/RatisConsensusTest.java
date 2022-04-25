@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -227,9 +227,9 @@ public class RatisConsensusTest {
   public void setUp() throws IOException {
     gid = new DataRegionId(1);
     peers = new ArrayList<>();
-    peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
-    peer1 = new Peer(gid, new Endpoint("127.0.0.1", 6001));
-    peer2 = new Peer(gid, new Endpoint("127.0.0.1", 6002));
+    peer0 = new Peer(gid, new TEndPoint("127.0.0.1", 6000));
+    peer1 = new Peer(gid, new TEndPoint("127.0.0.1", 6001));
+    peer2 = new Peer(gid, new TEndPoint("127.0.0.1", 6002));
     peers.add(peer0);
     peers.add(peer1);
     peers.add(peer2);
@@ -268,15 +268,15 @@ public class RatisConsensusTest {
 
     // 3. Remove two Peers from Group (peer 0 and peer 2)
     // transfer the leader to peer1
-    // servers.get(0).transferLeader(gid, peer1);
-    // Assert.assertTrue(servers.get(1).isLeader(gid));
+    servers.get(0).transferLeader(gid, peer1);
+    Assert.assertTrue(servers.get(1).isLeader(gid));
     // first use removePeer to inform the group leader of configuration change
     servers.get(1).removePeer(gid, peer0);
     servers.get(1).removePeer(gid, peer2);
     // then use removeConsensusGroup to clean up removed Consensus-Peer's states
     servers.get(0).removeConsensusGroup(gid);
     servers.get(2).removeConsensusGroup(gid);
-    Assert.assertEquals(servers.get(1).getLeader(gid), peers.get(1));
+    Assert.assertEquals(servers.get(1).getLeader(gid).getEndpoint(), peers.get(1).getEndpoint());
 
     // 4. try consensus again with one peer
     doConsensus(servers.get(1), gid, 10, 20);
@@ -293,6 +293,7 @@ public class RatisConsensusTest {
     doConsensus(servers.get(2), gid, 10, 30);
 
     // 7. again, group contains only peer0
+    servers.get(0).transferLeader(group.getGroupId(), peer0);
     servers.get(0).changePeer(group.getGroupId(), Collections.singletonList(peer0));
     servers.get(1).removeConsensusGroup(group.getGroupId());
     servers.get(2).removeConsensusGroup(group.getGroupId());

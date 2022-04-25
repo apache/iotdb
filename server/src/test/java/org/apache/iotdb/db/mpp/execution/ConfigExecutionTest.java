@@ -137,8 +137,14 @@ public class ConfigExecutionTest {
     execution.start();
     try {
       resultThread.join();
-      Assert.fail("InterruptedException should be threw here");
+      // There is a scenario that the InterruptedException won't throw here. If the
+      // execution.start() runs faster and completes the whole process including
+      // invoking Thread.interrupt() before join() is invoked, then the join won't
+      // receive the interrupt signal. So we cannot assert fail here.
+      // Assert.fail("InterruptedException should be threw here");
     } catch (InterruptedException e) {
+      ExecutionResult result = execution.getStatus();
+      Assert.assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
       execution.stop();
     }
   }

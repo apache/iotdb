@@ -90,19 +90,8 @@ public class FloatColumnBuilder implements ColumnBuilder {
   }
 
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    FloatColumn column = (FloatColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeFloat(column.getFloat(index++));
-      } else {
-        appendNull();
-      }
-    }
-    return index;
+  public ColumnBuilder write(Column column, int index) {
+    return writeFloat(column.getFloat(index));
   }
 
   @Override
