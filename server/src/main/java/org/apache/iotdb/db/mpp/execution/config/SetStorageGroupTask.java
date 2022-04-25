@@ -52,6 +52,7 @@ public class SetStorageGroupTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // TODO:(this judgement needs to be integrated in a high level framework)
     if (config.isClusterMode()) {
       // Construct request using statement
       TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
