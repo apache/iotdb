@@ -25,8 +25,6 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
-import org.apache.iotdb.db.mpp.sql.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -54,16 +52,7 @@ public class ConfigExecution implements IQueryExecution {
   private boolean resultSetConsumed;
   private final IConfigTask task;
 
-  private IPartitionFetcher partitionFetcher;
-  // TODO need to use factory to decide standalone or cluster
-  private ISchemaFetcher schemaFetcher;
-
-  public ConfigExecution(
-      MPPQueryContext context,
-      Statement statement,
-      ExecutorService executor,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
+  public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
     this.statement = statement;
     this.executor = executor;
@@ -71,8 +60,6 @@ public class ConfigExecution implements IQueryExecution {
     this.taskFuture = SettableFuture.create();
     this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
     this.resultSetConsumed = false;
-    this.partitionFetcher = partitionFetcher;
-    this.schemaFetcher = schemaFetcher;
   }
 
   @TestOnly
