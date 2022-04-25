@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -88,12 +88,12 @@ public class ConsensusManager {
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusWriteResponse write(PhysicalPlan plan) {
+  public ConsensusWriteResponse write(ConfigRequest plan) {
     return consensusImpl.write(consensusGroupId, plan);
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusReadResponse read(PhysicalPlan plan) {
+  public ConsensusReadResponse read(ConfigRequest plan) {
     return consensusImpl.read(consensusGroupId, plan);
   }
 

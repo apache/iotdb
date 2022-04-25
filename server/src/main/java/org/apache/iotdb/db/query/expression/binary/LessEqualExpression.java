@@ -24,7 +24,6 @@ import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.CompareBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.CompareLessEqualTransformer;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 
@@ -32,6 +31,10 @@ public class LessEqualExpression extends BinaryExpression {
 
   public LessEqualExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public LessEqualExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -45,18 +48,8 @@ public class LessEqualExpression extends BinaryExpression {
     return "<=";
   }
 
-  public static LessEqualExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    LessEqualExpression lessEqualExpression =
-        new LessEqualExpression(
-            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
-    lessEqualExpression.isConstantOperandCache = isConstantOperandCache;
-    return lessEqualExpression;
-  }
-
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Less_Equal.serialize(byteBuffer);
-    super.serialize(byteBuffer);
+  protected short getExpressionType() {
+    return ExpressionType.LESS_EQUAL.getExpressionType();
   }
 }
