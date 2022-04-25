@@ -169,7 +169,6 @@ public class SchemaFile implements ISchemaFile {
 
     if (channel.size() <= 0) {
       channel.close();
-      file.deleteOnExit();
       throw new SchemaFileNotExists(file.getAbsolutePath());
     }
 
