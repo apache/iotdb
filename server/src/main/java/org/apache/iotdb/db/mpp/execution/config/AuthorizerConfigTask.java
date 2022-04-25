@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.execution.config;
 
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
+import org.apache.iotdb.db.auth.authorizer.ClusterAuthorizer;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -36,7 +36,7 @@ public class AuthorizerConfigTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizerConfigTask.class);
 
   private AuthorStatement authorStatement;
-  private AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  private ClusterAuthorizer clusterAuthorizer = new ClusterAuthorizer();
 
   public AuthorizerConfigTask(AuthorStatement authorStatement) {
     this.authorStatement = authorStatement;
@@ -61,9 +61,9 @@ public class AuthorizerConfigTask implements IConfigTask {
 
       // Send request to some API server
       if (authorStatement.operatorIsQuery() == QueryType.WRITE) {
-        future = authorizerManager.operatePermission(req);
+        future = clusterAuthorizer.operatePermission(req);
       } else {
-        future = authorizerManager.queryPermission(req);
+        future = clusterAuthorizer.queryPermission(req);
       }
     } catch (AuthException e) {
       LOGGER.error("No such privilege {}.", authorStatement.getAuthorType());
