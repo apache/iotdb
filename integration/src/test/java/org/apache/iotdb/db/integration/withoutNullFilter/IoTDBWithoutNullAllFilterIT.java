@@ -1253,7 +1253,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
   @Test
   public void withoutNullColumnsIsFullPathQueryTest() {
-    // select s2, s3 from root.test.** without null all(`root`.test.sg1.s2, `root`.test.sg2.s3)
+    // select s2, s3 from root.test.** without null all(root.test.sg1.s2, `root`.test.sg2.s3)
     // select s2, s3 from root.test.sg1, root.test.sg2 without null all(`root`.test.sg1.s2)
     // select s2, s3 from root.test.sg1, root.test.sg2 without null all(`root`.test.sg1.s2, s3)
     System.out.println("withoutNullColumnsIsFullPathQueryTest");

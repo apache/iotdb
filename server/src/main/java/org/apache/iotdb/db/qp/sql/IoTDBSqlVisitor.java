@@ -2382,6 +2382,21 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
+  private PartialPath parseFullPathWithoutRoot(IoTDBSqlParser.FullPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+        ctx.nodeNameWithoutWildcard();
+    String[] path = new String[nodeNamesWithoutStar.size() + 1];
+    int i = 0;
+    if (ctx.ROOT() != null) {
+      path[0] = ctx.ROOT().getText();
+    }
+    for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
+      i++;
+      path[i] = parseNodeNameWithoutWildCard(nodeNameWithoutStar);
+    }
+    return new PartialPath(path);
+  }
+
   private PartialPath parsePrefixPath(IoTDBSqlParser.PrefixPathContext ctx) {
     List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     String[] path = new String[nodeNames.size() + 1];
