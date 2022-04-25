@@ -69,6 +69,13 @@ public class DataNodeSchemaCache {
     private static final DataNodeSchemaCache INSTANCE = new DataNodeSchemaCache();
   }
 
+  /**
+   * Get SchemaEntity info without auto create schema
+   *
+   * @param devicePath should not be measurementPath or AlignedPath
+   * @param measurements
+   * @return timeseries partialPath and its SchemaEntity
+   */
   public Map<PartialPath, SchemaCacheEntity> getSchemaEntity(
       PartialPath devicePath, String[] measurements) {
     Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap = new HashMap<>();
@@ -99,6 +106,15 @@ public class DataNodeSchemaCache {
     return schemaCacheEntityMap;
   }
 
+  /**
+   * Get SchemaEntity info with auto create schema
+   *
+   * @param devicePath
+   * @param measurements
+   * @param tsDataTypes
+   * @param isAligned
+   * @return timeseries partialPath and its SchemaEntity
+   */
   public Map<PartialPath, SchemaCacheEntity> getSchemaEntityWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean isAligned) {
     Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap = new HashMap<>();
