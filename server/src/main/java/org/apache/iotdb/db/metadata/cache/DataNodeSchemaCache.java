@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -78,7 +79,9 @@ public class DataNodeSchemaCache {
       try {
         path = new PartialPath(devicePath.getFullPath(), measurement);
       } catch (IllegalPathException e) {
-        logger.error("Create PartialPath:{} failed.", devicePath.getFullPath());
+        logger.error(
+            "Create PartialPath:{} failed.",
+            devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurement);
       }
       schemaCacheEntity = schemaEntityCache.getIfPresent(path);
       if (schemaCacheEntity != null) {
@@ -107,7 +110,9 @@ public class DataNodeSchemaCache {
       try {
         path = new PartialPath(devicePath.getFullPath(), measurements[i]);
       } catch (IllegalPathException e) {
-        logger.error("Create PartialPath:{} failed.", devicePath.getFullPath());
+        logger.error(
+            "Create PartialPath:{} failed.",
+            devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurements[i]);
       }
       schemaCacheEntity = schemaEntityCache.getIfPresent(path);
       if (schemaCacheEntity != null) {
