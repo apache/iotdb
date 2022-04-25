@@ -45,12 +45,12 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
+  private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
   private final IStateMachine applicationStateMachine;
 
   // Raft Storage sub dir for statemachine data, default (_sm)
   private File statemachineDir;
   private final SnapshotStorage snapshotStorage;
-  private final Logger logger = LoggerFactory.getLogger(ApplicationStateMachineProxy.class);
 
   public ApplicationStateMachineProxy(IStateMachine stateMachine) {
     applicationStateMachine = stateMachine;
