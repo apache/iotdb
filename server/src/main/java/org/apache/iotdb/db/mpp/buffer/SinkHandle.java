@@ -198,7 +198,8 @@ public class SinkHandle implements ISinkHandle {
     }
     synchronized (this) {
       closed = true;
-      noMoreTsBlocks = true;
+      // synchronized is reentrant lock, wo we can invoke setNoMoreTsBlocks() here.
+      setNoMoreTsBlocks();
     }
     sinkHandleListener.onClosed(this);
     logger.info("Sink handle {} is closed.", this);
@@ -227,6 +228,14 @@ public class SinkHandle implements ISinkHandle {
   @Override
   public synchronized void setNoMoreTsBlocks() {
     noMoreTsBlocks = true;
+    // In current implementation, the onFinish() is only invoked when receiving the
+    // acknowledge event from SourceHandle. If the acknowledge event happens before
+    // the close(), the onFinish() won't be invoked and the instance's status will
+    // always be FLUSHING. We cannot ensure the sequence of `acknowledge event` and
+    // `close` so we need to do following check every time `noMoreTsBlocks` is updated.
+    if (isFinished()) {
+      sinkHandleListener.onFinish(this);
+    }
   }
 
   @Override
