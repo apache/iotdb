@@ -18,20 +18,20 @@
  */
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.IOException;
 import java.util.List;
 
 public interface ISinkHandle {
 
+  /** Get the local fragment instance ID that this sink handle belongs to. */
+  TFragmentInstanceId getLocalFragmentInstanceId();
+
   /** Get the total amount of memory used by buffered tsblocks. */
   long getBufferRetainedSizeInBytes();
-
-  /** Get the number of buffered tsblocks. */
-  int getNumOfBufferedTsBlocks();
 
   /** Get a future that will be completed when the output buffer is not full. */
   ListenableFuture<Void> isFull();
@@ -48,7 +48,7 @@ public interface ISinkHandle {
    * tsblock call is ignored. This can happen with limit queries. A {@link RuntimeException} will be
    * thrown if any exception happened * during the data transmission.
    */
-  void send(int partition, List<TsBlock> tsBlocks) throws IOException;
+  void send(int partition, List<TsBlock> tsBlocks);
 
   /**
    * Notify the handle that no more tsblocks will be sent. Any future calls to send a tsblock should

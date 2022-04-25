@@ -46,7 +46,6 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -210,8 +209,7 @@ public class QueryExecution implements IQueryExecution {
         return null;
       }
       return resultHandle.receive();
-
-    } catch (ExecutionException | IOException | CancellationException e) {
+    } catch (ExecutionException | CancellationException e) {
       stateMachine.transitionToFailed(e);
       throwIfUnchecked(e.getCause());
       throw new RuntimeException(e.getCause());
@@ -284,7 +282,8 @@ public class QueryExecution implements IQueryExecution {
                   new TEndPoint(
                       context.getResultNodeContext().getUpStreamEndpoint().getIp(),
                       IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                  stateMachine::transitionToFailed);
     }
   }
 

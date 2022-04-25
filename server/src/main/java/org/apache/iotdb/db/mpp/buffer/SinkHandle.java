@@ -71,9 +71,9 @@ public class SinkHandle implements ISinkHandle {
 
   private volatile ListenableFuture<Void> blocked = immediateFuture(null);
   private int nextSequenceId = 0;
-  private long bufferRetainedSizeInBytes;
-  private boolean closed;
-  private boolean noMoreTsBlocks;
+  private long bufferRetainedSizeInBytes = 0;
+  private boolean closed = false;
+  private boolean noMoreTsBlocks = false;
 
   public SinkHandle(
       TEndPoint remoteEndpoint,
@@ -105,10 +105,6 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void submitSendNewDataBlockEventTask(int startSequenceId, List<Long> blockSizes) {
-    // TODO: (xingtanzjr)
-    // We temporarily make it sync instead of async to avoid EOS Event(SinkHandle close() method is
-    // called) is sent before NewDataBlockEvent arrived
-    //    new SendNewDataBlockEventTask(startSequenceId, blockSizes).run();
     executorService.submit(new SendNewDataBlockEventTask(startSequenceId, blockSizes));
   }
 
@@ -248,7 +244,6 @@ public class SinkHandle implements ISinkHandle {
     return bufferRetainedSizeInBytes;
   }
 
-  @Override
   public int getNumOfBufferedTsBlocks() {
     return sequenceIdToTsBlock.size();
   }
@@ -289,19 +284,19 @@ public class SinkHandle implements ISinkHandle {
     localMemoryManager.getQueryPool().free(localFragmentInstanceId.getQueryId(), freedBytes);
   }
 
-  TEndPoint getRemoteEndpoint() {
+  public TEndPoint getRemoteEndpoint() {
     return remoteEndpoint;
   }
 
-  TFragmentInstanceId getRemoteFragmentInstanceId() {
+  public TFragmentInstanceId getRemoteFragmentInstanceId() {
     return remoteFragmentInstanceId;
   }
 
-  String getRemotePlanNodeId() {
+  public String getRemotePlanNodeId() {
     return remotePlanNodeId;
   }
 
-  TFragmentInstanceId getLocalFragmentInstanceId() {
+  public TFragmentInstanceId getLocalFragmentInstanceId() {
     return localFragmentInstanceId;
   }
 
@@ -364,7 +359,7 @@ public class SinkHandle implements ISinkHandle {
               attempt,
               e);
           if (attempt == MAX_ATTEMPT_TIMES) {
-            sinkHandleListener.onFailure(e);
+            sinkHandleListener.onFailure(SinkHandle.this, e);
           }
         }
       }
