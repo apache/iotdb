@@ -148,7 +148,7 @@ public class MetricConfig {
   /** the host of Instance */
   private String InstanceHost = "127.0.0.1";
   /** the port of Instance */
-  private Integer InstancePort = 8086;
+  private Integer InstancePort = 6667;
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
