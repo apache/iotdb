@@ -19,12 +19,13 @@
 package org.apache.iotdb.db.mpp.sql.statement.sys;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
-public class AuthorStatement extends Statement {
+public class AuthorStatement extends ConfigStatement {
 
   private final AuthorOperator.AuthorType authorType;
   private String userName;
@@ -110,43 +111,42 @@ public class AuthorStatement extends Statement {
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    switch (this.authorType) {
+    return visitor.visitAuthor(this, context);
+  }
+
+  /**
+   * Determine whether the operation of the permission is read or write
+   *
+   * @param authorType AuthorType
+   * @return QueryType
+   */
+  public static QueryType permissionIsQuery(AuthorOperator.AuthorType authorType) {
+    QueryType queryType;
+    switch (authorType) {
       case CREATE_USER:
-        return visitor.visitCreateUser(this, context);
       case CREATE_ROLE:
-        return visitor.visitCreateRole(this, context);
       case DROP_USER:
-        return visitor.visitDropUser(this, context);
       case DROP_ROLE:
-        return visitor.visitDropRole(this, context);
       case GRANT_ROLE:
-        return visitor.visitGrantRole(this, context);
       case GRANT_USER:
-        return visitor.visitGrantUser(this, context);
       case GRANT_ROLE_TO_USER:
-        return visitor.visitGrantRoleToUser(this, context);
       case REVOKE_USER:
-        return visitor.visitRevokeUser(this, context);
       case REVOKE_ROLE:
-        return visitor.visitRevokeRole(this, context);
       case REVOKE_ROLE_FROM_USER:
-        return visitor.visitRevokeRoleFromUser(this, context);
       case UPDATE_USER:
-        return visitor.visitAlterUser(this, context);
+        queryType = QueryType.WRITE;
+        break;
       case LIST_USER:
-        return visitor.visitListUser(this, context);
       case LIST_ROLE:
-        return visitor.visitListRole(this, context);
       case LIST_USER_PRIVILEGE:
-        return visitor.visitListUserPrivileges(this, context);
       case LIST_ROLE_PRIVILEGE:
-        return visitor.visitListRolePrivileges(this, context);
       case LIST_USER_ROLES:
-        return visitor.visitListAllUserOfRole(this, context);
       case LIST_ROLE_USERS:
-        return visitor.visitListAllRoleOfUser(this, context);
+        queryType = QueryType.READ;
+        break;
       default:
-        return null;
+        throw new IllegalArgumentException("Unknown operator: " + authorType);
     }
+    return queryType;
   }
 }

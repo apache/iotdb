@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.auth.authorizer;
 
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
 
+import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +38,7 @@ public class AuthorizerManager implements IAuthorizer {
   private static final Logger logger = LoggerFactory.getLogger(AuthorizerManager.class);
 
   IAuthorizer iAuthorizer;
+  ClusterAuthorizer clusterAuthorizer = new ClusterAuthorizer();
 
   public AuthorizerManager() {
     try {
@@ -186,5 +190,13 @@ public class AuthorizerManager implements IAuthorizer {
   @Override
   public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
     iAuthorizer.replaceAllRoles(roles);
+  }
+
+  public SettableFuture<ConfigTaskResult> operatePermission(TAuthorizerReq authorizerReq) {
+    return clusterAuthorizer.operatePermission(authorizerReq);
+  }
+
+  public SettableFuture<ConfigTaskResult> queryPermission(TAuthorizerReq authorizerReq) {
+    return clusterAuthorizer.queryPermission(authorizerReq);
   }
 }
