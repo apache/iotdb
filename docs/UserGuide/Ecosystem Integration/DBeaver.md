@@ -70,16 +70,16 @@ DBeaver is a SQL client software application and a database administration tool.
 
 10. Edit JDBC Connection Settings
    
-    ```
-    JDBC URL: jdbc:iotdb://127.0.0.1:6667/
-    Username: root
-    Password: root
-    ```
-    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.09%20AM.png?raw=true)
+   ```
+   JDBC URL: jdbc:iotdb://127.0.0.1:6667/
+   Username: root
+   Password: root
+   ```
+   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.09%20AM.png?raw=true)
 
 11. Test Connection
 
-    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.31%20AM.png?raw=true)
+   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.31%20AM.png?raw=true)
 
 12. Enjoy IoTDB with DBeaver
 

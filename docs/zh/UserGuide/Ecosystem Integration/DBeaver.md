@@ -70,16 +70,16 @@ DBeaver 是一个 SQL 客户端和数据库管理工具。DBeaver 可以使用 I
 
 10. 编辑 JDBC 连接设置
    
-    ```
-    JDBC URL: jdbc:iotdb://127.0.0.1:6667/
-    Username: root
-    Password: root
-    ```
-    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.09%20AM.png?raw=true)
+   ```
+   JDBC URL: jdbc:iotdb://127.0.0.1:6667/
+   Username: root
+   Password: root
+   ```
+   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.09%20AM.png?raw=true)
 
 11. 测试连接
 
-    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.31%20AM.png?raw=true)
+   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.31%20AM.png?raw=true)
 
 12. 可以开始通过 DBeaver 使用 IoTDB
 
