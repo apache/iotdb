@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.config;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -28,16 +26,25 @@ import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 
 public class ShowStorageGroupTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShowStorageGroupTask.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final TSDataType[] RESOURCE_TYPES = {TSDataType.TEXT};
+
   private ShowStorageGroupStatement showStorageGroupStatement;
 
   public ShowStorageGroupTask(ShowStorageGroupStatement showStorageGroupStatement) {
@@ -52,15 +59,27 @@ public class ShowStorageGroupTask implements IConfigTask {
       // TODO send rpc to config node
     } else {
       try {
-        List<PartialPath> partialPaths = LocalConfigNode.getInstance()
-            .getMatchedStorageGroups(showStorageGroupStatement.getPathPattern(),
-                showStorageGroupStatement.isPrefixPath());
+        List<PartialPath> partialPaths =
+            LocalConfigNode.getInstance()
+                .getMatchedStorageGroups(
+                    showStorageGroupStatement.getPathPattern(),
+                    showStorageGroupStatement.isPrefixPath());
+        tsBlock = createTSBlock(partialPaths);
       } catch (MetadataException e) {
         future.setException(e);
       }
-      // TODO construct result
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock));
     }
     return future;
+  }
+
+  private TsBlock createTSBlock(List<PartialPath> partialPaths) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
+    for (PartialPath partialPath : partialPaths) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(new Binary(partialPath.getFullPath()));
+      builder.declarePosition();
+    }
+    return builder.build();
   }
 }
