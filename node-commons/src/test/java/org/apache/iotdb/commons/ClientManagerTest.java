@@ -236,7 +236,10 @@ public class ClientManagerTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // get another sync client, should throw error and return null
+    long start = System.nanoTime();
     SyncDataNodeInternalServiceClient syncClient2 = syncClusterManager.borrowClient(endPoint);
+    long end = System.nanoTime();
+    Assert.assertTrue(end - start >= DefaultProperty.WAIT_CLIENT_TIMEOUT_MS * 1000);
     Assert.assertNull(syncClient2);
 
     // return one sync client
@@ -300,10 +303,10 @@ public class ClientManagerTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // get another sync client, should wait waitClientTimeoutMS ms, throw error and return null
-    long start = System.currentTimeMillis();
+    long start = System.nanoTime();
     SyncDataNodeInternalServiceClient syncClient2 = syncClusterManager.borrowClient(endPoint);
-    long end = System.currentTimeMillis();
-    Assert.assertTrue(end - start >= waitClientTimeoutMS);
+    long end = System.nanoTime();
+    Assert.assertTrue(end - start >= waitClientTimeoutMS * 1000);
     Assert.assertNull(syncClient2);
 
     // return one sync client
