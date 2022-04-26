@@ -46,7 +46,7 @@ import java.util.List;
  * [s1,s2,s3] is query, but only [s1, s3] exists in device1, then the column of s2 will be filled
  * with NullColumn.
  */
-public class DeviceMergeOperator implements ProcessOperator {
+public class DeviceViewOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   // The size devices and deviceOperators should be the same.
@@ -61,7 +61,7 @@ public class DeviceMergeOperator implements ProcessOperator {
 
   private int deviceIndex;
 
-  public DeviceMergeOperator(
+  public DeviceViewOperator(
       OperatorContext operatorContext,
       List<String> devices,
       List<Operator> deviceOperators,

@@ -29,7 +29,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.mpp.operator.process.DeviceMergeOperator;
+import org.apache.iotdb.db.mpp.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
@@ -53,7 +53,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class DeviceMergeOperatorTest {
+public class DeviceViewOperatorTest {
 
   private static final String DEVICE_MERGE_OPERATOR_TEST_SG = "root.DeviceMergeOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
@@ -98,7 +98,7 @@ public class DeviceMergeOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           2, planNodeId2, SeriesScanOperator.class.getSimpleName());
       fragmentInstanceContext.addOperatorContext(
-          3, new PlanNodeId("3"), DeviceMergeOperatorTest.class.getSimpleName());
+          3, new PlanNodeId("3"), DeviceViewOperatorTest.class.getSimpleName());
 
       MeasurementPath measurementPath1 =
           new MeasurementPath(DEVICE_MERGE_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
@@ -142,8 +142,8 @@ public class DeviceMergeOperatorTest {
       dataTypes.add(TSDataType.INT32);
       dataTypes.add(TSDataType.INT32);
 
-      DeviceMergeOperator deviceMergeOperator =
-          new DeviceMergeOperator(
+      DeviceViewOperator deviceMergeOperator =
+          new DeviceViewOperator(
               fragmentInstanceContext.getOperatorContexts().get(2),
               devices,
               deviceOperators,
