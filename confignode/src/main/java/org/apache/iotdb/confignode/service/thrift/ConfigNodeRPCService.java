@@ -35,15 +35,6 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
   private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
-  public ConfigNodeRPCService() {
-    // Empty constructor
-  }
-
-  @Override
-  public ThriftService getImplementation() {
-    return this;
-  }
-
   @Override
   public ServiceType getID() {
     return ServiceType.CONFIG_NODE_SERVICE;

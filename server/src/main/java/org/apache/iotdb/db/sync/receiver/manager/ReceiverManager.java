@@ -93,30 +93,28 @@ public class ReceiverManager {
   public List<PipeInfo> getPipeInfosByPipeName(String pipeName) {
     if (!pipeInfos.containsKey(pipeName)) {
       return Collections.emptyList();
-    } else {
-      List<PipeInfo> res = new ArrayList<>();
-      for (Map.Entry<String, Map<Long, PipeStatus>> remoteIpEntry :
-          pipeInfos.get(pipeName).entrySet()) {
-        for (Map.Entry<Long, PipeStatus> createTimeEntry : remoteIpEntry.getValue().entrySet()) {
-          res.add(
-              new PipeInfo(
-                  pipeName,
-                  remoteIpEntry.getKey(),
-                  createTimeEntry.getValue(),
-                  createTimeEntry.getKey()));
-        }
-      }
-      return res;
     }
+    List<PipeInfo> res = new ArrayList<>();
+    for (Map.Entry<String, Map<Long, PipeStatus>> remoteIpEntry :
+        pipeInfos.get(pipeName).entrySet()) {
+      for (Map.Entry<Long, PipeStatus> createTimeEntry : remoteIpEntry.getValue().entrySet()) {
+        res.add(
+            new PipeInfo(
+                pipeName,
+                remoteIpEntry.getKey(),
+                createTimeEntry.getValue(),
+                createTimeEntry.getKey()));
+      }
+    }
+    return res;
   }
 
   public PipeInfo getPipeInfo(String pipeName, String remoteIp, long createTime) {
     if (pipeInfos.containsKey(pipeName) && pipeInfos.get(pipeName).containsKey(remoteIp)) {
       return new PipeInfo(
           pipeName, remoteIp, pipeInfos.get(pipeName).get(remoteIp).get(createTime), createTime);
-    } else {
-      return null;
     }
+    return null;
   }
 
   public List<PipeInfo> getAllPipeInfos() {

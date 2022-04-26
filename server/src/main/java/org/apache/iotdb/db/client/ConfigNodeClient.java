@@ -227,10 +227,12 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TStorageGroupSchemaResp getStorageGroupsSchema() throws IoTDBConnectionException {
+  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TStorageGroupSchemaResp resp = client.getStorageGroupsSchema();
+        TStorageGroupSchemaResp resp =
+            client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }

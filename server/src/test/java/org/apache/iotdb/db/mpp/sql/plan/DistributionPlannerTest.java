@@ -69,7 +69,7 @@ import static org.junit.Assert.assertEquals;
 public class DistributionPlannerTest {
 
   @Test
-  public void TestSingleSeriesScan() throws IllegalPathException {
+  public void testSingleSeriesScan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     SeriesScanNode root =
         new SeriesScanNode(
@@ -89,7 +89,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestSingleSeriesScanRewriteSource() throws IllegalPathException {
+  public void testSingleSeriesScanRewriteSource() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     SeriesScanNode root =
         new SeriesScanNode(
@@ -108,7 +108,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestRewriteSourceNode() throws IllegalPathException {
+  public void testRewriteSourceNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
 
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
@@ -190,7 +190,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestAddExchangeNode() throws IllegalPathException {
+  public void testAddExchangeNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
@@ -230,7 +230,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestSplitFragment() throws IllegalPathException {
+  public void testSplitFragment() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
@@ -267,7 +267,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestParallelPlan() throws IllegalPathException {
+  public void testParallelPlan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
@@ -302,7 +302,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestInsertRowNodeParallelPlan() throws IllegalPathException {
+  public void testInsertRowNodeParallelPlan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_write");
     InsertRowNode insertRowNode =
         new InsertRowNode(
@@ -328,7 +328,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestInsertRowsNodeParallelPlan() throws IllegalPathException {
+  public void testInsertRowsNodeParallelPlan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_write");
     InsertRowNode insertRowNode1 =
         new InsertRowNode(

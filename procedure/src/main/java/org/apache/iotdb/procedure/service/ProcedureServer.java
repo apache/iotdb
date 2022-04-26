@@ -73,11 +73,6 @@ public class ProcedureServer extends ThriftService implements ProcedureNodeMBean
   }
 
   @Override
-  public ThriftService getImplementation() {
-    return ProcedureServer.getInstance();
-  }
-
-  @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
     this.processor = new ProcedureService.Processor<>(client);

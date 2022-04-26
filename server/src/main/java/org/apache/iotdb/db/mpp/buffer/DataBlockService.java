@@ -43,11 +43,6 @@ public class DataBlockService extends ThriftService implements DataBlockServiceM
   private DataBlockService() {}
 
   @Override
-  public ThriftService getImplementation() {
-    return DataBlockManagerServiceHolder.INSTANCE;
-  }
-
-  @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
     initSyncedServiceImpl(null);
