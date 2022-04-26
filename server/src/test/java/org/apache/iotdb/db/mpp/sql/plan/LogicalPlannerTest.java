@@ -108,7 +108,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       CreateTimeSeriesNode createTimeSeriesNode1 =
-          (CreateTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (CreateTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(createTimeSeriesNode.equals(createTimeSeriesNode1));
     } catch (Exception e) {
       e.printStackTrace();
