@@ -2508,25 +2508,32 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @SuppressWarnings("squid:S3776")
   private Expression parseExpression(IoTDBSqlParser.ExpressionContext context) {
-    // LR_BRACKET unaryInBracket=expression RR_BRACKET
     if (context.unaryInBracket != null) {
       return parseExpression(context.unaryInBracket);
     }
 
-    // (PLUS | MINUS) unaryAfterSign=expression
-    if (context.unaryAfterSign != null) {
-      return context.MINUS() != null
-          ? new NegationExpression(parseExpression(context.unaryAfterSign))
-          : parseExpression(context.unaryAfterSign);
+    if (context.constant() != null && !context.constant().isEmpty()) {
+      return parseConstantOperand(context.constant(0));
     }
 
-    // OPERATOR_NOT unaryAfterNot=expression
-    if (context.OPERATOR_NOT() != null) {
-      return new LogicNotExpression(parseExpression(context.unaryAfterNot));
+    if (context.time != null) {
+      throw new UnsupportedOperationException();
     }
 
-    // leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
-    // leftExpression=expression (PLUS | MINUS) rightExpression=expression
+    if (context.suffixPathCanInExpr() != null) {
+      return new TimeSeriesOperand(parseSuffixPathCanInExpr(context.suffixPathCanInExpr()));
+    }
+
+    if (context.expressionAfterUnaryOperator != null) {
+      if (context.MINUS() != null) {
+        return new NegationExpression(parseExpression(context.expressionAfterUnaryOperator));
+      }
+      if (context.OPERATOR_NOT() != null) {
+        return new LogicNotExpression(parseExpression(context.expressionAfterUnaryOperator));
+      }
+      return parseExpression(context.expressionAfterUnaryOperator);
+    }
+
     if (context.leftExpression != null && context.rightExpression != null) {
       Expression leftExpression = parseExpression(context.leftExpression);
       Expression rightExpression = parseExpression(context.rightExpression);
@@ -2571,31 +2578,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
     }
 
-    // functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute*
-    // RR_BRACKET
     if (context.functionName() != null) {
       return parseFunctionExpression(context);
     }
 
-    // unaryBeforeRegularExpression=expression (REGEXP | LIKE) STRING_LITERAL
     if (context.unaryBeforeRegularExpression != null) {
       return parseRegularExpression(context);
     }
 
-    // unaryBeforeInExpression=expression OPERATOR_IN LR_BRACKET constant (COMMA constant)*
-    // RR_BRACKET
     if (context.unaryBeforeInExpression != null) {
       return parseInExpression(context);
-    }
-
-    // suffixPath
-    if (context.suffixPathCanInExpr() != null) {
-      return new TimeSeriesOperand(parseSuffixPathCanInExpr(context.suffixPathCanInExpr()));
-    }
-
-    // constant
-    if (context.constant() != null && !context.constant().isEmpty()) {
-      return parseConstantOperand(context.constant(0));
     }
 
     throw new UnsupportedOperationException();
