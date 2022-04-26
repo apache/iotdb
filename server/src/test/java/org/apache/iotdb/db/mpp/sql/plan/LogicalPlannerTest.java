@@ -102,12 +102,6 @@ public class LogicalPlannerTest {
             }
           },
           createTimeSeriesNode.getAttributes());
-
-      // Test serialize and deserialize
-      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
-      createTimeSeriesNode.serialize(byteBuffer);
-      byteBuffer.flip();
-      assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), createTimeSeriesNode);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
