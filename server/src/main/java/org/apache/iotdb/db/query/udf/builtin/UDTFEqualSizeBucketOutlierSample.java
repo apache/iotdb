@@ -1,0 +1,422 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.query.udf.builtin;
+
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.db.query.udf.api.access.RowWindow;
+import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.exception.UDFException;
+import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.db.query.udf.api.exception.UDFParameterNotValidException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.PriorityQueue;
+
+public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample {
+
+  private String type;
+  private int number;
+  private OutlierSampler outlierSampler;
+
+  private interface OutlierSampler {
+
+    void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException;
+
+    void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException;
+
+    void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException;
+
+    void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException;
+  }
+
+  private class AvgOutlierSampler implements OutlierSampler {
+
+    @Override
+    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        return;
+      }
+
+      double avg = 0;
+      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+      for (int i = 0; i < windowSize; i++) {
+        avg += rowWindow.getRow(i).getInt(0);
+      }
+      avg /= windowSize;
+      for (int i = 0; i < windowSize; i++) {
+        double value = rowWindow.getRow(i).getInt(0) - avg;
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value > pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putInt(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getInt(0));
+      }
+    }
+
+    @Override
+    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        return;
+      }
+
+      double avg = 0;
+      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+      for (int i = 0; i < windowSize; i++) {
+        avg += rowWindow.getRow(i).getLong(0);
+      }
+      avg /= windowSize;
+      for (int i = 0; i < windowSize; i++) {
+        double value = rowWindow.getRow(i).getLong(0) - avg;
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value > pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putLong(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getLong(0));
+      }
+    }
+
+    @Override
+    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        return;
+      }
+
+      double avg = 0;
+      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+      for (int i = 0; i < windowSize; i++) {
+        avg += rowWindow.getRow(i).getFloat(0);
+      }
+      avg /= windowSize;
+      for (int i = 0; i < windowSize; i++) {
+        double value = rowWindow.getRow(i).getFloat(0) - avg;
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value > pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putFloat(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
+      }
+    }
+
+    @Override
+    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        return;
+      }
+
+      double avg = 0;
+      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+      for (int i = 0; i < windowSize; i++) {
+        avg += rowWindow.getRow(i).getDouble(0);
+      }
+      avg /= windowSize;
+      for (int i = 0; i < windowSize; i++) {
+        double value = rowWindow.getRow(i).getDouble(0) - avg;
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value > pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putDouble(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
+      }
+    }
+  }
+
+  private class StendisOutlierSampler implements OutlierSampler {
+
+    @Override
+    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      long row0x = rowWindow.getRow(0).getTime(), row1x = rowWindow.getRow(windowSize - 1).getTime();
+      int row0y = rowWindow.getRow(0).getInt(0), row1y = rowWindow.getRow(windowSize - 1).getInt(0);
+      if (windowSize <= number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        if (windowSize == number + 1) {
+          collector.putInt(row0x, row0y);
+        } else if (windowSize <= number) {
+          collector.putInt(row0x, row0y);
+          collector.putInt(row1x, row1y);
+        }
+        return;
+      }
+
+      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+
+      double A = row0y - row1y;
+      double B = row1x - row0x;
+      double C = row0x * row1y - row1x * row0y;
+      double denominator = Math.sqrt(A * A + B * B);
+
+      for (int i = 1; i < windowSize - 1; i++) {
+        Row row = rowWindow.getRow(i);
+        double value = Math.abs(A * row.getTime() + B * row.getInt(0) + C) / denominator;
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value > pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putInt(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getInt(0));
+      }
+    }
+
+    @Override
+    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        if (windowSize == number + 1) {
+          collector.putLong(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getLong(0));
+        } else if (windowSize <= number) {
+          collector.putLong(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getLong(0));
+          collector.putLong(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getLong(windowSize - 1));
+        }
+        return;
+      }
+    }
+
+    @Override
+    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        if (windowSize == number + 1) {
+          collector.putFloat(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getFloat(0));
+        } else if (windowSize <= number) {
+          collector.putFloat(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getFloat(0));
+          collector.putFloat(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getFloat(windowSize - 1));
+        }
+        return;
+      }
+    }
+
+    @Override
+    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        if (windowSize == number + 1) {
+          collector.putDouble(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getDouble(0));
+        } else if (windowSize <= number) {
+          collector.putDouble(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getDouble(0));
+          collector.putDouble(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getDouble(windowSize - 1));
+        }
+        return;
+      }
+    }
+  }
+
+  private class CosOutlierSampler implements OutlierSampler {
+
+    @Override
+    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
+
+    }
+
+    @Override
+    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException {
+
+    }
+
+    @Override
+    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
+
+    }
+
+    @Override
+    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+
+    }
+  }
+
+  private class PrenextdisOutlierSampler implements OutlierSampler {
+
+    @Override
+    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
+
+    }
+
+    @Override
+    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException {
+
+    }
+
+    @Override
+    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
+
+    }
+
+    @Override
+    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+
+    }
+  }
+
+
+  @Override
+  public void validate(UDFParameterValidator validator) throws UDFException, MetadataException {
+    super.validate(validator);
+    type = validator.getParameters().getStringOrDefault("type", "avg").toLowerCase();
+    number = validator.getParameters().getIntOrDefault("number", 3);
+    validator.validate(
+        type ->
+            "avg".equals(type)
+                || "stendis".equals(type)
+                || "cos".equals(type)
+                || "prenextdis".equals(type),
+        "Illegal outlier method. Outlier type should be avg, stendis, cos or prenextdis.",
+        type).validate(number -> (int) number > 0, "Illegal number. Number should be greater than 0.", number);
+  }
+
+  @Override
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
+    bucketSize *= number;
+    configurations
+        .setAccessStrategy(new SlidingSizeWindowAccessStrategy(bucketSize))
+        .setOutputDataType(dataType);
+    switch (type) {
+      case "avg":
+        outlierSampler = new AvgOutlierSampler();
+        break;
+      case "stendis":
+        outlierSampler = new StendisOutlierSampler();
+        break;
+      case "cos":
+        outlierSampler = new CosOutlierSampler();
+        break;
+      case "prenextdis":
+        outlierSampler = new PrenextdisOutlierSampler();
+        break;
+      default:
+        throw new UDFParameterNotValidException(
+            "Illegal outlier method. Outlier type should be avg, stendis, cos or prenextdis.");
+    }
+  }
+
+  @Override
+  public void transform(RowWindow rowWindow, PointCollector collector)
+      throws IOException, UDFParameterNotValidException {
+    switch (dataType) {
+      case INT32:
+        outlierSampler.outlierSampleInt(rowWindow, collector);
+        break;
+      case INT64:
+        outlierSampler.outlierSampleLong(rowWindow, collector);
+        break;
+      case FLOAT:
+        outlierSampler.outlierSampleFloat(rowWindow, collector);
+        break;
+      case DOUBLE:
+        outlierSampler.outlierSampleDouble(rowWindow, collector);
+        break;
+      default:
+        // This will not happen
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+    }
+  }
+}
