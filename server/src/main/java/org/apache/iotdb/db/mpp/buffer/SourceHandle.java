@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.lang3.Validate;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -341,6 +342,9 @@ public class SourceHandle implements ISourceHandle {
               new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
           break;
         } catch (Throwable e) {
+          if (e instanceof TException && client != null) {
+            client.close();
+          }
           logger.error(
               "Failed to get data block from {} due to {}, attempt times: {}",
               remoteFragmentInstanceId,
@@ -393,6 +397,9 @@ public class SourceHandle implements ISourceHandle {
           client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
           break;
         } catch (Throwable e) {
+          if (e instanceof TException) {
+            client.close();
+          }
           logger.error(
               "Failed to send ack data block event [{}, {}) to {} due to {}, attempt times: {}",
               startSequenceId,

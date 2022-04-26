@@ -173,9 +173,16 @@ public class SinkHandle implements ISinkHandle {
       SyncDataNodeDataBlockServiceClient client = null;
       try {
         client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
-        client.onEndOfDataBlockEvent(endOfDataBlockEvent);
+        if (client == null) {
+          logger.warn("can't get client for node {}", remoteEndpoint);
+          if (attempt == MAX_ATTEMPT_TIMES) {
+            throw new TException("Can't get client for node " + remoteEndpoint);
+          }
+        } else {
+          client.onEndOfDataBlockEvent(endOfDataBlockEvent);
+        }
         break;
-      } catch (TException | IOException e) {
+      } catch (TException e) {
         logger.error(
             "Failed to send end of data block event to plan node {} of {} due to {}, attempt times: {}",
             remotePlanNodeId,
@@ -183,6 +190,14 @@ public class SinkHandle implements ISinkHandle {
             e.getMessage(),
             attempt,
             e);
+        if (client != null) {
+          client.close();
+        }
+        if (attempt == MAX_ATTEMPT_TIMES) {
+          throw e;
+        }
+      } catch (IOException e) {
+        logger.error("can't connect to node {}", remoteEndpoint, e);
         if (attempt == MAX_ATTEMPT_TIMES) {
           throw e;
         }
@@ -368,9 +383,19 @@ public class SinkHandle implements ISinkHandle {
         SyncDataNodeDataBlockServiceClient client = null;
         try {
           client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
-          client.onNewDataBlockEvent(newDataBlockEvent);
+          if (client == null) {
+            logger.warn("can't get client for node {}", remoteEndpoint);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              throw new TException("Can't get client for node " + remoteEndpoint);
+            }
+          } else {
+            client.onNewDataBlockEvent(newDataBlockEvent);
+          }
           break;
         } catch (Throwable e) {
+          if (e instanceof TException && client != null) {
+            client.close();
+          }
           logger.error(
               "Failed to send new data block event to plan node {} of {} due to {}, attempt times: {}",
               remotePlanNodeId,

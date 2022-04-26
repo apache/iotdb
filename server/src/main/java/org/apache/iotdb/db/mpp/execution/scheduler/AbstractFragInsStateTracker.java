@@ -77,6 +77,11 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
       TFragmentInstanceStateResp resp =
           client.fetchFragmentInstanceState(new TFetchFragmentInstanceStateReq(getTId(instance)));
       return FragmentInstanceState.valueOf(resp.state);
+    } catch (Throwable t) {
+      if (t instanceof TException) {
+        client.close();
+      }
+      throw t;
     } finally {
       if (client != null) {
         client.returnSelf();

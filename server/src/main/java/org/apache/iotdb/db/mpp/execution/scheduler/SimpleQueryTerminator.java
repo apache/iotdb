@@ -31,6 +31,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -62,25 +63,28 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
     return executor.submit(
         () -> {
-          try {
-            for (TEndPoint endpoint : relatedHost) {
-              // TODO (jackie tien) change the port
-              SyncDataNodeInternalServiceClient client = null;
-              try {
-                client =
-                    internalServiceClientManager.borrowClient(
-                        new TEndPoint(
-                            endpoint.getIp(),
-                            IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
-                client.cancelQuery(new TCancelQueryReq(queryId.getId()));
-              } finally {
-                if (client != null) {
-                  client.returnSelf();
-                }
+          for (TEndPoint endpoint : relatedHost) {
+            // TODO (jackie tien) change the port
+            SyncDataNodeInternalServiceClient client = null;
+            try {
+              client =
+                  internalServiceClientManager.borrowClient(
+                      new TEndPoint(
+                          endpoint.getIp(),
+                          IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
+              client.cancelQuery(new TCancelQueryReq(queryId.getId()));
+            } catch (IOException e) {
+              LOGGER.error("can't connect to node {}", endpoint, e);
+              return false;
+            } catch (TException e) {
+              LOGGER.error("cancelQuery failed for node {}", endpoint, e);
+              client.close();
+              return false;
+            } finally {
+              if (client != null) {
+                client.returnSelf();
               }
             }
-          } catch (TException e) {
-            return false;
           }
           return true;
         });
