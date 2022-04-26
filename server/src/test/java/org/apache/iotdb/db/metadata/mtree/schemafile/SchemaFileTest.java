@@ -292,12 +292,15 @@ public class SchemaFileTest {
         }
       }
 
-      ICachedMNodeContainer.getCachedMNodeContainer(sgNode).getNewChildBuffer().clear();
+      // update to entity
       i = 1000;
       while (i >= 0) {
+        long addr = getSegAddrInContainer(sgNode.getChild("dev_" + i));
         IMNode aDevice = new EntityMNode(sgNode, "dev_" + i);
+        sgNode.deleteChild(aDevice.getName());
         sgNode.addChild(aDevice);
-        ICachedMNodeContainer.getCachedMNodeContainer(sgNode).updateMNode(aDevice.getName());
+        moveToUpdateBuffer(sgNode, "dev_" + i);
+        ICachedMNodeContainer.getCachedMNodeContainer(aDevice).setSegmentAddress(addr);
         i--;
       }
 

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.buffer.ISourceHandle;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.mpp.execution.scheduler.IScheduler;
+import org.apache.iotdb.db.mpp.execution.scheduler.StandaloneScheduler;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.sql.analyze.IPartitionFetcher;
@@ -46,7 +48,6 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +66,8 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
  */
 public class QueryExecution implements IQueryExecution {
   private static final Logger LOG = LoggerFactory.getLogger(Coordinator.class);
+
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final MPPQueryContext context;
   private IScheduler scheduler;
@@ -143,13 +146,21 @@ public class QueryExecution implements IQueryExecution {
   private void schedule() {
     // TODO: (xingtanzjr) initialize the query scheduler according to configuration
     this.scheduler =
-        new ClusterScheduler(
-            context,
-            stateMachine,
-            distributedPlan.getInstances(),
-            context.getQueryType(),
-            executor,
-            scheduledExecutor);
+        config.isClusterMode()
+            ? new ClusterScheduler(
+                context,
+                stateMachine,
+                distributedPlan.getInstances(),
+                context.getQueryType(),
+                executor,
+                scheduledExecutor)
+            : new StandaloneScheduler(
+                context,
+                stateMachine,
+                distributedPlan.getInstances(),
+                context.getQueryType(),
+                executor,
+                scheduledExecutor);
     this.scheduler.start();
   }
 
@@ -210,8 +221,7 @@ public class QueryExecution implements IQueryExecution {
         return null;
       }
       return resultHandle.receive();
-
-    } catch (ExecutionException | IOException | CancellationException e) {
+    } catch (ExecutionException | CancellationException e) {
       stateMachine.transitionToFailed(e);
       throwIfUnchecked(e.getCause());
       throw new RuntimeException(e.getCause());
@@ -284,7 +294,8 @@ public class QueryExecution implements IQueryExecution {
                   new TEndPoint(
                       context.getResultNodeContext().getUpStreamEndpoint().getIp(),
                       IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
-                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift());
+                  context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                  stateMachine::transitionToFailed);
     }
   }
 

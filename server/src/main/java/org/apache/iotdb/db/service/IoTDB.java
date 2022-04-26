@@ -37,7 +37,7 @@ import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.LocalConfigNode;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
@@ -173,7 +173,8 @@ public class IoTDB implements IoTDBMBean {
       initInfluxDBMManager();
     }
 
-    logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
+    logger.info(
+        "IoTDB is setting up, some storage groups may not be ready now, please wait several seconds...");
 
     while (IoTDBDescriptor.getInstance().getConfig().isMppMode()
         ? !StorageEngineV2.getInstance().isAllSgReady()
@@ -238,10 +239,9 @@ public class IoTDB implements IoTDBMBean {
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(
-        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}, memtableSize is {}",
+        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}",
         IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
+        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize());
   }
 
   @Override
