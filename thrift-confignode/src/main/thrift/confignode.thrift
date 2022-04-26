@@ -79,7 +79,7 @@ struct TSetTimePartitionIntervalReq {
 }
 
 struct TStorageGroupReq {
-  1: required binary pathPatternTree
+  1: required string pathPattern
 }
 
 struct TCountStorageGroupResp {

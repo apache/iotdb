@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SetSchemaReplicationFactorReq extends ConfigRequest {
 
@@ -31,8 +32,12 @@ public class SetSchemaReplicationFactorReq extends ConfigRequest {
 
   private int schemaReplicationFactor;
 
-  public SetSchemaReplicationFactorReq(String storageGroup, int schemaReplicationFactor) {
+  public SetSchemaReplicationFactorReq() {
     super(ConfigRequestType.SetSchemaReplicationFactor);
+  }
+
+  public SetSchemaReplicationFactorReq(String storageGroup, int schemaReplicationFactor) {
+    this();
     this.storageGroup = storageGroup;
     this.schemaReplicationFactor = schemaReplicationFactor;
   }
@@ -57,5 +62,19 @@ public class SetSchemaReplicationFactorReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     storageGroup = BasicStructureSerDeUtil.readString(buffer);
     schemaReplicationFactor = buffer.getInt();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetSchemaReplicationFactorReq that = (SetSchemaReplicationFactorReq) o;
+    return schemaReplicationFactor == that.schemaReplicationFactor
+        && storageGroup.equals(that.storageGroup);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroup, schemaReplicationFactor);
   }
 }

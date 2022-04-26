@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SetTimePartitionIntervalReq extends ConfigRequest {
 
@@ -31,8 +32,12 @@ public class SetTimePartitionIntervalReq extends ConfigRequest {
 
   private long timePartitionInterval;
 
-  public SetTimePartitionIntervalReq(String storageGroup, long timePartitionInterval) {
+  public SetTimePartitionIntervalReq() {
     super(ConfigRequestType.SetTimePartitionInterval);
+  }
+
+  public SetTimePartitionIntervalReq(String storageGroup, long timePartitionInterval) {
+    this();
     this.storageGroup = storageGroup;
     this.timePartitionInterval = timePartitionInterval;
   }
@@ -57,5 +62,19 @@ public class SetTimePartitionIntervalReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     storageGroup = BasicStructureSerDeUtil.readString(buffer);
     timePartitionInterval = buffer.getLong();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetTimePartitionIntervalReq that = (SetTimePartitionIntervalReq) o;
+    return timePartitionInterval == that.timePartitionInterval
+        && storageGroup.equals(that.storageGroup);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroup, timePartitionInterval);
   }
 }

@@ -21,10 +21,10 @@ package org.apache.iotdb.confignode.service.executor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.QueryStorageGroupSchemaReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -62,10 +62,12 @@ public class ConfigRequestExecutor {
   public DataSet executorQueryPlan(ConfigRequest req)
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
-      case QueryDataNodeInfo:
-        return dataNodeInfo.getDataNodeInfo((QueryDataNodeInfoReq) req);
-      case QueryStorageGroupSchema:
-        return storageGroupInfo.getMatchedStorageGroupSchemas((QueryStorageGroupSchemaReq) req);
+      case GetDataNodeInfo:
+        return dataNodeInfo.getDataNodeInfo((GetDataNodeInfoReq) req);
+      case CountStorageGroup:
+        return storageGroupInfo.countMatchedStorageGroups((GetOrCountStorageGroupReq) req);
+      case GetStorageGroup:
+        return storageGroupInfo.getMatchedStorageGroupSchemas((GetOrCountStorageGroupReq) req);
       case GetDataPartition:
       case GetOrCreateDataPartition:
         return partitionInfo.getDataPartition((GetOrCreateDataPartitionReq) req);

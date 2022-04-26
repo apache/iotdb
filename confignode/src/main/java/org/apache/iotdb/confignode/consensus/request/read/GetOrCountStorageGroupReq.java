@@ -21,44 +21,49 @@ package org.apache.iotdb.confignode.consensus.request.read;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.db.utils.SerializeUtils;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Objects;
 
-public class QueryStorageGroupSchemaReq extends ConfigRequest {
+public class GetOrCountStorageGroupReq extends ConfigRequest {
 
-  private final List<String> storageGroups;
+  private String storageGroupPattern;
 
-  public QueryStorageGroupSchemaReq() {
-    super(ConfigRequestType.QueryStorageGroupSchema);
-    this.storageGroups = new ArrayList<>();
+  public GetOrCountStorageGroupReq(ConfigRequestType type) {
+    super(type);
   }
 
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  public GetOrCountStorageGroupReq(ConfigRequestType type, String storageGroupPattern) {
+    this(type);
+    this.storageGroupPattern = storageGroupPattern;
   }
 
-  public void addStorageGroup(String storageGroup) {
-    storageGroups.add(storageGroup);
+  public String getStorageGroupPattern() {
+    return storageGroupPattern;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(getType().ordinal());
 
-    buffer.putInt(storageGroups.size());
-    for (String storageGroup : storageGroups) {
-      BasicStructureSerDeUtil.write(storageGroup, buffer);
-    }
+    BasicStructureSerDeUtil.write(storageGroupPattern, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
-      storageGroups.add(BasicStructureSerDeUtil.readString(buffer));
-    }
+    storageGroupPattern = BasicStructureSerDeUtil.readString(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    GetOrCountStorageGroupReq that = (GetOrCountStorageGroupReq) o;
+    return storageGroupPattern.equals(that.storageGroupPattern);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroupPattern);
   }
 }

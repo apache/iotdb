@@ -20,8 +20,9 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -84,7 +85,7 @@ public interface Manager {
    *
    * @return DataNodesInfoDataSet
    */
-  DataSet getDataNodeInfo(QueryDataNodeInfoReq queryDataNodeInfoReq);
+  DataSet getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq);
 
   TSStatus setTTL(SetTTLReq configRequest);
 
@@ -99,14 +100,14 @@ public interface Manager {
    *
    * @return The number of matched StorageGroups
    */
-  DataSet countMatchedStorageGroupSchema(PathPatternTree patternTree);
+  DataSet countMatchedStorageGroups(GetOrCountStorageGroupReq countStorageGroupReq);
 
   /**
    * Get StorageGroupSchemas
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getMatchedStorageGroupSchemas(PathPatternTree patternTree);
+  DataSet getMatchedStorageGroupSchemas(GetOrCountStorageGroupReq getOrCountStorageGroupReq);
 
   /**
    * Set StorageGroup

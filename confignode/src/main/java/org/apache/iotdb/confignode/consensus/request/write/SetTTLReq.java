@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SetTTLReq extends ConfigRequest {
 
@@ -31,8 +32,12 @@ public class SetTTLReq extends ConfigRequest {
 
   private long TTL;
 
-  public SetTTLReq(String storageGroup, long TTL) {
+  public SetTTLReq() {
     super(ConfigRequestType.SetTTL);
+  }
+
+  public SetTTLReq(String storageGroup, long TTL) {
+    this();
     this.storageGroup = storageGroup;
     this.TTL = TTL;
   }
@@ -57,5 +62,18 @@ public class SetTTLReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     storageGroup = BasicStructureSerDeUtil.readString(buffer);
     TTL = buffer.getLong();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetTTLReq setTTLReq = (SetTTLReq) o;
+    return TTL == setTTLReq.TTL && storageGroup.equals(setTTLReq.storageGroup);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroup, TTL);
   }
 }

@@ -24,8 +24,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class StorageGroupSchemaResp implements DataSet {

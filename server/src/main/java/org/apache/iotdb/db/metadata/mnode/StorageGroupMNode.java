@@ -37,13 +37,6 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   // TODO: @yukun, remove this constructor
   public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
-    this.schema = new TStorageGroupSchema();
-    schema.setTTL(dataTTL);
-  }
-
-  public StorageGroupMNode(IMNode parent, String name, TStorageGroupSchema schema) {
-    super(parent, name);
-    this.schema = schema;
   }
 
   @Override
@@ -65,18 +58,8 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   }
 
   @Override
-  public int getSchemaReplicationFactor() {
-    return schema.getSchemaReplicationFactor();
-  }
-
-  @Override
   public void setSchemaReplicationFactor(int schemaReplicationFactor) {
     schema.setSchemaReplicationFactor(schemaReplicationFactor);
-  }
-
-  @Override
-  public int getDataReplicationFactor() {
-    return schema.getDataReplicationFactor();
   }
 
   @Override
@@ -85,13 +68,13 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   }
 
   @Override
-  public long getTimePartitionInterval() {
-    return schema.getTimePartitionInterval();
+  public void setTimePartitionInterval(long timePartitionInterval) {
+    schema.setTimePartitionInterval(timePartitionInterval);
   }
 
   @Override
-  public void setTimePartitionInterval(long timePartitionInterval) {
-    schema.setTimePartitionInterval(timePartitionInterval);
+  public void setStorageGroupSchema(TStorageGroupSchema schema) {
+    this.schema = schema;
   }
 
   @Override

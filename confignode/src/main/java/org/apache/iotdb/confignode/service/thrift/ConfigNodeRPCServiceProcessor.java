@@ -22,8 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -77,7 +78,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   private final ConfigManager configManager;
 
-  public ConfigNodeRPCServiceProcessor(ConfigManager configManager) throws IOException {
+  public ConfigNodeRPCServiceProcessor(ConfigManager configManager) {
     this.configManager = configManager;
   }
 
@@ -99,7 +100,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TDataNodeLocationResp getDataNodeLocations(int dataNodeID) throws TException {
-    QueryDataNodeInfoReq queryReq = new QueryDataNodeInfoReq(dataNodeID);
+    GetDataNodeInfoReq queryReq = new GetDataNodeInfoReq(dataNodeID);
     DataNodeLocationsResp queryResp =
         (DataNodeLocationsResp) configManager.getDataNodeInfo(queryReq);
 
@@ -118,15 +119,15 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     }
     if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
       storageGroupSchema.setSchemaReplicationFactor(
-              ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
+          ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor());
     }
     if (!storageGroupSchema.isSetDataReplicationFactor()) {
       storageGroupSchema.setDataReplicationFactor(
-              ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
+          ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
     }
     if (!storageGroupSchema.isSetTimePartitionInterval()) {
       storageGroupSchema.setTimePartitionInterval(
-              ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+          ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
 
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
@@ -149,24 +150,29 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
-    return configManager.setSchemaReplicationFactor(new SetSchemaReplicationFactorReq(req.getStorageGroup(), req.getSchemaReplicationFactor()));
+    return configManager.setSchemaReplicationFactor(
+        new SetSchemaReplicationFactorReq(req.getStorageGroup(), req.getSchemaReplicationFactor()));
   }
 
   @Override
   public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
-    return configManager.setDataReplicationFactor(new SetDataReplicationFactorReq(req.getStorageGroup(), req.getDataReplicationFactor()));
+    return configManager.setDataReplicationFactor(
+        new SetDataReplicationFactorReq(req.getStorageGroup(), req.getDataReplicationFactor()));
   }
 
   @Override
   public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
-    return configManager.setTimePartitionInterval(new SetTimePartitionIntervalReq(req.getStorageGroup(), req.getTimePartitionInterval()));
+    return configManager.setTimePartitionInterval(
+        new SetTimePartitionIntervalReq(req.getStorageGroup(), req.getTimePartitionInterval()));
   }
 
   @Override
   public TCountStorageGroupResp countMatchedStorageGroups(TStorageGroupReq req) throws TException {
-    PathPatternTree patternTree = PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
     CountStorageGroupResp countStorageGroupResp =
-            (CountStorageGroupResp) configManager.countMatchedStorageGroupSchema(patternTree);
+        (CountStorageGroupResp)
+            configManager.countMatchedStorageGroups(
+                new GetOrCountStorageGroupReq(
+                    ConfigRequestType.CountStorageGroup, req.getPathPattern()));
 
     TCountStorageGroupResp resp = new TCountStorageGroupResp();
     countStorageGroupResp.convertToRPCCountStorageGroupResp(resp);
@@ -174,10 +180,13 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(TStorageGroupReq req) throws TException {
-    PathPatternTree patternTree = PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
+  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(TStorageGroupReq req)
+      throws TException {
     StorageGroupSchemaResp storageGroupSchemaResp =
-        (StorageGroupSchemaResp) configManager.getMatchedStorageGroupSchemas(patternTree);
+        (StorageGroupSchemaResp)
+            configManager.getMatchedStorageGroupSchemas(
+                new GetOrCountStorageGroupReq(
+                    ConfigRequestType.GetStorageGroup, req.getPathPattern()));
 
     TStorageGroupSchemaResp resp = new TStorageGroupSchemaResp();
     storageGroupSchemaResp.convertToRPCStorageGroupSchemaResp(resp);

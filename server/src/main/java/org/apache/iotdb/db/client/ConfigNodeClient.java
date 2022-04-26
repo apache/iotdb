@@ -227,7 +227,8 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(TStorageGroupReq req) throws IoTDBConnectionException {
+  public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(TStorageGroupReq req)
+      throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TStorageGroupSchemaResp resp = client.getMatchedStorageGroupSchemas(req);

@@ -24,10 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.QueryStorageGroupSchemaReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -55,9 +55,6 @@ import java.util.Set;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
 public class ConfigManager implements Manager {
-
-  private static final TSStatus ERROR_TSSTATUS =
-      new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private final ConsensusManager consensusManager;
@@ -104,10 +101,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getDataNodeInfo(QueryDataNodeInfoReq queryDataNodeInfoReq) {
+  public DataSet getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return dataNodeManager.getDataNodeInfo(queryDataNodeInfoReq);
+      return dataNodeManager.getDataNodeInfo(getDataNodeInfoReq);
     } else {
       DataNodeLocationsResp dataSet = new DataNodeLocationsResp();
       dataSet.setStatus(status);
@@ -126,7 +123,8 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorReq setSchemaReplicationFactorReq) {
+  public TSStatus setSchemaReplicationFactor(
+      SetSchemaReplicationFactorReq setSchemaReplicationFactorReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setSchemaReplicationFactor(setSchemaReplicationFactorReq);
@@ -136,7 +134,8 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus setDataReplicationFactor(SetDataReplicationFactorReq setDataReplicationFactorReq) {
+  public TSStatus setDataReplicationFactor(
+      SetDataReplicationFactorReq setDataReplicationFactorReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setDataReplicationFactor(setDataReplicationFactorReq);
@@ -146,7 +145,8 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus setTimePartitionInterval(SetTimePartitionIntervalReq setTimePartitionIntervalReq) {
+  public TSStatus setTimePartitionInterval(
+      SetTimePartitionIntervalReq setTimePartitionIntervalReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setTimePartitionInterval(setTimePartitionIntervalReq);
@@ -156,16 +156,11 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet countMatchedStorageGroupSchema(PathPatternTree patternTree) {
+  public DataSet countMatchedStorageGroups(GetOrCountStorageGroupReq countStorageGroupReq) {
     TSStatus status = confirmLeader();
     CountStorageGroupResp result = new CountStorageGroupResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<String> paths = patternTree.findAllDevicePaths();
-      List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
-      int count = 0;
-      // TODO: Match SG
-
-      result.setCount(count);
+      return clusterSchemaManager.countMatchedStorageGroups(countStorageGroupReq);
     } else {
       result.setStatus(status);
     }
@@ -173,16 +168,10 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getMatchedStorageGroupSchemas(PathPatternTree patternTree) {
+  public DataSet getMatchedStorageGroupSchemas(GetOrCountStorageGroupReq getStorageGroupReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<String> paths = patternTree.findAllDevicePaths();
-      List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
-      QueryStorageGroupSchemaReq queryStorageGroupSchemaReq = new QueryStorageGroupSchemaReq();
-
-      // TODO: Match SG
-
-      return clusterSchemaManager.getMatchedStorageGroupSchema(queryStorageGroupSchemaReq);
+      return clusterSchemaManager.getMatchedStorageGroupSchema(getStorageGroupReq);
     } else {
       StorageGroupSchemaResp dataSet = new StorageGroupSchemaResp();
       dataSet.setStatus(status);

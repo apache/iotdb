@@ -27,17 +27,13 @@ public interface IStorageGroupMNode extends IMNode {
 
   void setDataTTL(long dataTTL);
 
-  int getSchemaReplicationFactor();
-
   void setSchemaReplicationFactor(int schemaReplicationFactor);
-
-  int getDataReplicationFactor();
 
   void setDataReplicationFactor(int dataReplicationFactor);
 
-  long getTimePartitionInterval();
-
   void setTimePartitionInterval(long timePartitionInterval);
+
+  void setStorageGroupSchema(TStorageGroupSchema schema);
 
   TStorageGroupSchema getStorageGroupSchema();
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class SetDataReplicationFactorReq extends ConfigRequest {
 
@@ -31,8 +32,12 @@ public class SetDataReplicationFactorReq extends ConfigRequest {
 
   private int dataReplicationFactor;
 
-  public SetDataReplicationFactorReq(String storageGroup, int dataReplicationFactor) {
+  public SetDataReplicationFactorReq() {
     super(ConfigRequestType.SetDataReplicationFactor);
+  }
+
+  public SetDataReplicationFactorReq(String storageGroup, int dataReplicationFactor) {
+    this();
     this.storageGroup = storageGroup;
     this.dataReplicationFactor = dataReplicationFactor;
   }
@@ -57,5 +62,19 @@ public class SetDataReplicationFactorReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     storageGroup = BasicStructureSerDeUtil.readString(buffer);
     dataReplicationFactor = buffer.getInt();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SetDataReplicationFactorReq that = (SetDataReplicationFactorReq) o;
+    return dataReplicationFactor == that.dataReplicationFactor
+        && storageGroup.equals(that.storageGroup);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(storageGroup, dataReplicationFactor);
   }
 }
