@@ -37,6 +37,7 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   // TODO: @yukun, remove this constructor
   public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
+    this.schema = new TStorageGroupSchema(name).setTTL(dataTTL);
   }
 
   @Override
