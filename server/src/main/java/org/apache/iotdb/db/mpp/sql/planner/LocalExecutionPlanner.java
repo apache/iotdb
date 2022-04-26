@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import java.util.ArrayList;
+import java.util.List;
+import static java.util.Objects.requireNonNull;
+import java.util.stream.Collectors;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -59,6 +64,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchema
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.NodeTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
@@ -79,13 +85,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.Objects.requireNonNull;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -168,6 +167,22 @@ public class LocalExecutionPlanner {
       context.addPath(seriesPath);
 
       return seriesScanOperator;
+    }
+
+    @Override
+    public Operator visitSchemaScan(SchemaScanNode node, LocalExecutionPlanContext context) {
+      if (node instanceof TimeSeriesSchemaScanNode) {
+        return visitTimeSeriesSchemaScan((TimeSeriesSchemaScanNode) node, context);
+      } else if (node instanceof DevicesSchemaScanNode) {
+        return visitDevicesSchemaScan((DevicesSchemaScanNode) node, context);
+      } else if (node instanceof DevicesCountNode) {
+        return visitDevicesCount((DevicesCountNode) node, context);
+      } else if (node instanceof TimeSeriesCountNode) {
+        return visitTimeSeriesCount((TimeSeriesCountNode) node, context);
+      } else if (node instanceof NodeTimeSeriesCountNode) {
+        return visitNodeTimeSeriesCount((NodeTimeSeriesCountNode) node, context);
+      }
+      return visitPlan(node, context);
     }
 
     @Override

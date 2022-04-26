@@ -123,6 +123,10 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
             downStreamInstance.getFragment().getPlanNodeById(downStreamNodeId);
         ((ExchangeNode) downStreamExchangeNode)
             .setUpstream(instance.getHostEndpoint(), instance.getId(), sinkNode.getPlanNodeId());
+        ((ExchangeNode) downStreamExchangeNode)
+            .getRemoteSourceNode()
+            .setDownStream(
+                downStreamInstance.getHostEndpoint(), downStreamInstance.getId(), downStreamNodeId);
       }
     }
   }
