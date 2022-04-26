@@ -247,7 +247,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    byteBuffer.putShort((short) PlanNodeType.CREATE_TIME_SERIES.ordinal());
+    PlanNodeType.CREATE_TIME_SERIES.serialize(byteBuffer);
 
     byte[] bytes = path.getFullPath().getBytes();
     byteBuffer.putInt(bytes.length);

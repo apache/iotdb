@@ -288,7 +288,7 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    byteBuffer.putShort((short) PlanNodeType.CREATE_ALIGNED_TIME_SERIES.ordinal());
+    PlanNodeType.CREATE_ALIGNED_TIME_SERIES.serialize(byteBuffer);
     byte[] bytes = devicePath.getFullPath().getBytes();
     byteBuffer.putInt(bytes.length);
     byteBuffer.put(bytes);

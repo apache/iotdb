@@ -213,7 +213,7 @@ public class AlterTimeSeriesNode extends PlanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    byteBuffer.putShort((short) PlanNodeType.ALTER_TIME_SERIES.ordinal());
+    PlanNodeType.ALTER_TIME_SERIES.serialize(byteBuffer);
     byte[] bytes = path.getFullPath().getBytes();
     byteBuffer.putInt(bytes.length);
     byteBuffer.put(bytes);
