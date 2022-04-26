@@ -119,7 +119,7 @@ public class DataNode implements DataNodeMBean {
       joinCluster();
       active();
     } catch (StartupException e) {
-      logger.error("Fail to start  server", e);
+      logger.error("Fail to start server", e);
       stop();
     }
   }
@@ -200,10 +200,7 @@ public class DataNode implements DataNodeMBean {
       checks.verify();
     } catch (StartupException e) {
       // TODO: what are some checks
-      logger.error(
-          "{}: failed to start because some checks failed. ",
-          IoTDBConstant.GLOBAL_DATANODE_NAME,
-          e);
+      logger.error("IoTDB DataNode: failed to start because some checks failed. ", e);
       return;
     }
     try {
@@ -211,10 +208,10 @@ public class DataNode implements DataNodeMBean {
     } catch (StartupException | QueryProcessException e) {
       logger.error("meet error while starting up.", e);
       deactivate();
-      logger.error("{} exit", IoTDBConstant.GLOBAL_DATANODE_NAME);
+      logger.error("IoTDB DataNode exit");
       return;
     }
-    logger.info("{} has started.", IoTDBConstant.GLOBAL_DATANODE_NAME);
+    logger.info("IoTDB DataNode has started.");
 
     try {
       // TODO: Start consensus layer in some where else
@@ -233,7 +230,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void setUp() throws StartupException, QueryProcessException {
-    logger.info("Setting up DataNode...");
+    logger.info("Setting up IoTDB DataNode...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
@@ -275,13 +272,13 @@ public class DataNode implements DataNodeMBean {
     }
 
     logger.info(
-        "DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
+        "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
 
     while (!StorageEngineV2.getInstance().isAllSgReady()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
-        logger.warn("DataNode failed to set up.", e);
+        logger.warn("IoTDB DataNode failed to set up.", e);
         Thread.currentThread().interrupt();
         return;
       }
@@ -298,7 +295,7 @@ public class DataNode implements DataNodeMBean {
     // start reporter
     MetricsService.getInstance().startAllReporter();
 
-    logger.info("Congratulation, DataNode is set up successfully. Now, enjoy yourself!");
+    logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
   }
 
   private void initConfigManager() {
@@ -333,11 +330,11 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void deactivate() {
-    logger.info("Deactivating DataNode...");
+    logger.info("Deactivating IoTDB DataNode...");
     // stopThreadPools();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
-    logger.info("DataNode is deactivated.");
+    logger.info("IoTDB DataNode is deactivated.");
   }
 
   private void setUncaughtExceptionHandler() {
