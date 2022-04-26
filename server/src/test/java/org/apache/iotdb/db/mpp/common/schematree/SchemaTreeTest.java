@@ -51,9 +51,59 @@ public class SchemaTreeTest {
     checkVisitorResult(
         visitor,
         3,
-        new String[] {"root.sg.d1.s1", "root.sg.d2.s1", "root.sg.d2.a.s1"},
+        new String[] {"root.sg.d1.s1", "root.sg.d2.a.s1", "root.sg.d2.s1"},
         null,
-        new boolean[] {false, false, true});
+        new boolean[] {false, true, false});
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.**.**.s1"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        3,
+        new String[] {"root.sg.d1.s1", "root.sg.d2.a.s1", "root.sg.d2.s1"},
+        null,
+        new boolean[] {false, true, false});
+
+    root = generateSchemaTreeWithInternalRepeatedName();
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.**.**.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        4,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s", "root.a.a.a.s", "root.a.a.s"},
+        null,
+        new boolean[] {false, false, false, false});
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.*.**.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        4,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s", "root.a.a.a.s", "root.a.a.s"},
+        null,
+        new boolean[] {false, false, false, false});
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.**.a.**.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        3,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s", "root.a.a.a.s"},
+        null,
+        new boolean[] {false, false, false});
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.**.a.**.*.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s"},
+        null,
+        new boolean[] {false, false, false});
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.a.**.a.*.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s"},
+        null,
+        new boolean[] {false, false, false});
   }
 
   private void testSchemaTree(SchemaNode root) throws Exception {
@@ -138,9 +188,9 @@ public class SchemaTreeTest {
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.s2", "root.sg.d2.a.s2"},
+        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
         new String[] {"status", "status"},
-        new boolean[] {false, true},
+        new boolean[] {true, false},
         new int[] {2, 3});
   }
 
@@ -184,6 +234,30 @@ public class SchemaTreeTest {
     return root;
   }
 
+  /**
+   * Generate the following tree: root.a.s, root.a.a.s, root.a.a.a.s, root.a.a.a.a.s,
+   * root.a.a.a.a.a.s
+   *
+   * @return the root node of the generated schemTree
+   */
+  private SchemaNode generateSchemaTreeWithInternalRepeatedName() {
+    SchemaNode root = new SchemaInternalNode("root");
+
+    SchemaNode parent = root;
+    SchemaNode a;
+    MeasurementSchema schema = new MeasurementSchema("s1", TSDataType.INT32);
+    SchemaNode s;
+    for (int i = 0; i < 5; i++) {
+      a = new SchemaEntityNode("a");
+      s = new SchemaMeasurementNode("s", schema);
+      a.addChild("s", s);
+      parent.addChild("a", a);
+      parent = a;
+    }
+
+    return root;
+  }
+
   private void checkVisitorResult(
       SchemaTreeVisitor visitor,
       int expectedNum,
@@ -218,7 +292,7 @@ public class SchemaTreeTest {
       int[] expectedOffset) {
     checkVisitorResult(visitor, expectedNum, expectedPath, expectedAlias, expectedAligned);
 
-    visitor.resetStatus();
+    visitor.reset();
     int i = 0;
     MeasurementPath result;
     while (visitor.hasNext()) {
