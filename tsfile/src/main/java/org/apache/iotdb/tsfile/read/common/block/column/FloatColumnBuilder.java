@@ -34,7 +34,7 @@ public class FloatColumnBuilder implements ColumnBuilder {
 
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(FloatColumnBuilder.class).instanceSize();
-  private static final FloatColumn NULL_VALUE_BLOCK =
+  public static final FloatColumn NULL_VALUE_BLOCK =
       new FloatColumn(0, 1, new boolean[] {true}, new float[1]);
 
   private final ColumnBuilderStatus columnBuilderStatus;

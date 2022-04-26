@@ -23,23 +23,36 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 
+/** manager permission query and operation */
 public class PermissionManager {
 
-  private Manager configNodeManager;
+  private final Manager configManager;
 
   public PermissionManager(Manager configManager) {
-    this.configNodeManager = configManager;
+    this.configManager = configManager;
   }
 
+  /**
+   * write permission
+   *
+   * @param authorReq AuthorReq
+   * @return TSStatus
+   */
   public TSStatus operatePermission(AuthorReq authorReq) {
     return getConsensusManager().write(authorReq).getStatus();
   }
 
+  /**
+   * Query for permissions
+   *
+   * @param authorReq AuthorReq
+   * @return PermissionInfoResp
+   */
   public PermissionInfoResp queryPermission(AuthorReq authorReq) {
     return (PermissionInfoResp) getConsensusManager().read(authorReq).getDataset();
   }
 
   private ConsensusManager getConsensusManager() {
-    return configNodeManager.getConsensusManager();
+    return configManager.getConsensusManager();
   }
 }

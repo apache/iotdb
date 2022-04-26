@@ -222,7 +222,7 @@ public class AuthorPlan extends PhysicalPlan {
     return userName;
   }
 
-  private Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
+  public static Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
     Set<Integer> result = new HashSet<>();
     if (authorizationList == null) {
       return result;
