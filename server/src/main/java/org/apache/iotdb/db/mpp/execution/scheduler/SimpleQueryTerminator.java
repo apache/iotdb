@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
 
 import org.apache.thrift.TException;
@@ -41,11 +42,18 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   private final QueryId queryId;
   private final List<FragmentInstance> fragmentInstances;
 
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      internalServiceClientManager;
+
   public SimpleQueryTerminator(
-      ExecutorService executor, QueryId queryId, List<FragmentInstance> fragmentInstances) {
+      ExecutorService executor,
+      QueryId queryId,
+      List<FragmentInstance> fragmentInstances,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.executor = executor;
     this.queryId = queryId;
     this.fragmentInstances = fragmentInstances;
+    this.internalServiceClientManager = internalServiceClientManager;
   }
 
   @Override
@@ -57,12 +65,19 @@ public class SimpleQueryTerminator implements IQueryTerminator {
           try {
             for (TEndPoint endpoint : relatedHost) {
               // TODO (jackie tien) change the port
-              InternalService.Iface client =
-                  InternalServiceClientFactory.getInternalServiceClient(
-                      new TEndPoint(
-                          endpoint.getIp(),
-                          IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
-              client.cancelQuery(new TCancelQueryReq(queryId.getId()));
+              SyncDataNodeInternalServiceClient client = null;
+              try {
+                client =
+                    internalServiceClientManager.borrowClient(
+                        new TEndPoint(
+                            endpoint.getIp(),
+                            IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
+                client.cancelQuery(new TCancelQueryReq(queryId.getId()));
+              } finally {
+                if (client != null) {
+                  client.returnSelf();
+                }
+              }
             }
           } catch (TException e) {
             return false;
