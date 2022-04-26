@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
@@ -523,7 +524,10 @@ public class Analyzer {
 
       SchemaPartition schemaPartitionInfo =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(showDevicesStatement.getPathPattern().concatNode("*")));
+              new PathPatternTree(
+                  showDevicesStatement
+                      .getPathPattern()
+                      .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)));
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(
@@ -540,7 +544,10 @@ public class Analyzer {
       analysis.setStatement(countDevicesStatement);
       SchemaPartition schemaPartition =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(countDevicesStatement.getPartialPath().concatNode("*")));
+              new PathPatternTree(
+                  countDevicesStatement
+                      .getPartialPath()
+                      .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)));
       analysis.setSchemaPartitionInfo(schemaPartition);
       analysis.setRespDatasetHeader(HeaderConstant.countDevicesHeader);
       return analysis;

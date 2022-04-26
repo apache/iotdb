@@ -36,12 +36,7 @@ public abstract class SchemaScanNode extends SourceNode {
   private TRegionReplicaSet schemaRegionReplicaSet;
 
   protected SchemaScanNode(PlanNodeId id) {
-    super(id);
-    limit = 0;
-    offset = 0;
-    path = null;
-    hasLimit = false;
-    isPrefixPath = false;
+    this(id, null, false);
   }
 
   protected SchemaScanNode(
@@ -54,9 +49,7 @@ public abstract class SchemaScanNode extends SourceNode {
   }
 
   protected SchemaScanNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
-    super(id);
-    this.path = partialPath;
-    this.isPrefixPath = isPrefixPath;
+    this(id, partialPath, 0, 0, isPrefixPath);
   }
 
   @Override

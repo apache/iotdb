@@ -18,24 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-
 public class SchemaMergeNode extends AbstractSchemaMergeNode {
 
   private boolean orderByHeat;
 
-  private List<PlanNode> children;
-
   public SchemaMergeNode(PlanNodeId id) {
     super(id);
-    children = new ArrayList<>();
   }
 
   public SchemaMergeNode(PlanNodeId id, boolean orderByHeat) {

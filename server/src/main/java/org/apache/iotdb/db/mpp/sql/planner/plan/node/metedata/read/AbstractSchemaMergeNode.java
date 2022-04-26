@@ -31,7 +31,7 @@ import java.util.List;
 
 public abstract class AbstractSchemaMergeNode extends ProcessNode {
 
-  private List<PlanNode> children;
+  private final List<PlanNode> children;
 
   public AbstractSchemaMergeNode(PlanNodeId id) {
     super(id);

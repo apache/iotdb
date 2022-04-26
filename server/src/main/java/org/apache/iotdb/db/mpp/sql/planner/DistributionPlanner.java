@@ -165,6 +165,7 @@ public class DistributionPlanner {
       schemaRegions.forEach(
           region -> {
             SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
             schemaScanNode.setRegionReplicaSet(region);
             if (count > 1) {
               schemaScanNode.setLimit(schemaScanNode.getOffset() + schemaScanNode.getLimit());
@@ -192,6 +193,7 @@ public class DistributionPlanner {
       schemaRegions.forEach(
           region -> {
             SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
             schemaScanNode.setRegionReplicaSet(region);
             root.addChild(schemaScanNode);
           });
