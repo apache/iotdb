@@ -28,9 +28,9 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.DataNodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
@@ -47,7 +47,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
@@ -69,6 +68,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -91,7 +91,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   @After
   public void after() throws IOException {
     DataNodeInfo.getInstance().clear();
-    StorageGroupInfo.getInstance().clear();
+    ClusterSchemaInfo.getInstance().clear();
     PartitionInfo.getInstance().clear();
     processor.close();
     FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
@@ -208,20 +208,20 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     // test count all StorageGroups
     TCountStorageGroupResp countResp =
-        processor.countMatchedStorageGroups(new TStorageGroupReq("root.**"));
+        processor.countMatchedStorageGroups(Arrays.asList("root", "**"));
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
     Assert.assertEquals(2, countResp.getCount());
 
     // test count one StorageGroup
-    countResp = processor.countMatchedStorageGroups(new TStorageGroupReq("root.sg0.**"));
+    countResp = processor.countMatchedStorageGroups(Arrays.asList("root", "sg0", "**"));
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
     Assert.assertEquals(1, countResp.getCount());
 
     // test query all StorageGroupSchemas
     TStorageGroupSchemaResp getResp =
-        processor.getMatchedStorageGroupSchemas(new TStorageGroupReq("root.**"));
+        processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "**"));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
     Map<String, TStorageGroupSchema> schemaMap = getResp.getStorageGroupSchemaMap();
     Assert.assertEquals(2, schemaMap.size());
@@ -256,7 +256,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // test setter results
-    getResp = processor.getMatchedStorageGroupSchemas(new TStorageGroupReq("root.sg1"));
+    getResp = processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "sg1"));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
     schemaMap = getResp.getStorageGroupSchemaMap();
     Assert.assertEquals(1, schemaMap.size());

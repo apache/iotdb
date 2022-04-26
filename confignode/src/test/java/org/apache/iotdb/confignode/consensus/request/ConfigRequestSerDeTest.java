@@ -50,6 +50,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -150,7 +151,8 @@ public class ConfigRequestSerDeTest {
   @Test
   public void GetOrCountStorageGroupReqTest() throws IOException {
     GetOrCountStorageGroupReq req0 =
-        new GetOrCountStorageGroupReq(ConfigRequestType.CountStorageGroup, "root.sg");
+        new GetOrCountStorageGroupReq(
+            ConfigRequestType.CountStorageGroup, Arrays.asList("root", "sg"));
     req0.serialize(buffer);
     buffer.flip();
     GetOrCountStorageGroupReq req1 =

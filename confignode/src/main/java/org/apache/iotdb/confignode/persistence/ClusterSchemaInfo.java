@@ -47,16 +47,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class StorageGroupInfo {
+public class ClusterSchemaInfo {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(StorageGroupInfo.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaInfo.class);
 
   // StorageGroup read write lock
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
 
   private MTreeAboveSG mTree;
 
-  private StorageGroupInfo() {
+  private ClusterSchemaInfo() {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
 
     try {
@@ -300,14 +300,14 @@ public class StorageGroupInfo {
 
   private static class StorageGroupInfoHolder {
 
-    private static final StorageGroupInfo INSTANCE = new StorageGroupInfo();
+    private static final ClusterSchemaInfo INSTANCE = new ClusterSchemaInfo();
 
     private StorageGroupInfoHolder() {
       // Empty constructor
     }
   }
 
-  public static StorageGroupInfo getInstance() {
+  public static ClusterSchemaInfo getInstance() {
     return StorageGroupInfoHolder.INSTANCE;
   }
 }

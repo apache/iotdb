@@ -36,9 +36,9 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.DataNodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.auth.AuthException;
 
@@ -46,7 +46,7 @@ public class ConfigRequestExecutor {
 
   private final DataNodeInfo dataNodeInfo;
 
-  private final StorageGroupInfo storageGroupInfo;
+  private final ClusterSchemaInfo clusterSchemaInfo;
 
   private final PartitionInfo partitionInfo;
 
@@ -54,7 +54,7 @@ public class ConfigRequestExecutor {
 
   public ConfigRequestExecutor() {
     this.dataNodeInfo = DataNodeInfo.getInstance();
-    this.storageGroupInfo = StorageGroupInfo.getInstance();
+    this.clusterSchemaInfo = ClusterSchemaInfo.getInstance();
     this.partitionInfo = PartitionInfo.getInstance();
     this.authorInfo = AuthorInfo.getInstance();
   }
@@ -65,9 +65,9 @@ public class ConfigRequestExecutor {
       case GetDataNodeInfo:
         return dataNodeInfo.getDataNodeInfo((GetDataNodeInfoReq) req);
       case CountStorageGroup:
-        return storageGroupInfo.countMatchedStorageGroups((GetOrCountStorageGroupReq) req);
+        return clusterSchemaInfo.countMatchedStorageGroups((GetOrCountStorageGroupReq) req);
       case GetStorageGroup:
-        return storageGroupInfo.getMatchedStorageGroupSchemas((GetOrCountStorageGroupReq) req);
+        return clusterSchemaInfo.getMatchedStorageGroupSchemas((GetOrCountStorageGroupReq) req);
       case GetDataPartition:
       case GetOrCreateDataPartition:
         return partitionInfo.getDataPartition((GetOrCreateDataPartitionReq) req);
@@ -97,15 +97,15 @@ public class ConfigRequestExecutor {
       case RegisterDataNode:
         return dataNodeInfo.registerDataNode((RegisterDataNodeReq) req);
       case SetStorageGroup:
-        return storageGroupInfo.setStorageGroup((SetStorageGroupReq) req);
+        return clusterSchemaInfo.setStorageGroup((SetStorageGroupReq) req);
       case SetTTL:
-        return storageGroupInfo.setTTL((SetTTLReq) req);
+        return clusterSchemaInfo.setTTL((SetTTLReq) req);
       case SetSchemaReplicationFactor:
-        return storageGroupInfo.setSchemaReplicationFactor((SetSchemaReplicationFactorReq) req);
+        return clusterSchemaInfo.setSchemaReplicationFactor((SetSchemaReplicationFactorReq) req);
       case SetDataReplicationFactor:
-        return storageGroupInfo.setDataReplicationFactor((SetDataReplicationFactorReq) req);
+        return clusterSchemaInfo.setDataReplicationFactor((SetDataReplicationFactorReq) req);
       case SetTimePartitionInterval:
-        return storageGroupInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
+        return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
       case CreateRegions:
         return partitionInfo.createRegions((CreateRegionsReq) req);
       case CreateSchemaPartition:

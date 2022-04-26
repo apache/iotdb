@@ -78,10 +78,6 @@ struct TSetTimePartitionIntervalReq {
   2: required i64 timePartitionInterval
 }
 
-struct TStorageGroupReq {
-  1: required string pathPattern
-}
-
 struct TCountStorageGroupResp {
   1: required common.TSStatus status
   2: optional i32 count
@@ -164,9 +160,9 @@ service ConfigIService {
 
   common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
-  TCountStorageGroupResp countMatchedStorageGroups(TStorageGroupReq req)
+  TCountStorageGroupResp countMatchedStorageGroups(list<string> storageGroupPathPattern)
 
-  TStorageGroupSchemaResp getMatchedStorageGroupSchemas(TStorageGroupReq req)
+  TStorageGroupSchemaResp getMatchedStorageGroupSchemas(list<string> storageGroupPathPattern)
 
   /* Schema */
 

@@ -23,22 +23,23 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
+import java.util.Arrays;
+import java.util.List;
 
 public class GetOrCountStorageGroupReq extends ConfigRequest {
 
-  private String storageGroupPattern;
+  private String[] storageGroupPattern;
 
   public GetOrCountStorageGroupReq(ConfigRequestType type) {
     super(type);
   }
 
-  public GetOrCountStorageGroupReq(ConfigRequestType type, String storageGroupPattern) {
+  public GetOrCountStorageGroupReq(ConfigRequestType type, List<String> storageGroupPattern) {
     this(type);
-    this.storageGroupPattern = storageGroupPattern;
+    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
   }
 
-  public String getStorageGroupPattern() {
+  public String[] getStorageGroupPattern() {
     return storageGroupPattern;
   }
 
@@ -46,12 +47,19 @@ public class GetOrCountStorageGroupReq extends ConfigRequest {
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(getType().ordinal());
 
-    BasicStructureSerDeUtil.write(storageGroupPattern, buffer);
+    buffer.putInt(storageGroupPattern.length);
+    for (String node : storageGroupPattern) {
+      BasicStructureSerDeUtil.write(node, buffer);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    storageGroupPattern = BasicStructureSerDeUtil.readString(buffer);
+    int length = buffer.getInt();
+    storageGroupPattern = new String[length];
+    for (int i = 0; i < length; i++) {
+      storageGroupPattern[i] = BasicStructureSerDeUtil.readString(buffer);
+    }
   }
 
   @Override
@@ -59,11 +67,11 @@ public class GetOrCountStorageGroupReq extends ConfigRequest {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     GetOrCountStorageGroupReq that = (GetOrCountStorageGroupReq) o;
-    return storageGroupPattern.equals(that.storageGroupPattern);
+    return Arrays.equals(storageGroupPattern, that.storageGroupPattern);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroupPattern);
+    return Arrays.hashCode(storageGroupPattern);
   }
 }

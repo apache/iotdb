@@ -35,8 +35,8 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -51,7 +51,7 @@ public class ClusterSchemaManager {
   private static final int initialSchemaRegionCount = conf.getInitialSchemaRegionCount();
   private static final int initialDataRegionCount = conf.getInitialDataRegionCount();
 
-  private static final StorageGroupInfo storageGroupInfo = StorageGroupInfo.getInstance();
+  private static final ClusterSchemaInfo clusterSchemaInfo = ClusterSchemaInfo.getInstance();
   private static final PartitionInfo partitionInfo = PartitionInfo.getInstance();
 
   private final Manager configManager;
@@ -74,7 +74,7 @@ public class ClusterSchemaManager {
       result = new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
       result.setMessage("DataNode is not enough, please register more.");
     } else {
-      if (storageGroupInfo.containsStorageGroup(setStorageGroupReq.getSchema().getName())) {
+      if (clusterSchemaInfo.containsStorageGroup(setStorageGroupReq.getSchema().getName())) {
         result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
         result.setMessage(
             String.format(
@@ -162,7 +162,7 @@ public class ClusterSchemaManager {
    *     type is DataRegion
    */
   public List<TConsensusGroupId> getRegionGroupIds(String storageGroup, TConsensusGroupType type) {
-    return storageGroupInfo.getRegionGroupIds(storageGroup, type);
+    return clusterSchemaInfo.getRegionGroupIds(storageGroup, type);
   }
 
   public TSStatus setTTL(SetTTLReq setTTLReq) {
@@ -211,7 +211,7 @@ public class ClusterSchemaManager {
   }
 
   public List<String> getStorageGroupNames() {
-    return storageGroupInfo.getStorageGroupNames();
+    return clusterSchemaInfo.getStorageGroupNames();
   }
 
   private DataNodeManager getDataNodeInfoManager() {
