@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -634,7 +635,8 @@ public abstract class AbstractMemTable implements IMemTable {
   public ReadOnlyMemChunk query(
       PartialPath fullPath, long ttlLowerBound, List<Pair<Modification, IMemTable>> modsToMemtable)
       throws IOException, QueryProcessException {
-    return fullPath.getReadOnlyMemChunkFromMemTable(this, modsToMemtable, ttlLowerBound);
+    return ResourceByPathUtils.getResourceInstance(fullPath)
+        .getReadOnlyMemChunkFromMemTable(this, modsToMemtable, ttlLowerBound);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
