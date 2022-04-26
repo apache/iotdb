@@ -69,7 +69,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
 
       double avg = 0;
-      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
       for (int i = 0; i < windowSize; i++) {
         avg += rowWindow.getRow(i).getInt(0);
       }
@@ -95,7 +96,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     }
 
     @Override
-    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException {
+    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
+        throws IOException {
       int windowSize = rowWindow.windowSize();
       if (windowSize <= number) {
         for (int i = 0; i < windowSize; i++) {
@@ -106,7 +108,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
 
       double avg = 0;
-      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
       for (int i = 0; i < windowSize; i++) {
         avg += rowWindow.getRow(i).getLong(0);
       }
@@ -132,7 +135,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     }
 
     @Override
-    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
+    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
+        throws IOException {
       int windowSize = rowWindow.windowSize();
       if (windowSize <= number) {
         for (int i = 0; i < windowSize; i++) {
@@ -143,7 +147,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
 
       double avg = 0;
-      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
       for (int i = 0; i < windowSize; i++) {
         avg += rowWindow.getRow(i).getFloat(0);
       }
@@ -164,12 +169,14 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
       Arrays.sort(arr);
       for (int i = 0; i < number; i++) {
-        collector.putFloat(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
+        collector.putFloat(
+            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
       }
     }
 
     @Override
-    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
+        throws IOException {
       int windowSize = rowWindow.windowSize();
       if (windowSize <= number) {
         for (int i = 0; i < windowSize; i++) {
@@ -180,7 +187,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
 
       double avg = 0;
-      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
       for (int i = 0; i < windowSize; i++) {
         avg += rowWindow.getRow(i).getDouble(0);
       }
@@ -201,7 +209,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
       Arrays.sort(arr);
       for (int i = 0; i < number; i++) {
-        collector.putDouble(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
+        collector.putDouble(
+            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
       }
     }
   }
@@ -211,7 +220,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     @Override
     public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
       int windowSize = rowWindow.windowSize();
-      long row0x = rowWindow.getRow(0).getTime(), row1x = rowWindow.getRow(windowSize - 1).getTime();
+      long row0x = rowWindow.getRow(0).getTime(),
+          row1x = rowWindow.getRow(windowSize - 1).getTime();
       int row0y = rowWindow.getRow(0).getInt(0), row1y = rowWindow.getRow(windowSize - 1).getInt(0);
       if (windowSize <= number + 2) {
         for (int i = 1; i < windowSize - 1; i++) {
@@ -227,7 +237,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         return;
       }
 
-      PriorityQueue<Pair<Integer, Double>> pq = new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
 
       double A = row0y - row1y;
       double B = row1x - row0x;
@@ -256,7 +267,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     }
 
     @Override
-    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException {
+    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
+        throws IOException {
       int windowSize = rowWindow.windowSize();
       if (windowSize <= number + 2) {
         for (int i = 1; i < windowSize - 1; i++) {
@@ -267,14 +279,16 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
           collector.putLong(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getLong(0));
         } else if (windowSize <= number) {
           collector.putLong(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getLong(0));
-          collector.putLong(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getLong(windowSize - 1));
+          collector.putLong(
+              rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getLong(windowSize - 1));
         }
         return;
       }
     }
 
     @Override
-    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
+    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
+        throws IOException {
       int windowSize = rowWindow.windowSize();
       if (windowSize <= number + 2) {
         for (int i = 1; i < windowSize - 1; i++) {
@@ -285,14 +299,16 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
           collector.putFloat(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getFloat(0));
         } else if (windowSize <= number) {
           collector.putFloat(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getFloat(0));
-          collector.putFloat(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getFloat(windowSize - 1));
+          collector.putFloat(
+              rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getFloat(windowSize - 1));
         }
         return;
       }
     }
 
     @Override
-    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
+        throws IOException {
       int windowSize = rowWindow.windowSize();
       if (windowSize <= number + 2) {
         for (int i = 1; i < windowSize - 1; i++) {
@@ -303,7 +319,8 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
           collector.putDouble(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getDouble(0));
         } else if (windowSize <= number) {
           collector.putDouble(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getDouble(0));
-          collector.putDouble(rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getDouble(windowSize - 1));
+          collector.putDouble(
+              rowWindow.getRow(0).getTime(), rowWindow.getRow(0).getDouble(windowSize - 1));
         }
         return;
       }
@@ -313,67 +330,62 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
   private class CosOutlierSampler implements OutlierSampler {
 
     @Override
-    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
-
-    }
-
-    @Override
-    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException {
-
-    }
+    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector)
+        throws IOException {}
 
     @Override
-    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
-
-    }
+    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
+        throws IOException {}
 
     @Override
-    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
+        throws IOException {}
 
-    }
+    @Override
+    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
+        throws IOException {}
   }
 
   private class PrenextdisOutlierSampler implements OutlierSampler {
 
     @Override
-    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
-
-    }
-
-    @Override
-    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector) throws IOException {
-
-    }
+    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector)
+        throws IOException {}
 
     @Override
-    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
-
-    }
+    public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
+        throws IOException {}
 
     @Override
-    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
+    public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
+        throws IOException {}
 
-    }
+    @Override
+    public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
+        throws IOException {}
   }
-
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException, MetadataException {
     super.validate(validator);
     type = validator.getParameters().getStringOrDefault("type", "avg").toLowerCase();
     number = validator.getParameters().getIntOrDefault("number", 3);
-    validator.validate(
-        type ->
-            "avg".equals(type)
-                || "stendis".equals(type)
-                || "cos".equals(type)
-                || "prenextdis".equals(type),
-        "Illegal outlier method. Outlier type should be avg, stendis, cos or prenextdis.",
-        type).validate(number -> (int) number > 0, "Illegal number. Number should be greater than 0.", number);
+    validator
+        .validate(
+            type ->
+                "avg".equals(type)
+                    || "stendis".equals(type)
+                    || "cos".equals(type)
+                    || "prenextdis".equals(type),
+            "Illegal outlier method. Outlier type should be avg, stendis, cos or prenextdis.",
+            type)
+        .validate(
+            number -> (int) number > 0, "Illegal number. Number should be greater than 0.", number);
   }
 
   @Override
-  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+      throws Exception {
     bucketSize *= number;
     configurations
         .setAccessStrategy(new SlidingSizeWindowAccessStrategy(bucketSize))
