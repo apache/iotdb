@@ -50,7 +50,12 @@ public class Coordinator {
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 1;
 
-  private static final TEndPoint LOCAL_HOST =
+  private static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
+      new TEndPoint(
+          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
+
+  private static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
       new TEndPoint(
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
           IoTDBDescriptor.getInstance().getConfig().getInternalPort());
@@ -92,7 +97,12 @@ public class Coordinator {
     IQueryExecution execution =
         createQueryExecution(
             statement,
-            new MPPQueryContext(sql, queryId, session, getHostEndpoint()),
+            new MPPQueryContext(
+                sql,
+                queryId,
+                session,
+                LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+                LOCAL_HOST_INTERNAL_ENDPOINT),
             partitionFetcher,
             schemaFetcher);
     queryExecutionMap.put(queryId, execution);
@@ -114,11 +124,6 @@ public class Coordinator {
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE, COORDINATOR_SCHEDULED_EXECUTOR_NAME);
-  }
-
-  // Get the hostname of current coordinator
-  private TEndPoint getHostEndpoint() {
-    return LOCAL_HOST;
   }
 
   public static Coordinator getInstance() {
