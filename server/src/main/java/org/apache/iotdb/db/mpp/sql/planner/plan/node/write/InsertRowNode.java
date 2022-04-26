@@ -154,16 +154,24 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean checkDataType(SchemaTree schemaTree) {
-    if (!isNeedInferType) {
-      DeviceSchemaInfo deviceSchemaInfo =
-          schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+  public boolean validateSchema(SchemaTree schemaTree) {
+    DeviceSchemaInfo deviceSchemaInfo =
+        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+
+    List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
+
+    if (isNeedInferType) {
+      try {
+        transferType(measurementSchemas);
+      } catch (QueryProcessException e) {
+        return false;
+      }
+    } else {
       // todo partial insert
       if (deviceSchemaInfo.isAligned() != isAligned) {
         return false;
       }
 
-      List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
       for (int i = 0; i < measurementSchemas.size(); i++) {
         if (dataTypes[i] != measurementSchemas.get(i).getType()) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -204,12 +212,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    * Double, Binary)
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void transferType(SchemaTree schemaTree) throws QueryProcessException {
+  public void transferType(List<MeasurementSchema> measurementSchemas)
+      throws QueryProcessException {
     if (isNeedInferType) {
-      List<MeasurementSchema> measurementSchemas =
-          schemaTree
-              .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
-              .getMeasurementSchemaList();
       for (int i = 0; i < measurementSchemas.size(); i++) {
         if (measurementSchemas.get(i) == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -245,6 +250,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
           }
         }
       }
+      isNeedInferType = false;
     }
   }
 

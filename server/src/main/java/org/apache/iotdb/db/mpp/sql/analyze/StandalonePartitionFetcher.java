@@ -58,7 +58,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public DataPartition getOrCreateDataPartition(PathPatternTree patternTree) {
+  public DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> queryParams) {
     return null;
   }
 }

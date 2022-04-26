@@ -119,9 +119,9 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsert {
   }
 
   @Override
-  public boolean checkDataType(SchemaTree schemaTree) {
+  public boolean validateSchema(SchemaTree schemaTree) {
     for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      if (!insertTabletNode.checkDataType(schemaTree)) {
+      if (!insertTabletNode.validateSchema(schemaTree)) {
         return false;
       }
     }

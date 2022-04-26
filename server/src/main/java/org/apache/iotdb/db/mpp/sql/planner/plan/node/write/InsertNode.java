@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
@@ -191,7 +192,14 @@ public abstract class InsertNode extends WritePlanNode {
     return dataRegionReplicaSet;
   }
 
-  public abstract boolean checkDataType(SchemaTree schemaTree);
+  public abstract boolean validateSchema(SchemaTree schemaTree);
+
+  public void setMeasurementSchemas(SchemaTree schemaTree) {
+    DeviceSchemaInfo deviceSchemaInfo =
+        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    measurementSchemas =
+        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
+  }
 
   /**
    * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed

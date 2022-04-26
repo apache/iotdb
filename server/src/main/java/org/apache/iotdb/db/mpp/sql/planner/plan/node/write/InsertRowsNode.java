@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -106,19 +105,13 @@ public class InsertRowsNode extends InsertNode implements BatchInsert {
   public void addChild(PlanNode child) {}
 
   @Override
-  public boolean checkDataType(SchemaTree schemaTree) {
+  public boolean validateSchema(SchemaTree schemaTree) {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      if (!insertRowNode.checkDataType(schemaTree)) {
+      if (!insertRowNode.validateSchema(schemaTree)) {
         return false;
       }
     }
     return true;
-  }
-
-  public void transferType(SchemaTree schemaTree) throws QueryProcessException {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.transferType(schemaTree);
-    }
   }
 
   @Override

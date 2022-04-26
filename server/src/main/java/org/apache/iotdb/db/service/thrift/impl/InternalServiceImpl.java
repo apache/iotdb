@@ -37,9 +37,11 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.sql.analyze.ClusterSchemaFetcher;
@@ -107,12 +109,13 @@ public class InternalServiceImpl implements InternalService.Iface {
             FragmentInstance.deserializeFrom(req.fragmentInstance.body);
         PlanNode planNode = fragmentInstance.getFragment().getRoot();
         if (planNode instanceof InsertNode) {
-          if (SchemaValidator.validate((InsertNode) planNode)) {
+          try {
+            SchemaTree schemaTree = SchemaValidator.validate((InsertNode) planNode);
+            ((InsertNode) planNode).setMeasurementSchemas(schemaTree);
             resp = ConsensusImpl.getInstance().write(groupId, fragmentInstance);
-
-          } else {
+          } catch (SemanticException e) {
             response.setAccepted(false);
-            response.setMessage("Data type mismatch");
+            response.setMessage(e.getMessage());
             return response;
           }
         } else {

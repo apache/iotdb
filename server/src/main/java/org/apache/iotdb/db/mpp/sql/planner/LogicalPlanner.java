@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
@@ -59,7 +58,6 @@ import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -231,12 +229,6 @@ public class LogicalPlanner {
     public PlanNode visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       // convert insert statement to insert node
-      DeviceSchemaInfo deviceSchemaInfo =
-          analysis
-              .getSchemaTree()
-              .searchDeviceSchemaInfo(
-                  insertTabletStatement.getDevicePath(),
-                  Arrays.asList(insertTabletStatement.getMeasurements()));
       return new InsertTabletNode(
           context.getQueryId().genPlanNodeId(),
           insertTabletStatement.getDevicePath(),
@@ -270,12 +262,6 @@ public class LogicalPlanner {
       for (int i = 0; i < insertRowsStatement.getInsertRowStatementList().size(); i++) {
         InsertRowStatement insertRowStatement =
             insertRowsStatement.getInsertRowStatementList().get(i);
-        DeviceSchemaInfo deviceSchemaInfo =
-            analysis
-                .getSchemaTree()
-                .searchDeviceSchemaInfo(
-                    insertRowStatement.getDevicePath(),
-                    Arrays.asList(insertRowStatement.getMeasurements()));
         insertRowsNode.addOneInsertRowNode(
             new InsertRowNode(
                 insertRowsNode.getPlanNodeId(),
@@ -299,12 +285,6 @@ public class LogicalPlanner {
       for (int i = 0; i < insertMultiTabletsStatement.getInsertTabletStatementList().size(); i++) {
         InsertTabletStatement insertTabletStatement =
             insertMultiTabletsStatement.getInsertTabletStatementList().get(i);
-        DeviceSchemaInfo deviceSchemaInfo =
-            analysis
-                .getSchemaTree()
-                .searchDeviceSchemaInfo(
-                    insertTabletStatement.getDevicePath(),
-                    Arrays.asList(insertTabletStatement.getMeasurements()));
         insertMultiTabletsNode.addInsertTabletNode(
             new InsertTabletNode(
                 insertMultiTabletsNode.getPlanNodeId(),
@@ -330,12 +310,6 @@ public class LogicalPlanner {
       for (int i = 0; i < insertRowsOfOneDeviceStatement.getInsertRowStatementList().size(); i++) {
         InsertRowStatement insertRowStatement =
             insertRowsOfOneDeviceStatement.getInsertRowStatementList().get(i);
-        DeviceSchemaInfo deviceSchemaInfo =
-            analysis
-                .getSchemaTree()
-                .searchDeviceSchemaInfo(
-                    insertRowStatement.getDevicePath(),
-                    Arrays.asList(insertRowStatement.getMeasurements()));
         insertRowsOfOneDeviceNode.addOneInsertRowNode(
             new InsertRowNode(
                 insertRowsOfOneDeviceNode.getPlanNodeId(),
