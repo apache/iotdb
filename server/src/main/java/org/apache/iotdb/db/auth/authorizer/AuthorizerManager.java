@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.auth.authorizer;
 
-import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
+
+import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
