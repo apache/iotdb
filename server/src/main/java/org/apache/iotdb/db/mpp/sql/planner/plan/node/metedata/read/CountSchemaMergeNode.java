@@ -26,15 +26,15 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
 
-public class CountMergeNode extends AbstractSchemaMergeNode {
+public class CountSchemaMergeNode extends AbstractSchemaMergeNode {
 
-  public CountMergeNode(PlanNodeId id) {
+  public CountSchemaMergeNode(PlanNodeId id) {
     super(id);
   }
 
   @Override
   public PlanNode clone() {
-    return new CountMergeNode(getPlanNodeId());
+    return new CountSchemaMergeNode(getPlanNodeId());
   }
 
   @Override
@@ -44,7 +44,7 @@ public class CountMergeNode extends AbstractSchemaMergeNode {
 
   public static PlanNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new CountMergeNode(planNodeId);
+    return new CountSchemaMergeNode(planNodeId);
   }
 
   @Override

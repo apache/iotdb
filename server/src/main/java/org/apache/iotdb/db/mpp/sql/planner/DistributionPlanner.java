@@ -34,9 +34,9 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.AbstractSchemaMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
@@ -147,8 +147,8 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSchemaMerge(SchemaMergeNode node, DistributionPlanContext context) {
-      SchemaMergeNode root = (SchemaMergeNode) node.clone();
+    public PlanNode visitSchemaMerge(SeriesSchemaMergeNode node, DistributionPlanContext context) {
+      SeriesSchemaMergeNode root = (SeriesSchemaMergeNode) node.clone();
       SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
       TreeSet<TRegionReplicaSet> schemaRegions =
           new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
@@ -177,8 +177,8 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitCountMerge(CountMergeNode node, DistributionPlanContext context) {
-      CountMergeNode root = (CountMergeNode) node.clone();
+    public PlanNode visitCountMerge(CountSchemaMergeNode node, DistributionPlanContext context) {
+      CountSchemaMergeNode root = (CountSchemaMergeNode) node.clone();
       SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
       Set<TRegionReplicaSet> schemaRegions = new HashSet<>();
       analysis
@@ -327,7 +327,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSchemaMerge(SchemaMergeNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaMerge(SeriesSchemaMergeNode node, NodeGroupContext context) {
       return internalVisitSchemaMerge(node, context);
     }
 
@@ -360,7 +360,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitCountMerge(CountMergeNode node, NodeGroupContext context) {
+    public PlanNode visitCountMerge(CountSchemaMergeNode node, NodeGroupContext context) {
       return internalVisitSchemaMerge(node, context);
     }
 

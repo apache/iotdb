@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -27,11 +30,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
 
 public class TimeSeriesSchemaScanNode extends SchemaScanNode {
 
@@ -109,14 +107,6 @@ public class TimeSeriesSchemaScanNode extends SchemaScanNode {
   public boolean isOrderByHeat() {
     return orderByHeat;
   }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {

@@ -59,7 +59,7 @@ public class HeaderConstant {
   public static final DatasetHeader countNodesHeader;
   public static final DatasetHeader countDevicesHeader;
   public static final DatasetHeader countTimeSeriesHeader;
-  public static final DatasetHeader countNodeTimeSeriesHeader;
+  public static final DatasetHeader countLevelTimeSeriesHeader;
 
   static {
     countStorageGroupHeader =
@@ -79,7 +79,7 @@ public class HeaderConstant {
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader(COLUMN_COUNT_TIMESERIES, TSDataType.INT32)),
             true);
-    countNodeTimeSeriesHeader =
+    countLevelTimeSeriesHeader =
         new DatasetHeader(
             Arrays.asList(
                 new ColumnHeader(COLUMN_COLUMN, TSDataType.TEXT),

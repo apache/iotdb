@@ -48,7 +48,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.CountNodeTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
@@ -331,13 +331,13 @@ public class LogicalPlanner {
     }
 
     @Override
-    public PlanNode visitCountNodeTimeSeries(
-        CountNodeTimeSeriesStatement countNodeTimeSeriesStatement, MPPQueryContext context) {
+    public PlanNode visitCountLevelTimeSeries(
+        CountLevelTimeSeriesStatement countLevelTimeSeriesStatement, MPPQueryContext context) {
       QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
-      planBuilder.planNodeTimeSeriesCountSource(
-          countNodeTimeSeriesStatement.getPartialPath(),
-          countNodeTimeSeriesStatement.isPrefixPath(),
-          countNodeTimeSeriesStatement.getLevel());
+      planBuilder.planLevelTimeSeriesCountSource(
+          countLevelTimeSeriesStatement.getPartialPath(),
+          countLevelTimeSeriesStatement.isPrefixPath(),
+          countLevelTimeSeriesStatement.getLevel());
       planBuilder.planCountMerge();
       return planBuilder.getRoot();
     }

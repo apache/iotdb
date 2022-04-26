@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
@@ -59,6 +62,14 @@ public abstract class SchemaScanNode extends SourceNode {
   public int allowedChildCount() {
     return NO_CHILD_ALLOWED;
   }
+
+  @Override
+  public List<PlanNode> getChildren() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public void addChild(PlanNode child) {}
 
   @Override
   public void close() throws Exception {}

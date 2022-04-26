@@ -33,10 +33,10 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public class NodeTimeSeriesCountNode extends SchemaScanNode {
+public class LevelTimeSeriesCountNode extends SchemaScanNode {
   private final int level;
 
-  public NodeTimeSeriesCountNode(
+  public LevelTimeSeriesCountNode(
       PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, int level) {
     super(id, partialPath, isPrefixPath);
     this.level = level;
@@ -47,31 +47,23 @@ public class NodeTimeSeriesCountNode extends SchemaScanNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return null;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {}
-
-  @Override
   public PlanNode clone() {
-    return new NodeTimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, level);
+    return new LevelTimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, level);
   }
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return HeaderConstant.countNodeTimeSeriesHeader.getColumnHeaders();
+    return HeaderConstant.countLevelTimeSeriesHeader.getColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return HeaderConstant.countNodeTimeSeriesHeader.getRespColumns();
+    return HeaderConstant.countLevelTimeSeriesHeader.getRespColumns();
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return HeaderConstant.countNodeTimeSeriesHeader.getRespDataTypes();
+    return HeaderConstant.countLevelTimeSeriesHeader.getRespDataTypes();
   }
 
   @Override
@@ -93,7 +85,7 @@ public class NodeTimeSeriesCountNode extends SchemaScanNode {
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
     int level = ReadWriteIOUtils.readInt(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new NodeTimeSeriesCountNode(planNodeId, path, isPrefixPath, level);
+    return new LevelTimeSeriesCountNode(planNodeId, path, isPrefixPath, level);
   }
 
   @Override
@@ -107,7 +99,7 @@ public class NodeTimeSeriesCountNode extends SchemaScanNode {
     if (!super.equals(o)) {
       return false;
     }
-    NodeTimeSeriesCountNode that = (NodeTimeSeriesCountNode) o;
+    LevelTimeSeriesCountNode that = (LevelTimeSeriesCountNode) o;
     return level == that.level;
   }
 

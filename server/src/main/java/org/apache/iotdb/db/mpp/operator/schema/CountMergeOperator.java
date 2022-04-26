@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.mpp.operator.schema;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.ProcessOperator;
@@ -26,14 +33,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
 public class CountMergeOperator implements ProcessOperator {
   private final PlanNodeId planNodeId;
@@ -55,31 +54,31 @@ public class CountMergeOperator implements ProcessOperator {
   }
 
   @Override
+  public ListenableFuture<Void> isBlocked() {
+    for (Operator child : children) {
+      ListenableFuture<Void> blocked = child.isBlocked();
+      if (!blocked.isDone()) {
+        return blocked;
+      }
+    }
+    return NOT_BLOCKED;
+  }
+
+  @Override
   public TsBlock next() {
     isFinished = true;
-    if (children.get(0) instanceof NodeTimeSeriesCountOperator) {
+    if (children.get(0) instanceof LevelTimeSeriesCountOperator) {
       return nextWithGroupByLevel();
     }
     return nextWithoutGroupByLevel();
   }
 
   private TsBlock nextWithoutGroupByLevel() {
-    CountDownLatch countDownLatch = new CountDownLatch(children.size());
     List<TsBlock> tsBlocks = new ArrayList<>(children.size());
     for (Operator child : children) {
-      new Thread(
-              () -> {
-                TsBlock tsBlock = child.next();
-                tsBlocks.add(tsBlock);
-                countDownLatch.countDown();
-              })
-          .start();
-    }
-    try {
-      countDownLatch.await();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException(e);
+      if (child.hasNext()) {
+        tsBlocks.add(child.next());
+      }
     }
     int totalCount = 0;
     for (TsBlock tsBlock : tsBlocks) {
@@ -94,24 +93,12 @@ public class CountMergeOperator implements ProcessOperator {
   }
 
   private TsBlock nextWithGroupByLevel() {
-    CountDownLatch countDownLatch = new CountDownLatch(children.size());
     List<TsBlock> tsBlocks = new ArrayList<>(children.size());
     for (Operator child : children) {
-      new Thread(
-              () -> {
-                TsBlock tsBlock = child.next();
-                tsBlocks.add(tsBlock);
-                countDownLatch.countDown();
-              })
-          .start();
+      if (child.hasNext()) {
+        tsBlocks.add(child.next());
+      }
     }
-    try {
-      countDownLatch.await();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException(e);
-    }
-
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     Map<String, Integer> countMap = new HashMap<>();

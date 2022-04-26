@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import java.nio.ByteBuffer;
+import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
@@ -26,26 +28,14 @@ import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.nio.ByteBuffer;
-import java.util.List;
 
 public class TimeSeriesCountNode extends SchemaScanNode {
 
   public TimeSeriesCountNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
     super(id, partialPath, isPrefixPath);
   }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return null;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNode clone() {
@@ -69,7 +59,7 @@ public class TimeSeriesCountNode extends SchemaScanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.NODE_TIME_SERIES_COUNT.serialize(byteBuffer);
+    PlanNodeType.TIME_SERIES_COUNT.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
   }
@@ -85,10 +75,5 @@ public class TimeSeriesCountNode extends SchemaScanNode {
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new TimeSeriesCountNode(planNodeId, path, isPrefixPath);
-  }
-
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitTimeSeriesCount(this, context);
   }
 }

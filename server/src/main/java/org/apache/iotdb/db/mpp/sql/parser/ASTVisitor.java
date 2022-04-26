@@ -55,7 +55,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.CountNodeTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
@@ -466,7 +466,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.INTEGER_LITERAL() != null) {
       int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
-      return new CountNodeTimeSeriesStatement(path, level);
+      return new CountLevelTimeSeriesStatement(path, level);
     }
     return new CountTimeSeriesStatement(path);
   }

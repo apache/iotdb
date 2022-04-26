@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.util.Arrays;
 import java.util.Map;
 
-public class NodeTimeSeriesCountOperator implements SourceOperator {
+public class LevelTimeSeriesCountOperator implements SourceOperator {
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
   private final PartialPath partialPath;
@@ -42,7 +42,7 @@ public class NodeTimeSeriesCountOperator implements SourceOperator {
 
   private boolean isFinished;
 
-  public NodeTimeSeriesCountOperator(
+  public LevelTimeSeriesCountOperator(
       PlanNodeId sourceId,
       OperatorContext operatorContext,
       PartialPath partialPath,

@@ -52,14 +52,6 @@ public class DevicesSchemaScanNode extends SchemaScanNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return null;
-  }
-
-  @Override
-  public void addChild(PlanNode child) {}
-
-  @Override
   public PlanNode clone() {
     return new DevicesSchemaScanNode(getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol);
   }

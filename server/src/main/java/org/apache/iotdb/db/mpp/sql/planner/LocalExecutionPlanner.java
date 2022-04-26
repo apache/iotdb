@@ -47,7 +47,7 @@ import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
-import org.apache.iotdb.db.mpp.operator.schema.NodeTimeSeriesCountOperator;
+import org.apache.iotdb.db.mpp.operator.schema.LevelTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaFetchOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaMergeOperator;
 import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesCountOperator;
@@ -58,12 +58,12 @@ import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.NodeTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
@@ -179,8 +179,8 @@ public class LocalExecutionPlanner {
         return visitDevicesCount((DevicesCountNode) node, context);
       } else if (node instanceof TimeSeriesCountNode) {
         return visitTimeSeriesCount((TimeSeriesCountNode) node, context);
-      } else if (node instanceof NodeTimeSeriesCountNode) {
-        return visitNodeTimeSeriesCount((NodeTimeSeriesCountNode) node, context);
+      } else if (node instanceof LevelTimeSeriesCountNode) {
+        return visitLevelTimeSeriesCount((LevelTimeSeriesCountNode) node, context);
       }
       return visitPlan(node, context);
     }
@@ -225,7 +225,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSchemaMerge(SchemaMergeNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaMerge(SeriesSchemaMergeNode node, LocalExecutionPlanContext context) {
       List<Operator> children =
           node.getChildren().stream()
               .map(n -> n.accept(this, context))
@@ -239,7 +239,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitCountMerge(CountMergeNode node, LocalExecutionPlanContext context) {
+    public Operator visitCountMerge(CountSchemaMergeNode node, LocalExecutionPlanContext context) {
       List<Operator> children =
           node.getChildren().stream()
               .map(n -> n.accept(this, context))
@@ -248,7 +248,7 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              CountMergeNode.class.getSimpleName());
+              CountSchemaMergeNode.class.getSimpleName());
       return new CountMergeOperator(node.getPlanNodeId(), operatorContext, children);
     }
 
@@ -258,7 +258,7 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              CountMergeNode.class.getSimpleName());
+              CountSchemaMergeNode.class.getSimpleName());
       return new DevicesCountOperator(
           node.getPlanNodeId(), operatorContext, node.getPath(), node.isPrefixPath());
     }
@@ -276,14 +276,14 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitNodeTimeSeriesCount(
-        NodeTimeSeriesCountNode node, LocalExecutionPlanContext context) {
+    public Operator visitLevelTimeSeriesCount(
+        LevelTimeSeriesCountNode node, LocalExecutionPlanContext context) {
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              NodeTimeSeriesCountNode.class.getSimpleName());
-      return new NodeTimeSeriesCountOperator(
+              LevelTimeSeriesCountNode.class.getSimpleName());
+      return new LevelTimeSeriesCountOperator(
           node.getPlanNodeId(),
           operatorContext,
           node.getPath(),

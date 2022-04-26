@@ -166,7 +166,7 @@ public class SchemaCountOperatorTest {
   }
 
   @Test
-  public void testNodeTimeSeriesCountOperator() {
+  public void testLevelTimeSeriesCountOperator() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -180,7 +180,7 @@ public class SchemaCountOperatorTest {
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
-              1, planNodeId, NodeTimeSeriesCountOperator.class.getSimpleName());
+              1, planNodeId, LevelTimeSeriesCountOperator.class.getSimpleName());
       PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG);
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance()
@@ -189,8 +189,8 @@ public class SchemaCountOperatorTest {
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      NodeTimeSeriesCountOperator timeSeriesCountOperator =
-          new NodeTimeSeriesCountOperator(
+      LevelTimeSeriesCountOperator timeSeriesCountOperator =
+          new LevelTimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               partialPath,
@@ -209,8 +209,8 @@ public class SchemaCountOperatorTest {
         assertEquals(10, tsBlock.getColumn(1).getInt(i));
       }
 
-      NodeTimeSeriesCountOperator timeSeriesCountOperator2 =
-          new NodeTimeSeriesCountOperator(
+      LevelTimeSeriesCountOperator timeSeriesCountOperator2 =
+          new LevelTimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               partialPath,

@@ -140,7 +140,7 @@ public class CountMergeOperatorTest {
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
-              1, planNodeId, NodeTimeSeriesCountOperator.class.getSimpleName());
+              1, planNodeId, LevelTimeSeriesCountOperator.class.getSimpleName());
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance()
               .getSchemaRegion(
@@ -149,15 +149,15 @@ public class CountMergeOperatorTest {
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      NodeTimeSeriesCountOperator timeSeriesCountOperator1 =
-          new NodeTimeSeriesCountOperator(
+      LevelTimeSeriesCountOperator timeSeriesCountOperator1 =
+          new LevelTimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               new PartialPath(META_SCAN_OPERATOR_TEST_SG),
               true,
               2);
-      NodeTimeSeriesCountOperator timeSeriesCountOperator2 =
-          new NodeTimeSeriesCountOperator(
+      LevelTimeSeriesCountOperator timeSeriesCountOperator2 =
+          new LevelTimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device2"),

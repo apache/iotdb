@@ -25,9 +25,9 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.NodeTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 
@@ -39,8 +39,8 @@ import java.nio.ByteBuffer;
 public class SchemaCountNodeSerdeTest {
 
   @Test
-  public void TestDevicesCountSerializeAndDeserialize() throws IllegalPathException {
-    CountMergeNode countMergeNode = new CountMergeNode(new PlanNodeId("countMerge"));
+  public void testDevicesCountSerializeAndDeserialize() throws IllegalPathException {
+    CountSchemaMergeNode countMergeNode = new CountSchemaMergeNode(new PlanNodeId("countMerge"));
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     DevicesCountNode devicesCountNode =
         new DevicesCountNode(
@@ -65,14 +65,14 @@ public class SchemaCountNodeSerdeTest {
   }
 
   @Test
-  public void TestTimeSeriesCountSerializeAndDeserialize() throws IllegalPathException {
-    CountMergeNode countMergeNode = new CountMergeNode(new PlanNodeId("countMerge"));
+  public void testTimeSeriesCountSerializeAndDeserialize() throws IllegalPathException {
+    CountSchemaMergeNode countMergeNode = new CountSchemaMergeNode(new PlanNodeId("countMerge"));
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
-    NodeTimeSeriesCountNode nodeTimeSeriesCountNode =
-        new NodeTimeSeriesCountNode(
+    LevelTimeSeriesCountNode levelTimeSeriesCountNode =
+        new LevelTimeSeriesCountNode(
             new PlanNodeId("timeseriesCount"), new PartialPath("root.sg.device"), true, 10);
     FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
-    fragmentSinkNode.addChild(nodeTimeSeriesCountNode);
+    fragmentSinkNode.addChild(levelTimeSeriesCountNode);
     fragmentSinkNode.setDownStream(
         new TEndPoint("127.0.0.1", 6667),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
