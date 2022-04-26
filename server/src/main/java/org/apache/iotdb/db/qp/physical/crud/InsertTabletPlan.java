@@ -51,11 +51,9 @@ public class InsertTabletPlan extends InsertPlan {
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
   private long[] times; // times should be sorted. It is done in the session API.
-  private ByteBuffer timeBuffer;
 
   private BitMap[] bitMaps;
   private Object[] columns;
-  private ByteBuffer valueBuffer;
   private int rowCount = 0;
   // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission
   // without data loss in cluster version
@@ -170,8 +168,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeMeasurements(DataOutputStream stream) throws IOException {
-    stream.writeInt(
-        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    stream.writeInt(measurements.length - getFailedMeasurementNumber());
     for (String m : measurements) {
       if (m == null) {
         continue;
@@ -181,13 +178,12 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeDataTypes(DataOutputStream stream) throws IOException {
-    stream.writeInt(dataTypes.length);
+    stream.writeInt(dataTypes.length - getFailedMeasurementNumber());
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
         continue;
       }
-      TSDataType dataType = dataTypes[i];
-      stream.write(dataType.serialize());
+      dataTypes[i].serializeTo(stream);
     }
   }
 
@@ -198,37 +194,36 @@ public class InsertTabletPlan extends InsertPlan {
       stream.writeInt(rowCount);
     }
 
-    if (timeBuffer == null) {
-      if (isExecuting) {
-        for (int i = start; i < end; i++) {
-          stream.writeLong(times[i]);
-        }
-      } else {
-        for (long time : times) {
-          stream.writeLong(time);
-        }
+    if (isExecuting) {
+      for (int i = start; i < end; i++) {
+        stream.writeLong(times[i]);
       }
     } else {
-      stream.write(timeBuffer.array());
-      timeBuffer = null;
+      for (long time : times) {
+        stream.writeLong(time);
+      }
     }
   }
 
   private void writeBitMaps(DataOutputStream stream) throws IOException {
     stream.writeBoolean(bitMaps != null);
     if (bitMaps != null) {
-      for (BitMap bitMap : bitMaps) {
-        if (bitMap == null) {
+      for (int i = 0; i < bitMaps.length; ++i) {
+        if (columns[i] == null) {
+          continue;
+        }
+
+        if (bitMaps[i] == null) {
           stream.writeBoolean(false);
         } else {
           stream.writeBoolean(true);
           if (isExecuting) {
             int len = end - start;
             BitMap partBitMap = new BitMap(len);
-            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+            BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
             stream.write(partBitMap.getByteArray());
           } else {
-            stream.write(bitMap.getByteArray());
+            stream.write(bitMaps[i].getByteArray());
           }
         }
       }
@@ -236,13 +231,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeValues(DataOutputStream stream) throws IOException {
-    if (valueBuffer == null) {
-      serializeValues(stream);
-    } else {
-      stream.write(valueBuffer.array());
-      valueBuffer = null;
-    }
-
+    serializeValues(stream);
     stream.writeLong(index);
   }
 
@@ -264,8 +253,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeMeasurements(ByteBuffer buffer) {
-    buffer.putInt(
-        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    buffer.putInt(measurements.length - getFailedMeasurementNumber());
     for (String m : measurements) {
       if (m != null) {
         putString(buffer, m);
@@ -274,13 +262,12 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeDataTypes(ByteBuffer buffer) {
-    buffer.putInt(dataTypes.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
-    for (int i = 0, dataTypesLength = dataTypes.length; i < dataTypesLength; i++) {
-      TSDataType dataType = dataTypes[i];
+    buffer.putInt(dataTypes.length - getFailedMeasurementNumber());
+    for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
         continue;
       }
-      dataType.serializeTo(buffer);
+      dataTypes[i].serializeTo(buffer);
     }
   }
 
@@ -291,37 +278,36 @@ public class InsertTabletPlan extends InsertPlan {
       buffer.putInt(rowCount);
     }
 
-    if (timeBuffer == null) {
-      if (isExecuting) {
-        for (int i = start; i < end; i++) {
-          buffer.putLong(times[i]);
-        }
-      } else {
-        for (long time : times) {
-          buffer.putLong(time);
-        }
+    if (isExecuting) {
+      for (int i = start; i < end; i++) {
+        buffer.putLong(times[i]);
       }
     } else {
-      buffer.put(timeBuffer.array());
-      timeBuffer = null;
+      for (long time : times) {
+        buffer.putLong(time);
+      }
     }
   }
 
   private void writeBitMaps(ByteBuffer buffer) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
-      for (BitMap bitMap : bitMaps) {
-        if (bitMap == null) {
+      for (int i = 0; i < bitMaps.length; i++) {
+        if (columns[i] == null) {
+          continue;
+        }
+
+        if (bitMaps[i] == null) {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
           if (isExecuting) {
             int len = end - start;
             BitMap partBitMap = new BitMap(len);
-            BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+            BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
             buffer.put(partBitMap.getByteArray());
           } else {
-            buffer.put(bitMap.getByteArray());
+            buffer.put(bitMaps[i].getByteArray());
           }
         }
       }
@@ -329,18 +315,12 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeValues(ByteBuffer buffer) {
-    if (valueBuffer == null) {
-      serializeValues(buffer);
-    } else {
-      buffer.put(valueBuffer.array());
-      valueBuffer = null;
-    }
-
+    serializeValues(buffer);
     buffer.putLong(index);
   }
 
   private void serializeValues(DataOutputStream outputStream) throws IOException {
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {
         continue;
       }
@@ -349,7 +329,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void serializeValues(ByteBuffer buffer) {
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {
         continue;
       }
@@ -450,16 +430,6 @@ public class InsertTabletPlan extends InsertPlan {
       default:
         throw new UnSupportedDataTypeException(String.format(DATATYPE_UNSUPPORTED, dataType));
     }
-  }
-
-  public void setTimeBuffer(ByteBuffer timeBuffer) {
-    this.timeBuffer = timeBuffer;
-    this.timeBuffer.position(0);
-  }
-
-  public void setValueBuffer(ByteBuffer valueBuffer) {
-    this.valueBuffer = valueBuffer;
-    this.timeBuffer.position(0);
   }
 
   @Override
@@ -649,8 +619,6 @@ public class InsertTabletPlan extends InsertPlan {
     return rowCount == that.rowCount
         && Objects.equals(devicePath, that.devicePath)
         && Arrays.equals(times, that.times)
-        && Objects.equals(timeBuffer, that.timeBuffer)
-        && Objects.equals(valueBuffer, that.valueBuffer)
         && Objects.equals(paths, that.paths)
         && Objects.equals(range, that.range)
         && Objects.equals(isAligned, that.isAligned);
@@ -658,7 +626,7 @@ public class InsertTabletPlan extends InsertPlan {
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(timeBuffer, valueBuffer, rowCount, paths, range);
+    int result = Objects.hash(rowCount, paths, range);
     result = 31 * result + Arrays.hashCode(times);
     return result;
   }
