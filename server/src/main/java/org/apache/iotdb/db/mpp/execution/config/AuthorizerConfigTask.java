@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.mpp.execution.config;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.ClusterAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +35,7 @@ public class AuthorizerConfigTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthorizerConfigTask.class);
 
   private AuthorStatement authorStatement;
-  private ClusterAuthorizer clusterAuthorizer = new ClusterAuthorizer();
+  private AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
 
   public AuthorizerConfigTask(AuthorStatement authorStatement) {
     this.authorStatement = authorStatement;
@@ -61,9 +60,9 @@ public class AuthorizerConfigTask implements IConfigTask {
 
       // Send request to some API server
       if (authorStatement.getQueryType() == QueryType.WRITE) {
-        future = clusterAuthorizer.operatePermission(req);
+        future = authorizerManager.operatePermission(req);
       } else {
-        future = clusterAuthorizer.queryPermission(req);
+        future = authorizerManager.queryPermission(req);
       }
     } catch (AuthException e) {
       LOGGER.error("No such privilege {}.", authorStatement.getAuthorType());
