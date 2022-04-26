@@ -323,7 +323,7 @@ public class LocalExecutionPlanner {
         ColumnMerger merger;
         // only has one input column
         if (outputColumn.isSingleInputColumn()) {
-          merger = new SingleColumnMerger(outputColumn.getInputLocation(0));
+          merger = new SingleColumnMerger(outputColumn.getInputLocation(0), OrderBy.TIMESTAMP_ASC);
         } else if (!outputColumn.isOverlapped()) {
           // has more than one input columns but time of these input columns is not overlapped
           throw new UnsupportedOperationException(
