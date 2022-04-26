@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -117,7 +118,14 @@ public class ClusterAuthorizer {
       // Send request to some API server
       status = configNodeClient.login(req);
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
-      LOGGER.error("Failed to connect to config node.");
+      throw new ConfigNodeConnectionException("Couldn't connect config node");
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+      if (status == null) {
+        status = new TSStatus();
+      }
     }
     return status;
   }

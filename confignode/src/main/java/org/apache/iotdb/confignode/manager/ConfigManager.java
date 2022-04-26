@@ -359,6 +359,11 @@ public class ConfigManager implements Manager {
 
   @Override
   public TSStatus login(String username, String password) {
-    return AuthorInfo.getInstance().login(username, password);
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return AuthorInfo.getInstance().login(username, password);
+    } else {
+      return status;
+    }
   }
 }
