@@ -73,7 +73,7 @@ public class ClusterSchemaInfo {
    * @return SUCCESS_STATUS
    */
   public TSStatus setStorageGroup(SetStorageGroupReq req) {
-    TSStatus result;
+    TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
       // Set StorageGroup
@@ -84,29 +84,11 @@ public class ClusterSchemaInfo {
       // Set StorageGroupSchema
       mTree.getStorageGroupNodeByPath(partialPathName).setStorageGroupSchema(storageGroupSchema);
 
-      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (MetadataException e) {
-      result = new TSStatus();
-    } finally {
-      storageGroupReadWriteLock.writeLock().unlock();
-    }
-    return result;
-  }
-
-  public TSStatus setTTL(SetTTLReq req) {
-    TSStatus result;
-    storageGroupReadWriteLock.writeLock().lock();
-    try {
-      PartialPath path = new PartialPath(req.getStorageGroup());
-      if (mTree.isStorageGroupAlreadySet(path)) {
-        mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema().setTTL(req.getTTL());
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      } else {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
-      }
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
-      return new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+      result
+          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
           .setMessage("Error StorageGroup name");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -114,8 +96,30 @@ public class ClusterSchemaInfo {
     return result;
   }
 
+  public TSStatus setTTL(SetTTLReq req) {
+    TSStatus result = new TSStatus();
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      PartialPath path = new PartialPath(req.getStorageGroup());
+      if (mTree.isStorageGroupAlreadySet(path)) {
+        mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema().setTTL(req.getTTL());
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+      }
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      result
+          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setMessage("Error StorageGroupName");
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
   public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorReq req) {
-    TSStatus result;
+    TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
       PartialPath path = new PartialPath(req.getStorageGroup());
@@ -124,14 +128,15 @@ public class ClusterSchemaInfo {
             .getStorageGroupNodeByPath(path)
             .getStorageGroupSchema()
             .setSchemaReplicationFactor(req.getSchemaReplicationFactor());
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
-      return new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroup name");
+      result
+          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -139,7 +144,7 @@ public class ClusterSchemaInfo {
   }
 
   public TSStatus setDataReplicationFactor(SetDataReplicationFactorReq req) {
-    TSStatus result;
+    TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
       PartialPath path = new PartialPath(req.getStorageGroup());
@@ -148,14 +153,15 @@ public class ClusterSchemaInfo {
             .getStorageGroupNodeByPath(path)
             .getStorageGroupSchema()
             .setDataReplicationFactor(req.getDataReplicationFactor());
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
-      return new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroup name");
+      result
+          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -163,7 +169,7 @@ public class ClusterSchemaInfo {
   }
 
   public TSStatus setTimePartitionInterval(SetTimePartitionIntervalReq req) {
-    TSStatus result;
+    TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
       PartialPath path = new PartialPath(req.getStorageGroup());
@@ -172,14 +178,15 @@ public class ClusterSchemaInfo {
             .getStorageGroupNodeByPath(path)
             .getStorageGroupSchema()
             .setTimePartitionInterval(req.getTimePartitionInterval());
-        result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
+        result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
       }
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
-      return new TSStatus(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroup name");
+      result
+          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setMessage("Error StorageGroupName");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
