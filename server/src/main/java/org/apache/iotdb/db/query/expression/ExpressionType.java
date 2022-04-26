@@ -58,7 +58,7 @@ public enum ExpressionType {
     this.priority = priority;
   }
 
-  public short getExpressionType() {
+  public short getExpressionTypeInShortEnum() {
     return expressionType;
   }
 

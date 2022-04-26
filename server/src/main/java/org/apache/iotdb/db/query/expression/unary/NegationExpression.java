@@ -202,8 +202,8 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.NEGATION.getExpressionType();
+  protected ExpressionType getExpressionType() {
+    return ExpressionType.NEGATION;
   }
 
   @Override

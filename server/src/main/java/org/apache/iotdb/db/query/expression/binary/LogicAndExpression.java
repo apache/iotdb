@@ -49,7 +49,7 @@ public class LogicAndExpression extends BinaryExpression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.LOGIC_AND.getExpressionType();
+  protected ExpressionType getExpressionType() {
+    return ExpressionType.LOGIC_AND;
   }
 }

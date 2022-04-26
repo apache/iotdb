@@ -458,8 +458,8 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.FUNCTION.getExpressionType();
+  protected ExpressionType getExpressionType() {
+    return ExpressionType.FUNCTION;
   }
 
   @Override

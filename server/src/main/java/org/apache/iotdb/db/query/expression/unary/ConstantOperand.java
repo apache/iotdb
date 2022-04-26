@@ -146,8 +146,8 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.CONSTANT.getExpressionType();
+  protected ExpressionType getExpressionType() {
+    return ExpressionType.CONSTANT;
   }
 
   @Override

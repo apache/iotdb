@@ -49,7 +49,7 @@ public class ModuloExpression extends BinaryExpression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.MODULO.getExpressionType();
+  protected ExpressionType getExpressionType() {
+    return ExpressionType.MODULO;
   }
 }

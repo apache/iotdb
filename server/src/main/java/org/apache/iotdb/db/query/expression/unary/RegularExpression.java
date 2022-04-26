@@ -168,8 +168,8 @@ public class RegularExpression extends Expression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.REGULAR.getExpressionType();
+  protected ExpressionType getExpressionType() {
+    return ExpressionType.REGULAR;
   }
 
   @Override

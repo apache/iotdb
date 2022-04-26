@@ -215,10 +215,11 @@ public abstract class Expression {
     }
   }
 
-  protected abstract short getExpressionType();
+  protected abstract ExpressionType getExpressionType();
 
   public static void serialize(Expression expression, ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(expression.getExpressionType(), byteBuffer);
+    ReadWriteIOUtils.write(
+        expression.getExpressionType().getExpressionTypeInShortEnum(), byteBuffer);
 
     expression.serialize(byteBuffer);
 

@@ -202,8 +202,8 @@ public class LogicNotExpression extends Expression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.LOGIC_NOT.getExpressionType();
+  protected ExpressionType getExpressionType() {
+    return ExpressionType.LOGIC_NOT;
   }
 
   @Override
