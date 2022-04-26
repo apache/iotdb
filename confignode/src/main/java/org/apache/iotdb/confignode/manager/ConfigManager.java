@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -354,5 +355,10 @@ public class ConfigManager implements Manager {
       dataSet.setStatus(status);
       return dataSet;
     }
+  }
+
+  @Override
+  public TSStatus login(String username, String password) {
+    return AuthorInfo.getInstance().login(username, password);
   }
 }

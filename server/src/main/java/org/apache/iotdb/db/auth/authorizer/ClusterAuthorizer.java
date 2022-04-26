@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -92,7 +93,7 @@ public class ClusterAuthorizer {
             authorizerResp.getStatus());
         future.setException(new StatementExecutionException(authorizerResp.getStatus()));
       } else {
-        // TODO: Construct result
+        // TODO: Construct tsBlock
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock));
       }
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
@@ -106,5 +107,18 @@ public class ClusterAuthorizer {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     return future;
+  }
+
+  public TSStatus login(TLoginReq req) {
+    ConfigNodeClient configNodeClient = null;
+    TSStatus status = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      status = configNodeClient.login(req);
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      LOGGER.error("Failed to connect to config node.");
+    }
+    return status;
   }
 }
