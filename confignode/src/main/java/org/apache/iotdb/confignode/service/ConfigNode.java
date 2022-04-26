@@ -44,10 +44,11 @@ public class ConfigNode implements ConfigNodeMBean {
   private final RegisterManager registerManager = new RegisterManager();
 
   private final ConfigNodeRPCService configNodeRPCService;
-  private final ConfigNodeRPCServer configNodeRPCServer = new ConfigNodeRPCServer();
 
   private ConfigManager configManager;
 
+  public ConfigNode() {
+    this.configNodeRPCService = new ConfigNodeRPCService();
 
     try {
       this.configManager = new ConfigManager();
@@ -56,6 +57,7 @@ public class ConfigNode implements ConfigNodeMBean {
       stop();
       System.exit(0);
     }
+  }
 
   public static void main(String[] args) {
     new ConfigNodeCommandLine().doMain(args);
