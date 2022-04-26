@@ -32,5 +32,5 @@ public abstract class ConfigStatement extends Statement {
    *
    * @return QueryType
    */
-  public abstract QueryType operatorIsQuery();
+  public abstract QueryType getQueryType();
 }

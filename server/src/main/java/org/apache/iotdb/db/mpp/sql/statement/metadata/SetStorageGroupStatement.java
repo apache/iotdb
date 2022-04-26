@@ -47,7 +47,7 @@ public class SetStorageGroupStatement extends ConfigStatement {
   }
 
   @Override
-  public QueryType operatorIsQuery() {
+  public QueryType getQueryType() {
     return QueryType.WRITE;
   }
 }

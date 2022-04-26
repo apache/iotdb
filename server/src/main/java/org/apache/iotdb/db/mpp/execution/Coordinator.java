@@ -74,7 +74,7 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     if (statement instanceof ConfigStatement) {
-      queryContext.setQueryType(((ConfigStatement) statement).operatorIsQuery());
+      queryContext.setQueryType(((ConfigStatement) statement).getQueryType());
       return new ConfigExecution(queryContext, statement, executor);
     }
     return new QueryExecution(

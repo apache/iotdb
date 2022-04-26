@@ -115,7 +115,7 @@ public class AuthorStatement extends ConfigStatement {
   }
 
   @Override
-  public QueryType operatorIsQuery() {
+  public QueryType getQueryType() {
     QueryType queryType;
     switch (authorType) {
       case CREATE_USER:
