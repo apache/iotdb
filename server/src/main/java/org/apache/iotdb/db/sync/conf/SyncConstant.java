@@ -46,18 +46,21 @@ public class SyncConstant {
   // recover
   public static final String SENDER_LOG_NAME = "senderService.log";
   public static final String PLAN_SERIALIZE_SPLIT_CHARACTER = ",";
-  public static final String SENDER_LOG_SPLIT_CHARACTER = " ";
+  public static final String SENDER_LOG_SPLIT_CHARACTER = "#";
 
   // data config
   public static final String DEFAULT_PIPE_SINK_IP = "127.0.0.1";
   public static final int DEFAULT_PIPE_SINK_PORT = 6670;
 
-  public static final Long DEFAULT_HEARTBEAT_DELAY_SECONDS = 10 * 60L;
+  public static final Long HEARTBEAT_DELAY_SECONDS = 10 * 60L;
+  public static final int CONNECT_TIMEOUT_MILLISECONDS = 500;
+  public static final int SOCKET_TIMEOUT_MILLISECONDS = 10_000;
+
   public static final Long DEFAULT_WAITING_FOR_TSFILE_CLOSE_MILLISECONDS = 500L;
   public static final Long DEFAULT_WAITING_FOR_TSFILE_RETRY_NUMBER = 10L;
-  public static final Long DEFAULT_WAITING_FOR_STOP_MILLISECONDS = 100L;
+  public static final Long DEFAULT_WAITING_FOR_STOP_MILLISECONDS = 1000L;
 
-  public static final int MESSAGE_NUMBER_LIMIT = 3;
+  public static final int MESSAGE_NUMBER_LIMIT = 1; // do not support multi lines now
 
   /** transport */
 

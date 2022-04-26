@@ -75,7 +75,7 @@ public class MsgManager {
     }
     Messages.offer(msg);
     if (senderLogger != null) { // not in recover
-      senderLogger.recordMsg(pipe.getName(), operatorType, inputMsg);
+      senderLogger.recordMsg(pipe.getName(), operatorType, msg);
     }
   }
 
@@ -92,14 +92,14 @@ public class MsgManager {
       String msg = Messages.poll();
       if (i < SyncConstant.MESSAGE_NUMBER_LIMIT) {
         builder.append(msg);
-        builder.append(System.lineSeparator());
+//        builder.append(System.lineSeparator()); do not support multi lines now
       }
       Messages.offer(msg);
     }
     if (size > SyncConstant.MESSAGE_NUMBER_LIMIT) {
-      builder.append("...");
+      builder.append(" ...");
     }
-    builder.append("  (for More info, check $IOTDB_HOME$/log/ please.)");
+//    builder.append("  (for More info, check $IOTDB_HOME$/log/ please.)");
     return builder.toString();
   }
 

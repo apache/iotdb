@@ -29,6 +29,7 @@ import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.sync.transport.conf.TransportConstant;
 import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
 import org.apache.iotdb.service.transport.thrift.RequestType;
@@ -43,7 +44,9 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,8 +73,6 @@ public class TransportClient implements ITransportClient {
   private static final Logger logger = LoggerFactory.getLogger(TransportClient.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
-  private static final int TIMEOUT_MS = 2000_000;
 
   private static final int TRANSFER_BUFFER_SIZE_IN_BYTES = 1 * 1024 * 1024;
 
@@ -125,7 +126,14 @@ public class TransportClient implements ITransportClient {
     }
 
     try {
-      transport = RpcTransportFactory.INSTANCE.getTransport(ipAddress, port, TIMEOUT_MS);
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              new TSocket(
+                  TConfigurationConst.defaultTConfiguration,
+                  ipAddress,
+                  port,
+                  SyncConstant.SOCKET_TIMEOUT_MILLISECONDS,
+                  SyncConstant.CONNECT_TIMEOUT_MILLISECONDS));
       TProtocol protocol;
       if (config.isRpcThriftCompressionEnable()) {
         protocol = new TCompactProtocol(transport);
@@ -482,7 +490,7 @@ public class TransportClient implements ITransportClient {
               new SyncResponse(
                   ResponseType.ERROR,
                   String.format(
-                      "Can not connect to %s:%d, please check receiver and internet.",
+                      "Can not connect to %s:%d, please check receiver and Internet.",
                       ipAddress, port)));
     } finally {
       close();
@@ -502,7 +510,13 @@ public class TransportClient implements ITransportClient {
       }
 
       try (TTransport heartbeatTransport =
-          RpcTransportFactory.INSTANCE.getTransport(ipAddress, port, TIMEOUT_MS)) {
+          RpcTransportFactory.INSTANCE.getTransport(
+              new TSocket(
+                  TConfigurationConst.defaultTConfiguration,
+                  ipAddress,
+                  port,
+                  SyncConstant.SOCKET_TIMEOUT_MILLISECONDS,
+                  SyncConstant.CONNECT_TIMEOUT_MILLISECONDS))) {
         TProtocol protocol;
         if (config.isRpcThriftCompressionEnable()) {
           protocol = new TCompactProtocol(heartbeatTransport);
