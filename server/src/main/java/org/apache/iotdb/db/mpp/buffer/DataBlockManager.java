@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
@@ -259,7 +261,8 @@ public class DataBlockManager implements IDataBlockManager {
   private final LocalMemoryManager localMemoryManager;
   private final Supplier<TsBlockSerde> tsBlockSerdeFactory;
   private final ExecutorService executorService;
-  private final DataBlockServiceClientFactory clientFactory;
+  private final IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient>
+      dataBlockServiceClientManager;
   private final Map<TFragmentInstanceId, Map<String, SourceHandle>> sourceHandles;
   private final Map<TFragmentInstanceId, SinkHandle> sinkHandles;
 
@@ -269,11 +272,11 @@ public class DataBlockManager implements IDataBlockManager {
       LocalMemoryManager localMemoryManager,
       Supplier<TsBlockSerde> tsBlockSerdeFactory,
       ExecutorService executorService,
-      DataBlockServiceClientFactory clientFactory) {
+      IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> dataBlockServiceClientManager) {
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.tsBlockSerdeFactory = Validate.notNull(tsBlockSerdeFactory);
     this.executorService = Validate.notNull(executorService);
-    this.clientFactory = Validate.notNull(clientFactory);
+    this.dataBlockServiceClientManager = Validate.notNull(dataBlockServiceClientManager);
     sourceHandles = new ConcurrentHashMap<>();
     sinkHandles = new ConcurrentHashMap<>();
   }
@@ -311,9 +314,9 @@ public class DataBlockManager implements IDataBlockManager {
             localFragmentInstanceId,
             localMemoryManager,
             executorService,
-            clientFactory.getDataBlockServiceClient(remoteEndpoint),
             tsBlockSerdeFactory.get(),
-            new SinkHandleListenerImpl(instanceContext, instanceContext::failed));
+            new SinkHandleListenerImpl(instanceContext, instanceContext::failed),
+            dataBlockServiceClientManager);
     sinkHandles.put(localFragmentInstanceId, sinkHandle);
     return sinkHandle;
   }
@@ -349,9 +352,9 @@ public class DataBlockManager implements IDataBlockManager {
             localPlanNodeId,
             localMemoryManager,
             executorService,
-            clientFactory.getDataBlockServiceClient(remoteEndpoint),
             tsBlockSerdeFactory.get(),
-            new SourceHandleListenerImpl(onFailureCallback));
+            new SourceHandleListenerImpl(onFailureCallback),
+            dataBlockServiceClientManager);
     sourceHandles
         .computeIfAbsent(localFragmentInstanceId, key -> new ConcurrentHashMap<>())
         .put(localPlanNodeId, sourceHandle);

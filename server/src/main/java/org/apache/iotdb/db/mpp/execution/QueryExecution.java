@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
@@ -90,13 +92,17 @@ public class QueryExecution implements IQueryExecution {
   // We use this SourceHandle to fetch the TsBlock from it.
   private ISourceHandle resultHandle;
 
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      internalServiceClientManager;
+
   public QueryExecution(
       Statement statement,
       MPPQueryContext context,
       ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
+      ISchemaFetcher schemaFetcher,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
@@ -105,6 +111,7 @@ public class QueryExecution implements IQueryExecution {
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
+    this.internalServiceClientManager = internalServiceClientManager;
 
     // We add the abort logic inside the QueryExecution.
     // So that the other components can only focus on the state change.
@@ -153,14 +160,16 @@ public class QueryExecution implements IQueryExecution {
                 distributedPlan.getInstances(),
                 context.getQueryType(),
                 executor,
-                scheduledExecutor)
+                scheduledExecutor,
+                internalServiceClientManager)
             : new StandaloneScheduler(
                 context,
                 stateMachine,
                 distributedPlan.getInstances(),
                 context.getQueryType(),
                 executor,
-                scheduledExecutor);
+                scheduledExecutor,
+                internalServiceClientManager);
     this.scheduler.start();
   }
 

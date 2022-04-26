@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
-import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
@@ -60,7 +61,6 @@ public class SinkHandle implements ISinkHandle {
   private final TFragmentInstanceId localFragmentInstanceId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
-  private final DataBlockService.Iface client;
   private final TsBlockSerde serde;
   private final SinkHandleListener sinkHandleListener;
 
@@ -68,6 +68,9 @@ public class SinkHandle implements ISinkHandle {
   //   1. Predictable iteration order so that removing buffered tsblocks can be efficient.
   //   2. Fast lookup.
   private final LinkedHashMap<Integer, TsBlock> sequenceIdToTsBlock = new LinkedHashMap<>();
+
+  private final IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient>
+      dataBlockServiceClientManager;
 
   private volatile ListenableFuture<Void> blocked = immediateFuture(null);
   private int nextSequenceId = 0;
@@ -82,18 +85,18 @@ public class SinkHandle implements ISinkHandle {
       TFragmentInstanceId localFragmentInstanceId,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
-      DataBlockService.Iface client,
       TsBlockSerde serde,
-      SinkHandleListener sinkHandleListener) {
+      SinkHandleListener sinkHandleListener,
+      IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> dataBlockServiceClientManager) {
     this.remoteEndpoint = Validate.notNull(remoteEndpoint);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.remotePlanNodeId = Validate.notNull(remotePlanNodeId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
-    this.client = Validate.notNull(client);
     this.serde = Validate.notNull(serde);
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
+    this.dataBlockServiceClientManager = dataBlockServiceClientManager;
   }
 
   @Override
@@ -152,7 +155,7 @@ public class SinkHandle implements ISinkHandle {
     throw new UnsupportedOperationException();
   }
 
-  private void sendEndOfDataBlockEvent() throws TException {
+  private void sendEndOfDataBlockEvent() throws Exception {
     logger.debug(
         "Send end of data block event to plan node {} of {}. {}",
         remotePlanNodeId,
@@ -167,8 +170,17 @@ public class SinkHandle implements ISinkHandle {
             nextSequenceId - 1);
     while (attempt < MAX_ATTEMPT_TIMES) {
       attempt += 1;
+      SyncDataNodeDataBlockServiceClient client = null;
       try {
-        client.onEndOfDataBlockEvent(endOfDataBlockEvent);
+        client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
+        if (client == null) {
+          logger.warn("can't get client for node {}", remoteEndpoint);
+          if (attempt == MAX_ATTEMPT_TIMES) {
+            throw new TException("Can't get client for node " + remoteEndpoint);
+          }
+        } else {
+          client.onEndOfDataBlockEvent(endOfDataBlockEvent);
+        }
         break;
       } catch (TException e) {
         logger.error(
@@ -178,8 +190,20 @@ public class SinkHandle implements ISinkHandle {
             e.getMessage(),
             attempt,
             e);
+        if (client != null) {
+          client.close();
+        }
         if (attempt == MAX_ATTEMPT_TIMES) {
           throw e;
+        }
+      } catch (IOException e) {
+        logger.error("can't connect to node {}", remoteEndpoint, e);
+        if (attempt == MAX_ATTEMPT_TIMES) {
+          throw e;
+        }
+      } finally {
+        if (client != null) {
+          client.returnSelf();
         }
       }
     }
@@ -193,7 +217,7 @@ public class SinkHandle implements ISinkHandle {
     }
     try {
       sendEndOfDataBlockEvent();
-    } catch (TException e) {
+    } catch (Exception e) {
       throw new RuntimeException("Send EndOfDataBlockEvent failed", e);
     }
     synchronized (this) {
@@ -356,10 +380,22 @@ public class SinkHandle implements ISinkHandle {
               blockSizes);
       while (attempt < MAX_ATTEMPT_TIMES) {
         attempt += 1;
+        SyncDataNodeDataBlockServiceClient client = null;
         try {
-          client.onNewDataBlockEvent(newDataBlockEvent);
+          client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
+          if (client == null) {
+            logger.warn("can't get client for node {}", remoteEndpoint);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              throw new TException("Can't get client for node " + remoteEndpoint);
+            }
+          } else {
+            client.onNewDataBlockEvent(newDataBlockEvent);
+          }
           break;
         } catch (Throwable e) {
+          if (e instanceof TException && client != null) {
+            client.close();
+          }
           logger.error(
               "Failed to send new data block event to plan node {} of {} due to {}, attempt times: {}",
               remotePlanNodeId,
@@ -369,6 +405,10 @@ public class SinkHandle implements ISinkHandle {
               e);
           if (attempt == MAX_ATTEMPT_TIMES) {
             sinkHandleListener.onFailure(SinkHandle.this, e);
+          }
+        } finally {
+          if (client != null) {
+            client.returnSelf();
           }
         }
       }
