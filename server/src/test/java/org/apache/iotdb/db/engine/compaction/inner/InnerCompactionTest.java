@@ -61,7 +61,7 @@ public abstract class InnerCompactionTest {
   protected TsFileManager tsFileManager;
 
   protected int seqFileNum = 6;
-  protected int unseqFileNum = 0;
+  protected int unseqFileNum = 1;
   protected int measurementNum = 10;
   protected int deviceNum = 10;
   protected long ptNum = 100;
@@ -160,24 +160,6 @@ public abstract class InnerCompactionTest {
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
-
-    File file =
-        new File(
-            TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)
-                .concat(
-                    unseqFileNum
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + unseqFileNum
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile"));
-    TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-    tsFileResource.updatePlanIndexes(seqFileNum + unseqFileNum);
-    unseqResources.add(tsFileResource);
-    prepareFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
 
   private void removeFiles() throws IOException {

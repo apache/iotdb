@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,12 +44,12 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public long getBufferRetainedSizeInBytes() {
-    return 0;
+  public TFragmentInstanceId getLocalFragmentInstanceId() {
+    return null;
   }
 
   @Override
-  public int getNumOfBufferedTsBlocks() {
+  public long getBufferRetainedSizeInBytes() {
     return 0;
   }
 
@@ -64,7 +64,7 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(int partition, List<TsBlock> tsBlocks) throws IOException {
+  public void send(int partition, List<TsBlock> tsBlocks) {
     this.tsBlocks.addAll(tsBlocks);
   }
 

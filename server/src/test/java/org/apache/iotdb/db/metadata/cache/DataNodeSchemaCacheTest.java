@@ -20,22 +20,14 @@
 package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 public class DataNodeSchemaCacheTest {
@@ -52,74 +44,52 @@ public class DataNodeSchemaCacheTest {
   }
 
   @Test
-  public void testGetSingleSchemaEntity() throws IllegalPathException {
-    MeasurementSchema measurementSchema1 = new MeasurementSchema("temperature", TSDataType.INT32);
-    PartialPath path1 = new PartialPath("root.sg1.d1.temperature");
-    MeasurementPath measurementPath1 = new MeasurementPath(path1, measurementSchema1);
+  public void testGetSchemaEntity() throws IllegalPathException {
+    PartialPath device1 = new PartialPath("root.sg1.d1");
+    String[] measurements = new String[3];
+    measurements[0] = "s1";
+    measurements[1] = "s2";
+    measurements[2] = "s3";
+    TSDataType[] tsDataTypes = new TSDataType[3];
+    tsDataTypes[0] = TSDataType.INT32;
+    tsDataTypes[1] = TSDataType.FLOAT;
+    tsDataTypes[2] = TSDataType.BOOLEAN;
 
-    SchemaCacheEntity schemaCacheEntity =
-        dataNodeSchemaCache.getSingleSchemaEntity(measurementPath1, true);
-    Assert.assertEquals(TSDataType.INT32, schemaCacheEntity.getTsDataType());
-    Assert.assertEquals(TSEncoding.PLAIN, schemaCacheEntity.getTsEncoding());
-    Assert.assertEquals(CompressionType.SNAPPY, schemaCacheEntity.getCompressionType());
+    Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap1 =
+        dataNodeSchemaCache.getSchemaEntityWithAutoCreate(
+            device1, measurements, tsDataTypes, false);
+    Assert.assertEquals(
+        TSDataType.INT32,
+        schemaCacheEntityMap1.get(new PartialPath("root.sg1.d1.s1")).getTsDataType());
+    Assert.assertEquals(
+        TSDataType.FLOAT,
+        schemaCacheEntityMap1.get(new PartialPath("root.sg1.d1.s2")).getTsDataType());
+    Assert.assertEquals(
+        TSDataType.BOOLEAN,
+        schemaCacheEntityMap1.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
+    Assert.assertEquals(3, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
 
-    PartialPath path1_1 = new PartialPath("root.sg1.d1.temperature");
-    SchemaCacheEntity schemaCacheEntity1 = dataNodeSchemaCache.getSingleSchemaEntity(path1_1, true);
-    Assert.assertEquals(schemaCacheEntity, schemaCacheEntity1);
-    Assert.assertEquals(1, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
+    String[] otherMeasurements = new String[3];
+    otherMeasurements[0] = "s3";
+    otherMeasurements[1] = "s4";
+    otherMeasurements[2] = "s5";
+    TSDataType[] otherTsDataTypes = new TSDataType[3];
+    otherTsDataTypes[0] = TSDataType.BOOLEAN;
+    otherTsDataTypes[1] = TSDataType.TEXT;
+    otherTsDataTypes[2] = TSDataType.INT64;
 
-    PartialPath path1_2 = new PartialPath("root.sg1.d1.cpu");
-    SchemaCacheEntity schemaCacheEntity2 =
-        dataNodeSchemaCache.getSingleSchemaEntity(path1_2, false);
-    Assert.assertNull(schemaCacheEntity2);
-    Assert.assertEquals(1, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
-
-    SchemaCacheEntity schemaCacheEntity3 = dataNodeSchemaCache.getSingleSchemaEntity(path1_2, true);
-    Assert.assertNull(schemaCacheEntity3);
-    Assert.assertEquals(1, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
-
-    MeasurementSchema measurementSchema4 = new MeasurementSchema("cpu", TSDataType.INT64);
-    PartialPath path4 = new PartialPath("root.sg1.d1.cpu");
-    MeasurementPath measurementPath4 = new MeasurementPath(path4, measurementSchema4);
-    SchemaCacheEntity schemaCacheEntity4 =
-        dataNodeSchemaCache.getSingleSchemaEntity(measurementPath4, true);
-    Assert.assertEquals(TSDataType.INT64, schemaCacheEntity4.getTsDataType());
-    Assert.assertEquals(TSEncoding.PLAIN, schemaCacheEntity4.getTsEncoding());
-    Assert.assertEquals(CompressionType.SNAPPY, schemaCacheEntity4.getCompressionType());
-    Assert.assertEquals(2, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
-  }
-
-  @Test
-  public void testGetAlignedSchemaEntity() throws IllegalPathException {
-    List<String> measurementList = new ArrayList<>();
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-
-    measurementList.add("s1");
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
-
-    measurementList.add("s2");
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
-
-    measurementList.add("s3");
-    schemaList.add(new MeasurementSchema("s3", TSDataType.FLOAT));
-
-    AlignedPath alignedPath1 = new AlignedPath("root.sg1.d2", measurementList, schemaList);
-    Map<PartialPath, SchemaCacheEntity> schemaEntityMap1 =
-        dataNodeSchemaCache.getAlignedSchemaEntity(alignedPath1, true);
-    Assert.assertEquals(3, schemaEntityMap1.size());
-
-    measurementList.add("s4");
-    schemaList.add(new MeasurementSchema("s4", TSDataType.BOOLEAN));
-
-    measurementList.add("s5");
-    schemaList.add(new MeasurementSchema("s5", TSDataType.TEXT));
-    AlignedPath alignedPath2 = new AlignedPath("root.sg1.d2", measurementList, schemaList);
-    Map<PartialPath, SchemaCacheEntity> schemaEntityMap2 =
-        dataNodeSchemaCache.getAlignedSchemaEntity(alignedPath2, false);
-    Assert.assertEquals(3, schemaEntityMap2.size());
-
-    Map<PartialPath, SchemaCacheEntity> schemaEntityMap3 =
-        dataNodeSchemaCache.getAlignedSchemaEntity(alignedPath2, true);
-    Assert.assertEquals(5, schemaEntityMap3.size());
+    Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap2 =
+        dataNodeSchemaCache.getSchemaEntityWithAutoCreate(
+            device1, otherMeasurements, otherTsDataTypes, false);
+    Assert.assertEquals(
+        TSDataType.BOOLEAN,
+        schemaCacheEntityMap2.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
+    Assert.assertEquals(
+        TSDataType.TEXT,
+        schemaCacheEntityMap2.get(new PartialPath("root.sg1.d1.s4")).getTsDataType());
+    Assert.assertEquals(
+        TSDataType.INT64,
+        schemaCacheEntityMap2.get(new PartialPath("root.sg1.d1.s5")).getTsDataType());
+    Assert.assertEquals(5, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
   }
 }

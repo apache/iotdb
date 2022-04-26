@@ -98,6 +98,10 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_PRIORITY = 0;
   private static final int LEADER_PRIORITY = 1;
 
+  /**
+   * @param ratisStorageDir different groups of RatisConsensus Peer all share ratisStorageDir as
+   *     root dir
+   */
   public RatisConsensus(TEndPoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
       throws IOException {
     // create a RaftPeer as endpoint of comm
@@ -105,6 +109,7 @@ class RatisConsensus implements IConsensus {
     myself = Utils.toRaftPeer(endpoint, DEFAULT_PRIORITY);
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
+    RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
 
     // set the port which server listen to in RaftProperty object
     final int port = NetUtils.createSocketAddr(address).getPort();

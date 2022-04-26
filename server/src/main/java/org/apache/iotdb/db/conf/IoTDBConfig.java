@@ -496,6 +496,9 @@ public class IoTDBConfig {
   /** indicate whether current mode is mpp */
   private boolean mppMode = false;
 
+  /** indicate whether current mode is cluster */
+  private boolean isClusterMode = false;
+
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
 
@@ -2809,6 +2812,14 @@ public class IoTDBConfig {
 
   public void setMppMode(boolean mppMode) {
     this.mppMode = mppMode;
+  }
+
+  public boolean isClusterMode() {
+    return isClusterMode;
+  }
+
+  public void setClusterMode(boolean isClusterMode) {
+    this.isClusterMode = isClusterMode;
   }
 
   public int getDataNodeSchemaCacheSize() {
