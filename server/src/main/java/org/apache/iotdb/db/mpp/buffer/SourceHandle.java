@@ -321,6 +321,13 @@ public class SourceHandle implements ISourceHandle {
         SyncDataNodeDataBlockServiceClient client = null;
         try {
           client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
+          if (client == null) {
+            logger.warn("can't get client for node {}", remoteEndpoint);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              throw new TException("Can't get client for node " + remoteEndpoint);
+            }
+            continue;
+          }
           TGetDataBlockResponse resp = client.getDataBlock(req);
           List<TsBlock> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
           for (ByteBuffer byteBuffer : resp.getTsBlocks()) {
@@ -394,10 +401,17 @@ public class SourceHandle implements ISourceHandle {
         SyncDataNodeDataBlockServiceClient client = null;
         try {
           client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
-          client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
-          break;
+          if (client == null) {
+            logger.warn("can't get client for node {}", remoteEndpoint);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              throw new TException("Can't get client for node " + remoteEndpoint);
+            }
+          } else {
+            client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
+            break;
+          }
         } catch (Throwable e) {
-          if (e instanceof TException) {
+          if (e instanceof TException && client != null) {
             client.close();
           }
           logger.error(

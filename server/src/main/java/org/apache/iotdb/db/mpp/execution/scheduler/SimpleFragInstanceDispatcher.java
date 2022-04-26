@@ -67,6 +67,9 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
             try {
               // TODO: (jackie tien) change the port
               client = internalServiceClientManager.borrowClient(endPoint);
+              if (client == null) {
+                throw new TException("Can't get client for node " + endPoint);
+              }
               // TODO: (xingtanzjr) consider how to handle the buffer here
               ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
               instance.serializeRequest(buffer);
@@ -81,7 +84,9 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
               throw e;
             } catch (TException e) {
               LOGGER.error("sendFragmentInstance failed for node {}", endPoint, e);
-              client.close();
+              if (client != null) {
+                client.close();
+              }
               throw e;
             } finally {
               if (client != null) {
