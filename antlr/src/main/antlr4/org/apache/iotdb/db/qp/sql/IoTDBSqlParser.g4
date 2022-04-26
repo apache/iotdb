@@ -843,6 +843,7 @@ expression
     | constant
     | time=(TIME | TIMESTAMP)
     | suffixPathCanInExpr
+    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
@@ -851,7 +852,6 @@ expression
     | unaryBeforeInExpression=expression OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
     | leftExpression=expression OPERATOR_AND rightExpression=expression
     | leftExpression=expression OPERATOR_OR rightExpression=expression
-    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     ;
 
 functionName

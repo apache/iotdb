@@ -19,9 +19,10 @@
 package org.apache.iotdb.db.query.expression;
 
 public enum ExpressionType {
-  CONSTANT((short) -3, (short) 1300),
-  TIME_COLUMN((short) -2, (short) 1200),
-  TIME_SERIES((short) -1, (short) 1100),
+  CONSTANT((short) -4, (short) 1400),
+  TIME_COLUMN((short) -3, (short) 1300),
+  TIME_SERIES((short) -2, (short) 1200),
+  FUNCTION((short) -1, (short) 1100),
 
   NEGATION((short) 0, (short) 1000),
   LOGIC_NOT((short) 1, (short) 1000),
@@ -40,14 +41,14 @@ public enum ExpressionType {
   LESS_EQUAL((short) 11, (short) 600),
   LESS_THAN((short) 12, (short) 600),
 
-  REGULAR((short) 13, (short) 500),
-  IN((short) 14, (short) 400),
+  REGEXP((short) 13, (short) 500),
+  LIKE((short) 14, (short) 500),
 
-  LOGIC_AND((short) 15, (short) 300),
+  IN((short) 15, (short) 400),
 
-  LOGIC_OR((short) 16, (short) 200),
+  LOGIC_AND((short) 16, (short) 300),
 
-  FUNCTION((short) 17, (short) 100),
+  LOGIC_OR((short) 17, (short) 200),
   ;
 
   private final short expressionType;

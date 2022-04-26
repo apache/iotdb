@@ -168,7 +168,7 @@ public class RegularExpression extends Expression {
 
   @Override
   public ExpressionType getExpressionType() {
-    return ExpressionType.REGULAR;
+    return ExpressionType.REGEXP;
   }
 
   @Override
