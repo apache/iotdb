@@ -60,6 +60,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.mpp.sql.plan.QueryLogicalPlanUtil.querySQLs;
 import static org.apache.iotdb.db.mpp.sql.plan.QueryLogicalPlanUtil.sqlToPlanMap;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class LogicalPlannerTest {
@@ -106,10 +107,7 @@ public class LogicalPlannerTest {
       ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
       createTimeSeriesNode.serialize(byteBuffer);
       byteBuffer.flip();
-
-      CreateTimeSeriesNode createTimeSeriesNode1 =
-          (CreateTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-      Assert.assertTrue(createTimeSeriesNode.equals(createTimeSeriesNode1));
+      assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), createTimeSeriesNode);
     } catch (Exception e) {
       e.printStackTrace();
       fail();
