@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.sql.analyze.FakePartitionFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -190,7 +191,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode1 =
-          (CreateAlignedTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (CreateAlignedTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(createAlignedTimeSeriesNode.equals(createAlignedTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -221,7 +222,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -250,7 +251,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -279,7 +280,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -308,7 +309,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -337,7 +338,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -375,7 +376,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
