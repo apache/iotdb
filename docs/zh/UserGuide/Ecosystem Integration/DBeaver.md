@@ -52,7 +52,7 @@ DBeaver 是一个 SQL 客户端和数据库管理工具。DBeaver 可以使用 I
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2010.56.51%20AM.png?raw=true)
 
 5. 下载[源代码](https://iotdb.apache.org/zh/Download/)，解压并运行下面的命令编译 jdbc 驱动
-   
+
    ```shell
    mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
    ```
@@ -69,7 +69,7 @@ DBeaver 是一个 SQL 客户端和数据库管理工具。DBeaver 可以使用 I
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.05.44%20AM.png?raw=true) 
 
 10. 编辑 JDBC 连接设置
-   
+
    ```
    JDBC URL: jdbc:iotdb://127.0.0.1:6667/
    Username: root

@@ -69,7 +69,7 @@ DBeaver is a SQL client software application and a database administration tool.
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.05.44%20AM.png?raw=true) 
 
 10. Edit JDBC Connection Settings
-   
+
    ```
    JDBC URL: jdbc:iotdb://127.0.0.1:6667/
    Username: root
