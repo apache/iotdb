@@ -31,7 +31,7 @@
 
 ## 2.模型定义
 
-![img](https://y8dp9fjm8f.feishu.cn/space/api/box/stream/download/asynccode/?code=ODYwOTUxMGI4YjI0N2FlOWFlZmI4MDcxNDlmZDE1MGZfQ1hzcVM1bXJxUkthd1hta3hSaDdnZW1aZHh2cE5iTUxfVG9rZW46Ym94Y25CRjF5dXd0QkVEYzVrSnJHcUdkd3VlXzE2NDkwNTkxNDc6MTY0OTA2Mjc0N19WNA)
+![img](https://y8dp9fjm8f.feishu.cn/space/api/box/stream/download/asynccode/?code=ZjhhODI1MjkyMjQyMmMyNjdmYTIxOTE0MmU5M2U2MzRfNHAzS055MVZwWVltNU5WcnJXN2FxbHZoU0s4UHhxWTdfVG9rZW46Ym94Y25CRjF5dXd0QkVEYzVrSnJHcUdkd3VlXzE2NTA5NzA2ODI6MTY1MDk3NDI4Ml9WNA)
 
 假设目前有两台机器A和B都安装了IoTDB，希望将A上的数据不断同步至B中。为了更好地描述这个过程，我们引入以下概念。
 
@@ -45,18 +45,12 @@
 ## 3.注意事项
 
 - 目前仅支持多对一模式，不支持一对多，即一个发送端只能发送数据到一个接收端，而一个接收端可以接受来自多个发送端的数据。
-
 - 发送端只能有一个非DROP状态的Pipe，如果想创建一个新的Pipe，请取消当前Pipe。
-
-- 当有一个或多个发送端指向一个接收端时，这些发送端和接收端各自的设备路径集合之间应当没有交集，否则可能产生不可预料错误 
-
-  。
-
+- 当有一个或多个发送端指向一个接收端时，这些发送端和接收端各自设备路径集合之间应当没有交集，否则可能产生不可预料错误 。
   - 例如：当发送端A包括路径`root.sg.d.s`，发送端B也包括路径`root.sg.d.s`，当发送端A删除`root.sg`存储组时将也会在接收端删除所有B在接收端的`root.sg.d.s`中存放的数据。
-
 - 两台机器之间目前不支持相互同步。
-
-- 同步工具仅同步所有对数据插入和删除，元数据的创建和删除，如TTL的设置，Trigger，CQ等其他操作均不同步。
+- 同步工具仅同步所有对数据写入和删除，元数据的创建和删除，如TTL的设置，Trigger，CQ等其他操作均不同步。
+  - 若在发送端设置了TTL，则启动Pipe时候IoTDB中所有未过期的数据以及未来所有的数据写入和删除都会被同步至接收端
 
 ## 4.快速上手
 
@@ -416,6 +410,7 @@ It costs 0.134s
   ```
 
   - 原因：接收端有正在运行的同步任务
+
   - 解决方案：在发送端先执行 `STOP PIPE` PipeName 停止任务，后关闭 IoTDB Pipe Server
 
 - 执行 
