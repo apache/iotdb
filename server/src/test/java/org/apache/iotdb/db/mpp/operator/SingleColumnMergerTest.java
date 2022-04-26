@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.operator;
 
 import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -39,7 +40,8 @@ public class SingleColumnMergerTest {
 
   @Test
   public void mergeTest1() {
-    SingleColumnMerger merger = new SingleColumnMerger(new InputLocation(0, 0));
+    SingleColumnMerger merger =
+        new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC);
 
     TsBlockBuilder inputBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     inputBuilder.getTimeColumnBuilder().writeLong(2);
@@ -47,6 +49,9 @@ public class SingleColumnMergerTest {
     inputBuilder.declarePosition();
     inputBuilder.getTimeColumnBuilder().writeLong(4);
     inputBuilder.getColumnBuilder(0).writeInt(40);
+    inputBuilder.declarePosition();
+    inputBuilder.getTimeColumnBuilder().writeLong(5);
+    inputBuilder.getColumnBuilder(0).appendNull();
     inputBuilder.declarePosition();
     inputBuilder.getTimeColumnBuilder().writeLong(6);
     inputBuilder.getColumnBuilder(0).writeInt(60);
@@ -71,6 +76,8 @@ public class SingleColumnMergerTest {
     merger.mergeColumn(
         inputTsBlocks, inputIndex, updatedInputIndex, timeColumnBuilder, 7, valueColumnBuilder);
 
+    assertEquals(4, updatedInputIndex[0]);
+
     Column result = valueColumnBuilder.build();
 
     assertEquals(4, result.getPositionCount());
@@ -85,7 +92,8 @@ public class SingleColumnMergerTest {
   /** input tsblock is null */
   @Test
   public void mergeTest2() {
-    SingleColumnMerger merger = new SingleColumnMerger(new InputLocation(0, 0));
+    SingleColumnMerger merger =
+        new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC);
 
     TsBlock[] inputTsBlocks = new TsBlock[1];
     int[] inputIndex = new int[] {0};
@@ -105,6 +113,90 @@ public class SingleColumnMergerTest {
 
     merger.mergeColumn(
         inputTsBlocks, inputIndex, updatedInputIndex, timeColumnBuilder, 7, valueColumnBuilder);
+
+    assertEquals(0, updatedInputIndex[0]);
+
+    Column result = valueColumnBuilder.build();
+
+    assertEquals(4, result.getPositionCount());
+    assertTrue(result.isNull(0));
+    assertTrue(result.isNull(1));
+    assertTrue(result.isNull(2));
+    assertTrue(result.isNull(3));
+  }
+
+  /** current time of input tsblock is larger than endTime of timeBuilder in asc order */
+  @Test
+  public void mergeTest3() {
+    SingleColumnMerger merger =
+        new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC);
+
+    TsBlockBuilder inputBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    inputBuilder.getTimeColumnBuilder().writeLong(8);
+    inputBuilder.getColumnBuilder(0).writeInt(80);
+    inputBuilder.declarePosition();
+
+    TsBlock[] inputTsBlocks = new TsBlock[] {inputBuilder.build()};
+    int[] inputIndex = new int[] {0};
+    int[] updatedInputIndex = new int[] {0};
+
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    timeColumnBuilder.writeLong(4);
+    builder.declarePosition();
+    timeColumnBuilder.writeLong(5);
+    builder.declarePosition();
+    timeColumnBuilder.writeLong(6);
+    builder.declarePosition();
+    timeColumnBuilder.writeLong(7);
+    builder.declarePosition();
+    ColumnBuilder valueColumnBuilder = builder.getColumnBuilder(0);
+
+    merger.mergeColumn(
+        inputTsBlocks, inputIndex, updatedInputIndex, timeColumnBuilder, 7, valueColumnBuilder);
+
+    assertEquals(0, updatedInputIndex[0]);
+
+    Column result = valueColumnBuilder.build();
+
+    assertEquals(4, result.getPositionCount());
+    assertTrue(result.isNull(0));
+    assertTrue(result.isNull(1));
+    assertTrue(result.isNull(2));
+    assertTrue(result.isNull(3));
+  }
+
+  /** current time of input tsblock is less than endTime of timeBuilder in desc order */
+  @Test
+  public void mergeTest4() {
+    SingleColumnMerger merger =
+        new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_DESC);
+
+    TsBlockBuilder inputBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    inputBuilder.getTimeColumnBuilder().writeLong(2);
+    inputBuilder.getColumnBuilder(0).writeInt(20);
+    inputBuilder.declarePosition();
+
+    TsBlock[] inputTsBlocks = new TsBlock[] {inputBuilder.build()};
+    int[] inputIndex = new int[] {0};
+    int[] updatedInputIndex = new int[] {0};
+
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    timeColumnBuilder.writeLong(7);
+    builder.declarePosition();
+    timeColumnBuilder.writeLong(6);
+    builder.declarePosition();
+    timeColumnBuilder.writeLong(5);
+    builder.declarePosition();
+    timeColumnBuilder.writeLong(4);
+    builder.declarePosition();
+    ColumnBuilder valueColumnBuilder = builder.getColumnBuilder(0);
+
+    merger.mergeColumn(
+        inputTsBlocks, inputIndex, updatedInputIndex, timeColumnBuilder, 4, valueColumnBuilder);
+
+    assertEquals(0, updatedInputIndex[0]);
 
     Column result = valueColumnBuilder.build();
 
