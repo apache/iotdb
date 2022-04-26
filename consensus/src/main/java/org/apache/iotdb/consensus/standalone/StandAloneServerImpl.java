@@ -68,7 +68,9 @@ public class StandAloneServerImpl implements IStateMachine {
   }
 
   @Override
-  public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {}
+  public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+    return false;
+  }
 
   @Override
   public SnapshotMeta getLatestSnapshot(File snapshotDir) {

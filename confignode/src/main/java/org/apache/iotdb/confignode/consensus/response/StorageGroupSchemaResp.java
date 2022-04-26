@@ -24,15 +24,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class StorageGroupSchemaResp implements DataSet {
 
   private TSStatus status;
 
-  private List<TStorageGroupSchema> schemaList;
+  private Map<String, TStorageGroupSchema> schemaMap;
 
   public StorageGroupSchemaResp() {}
 
@@ -44,22 +42,14 @@ public class StorageGroupSchemaResp implements DataSet {
     this.status = status;
   }
 
-  public List<TStorageGroupSchema> getSchemaList() {
-    return schemaList;
-  }
-
-  public void setSchemaList(List<TStorageGroupSchema> schemaList) {
-    this.schemaList = schemaList;
+  public void setSchemaMap(Map<String, TStorageGroupSchema> schemaMap) {
+    this.schemaMap = schemaMap;
   }
 
   public void convertToRPCStorageGroupSchemaResp(TStorageGroupSchemaResp resp) {
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      Map<String, TStorageGroupSchema> storageGroupMessageMap = new HashMap<>();
-      for (TStorageGroupSchema schema : schemaList) {
-        storageGroupMessageMap.put(schema.getName(), schema);
-      }
-      resp.setStorageGroupSchemaMap(storageGroupMessageMap);
+      resp.setStorageGroupSchemaMap(schemaMap);
     }
   }
 }

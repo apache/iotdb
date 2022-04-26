@@ -35,7 +35,7 @@ import java.nio.ByteBuffer;
 public class InsertTabletNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     InsertTabletNode insertTabletNode = getInsertTabletNode();
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(10000);

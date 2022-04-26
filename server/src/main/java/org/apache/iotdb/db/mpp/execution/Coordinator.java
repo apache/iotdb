@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.config.ConfigExecution;
 import org.apache.iotdb.db.mpp.sql.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 
@@ -75,7 +74,7 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     if (statement instanceof ConfigStatement) {
-      queryContext.setQueryType(QueryType.WRITE);
+      queryContext.setQueryType(((ConfigStatement) statement).getQueryType());
       return new ConfigExecution(queryContext, statement, executor);
     }
     return new QueryExecution(

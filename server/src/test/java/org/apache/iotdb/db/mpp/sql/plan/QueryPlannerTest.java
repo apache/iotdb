@@ -41,7 +41,7 @@ public class QueryPlannerTest {
 
   @Ignore
   @Test
-  public void TestSqlToDistributedPlan() {
+  public void testSqlToDistributedPlan() {
 
     String querySql = "SELECT d1.*, d333.s1 FROM root.sg LIMIT 10";
 

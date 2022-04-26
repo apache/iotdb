@@ -329,6 +329,9 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       commitSerialNumber += 1;
       try {
         PipeData commitData = pullOnePipeData(commitSerialNumber);
+        if (commitData == null) {
+          continue;
+        }
         if (PipeData.PipeDataType.TSFILE.equals(commitData.getType())) {
           List<File> tsFiles = ((TsFilePipeData) commitData).getTsFiles(false);
           for (File file : tsFiles) {

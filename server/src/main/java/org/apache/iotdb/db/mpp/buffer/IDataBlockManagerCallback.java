@@ -16,26 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.read;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+package org.apache.iotdb.db.mpp.buffer;
 
-import java.nio.ByteBuffer;
-
-public class QueryStorageGroupSchemaReq extends ConfigRequest {
-
-  public QueryStorageGroupSchemaReq() {
-    super(ConfigRequestType.QueryStorageGroupSchema);
-  }
-
-  @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    // empty body
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    // empty body
-  }
+public interface IDataBlockManagerCallback<T> {
+  public void call(T argument);
 }

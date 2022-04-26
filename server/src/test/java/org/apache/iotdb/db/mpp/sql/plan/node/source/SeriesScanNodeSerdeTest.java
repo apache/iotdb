@@ -40,7 +40,7 @@ import static org.junit.Assert.assertEquals;
 public class SeriesScanNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
+  public void testSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
     SeriesScanNode seriesScanNode =
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),

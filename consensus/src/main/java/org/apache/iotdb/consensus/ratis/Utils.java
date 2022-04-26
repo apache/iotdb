@@ -28,12 +28,15 @@ import org.apache.iotdb.consensus.common.Peer;
 
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
+import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -159,5 +162,19 @@ public class Utils {
     TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
     status.read(protocol);
     return status;
+  }
+
+  public static ByteBuffer getMetadataFromTermIndex(TermIndex termIndex) {
+    String ordinal = String.format("%d_%d", termIndex.getTerm(), termIndex.getIndex());
+    ByteBuffer metadata = ByteBuffer.wrap(ordinal.getBytes());
+    return metadata;
+  }
+
+  public static TermIndex getTermIndexFromMetadata(ByteBuffer metadata) {
+    Charset charset = Charset.defaultCharset();
+    CharBuffer charBuffer = charset.decode(metadata);
+    String ordinal = charBuffer.toString();
+    String[] items = ordinal.split("_");
+    return TermIndex.valueOf(Long.parseLong(items[0]), Long.parseLong(items[1]));
   }
 }
