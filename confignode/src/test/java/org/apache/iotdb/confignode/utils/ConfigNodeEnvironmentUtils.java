@@ -44,7 +44,7 @@ public class ConfigNodeEnvironmentUtils {
     LOGGER.debug("ConfigNodeEnvironmentUtils setup...");
 
     if (daemon == null) {
-      daemon = ConfigNode.getInstance();
+      daemon = new ConfigNode();
     }
 
     try {
@@ -93,7 +93,7 @@ public class ConfigNodeEnvironmentUtils {
   @TestOnly
   public static void reactiveDaemon() {
     if (daemon == null) {
-      daemon = ConfigNode.getInstance();
+      daemon = new ConfigNode();
       daemon.active();
     } else {
       activeDaemon();
