@@ -163,12 +163,11 @@ public class RegularExpression extends Expression {
 
   @Override
   protected String getExpressionStringInternal() {
-    // TODO
-    throw new RuntimeException();
+    return expression + " REGEXP " + patternString;
   }
 
   @Override
-  protected ExpressionType getExpressionType() {
+  public ExpressionType getExpressionType() {
     return ExpressionType.REGULAR;
   }
 

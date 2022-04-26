@@ -49,7 +49,7 @@ public class EqualToExpression extends BinaryExpression {
   }
 
   @Override
-  protected ExpressionType getExpressionType() {
+  public ExpressionType getExpressionType() {
     return ExpressionType.EQUAL_TO;
   }
 }

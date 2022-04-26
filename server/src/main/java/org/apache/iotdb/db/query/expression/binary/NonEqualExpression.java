@@ -49,7 +49,7 @@ public class NonEqualExpression extends BinaryExpression {
   }
 
   @Override
-  protected ExpressionType getExpressionType() {
+  public ExpressionType getExpressionType() {
     return ExpressionType.NON_EQUAL;
   }
 }

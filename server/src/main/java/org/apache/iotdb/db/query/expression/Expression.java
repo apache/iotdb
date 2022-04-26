@@ -215,7 +215,7 @@ public abstract class Expression {
     }
   }
 
-  protected abstract ExpressionType getExpressionType();
+  public abstract ExpressionType getExpressionType();
 
   public static void serialize(Expression expression, ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(

@@ -281,13 +281,14 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public final String getExpressionStringInternal() {
     StringBuilder builder = new StringBuilder();
-    if (leftExpression instanceof BinaryExpression) {
+    if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(leftExpression.getExpressionString()).append(")");
     } else {
       builder.append(leftExpression.getExpressionString());
     }
     builder.append(" ").append(operator()).append(" ");
-    if (rightExpression instanceof BinaryExpression) {
+    if (rightExpression.getExpressionType().getPriority()
+        < this.getExpressionType().getPriority()) {
       builder.append("(").append(rightExpression.getExpressionString()).append(")");
     } else {
       builder.append(rightExpression.getExpressionString());

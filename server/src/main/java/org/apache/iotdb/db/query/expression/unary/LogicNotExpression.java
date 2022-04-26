@@ -192,17 +192,15 @@ public class LogicNotExpression extends Expression {
 
   @Override
   public String getExpressionStringInternal() {
-    if (expression instanceof FunctionExpression
-        || expression instanceof ConstantOperand
-        || expression instanceof TimeSeriesOperand) {
-      return "!" + expression.toString();
-    } else {
-      return "!(" + expression.toString() + ")";
-    }
+    return expression instanceof FunctionExpression
+            || expression instanceof ConstantOperand
+            || expression instanceof TimeSeriesOperand
+        ? "!" + expression
+        : "!(" + expression + ")";
   }
 
   @Override
-  protected ExpressionType getExpressionType() {
+  public ExpressionType getExpressionType() {
     return ExpressionType.LOGIC_NOT;
   }
 

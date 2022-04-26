@@ -49,7 +49,7 @@ public class LessEqualExpression extends BinaryExpression {
   }
 
   @Override
-  protected ExpressionType getExpressionType() {
+  public ExpressionType getExpressionType() {
     return ExpressionType.LESS_EQUAL;
   }
 }

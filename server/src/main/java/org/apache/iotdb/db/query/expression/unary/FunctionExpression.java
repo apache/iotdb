@@ -458,7 +458,7 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  protected ExpressionType getExpressionType() {
+  public ExpressionType getExpressionType() {
     return ExpressionType.FUNCTION;
   }
 
