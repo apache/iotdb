@@ -35,17 +35,10 @@ import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.commons.lang.StringUtils;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,23 +48,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_ATTRIBUTES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_DEVICES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TAGS;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class SchemaScanOperatorTest {
-  private static final String META_SCAN_OPERATOR_TEST_SG = "root.MetaScanOperatorTest";
+public class CountMergeOperatorTest {
+  private static final String COUNT_MERGE_OPERATOR_TEST_SG = "root.CountMergeOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -81,7 +66,7 @@ public class SchemaScanOperatorTest {
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(
-        measurementSchemas, deviceIds, seqResources, unSeqResources, META_SCAN_OPERATOR_TEST_SG);
+        measurementSchemas, deviceIds, seqResources, unSeqResources, COUNT_MERGE_OPERATOR_TEST_SG);
   }
 
   @After
@@ -90,7 +75,7 @@ public class SchemaScanOperatorTest {
   }
 
   @Test
-  public void testDeviceMetaScanOperator() {
+  public void testTimeSeriesCountOperator() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -104,8 +89,8 @@ public class SchemaScanOperatorTest {
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
-              1, planNodeId, SchemaScanOperator.class.getSimpleName());
-      PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0");
+              1, planNodeId, TimeSeriesCountOperator.class.getSimpleName());
+      PartialPath partialPath = new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG);
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance()
               .getSchemaRegion(
@@ -113,43 +98,25 @@ public class SchemaScanOperatorTest {
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      List<String> columns = Arrays.asList(COLUMN_DEVICES, COLUMN_STORAGE_GROUP, COLUMN_IS_ALIGNED);
-      DevicesSchemaScanOperator deviceMetaScanOperator =
-          new DevicesSchemaScanOperator(
+      TimeSeriesCountOperator timeSeriesCountOperator =
+          new TimeSeriesCountOperator(
+              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), partialPath, true);
+      TsBlock tsBlock = null;
+      while (timeSeriesCountOperator.hasNext()) {
+        tsBlock = timeSeriesCountOperator.next();
+      }
+      assertNotNull(tsBlock);
+      assertEquals(100, tsBlock.getColumn(0).getInt(0));
+      TimeSeriesCountOperator timeSeriesCountOperator2 =
+          new TimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              10,
-              0,
-              partialPath,
-              false,
-              true);
-      while (deviceMetaScanOperator.hasNext()) {
-        TsBlock tsBlock = deviceMetaScanOperator.next();
-        assertEquals(3, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof BinaryColumn);
-        assertEquals(1, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          Assert.assertEquals(0, tsBlock.getTimeByIndex(i));
-          for (int j = 0; j < columns.size(); j++) {
-            switch (j) {
-              case 0:
-                assertEquals(
-                    tsBlock.getColumn(j).getBinary(i).toString(),
-                    META_SCAN_OPERATOR_TEST_SG + ".device0");
-                break;
-              case 1:
-                assertEquals(
-                    tsBlock.getColumn(j).getBinary(i).toString(), META_SCAN_OPERATOR_TEST_SG);
-                break;
-              case 2:
-                assertEquals("false", tsBlock.getColumn(j).getBinary(i).toString());
-                break;
-              default:
-                break;
-            }
-          }
-        }
-      }
+              new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG + ".device1.*"),
+              false);
+      tsBlock = timeSeriesCountOperator2.next();
+      assertFalse(timeSeriesCountOperator2.hasNext());
+      assertTrue(timeSeriesCountOperator2.isFinished());
+      assertEquals(10, tsBlock.getColumn(0).getInt(0));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail();
@@ -159,7 +126,7 @@ public class SchemaScanOperatorTest {
   }
 
   @Test
-  public void testTimeSeriesMetaScanOperator() {
+  public void testCountMergeOperator() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
@@ -173,74 +140,47 @@ public class SchemaScanOperatorTest {
       PlanNodeId planNodeId = queryId.genPlanNodeId();
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
-              1, planNodeId, SchemaScanOperator.class.getSimpleName());
-      PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device0.*");
+              1, planNodeId, LevelTimeSeriesCountOperator.class.getSimpleName());
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance()
               .getSchemaRegion(
-                  LocalConfigNode.getInstance().getBelongedSchemaRegionId(partialPath));
+                  LocalConfigNode.getInstance()
+                      .getBelongedSchemaRegionId(new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG)));
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
-      List<String> columns =
-          Arrays.asList(
-              COLUMN_TIMESERIES,
-              COLUMN_TIMESERIES_ALIAS,
-              COLUMN_STORAGE_GROUP,
-              COLUMN_TIMESERIES_DATATYPE,
-              COLUMN_TIMESERIES_ENCODING,
-              COLUMN_TIMESERIES_COMPRESSION,
-              COLUMN_TAGS,
-              COLUMN_ATTRIBUTES);
-      TimeSeriesSchemaScanOperator timeSeriesMetaScanOperator =
-          new TimeSeriesSchemaScanOperator(
+      LevelTimeSeriesCountOperator timeSeriesCountOperator1 =
+          new LevelTimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              10,
-              0,
-              partialPath,
-              null,
-              null,
-              false,
-              false,
-              false);
-      while (timeSeriesMetaScanOperator.hasNext()) {
-        TsBlock tsBlock = timeSeriesMetaScanOperator.next();
-        assertEquals(8, tsBlock.getValueColumnCount());
-        assertTrue(tsBlock.getColumn(0) instanceof BinaryColumn);
-        assertEquals(10, tsBlock.getPositionCount());
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          Assert.assertEquals(0, tsBlock.getTimeByIndex(i));
-          for (int j = 0; j < columns.size(); j++) {
-            Binary binary =
-                tsBlock.getColumn(j).isNull(i) ? null : tsBlock.getColumn(j).getBinary(i);
-            String value = binary == null ? "null" : binary.toString();
-            switch (j) {
-              case 0:
-                Assert.assertTrue(value.startsWith(META_SCAN_OPERATOR_TEST_SG + ".device0"));
-                break;
-              case 1:
-                assertEquals("null", value);
-                break;
-              case 2:
-                assertEquals(META_SCAN_OPERATOR_TEST_SG, value);
-                break;
-              case 3:
-                assertEquals(TSDataType.INT32.toString(), value);
-                break;
-              case 4:
-                assertEquals(TSEncoding.PLAIN.toString(), value);
-                break;
-              case 5:
-                assertEquals(CompressionType.UNCOMPRESSED.toString(), value);
-                break;
-              case 6:
-              case 7:
-                assertTrue(StringUtils.isBlank(value));
-              default:
-                break;
-            }
-          }
+              new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG),
+              true,
+              2);
+      LevelTimeSeriesCountOperator timeSeriesCountOperator2 =
+          new LevelTimeSeriesCountOperator(
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG + ".device2"),
+              true,
+              2);
+      CountMergeOperator countMergeOperator =
+          new CountMergeOperator(
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              Arrays.asList(timeSeriesCountOperator1, timeSeriesCountOperator2));
+      TsBlock tsBlock = null;
+      while (countMergeOperator.hasNext()) {
+        tsBlock = countMergeOperator.next();
+        assertFalse(countMergeOperator.hasNext());
+      }
+      assertNotNull(tsBlock);
+      for (int i = 0; i < 10; i++) {
+        String path = tsBlock.getColumn(0).getBinary(i).getStringValue();
+        assertTrue(path.startsWith(COUNT_MERGE_OPERATOR_TEST_SG + ".device"));
+        if (path.equals(COUNT_MERGE_OPERATOR_TEST_SG + ".device2")) {
+          assertEquals(20, tsBlock.getColumn(1).getInt(i));
+        } else {
+          assertEquals(10, tsBlock.getColumn(1).getInt(i));
         }
       }
     } catch (MetadataException e) {
