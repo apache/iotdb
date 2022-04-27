@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -60,10 +59,7 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
           TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
           for (FragmentInstance instance : instances) {
             SyncDataNodeInternalServiceClient client = null;
-            TEndPoint endPoint =
-                new TEndPoint(
-                    instance.getHostEndpoint().getIp(),
-                    IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+            TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
             try {
               // TODO: (jackie tien) change the port
               client = internalServiceClientManager.borrowClient(endPoint);

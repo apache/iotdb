@@ -60,7 +60,7 @@ public class SenderLogger {
     }
   }
 
-  public void addPipeSink(CreatePipeSinkPlan plan) {
+  public synchronized void addPipeSink(CreatePipeSinkPlan plan) {
     getBufferedWriter();
     try {
       bw.write(Operator.OperatorType.CREATE_PIPESINK.name());
@@ -73,7 +73,7 @@ public class SenderLogger {
     }
   }
 
-  public void dropPipeSink(String pipeSinkName) {
+  public synchronized void dropPipeSink(String pipeSinkName) {
     getBufferedWriter();
     try {
       bw.write(Operator.OperatorType.DROP_PIPESINK.name());
@@ -86,7 +86,7 @@ public class SenderLogger {
     }
   }
 
-  public void addPipe(CreatePipePlan plan, long pipeCreateTime) {
+  public synchronized void addPipe(CreatePipePlan plan, long pipeCreateTime) {
     getBufferedWriter();
     try {
       bw.write(Operator.OperatorType.CREATE_PIPE.name());
@@ -101,7 +101,7 @@ public class SenderLogger {
     }
   }
 
-  public void operatePipe(String pipeName, Operator.OperatorType type) {
+  public synchronized void operatePipe(String pipeName, Operator.OperatorType type) {
     getBufferedWriter();
     try {
       bw.write(type.name());
@@ -114,7 +114,7 @@ public class SenderLogger {
     }
   }
 
-  public void recordMsg(String pipeName, Operator.OperatorType type, String msg) {
+  public synchronized void recordMsg(String pipeName, Operator.OperatorType type, String msg) {
     getBufferedWriter();
     try {
       bw.write(type.name());
@@ -129,7 +129,7 @@ public class SenderLogger {
     }
   }
 
-  public void close() {
+  public synchronized void close() {
     try {
       if (bw != null) {
         bw.close();

@@ -300,9 +300,7 @@ public class QueryExecution implements IQueryExecution {
               .createSourceHandle(
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                   context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                  new TEndPoint(
-                      context.getResultNodeContext().getUpStreamEndpoint().getIp(),
-                      IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+                  context.getResultNodeContext().getUpStreamEndpoint(),
                   context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                   stateMachine::transitionToFailed);
     }
