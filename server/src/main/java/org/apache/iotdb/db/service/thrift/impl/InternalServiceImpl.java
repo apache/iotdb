@@ -112,17 +112,13 @@ public class InternalServiceImpl implements InternalService.Iface {
           try {
             SchemaTree schemaTree = SchemaValidator.validate((InsertNode) planNode);
             ((InsertNode) planNode).setMeasurementSchemas(schemaTree);
-            resp = ConsensusImpl.getInstance().write(groupId, fragmentInstance);
           } catch (SemanticException e) {
             response.setAccepted(false);
             response.setMessage(e.getMessage());
             return response;
           }
-        } else {
-          resp =
-              ConsensusImpl.getInstance()
-                  .write(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
         }
+        resp = ConsensusImpl.getInstance().write(groupId, fragmentInstance);
         // TODO need consider more status
         response.setAccepted(
             TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode());
