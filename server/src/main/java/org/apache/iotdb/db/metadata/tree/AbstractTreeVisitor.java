@@ -135,6 +135,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
    * <p>Each node and fullPath of the tree will be traversed at most once.
    */
   protected void getNext() {
+    nextMatchedNode = null;
     VisitorStackEntry<N> stackEntry;
     int patternIndex;
     N node;
