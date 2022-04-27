@@ -127,9 +127,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
    *   <li>When it comes to push children into stack and there's MULTI_LEVEL_WILDCARD before the
    *       current patternIndex, all the children will be pushed.
    *   <li>When a node cannot match the target node name in the patternIndex place and there's
-   *       MULTI_LEVEL_WILDCARD before the current patternIndex, the node name before the current
-   *       patternIndex will be checked until current node can match one. The children will be
-   *       pushed with the matched index + 1.
+   *       MULTI_LEVEL_WILDCARD before the current patternIndex, the node names between the current
+   *       patternIndex and lastMultiLevelWildcardIndex will be checked until the partial path end
+   *       with current node can match one. The children will be pushed with the matched index + 1.
    * </ol>
    *
    * <p>Each fullPath of the tree will be traversed at most once.
@@ -200,7 +200,20 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
         int lastMatchIndex = lastMultiLevelWildcardIndex;
         for (int i = patternIndex - 1; i > lastMultiLevelWildcardIndex; i--) {
-          if (checkIsMatch(i, node)) {
+          if (!checkIsMatch(i, node)) {
+            continue;
+          }
+
+          Iterator<N> ancestors = ancestorStack.iterator();
+          boolean allMatch = true;
+          for (int j = i - 1; j > lastMultiLevelWildcardIndex; j--) {
+            if (!checkIsMatch(j, ancestors.next())) {
+              allMatch = false;
+              break;
+            }
+          }
+
+          if (allMatch) {
             lastMatchIndex = i;
             break;
           }

@@ -45,27 +45,10 @@ public class SchemaTreeTest {
 
   @Test
   public void testMultiWildcard() throws IllegalPathException {
-    SchemaNode root = generateSchemaTree();
+    SchemaNode root = generateSchemaTreeWithInternalRepeatedName();
+
     SchemaTreeVisitor visitor =
-        new SchemaTreeVisitor(root, new PartialPath("root.**.s1"), 0, 0, false);
-    checkVisitorResult(
-        visitor,
-        3,
-        new String[] {"root.sg.d1.s1", "root.sg.d2.a.s1", "root.sg.d2.s1"},
-        null,
-        new boolean[] {false, true, false});
-
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.**.**.s1"), 0, 0, false);
-    checkVisitorResult(
-        visitor,
-        3,
-        new String[] {"root.sg.d1.s1", "root.sg.d2.a.s1", "root.sg.d2.s1"},
-        null,
-        new boolean[] {false, true, false});
-
-    root = generateSchemaTreeWithInternalRepeatedName();
-
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.**.**.s"), 0, 0, false);
+        new SchemaTreeVisitor(root, new PartialPath("root.**.**.s"), 0, 0, false);
     checkVisitorResult(
         visitor,
         4,
@@ -104,6 +87,21 @@ public class SchemaTreeTest {
         new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s"},
         null,
         new boolean[] {false, false, false});
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.**.c.s1"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.c.c.c.d.c.c.s1", "root.c.c.c.d.c.s1"},
+        null,
+        new boolean[] {false, false});
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.**.c.d.c.s1"), 0, 0, false);
+    checkVisitorResult(visitor, 1, new String[] {"root.c.c.c.d.c.s1"}, null, new boolean[] {false});
+
+    visitor = new SchemaTreeVisitor(root, new PartialPath("root.**.d.**.c.s1"), 0, 0, false);
+    checkVisitorResult(
+        visitor, 1, new String[] {"root.c.c.c.d.c.c.s1"}, null, new boolean[] {false});
   }
 
   private void testSchemaTree(SchemaNode root) throws Exception {
@@ -236,7 +234,7 @@ public class SchemaTreeTest {
 
   /**
    * Generate the following tree: root.a.s, root.a.a.s, root.a.a.a.s, root.a.a.a.a.s,
-   * root.a.a.a.a.a.s
+   * root.a.a.a.a.a.s, root.c.c.c.d.c.s1, root.c.c.c.d.c.c.s1
    *
    * @return the root node of the generated schemTree
    */
@@ -245,7 +243,7 @@ public class SchemaTreeTest {
 
     SchemaNode parent = root;
     SchemaNode a;
-    MeasurementSchema schema = new MeasurementSchema("s1", TSDataType.INT32);
+    MeasurementSchema schema = new MeasurementSchema("s", TSDataType.INT32);
     SchemaNode s;
     for (int i = 0; i < 5; i++) {
       a = new SchemaEntityNode("a");
@@ -253,6 +251,25 @@ public class SchemaTreeTest {
       a.addChild("s", s);
       parent.addChild("a", a);
       parent = a;
+    }
+
+    parent = root;
+    SchemaNode c;
+    for (int i = 0; i < 3; i++) {
+      c = new SchemaInternalNode("c");
+      parent.addChild("c", c);
+      parent = c;
+    }
+
+    SchemaNode d = new SchemaInternalNode("d");
+    parent.addChild("d", d);
+    parent = d;
+
+    for (int i = 0; i < 2; i++) {
+      c = new SchemaEntityNode("c");
+      c.addChild("s1", new SchemaMeasurementNode("s1", schema));
+      parent.addChild("c", c);
+      parent = c;
     }
 
     return root;
