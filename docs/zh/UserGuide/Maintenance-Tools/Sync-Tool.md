@@ -206,13 +206,13 @@ IoTDB> CREATE PIPE my_pipe TO my_iotdb [FROM (select ** from root WHERE time>=yy
 - role，当前IoTDB在pipe中的角色，可能有两种角色：
   - sender，当前IoTDB为同步发送端
 
-- receiver，当前IoTDB为同步接收端
-
+  - receiver，当前IoTDB为同步接收端
+  
 - remote，pipe的对端信息
   - 当role为receiver时，这一字段值为发送端ip
 
-- 当role为sender时，这一字段值为pipeSink名称
-
+  - 当role为sender时，这一字段值为pipeSink名称
+  
 - status，pipe状态
 - message，pipe运行信息，当pipe正常运行时，这一字段通常为空，当出现异常时，可能出现两种状态：
   - WARN状态，这表明发生了数据丢失或者其他错误，但是Pipe会保持运行
