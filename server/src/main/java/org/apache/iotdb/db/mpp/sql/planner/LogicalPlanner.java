@@ -248,7 +248,8 @@ public class LogicalPlanner {
           insertRowStatement.getMeasurements(),
           insertRowStatement.getDataTypes(),
           insertRowStatement.getTime(),
-          insertRowStatement.getValues());
+          insertRowStatement.getValues(),
+          insertRowStatement.isNeedInferType());
     }
 
     @Override
@@ -267,7 +268,8 @@ public class LogicalPlanner {
                 insertRowStatement.getMeasurements(),
                 insertRowStatement.getDataTypes(),
                 insertRowStatement.getTime(),
-                insertRowStatement.getValues()),
+                insertRowStatement.getValues(),
+                insertRowStatement.isNeedInferType()),
             i);
       }
       return insertRowsNode;
@@ -315,7 +317,8 @@ public class LogicalPlanner {
                 insertRowStatement.getMeasurements(),
                 insertRowStatement.getDataTypes(),
                 insertRowStatement.getTime(),
-                insertRowStatement.getValues()),
+                insertRowStatement.getValues(),
+                insertRowStatement.isNeedInferType()),
             i);
       }
       return insertRowsOfOneDeviceNode;

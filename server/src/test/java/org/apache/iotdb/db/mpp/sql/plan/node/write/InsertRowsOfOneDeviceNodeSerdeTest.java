@@ -47,7 +47,8 @@ public class InsertRowsOfOneDeviceNodeSerdeTest {
             new String[] {"s1", "s2", "s3"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
             1000L,
-            new Object[] {1.0, 2f, 300L}),
+            new Object[] {1.0, 2f, 300L},
+            false),
         0);
 
     node.addOneInsertRowNode(
@@ -58,7 +59,8 @@ public class InsertRowsOfOneDeviceNodeSerdeTest {
             new String[] {"s1", "s4"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
             2000L,
-            new Object[] {2.0, false}),
+            new Object[] {2.0, false},
+            false),
         1);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(10000);

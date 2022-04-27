@@ -121,7 +121,8 @@ public class InsertRowNodeSerdeTest {
         new String[] {"s1", "s2", "s3", "s4", "s5"},
         dataTypes,
         time,
-        columns);
+        columns,
+        false);
   }
 
   private InsertRowNode getInsertRowNodeWithMeasurementSchemas() throws IllegalPathException {
@@ -150,7 +151,8 @@ public class InsertRowNodeSerdeTest {
             new String[] {"s1", "s2", "s3", "s4", "s5"},
             dataTypes,
             time,
-            columns);
+            columns,
+            false);
 
     insertRowNode.setMeasurementSchemas(
         new MeasurementSchema[] {
@@ -190,7 +192,8 @@ public class InsertRowNodeSerdeTest {
             new String[] {"s1", "s2", "s3", "s4", "s5"},
             new TSDataType[5],
             time,
-            columns);
+            columns,
+            false);
     insertRowNode.setNeedInferType(true);
     return insertRowNode;
   }

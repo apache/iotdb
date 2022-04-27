@@ -125,7 +125,8 @@ public class DataRegionTest {
             measurements,
             dataTypes,
             record.time,
-            values);
+            values,
+            false);
     insertRowNode.setMeasurementSchemas(measurementSchemas);
     return insertRowNode;
   }

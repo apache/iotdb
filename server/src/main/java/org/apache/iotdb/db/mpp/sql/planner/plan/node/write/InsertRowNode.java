@@ -80,10 +80,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       String[] measurements,
       TSDataType[] dataTypes,
       long time,
-      Object[] values) {
+      Object[] values,
+      boolean isNeedInferType) {
     super(id, devicePath, isAligned, measurements, dataTypes);
     this.time = time;
     this.values = values;
+    this.isNeedInferType = isNeedInferType;
   }
 
   @Override
