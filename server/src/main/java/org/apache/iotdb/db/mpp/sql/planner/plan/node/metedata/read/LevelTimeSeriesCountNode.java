@@ -68,7 +68,7 @@ public class LevelTimeSeriesCountNode extends SchemaScanNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.NODE_TIME_SERIES_COUNT.serialize(byteBuffer);
+    PlanNodeType.LEVEL_TIME_SERIES_COUNT.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     ReadWriteIOUtils.write(level, byteBuffer);

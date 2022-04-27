@@ -84,7 +84,7 @@ public enum PlanNodeType {
   STORAGE_GROUP_SCHEMA_SCAN((short) 26),
   DEVICES_COUNT((short) 27),
   TIME_SERIES_COUNT((short) 28),
-  NODE_TIME_SERIES_COUNT((short) 29),
+  LEVEL_TIME_SERIES_COUNT((short) 29),
   COUNT_MERGE((short) 30);
 
   private final short nodeType;
