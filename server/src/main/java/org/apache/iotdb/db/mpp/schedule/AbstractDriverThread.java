@@ -62,8 +62,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
   }
 
   /** Processing a task. */
-  protected abstract void execute(DriverTask task)
-      throws InterruptedException, ExecutionException;
+  protected abstract void execute(DriverTask task) throws InterruptedException, ExecutionException;
 
   @Override
   public void close() throws IOException {

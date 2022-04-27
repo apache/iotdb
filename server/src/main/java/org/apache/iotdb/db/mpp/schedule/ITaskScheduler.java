@@ -25,16 +25,14 @@ import org.apache.iotdb.db.mpp.schedule.task.DriverTaskStatus;
 public interface ITaskScheduler {
 
   /**
-   * Switch a task from {@link DriverTaskStatus#BLOCKED} to {@link
-   * DriverTaskStatus#READY}.
+   * Switch a task from {@link DriverTaskStatus#BLOCKED} to {@link DriverTaskStatus#READY}.
    *
    * @param task the task to be switched.
    */
   void blockedToReady(DriverTask task);
 
   /**
-   * Switch a task from {@link DriverTaskStatus#READY} to {@link
-   * DriverTaskStatus#RUNNING}.
+   * Switch a task from {@link DriverTaskStatus#READY} to {@link DriverTaskStatus#RUNNING}.
    *
    * @param task the task to be switched.
    * @return true if it's switched to the target status successfully, otherwise false.
@@ -42,8 +40,7 @@ public interface ITaskScheduler {
   boolean readyToRunning(DriverTask task);
 
   /**
-   * Switch a task from {@link DriverTaskStatus#RUNNING} to {@link
-   * DriverTaskStatus#READY}.
+   * Switch a task from {@link DriverTaskStatus#RUNNING} to {@link DriverTaskStatus#READY}.
    *
    * @param task the task to be switched.
    * @param context the execution context of last running.
@@ -51,8 +48,7 @@ public interface ITaskScheduler {
   void runningToReady(DriverTask task, ExecutionContext context);
 
   /**
-   * Switch a task from {@link DriverTaskStatus#RUNNING} to {@link
-   * DriverTaskStatus#BLOCKED}.
+   * Switch a task from {@link DriverTaskStatus#RUNNING} to {@link DriverTaskStatus#BLOCKED}.
    *
    * @param task the task to be switched.
    * @param context the execution context of last running.
@@ -60,8 +56,7 @@ public interface ITaskScheduler {
   void runningToBlocked(DriverTask task, ExecutionContext context);
 
   /**
-   * Switch a task from {@link DriverTaskStatus#RUNNING} to {@link
-   * DriverTaskStatus#FINISHED}.
+   * Switch a task from {@link DriverTaskStatus#RUNNING} to {@link DriverTaskStatus#FINISHED}.
    *
    * @param task the task to be switched.
    * @param context the execution context of last running.

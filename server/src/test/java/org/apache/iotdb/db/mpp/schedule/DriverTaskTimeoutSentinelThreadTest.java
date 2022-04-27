@@ -55,18 +55,15 @@ public class DriverTaskTimeoutSentinelThreadTest {
     PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
     FragmentInstanceId instanceId = new FragmentInstanceId(fragmentId, "inst-0");
     IndexedBlockingQueue<DriverTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new DriverTask.TimeoutComparator(), new DriverTask());
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
     IDriver mockDriver = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
 
     AbstractDriverThread executor =
-        new DriverTaskThread(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
 
     // FINISHED status test
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.FINISHED);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.FINISHED);
     executor.execute(testTask);
     Assert.assertEquals(DriverTaskStatus.FINISHED, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
@@ -112,8 +109,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
               return true;
             });
     IndexedBlockingQueue<DriverTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new DriverTask.TimeoutComparator(), new DriverTask());
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a cancelled future
     IDriver mockDriver = Mockito.mock(IDriver.class);
@@ -125,10 +121,8 @@ public class DriverTaskTimeoutSentinelThreadTest {
         .thenReturn(Futures.immediateCancelledFuture());
 
     AbstractDriverThread executor =
-        new DriverTaskThread(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertEquals(
@@ -154,8 +148,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
               return true;
             });
     IndexedBlockingQueue<DriverTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new DriverTask.TimeoutComparator(), new DriverTask());
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a cancelled future
     IDriver mockDriver = Mockito.mock(IDriver.class);
@@ -166,10 +159,8 @@ public class DriverTaskTimeoutSentinelThreadTest {
     Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(Futures.immediateVoidFuture());
     Mockito.when(mockDriver.isFinished()).thenReturn(true);
     AbstractDriverThread executor =
-        new DriverTaskThread(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertNull(testTask.getAbortCause());
@@ -194,8 +185,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
               return true;
             });
     IndexedBlockingQueue<DriverTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new DriverTask.TimeoutComparator(), new DriverTask());
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a blocked future
     ListenableFuture<Void> mockFuture = Mockito.mock(ListenableFuture.class);
@@ -217,10 +207,8 @@ public class DriverTaskTimeoutSentinelThreadTest {
     Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(mockFuture);
     Mockito.when(mockDriver.isFinished()).thenReturn(false);
     AbstractDriverThread executor =
-        new DriverTaskThread(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertNull(testTask.getAbortCause());
@@ -245,8 +233,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
               return true;
             });
     IndexedBlockingQueue<DriverTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new DriverTask.TimeoutComparator(), new DriverTask());
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a ready future
     ListenableFuture<Void> mockFuture = Mockito.mock(ListenableFuture.class);
@@ -268,10 +255,8 @@ public class DriverTaskTimeoutSentinelThreadTest {
     Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(mockFuture);
     Mockito.when(mockDriver.isFinished()).thenReturn(false);
     AbstractDriverThread executor =
-        new DriverTaskThread(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertNull(testTask.getAbortCause());

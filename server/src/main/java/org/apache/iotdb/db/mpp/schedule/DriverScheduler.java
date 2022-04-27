@@ -73,12 +73,9 @@ public class DriverScheduler implements IDriverScheduler, IService {
   private DriverScheduler() {
     this.readyQueue =
         new L2PriorityQueue<>(
-            MAX_CAPACITY,
-            new DriverTask.SchedulePriorityComparator(),
-            new DriverTask());
+            MAX_CAPACITY, new DriverTask.SchedulePriorityComparator(), new DriverTask());
     this.timeoutQueue =
-        new L1PriorityQueue<>(
-            MAX_CAPACITY, new DriverTask.TimeoutComparator(), new DriverTask());
+        new L1PriorityQueue<>(MAX_CAPACITY, new DriverTask.TimeoutComparator(), new DriverTask());
     this.queryMap = new ConcurrentHashMap<>();
     this.blockedTasks = Collections.synchronizedSet(new HashSet<>());
     this.scheduler = new Scheduler();
@@ -91,8 +88,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   public void start() throws StartupException {
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
       AbstractDriverThread t =
-          new DriverTaskThread(
-              "Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
+          new DriverTaskThread("Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
       threads.add(t);
       t.start();
     }
@@ -124,9 +120,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   public void submitDrivers(QueryId queryId, List<IDriver> instances) {
     List<DriverTask> tasks =
         instances.stream()
-            .map(
-                v ->
-                    new DriverTask(v, QUERY_TIMEOUT_MS, DriverTaskStatus.READY))
+            .map(v -> new DriverTask(v, QUERY_TIMEOUT_MS, DriverTaskStatus.READY))
             .collect(Collectors.toList());
     queryMap
         .computeIfAbsent(queryId, v -> Collections.synchronizedSet(new HashSet<>()))

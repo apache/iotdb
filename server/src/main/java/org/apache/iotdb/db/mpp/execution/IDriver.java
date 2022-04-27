@@ -25,8 +25,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 
 /**
- * IDriver encapsulates some methods which are necessary for FragmentInstanceTaskExecutor to run a fragment
- * instance
+ * IDriver encapsulates some methods which are necessary for FragmentInstanceTaskExecutor to run a
+ * fragment instance
  */
 public interface IDriver {
 
@@ -38,14 +38,14 @@ public interface IDriver {
   boolean isFinished();
 
   /**
-   * run the IDriver for {@param duration} time slice, the time of this run is likely not
-   * to be equal to {@param duration}, the actual run time should be calculated by the caller
+   * run the IDriver for {@param duration} time slice, the time of this run is likely not to be
+   * equal to {@param duration}, the actual run time should be calculated by the caller
    *
    * @param duration how long should this IDriver run
    * @return the returned ListenableFuture<Void> is used to represent status of this processing if
-   *     isDone() return true, meaning that this IDriver is not blocked and is ready for
-   *     next processing. Otherwise, meaning that this IDriver is blocked and not ready for
-   *     next processing.
+   *     isDone() return true, meaning that this IDriver is not blocked and is ready for next
+   *     processing. Otherwise, meaning that this IDriver is blocked and not ready for next
+   *     processing.
    */
   ListenableFuture<Void> processFor(Duration duration);
 
@@ -66,8 +66,6 @@ public interface IDriver {
    */
   void failed(Throwable t);
 
-  /**
-   * @return get SinkHandle of current IDriver
-   */
+  /** @return get SinkHandle of current IDriver */
   ISinkHandle getSinkHandle();
 }

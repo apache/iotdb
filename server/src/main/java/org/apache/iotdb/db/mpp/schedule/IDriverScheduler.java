@@ -44,7 +44,8 @@ public interface IDriverScheduler {
   void abortQuery(QueryId queryId);
 
   /**
-   * Abort all Drivers of the fragment instance. If the instance is not existed, nothing will happen.
+   * Abort all Drivers of the fragment instance. If the instance is not existed, nothing will
+   * happen.
    *
    * @param instanceId the id of the fragment instance to be aborted.
    */

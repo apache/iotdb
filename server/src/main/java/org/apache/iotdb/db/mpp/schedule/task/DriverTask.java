@@ -23,8 +23,8 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.IDriver;
-import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.schedule.DriverTaskThread;
+import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
 import org.apache.iotdb.db.mpp.schedule.queue.IDIndexedAccessible;
 
@@ -36,10 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * the scheduling element of {@link DriverTaskThread}. It wraps a single
- * Driver.
- */
+/** the scheduling element of {@link DriverTaskThread}. It wraps a single Driver. */
 public class DriverTask implements IDIndexedAccessible {
 
   private DriverTaskID id;
@@ -84,8 +81,7 @@ public class DriverTask implements IDIndexedAccessible {
   }
 
   public boolean isEndState() {
-    return status == DriverTaskStatus.ABORTED
-        || status == DriverTaskStatus.FINISHED;
+    return status == DriverTaskStatus.ABORTED || status == DriverTaskStatus.FINISHED;
   }
 
   public IDriver getFragmentInstance() {

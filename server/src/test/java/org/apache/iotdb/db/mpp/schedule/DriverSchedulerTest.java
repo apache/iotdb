@@ -69,11 +69,9 @@ public class DriverSchedulerTest {
     Assert.assertEquals(2, manager.getQueryMap().get(queryId).size());
     Assert.assertEquals(2, manager.getTimeoutQueue().size());
     Assert.assertEquals(2, manager.getReadyQueue().size());
-    DriverTask task1 =
-        manager.getTimeoutQueue().get(new DriverTaskID(instanceId1));
+    DriverTask task1 = manager.getTimeoutQueue().get(new DriverTaskID(instanceId1));
     Assert.assertNotNull(task1);
-    DriverTask task2 =
-        manager.getTimeoutQueue().get(new DriverTaskID(instanceId2));
+    DriverTask task2 = manager.getTimeoutQueue().get(new DriverTaskID(instanceId2));
     Assert.assertNotNull(task2);
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(task1));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(task2));
@@ -91,8 +89,7 @@ public class DriverSchedulerTest {
     Assert.assertEquals(3, manager.getQueryMap().get(queryId).size());
     Assert.assertEquals(3, manager.getTimeoutQueue().size());
     Assert.assertEquals(3, manager.getReadyQueue().size());
-    DriverTask task3 =
-        manager.getTimeoutQueue().get(new DriverTaskID(instanceId3));
+    DriverTask task3 = manager.getTimeoutQueue().get(new DriverTaskID(instanceId3));
     Assert.assertNotNull(task3);
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(task3));
     Assert.assertEquals(DriverTaskStatus.READY, task3.getStatus());
@@ -110,8 +107,7 @@ public class DriverSchedulerTest {
     Assert.assertEquals(1, manager.getQueryMap().get(queryId2).size());
     Assert.assertEquals(4, manager.getTimeoutQueue().size());
     Assert.assertEquals(4, manager.getReadyQueue().size());
-    DriverTask task4 =
-        manager.getTimeoutQueue().get(new DriverTaskID(instanceId4));
+    DriverTask task4 = manager.getTimeoutQueue().get(new DriverTaskID(instanceId4));
     Assert.assertNotNull(task4);
     Assert.assertTrue(manager.getQueryMap().get(queryId2).contains(task4));
     Assert.assertEquals(DriverTaskStatus.READY, task4.getStatus());

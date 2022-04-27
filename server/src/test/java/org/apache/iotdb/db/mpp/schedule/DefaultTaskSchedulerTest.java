@@ -80,8 +80,7 @@ public class DefaultTaskSchedulerTest {
       Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
       clear();
     }
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.BLOCKED);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.BLOCKED);
     manager.getBlockedTasks().add(testTask);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
@@ -130,8 +129,7 @@ public class DefaultTaskSchedulerTest {
       Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
       clear();
     }
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -178,8 +176,7 @@ public class DefaultTaskSchedulerTest {
       Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
       clear();
     }
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -231,8 +228,7 @@ public class DefaultTaskSchedulerTest {
       Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
       clear();
     }
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -284,8 +280,7 @@ public class DefaultTaskSchedulerTest {
       Assert.assertTrue(manager.getQueryMap().get(queryId).contains(testTask));
       clear();
     }
-    DriverTask testTask =
-        new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
     Set<DriverTask> taskSet = new HashSet<>();
     taskSet.add(testTask);
     manager.getQueryMap().put(queryId, taskSet);
@@ -325,8 +320,7 @@ public class DefaultTaskSchedulerTest {
         };
     for (DriverTaskStatus status : invalidStates) {
       DriverTask testTask1 = new DriverTask(mockDriver1, 100L, status);
-      DriverTask testTask2 =
-          new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED);
+      DriverTask testTask2 = new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask1);
       taskSet.add(testTask2);
@@ -354,9 +348,7 @@ public class DefaultTaskSchedulerTest {
     }
     DriverTaskStatus[] validStates =
         new DriverTaskStatus[] {
-          DriverTaskStatus.RUNNING,
-          DriverTaskStatus.READY,
-          DriverTaskStatus.BLOCKED,
+          DriverTaskStatus.RUNNING, DriverTaskStatus.READY, DriverTaskStatus.BLOCKED,
         };
     for (DriverTaskStatus status : validStates) {
       Mockito.reset(mockDriver1);
@@ -366,8 +358,7 @@ public class DefaultTaskSchedulerTest {
 
       DriverTask testTask1 = new DriverTask(mockDriver1, 100L, status);
 
-      DriverTask testTask2 =
-          new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED);
+      DriverTask testTask2 = new DriverTask(mockDriver2, 100L, DriverTaskStatus.BLOCKED);
       Set<DriverTask> taskSet = new HashSet<>();
       taskSet.add(testTask1);
       taskSet.add(testTask2);
