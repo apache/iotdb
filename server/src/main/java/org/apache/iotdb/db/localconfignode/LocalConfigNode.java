@@ -48,7 +48,7 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -65,7 +65,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -73,6 +72,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /**
  * This class simulates the behaviour of configNode to manage the configs locally. The schema
@@ -230,6 +231,11 @@ public class LocalConfigNode {
   }
 
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
+
+    DeleteTimeSeriesPlan deleteTimeSeriesPlan =
+        SchemaSyncManager.getInstance()
+            .splitDeleteTimeseriesPlanByDevice(storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+
     deleteSchemaRegionsInStorageGroup(
         storageGroup, schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup));
 
@@ -237,8 +243,7 @@ public class LocalConfigNode {
       templateManager.unmarkStorageGroup(template, storageGroup.getFullPath());
     }
     if (SchemaSyncManager.getInstance().isEnableSync()) {
-      SchemaSyncManager.getInstance()
-          .syncMetadataPlan(new DeleteStorageGroupPlan(Collections.singletonList(storageGroup)));
+      SchemaSyncManager.getInstance().syncMetadataPlan(deleteTimeSeriesPlan);
     }
 
     if (!config.isEnableMemControl()) {

@@ -120,14 +120,16 @@ public class DistributionPlanner {
 
     FragmentSinkNode sinkNode = new FragmentSinkNode(context.getQueryId().genPlanNodeId());
     sinkNode.setDownStream(
-        context.getHostEndpoint(),
+        context.getLocalDataBlockEndpoint(),
         context.getResultNodeContext().getVirtualFragmentInstanceId(),
         context.getResultNodeContext().getVirtualResultNodeId());
     sinkNode.setChild(rootInstance.getFragment().getRoot());
     context
         .getResultNodeContext()
         .setUpStream(
-            rootInstance.getHostEndpoint(), rootInstance.getId(), sinkNode.getPlanNodeId());
+            rootInstance.getHostDataNode().dataBlockManagerEndPoint,
+            rootInstance.getId(),
+            sinkNode.getPlanNodeId());
     rootInstance.getFragment().setRoot(sinkNode);
   }
 

@@ -66,7 +66,7 @@ public class DeletionPipeData extends PipeData {
 
   @Override
   public String toString() {
-    return "DeletionData{" + "deletion=" + deletion + ", serialNumber=" + serialNumber + '}';
+    return "DeletionData{" + "serialNumber=" + serialNumber + ", deletion=" + deletion + '}';
   }
 
   @Override

@@ -17,14 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.common.schematree;
+package org.apache.iotdb.db.mpp.common.schematree.node;
+
+import org.apache.iotdb.db.metadata.tree.ITreeNode;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 
-public abstract class SchemaNode {
+public abstract class SchemaNode implements ITreeNode {
 
   public static final byte SCHEMA_INTERNAL_NODE = 0;
   public static final byte SCHEMA_ENTITY_NODE = 1;

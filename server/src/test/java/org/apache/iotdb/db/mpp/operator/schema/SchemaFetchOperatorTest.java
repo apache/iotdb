@@ -99,7 +99,7 @@ public class SchemaFetchOperatorTest {
         schemaTree.searchMeasurementPaths(new PartialPath("root.sg.**.status"), 0, 0, false);
     Assert.assertEquals(3, pair.left.size());
     Assert.assertEquals(
-        Arrays.asList("root.sg.d1.s2", "root.sg.d2.s2", "root.sg.d2.a.s2"),
+        Arrays.asList("root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2"),
         pair.left.stream().map(MeasurementPath::getFullPath).collect(Collectors.toList()));
   }
 

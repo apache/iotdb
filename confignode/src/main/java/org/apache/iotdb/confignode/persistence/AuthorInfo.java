@@ -56,6 +56,27 @@ public class AuthorInfo {
     }
   }
 
+  public TSStatus login(String username, String password) {
+    boolean status;
+    String loginMessage = null;
+    TSStatus tsStatus = new TSStatus();
+    try {
+      status = authorizer.login(username, password);
+    } catch (AuthException e) {
+      logger.info("meet error while logging in.", e);
+      status = false;
+      loginMessage = e.getMessage();
+    }
+    if (status) {
+      tsStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      tsStatus.setMessage("Login successfully");
+    } else {
+      tsStatus.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
+      tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
+    }
+    return tsStatus;
+  }
+
   public TSStatus authorNonQuery(AuthorReq authorReq) throws AuthException {
     ConfigRequestType authorType = authorReq.getAuthorType();
     String userName = authorReq.getUserName();
