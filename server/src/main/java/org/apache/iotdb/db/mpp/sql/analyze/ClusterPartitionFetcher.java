@@ -404,11 +404,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private class PartitionCache {
     /** the size of partitionCache */
     private final int cacheSize = config.getPartitionCacheSize();
-    /** the set of storage group */
+    /** the cache of storage group */
     private Set<String> storageGroupCache = Collections.synchronizedSet(new HashSet<>());
     /** device -> tRegionReplicaSet */
     private final Cache<String, TRegionReplicaSet> schemaPartitionCache;
-    /** storage_group, tSeriesPartitionSlot, tTimesereisPartitionSlot -> TRegionReplicaSets * */
+    /** tSeriesPartitionSlot, tTimesereisPartitionSlot -> TRegionReplicaSets * */
     private final Cache<DataPartitionCacheKey, List<TRegionReplicaSet>> dataPartitionCache;
     /** calculate slotId by device */
     private final String seriesSlotExecutorName;
