@@ -143,6 +143,12 @@ struct TLoginReq {
     2: required string password
 }
 
+struct TcheckUserPrivilegesReq{
+    1: required string username;
+    2: required list<string> paths
+    3: required i32 permission
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -188,4 +194,6 @@ service ConfigIService {
   TAuthorizerResp queryPermission(TAuthorizerReq req)
 
   common.TSStatus login(TLoginReq req)
+
+  common.TSStatus checkUserPrivileges(TcheckUserPrivilegesReq req)
 }

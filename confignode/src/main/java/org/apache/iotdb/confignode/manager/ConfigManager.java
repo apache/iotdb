@@ -366,4 +366,14 @@ public class ConfigManager implements Manager {
       return status;
     }
   }
+
+  @Override
+  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return AuthorInfo.getInstance().checkUserPrivileges(username, paths, permission);
+    } else {
+      return status;
+    }
+  }
 }

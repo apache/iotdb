@@ -31,6 +31,7 @@ import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -75,6 +76,36 @@ public class AuthorInfo {
       tsStatus.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
     }
     return tsStatus;
+  }
+
+  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+    boolean status = true;
+    try {
+      for (String path : paths) {
+        if (!checkOnePath(username, path, permission)) {
+          status = false;
+        }
+      }
+    } catch (AuthException e) {
+      status = false;
+    }
+    if (status) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
+    }
+  }
+
+  private boolean checkOnePath(String username, String path, int permission) throws AuthException {
+    try {
+      if (authorizer.checkUserPrivileges(username, path, permission)) {
+        return true;
+      }
+    } catch (AuthException e) {
+      logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
+      throw new AuthException(e);
+    }
+    return false;
   }
 
   public TSStatus authorNonQuery(AuthorReq authorReq) throws AuthException {
@@ -129,12 +160,12 @@ public class AuthorInfo {
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         default:
-          throw new AuthException("execute " + authorReq + " failed");
+          throw new AuthException("unknown type: " + authorReq.getAuthorType());
       }
     } catch (AuthException e) {
-      throw new AuthException("execute " + authorReq + " failed: ", e);
+      throw new AuthException(e);
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public PermissionInfoResp executeListRole() throws AuthException {
@@ -142,7 +173,7 @@ public class AuthorInfo {
     List<String> roleList = authorizer.listAllRoles();
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
@@ -152,7 +183,7 @@ public class AuthorInfo {
     List<String> userList = authorizer.listAllUsers();
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
@@ -173,7 +204,7 @@ public class AuthorInfo {
     }
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
@@ -190,7 +221,7 @@ public class AuthorInfo {
     }
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
@@ -210,7 +241,7 @@ public class AuthorInfo {
     }
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
@@ -228,7 +259,7 @@ public class AuthorInfo {
         userPrivilegesList.add(privilegeType.toString());
       }
       permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
-      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       result.setPermissionInfo(permissionInfo);
       return result;
     } else {
@@ -255,7 +286,7 @@ public class AuthorInfo {
       }
       permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
       permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
-      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       result.setPermissionInfo(permissionInfo);
       return result;
     }

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
@@ -55,6 +56,11 @@ public class InsertRowStatement extends InsertBaseStatement {
   public InsertRowStatement() {
     super();
     statementType = StatementType.INSERT;
+  }
+
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return null;
   }
 
   public long getTime() {

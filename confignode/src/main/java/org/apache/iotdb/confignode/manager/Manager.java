@@ -32,6 +32,8 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
+import java.util.List;
+
 /**
  * a subset of services provided by {@ConfigManager}. For use internally only, passed to Managers,
  * services.
@@ -168,4 +170,14 @@ public interface Manager {
    * @return
    */
   TSStatus login(String username, String password);
+
+  /**
+   * Check User Privileges
+   *
+   * @param username
+   * @param paths
+   * @param permission
+   * @return
+   */
+  TSStatus checkUserPrivileges(String username, List<String> paths, int permission);
 }
