@@ -773,7 +773,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.sg.d6.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d6.s2 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d6.s2 with datatype=INT64,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -792,7 +792,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       }
     }
     int[] ANSWER1 = new int[] {105, 115, 125, 135, 145, 155, 165, 175, 185, 195};
-    int[] ANSWER2 = new int[] {106, 116, 126, 136, 146, 156, 166, 176, 186, 196};
+    long[] ANSWER2 = new long[] {106, 116, 126, 136, 146, 156, 166, 176, 186, 196};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < 100; i++) {
@@ -833,33 +833,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       assertEquals(1 + 1, columnCount1);
       for (int i = 0; i < 10; i++) {
         resultSet1.next();
-        assertEquals(ANSWER2[i], resultSet1.getInt(2));
-      }
-
-      System.out.println("-------------pass--------------");
-
-      ResultSet resultSet2 =
-          statement.executeQuery(
-              String.format(
-                  "select "
-                      + "%s(s1, 'proportion'='%f', 'type'='%s', 'number'='%d'), "
-                      + "%s(s2, 'proportion'='%f', 'type'='%s', 'number'='%d') "
-                      + "from root.sg.d6",
-                  functionName,
-                  proportionValue,
-                  "avg",
-                  2,
-                  functionName,
-                  proportionValue,
-                  "stendis",
-                  2));
-      int columnCount2 = resultSet2.getMetaData().getColumnCount();
-      assertEquals(1 + 2, columnCount2);
-      for (int i = 0; i < 10; i++) {
-        resultSet2.next();
-        System.out.println(resultSet2.getInt(2) + " " + resultSet2.getInt(3));
-        //        assertEquals(ANSWER1[i], resultSet2.getInt(2));
-        //        assertEquals(ANSWER2[i], resultSet2.getInt(3));
+        assertEquals(ANSWER2[i], resultSet1.getLong(2));
       }
     } catch (Exception e) {
       e.printStackTrace();
