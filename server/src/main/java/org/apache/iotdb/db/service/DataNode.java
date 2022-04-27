@@ -80,8 +80,6 @@ public class DataNode implements DataNodeMBean {
 
   private TEndPoint thisNode = new TEndPoint();
 
-  private int dataNodeID;
-
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
   }
@@ -149,7 +147,7 @@ public class DataNode implements DataNodeMBean {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         TDataNodeLocation location = new TDataNodeLocation();
-        location.setDataNodeId(-1);
+        location.setDataNodeId(config.getDataNodeId());
         location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
             new TEndPoint(config.getInternalIp(), config.getInternalPort()));
@@ -164,12 +162,16 @@ public class DataNode implements DataNodeMBean {
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-          dataNodeID = dataNodeRegisterResp.getDataNodeId();
+          int dataNodeID = dataNodeRegisterResp.getDataNodeId();
+          if (dataNodeID != config.getDataNodeId()) {
+            IoTDBConfigCheck.getInstance().serializeDataNodeId(dataNodeID);
+            config.setDataNodeId(dataNodeID);
+          }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
           logger.info("Joined the cluster successfully");
           return;
         }
-      } catch (IoTDBConnectionException e) {
+      } catch (IOException | IoTDBConnectionException e) {
         logger.warn("Cannot join the cluster, because: {}", e.getMessage());
       }
 
@@ -340,6 +342,8 @@ public class DataNode implements DataNodeMBean {
   private void setUncaughtExceptionHandler() {
     Thread.setDefaultUncaughtExceptionHandler(new IoTDBDefaultThreadExceptionHandler());
   }
+
+  private void dataNodeIdChecker() {}
 
   private static class DataNodeHolder {
 
