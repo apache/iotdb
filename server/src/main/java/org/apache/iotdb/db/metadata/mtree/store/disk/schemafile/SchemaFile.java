@@ -326,11 +326,10 @@ public class SchemaFile implements ISchemaFile {
           curPage.deleteSegment(curSegIdx);
 
           curSegIdx = SchemaFile.getSegIndex(curSegAddr);
-          setNodeAddress(node, curSegAddr);
-          updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
         }
+        setNodeAddress(node, curSegAddr);
+        updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
 
-        dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
         dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
 
         curPage = newPage;
@@ -378,7 +377,6 @@ public class SchemaFile implements ISchemaFile {
           curPage.deleteSegment(curSegIdx);
           setNodeAddress(node, newSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), newSegAddr);
-          dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
           dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
         } else {
           // already full page segment, write updated record to another applicable segment or a
@@ -402,7 +400,6 @@ public class SchemaFile implements ISchemaFile {
             newPage.setPrevSegAddress(getSegIndex(existedSegAddr), actualSegAddr);
 
             curPage.setNextSegAddress(getSegIndex(actualSegAddr), existedSegAddr);
-            dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
           }
 
           ISchemaPage existedPage = getPageInstance(getPageIndex(existedSegAddr));
@@ -731,15 +728,26 @@ public class SchemaFile implements ISchemaFile {
   // region Schema Page Operations
 
   /**
-   * This method checks with cached page container, LOCK and return a minimum applicable page for
+   * This method checks with cached page containers and returns a minimum applicable page for
    * allocation.
+   *
+   * <p><b>Since it will only be called during write procedure, any {@link SchemaPage} returned will
+   * be added to {@link #dirtyPages}.</b>
    *
    * @param size size of segment
    * @return
    */
   private ISchemaPage getMinApplicablePageInMem(short size) throws IOException {
-    for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
+    for (Map.Entry<Integer, ISchemaPage> entry : dirtyPages.entrySet()) {
       if (entry.getValue().isCapableForSize(size)) {
+        return dirtyPages.get(entry.getKey());
+      }
+    }
+
+    for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
+      // TODO: concurrent write will fail for this race condition
+      if (entry.getValue().isCapableForSize(size)) {
+        dirtyPages.putIfAbsent(entry.getKey(), entry.getValue());
         return pageInstCache.get(entry.getKey());
       }
     }
@@ -766,9 +774,8 @@ public class SchemaFile implements ISchemaFile {
     }
 
     // TODO: improve concurrent control
+    pageLocks.readLock(pageIdx);
     try {
-      pageLocks.readLock(pageIdx);
-
       if (dirtyPages.containsKey(pageIdx)) {
         return dirtyPages.get(pageIdx);
       }
@@ -809,7 +816,7 @@ public class SchemaFile implements ISchemaFile {
     // only one thread evicts and flushes pages
     if (evictLock.tryLock()) {
       try {
-        if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
+        if (pageInstCache.size() > PAGE_CACHE_SIZE) {
           int removeCnt =
               (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
           List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
@@ -849,9 +856,13 @@ public class SchemaFile implements ISchemaFile {
     return (short) (globalIndex & SchemaFile.SEG_INDEX_MASK);
   }
 
-  // estimate for segment re-allocation
   private void updateParentalRecord(IMNode parent, String key, long newSegAddr)
       throws IOException, MetadataException {
+    if (parent == null || parent.getChild(key).isStorageGroup()) {
+      // Although internal/entity node always points to the last segment, storageGroup points to the
+      // first
+      return;
+    }
     long parSegAddr = parent.getParent() == null ? ROOT_INDEX : getNodeAddress(parent);
     parSegAddr = getTargetSegmentAddress(parSegAddr, key);
     ISchemaPage page = getPageInstance(getPageIndex(parSegAddr));
