@@ -165,12 +165,16 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
     // bitmaps size
     size += Byte.BYTES;
     if (bitMaps != null) {
-      for (BitMap bitMap : bitMaps) {
+      for (int i = 0; i < bitMaps.length; ++i) {
+        if (columns[i] == null) {
+          continue;
+        }
+
         size += Byte.BYTES;
-        if (bitMap != null) {
+        if (bitMaps[i] != null) {
           int len = end - start;
           BitMap partBitMap = new BitMap(len);
-          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+          BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
           size += partBitMap.getByteArray().length;
         }
       }
@@ -232,8 +236,7 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   }
 
   private void writeMeasurements(DataOutputStream stream) throws IOException {
-    stream.writeInt(
-        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    stream.writeInt(measurements.length - getFailedMeasurementNumber());
     for (String m : measurements) {
       if (m == null) {
         continue;
@@ -243,13 +246,12 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   }
 
   private void writeDataTypes(DataOutputStream stream) throws IOException {
-    stream.writeInt(dataTypes.length);
+    stream.writeInt(dataTypes.length - getFailedMeasurementNumber());
     for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
         continue;
       }
-      TSDataType dataType = dataTypes[i];
-      stream.write(dataType.serialize());
+      dataTypes[i].serializeTo(stream);
     }
   }
 
@@ -263,14 +265,18 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   private void writeBitMaps(DataOutputStream stream, int start, int end) throws IOException {
     stream.writeBoolean(bitMaps != null);
     if (bitMaps != null) {
-      for (BitMap bitMap : bitMaps) {
-        if (bitMap == null) {
+      for (int i = 0; i < bitMaps.length; ++i) {
+        if (columns[i] == null) {
+          continue;
+        }
+
+        if (bitMaps[i] == null) {
           stream.writeBoolean(false);
         } else {
           stream.writeBoolean(true);
           int len = end - start;
           BitMap partBitMap = new BitMap(len);
-          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+          BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
           stream.write(partBitMap.getByteArray());
         }
       }
@@ -284,7 +290,7 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
 
   private void serializeValues(DataOutputStream outputStream, int start, int end)
       throws IOException {
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {
         continue;
       }
@@ -356,8 +362,7 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   }
 
   private void writeMeasurements(ByteBuffer buffer) {
-    buffer.putInt(
-        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    buffer.putInt(measurements.length - getFailedMeasurementNumber());
     for (String m : measurements) {
       if (m != null) {
         putString(buffer, m);
@@ -366,13 +371,12 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   }
 
   private void writeDataTypes(ByteBuffer buffer) {
-    buffer.putInt(dataTypes.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
-    for (int i = 0, dataTypesLength = dataTypes.length; i < dataTypesLength; i++) {
-      TSDataType dataType = dataTypes[i];
+    buffer.putInt(dataTypes.length - getFailedMeasurementNumber());
+    for (int i = 0; i < dataTypes.length; i++) {
       if (columns[i] == null) {
         continue;
       }
-      dataType.serializeTo(buffer);
+      dataTypes[i].serializeTo(buffer);
     }
   }
 
@@ -386,14 +390,18 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   private void writeBitMaps(ByteBuffer buffer, int start, int end) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
-      for (BitMap bitMap : bitMaps) {
-        if (bitMap == null) {
+      for (int i = 0; i < bitMaps.length; i++) {
+        if (columns[i] == null) {
+          continue;
+        }
+
+        if (bitMaps[i] == null) {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
           int len = end - start;
           BitMap partBitMap = new BitMap(len);
-          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+          BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
           buffer.put(partBitMap.getByteArray());
         }
       }
@@ -406,7 +414,7 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   }
 
   private void serializeValues(ByteBuffer buffer, int start, int end) {
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {
         continue;
       }
@@ -481,8 +489,7 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   }
 
   private void writeMeasurements(IWALByteBufferView buffer) {
-    buffer.putInt(
-        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    buffer.putInt(measurements.length - getFailedMeasurementNumber());
     for (String m : measurements) {
       if (m != null) {
         WALWriteUtils.write(m, buffer);
@@ -491,7 +498,7 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   }
 
   private void writeDataTypes(IWALByteBufferView buffer) {
-    buffer.putInt(dataTypes.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    buffer.putInt(dataTypes.length - getFailedMeasurementNumber());
     for (int i = 0, dataTypesLength = dataTypes.length; i < dataTypesLength; i++) {
       TSDataType dataType = dataTypes[i];
       if (columns[i] == null) {
@@ -511,14 +518,18 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   private void writeBitMaps(IWALByteBufferView buffer, int start, int end) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
-      for (BitMap bitMap : bitMaps) {
-        if (bitMap == null) {
+      for (int i = 0; i < bitMaps.length; i++) {
+        if (columns[i] == null) {
+          continue;
+        }
+
+        if (bitMaps[i] == null) {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
           int len = end - start;
           BitMap partBitMap = new BitMap(len);
-          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+          BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
           buffer.put(partBitMap.getByteArray());
         }
       }
@@ -531,7 +542,7 @@ public class InsertTabletPlan extends InsertPlan implements WALEntryValue {
   }
 
   private void serializeValues(IWALByteBufferView buffer, int start, int end) {
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {
         continue;
       }
