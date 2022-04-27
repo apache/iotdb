@@ -44,8 +44,6 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.sql.analyze.ClusterSchemaFetcher;
-import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
@@ -82,8 +80,6 @@ public class InternalServiceImpl implements InternalService.Iface {
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
   private final IConsensus consensusImpl = ConsensusImpl.getInstance();
-
-  private final ISchemaFetcher schemaFetcher = ClusterSchemaFetcher.getInstance();
 
   public InternalServiceImpl() {
     super();
