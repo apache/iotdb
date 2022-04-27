@@ -104,6 +104,7 @@ public class SchemaFile implements ISchemaFile {
 
   private ByteBuffer headerContent;
   private int lastPageIndex; // last page index of the file, boundary to grow
+  private long lastSGAddr; // last segment of storage group node
 
   // work as a naive (read-only) cache for page instance
   private final Map<Integer, ISchemaPage> pageInstCache;
@@ -242,12 +243,11 @@ public class SchemaFile implements ISchemaFile {
     long curSegAddr = getNodeAddress(node);
 
     if (node.isStorageGroup()) {
-      // Notice that it implies StorageGroupNode is always of 0L segmentAddress
-      curSegAddr = 0L;
-      pageIndex = 0;
-      curSegIdx = 0;
+      curSegAddr = lastSGAddr;
+      pageIndex = getPageIndex(lastSGAddr);
+      curSegIdx = getSegIndex(lastSGAddr);
       isEntity = node.isEntity();
-      setNodeAddress(node, 0L);
+      setNodeAddress(node, lastSGAddr);
     } else {
       if ((curSegAddr & 0x80000000_00000000L) != 0) {
         throw new MetadataException(
@@ -551,8 +551,10 @@ public class SchemaFile implements ISchemaFile {
                     + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
                     + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
                     + "=============================\n"
-                    + "Belong to StorageGroup: [%s], total pages:%d\n",
-                storageGroupName == null ? "NOT SPECIFIED" : storageGroupName, lastPageIndex + 1));
+                    + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
+                storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
+                Long.toHexString(lastSGAddr),
+                lastPageIndex + 1));
     int cnt = 0;
     while (cnt <= lastPageIndex) {
       ISchemaPage page = getPageInstance(cnt);
@@ -571,15 +573,14 @@ public class SchemaFile implements ISchemaFile {
    * <p><b>File Header Structure:</b>
    *
    * <ul>
-   *   <li>1 int (4 bytes): last page index
+   *   <li>1 int (4 bytes): last page index {@link #lastPageIndex}
    *   <li>var length: root(SG) node info
    *       <ul>
    *         <li><s>a. var length string (less than 200 bytes): path to root(SG) node</s>
-   *         <li>a. 1 long (8 bytes): dataTTL
-   *         <li>b. 1 bool (1 byte): isEntityStorageGroup
-   *         <li>c. 1 int (4 bytes): hash code of template name
-   *         <li>d. fixed length buffer (9 bytes): internal or entity node buffer [not implemented
-   *             yet]
+   *         <li>a. 1 long (8 bytes): dataTTL {@link #dataTTL}
+   *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
+   *         <li>c. 1 int (4 bytes): hash code of template name {@link #templateHash}
+   *         <li>d. 1 long (8 bytes): last segment address of storage group {@link #lastSGAddr}
    *       </ul>
    * </ul>
    *
@@ -593,6 +594,7 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(dataTTL, headerContent);
       ReadWriteIOUtils.write(isEntity, headerContent);
       ReadWriteIOUtils.write(templateHash, headerContent);
+      lastSGAddr = 0L;
       initRootPage();
     } else {
       channel.read(headerContent);
@@ -601,6 +603,7 @@ public class SchemaFile implements ISchemaFile {
       dataTTL = ReadWriteIOUtils.readLong(headerContent);
       isEntity = ReadWriteIOUtils.readBool(headerContent);
       templateHash = ReadWriteIOUtils.readInt(headerContent);
+      lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
       rootPage = getPageInstance(0);
     }
   }
@@ -612,6 +615,7 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(dataTTL, headerContent);
     ReadWriteIOUtils.write(isEntity, headerContent);
     ReadWriteIOUtils.write(templateHash, headerContent);
+    ReadWriteIOUtils.write(lastSGAddr, headerContent);
 
     headerContent.clear();
     channel.write(headerContent, 0);
@@ -859,8 +863,8 @@ public class SchemaFile implements ISchemaFile {
   private void updateParentalRecord(IMNode parent, String key, long newSegAddr)
       throws IOException, MetadataException {
     if (parent == null || parent.getChild(key).isStorageGroup()) {
-      // Although internal/entity node always points to the last segment, storageGroup points to the
-      // first
+      lastSGAddr = newSegAddr;
+      updateHeader();
       return;
     }
     long parSegAddr = parent.getParent() == null ? ROOT_INDEX : getNodeAddress(parent);
