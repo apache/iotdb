@@ -187,7 +187,9 @@ public abstract class AbstractMemTable implements IMemTable {
     write(insertRowPlan.getDeviceID(), schemaList, insertRowPlan.getTime(), values);
 
     int pointsInserted =
-        insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber() - nullPointsNumber;
+        insertRowPlan.getMeasurements().length
+            - insertRowPlan.getFailedMeasurementNumber()
+            - nullPointsNumber;
 
     totalPointsNum += pointsInserted;
 
