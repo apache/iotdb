@@ -43,7 +43,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public abstract class WALBufferCommonTest {
   protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

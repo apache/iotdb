@@ -20,7 +20,6 @@ package org.apache.iotdb.db.sync.receiver.recovery;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.sync.conf.SyncPathUtil;
-import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -62,24 +61,24 @@ public class ReceiverLogAnalyzerTest {
       log.createPipe(pipe1, ip1, 1);
       log.createPipe(pipe2, ip2, 2);
       log.createPipe(pipe1, ip2, 3);
-      log.stopPipe(pipe1, ip1);
+      log.stopPipe(pipe1, ip1, 1);
       log.stopPipeServer();
       log.startPipeServer();
-      log.stopPipe(pipe2, ip2);
-      log.dropPipe(pipe1, ip2);
-      log.startPipe(pipe1, ip1);
+      log.stopPipe(pipe2, ip2, 2);
+      log.dropPipe(pipe1, ip2, 3);
+      log.startPipe(pipe1, ip1, 1);
       log.close();
       ReceiverLogAnalyzer receiverLogAnalyzer = new ReceiverLogAnalyzer();
       receiverLogAnalyzer.scan();
-      Map<String, Map<String, PipeInfo>> map = receiverLogAnalyzer.getPipeInfoMap();
+      Map<String, Map<String, Map<Long, PipeStatus>>> map = receiverLogAnalyzer.getPipeInfos();
       Assert.assertTrue(receiverLogAnalyzer.isPipeServerEnable());
       Assert.assertNotNull(map);
       Assert.assertEquals(2, map.get(pipe1).size());
       Assert.assertEquals(1, map.get(pipe2).size());
       Assert.assertEquals(1, map.get(pipe2).size());
-      Assert.assertEquals(new PipeInfo(pipe2, ip2, PipeStatus.STOP, 2), map.get(pipe2).get(ip2));
-      Assert.assertEquals(new PipeInfo(pipe1, ip1, PipeStatus.RUNNING, 1), map.get(pipe1).get(ip1));
-      Assert.assertEquals(new PipeInfo(pipe1, ip2, PipeStatus.DROP, 3), map.get(pipe1).get(ip2));
+      Assert.assertEquals(PipeStatus.STOP, map.get(pipe2).get(ip2).get(2L));
+      Assert.assertEquals(PipeStatus.RUNNING, map.get(pipe1).get(ip1).get(1L));
+      Assert.assertEquals(PipeStatus.DROP, map.get(pipe1).get(ip2).get(3L));
     } catch (Exception e) {
       Assert.fail();
       e.printStackTrace();
@@ -88,8 +87,8 @@ public class ReceiverLogAnalyzerTest {
 
   @Test
   public void testMessageLog() {
-    String pipeIdentifier1 = SyncPathUtil.getReceiverPipeFolderName(pipe1, ip1, createdTime1);
-    String pipeIdentifier2 = SyncPathUtil.getReceiverPipeFolderName(pipe2, ip2, createdTime2);
+    String pipeIdentifier1 = SyncPathUtil.getReceiverPipeDirName(pipe1, ip1, createdTime1);
+    String pipeIdentifier2 = SyncPathUtil.getReceiverPipeDirName(pipe2, ip2, createdTime2);
     try {
       ReceiverLog log = new ReceiverLog();
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
@@ -117,8 +116,8 @@ public class ReceiverLogAnalyzerTest {
       Assert.assertEquals(info, map.get(pipeIdentifier1).get(1));
       Assert.assertEquals(warn, map.get(pipeIdentifier1).get(2));
     } catch (Exception e) {
-      Assert.fail();
       e.printStackTrace();
+      Assert.fail();
     }
   }
 }

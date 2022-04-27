@@ -176,8 +176,11 @@ IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
 |4    |`<=`         |Binary compare operator less or equal to|
 |4    |`==`         |Binary compare operator equal to|
 |4    |`!=`/`<>`    |Binary compare operator non-equal to|
-|5    |`and`/`&`/`&&`               |Binary logic operator and|
-|5    |`or`/ &#124; / &#124;&#124;  |Binary logic operator or|
+|5      |`REGEXP`   |`REGEXP` operator|
+|5      |`LIKE`    |`LIKE` operator|
+|6      |`IN`    |`IN` operator|
+|7    |`and`/`&`/`&&`               |Binary logic operator and|
+|8    |`or`/ &#124; / &#124;&#124;  |Binary logic operator or|
 
 ## Time Series Generating Functions
 

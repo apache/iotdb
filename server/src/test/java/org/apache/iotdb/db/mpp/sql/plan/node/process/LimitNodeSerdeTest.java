@@ -60,7 +60,7 @@ import static org.junit.Assert.assertEquals;
 public class LimitNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     FilterNode filterNode =
         new FilterNode(
             new PlanNodeId("TestFilterNode"),
@@ -121,7 +121,7 @@ public class LimitNodeSerdeTest {
             groupedPathMap);
 
     LimitNode limitNode = new LimitNode(new PlanNodeId("TestLimitNode"), groupByLevelNode, 3);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     limitNode.serialize(byteBuffer);
     byteBuffer.flip();
     assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), limitNode);

@@ -18,14 +18,20 @@
  */
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.Closeable;
-import java.io.IOException;
 
 public interface ISourceHandle extends Closeable {
+
+  /** Get the local fragment instance ID that this source handle belongs to. */
+  TFragmentInstanceId getLocalFragmentInstanceId();
+
+  /** Get the local plan node ID that this source handle belongs to. */
+  String getLocalPlanNodeId();
 
   /** Get the total amount of memory used by buffered tsblocks. */
   long getBufferRetainedSizeInBytes();
@@ -34,7 +40,7 @@ public interface ISourceHandle extends Closeable {
    * Get a {@link TsBlock}. If the source handle is blocked, a null will be returned. A {@link
    * RuntimeException} will be thrown if any error happened.
    */
-  TsBlock receive() throws IOException;
+  TsBlock receive();
 
   /** If there are more tsblocks. */
   boolean isFinished();

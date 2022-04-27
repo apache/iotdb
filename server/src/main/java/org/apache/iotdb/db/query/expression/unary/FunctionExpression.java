@@ -88,6 +88,7 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     functionAttributes = new LinkedHashMap<>();
     expressions = new ArrayList<>();
+
     isBuiltInAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = true;
@@ -98,8 +99,29 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
+
     isBuiltInAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+    isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
+    isUserDefinedAggregationFunctionExpression =
+        expressions.stream()
+            .anyMatch(
+                v ->
+                    v.isUserDefinedAggregationFunctionExpression()
+                        || v.isBuiltInAggregationFunctionExpression());
+  }
+
+  public FunctionExpression(ByteBuffer byteBuffer) {
+    functionName = ReadWriteIOUtils.readString(byteBuffer);
+    functionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+    int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Expression> expressions = new ArrayList<>();
+    for (int i = 0; i < expressionSize; i++) {
+      expressions.add(Expression.deserialize(byteBuffer));
+    }
+
+    isBuiltInAggregationFunctionExpression =
+        SQLConstant.getNativeFunctionNames().contains(functionName);
     isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
     isUserDefinedAggregationFunctionExpression =
         expressions.stream()
@@ -432,31 +454,18 @@ public class FunctionExpression extends Expression {
     return parametersString;
   }
 
-  public static FunctionExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    String functionName = ReadWriteIOUtils.readString(buffer);
-    Map<String, String> functionAttributes = ReadWriteIOUtils.readMap(buffer);
-    int expressionSize = ReadWriteIOUtils.readInt(buffer);
-    List<Expression> expressions = new ArrayList<>();
-    for (int i = 0; i < expressionSize; i++) {
-      expressions.add(ExpressionType.deserialize(buffer));
-    }
-
-    FunctionExpression functionExpression =
-        new FunctionExpression(functionName, functionAttributes, expressions);
-    functionExpression.isConstantOperandCache = isConstantOperandCache;
-    return functionExpression;
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.FUNCTION;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Function.serialize(byteBuffer);
-    super.serialize(byteBuffer);
+  protected void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(functionName, byteBuffer);
     ReadWriteIOUtils.write(functionAttributes, byteBuffer);
     ReadWriteIOUtils.write(expressions.size(), byteBuffer);
     for (Expression expression : expressions) {
-      expression.serialize(byteBuffer);
+      Expression.serialize(expression, byteBuffer);
     }
   }
 }

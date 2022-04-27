@@ -140,32 +140,15 @@ public abstract class InsertNode extends WritePlanNode {
     this.deviceID = deviceID;
   }
 
-  public void serializeMeasurementSchemaToWAL(IWALByteBufferView buffer) {
+  protected void serializeMeasurementSchemaToWAL(IWALByteBufferView buffer) {
     for (MeasurementSchema measurementSchema : measurementSchemas) {
       if (measurementSchema != null) {
-        WALWriteUtils.write(measurementSchema.getMeasurementId(), buffer);
-
-        WALWriteUtils.write(measurementSchema.getType(), buffer);
-
-        WALWriteUtils.write(measurementSchema.getEncodingType(), buffer);
-
-        WALWriteUtils.write(measurementSchema.getCompressor(), buffer);
-
-        Map<String, String> props = measurementSchema.getProps();
-        if (props == null) {
-          WALWriteUtils.write(0, buffer);
-        } else {
-          WALWriteUtils.write(props.size(), buffer);
-          for (Map.Entry<String, String> entry : props.entrySet()) {
-            WALWriteUtils.write(entry.getKey(), buffer);
-            WALWriteUtils.write(entry.getValue(), buffer);
-          }
-        }
+        WALWriteUtils.write(measurementSchema, buffer);
       }
     }
   }
 
-  public int serializeMeasurementSchemaSize() {
+  protected int serializeMeasurementSchemaSize() {
     int byteLen = 0;
     for (MeasurementSchema measurementSchema : measurementSchemas) {
       if (measurementSchema != null) {
@@ -187,7 +170,7 @@ public abstract class InsertNode extends WritePlanNode {
   }
 
   /** Make sure the measurement schema is already inited before calling this */
-  public void deserializeMeasurementSchema(DataInputStream stream) throws IOException {
+  protected void deserializeMeasurementSchema(DataInputStream stream) throws IOException {
     for (int i = 0; i < measurementSchemas.length; i++) {
 
       measurementSchemas[i] =
@@ -209,6 +192,8 @@ public abstract class InsertNode extends WritePlanNode {
         }
         measurementSchemas[i].setProps(props);
       }
+
+      measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
 

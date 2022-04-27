@@ -141,10 +141,67 @@ public class AlterTimeSeriesNode extends PlanNode {
     return null;
   }
 
+  public static AlterTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
+    String id;
+    PartialPath path = null;
+    AlterType alterType = null;
+    String alias = null;
+    Map<String, String> alterMap = null;
+    Map<String, String> tagsMap = null;
+    Map<String, String> attributesMap = null;
+
+    int length = byteBuffer.getInt();
+    byte[] bytes = new byte[length];
+    byteBuffer.get(bytes);
+    try {
+      path = new PartialPath(new String(bytes));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Can not deserialize AlterTimeSeriesNode", e);
+    }
+    alterType = AlterType.values()[byteBuffer.get()];
+
+    // alias
+    if (byteBuffer.get() == 1) {
+      alias = ReadWriteIOUtils.readString(byteBuffer);
+    }
+
+    // alterMap
+    byte label = byteBuffer.get();
+    if (label == 0) {
+      alterMap = new HashMap<>();
+    } else if (label == 1) {
+      alterMap = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    // tagsMap
+    label = byteBuffer.get();
+    if (label == 0) {
+      tagsMap = new HashMap<>();
+    } else if (label == 1) {
+      tagsMap = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    // attributesMap
+    label = byteBuffer.get();
+    if (label == 0) {
+      attributesMap = new HashMap<>();
+    } else if (label == 1) {
+      attributesMap = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+
+    id = ReadWriteIOUtils.readString(byteBuffer);
+    return new AlterTimeSeriesNode(
+        new PlanNodeId(id), path, alterType, alterMap, alias, tagsMap, attributesMap);
+  }
+
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putShort((short) PlanNodeType.ALTER_TIME_SERIES.ordinal());
-    ReadWriteIOUtils.write(this.getPlanNodeId().getId(), byteBuffer);
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
+    return visitor.visitAlterTimeSeries(this, schemaRegion);
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.ALTER_TIME_SERIES.serialize(byteBuffer);
     byte[] bytes = path.getFullPath().getBytes();
     byteBuffer.putInt(bytes.length);
     byteBuffer.put(bytes);
@@ -187,72 +244,6 @@ public class AlterTimeSeriesNode extends PlanNode {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(attributesMap, byteBuffer);
     }
-
-    // no children node, need to set 0
-    byteBuffer.putInt(0);
-  }
-
-  public static AlterTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
-    String id;
-    PartialPath path = null;
-    AlterType alterType = null;
-    String alias = null;
-    Map<String, String> alterMap = null;
-    Map<String, String> tagsMap = null;
-    Map<String, String> attributesMap = null;
-
-    id = ReadWriteIOUtils.readString(byteBuffer);
-    int length = byteBuffer.getInt();
-    byte[] bytes = new byte[length];
-    byteBuffer.get(bytes);
-    try {
-      path = new PartialPath(new String(bytes));
-    } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Can not deserialize AlterTimeSeriesNode", e);
-    }
-    alterType = AlterType.values()[byteBuffer.get()];
-
-    // alias
-    if (byteBuffer.get() == 1) {
-      alias = ReadWriteIOUtils.readString(byteBuffer);
-    }
-
-    // alterMap
-    byte label = byteBuffer.get();
-    if (label == 0) {
-      alterMap = new HashMap<>();
-    } else if (label == 1) {
-      alterMap = ReadWriteIOUtils.readMap(byteBuffer);
-    }
-
-    // tagsMap
-    label = byteBuffer.get();
-    if (label == 0) {
-      tagsMap = new HashMap<>();
-    } else if (label == 1) {
-      tagsMap = ReadWriteIOUtils.readMap(byteBuffer);
-    }
-
-    // attributesMap
-    label = byteBuffer.get();
-    if (label == 0) {
-      attributesMap = new HashMap<>();
-    } else if (label == 1) {
-      attributesMap = ReadWriteIOUtils.readMap(byteBuffer);
-    }
-    return new AlterTimeSeriesNode(
-        new PlanNodeId(id), path, alterType, alterMap, alias, tagsMap, attributesMap);
-  }
-
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
-    return visitor.visitAlterTimeSeries(this, schemaRegion);
-  }
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException(
-        "serializeAttributes of AlterTimeSeriesNode is not implemented");
   }
 
   public boolean equals(Object o) {

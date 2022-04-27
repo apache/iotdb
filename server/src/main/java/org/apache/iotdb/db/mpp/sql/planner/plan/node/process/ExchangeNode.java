@@ -88,7 +88,7 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return child.getOutputColumnNames();
   }
 
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {

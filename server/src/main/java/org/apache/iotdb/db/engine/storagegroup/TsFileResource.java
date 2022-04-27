@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -1001,8 +1002,9 @@ public class TsFileResource {
     for (PartialPath path : pathToChunkMetadataListMap.keySet()) {
       pathToTimeSeriesMetadataMap.put(
           path,
-          path.generateTimeSeriesMetadata(
-              pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
+          ResourceByPathUtils.getResourceInstance(path)
+              .generateTimeSeriesMetadata(
+                  pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
     }
   }
 
