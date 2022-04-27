@@ -61,7 +61,8 @@ public class TimeSeriesCountOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(HeaderConstant.countTimeSeriesHeader.getRespDataTypes());
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.countTimeSeriesHeader.getRespDataTypes());
     int count = 0;
     try {
       count =

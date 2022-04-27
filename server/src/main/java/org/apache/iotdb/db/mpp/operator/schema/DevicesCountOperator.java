@@ -61,7 +61,8 @@ public class DevicesCountOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(HeaderConstant.countDevicesHeader.getRespDataTypes());
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.countDevicesHeader.getRespDataTypes());
     int count = 0;
     try {
       count =

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.operator.schema;
 
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
@@ -31,6 +29,9 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
+
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class TimeSeriesSchemaScanOperator extends SchemaScanOperator {
   private String key;
@@ -76,7 +77,8 @@ public class TimeSeriesSchemaScanOperator extends SchemaScanOperator {
 
   @Override
   protected TsBlock createTsBlock() {
-    TsBlockBuilder builder = new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
+    TsBlockBuilder builder =
+        new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
     try {
       ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
           .getSchemaRegion()
