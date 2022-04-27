@@ -48,9 +48,16 @@ public class AggregationNode extends ProcessNode {
 
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
-  @Nullable protected final GroupByTimeParameter groupByTimeParameter;
+  @Nullable protected GroupByTimeParameter groupByTimeParameter;
 
   protected PlanNode child;
+
+  public AggregationNode(
+      PlanNodeId id, PlanNode child, List<AggregationDescriptor> aggregationDescriptorList) {
+    super(id);
+    this.child = child;
+    this.aggregationDescriptorList = aggregationDescriptorList;
+  }
 
   public AggregationNode(
       PlanNodeId id,
@@ -61,6 +68,11 @@ public class AggregationNode extends ProcessNode {
     this.child = child;
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
+  }
+
+  public AggregationNode(PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
+    super(id);
+    this.aggregationDescriptorList = aggregationDescriptorList;
   }
 
   public AggregationNode(

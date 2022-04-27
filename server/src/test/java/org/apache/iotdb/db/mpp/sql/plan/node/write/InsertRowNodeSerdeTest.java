@@ -57,7 +57,7 @@ public class InsertRowNodeSerdeTest {
     InsertRowNode tmpNode = InsertRowNode.deserialize(byteBuffer);
 
     Assert.assertEquals(tmpNode.getTime(), insertRowNode.getTime());
-    Assert.assertEquals(tmpNode.getMeasurements(), new String[] {"s1", "s3", "s5"});
+    Assert.assertArrayEquals(tmpNode.getMeasurements(), new String[] {"s1", "s3", "s5"});
   }
 
   private InsertRowNode getInsertRowNode() throws IllegalPathException {

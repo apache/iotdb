@@ -32,12 +32,20 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -79,6 +87,32 @@ public class QueryLogicalPlanUtil {
     }
   }
 
+  /* 0. Simple Query */
+  static {
+    String sql = "SELECT * FROM root.sg.d1 LIMIT 10 OFFSET 10";
+
+    List<PlanNode> sourceNodeList = new ArrayList<>();
+    sourceNodeList.add(
+        new SeriesScanNode(
+            new PlanNodeId("test_query_0"),
+            schemaMap.get("root.sg.d1.s1"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_DESC));
+    sourceNodeList.add(
+        new SeriesScanNode(
+            new PlanNodeId("test_query_1"),
+            schemaMap.get("root.sg.d1.s2"),
+            Sets.newHashSet("s1", "s2"),
+            OrderBy.TIMESTAMP_DESC));
+    TimeJoinNode timeJoinNode =
+        new TimeJoinNode(new PlanNodeId("test_query_2"), OrderBy.TIMESTAMP_DESC, sourceNodeList);
+    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_3"), timeJoinNode, 100);
+    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_4"), offsetNode, 100);
+
+    querySQLs.add(sql);
+    sqlToPlanMap.put(sql, limitNode);
+  }
+
   /* 1. Raw Data Query */
   static {
     String sql =
@@ -108,35 +142,42 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("test_query_3"), OrderBy.TIMESTAMP_DESC, sourceNodeList);
 
-    IExpression leftExpression =
-        new SingleSeriesExpression(
-            schemaMap.get("root.sg.d1.s2"),
-            FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
-    IExpression rightExpression =
-        new SingleSeriesExpression(
-            schemaMap.get("root.sg.d2.s2"),
-            FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
-    IExpression expression = BinaryExpression.and(leftExpression, rightExpression);
+    GreaterThanExpression timeFilter =
+        new GreaterThanExpression(
+            new TimeSeriesOperand(SQLConstant.TIME_PATH),
+            new ConstantOperand(TSDataType.INT64, "100"));
+    GreaterThanExpression valueFilter1 =
+        new GreaterThanExpression(
+            new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+            new ConstantOperand(TSDataType.INT32, "10"));
+    GreaterThanExpression valueFilter2 =
+        new GreaterThanExpression(
+            new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+            new ConstantOperand(TSDataType.INT32, "10"));
+    LogicAndExpression expression =
+        new LogicAndExpression(
+            new LogicAndExpression(timeFilter, valueFilter1),
+            new LogicAndExpression(timeFilter, valueFilter2));
 
     FilterNode filterNode =
-        new FilterNode(
-            new PlanNodeId("test_query_4"),
-            timeJoinNode,
-            expression,
-            Collections.singletonList("root.sg.d2.s1"));
+        new FilterNode(new PlanNodeId("test_query_4"), timeJoinNode, expression);
+
+    ProjectNode projectNode =
+        new ProjectNode(
+            new PlanNodeId("test_query_4"), filterNode, Collections.singletonList("root.sg.d2.s1"));
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
             new PlanNodeId("test_query_5"),
-            filterNode,
+            projectNode,
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_6"), filterNullNode, 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_7"), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    //    querySQLs.add(sql);
+    //    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 2. Raw Data Query (align by device) */
@@ -177,27 +218,33 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode2 =
         new TimeJoinNode(new PlanNodeId("test_query_5"), OrderBy.TIMESTAMP_DESC, sourceNodeList2);
 
-    IExpression leftExpression =
-        new SingleSeriesExpression(
-            schemaMap.get("root.sg.d1.s1"),
-            FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
-    IExpression rightExpression =
-        new SingleSeriesExpression(
-            schemaMap.get("root.sg.d2.s1"),
-            FilterFactory.and(ValueFilter.gt(10), TimeFilter.gt(100)));
-    IExpression expression = BinaryExpression.and(leftExpression, rightExpression);
+    GreaterThanExpression timeFilter =
+        new GreaterThanExpression(
+            new TimeSeriesOperand(SQLConstant.TIME_PATH),
+            new ConstantOperand(TSDataType.INT64, "100"));
+    GreaterThanExpression valueFilter1 =
+        new GreaterThanExpression(
+            new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+            new ConstantOperand(TSDataType.INT32, "10"));
+    GreaterThanExpression valueFilter2 =
+        new GreaterThanExpression(
+            new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+            new ConstantOperand(TSDataType.INT32, "10"));
+    LogicAndExpression expression =
+        new LogicAndExpression(
+            new LogicAndExpression(timeFilter, valueFilter1),
+            new LogicAndExpression(timeFilter, valueFilter2));
 
-    List<String> outputColumnNames =
-        Arrays.asList("root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d2.s1", "root.sg.d2.s2");
     FilterNode filterNode1 =
-        new FilterNode(
-            new PlanNodeId("test_query_6"), timeJoinNode1, expression, outputColumnNames);
+        new FilterNode(new PlanNodeId("test_query_6"), timeJoinNode1, expression);
     FilterNode filterNode2 =
-        new FilterNode(
-            new PlanNodeId("test_query_7"), timeJoinNode2, expression, outputColumnNames);
+        new FilterNode(new PlanNodeId("test_query_7"), timeJoinNode2, expression);
 
     DeviceViewNode deviceViewNode =
-        new DeviceViewNode(new PlanNodeId("test_query_8"), OrderBy.TIMESTAMP_DESC);
+        new DeviceViewNode(
+            new PlanNodeId("test_query_8"),
+            Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
+            Arrays.asList("s1", "s2"));
     deviceViewNode.addChildDeviceNode("root.sg.d1", filterNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", filterNode2);
 
@@ -211,8 +258,8 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_10"), filterNullNode, 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_11"), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    //    querySQLs.add(sql);
+    //    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 3. Aggregation Query (without value filter) */
@@ -222,74 +269,90 @@ public class QueryLogicalPlanUtil {
             + "GROUP BY LEVEL = 1 ORDER BY TIME DESC WITHOUT NULL ANY LIMIT 100 OFFSET 100";
 
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    List<AggregationType> aggregationTypeList1 =
-        Arrays.asList(AggregationType.COUNT, AggregationType.LAST_VALUE);
-    List<AggregationType> aggregationTypeList2 =
-        Collections.singletonList(AggregationType.MAX_VALUE);
-    Filter timeFilter = TimeFilter.gt(100);
     sourceNodeList.add(
         new SeriesAggregationScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
+            Arrays.asList(
+                new AggregationDescriptor(
+                    AggregationType.COUNT,
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")))),
+                new AggregationDescriptor(
+                    AggregationType.LAST_VALUE,
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             Sets.newHashSet("s1", "s2"),
-            aggregationTypeList1,
-            OrderBy.TIMESTAMP_DESC,
-            timeFilter,
-            null));
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
+            Collections.singletonList(
+                new AggregationDescriptor(
+                    AggregationType.MAX_VALUE,
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
             Sets.newHashSet("s1", "s2"),
-            aggregationTypeList2,
-            OrderBy.TIMESTAMP_DESC,
-            timeFilter,
-            null));
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
-            new PlanNodeId("test_query_2"),
+            new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d2.s1"),
+            Arrays.asList(
+                new AggregationDescriptor(
+                    AggregationType.COUNT,
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                new AggregationDescriptor(
+                    AggregationType.LAST_VALUE,
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
             Sets.newHashSet("s1", "s2"),
-            aggregationTypeList1,
-            OrderBy.TIMESTAMP_DESC,
-            timeFilter,
-            null));
+            OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
-            new PlanNodeId("test_query_3"),
+            new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d2.s2"),
+            Collections.singletonList(
+                new AggregationDescriptor(
+                    AggregationType.MAX_VALUE,
+                    AggregationStep.PARTIAL,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
             Sets.newHashSet("s1", "s2"),
-            aggregationTypeList2,
-            OrderBy.TIMESTAMP_DESC,
-            timeFilter,
-            null));
+            OrderBy.TIMESTAMP_DESC));
 
-    TimeJoinNode timeJoinNode =
-        new TimeJoinNode(new PlanNodeId("test_query_4"), OrderBy.TIMESTAMP_DESC, sourceNodeList);
-
-    int[] groupByLevels = new int[] {1};
-    Map<ColumnHeader, ColumnHeader> groupedHeaderMap = new HashMap<>();
-    groupedHeaderMap.put(
-        new ColumnHeader("root.sg.d1.s1", AggregationType.COUNT.name(), TSDataType.INT32),
-        new ColumnHeader("root.sg.*.s1", AggregationType.COUNT.name(), TSDataType.INT32));
-    groupedHeaderMap.put(
-        new ColumnHeader("root.sg.d2.s1", AggregationType.COUNT.name(), TSDataType.INT32),
-        new ColumnHeader("root.sg.*.s1", AggregationType.COUNT.name(), TSDataType.INT32));
-    groupedHeaderMap.put(
-        new ColumnHeader("root.sg.d1.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32),
-        new ColumnHeader("root.sg.*.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32));
-    groupedHeaderMap.put(
-        new ColumnHeader("root.sg.d2.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32),
-        new ColumnHeader("root.sg.*.s2", AggregationType.MAX_VALUE.name(), TSDataType.INT32));
-    groupedHeaderMap.put(
-        new ColumnHeader("root.sg.d1.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32),
-        new ColumnHeader("root.sg.*.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32));
-    groupedHeaderMap.put(
-        new ColumnHeader("root.sg.d2.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32),
-        new ColumnHeader("root.sg.*.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32));
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
-            new PlanNodeId("test_query_5"), timeJoinNode, groupByLevels, groupedHeaderMap);
+            new PlanNodeId("test_query_5"),
+            sourceNodeList,
+            Arrays.asList(
+                new AggregationDescriptor(
+                    AggregationType.COUNT,
+                    AggregationStep.FINAL,
+                    Arrays.asList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")))),
+                new AggregationDescriptor(
+                    AggregationType.MAX_VALUE,
+                    AggregationStep.FINAL,
+                    Arrays.asList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")))),
+                new AggregationDescriptor(
+                    AggregationType.LAST_VALUE,
+                    AggregationStep.FINAL,
+                    Arrays.asList(
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
+                        new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
+            Arrays.asList(
+                "count(root.sg.*.s1)", "max_value(root.sg.*.s2)", "last_value(root.sg.*.s1)"));
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
@@ -301,8 +364,8 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_7"), filterNullNode, 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_8"), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    //    querySQLs.add(sql);
+    //    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 4. Aggregation Query (without value filter and align by device) */
@@ -375,8 +438,8 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_8"), filterNullNode, 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_9"), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    //    querySQLs.add(sql);
+    //    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 5. Aggregation Query (with value filter) */
@@ -476,8 +539,8 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_8"), filterNullNode, 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_9"), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    //    querySQLs.add(sql);
+    //    sqlToPlanMap.put(sql, limitNode);
   }
 
   /* 6. Aggregation Query (with value filter and align by device) */
@@ -569,7 +632,7 @@ public class QueryLogicalPlanUtil {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_12"), filterNullNode, 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_13"), offsetNode, 100);
 
-    querySQLs.add(sql);
-    sqlToPlanMap.put(sql, limitNode);
+    //    querySQLs.add(sql);
+    //    sqlToPlanMap.put(sql, limitNode);
   }
 }

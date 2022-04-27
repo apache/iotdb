@@ -53,16 +53,15 @@ public class GroupByLevelNode extends AggregationNode {
   // column name of each output column
   private final List<String> outputColumnNames;
 
-  private PlanNode child;
+  private final List<PlanNode> children;
 
   public GroupByLevelNode(
       PlanNodeId id,
-      PlanNode child,
+      List<PlanNode> children,
       List<AggregationDescriptor> aggregationDescriptorList,
-      GroupByTimeParameter groupByTimeParameter,
       List<String> outputColumnNames) {
-    super(id, child, aggregationDescriptorList, groupByTimeParameter);
-    this.child = child;
+    super(id, aggregationDescriptorList);
+    this.children = children;
     this.outputColumnNames = outputColumnNames;
   }
 
@@ -73,6 +72,7 @@ public class GroupByLevelNode extends AggregationNode {
       List<String> outputColumnNames) {
     super(id, aggregationDescriptorList, groupByTimeParameter);
     this.outputColumnNames = outputColumnNames;
+    this.children = new ArrayList<>();
   }
 
   @Override
@@ -82,7 +82,7 @@ public class GroupByLevelNode extends AggregationNode {
 
   @Override
   public void addChild(PlanNode child) {
-    this.child = child;
+    this.children.add(child);
   }
 
   @Override

@@ -43,6 +43,12 @@ public class ProjectNode extends ProcessNode {
     this.outputColumnNames = outputColumnNames;
   }
 
+  public ProjectNode(PlanNodeId id, PlanNode child, List<String> outputColumnNames) {
+    super(id);
+    this.child = child;
+    this.outputColumnNames = outputColumnNames;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of(child);
