@@ -33,16 +33,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class SyncRatisClient {
-  private final Logger logger = LoggerFactory.getLogger(SyncRatisClient.class);
+public class RatisClient {
+  private final Logger logger = LoggerFactory.getLogger(RatisClient.class);
   private final RaftGroup serveGroup;
   private final RaftClient raftClient;
-  private final ClientManager<RaftGroup, SyncRatisClient> clientManager;
+  private final ClientManager<RaftGroup, RatisClient> clientManager;
 
-  public SyncRatisClient(
+  public RatisClient(
       RaftGroup serveGroup,
       RaftClient client,
-      ClientManager<RaftGroup, SyncRatisClient> clientManager) {
+      ClientManager<RaftGroup, RatisClient> clientManager) {
     this.serveGroup = serveGroup;
     this.raftClient = client;
     this.clientManager = clientManager;
@@ -66,13 +66,13 @@ public class SyncRatisClient {
     }
   }
 
-  public static class Factory extends BaseClientFactory<RaftGroup, SyncRatisClient> {
+  public static class Factory extends BaseClientFactory<RaftGroup, RatisClient> {
 
     private final RaftProperties raftProperties;
     private final RaftClientRpc clientRpc;
 
     public Factory(
-        ClientManager<RaftGroup, SyncRatisClient> clientManager,
+        ClientManager<RaftGroup, RatisClient> clientManager,
         ClientFactoryProperty clientPoolProperty,
         RaftProperties raftProperties,
         RaftClientRpc clientRpc) {
@@ -82,14 +82,14 @@ public class SyncRatisClient {
     }
 
     @Override
-    public void destroyObject(RaftGroup key, PooledObject<SyncRatisClient> pooledObject) {
+    public void destroyObject(RaftGroup key, PooledObject<RatisClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
     @Override
-    public PooledObject<SyncRatisClient> makeObject(RaftGroup group) throws Exception {
+    public PooledObject<RatisClient> makeObject(RaftGroup group) throws Exception {
       return new DefaultPooledObject<>(
-          new SyncRatisClient(
+          new RatisClient(
               group,
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
@@ -100,7 +100,7 @@ public class SyncRatisClient {
     }
 
     @Override
-    public boolean validateObject(RaftGroup key, PooledObject<SyncRatisClient> pooledObject) {
+    public boolean validateObject(RaftGroup key, PooledObject<RatisClient> pooledObject) {
       return true;
     }
   }
