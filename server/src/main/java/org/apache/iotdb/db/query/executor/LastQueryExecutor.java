@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -283,8 +284,7 @@ public class LastQueryExecutor {
           QueryResourceManager.getInstance()
               .getQueryDataSource(seriesPaths.get(i), context, filter, ascending);
       LastPointReader lastReader =
-          seriesPaths
-              .get(i)
+          ResourceByPathUtils.getResourceInstance(seriesPaths.get(i))
               .createLastPointReader(
                   dataTypes.get(i),
                   deviceMeasurementsMap.getOrDefault(

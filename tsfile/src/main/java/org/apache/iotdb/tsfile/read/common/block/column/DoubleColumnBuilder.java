@@ -34,7 +34,7 @@ public class DoubleColumnBuilder implements ColumnBuilder {
 
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(DoubleColumnBuilder.class).instanceSize();
-  private static final DoubleColumn NULL_VALUE_BLOCK =
+  public static final DoubleColumn NULL_VALUE_BLOCK =
       new DoubleColumn(0, 1, new boolean[] {true}, new double[1]);
 
   private final ColumnBuilderStatus columnBuilderStatus;

@@ -47,7 +47,7 @@ import static org.junit.Assert.assertEquals;
 
 public class SeriesAggregateScanNodeSerdeTest {
   @Test
-  public void TestSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
+  public void testSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
     Set<String> st = new HashSet<>();
     st.add("s1");
     st.add("s2");

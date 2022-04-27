@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -64,16 +67,19 @@ public class StandaloneScheduler implements IScheduler {
       List<FragmentInstance> instances,
       QueryType queryType,
       ExecutorService executor,
-      ScheduledExecutorService scheduledExecutor) {
+      ScheduledExecutorService scheduledExecutor,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.queryContext = queryContext;
     this.instances = instances;
     this.queryType = queryType;
     this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
     this.stateTracker =
-        new FixedRateFragInsStateTracker(stateMachine, executor, scheduledExecutor, instances);
+        new FixedRateFragInsStateTracker(
+            stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
     this.queryTerminator =
-        new SimpleQueryTerminator(executor, queryContext.getQueryId(), instances);
+        new SimpleQueryTerminator(
+            executor, queryContext.getQueryId(), instances, internalServiceClientManager);
   }
 
   @Override

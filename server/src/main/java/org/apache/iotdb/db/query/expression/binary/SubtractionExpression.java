@@ -50,7 +50,7 @@ public class SubtractionExpression extends BinaryExpression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.SUBTRACTION.getExpressionType();
+  public ExpressionType getExpressionType() {
+    return ExpressionType.SUBTRACTION;
   }
 }

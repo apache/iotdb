@@ -50,7 +50,7 @@ public class DivisionExpression extends BinaryExpression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.DIVISION.getExpressionType();
+  public ExpressionType getExpressionType() {
+    return ExpressionType.DIVISION;
   }
 }

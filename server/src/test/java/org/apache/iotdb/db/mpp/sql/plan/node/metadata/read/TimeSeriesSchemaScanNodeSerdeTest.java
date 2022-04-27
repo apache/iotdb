@@ -40,7 +40,7 @@ import java.nio.ByteBuffer;
 public class TimeSeriesSchemaScanNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("offset"), 10);
     LimitNode limitNode = new LimitNode(new PlanNodeId("limit"), 10);
     SchemaMergeNode schemaMergeNode = new SchemaMergeNode(new PlanNodeId("schemaMerge"));
