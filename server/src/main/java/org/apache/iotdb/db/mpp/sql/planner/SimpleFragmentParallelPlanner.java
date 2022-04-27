@@ -116,17 +116,18 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         PlanNodeId downStreamNodeId = sinkNode.getDownStreamPlanNodeId();
         FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
         sinkNode.setDownStream(
-            downStreamInstance.getHostEndpoint(), downStreamInstance.getId(), downStreamNodeId);
+            downStreamInstance.getHostDataNode().getDataBlockManagerEndPoint(),
+            downStreamInstance.getId(),
+            downStreamNodeId);
 
         // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
         PlanNode downStreamExchangeNode =
             downStreamInstance.getFragment().getPlanNodeById(downStreamNodeId);
         ((ExchangeNode) downStreamExchangeNode)
-            .setUpstream(instance.getHostEndpoint(), instance.getId(), sinkNode.getPlanNodeId());
-        ((ExchangeNode) downStreamExchangeNode)
-            .getRemoteSourceNode()
-            .setDownStream(
-                downStreamInstance.getHostEndpoint(), downStreamInstance.getId(), downStreamNodeId);
+            .setUpstream(
+                instance.getHostDataNode().getDataBlockManagerEndPoint(),
+                instance.getId(),
+                sinkNode.getPlanNodeId());
       }
     }
   }

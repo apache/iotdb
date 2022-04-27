@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -426,15 +424,12 @@ public class LocalExecutionPlanner {
               SeriesScanOperator.class.getSimpleName());
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
-      TEndPoint source = node.getUpstreamEndpoint();
 
       ISourceHandle sourceHandle =
           DATA_BLOCK_MANAGER.createSourceHandle(
               localInstanceId.toThrift(),
               node.getPlanNodeId().getId(),
-              new TEndPoint(
-                  source.getIp(),
-                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+              node.getUpstreamEndpoint(),
               remoteInstanceId.toThrift(),
               context.instanceContext::failed);
       return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
@@ -443,15 +438,13 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
-      TEndPoint target = node.getDownStreamEndpoint();
+
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
       ISinkHandle sinkHandle =
           DATA_BLOCK_MANAGER.createSinkHandle(
               localInstanceId.toThrift(),
-              new TEndPoint(
-                  target.getIp(),
-                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+              node.getDownStreamEndpoint(),
               targetInstanceId.toThrift(),
               node.getDownStreamPlanNodeId().getId(),
               context.instanceContext);

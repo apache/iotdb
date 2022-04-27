@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.execution.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
@@ -67,11 +66,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
             // TODO (jackie tien) change the port
             SyncDataNodeInternalServiceClient client = null;
             try {
-              client =
-                  internalServiceClientManager.borrowClient(
-                      new TEndPoint(
-                          endPoint.getIp(),
-                          IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
+              client = internalServiceClientManager.borrowClient(endPoint);
               if (client == null) {
                 throw new TException("Can't get client for node " + endPoint);
               }
@@ -97,7 +92,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   private List<TEndPoint> getRelatedHost(List<FragmentInstance> instances) {
     return instances.stream()
-        .map(FragmentInstance::getHostEndpoint)
+        .map(instance -> instance.getHostDataNode().internalEndPoint)
         .distinct()
         .collect(Collectors.toList());
   }

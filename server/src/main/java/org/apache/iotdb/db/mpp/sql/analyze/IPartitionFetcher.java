@@ -34,6 +34,10 @@ public interface IPartitionFetcher {
 
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
+  DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
+
   DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
+
+  DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
 }
