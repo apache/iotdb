@@ -19,70 +19,36 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
-public class SchemaFetchNode extends SchemaScanNode {
+public class CountSchemaMergeNode extends AbstractSchemaMergeNode {
 
-  private final PathPatternTree patternTree;
-
-  public SchemaFetchNode(PlanNodeId id, PathPatternTree patternTree) {
+  public CountSchemaMergeNode(PlanNodeId id) {
     super(id);
-    this.patternTree = patternTree;
-  }
-
-  public PathPatternTree getPatternTree() {
-    return patternTree;
   }
 
   @Override
   public PlanNode clone() {
-    return new SchemaFetchNode(getPlanNodeId(), patternTree);
-  }
-
-  @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return null;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return null;
+    return new CountSchemaMergeNode(getPlanNodeId());
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SCHEMA_FETCH.serialize(byteBuffer);
-    patternTree.serialize(byteBuffer);
+    PlanNodeType.COUNT_MERGE.serialize(byteBuffer);
   }
 
-  public static SchemaFetchNode deserialize(ByteBuffer byteBuffer) {
-    PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
-    PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchNode(id, patternTree);
+  public static PlanNode deserialize(ByteBuffer byteBuffer) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new CountSchemaMergeNode(planNodeId);
   }
-
-  @Override
-  public void open() throws Exception {}
-
-  @Override
-  public void close() throws Exception {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaFetch(this, context);
+    return visitor.visitCountMerge(this, context);
   }
 }

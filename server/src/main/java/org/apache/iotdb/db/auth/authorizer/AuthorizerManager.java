@@ -19,13 +19,22 @@
 
 package org.apache.iotdb.db.auth.authorizer;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.SessionTimeoutManager;
+import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +47,7 @@ public class AuthorizerManager implements IAuthorizer {
   private static final Logger logger = LoggerFactory.getLogger(AuthorizerManager.class);
 
   private ClusterAuthorizer clusterAuthorizer = new ClusterAuthorizer();
+  private SessionManager sessionManager = SessionManager.getInstance();
   private IAuthorizer iAuthorizer;
 
   public AuthorizerManager() {
@@ -198,5 +208,50 @@ public class AuthorizerManager implements IAuthorizer {
 
   public SettableFuture<ConfigTaskResult> queryPermission(TAuthorizerReq authorizerReq) {
     return clusterAuthorizer.queryPermission(authorizerReq);
+  }
+
+  public BasicOpenSessionResp openSession(
+      String username,
+      String password,
+      String zoneId,
+      TSProtocolVersion tsProtocolVersion,
+      IoTDBConstant.ClientVersion clientVersion)
+      throws TException {
+    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
+    TSStatus status;
+    status = clusterAuthorizer.login(new TLoginReq(username, password));
+    long sessionId = -1;
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // check the version compatibility
+      boolean compatible = tsProtocolVersion.equals(SessionManager.CURRENT_RPC_VERSION);
+      if (!compatible) {
+        openSessionResp.setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
+        openSessionResp.setMessage(
+            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+        return openSessionResp.sessionId(sessionId);
+      }
+
+      openSessionResp.setCode(status.getCode());
+      openSessionResp.setMessage(status.getMessage());
+
+      sessionId = sessionManager.requestSessionId(username, zoneId, clientVersion);
+
+      logger.info(
+          "{}: Login status: {}. User : {}, opens Session-{}",
+          IoTDBConstant.GLOBAL_DB_NAME,
+          openSessionResp.getMessage(),
+          username,
+          sessionId);
+    } else {
+      openSessionResp.setMessage(status.getMessage());
+      openSessionResp.setCode(status.getCode());
+
+      sessionId = sessionManager.requestSessionId(username, zoneId, clientVersion);
+      SessionManager.AUDIT_LOGGER.info(
+          "User {} opens Session failed with an incorrect password", username);
+    }
+
+    SessionTimeoutManager.getInstance().register(sessionId);
+    return openSessionResp.sessionId(sessionId);
   }
 }
