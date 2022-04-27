@@ -27,7 +27,7 @@
         <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>iotdb-commons</artifactId>
+    <artifactId>node-commons</artifactId>
     <name>Node Commons</name>
     <description>Common modules of the server and config node</description>
     <properties>
@@ -39,7 +39,6 @@
         <dependency>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
-            <version>${thrift.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -47,9 +46,26 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>[${guava.version},)</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-confignode</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
     <build>
@@ -121,7 +137,7 @@
     </build>
     <profiles>
         <profile>
-            <id>skipTsfileTests</id>
+            <id>skipCommonsTests</id>
             <activation>
                 <property>
                     <name>skipTests</name>
@@ -129,13 +145,13 @@
                 </property>
             </activation>
             <properties>
-                <tsfile.test.skip>true</tsfile.test.skip>
-                <tsfile.ut.skip>true</tsfile.ut.skip>
-                <tsfile.it.skip>true</tsfile.it.skip>
+                <commons.test.skip>true</commons.test.skip>
+                <commons.ut.skip>true</commons.ut.skip>
+                <commons.it.skip>true</commons.it.skip>
             </properties>
         </profile>
         <profile>
-            <id>skipUT_TsFileTests</id>
+            <id>skipUT_CommonsTests</id>
             <activation>
                 <property>
                     <name>skipUTs</name>
@@ -143,7 +159,7 @@
                 </property>
             </activation>
             <properties>
-                <tsfile.ut.skip>true</tsfile.ut.skip>
+                <commons.ut.skip>true</commons.ut.skip>
             </properties>
         </profile>
         <profile>

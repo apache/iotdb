@@ -71,13 +71,15 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -88,13 +90,16 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -726,7 +731,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
         try {
           if (plan instanceof InsertPlan
               && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-            if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
+            if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletsPlan) {
               if (e instanceof BatchProcessException) {
                 for (TSStatus status : ((BatchProcessException) e).getFailingStatus()) {
                   if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
@@ -803,7 +808,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       try {
         if (plan instanceof InsertPlan
             && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-          if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
+          if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletsPlan) {
             if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               for (TSStatus tmpStatus : status.getSubStatus()) {
                 if (tmpStatus.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
@@ -837,7 +842,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.calOperationCostTimeFromStart(startTime);
       if (!StatusUtils.NO_LEADER.equals(result)) {
         result.setRedirectNode(
-            new EndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
+            new TEndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
         return result;
       }
     }
@@ -848,8 +853,9 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       throws CheckConsistencyException, IllegalPathException {
     logger.debug("create time series for failed insertion {}", plan);
     // apply measurements according to failed measurements
-    if (plan instanceof InsertMultiTabletPlan) {
-      for (InsertTabletPlan insertPlan : ((InsertMultiTabletPlan) plan).getInsertTabletPlanList()) {
+    if (plan instanceof InsertMultiTabletsPlan) {
+      for (InsertTabletPlan insertPlan :
+          ((InsertMultiTabletsPlan) plan).getInsertTabletPlanList()) {
         if (insertPlan.getFailedMeasurements() != null) {
           insertPlan.getPlanFromFailed();
         }

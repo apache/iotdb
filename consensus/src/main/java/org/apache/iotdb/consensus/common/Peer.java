@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.consensus.common;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+
 import java.util.Objects;
 
 // TODO Use a mature IDL framework such as Protobuf to manage this structure
 public class Peer {
 
   private final ConsensusGroupId groupId;
-  private final Endpoint endpoint;
+  private final TEndPoint endpoint;
 
-  public Peer(ConsensusGroupId groupId, Endpoint endpoint) {
+  public Peer(ConsensusGroupId groupId, TEndPoint endpoint) {
     this.groupId = groupId;
     this.endpoint = endpoint;
   }
@@ -36,7 +39,7 @@ public class Peer {
     return groupId;
   }
 
-  public Endpoint getEndpoint() {
+  public TEndPoint getEndpoint() {
     return endpoint;
   }
 

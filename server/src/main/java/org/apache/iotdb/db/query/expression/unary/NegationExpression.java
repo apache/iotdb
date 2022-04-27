@@ -24,10 +24,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -39,6 +40,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,10 +50,14 @@ import java.util.Set;
 
 public class NegationExpression extends Expression {
 
-  protected Expression expression;
+  private final Expression expression;
 
   public NegationExpression(Expression expression) {
     this.expression = expression;
+  }
+
+  public NegationExpression(ByteBuffer byteBuffer) {
+    expression = Expression.deserialize(byteBuffer);
   }
 
   public Expression getExpression() {
@@ -128,14 +134,15 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
-    // TODO: support nested expressions
-  }
-
-  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     expression.constructUdfExecutors(expressionName2Executor, zoneId);
+  }
+
+  @Override
+  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
+    expression.bindInputLayerColumnIndexWithExpression(udtfPlan);
+    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
   }
 
   @Override
@@ -147,7 +154,7 @@ public class NegationExpression extends Expression {
   @Override
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
@@ -159,7 +166,7 @@ public class NegationExpression extends Expression {
       IntermediateLayer parentLayerPointReader =
           expression.constructIntermediateLayer(
               queryId,
-              udtfPlan,
+              udtfContext,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
               expressionDataTypeMap,
@@ -185,6 +192,21 @@ public class NegationExpression extends Expression {
 
   @Override
   public String getExpressionStringInternal() {
-    return "-" + expression.toString();
+    return expression instanceof TimeSeriesOperand
+            || expression instanceof FunctionExpression
+            || (expression instanceof ConstantOperand
+                && !((ConstantOperand) expression).isNegativeNumber())
+        ? "-" + expression
+        : "-(" + expression + ")";
+  }
+
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.NEGATION;
+  }
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    Expression.serialize(expression, byteBuffer);
   }
 }

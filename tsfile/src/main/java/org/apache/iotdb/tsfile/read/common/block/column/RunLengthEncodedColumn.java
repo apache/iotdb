@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -62,45 +63,66 @@ public class RunLengthEncodedColumn implements Column {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return value.getDataType();
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return value.getEncoding();
+  }
+
+  @Override
   public boolean getBoolean(int position) {
     checkReadablePosition(position);
-    return value.getBoolean(position);
+    return value.getBoolean(0);
   }
 
   @Override
   public int getInt(int position) {
     checkReadablePosition(position);
-    return value.getInt(position);
+    return value.getInt(0);
   }
 
   @Override
   public long getLong(int position) {
     checkReadablePosition(position);
-    return value.getLong(position);
+    return value.getLong(0);
   }
 
   @Override
   public float getFloat(int position) {
     checkReadablePosition(position);
-    return value.getFloat(position);
+    return value.getFloat(0);
   }
 
   @Override
   public double getDouble(int position) {
     checkReadablePosition(position);
-    return value.getDouble(position);
+    return value.getDouble(0);
   }
 
   @Override
   public Binary getBinary(int position) {
     checkReadablePosition(position);
-    return value.getBinary(position);
+    return value.getBinary(0);
+  }
+
+  @Override
+  public Object getObject(int position) {
+    checkReadablePosition(position);
+    return value.getObject(0);
   }
 
   @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
-    return value.getTsPrimitiveType(position);
+    return value.getTsPrimitiveType(0);
+  }
+
+  @Override
+  public boolean mayHaveNull() {
+    return value.mayHaveNull();
   }
 
   @Override

@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.ArrayList;
@@ -34,6 +36,11 @@ public abstract class MNode implements IMNode {
 
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
+
+  /** registered trigger */
+  protected TriggerExecutor triggerExecutor;
+
+  protected CacheEntry cacheEntry;
 
   /** Constructor of MNode. */
   public MNode(IMNode parent, String name) {
@@ -82,7 +89,7 @@ public abstract class MNode implements IMNode {
   @Override
   public String getFullPath() {
     if (fullPath == null) {
-      fullPath = concatFullPath().intern();
+      fullPath = concatFullPath();
     }
     return fullPath;
   }
@@ -105,15 +112,7 @@ public abstract class MNode implements IMNode {
   @Override
   public void moveDataToNewMNode(IMNode newMNode) {
     newMNode.setParent(parent);
-  }
-
-  @Override
-  public boolean isEmptyInternal() {
-    return !IoTDBConstant.PATH_ROOT.equals(name)
-        && !isMeasurement()
-        && getSchemaTemplate() == null
-        && !isUseTemplate()
-        && getChildren().size() == 0;
+    newMNode.setCacheEntry(cacheEntry);
   }
 
   @Override
@@ -164,6 +163,31 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
+  public List<TriggerExecutor> getUpperTriggerExecutorList() {
+    IMNode currentNode = this;
+    List<TriggerExecutor> results = new ArrayList<>();
+    while (currentNode != null && !IoTDBConstant.PATH_ROOT.equals(currentNode.getName())) {
+      TriggerExecutor executor = currentNode.getTriggerExecutor();
+      currentNode = currentNode.getParent();
+      if (executor == null) {
+        continue;
+      }
+      results.add(executor);
+    }
+    return results;
+  }
+
+  @Override
+  public TriggerExecutor getTriggerExecutor() {
+    return triggerExecutor;
+  }
+
+  @Override
+  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
+    this.triggerExecutor = triggerExecutor;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -191,5 +215,15 @@ public abstract class MNode implements IMNode {
   @Override
   public String toString() {
     return this.getName();
+  }
+
+  @Override
+  public CacheEntry getCacheEntry() {
+    return cacheEntry;
+  }
+
+  @Override
+  public void setCacheEntry(CacheEntry cacheEntry) {
+    this.cacheEntry = cacheEntry;
   }
 }

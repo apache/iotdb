@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.common;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 
 /**
@@ -28,18 +29,51 @@ public class MPPQueryContext {
   private String sql;
   private QueryId queryId;
   private SessionInfo session;
-  private QueryType queryType;
+  private QueryType queryType = QueryType.READ;
 
-  public MPPQueryContext() {}
+  private TEndPoint localDataBlockEndpoint;
+  private TEndPoint localInternalEndpoint;
+  private ResultNodeContext resultNodeContext;
 
-  public MPPQueryContext(String sql, QueryId queryId, SessionInfo session, QueryType type) {
+  public MPPQueryContext(QueryId queryId) {
+    this.queryId = queryId;
+  }
+
+  public MPPQueryContext(
+      String sql,
+      QueryId queryId,
+      SessionInfo session,
+      TEndPoint localDataBlockEndpoint,
+      TEndPoint localInternalEndpoint) {
     this.sql = sql;
     this.queryId = queryId;
     this.session = session;
-    this.queryType = type;
+    this.localDataBlockEndpoint = localDataBlockEndpoint;
+    this.localInternalEndpoint = localInternalEndpoint;
+    this.resultNodeContext = new ResultNodeContext(queryId);
   }
 
   public QueryId getQueryId() {
     return queryId;
+  }
+
+  public QueryType getQueryType() {
+    return queryType;
+  }
+
+  public void setQueryType(QueryType queryType) {
+    this.queryType = queryType;
+  }
+
+  public ResultNodeContext getResultNodeContext() {
+    return resultNodeContext;
+  }
+
+  public TEndPoint getLocalDataBlockEndpoint() {
+    return localDataBlockEndpoint;
+  }
+
+  public TEndPoint getLocalInternalEndpoint() {
+    return localInternalEndpoint;
   }
 }

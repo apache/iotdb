@@ -25,7 +25,7 @@ import org.apache.iotdb.metrics.dropwizard.MetricName;
 import org.apache.iotdb.metrics.utils.MetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import com.codahale.metrics.Counter;
@@ -40,7 +40,12 @@ import com.codahale.metrics.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -51,7 +56,7 @@ public class IoTDBReporter extends ScheduledReporter {
   private static final TimeUnit DURATION_UNIT = TimeUnit.MILLISECONDS;
   private static final TimeUnit RATE_UNIT = TimeUnit.SECONDS;
   private final String prefix;
-  private final Session session;
+  private final SessionPool sessionPool;
 
   protected IoTDBReporter(
       MetricRegistry registry,
@@ -68,34 +73,20 @@ public class IoTDBReporter extends ScheduledReporter {
         executor,
         shutdownExecutorOnStop);
     this.prefix = prefix;
-    this.session =
-        new Session(
+    this.sessionPool =
+        new SessionPool(
             ioTDBReporterConfig.getHost(),
             ioTDBReporterConfig.getPort(),
             ioTDBReporterConfig.getUsername(),
             ioTDBReporterConfig.getPassword(),
-            true);
-  }
-
-  @Override
-  public void start(long period, TimeUnit unit) {
-    super.start(period, unit);
-    try {
-      session.open();
-    } catch (IoTDBConnectionException e) {
-      logger.error("Failed to add session", e);
-    }
+            ioTDBReporterConfig.getMaxConnectionNumber());
   }
 
   @Override
   public void stop() {
     super.stop();
-    try {
-      if (session != null) {
-        session.close();
-      }
-    } catch (IoTDBConnectionException e) {
-      logger.error("Failed to close session.");
+    if (sessionPool != null) {
+      sessionPool.close();
     }
   }
 
@@ -242,9 +233,10 @@ public class IoTDBReporter extends ScheduledReporter {
         dataTypes.add(TSDataType.TEXT);
         value = value.toString();
       }
+      List<Object> values = Collections.singletonList(value);
 
       try {
-        session.insertRecord(deviceId, System.currentTimeMillis(), sensors, dataTypes, value);
+        sessionPool.insertRecord(deviceId, System.currentTimeMillis(), sensors, dataTypes, values);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         logger.warn("Failed to insert record");
       }

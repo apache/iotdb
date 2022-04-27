@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.openjdk.jol.info.ClassLayout;
 
 import java.util.Arrays;
+import java.util.Iterator;
 
 import static io.airlift.slice.SizeOf.sizeOf;
 import static java.lang.String.format;
@@ -49,14 +50,10 @@ public class TsBlock {
    * Visible to give trusted classes like {@link TsBlockBuilder} access to a constructor that
    * doesn't defensively copy the valueColumns
    */
-  static TsBlock wrapBlocksWithoutCopy(
+  public static TsBlock wrapBlocksWithoutCopy(
       int positionCount, TimeColumn timeColumn, Column[] valueColumns) {
     return new TsBlock(false, positionCount, timeColumn, valueColumns);
   }
-
-  // TODO rethink about if we really need this field
-  // Describe the column info
-  private TsBlockMetadata metadata;
 
   private final TimeColumn timeColumn;
 
@@ -66,12 +63,12 @@ public class TsBlock {
 
   private volatile long retainedSizeInBytes = -1;
 
-  public TsBlock(TimeColumn timeColumn, Column... valueColumns) {
-    this(true, determinePositionCount(valueColumns), timeColumn, valueColumns);
-  }
-
   public TsBlock(int positionCount) {
     this(false, positionCount, null, EMPTY_COLUMNS);
+  }
+
+  public TsBlock(TimeColumn timeColumn, Column... valueColumns) {
+    this(true, determinePositionCount(valueColumns), timeColumn, valueColumns);
   }
 
   public TsBlock(int positionCount, TimeColumn timeColumn, Column... valueColumns) {
@@ -101,12 +98,12 @@ public class TsBlock {
 
   public void next() {}
 
-  public TsBlockMetadata getMetadata() {
-    return metadata;
-  }
-
   public int getPositionCount() {
     return positionCount;
+  }
+
+  public long getStartTime() {
+    return timeColumn.getStartTime();
   }
 
   public long getEndTime() {
@@ -147,13 +144,29 @@ public class TsBlock {
   }
 
   public TsBlock appendValueColumn(Column column) {
-    requireNonNull(column, "column is null");
+    requireNonNull(column, "Column is null");
     if (positionCount != column.getPositionCount()) {
       throw new IllegalArgumentException("Block does not have same position count");
     }
 
     Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
     newBlocks[valueColumns.length] = column;
+    return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
+  }
+
+  /**
+   * Attention. This method uses System.arraycopy() to extend the valueColumn array, so its
+   * performance is not ensured if you have many insert operations.
+   */
+  public TsBlock insertValueColumn(int index, Column column) {
+    requireNonNull(column, "Column is null");
+    if (positionCount != column.getPositionCount()) {
+      throw new IllegalArgumentException("Block does not have same position count");
+    }
+
+    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
+    System.arraycopy(newBlocks, index, newBlocks, index + 1, valueColumns.length - index);
+    newBlocks[index] = column;
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 
@@ -173,8 +186,16 @@ public class TsBlock {
     return valueColumns[columnIndex];
   }
 
-  public TsBlockIterator getTsBlockIterator() {
-    return new TsBlockIterator(0);
+  public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator() {
+    return new TsBlockSingleColumnIterator(0);
+  }
+
+  public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator(int columnIndex) {
+    return new TsBlockSingleColumnIterator(0, columnIndex);
+  }
+
+  public TsBlockRowIterator getTsBlockRowIterator() {
+    return new TsBlockRowIterator(0);
   }
 
   /** Only used for the batch data of vector time series. */
@@ -182,17 +203,24 @@ public class TsBlock {
     return new AlignedTsBlockIterator(0, subIndex);
   }
 
-  private class TsBlockIterator implements IPointReader, IBatchDataIterator {
+  public class TsBlockSingleColumnIterator implements IPointReader, IBatchDataIterator {
 
-    protected int index;
+    protected int rowIndex;
+    protected int columnIndex;
 
-    public TsBlockIterator(int index) {
-      this.index = index;
+    public TsBlockSingleColumnIterator(int rowIndex) {
+      this.rowIndex = rowIndex;
+      this.columnIndex = 0;
+    }
+
+    public TsBlockSingleColumnIterator(int rowIndex, int columnIndex) {
+      this.rowIndex = rowIndex;
+      this.columnIndex = columnIndex;
     }
 
     @Override
     public boolean hasNext() {
-      return index < positionCount;
+      return rowIndex < positionCount;
     }
 
     @Override
@@ -202,22 +230,22 @@ public class TsBlock {
 
     @Override
     public void next() {
-      index++;
+      rowIndex++;
     }
 
     @Override
     public long currentTime() {
-      return timeColumn.getLong(index);
+      return timeColumn.getLong(rowIndex);
     }
 
     @Override
     public Object currentValue() {
-      return valueColumns[0].getTsPrimitiveType(index).getValue();
+      return valueColumns[columnIndex].getTsPrimitiveType(rowIndex).getValue();
     }
 
     @Override
     public void reset() {
-      index = 0;
+      rowIndex = 0;
     }
 
     @Override
@@ -240,14 +268,62 @@ public class TsBlock {
     @Override
     public TimeValuePair currentTimeValuePair() {
       return new TimeValuePair(
-          timeColumn.getLong(index), valueColumns[0].getTsPrimitiveType(index));
+          timeColumn.getLong(rowIndex), valueColumns[columnIndex].getTsPrimitiveType(rowIndex));
     }
 
     @Override
     public void close() {}
+
+    public long getEndTime() {
+      return TsBlock.this.getEndTime();
+    }
+
+    public long getStartTime() {
+      return TsBlock.this.getStartTime();
+    }
+
+    public int getRowIndex() {
+      return rowIndex;
+    }
+
+    public void setRowIndex(int rowIndex) {
+      this.rowIndex = rowIndex;
+    }
   }
 
-  private class AlignedTsBlockIterator extends TsBlockIterator {
+  /** Mainly used for UDF framework. Note that the timestamps are at the last column. */
+  public class TsBlockRowIterator implements Iterator<Object[]> {
+
+    protected int rowIndex;
+    protected int columnCount;
+
+    public TsBlockRowIterator(int rowIndex) {
+      this.rowIndex = rowIndex;
+      columnCount = getValueColumnCount();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return rowIndex < positionCount;
+    }
+
+    /** @return A row in the TsBlock. The timestamp is at the last column. */
+    @Override
+    public Object[] next() {
+      int columnCount = getValueColumnCount();
+      Object[] row = new Object[columnCount + 1];
+      for (int i = 0; i < columnCount; ++i) {
+        row[i] = valueColumns[i].getObject(rowIndex);
+      }
+      row[columnCount] = timeColumn.getObject(rowIndex);
+
+      rowIndex++;
+
+      return row;
+    }
+  }
+
+  private class AlignedTsBlockIterator extends TsBlockSingleColumnIterator {
 
     private final int subIndex;
 
@@ -277,7 +353,7 @@ public class TsBlock {
 
     @Override
     public Object currentValue() {
-      TsPrimitiveType v = valueColumns[subIndex].getTsPrimitiveType(index);
+      TsPrimitiveType v = valueColumns[subIndex].getTsPrimitiveType(rowIndex);
       return v == null ? null : v.getValue();
     }
 
@@ -286,12 +362,12 @@ public class TsBlock {
       // aligned timeseries' BatchData length() may return the length of time column
       // we need traverse to VectorBatchDataIterator calculate the actual value column's length
       int cnt = 0;
-      int indexSave = index;
+      int indexSave = rowIndex;
       while (hasNext()) {
         cnt++;
         next();
       }
-      index = indexSave;
+      rowIndex = indexSave;
       return cnt;
     }
   }

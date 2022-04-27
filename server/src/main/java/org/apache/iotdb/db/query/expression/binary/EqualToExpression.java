@@ -20,13 +20,21 @@
 package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.CompareBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.CompareEqualToTransformer;
 
+import java.nio.ByteBuffer;
+
 public class EqualToExpression extends BinaryExpression {
+
   public EqualToExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public EqualToExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -38,5 +46,10 @@ public class EqualToExpression extends BinaryExpression {
   @Override
   protected String operator() {
     return "=";
+  }
+
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.EQUAL_TO;
   }
 }

@@ -18,24 +18,26 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.partition.DataPartitionInfo;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
-import org.apache.iotdb.commons.partition.PartitionInfo;
-import org.apache.iotdb.commons.partition.SchemaPartitionInfo;
+import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IPartitionFetcher {
 
-  DataPartitionInfo fetchDataPartitionInfo(DataPartitionQueryParam parameter);
+  SchemaPartition getSchemaPartition(PathPatternTree patternTree);
 
-  DataPartitionInfo fetchDataPartitionInfos(List<DataPartitionQueryParam> parameterList);
+  SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 
-  SchemaPartitionInfo fetchSchemaPartitionInfo(String deviceId);
+  DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
-  SchemaPartitionInfo fetchSchemaPartitionInfos(List<String> deviceId);
+  DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
 
-  PartitionInfo fetchPartitionInfo(DataPartitionQueryParam parameter);
+  DataPartition getOrCreateDataPartition(
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
-  PartitionInfo fetchPartitionInfos(List<DataPartitionQueryParam> parameterList);
+  DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
 }

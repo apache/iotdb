@@ -20,14 +20,21 @@
 package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.CompareBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.CompareLessEqualTransformer;
+
+import java.nio.ByteBuffer;
 
 public class LessEqualExpression extends BinaryExpression {
 
   public LessEqualExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public LessEqualExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -39,5 +46,10 @@ public class LessEqualExpression extends BinaryExpression {
   @Override
   protected String operator() {
     return "<=";
+  }
+
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.LESS_EQUAL;
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
@@ -46,7 +47,13 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
 
@@ -73,7 +80,7 @@ public class SeriesScanUtil {
   private final Filter timeFilter;
   private final Filter valueFilter;
 
-  private final QueryDataSource dataSource;
+  private QueryDataSource dataSource;
 
   /*
    * file index
@@ -117,7 +124,6 @@ public class SeriesScanUtil {
       Set<String> allSensors,
       TSDataType dataType,
       FragmentInstanceContext context,
-      QueryDataSource dataSource,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
@@ -125,20 +131,16 @@ public class SeriesScanUtil {
     this.allSensors = allSensors;
     this.dataType = dataType;
     this.context = context;
-    this.dataSource = dataSource;
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
       mergeReader = getPriorityMergeReader();
-      this.curSeqFileIndex = 0;
-      this.curUnseqFileIndex = 0;
     } else {
       this.orderUtils = new DescTimeOrderUtils();
       mergeReader = getDescPriorityMergeReader();
-      this.curSeqFileIndex = dataSource.getSeqResourcesSize() - 1;
-      this.curUnseqFileIndex = 0;
     }
+    this.curUnseqFileIndex = 0;
 
     unSeqTimeSeriesMetadata =
         new PriorityQueue<>(
@@ -152,6 +154,12 @@ public class SeriesScanUtil {
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
+  }
+
+  public void initQueryDataSource(QueryDataSource dataSource) {
+    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
+    this.dataSource = dataSource;
+    orderUtils.setCurSeqFileIndex(dataSource);
   }
 
   protected PriorityMergeReader getPriorityMergeReader() {
@@ -262,6 +270,9 @@ public class SeriesScanUtil {
 
     if (firstChunkMetadata != null) {
       return true;
+      // hasNextFile() has not been invoked
+    } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
+      return false;
     }
 
     while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
@@ -702,7 +713,7 @@ public class SeriesScanUtil {
               mergeReader.addReader(
                   firstPageReader
                       .getAllSatisfiedPageData(orderUtils.getAscending())
-                      .getTsBlockIterator(),
+                      .getTsBlockSingleColumnIterator(),
                   firstPageReader.version,
                   orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()),
                   context);
@@ -729,7 +740,7 @@ public class SeriesScanUtil {
               mergeReader.addReader(
                   pageReader
                       .getAllSatisfiedPageData(orderUtils.getAscending())
-                      .getTsBlockIterator(),
+                      .getTsBlockSingleColumnIterator(),
                   pageReader.version,
                   orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
                   context);
@@ -910,7 +921,9 @@ public class SeriesScanUtil {
 
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     mergeReader.addReader(
-        pageReader.getAllSatisfiedPageData(orderUtils.getAscending()).getTsBlockIterator(),
+        pageReader
+            .getAllSatisfiedPageData(orderUtils.getAscending())
+            .getTsBlockSingleColumnIterator(),
         pageReader.version,
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
         context);
@@ -1074,6 +1087,10 @@ public class SeriesScanUtil {
     return timeFilter;
   }
 
+  public TimeOrderUtils getOrderUtils() {
+    return orderUtils;
+  }
+
   private class VersionPageReader {
 
     protected PriorityMergeReader.MergeReaderPriority version;
@@ -1162,6 +1179,8 @@ public class SeriesScanUtil {
     TsFileResource getNextSeqFileResource(boolean isDelete);
 
     TsFileResource getNextUnseqFileResource(boolean isDelete);
+
+    void setCurSeqFileIndex(QueryDataSource dataSource);
   }
 
   class DescTimeOrderUtils implements TimeOrderUtils {
@@ -1273,6 +1292,11 @@ public class SeriesScanUtil {
       }
       return tsFileResource;
     }
+
+    @Override
+    public void setCurSeqFileIndex(QueryDataSource dataSource) {
+      curSeqFileIndex = dataSource.getSeqResourcesSize() - 1;
+    }
   }
 
   class AscTimeOrderUtils implements TimeOrderUtils {
@@ -1383,6 +1407,11 @@ public class SeriesScanUtil {
         curUnseqFileIndex++;
       }
       return tsFileResource;
+    }
+
+    @Override
+    public void setCurSeqFileIndex(QueryDataSource dataSource) {
+      curSeqFileIndex = 0;
     }
   }
 }

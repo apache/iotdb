@@ -21,8 +21,8 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -1062,9 +1062,8 @@ public class IoTDBNewTsFileCompactionIT {
 
   /** wait until merge is finished */
   private boolean waitForMergeFinish() throws StorageEngineException, InterruptedException {
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
-        StorageEngine.getInstance().getProcessor(storageGroupPath);
-    TsFileManager resourceManager = virtualStorageGroupProcessor.getTsFileResourceManager();
+    DataRegion dataRegion = StorageEngine.getInstance().getProcessor(storageGroupPath);
+    TsFileManager resourceManager = dataRegion.getTsFileResourceManager();
 
     long startTime = System.nanoTime();
     TimeUnit.MILLISECONDS.sleep(500);

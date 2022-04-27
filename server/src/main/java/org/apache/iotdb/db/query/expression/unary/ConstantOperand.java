@@ -22,19 +22,22 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -47,13 +50,24 @@ public class ConstantOperand extends Expression {
   private final String valueString;
   private final TSDataType dataType;
 
-  public ConstantOperand(TSDataType dataType, String str) throws QueryProcessException {
+  public ConstantOperand(TSDataType dataType, String valueString) {
     this.dataType = Validate.notNull(dataType);
-    this.valueString = Validate.notNull(str);
+    this.valueString = Validate.notNull(valueString);
+  }
+
+  public ConstantOperand(ByteBuffer byteBuffer) {
+    dataType = TSDataType.deserializeFrom(byteBuffer);
+    valueString = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public boolean isNegativeNumber() {
+    return !dataType.equals(TSDataType.TEXT)
+        && !dataType.equals(TSDataType.BOOLEAN)
+        && Double.parseDouble(valueString) < 0;
   }
 
   @Override
@@ -104,7 +118,7 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
+  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
     // Do nothing
   }
 
@@ -116,7 +130,7 @@ public class ConstantOperand extends Expression {
   @Override
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
@@ -135,5 +149,16 @@ public class ConstantOperand extends Expression {
   @Override
   public String getExpressionStringInternal() {
     return valueString;
+  }
+
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.CONSTANT;
+  }
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    dataType.serializeTo(byteBuffer);
+    ReadWriteIOUtils.write(valueString, byteBuffer);
   }
 }

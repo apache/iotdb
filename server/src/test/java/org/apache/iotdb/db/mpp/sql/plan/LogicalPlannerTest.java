@@ -22,14 +22,24 @@ package org.apache.iotdb.db.mpp.sql.plan;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
+import org.apache.iotdb.db.mpp.sql.analyze.FakePartitionFetcherImpl;
+import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -37,83 +47,31 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.apache.iotdb.db.mpp.sql.plan.QueryLogicalPlanUtil.querySQLs;
+import static org.apache.iotdb.db.mpp.sql.plan.QueryLogicalPlanUtil.sqlToPlanMap;
 import static org.junit.Assert.fail;
 
 public class LogicalPlannerTest {
 
-  LogicalPlanPrinter planPrinter = new LogicalPlanPrinter();
-
-  @Before
-  public void setUp() {
-    PlanNodeIdAllocator.reset();
+  @Test
+  @Ignore // TODO: @zyk implement getBelongedStorageGroup() in SchemaTree
+  public void testQueryPlan() {
+    for (String sql : querySQLs) {
+      Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
+    }
   }
 
   @Test
-  @Ignore
-  public void rawDataQueryTest() {
-    PlanNode root =
-        parseSQLToPlanNode(
-            "SELECT s1,s2 FROM root.sg1.d1 WHERE time > 10 and s2 > 100 WITHOUT NULL ANY(s1) LIMIT 1 OFFSET 10");
-    System.out.println(planPrinter.print(root));
-    // TODO: replace all paths to full paths
-    Assert.assertEquals(
-        "[OffsetNode (7)]\n"
-            + " │   RowOffset: 10\n"
-            + " └─[LimitNode (6)]\n"
-            + "    │   RowLimit: 1\n"
-            + "    └─[FilterNullNode (5)]\n"
-            + "       │   FilterNullPolicy: CONTAINS_NULL\n"
-            + "       │   FilterNullColumnNames: [s1]\n"
-            + "       └─[FilterNode (4)]\n"
-            + "          │   QueryFilter: [and [time>10][s2>100]]\n"
-            + "          └─[TimeJoinNode (3)]\n"
-            + "             │   MergeOrder: TIMESTAMP_ASC\n"
-            + "             │   FilterNullPolicy: null\n"
-            + "             └─[SeriesScanNode (1)]\n"
-            + "                │   SeriesPath: s1\n"
-            + "                │   scanOrder: TIMESTAMP_ASC\n"
-            + "               [SeriesScanNode (2)]\n"
-            + "                │   SeriesPath: s2\n"
-            + "                │   scanOrder: TIMESTAMP_ASC\n",
-        planPrinter.print(root));
-  }
-
-  @Test
-  @Ignore
-  public void aggregationQueryTest() {
-    PlanNode root =
-        parseSQLToPlanNode(
-            "SELECT sum(s1), avg(s2) FROM root.sg1.d1 WHERE time > 10 LIMIT 1 OFFSET 10");
-    System.out.println(planPrinter.print(root));
-    // TODO: replace all paths to full paths
-    Assert.assertEquals(
-        "[OffsetNode (6)]\n"
-            + " │   RowOffset: 10\n"
-            + " └─[LimitNode (5)]\n"
-            + "    │   RowLimit: 1\n"
-            + "    └─[FilterNode (4)]\n"
-            + "       │   QueryFilter: [time>10]\n"
-            + "       └─[TimeJoinNode (3)]\n"
-            + "          │   MergeOrder: TIMESTAMP_ASC\n"
-            + "          │   FilterNullPolicy: null\n"
-            + "          └─[SeriesAggregateScanNode (2)]\n"
-            + "             │   AggregateFunction: avg(s2)\n"
-            + "            [SeriesAggregateScanNode (1)]\n"
-            + "             │   AggregateFunction: sum(s1)\n",
-        planPrinter.print(root));
-  }
-
-  @Test
-  public void createTimeseriesPlanTest() {
+  public void testCreateTimeseriesPlan() {
     String sql =
         "CREATE TIMESERIES root.ln.wf01.wt01.status(状态) BOOLEAN ENCODING=PLAIN COMPRESSOR=SNAPPY TAGS(tag1=v1, tag2=v2) ATTRIBUTES(attr1=v1, attr2=v2)";
     try {
@@ -148,7 +106,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void createAlignedTimeseriesPlanTest() {
+  public void testCreateAlignedTimeseriesPlan() {
     String sql =
         "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude(meter1) FLOAT encoding=PLAIN compressor=SNAPPY tags(tag1=t1) attributes(attr1=a1), longitude FLOAT encoding=PLAIN compressor=SNAPPY)";
     try {
@@ -215,6 +173,15 @@ public class LogicalPlannerTest {
             }
           },
           createAlignedTimeSeriesNode.getTagsList());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      createAlignedTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode1 =
+          (CreateAlignedTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+      Assert.assertTrue(createAlignedTimeSeriesNode.equals(createAlignedTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -222,7 +189,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void alterTimeseriesPlanTest() {
+  public void testAlterTimeseriesPlan() {
     String sql = "ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
@@ -237,6 +204,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -257,6 +233,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -277,6 +262,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -297,6 +291,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -317,6 +320,15 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAlterMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -346,7 +358,96 @@ public class LogicalPlannerTest {
             }
           },
           alterTimeSeriesNode.getAttributesMap());
+
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      alterTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+
+      AlterTimeSeriesNode alterTimeSeriesNode1 =
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+      Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testShowTimeSeries() {
+    String sql =
+        "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE tagK = tagV limit 20 offset 10";
+
+    try {
+      LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
+      OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+      SchemaMergeNode metaMergeNode = (SchemaMergeNode) offsetNode.getChild();
+      metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
+      TimeSeriesSchemaScanNode showTimeSeriesNode =
+          (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);
+      Assert.assertNotNull(showTimeSeriesNode);
+      Assert.assertEquals(
+          new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
+      Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
+      Assert.assertFalse(showTimeSeriesNode.isContains());
+      Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
+      Assert.assertEquals("tagV", showTimeSeriesNode.getValue());
+      Assert.assertEquals(20, showTimeSeriesNode.getLimit());
+      Assert.assertEquals(10, showTimeSeriesNode.getOffset());
+      Assert.assertTrue(showTimeSeriesNode.isHasLimit());
+
+      // test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+      showTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      TimeSeriesSchemaScanNode showTimeSeriesNode2 =
+          (TimeSeriesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertNotNull(showTimeSeriesNode2);
+      Assert.assertEquals(
+          new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
+      Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
+      Assert.assertFalse(showTimeSeriesNode2.isContains());
+      Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());
+      Assert.assertEquals("tagV", showTimeSeriesNode2.getValue());
+      Assert.assertEquals(20, showTimeSeriesNode2.getLimit());
+      Assert.assertEquals(10, showTimeSeriesNode2.getOffset());
+      Assert.assertTrue(showTimeSeriesNode2.isHasLimit());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testShowDevices() {
+    String sql = "SHOW DEVICES root.ln.wf01.wt01 WITH STORAGE GROUP limit 20 offset 10";
+    try {
+      LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
+      OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+      SchemaMergeNode metaMergeNode = (SchemaMergeNode) offsetNode.getChild();
+      DevicesSchemaScanNode showDevicesNode =
+          (DevicesSchemaScanNode) metaMergeNode.getChildren().get(0);
+      Assert.assertNotNull(showDevicesNode);
+      Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
+      Assert.assertTrue(showDevicesNode.isHasSgCol());
+      Assert.assertEquals(20, showDevicesNode.getLimit());
+      Assert.assertEquals(10, showDevicesNode.getOffset());
+      Assert.assertTrue(showDevicesNode.isHasLimit());
+
+      // test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+      showDevicesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      DevicesSchemaScanNode showDevicesNode2 =
+          (DevicesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertNotNull(showDevicesNode2);
+      Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode2.getPath());
+      Assert.assertEquals(20, showDevicesNode2.getLimit());
+      Assert.assertEquals(10, showDevicesNode2.getOffset());
+      Assert.assertTrue(showDevicesNode2.isHasLimit());
+    } catch (Exception e) {
       e.printStackTrace();
       fail();
     }
@@ -357,12 +458,10 @@ public class LogicalPlannerTest {
     try {
       Statement statement =
           StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-      MPPQueryContext context = new MPPQueryContext();
-      // TODO: do analyze after implementing ISchemaFetcher and IPartitionFetcher
-      //      Analyzer analyzer = new Analyzer(context);
-      //      Analysis analysis = analyzer.analyze(statement);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(statement);
+      MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+      Analyzer analyzer =
+          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+      Analysis analysis = analyzer.analyze(statement);
       LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
       planNode = planner.plan(analysis).getRootNode();
     } catch (Exception e) {

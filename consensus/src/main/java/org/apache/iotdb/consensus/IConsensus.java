@@ -18,17 +18,20 @@
  */
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 
+import javax.annotation.concurrent.ThreadSafe;
+
 import java.io.IOException;
 import java.util.List;
 
-/** Consensus module base class. Each method should be thread-safe */
+/** Consensus module base class. */
+@ThreadSafe
 public interface IConsensus {
 
   void start() throws IOException;
@@ -56,4 +59,8 @@ public interface IConsensus {
   ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader);
 
   ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId);
+
+  boolean isLeader(ConsensusGroupId groupId);
+
+  Peer getLeader(ConsensusGroupId groupId);
 }

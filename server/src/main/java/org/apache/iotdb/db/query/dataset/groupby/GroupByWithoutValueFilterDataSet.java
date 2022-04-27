@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -114,11 +114,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
     groupedPathList.addAll(pathToAggrIndexesMap.keySet());
     groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair =
-            StorageEngine.getInstance().mergeLock(groupedPathList);
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {
@@ -195,7 +194,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
     curAggregateResults = new AggregateResult[paths.size()];
     for (SlidingWindowGroupByExecutor slidingWindowGroupByExecutor :
         slidingWindowGroupByExecutors) {
-      slidingWindowGroupByExecutor.setTimeRange(curStartTime, curEndTime);
+      slidingWindowGroupByExecutor.setTimeRange(
+          curAggrTimeRange.getMin(), curAggrTimeRange.getMax());
     }
     try {
       while (!isEndCal()) {
@@ -205,7 +205,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
           List<Integer> indexes = entry.getValue();
           GroupByExecutor groupByExecutor = pathExecutors.get(path);
           List<AggregateResult> aggregations =
-              groupByExecutor.calcResult(curPreAggrStartTime, curPreAggrEndTime);
+              groupByExecutor.calcResult(
+                  curPreAggrTimeRange.getMin(), curPreAggrTimeRange.getMax());
           for (int i = 0; i < aggregations.size(); i++) {
             int resultIndex = indexes.get(i);
             slidingWindowGroupByExecutors[resultIndex].update(aggregations.get(i).clone());
@@ -218,7 +219,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
           List<List<Integer>> indexesList = entry.getValue();
           AlignedGroupByExecutor groupByExecutor = alignedPathExecutors.get(path);
           List<List<AggregateResult>> aggregationsList =
-              groupByExecutor.calcAlignedResult(curPreAggrStartTime, curPreAggrEndTime);
+              groupByExecutor.calcAlignedResult(
+                  curPreAggrTimeRange.getMin(), curPreAggrTimeRange.getMax());
           for (int i = 0; i < path.getMeasurementList().size(); i++) {
             List<AggregateResult> aggregations = aggregationsList.get(i);
             List<Integer> indexes = indexesList.get(i);

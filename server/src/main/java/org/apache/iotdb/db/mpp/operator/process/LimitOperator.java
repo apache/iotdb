@@ -24,8 +24,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.IOException;
-
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
@@ -53,7 +51,7 @@ public class LimitOperator implements ProcessOperator {
   }
 
   @Override
-  public TsBlock next() throws IOException {
+  public TsBlock next() {
     TsBlock block = child.next();
     TsBlock res = block;
     if (block.getPositionCount() <= remainingLimit) {
@@ -66,12 +64,17 @@ public class LimitOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean hasNext() throws IOException {
-    return child.hasNext();
+  public boolean hasNext() {
+    return remainingLimit > 0 && child.hasNext();
   }
 
   @Override
   public void close() throws Exception {
     child.close();
+  }
+
+  @Override
+  public boolean isFinished() {
+    return remainingLimit == 0 || child.isFinished();
   }
 }

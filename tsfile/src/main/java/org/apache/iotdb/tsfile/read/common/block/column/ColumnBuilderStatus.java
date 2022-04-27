@@ -79,7 +79,10 @@ public class ColumnBuilderStatus {
 
     int size = ClassLayout.parseClass(clazz).instanceSize();
     for (Field field : clazz.getDeclaredFields()) {
-      if (!field.getType().isPrimitive()) {
+      // if the field is not static and is a reference field and it's not synthetic
+      if (!Modifier.isStatic(field.getModifiers())
+          && !field.getType().isPrimitive()
+          && !field.isSynthetic()) {
         size += deepInstanceSize(field.getType());
       }
     }

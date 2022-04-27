@@ -20,12 +20,24 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class AggregationQueryStatement extends QueryStatement {
 
@@ -53,11 +65,32 @@ public class AggregationQueryStatement extends QueryStatement {
     return groupByLevelComponent != null && groupByLevelComponent.getLevels().length > 0;
   }
 
+  public Map<String, Map<PartialPath, Set<AggregationType>>> getDeviceNameToAggregationsMap() {
+    Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap =
+        new HashMap<>();
+    for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
+      FunctionExpression expression = (FunctionExpression) resultColumn.getExpression();
+      PartialPath path = expression.getPaths().get(0);
+      String functionName = expression.getFunctionName();
+      deviceNameToAggregationsMap
+          .computeIfAbsent(path.getDevice(), key -> new HashMap<>())
+          .computeIfAbsent(path, key -> new HashSet<>())
+          .add(AggregationType.valueOf(functionName.toUpperCase()));
+    }
+    return deviceNameToAggregationsMap;
+  }
+
+  public DatasetHeader constructDatasetHeader() {
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
+    // TODO: consider Aggregation
+    return new DatasetHeader(columnHeaders, true);
+  }
+
   @Override
   public void selfCheck() {
     super.selfCheck();
 
-    if (!DisableAlign()) {
+    if (disableAlign()) {
       throw new SemanticException("AGGREGATION doesn't support disable align clause.");
     }
     checkSelectComponent(selectComponent);
@@ -86,5 +119,9 @@ public class AggregationQueryStatement extends QueryStatement {
             "The argument of the aggregation function must be a time series.");
       }
     }
+  }
+
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitAggregationQuery(this, context);
   }
 }

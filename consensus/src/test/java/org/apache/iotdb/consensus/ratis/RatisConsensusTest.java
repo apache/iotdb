@@ -18,19 +18,16 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
-import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -44,65 +41,14 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class RatisConsensusTest {
 
-  private static class TestDataSet implements DataSet {
-    private int number;
-
-    public void setNumber(int number) {
-      this.number = number;
-    }
-
-    public int getNumber() {
-      return number;
-    }
-  }
-
-  private static class TestRequest {
-    private int cmd;
-
-    public TestRequest(ByteBuffer buffer) {
-      cmd = buffer.getInt();
-    }
-
-    public boolean isIncr() {
-      return cmd == 1;
-    }
-  }
-
-  private static class IntegerCounter implements IStateMachine {
-    AtomicInteger integer;
-
-    @Override
-    public void start() {
-      integer = new AtomicInteger(0);
-    }
-
-    @Override
-    public void stop() {}
-
-    @Override
-    public TSStatus write(IConsensusRequest IConsensusRequest) {
-      ByteBufferConsensusRequest request = (ByteBufferConsensusRequest) IConsensusRequest;
-      TestRequest testRequest = new TestRequest(request.getContent());
-      if (testRequest.isIncr()) {
-        integer.incrementAndGet();
-      }
-      return new TSStatus(200);
-    }
-
-    @Override
-    public DataSet read(IConsensusRequest IConsensusRequest) {
-      TestDataSet dataSet = new TestDataSet();
-      dataSet.setNumber(integer.get());
-      return dataSet;
-    }
-  }
+  private static final String RATIS_CLASS_NAME = "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   private ConsensusGroupId gid;
   private List<Peer> peers;
@@ -112,14 +58,31 @@ public class RatisConsensusTest {
   private Peer peer0;
   private Peer peer1;
   private Peer peer2;
+  CountDownLatch latch;
+
+  private void makeServers() throws IOException {
+    for (int i = 0; i < 3; i++) {
+      servers.add(
+          ConsensusFactory.getConsensusImpl(
+                  RATIS_CLASS_NAME,
+                  peers.get(i).getEndpoint(),
+                  peersStorage.get(i),
+                  groupId -> new TestUtils.IntegerCounter())
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(ConsensusFactory.CONSTRUCT_FAILED_MSG, RATIS_CLASS_NAME))));
+      servers.get(i).start();
+    }
+  }
 
   @Before
   public void setUp() throws IOException {
-    gid = new ConsensusGroupId(GroupType.DataRegion, 1L);
+    gid = new DataRegionId(1);
     peers = new ArrayList<>();
-    peer0 = new Peer(gid, new Endpoint("127.0.0.1", 6000));
-    peer1 = new Peer(gid, new Endpoint("127.0.0.1", 6001));
-    peer2 = new Peer(gid, new Endpoint("127.0.0.1", 6002));
+    peer0 = new Peer(gid, new TEndPoint("127.0.0.1", 6000));
+    peer1 = new Peer(gid, new TEndPoint("127.0.0.1", 6001));
+    peer2 = new Peer(gid, new TEndPoint("127.0.0.1", 6002));
     peers.add(peer0);
     peers.add(peer1);
     peers.add(peer2);
@@ -132,15 +95,7 @@ public class RatisConsensusTest {
     }
     group = new ConsensusGroup(gid, peers);
     servers = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      servers.add(
-          RatisConsensus.newBuilder()
-              .setEndpoint(peers.get(i).getEndpoint())
-              .setStateMachineRegistry(groupId -> new IntegerCounter())
-              .setStorageDir(peersStorage.get(i))
-              .build());
-      servers.get(i).start();
-    }
+    makeServers();
   }
 
   @After
@@ -156,27 +111,30 @@ public class RatisConsensusTest {
   @Test
   public void basicConsensus() throws Exception {
 
-    // 4. Add a new group
+    // 1. Add a new group
     servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
 
-    // 5. Do Consensus 10
+    // 2. Do Consensus 10
     doConsensus(servers.get(0), group.getGroupId(), 10, 10);
 
-    // 6. Remove two Peers from Group (peer 0 and peer 2)
+    // 3. Remove two Peers from Group (peer 0 and peer 2)
+    // transfer the leader to peer1
     servers.get(0).transferLeader(gid, peer1);
+    Assert.assertTrue(servers.get(1).isLeader(gid));
     // first use removePeer to inform the group leader of configuration change
     servers.get(1).removePeer(gid, peer0);
     servers.get(1).removePeer(gid, peer2);
     // then use removeConsensusGroup to clean up removed Consensus-Peer's states
     servers.get(0).removeConsensusGroup(gid);
     servers.get(2).removeConsensusGroup(gid);
+    Assert.assertEquals(servers.get(1).getLeader(gid).getEndpoint(), peers.get(1).getEndpoint());
 
-    // 7. try consensus again with one peer
+    // 4. try consensus again with one peer
     doConsensus(servers.get(1), gid, 10, 20);
 
-    // 8. add two peers back
+    // 5. add two peers back
     // first notify these new peers, let them initialize
     servers.get(0).addConsensusGroup(gid, peers);
     servers.get(2).addConsensusGroup(gid, peers);
@@ -184,23 +142,38 @@ public class RatisConsensusTest {
     servers.get(1).addPeer(gid, peer0);
     servers.get(1).addPeer(gid, peer2);
 
-    // 9. try consensus with all 3 peers
+    // 6. try consensus with all 3 peers
     doConsensus(servers.get(2), gid, 10, 30);
 
-    // 10. again, group contains only peer0
+    // 7. again, group contains only peer0
+    servers.get(0).transferLeader(group.getGroupId(), peer0);
     servers.get(0).changePeer(group.getGroupId(), Collections.singletonList(peer0));
     servers.get(1).removeConsensusGroup(group.getGroupId());
     servers.get(2).removeConsensusGroup(group.getGroupId());
 
-    // 11. try consensus with only peer0
+    // 8. try consensus with only peer0
     doConsensus(servers.get(0), gid, 10, 40);
+
+    // 9. shutdown all the servers
+    for (IConsensus consensus : servers) {
+      consensus.stop();
+    }
+    servers.clear();
+
+    // 10. start again and verify the snapshot
+    makeServers();
+    servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
+    servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
+    doConsensus(servers.get(0), gid, 10, 50);
   }
 
   private void doConsensus(IConsensus consensus, ConsensusGroupId gid, int count, int target)
       throws Exception {
 
+    latch = new CountDownLatch(count);
     // do write
-    ExecutorService executorService = Executors.newFixedThreadPool(4);
+    ExecutorService executorService = Executors.newFixedThreadPool(2);
     for (int i = 0; i < count; i++) {
       executorService.submit(
           () -> {
@@ -213,24 +186,40 @@ public class RatisConsensusTest {
             if (response.getException() != null) {
               response.getException().printStackTrace(System.out);
             }
-            Assert.assertEquals(response.getStatus(), new TSStatus(200));
+            Assert.assertEquals(response.getStatus().getCode(), 200);
+            latch.countDown();
           });
     }
 
     executorService.shutdown();
-    executorService.awaitTermination(count * 500L, TimeUnit.MILLISECONDS);
+
+    // wait at most 60s for write to complete, otherwise fail the test
+    Assert.assertTrue(latch.await(60, TimeUnit.SECONDS));
 
     ByteBuffer get = ByteBuffer.allocate(4);
     get.putInt(2);
     get.flip();
     ByteBufferConsensusRequest getReq = new ByteBufferConsensusRequest(get);
 
-    // Sleep Long enough to followers to catch up with the leader
-    Thread.sleep(1000);
+    // wait at most 60s to discover a valid leader
+    long start = System.currentTimeMillis();
+    IConsensus leader = null;
+    while (leader == null) {
+      long current = System.currentTimeMillis();
+      if ((current - start) > 60 * 1000 * 1000) {
+        break;
+      }
+      for (int i = 0; i < 3; i++) {
+        if (servers.get(i).isLeader(gid)) {
+          leader = servers.get(i);
+        }
+      }
+    }
+    Assert.assertNotNull(leader);
 
     // Check we reached a consensus
-    ConsensusReadResponse response = consensus.read(gid, getReq);
-    TestDataSet result = (TestDataSet) response.getDataset();
+    ConsensusReadResponse response = leader.read(gid, getReq);
+    TestUtils.TestDataSet result = (TestUtils.TestDataSet) response.getDataset();
     Assert.assertEquals(target, result.getNumber());
   }
 }

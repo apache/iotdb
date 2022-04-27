@@ -19,25 +19,34 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public class ExchangeNode extends PlanNode {
   private PlanNode child;
+  // The remoteSourceNode is used to record the remote source info for current ExchangeNode
+  // It is not the child of current ExchangeNode
   private FragmentSinkNode remoteSourceNode;
 
   // In current version, one ExchangeNode will only have one source.
   // And the fragment which the sourceNode belongs to will only have one instance.
   // Thus, by nodeId and endpoint, the ExchangeNode can know where its source from.
-  private EndPoint upstreamEndpoint;
+  private TEndPoint upstreamEndpoint;
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
 
@@ -54,43 +63,76 @@ public class ExchangeNode extends PlanNode {
   }
 
   @Override
-  public void addChildren(PlanNode child) {}
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitExchange(this, context);
+  }
+
+  @Override
+  public void addChild(PlanNode child) {
+    this.child = child;
+  }
 
   @Override
   public PlanNode clone() {
-    ExchangeNode node = new ExchangeNode(getId());
+    ExchangeNode node = new ExchangeNode(getPlanNodeId());
     if (remoteSourceNode != null) {
-      node.setRemoteSourceNode((FragmentSinkNode) remoteSourceNode.clone());
+      FragmentSinkNode remoteSourceNodeClone = (FragmentSinkNode) remoteSourceNode.clone();
+      remoteSourceNodeClone.setDownStreamPlanNodeId(node.getPlanNodeId());
+      node.setRemoteSourceNode(remoteSourceNode);
     }
     return node;
   }
 
   @Override
-  public PlanNode cloneWithChildren(List<PlanNode> children) {
-    ExchangeNode node = (ExchangeNode) clone();
-    if (children != null && children.size() > 0) {
-      node.setChild(children.get(0));
-    }
-    return node;
+  public int allowedChildCount() {
+    return CHILD_COUNT_NO_LIMIT;
   }
 
-  public void setUpstream(EndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return child.getOutputColumnHeaders();
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return child.getOutputColumnNames();
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return child.getOutputColumnTypes();
+  }
+
+  public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.upstreamEndpoint = endPoint;
     this.upstreamInstanceId = instanceId;
     this.upstreamPlanNodeId = nodeId;
   }
 
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
-  }
-
   public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+    FragmentSinkNode fragmentSinkNode =
+        (FragmentSinkNode) PlanFragment.deserializeHelper(byteBuffer);
+    TEndPoint endPoint =
+        new TEndPoint(
+            ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+    FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
+    PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
+    exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
+    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
+    return exchangeNode;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.EXCHANGE.serialize(byteBuffer);
+    remoteSourceNode.serialize(byteBuffer);
+    ReadWriteIOUtils.write(upstreamEndpoint.getIp(), byteBuffer);
+    ReadWriteIOUtils.write(upstreamEndpoint.getPort(), byteBuffer);
+    upstreamInstanceId.serialize(byteBuffer);
+    upstreamPlanNodeId.serialize(byteBuffer);
+  }
 
   public PlanNode getChild() {
     return child;
@@ -100,10 +142,10 @@ public class ExchangeNode extends PlanNode {
     this.child = child;
   }
 
+  @Override
   public String toString() {
     return String.format(
-        "ExchangeNode-%s: [SourceNodeId: %s, SourceAddress:%s]",
-        getId(), remoteSourceNode.getId(), getSourceAddress());
+        "ExchangeNode-%s: [SourceAddress:%s]", getPlanNodeId(), getSourceAddress());
   }
 
   public String getSourceAddress() {
@@ -127,7 +169,7 @@ public class ExchangeNode extends PlanNode {
     this.child = null;
   }
 
-  public EndPoint getUpstreamEndpoint() {
+  public TEndPoint getUpstreamEndpoint() {
     return upstreamEndpoint;
   }
 
@@ -137,5 +179,35 @@ public class ExchangeNode extends PlanNode {
 
   public PlanNodeId getUpstreamPlanNodeId() {
     return upstreamPlanNodeId;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    ExchangeNode that = (ExchangeNode) o;
+    return Objects.equals(child, that.child)
+        && Objects.equals(remoteSourceNode, that.remoteSourceNode)
+        && Objects.equals(upstreamEndpoint, that.upstreamEndpoint)
+        && Objects.equals(upstreamInstanceId, that.upstreamInstanceId)
+        && Objects.equals(upstreamPlanNodeId, that.upstreamPlanNodeId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(),
+        child,
+        remoteSourceNode,
+        upstreamEndpoint,
+        upstreamInstanceId,
+        upstreamPlanNodeId);
   }
 }

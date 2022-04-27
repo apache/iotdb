@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.consensus.common.ConsensusType;
-import org.apache.iotdb.consensus.common.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.CommonUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,14 +103,19 @@ public class ConfigNodeDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setDeviceGroupCount(
+      conf.setSeriesPartitionSlotNum(
           Integer.parseInt(
               properties.getProperty(
-                  "device_group_count", String.valueOf(conf.getDeviceGroupCount()))));
+                  "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()))));
 
-      conf.setDeviceGroupHashExecutorClass(
+      conf.setSeriesPartitionExecutorClass(
           properties.getProperty(
-              "device_group_hash_executor_class", conf.getDeviceGroupHashExecutorClass()));
+              "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
+
+      conf.setTimePartitionInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "time_partition_interval", String.valueOf(conf.getTimePartitionInterval()))));
 
       conf.setRpcAddress(properties.getProperty("config_node_rpc_address", conf.getRpcAddress()));
 
@@ -122,9 +128,13 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "config_node_internal_port", String.valueOf(conf.getInternalPort()))));
 
-      conf.setConsensusType(
-          ConsensusType.getConsensusType(
-              properties.getProperty("consensus_type", String.valueOf(conf.getConsensusType()))));
+      conf.setConfigNodeConsensusProtocolClass(
+          properties.getProperty(
+              "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
+
+      conf.setDataNodeConsensusProtocolClass(
+          properties.getProperty(
+              "data_node_consensus_protocol_class", conf.getDataNodeConsensusProtocolClass()));
 
       conf.setRpcAdvancedCompressionEnable(
           Boolean.parseBoolean(
@@ -154,46 +164,57 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
 
+      conf.setConnectionTimeoutInMS(
+          Integer.parseInt(
+              properties.getProperty(
+                  "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+
+      conf.setSelectorNumOfClientManager(
+          Integer.parseInt(
+              properties.getProperty(
+                  "selector_thread_nums_of_client_manager",
+                  String.valueOf(conf.getSelectorNumOfClientManager()))));
+
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
-      conf.setRegionReplicaCount(
+      conf.setDefaultTTL(
+          Long.parseLong(
+              properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
+
+      conf.setSchemaReplicationFactor(
           Integer.parseInt(
               properties.getProperty(
-                  "region_replica_count", String.valueOf(conf.getRegionReplicaCount()))));
+                  "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))));
 
-      conf.setSchemaRegionCount(
+      conf.setDataReplicationFactor(
           Integer.parseInt(
               properties.getProperty(
-                  "schema_region_count", String.valueOf(conf.getSchemaRegionCount()))));
+                  "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-      conf.setDataRegionCount(
+      conf.setInitialSchemaRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "data_region_count", String.valueOf(conf.getDataRegionCount()))));
+                  "initial_schema_region_count",
+                  String.valueOf(conf.getInitialSchemaRegionCount()))));
 
-      String addresses = properties.getProperty("config_node_group_address_list", null);
-      if (addresses != null) {
-        String[] addressList = addresses.split(",");
-        Endpoint[] endpointList = new Endpoint[addressList.length];
-        for (int i = 0; i < addressList.length; i++) {
-          String[] ipPort = addressList[i].split(":");
-          if (ipPort.length != 2) {
-            throw new IOException(
-                String.format(
-                    "Parsing parameter config_node_group_address_list error. "
-                        + "The %d-th address must format to ip:port, but currently is %s",
-                    i, addressList[i]));
-          }
-          endpointList[i] = new Endpoint(ipPort[0], Integer.parseInt(ipPort[1]));
-        }
-        conf.setConfigNodeGroupAddressList(endpointList);
+      conf.setInitialDataRegionCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
+
+      String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
+
+      String[] addressList = addresses.split(",");
+      TEndPoint[] endpointList = new TEndPoint[addressList.length];
+      for (int i = 0; i < addressList.length; i++) {
+        endpointList[i] = CommonUtils.parseNodeUrl(addressList[i]);
       }
-
-    } catch (IOException e) {
+      conf.setConfigNodeGroupAddressList(endpointList);
+    } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
       conf.updatePath();

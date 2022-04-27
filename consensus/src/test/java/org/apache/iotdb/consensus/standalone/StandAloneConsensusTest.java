@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.consensus.standalone;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
-import org.apache.iotdb.consensus.common.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Endpoint;
-import org.apache.iotdb.consensus.common.GroupType;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -34,12 +39,12 @@ import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.statemachine.EmptyStateMachine;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,13 +57,15 @@ import static org.junit.Assert.assertTrue;
 
 public class StandAloneConsensusTest {
 
+  private static final String STANDALONE_CONSENSUS_CLASS_NAME =
+      "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   private IConsensus consensusImpl;
   private final TestEntry entry1 = new TestEntry(0);
   private final ByteBufferConsensusRequest entry2 =
       new ByteBufferConsensusRequest(ByteBuffer.wrap(new byte[4]));
-  private final ConsensusGroupId dataRegionId = new ConsensusGroupId(GroupType.DataRegion, 0);
-  private final ConsensusGroupId schemaRegionId = new ConsensusGroupId(GroupType.SchemaRegion, 1);
-  private final ConsensusGroupId configId = new ConsensusGroupId(GroupType.PartitionRegion, 2);
+  private final ConsensusGroupId dataRegionId = new DataRegionId(0);
+  private final ConsensusGroupId schemaRegionId = new SchemaRegionId(1);
+  private final ConsensusGroupId configId = new PartitionRegionId(2);
 
   private static class TestEntry implements IConsensusRequest {
 
@@ -103,21 +110,46 @@ public class StandAloneConsensusTest {
     public DataSet read(IConsensusRequest request) {
       return null;
     }
+
+    @Override
+    public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+      return false;
+    }
+
+    @Override
+    public SnapshotMeta getLatestSnapshot(File snapshotDir) {
+      return null;
+    }
+
+    @Override
+    public void loadSnapshot(SnapshotMeta latest) {}
+
+    @Override
+    public void cleanUpOldSnapshots(File snapshotDir) {}
   }
 
   @Before
   public void setUp() throws Exception {
     consensusImpl =
-        new StandAloneConsensus(
-            gid -> {
-              switch (gid.getType()) {
-                case SchemaRegion:
-                  return new TestStateMachine(true);
-                case DataRegion:
-                  return new TestStateMachine(false);
-              }
-              return new EmptyStateMachine();
-            });
+        ConsensusFactory.getConsensusImpl(
+                STANDALONE_CONSENSUS_CLASS_NAME,
+                new TEndPoint("localhost", 6667),
+                new File("./"),
+                gid -> {
+                  switch (gid.getType()) {
+                    case SchemaRegion:
+                      return new TestStateMachine(true);
+                    case DataRegion:
+                      return new TestStateMachine(false);
+                  }
+                  return new EmptyStateMachine();
+                })
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        String.format(
+                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                            STANDALONE_CONSENSUS_CLASS_NAME)));
     consensusImpl.start();
   }
 
@@ -131,14 +163,14 @@ public class StandAloneConsensusTest {
     ConsensusGenericResponse response1 =
         consensusImpl.addConsensusGroup(
             dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
+            Collections.singletonList(new Peer(dataRegionId, new TEndPoint("0.0.0.0", 6667))));
     assertTrue(response1.isSuccess());
     assertNull(response1.getException());
 
     ConsensusGenericResponse response2 =
         consensusImpl.addConsensusGroup(
             dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
+            Collections.singletonList(new Peer(dataRegionId, new TEndPoint("0.0.0.0", 6667))));
     assertFalse(response2.isSuccess());
     assertTrue(response2.getException() instanceof ConsensusGroupAlreadyExistException);
 
@@ -146,15 +178,15 @@ public class StandAloneConsensusTest {
         consensusImpl.addConsensusGroup(
             dataRegionId,
             Arrays.asList(
-                new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)),
-                new Peer(dataRegionId, new Endpoint("0.0.0.1", 6667))));
+                new Peer(dataRegionId, new TEndPoint("0.0.0.0", 6667)),
+                new Peer(dataRegionId, new TEndPoint("0.0.0.1", 6667))));
     assertFalse(response3.isSuccess());
     assertTrue(response3.getException() instanceof IllegalPeerNumException);
 
     ConsensusGenericResponse response4 =
         consensusImpl.addConsensusGroup(
             schemaRegionId,
-            Collections.singletonList(new Peer(schemaRegionId, new Endpoint("0.0.0.0", 6667))));
+            Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 6667))));
     assertTrue(response4.isSuccess());
     assertNull(response4.getException());
   }
@@ -168,7 +200,7 @@ public class StandAloneConsensusTest {
     ConsensusGenericResponse response2 =
         consensusImpl.addConsensusGroup(
             dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
+            Collections.singletonList(new Peer(dataRegionId, new TEndPoint("0.0.0.0", 6667))));
     assertTrue(response2.isSuccess());
     assertNull(response2.getException());
 
@@ -180,7 +212,7 @@ public class StandAloneConsensusTest {
   @Test
   public void addPeer() {
     ConsensusGenericResponse response =
-        consensusImpl.addPeer(dataRegionId, new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)));
+        consensusImpl.addPeer(dataRegionId, new Peer(dataRegionId, new TEndPoint("0.0.0.0", 6667)));
     assertFalse(response.isSuccess());
   }
 
@@ -188,7 +220,7 @@ public class StandAloneConsensusTest {
   public void removePeer() {
     ConsensusGenericResponse response =
         consensusImpl.removePeer(
-            dataRegionId, new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)));
+            dataRegionId, new Peer(dataRegionId, new TEndPoint("0.0.0.0", 6667)));
     assertFalse(response.isSuccess());
   }
 
@@ -197,7 +229,7 @@ public class StandAloneConsensusTest {
     ConsensusGenericResponse response =
         consensusImpl.changePeer(
             dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
+            Collections.singletonList(new Peer(dataRegionId, new TEndPoint("0.0.0.0", 6667))));
     assertFalse(response.isSuccess());
   }
 
@@ -205,7 +237,7 @@ public class StandAloneConsensusTest {
   public void transferLeader() {
     ConsensusGenericResponse response =
         consensusImpl.transferLeader(
-            dataRegionId, new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667)));
+            dataRegionId, new Peer(dataRegionId, new TEndPoint("0.0.0.0", 6667)));
     assertFalse(response.isSuccess());
   }
 
@@ -220,20 +252,21 @@ public class StandAloneConsensusTest {
     ConsensusGenericResponse response1 =
         consensusImpl.addConsensusGroup(
             dataRegionId,
-            Collections.singletonList(new Peer(dataRegionId, new Endpoint("0.0.0.0", 6667))));
+            Collections.singletonList(new Peer(dataRegionId, new TEndPoint("0.0.0.0", 6667))));
     assertTrue(response1.isSuccess());
     assertNull(response1.getException());
 
     ConsensusGenericResponse response2 =
         consensusImpl.addConsensusGroup(
             schemaRegionId,
-            Collections.singletonList(new Peer(schemaRegionId, new Endpoint("0.0.0.0", 6667))));
+            Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 6667))));
     assertTrue(response2.isSuccess());
     assertNull(response2.getException());
 
     ConsensusGenericResponse response3 =
         consensusImpl.addConsensusGroup(
-            configId, Collections.singletonList(new Peer(configId, new Endpoint("0.0.0.0", 6667))));
+            configId,
+            Collections.singletonList(new Peer(configId, new TEndPoint("0.0.0.0", 6667))));
     assertTrue(response3.isSuccess());
     assertNull(response3.getException());
 

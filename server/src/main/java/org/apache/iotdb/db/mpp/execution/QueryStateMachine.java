@@ -18,8 +18,122 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.QueryId;
+
+import com.google.common.util.concurrent.ListenableFuture;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+
 /**
  * State machine for a QueryExecution. It stores the states for the QueryExecution. Others can
  * register listeners when the state changes of the QueryExecution.
  */
-public class QueryStateMachine {}
+public class QueryStateMachine {
+  private final String name;
+  private final StateMachine<QueryState> queryState;
+  private final Map<FragmentInstanceId, FragmentInstanceState> fragInstanceStateMap;
+
+  // The executor will be used in all the state machines belonged to this query.
+  private Executor stateMachineExecutor;
+  private Throwable failureException;
+
+  public QueryStateMachine(QueryId queryId, ExecutorService executor) {
+    this.name = String.format("QueryStateMachine[%s]", queryId);
+    this.stateMachineExecutor = executor;
+    this.fragInstanceStateMap = new ConcurrentHashMap<>();
+    this.queryState =
+        new StateMachine<>(
+            queryId.toString(),
+            this.stateMachineExecutor,
+            QueryState.QUEUED,
+            QueryState.TERMINAL_INSTANCE_STATES);
+  }
+
+  public void initialFragInstanceState(FragmentInstanceId id, FragmentInstanceState state) {
+    this.fragInstanceStateMap.put(id, state);
+  }
+
+  public void updateFragInstanceState(FragmentInstanceId id, FragmentInstanceState state) {
+    this.fragInstanceStateMap.put(id, state);
+    // TODO: (xingtanzjr) we need to distinguish the Timeout situation
+    if (state.isFailed()) {
+      transitionToFailed(
+          new RuntimeException(String.format("FragmentInstance[%s] is failed.", id)));
+    }
+    boolean allFinished =
+        fragInstanceStateMap.values().stream()
+            .allMatch(currentState -> currentState == FragmentInstanceState.FINISHED);
+    if (allFinished) {
+      transitionToFinished();
+    }
+  }
+
+  public void addStateChangeListener(
+      StateMachine.StateChangeListener<QueryState> stateChangeListener) {
+    queryState.addStateChangeListener(stateChangeListener);
+  }
+
+  public ListenableFuture<QueryState> getStateChange(QueryState currentState) {
+    return queryState.getStateChange(currentState);
+  }
+
+  private String getName() {
+    return name;
+  }
+
+  public QueryState getState() {
+    return queryState.get();
+  }
+
+  public void transitionToPlanned() {
+    queryState.set(QueryState.PLANNED);
+  }
+
+  public void transitionToDispatching() {
+    queryState.set(QueryState.DISPATCHING);
+  }
+
+  public void transitionToRunning() {
+    queryState.set(QueryState.RUNNING);
+  }
+
+  public void transitionToFinished() {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    queryState.set(QueryState.FINISHED);
+  }
+
+  public void transitionToCanceled() {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    queryState.set(QueryState.CANCELED);
+  }
+
+  public void transitionToAborted() {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    queryState.set(QueryState.ABORTED);
+  }
+
+  public void transitionToFailed(Throwable throwable) {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    this.failureException = throwable;
+    queryState.set(QueryState.FAILED);
+  }
+
+  public String getFailureMessage() {
+    if (failureException != null) {
+      return failureException.getMessage();
+    }
+    return "no detailed failure reason in QueryStateMachine";
+  }
+}

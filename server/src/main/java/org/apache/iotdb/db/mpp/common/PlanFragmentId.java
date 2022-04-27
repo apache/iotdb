@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -30,6 +31,8 @@ public class PlanFragmentId {
 
   private final QueryId queryId;
   private final int id;
+
+  private int nextFragmentInstanceId;
 
   public static PlanFragmentId valueOf(String stageId) {
     List<String> ids = QueryId.parseDottedId(stageId, 2, "stageId");
@@ -48,6 +51,11 @@ public class PlanFragmentId {
   public PlanFragmentId(QueryId queryId, int id) {
     this.queryId = requireNonNull(queryId, "queryId is null");
     this.id = id;
+    this.nextFragmentInstanceId = 0;
+  }
+
+  public FragmentInstanceId genFragmentInstanceId() {
+    return new FragmentInstanceId(this, String.valueOf(nextFragmentInstanceId++));
   }
 
   public QueryId getQueryId() {
@@ -62,8 +70,30 @@ public class PlanFragmentId {
     return String.format("%s.%d", queryId, id);
   }
 
+  public void serialize(ByteBuffer byteBuffer) {
+    queryId.serialize(byteBuffer);
+    byteBuffer.putInt(id);
+  }
+
   public static PlanFragmentId deserialize(ByteBuffer byteBuffer) {
     return new PlanFragmentId(
         QueryId.deserialize(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PlanFragmentId that = (PlanFragmentId) o;
+    return id == that.id && Objects.equals(queryId, that.queryId);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(queryId, id, nextFragmentInstanceId);
   }
 }

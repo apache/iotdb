@@ -24,10 +24,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -39,14 +40,24 @@ import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class LogicNotExpression extends Expression {
-  protected Expression expression;
+
+  private final Expression expression;
 
   public LogicNotExpression(Expression expression) {
     this.expression = expression;
+  }
+
+  public LogicNotExpression(ByteBuffer byteBuffer) {
+    expression = Expression.deserialize(byteBuffer);
   }
 
   public Expression getExpression() {
@@ -129,8 +140,9 @@ public class LogicNotExpression extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
-    // TODO: support LogicNotExpression
+  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
+    expression.bindInputLayerColumnIndexWithExpression(udtfPlan);
+    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
   }
 
   @Override
@@ -142,7 +154,7 @@ public class LogicNotExpression extends Expression {
   @Override
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
@@ -154,7 +166,7 @@ public class LogicNotExpression extends Expression {
       IntermediateLayer parentLayerPointReader =
           expression.constructIntermediateLayer(
               queryId,
-              udtfPlan,
+              udtfContext,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
               expressionDataTypeMap,
@@ -180,6 +192,20 @@ public class LogicNotExpression extends Expression {
 
   @Override
   public String getExpressionStringInternal() {
-    return "!" + expression.toString();
+    return expression instanceof FunctionExpression
+            || expression instanceof ConstantOperand
+            || expression instanceof TimeSeriesOperand
+        ? "!" + expression
+        : "!(" + expression + ")";
+  }
+
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.LOGIC_NOT;
+  }
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    Expression.serialize(expression, byteBuffer);
   }
 }

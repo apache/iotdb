@@ -25,15 +25,15 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeIdAllocator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -47,8 +47,10 @@ import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -79,6 +81,8 @@ public class FunctionExpression extends Expression {
    */
   private List<Expression> expressions;
 
+  private List<InputLocation> inputLocations;
+
   private List<PartialPath> paths;
 
   private String parametersString;
@@ -87,6 +91,7 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     functionAttributes = new LinkedHashMap<>();
     expressions = new ArrayList<>();
+
     isBuiltInAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = true;
@@ -97,8 +102,29 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
+
     isBuiltInAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+    isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
+    isUserDefinedAggregationFunctionExpression =
+        expressions.stream()
+            .anyMatch(
+                v ->
+                    v.isUserDefinedAggregationFunctionExpression()
+                        || v.isBuiltInAggregationFunctionExpression());
+  }
+
+  public FunctionExpression(ByteBuffer byteBuffer) {
+    functionName = ReadWriteIOUtils.readString(byteBuffer);
+    functionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+    int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Expression> expressions = new ArrayList<>();
+    for (int i = 0; i < expressionSize; i++) {
+      expressions.add(Expression.deserialize(byteBuffer));
+    }
+
+    isBuiltInAggregationFunctionExpression =
+        SQLConstant.getNativeFunctionNames().contains(functionName);
     isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
     isUserDefinedAggregationFunctionExpression =
         expressions.stream()
@@ -236,14 +262,6 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public void collectPlanNode(Set<SourceNode> planNodeSet) {
-    if (isBuiltInAggregationFunctionExpression) {
-      planNodeSet.add(new SeriesAggregateScanNode(PlanNodeIdAllocator.generateId(), this));
-    }
-    // TODO: support UDF
-  }
-
-  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     String expressionString = getExpressionString();
@@ -258,6 +276,14 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
+    for (Expression expression : expressions) {
+      expression.bindInputLayerColumnIndexWithExpression(udtfPlan);
+    }
+    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
+  }
+
+  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     for (Expression expression : expressions) {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
@@ -268,7 +294,7 @@ public class FunctionExpression extends Expression {
   @Override
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
@@ -280,13 +306,12 @@ public class FunctionExpression extends Expression {
       if (isBuiltInAggregationFunctionExpression) {
         transformer =
             new TransparentTransformer(
-                rawTimeSeriesInputLayer.constructPointReader(
-                    udtfPlan.getReaderIndexByExpressionName(toString())));
+                rawTimeSeriesInputLayer.constructPointReader(inputColumnIndex));
       } else {
         IntermediateLayer udfInputIntermediateLayer =
             constructUdfInputIntermediateLayer(
                 queryId,
-                udtfPlan,
+                udtfContext,
                 rawTimeSeriesInputLayer,
                 expressionIntermediateLayerMap,
                 expressionDataTypeMap,
@@ -294,7 +319,7 @@ public class FunctionExpression extends Expression {
         transformer =
             constructUdfTransformer(
                 queryId,
-                udtfPlan,
+                udtfContext,
                 expressionDataTypeMap,
                 memoryAssigner,
                 udfInputIntermediateLayer);
@@ -314,7 +339,7 @@ public class FunctionExpression extends Expression {
 
   private IntermediateLayer constructUdfInputIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
@@ -325,7 +350,7 @@ public class FunctionExpression extends Expression {
       intermediateLayers.add(
           expression.constructIntermediateLayer(
               queryId,
-              udtfPlan,
+              udtfContext,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
               expressionDataTypeMap,
@@ -344,12 +369,12 @@ public class FunctionExpression extends Expression {
 
   private UDFQueryTransformer constructUdfTransformer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner,
       IntermediateLayer udfInputIntermediateLayer)
       throws QueryProcessException, IOException {
-    UDTFExecutor executor = udtfPlan.getExecutorByFunctionExpression(this);
+    UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
 
     executor.beforeStart(queryId, memoryAssigner.assign(), expressionDataTypeMap);
 
@@ -430,5 +455,20 @@ public class FunctionExpression extends Expression {
       parametersString = builder.toString();
     }
     return parametersString;
+  }
+
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.FUNCTION;
+  }
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(functionName, byteBuffer);
+    ReadWriteIOUtils.write(functionAttributes, byteBuffer);
+    ReadWriteIOUtils.write(expressions.size(), byteBuffer);
+    for (Expression expression : expressions) {
+      Expression.serialize(expression, byteBuffer);
+    }
   }
 }

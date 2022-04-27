@@ -24,17 +24,37 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.query.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.query.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.query.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.query.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
+import org.apache.iotdb.db.query.expression.unary.RegularExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.Deque;
 import java.util.Iterator;
@@ -47,7 +67,10 @@ import java.util.Set;
 public abstract class Expression {
 
   private String expressionStringCache;
+
   protected Boolean isConstantOperandCache = null;
+
+  protected Integer inputColumnIndex = null;
 
   public boolean isBuiltInAggregationFunctionExpression() {
     return false;
@@ -84,13 +107,13 @@ public abstract class Expression {
   public abstract void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
 
-  public abstract void collectPlanNode(Set<SourceNode> planNodeSet);
+  public abstract void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan);
 
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
   public abstract IntermediateLayer constructIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
@@ -190,5 +213,98 @@ public abstract class Expression {
       }
       return current;
     }
+  }
+
+  public abstract ExpressionType getExpressionType();
+
+  public static void serialize(Expression expression, ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(
+        expression.getExpressionType().getExpressionTypeInShortEnum(), byteBuffer);
+
+    expression.serialize(byteBuffer);
+
+    ReadWriteIOUtils.write(expression.inputColumnIndex != null, byteBuffer);
+    if (expression.inputColumnIndex != null) {
+      ReadWriteIOUtils.write(expression.inputColumnIndex, byteBuffer);
+    }
+  }
+
+  protected abstract void serialize(ByteBuffer byteBuffer);
+
+  public static Expression deserialize(ByteBuffer byteBuffer) {
+    short type = ReadWriteIOUtils.readShort(byteBuffer);
+
+    Expression expression;
+    switch (type) {
+      case 0:
+        expression = new AdditionExpression(byteBuffer);
+        break;
+      case 1:
+        expression = new DivisionExpression(byteBuffer);
+        break;
+      case 2:
+        expression = new EqualToExpression(byteBuffer);
+        break;
+      case 3:
+        expression = new GreaterEqualExpression(byteBuffer);
+        break;
+      case 4:
+        expression = new GreaterThanExpression(byteBuffer);
+        break;
+      case 5:
+        expression = new LessEqualExpression(byteBuffer);
+        break;
+      case 6:
+        expression = new LessThanExpression(byteBuffer);
+        break;
+      case 7:
+        expression = new LogicAndExpression(byteBuffer);
+        break;
+      case 8:
+        expression = new LogicOrExpression(byteBuffer);
+        break;
+      case 9:
+        expression = new ModuloExpression(byteBuffer);
+        break;
+      case 10:
+        expression = new MultiplicationExpression(byteBuffer);
+        break;
+      case 11:
+        expression = new NonEqualExpression(byteBuffer);
+        break;
+      case 12:
+        expression = new SubtractionExpression(byteBuffer);
+        break;
+      case 13:
+        expression = new FunctionExpression(byteBuffer);
+        break;
+      case 14:
+        expression = new LogicNotExpression(byteBuffer);
+        break;
+      case 15:
+        expression = new NegationExpression(byteBuffer);
+        break;
+      case 16:
+        expression = new TimeSeriesOperand(byteBuffer);
+        break;
+      case 17:
+        expression = new ConstantOperand(byteBuffer);
+        break;
+      case 18:
+        expression = null;
+        break;
+      case 19:
+        expression = new RegularExpression(byteBuffer);
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid expression type: " + type);
+    }
+
+    boolean hasInputColumnIndex = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasInputColumnIndex) {
+      expression.inputColumnIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    }
+
+    return expression;
   }
 }

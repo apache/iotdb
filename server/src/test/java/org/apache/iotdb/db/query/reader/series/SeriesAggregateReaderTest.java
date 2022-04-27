@@ -60,7 +60,8 @@ public class SeriesAggregateReaderTest {
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     EnvironmentUtils.envSetUp();
-    SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
+    SeriesReaderTestUtil.setUp(
+        measurementSchemas, deviceIds, seqResources, unseqResources, SERIES_READER_TEST_SG);
   }
 
   @After
