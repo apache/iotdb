@@ -66,7 +66,7 @@ import static org.junit.Assert.assertEquals;
 public class OffsetNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     FilterNode filterNode =
         new FilterNode(
             new PlanNodeId("TestFilterNode"),
@@ -137,7 +137,7 @@ public class OffsetNodeSerdeTest {
   }
 
   @Test
-  public void TestSerializeAndDeserializeForTree1() throws IllegalPathException {
+  public void testSerializeAndDeserializeForTree1() throws IllegalPathException {
     // create node
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("OffsetNode"), 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("LimitNode"), 100);

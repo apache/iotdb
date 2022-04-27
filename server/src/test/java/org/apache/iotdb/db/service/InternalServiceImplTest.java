@@ -32,7 +32,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.LocalConfigNode;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
@@ -107,7 +107,7 @@ public class InternalServiceImplTest {
   }
 
   @Test
-  public void createTimeseriesTest() throws MetadataException {
+  public void testCreateTimeseries() throws MetadataException {
     CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("0"),
@@ -164,7 +164,7 @@ public class InternalServiceImplTest {
   }
 
   @Test
-  public void createAlignedTimeseriesTest() throws MetadataException {
+  public void testCreateAlignedTimeseries() throws MetadataException {
     CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode =
         new CreateAlignedTimeSeriesNode(
             new PlanNodeId("0"),

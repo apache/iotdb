@@ -57,7 +57,7 @@ import static org.junit.Assert.assertEquals;
 public class FragmentInstanceSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserializeForTree1() throws IllegalPathException {
+  public void testSerializeAndDeserializeForTree1() throws IllegalPathException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
@@ -86,7 +86,7 @@ public class FragmentInstanceSerdeTest {
   }
 
   @Test
-  public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
+  public void testSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));

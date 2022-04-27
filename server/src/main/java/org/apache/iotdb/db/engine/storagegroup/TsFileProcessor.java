@@ -46,6 +46,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -1482,7 +1483,8 @@ public class TsFileProcessor {
         }
 
         List<IChunkMetadata> chunkMetadataList =
-            seriesPath.getVisibleMetadataListFromWriter(writer, tsFileResource, context);
+            ResourceByPathUtils.getResourceInstance(seriesPath)
+                .getVisibleMetadataListFromWriter(writer, tsFileResource, context);
 
         // get in memory data
         if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {

@@ -34,8 +34,9 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBAliasIT {

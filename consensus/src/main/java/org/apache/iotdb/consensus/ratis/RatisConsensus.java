@@ -21,6 +21,11 @@ package org.apache.iotdb.consensus.ratis;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientFactoryProperty;
+import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.ClientPoolProperty;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -36,7 +41,10 @@ import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
 
+import org.apache.commons.pool2.KeyedObjectPool;
+import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.ratis.client.RaftClient;
+import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.grpc.GrpcConfigKeys;
@@ -70,36 +78,43 @@ import java.util.stream.Collectors;
  * <p>See jira [IOTDB-2674](https://issues.apache.org/jira/browse/IOTDB-2674) for more details.
  */
 class RatisConsensus implements IConsensus {
+
+  private final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
+
   // the unique net communication endpoint
   private final RaftPeer myself;
-
   private final RaftServer server;
 
-  private ClientId localFakeId;
-  private AtomicLong localFakeCallId;
+  private final RaftProperties properties = new RaftProperties();
+  private final RaftClientRpc clientRpc;
+
+  private final IClientManager<RaftGroup, RaftClient> clientManager =
+      new IClientManager.Factory<RaftGroup, RaftClient>()
+          .createClientManager(new RatisClientPoolFactory());
+
+  private final ClientId localFakeId = ClientId.randomId();
+  private final AtomicLong localFakeCallId = new AtomicLong(0);
 
   private static final int DEFAULT_PRIORITY = 0;
   private static final int LEADER_PRIORITY = 1;
 
-  private Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
-
+  /**
+   * @param ratisStorageDir different groups of RatisConsensus Peer all share ratisStorageDir as
+   *     root dir
+   */
   public RatisConsensus(TEndPoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
       throws IOException {
-
-    this.localFakeId = ClientId.randomId();
-    this.localFakeCallId = new AtomicLong(0);
-
     // create a RaftPeer as endpoint of comm
     String address = Utils.IPAddress(endpoint);
     myself = Utils.toRaftPeer(endpoint, DEFAULT_PRIORITY);
 
-    RaftProperties properties = new RaftProperties();
-
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
+    RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
 
     // set the port which server listen to in RaftProperty object
     final int port = NetUtils.createSocketAddr(address).getPort();
     GrpcConfigKeys.Server.setPort(properties, port);
+    clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
     server =
         RaftServer.newBuilder()
@@ -119,6 +134,7 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public void stop() throws IOException {
+    clientManager.close();
     server.close();
   }
 
@@ -416,7 +432,7 @@ class RatisConsensus implements IConsensus {
       isLeader = server.getDivision(raftGroupId).getInfo().isLeader();
     } catch (IOException exception) {
       // if the query fails, simply return not leader
-      logger.warn("isLeader request failed with exception: ", exception);
+      logger.info("isLeader request failed with exception: ", exception);
       isLeader = false;
     }
     return isLeader;
@@ -499,6 +515,16 @@ class RatisConsensus implements IConsensus {
     return builder.build();
   }
 
+  // TODO use this function to get RaftClient
+  private RaftClient getRaftClient(RaftGroup group) {
+    try {
+      return clientManager.borrowClient(group);
+    } catch (IOException e) {
+      logger.error(String.format("Borrow client from pool for group %s failed.", group), e);
+      return null;
+    }
+  }
+
   private RaftClientReply sendReconfiguration(RaftGroup newGroupConf)
       throws RatisRequestFailedException {
     RaftClient client = buildClient(newGroupConf);
@@ -511,5 +537,16 @@ class RatisConsensus implements IConsensus {
       throw new RatisRequestFailedException(e);
     }
     return reply;
+  }
+
+  private class RatisClientPoolFactory implements IClientPoolFactory<RaftGroup, RaftClient> {
+    @Override
+    public KeyedObjectPool<RaftGroup, RaftClient> createClientPool(
+        ClientManager<RaftGroup, RaftClient> manager) {
+      return new GenericKeyedObjectPool<>(
+          new RatisClientFactory(
+              manager, new ClientFactoryProperty.Builder().build(), properties, clientRpc),
+          new ClientPoolProperty.Builder<RaftClient>().build().getConfig());
+    }
   }
 }
