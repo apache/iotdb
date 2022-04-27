@@ -75,6 +75,10 @@ public class ShowStorageGroupTask implements IConfigTask {
       } catch (IoTDBConnectionException | BadNodeUrlException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
+      } finally {
+        if (client != null) {
+          client.close();
+        }
       }
     } else {
       try {
