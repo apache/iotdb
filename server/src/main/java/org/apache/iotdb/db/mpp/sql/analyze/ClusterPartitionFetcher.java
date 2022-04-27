@@ -51,8 +51,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,30 +88,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
       throw new StatementAnalyzeException("Couldn't connect config node");
     }
-    initPartitionExecutor();
-  }
-
-  private void initPartitionExecutor() {
-    // TODO: @crz move to node-commons
-    try {
-      Class<?> executor = Class.forName(config.getSeriesPartitionExecutorClass());
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      this.partitionExecutor =
-          (SeriesPartitionExecutor)
-              executorConstructor.newInstance(config.getSeriesPartitionSlotNum());
-      this.partitionCache =
-          new PartitionCache(
-              config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      throw new StatementAnalyzeException(
-          String.format(
-              "Couldn't Constructor SeriesPartitionExecutor class: %s",
-              config.getSeriesPartitionExecutorClass()));
-    }
+    this.partitionExecutor =
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
+    this.partitionCache =
+        new PartitionCache(
+            config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
   }
 
   @Override
