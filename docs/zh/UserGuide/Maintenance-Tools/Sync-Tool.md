@@ -31,7 +31,7 @@
 
 ## 2.模型定义
 
-![img](https://y8dp9fjm8f.feishu.cn/space/api/box/stream/download/asynccode/?code=ZjhhODI1MjkyMjQyMmMyNjdmYTIxOTE0MmU5M2U2MzRfNHAzS055MVZwWVltNU5WcnJXN2FxbHZoU0s4UHhxWTdfVG9rZW46Ym94Y25CRjF5dXd0QkVEYzVrSnJHcUdkd3VlXzE2NTA5NzA2ODI6MTY1MDk3NDI4Ml9WNA)
+![pipe2.png](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Sync-Tool/pipe2.png?raw=true)
 
 假设目前有两台机器A和B都安装了IoTDB，希望将A上的数据不断同步至B中。为了更好地描述这个过程，我们引入以下概念。
 
