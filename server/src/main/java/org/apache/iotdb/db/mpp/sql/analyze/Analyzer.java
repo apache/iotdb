@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -58,10 +59,13 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
+
+import org.apache.commons.lang.Validate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -179,6 +183,32 @@ public class Analyzer {
         throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
+    }
+
+    private List<Expression> analyzeSelect(QueryStatement queryStatement, SchemaTree schemaTree) {
+      List<Expression> selectExpressions =
+          queryStatement.getSelectComponent().getResultColumns().stream()
+              .map(ResultColumn::getExpression)
+              .collect(Collectors.toList());
+      List<Expression> resultExpressions = new ArrayList<>();
+
+      return resultExpressions;
+    }
+
+    private List<PartialPath> analyzeFrom(QueryStatement queryStatement, SchemaTree schemaTree) {
+      Validate.isTrue(queryStatement.isAlignByDevice(), "It should be an ALIGN BY DEVICE query.");
+
+      Set<PartialPath> matchedDevicePaths = new HashSet<>();
+      try {
+        List<PartialPath> devicePathPatterns = queryStatement.getFromComponent().getPrefixPaths();
+        for (PartialPath devicePathPattern : devicePathPatterns) {
+          matchedDevicePaths.addAll(schemaTree.getMatchedDevices(devicePathPattern));
+        }
+      } catch (MetadataException e) {
+        throw new StatementAnalyzeException(
+            "Meet error when matching device pattern: " + e.getMessage());
+      }
+      return new ArrayList<>(matchedDevicePaths);
     }
 
     @Override

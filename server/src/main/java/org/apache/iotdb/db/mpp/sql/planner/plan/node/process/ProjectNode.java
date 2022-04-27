@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -32,26 +32,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** FillNode is used to fill the empty field in one row. */
-public class FillNode extends ProcessNode {
+public class ProjectNode extends ProcessNode {
 
-  // descriptions of how null values are filled
-  private List<FillDescriptor> fillDescriptorList;
+  private final List<String> outputColumnNames;
 
   private PlanNode child;
 
-  public FillNode(PlanNodeId id) {
+  public ProjectNode(PlanNodeId id, List<String> outputColumnNames) {
     super(id);
-  }
-
-  public FillNode(PlanNodeId id, List<FillDescriptor> fillDescriptorList) {
-    this(id);
-    this.fillDescriptorList = fillDescriptorList;
-  }
-
-  public FillNode(PlanNodeId id, PlanNode child, List<FillDescriptor> fillDescriptorList) {
-    this(id, fillDescriptorList);
-    this.child = child;
+    this.outputColumnNames = outputColumnNames;
   }
 
   @Override
@@ -71,56 +60,50 @@ public class FillNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FillNode(getPlanNodeId(), fillDescriptorList);
+    return new ProjectNode(getPlanNodeId(), getOutputColumnNames());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return outputColumnNames;
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitFill(this, context);
+    return visitor.visitProject(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.FILL.serialize(byteBuffer);
-    ReadWriteIOUtils.write(fillDescriptorList.size(), byteBuffer);
-    for (FillDescriptor fillDescriptor : fillDescriptorList) {
-      fillDescriptor.serialize(byteBuffer);
+    PlanNodeType.PROJECT.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
+    for (String outputColumnName : outputColumnNames) {
+      ReadWriteIOUtils.write(outputColumnName, byteBuffer);
     }
   }
 
-  public static FillNode deserialize(ByteBuffer byteBuffer) {
-    int fillDescriptorsSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<FillDescriptor> fillDescriptorList = new ArrayList<>();
-    while (fillDescriptorsSize > 0) {
-      fillDescriptorList.add(FillDescriptor.deserialize(byteBuffer));
-      fillDescriptorsSize--;
+  public static ProjectNode deserialize(ByteBuffer byteBuffer) {
+    int outputColumnNamesSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> outputColumnNames = new ArrayList<>();
+    while (outputColumnNamesSize > 0) {
+      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      outputColumnNamesSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FillNode(planNodeId, fillDescriptorList);
+    return new ProjectNode(planNodeId, outputColumnNames);
   }
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    FillNode fillNode = (FillNode) o;
-    return fillDescriptorList.equals(fillNode.fillDescriptorList) && child.equals(fillNode.child);
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    ProjectNode that = (ProjectNode) o;
+    return outputColumnNames.equals(that.outputColumnNames) && child.equals(that.child);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), fillDescriptorList, child);
+    return Objects.hash(super.hashCode(), outputColumnNames, child);
   }
 }

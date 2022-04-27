@@ -27,15 +27,15 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchema
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
@@ -120,7 +120,7 @@ public class LogicalPlanBuilder {
         deviceNameToSourceNodesMap
             .computeIfAbsent(deviceName, k -> new ArrayList<>())
             .add(
-                new SeriesAggregateScanNode(
+                new SeriesAggregationScanNode(
                     context.getQueryId().genPlanNodeId(),
                     path,
                     allSensors,
@@ -174,7 +174,7 @@ public class LogicalPlanBuilder {
       Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
       deviceNameToAggregationsMap.values().forEach(aggregateFuncMap::putAll);
       this.root =
-          new AggregateNode(
+          new AggregationNode(
               context.getQueryId().genPlanNodeId(), this.getRoot(), aggregateFuncMap, null);
     }
 
@@ -198,15 +198,15 @@ public class LogicalPlanBuilder {
       OrderBy mergeOrder,
       IExpression queryFilter,
       List<String> selectedPathList) {
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(context.getQueryId().genPlanNodeId(), mergeOrder);
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(context.getQueryId().genPlanNodeId(), mergeOrder);
     for (Map.Entry<String, List<PlanNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
-      deviceMergeNode.addChildDeviceNode(
+      deviceViewNode.addChildDeviceNode(
           deviceName, convergeWithTimeJoin(planNodes, mergeOrder, queryFilter, selectedPathList));
     }
-    this.root = deviceMergeNode;
+    this.root = deviceViewNode;
   }
 
   private void planDeviceMergeForAggregation(
@@ -215,22 +215,22 @@ public class LogicalPlanBuilder {
       OrderBy mergeOrder,
       IExpression queryFilter,
       List<String> selectedPathList) {
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(context.getQueryId().genPlanNodeId(), mergeOrder);
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(context.getQueryId().genPlanNodeId(), mergeOrder);
     for (Map.Entry<String, List<PlanNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
       PlanNode timeJoinNode =
           convergeWithTimeJoin(planNodes, mergeOrder, queryFilter, selectedPathList);
-      AggregateNode aggregateNode =
-          new AggregateNode(
+      AggregationNode aggregationNode =
+          new AggregationNode(
               context.getQueryId().genPlanNodeId(),
               timeJoinNode,
               deviceNameToAggregationsMap.get(deviceName),
               null);
-      deviceMergeNode.addChildDeviceNode(deviceName, aggregateNode);
+      deviceViewNode.addChildDeviceNode(deviceName, aggregationNode);
     }
-    this.root = deviceMergeNode;
+    this.root = deviceViewNode;
   }
 
   private PlanNode convergeWithTimeJoin(

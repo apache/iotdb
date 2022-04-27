@@ -27,7 +27,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -43,7 +43,7 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
-public class AggregateNodeSerdeTest {
+public class AggregationNodeSerdeTest {
 
   @Test
   public void TestSerializeAndDeserialize() throws IllegalPathException {
@@ -52,18 +52,18 @@ public class AggregateNodeSerdeTest {
     aggregationTypes.add(AggregationType.MAX_TIME);
     aggregateFuncMap.put(
         new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
-    AggregateNode aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
+    AggregationNode aggregationNode =
+        new AggregationNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
     SeriesScanNode seriesScanNode =
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
             new TRegionReplicaSet(
                 new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
-    aggregateNode.addChild(seriesScanNode);
+    aggregationNode.addChild(seriesScanNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    aggregateNode.serialize(byteBuffer);
+    aggregationNode.serialize(byteBuffer);
     byteBuffer.flip();
-    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), aggregateNode);
+    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), aggregationNode);
   }
 }

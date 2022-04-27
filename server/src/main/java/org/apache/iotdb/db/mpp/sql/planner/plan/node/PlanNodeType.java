@@ -27,19 +27,23 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSer
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByTimeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
@@ -53,7 +57,7 @@ import java.nio.ByteBuffer;
 
 public enum PlanNodeType {
   AGGREGATE((short) 0),
-  DEVICE_MERGE((short) 1),
+  DEVICE_VIEW((short) 1),
   FILL((short) 2),
   FILTER((short) 3),
   FILTER_NULL((short) 4),
@@ -79,7 +83,11 @@ public enum PlanNodeType {
   TIME_SERIES_SCHEMA_SCAN((short) 24),
   SCHEMA_FETCH((short) 25),
   SCHEMA_MERGE((short) 26),
-  STORAGE_GROUP_SCHEMA_SCAN((short) 27);
+  STORAGE_GROUP_SCHEMA_SCAN((short) 27),
+  GROUP_BY_TIME((short) 28),
+  PROJECT((short) 29),
+  ALIGNED_SERIES_SCAN((short) 30),
+  ALIGNED_SERIES_AGGREGATE_SCAN((short) 31);
 
   private final short nodeType;
 
@@ -108,9 +116,9 @@ public enum PlanNodeType {
     short nodeType = buffer.getShort();
     switch (nodeType) {
       case 0:
-        return AggregateNode.deserialize(buffer);
+        return AggregationNode.deserialize(buffer);
       case 1:
-        return DeviceMergeNode.deserialize(buffer);
+        return DeviceViewNode.deserialize(buffer);
       case 2:
         return FillNode.deserialize(buffer);
       case 3:
@@ -132,7 +140,7 @@ public enum PlanNodeType {
       case 11:
         return SeriesScanNode.deserialize(buffer);
       case 12:
-        return SeriesAggregateScanNode.deserialize(buffer);
+        return SeriesAggregationScanNode.deserialize(buffer);
       case 13:
         return InsertTabletNode.deserialize(buffer);
       case 14:
@@ -161,6 +169,14 @@ public enum PlanNodeType {
         return SchemaFetchNode.deserialize(buffer);
       case 26:
         return SchemaMergeNode.deserialize(buffer);
+      case 28:
+        return GroupByTimeNode.deserialize(buffer);
+      case 29:
+        return ProjectNode.deserialize(buffer);
+      case 31:
+        return AlignedSeriesScanNode.deserialize(buffer);
+      case 32:
+        return AlignedSeriesAggregationScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

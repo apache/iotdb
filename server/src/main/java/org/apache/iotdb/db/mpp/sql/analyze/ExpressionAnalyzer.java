@@ -17,27 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.planner.plan.parameter;
+package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.List;
-
-public class Aggregation {
-
-  // aggregation function name
-  private AggregationType aggregationType;
-
-  // indicate the input and output type
-  private AggregationStep step;
-
-  // indicate this aggregation should use which value column of which input TsBlock
-  private List<InputLocation> inputLocations;
-
-  // datatype of each input value column
-  private List<TSDataType> inputDateTypes;
-
-  // datatype of output value column
-  private TSDataType outputDateType;
-}
+public class ExpressionAnalyzer {}

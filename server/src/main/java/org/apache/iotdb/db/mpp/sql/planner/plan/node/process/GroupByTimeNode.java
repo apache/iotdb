@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -27,52 +28,50 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
-/**
- * This node is responsible for the final aggregation merge operation. It will process the data from
- * TsBlock row by row. For one row, it will rollup the fields which have the same aggregate function
- * and belong to one bucket. Here, that two columns belong to one bucket means the partial paths of
- * device after rolling up in specific level are the same.
- *
- * <p>For example, let's say there are two columns `root.sg.d1.s1` and `root.sg.d2.s1`.
- *
- * <p>If the group by level parameter is [0, 1], then these two columns will belong to one bucket
- * and the bucket name is `root.sg.*.s1`.
- *
- * <p>If the group by level parameter is [0, 2], then these two columns will not belong to one
- * bucket. And the total buckets are `root.*.d1.s1` and `root.*.d2.s1`
- */
-public class GroupByLevelNode extends AggregationNode {
+public class GroupByTimeNode extends ProcessNode {
 
-  // column name of each output column
-  private final List<String> outputColumnNames;
+  // The list of aggregate functions, each AggregateDescriptor will be output as one column of
+  // result TsBlock
+  private final List<AggregationDescriptor> aggregationDescriptorList;
+
+  // The parameter of `group by time`.
+  // Its value will be null if there is no `group by time` clause.
+  @Nullable private final GroupByTimeParameter groupByTimeParameter;
 
   private PlanNode child;
 
-  public GroupByLevelNode(
+  public GroupByTimeNode(
+      PlanNodeId id,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      @Nullable GroupByTimeParameter groupByTimeParameter) {
+    super(id);
+    this.aggregationDescriptorList = aggregationDescriptorList;
+    this.groupByTimeParameter = groupByTimeParameter;
+  }
+
+  public GroupByTimeNode(
       PlanNodeId id,
       PlanNode child,
       List<AggregationDescriptor> aggregationDescriptorList,
-      GroupByTimeParameter groupByTimeParameter,
-      List<String> outputColumnNames) {
-    super(id, child, aggregationDescriptorList, groupByTimeParameter);
+      GroupByTimeParameter groupByTimeParameter) {
+    this(id, aggregationDescriptorList, groupByTimeParameter);
     this.child = child;
-    this.outputColumnNames = outputColumnNames;
   }
 
-  public GroupByLevelNode(
-      PlanNodeId id,
-      List<AggregationDescriptor> aggregationDescriptorList,
-      GroupByTimeParameter groupByTimeParameter,
-      List<String> outputColumnNames) {
-    super(id, aggregationDescriptorList, groupByTimeParameter);
-    this.outputColumnNames = outputColumnNames;
+  public List<AggregationDescriptor> getAggregationDescriptorList() {
+    return aggregationDescriptorList;
+  }
+
+  @Nullable
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return groupByTimeParameter;
   }
 
   @Override
@@ -92,11 +91,8 @@ public class GroupByLevelNode extends AggregationNode {
 
   @Override
   public PlanNode clone() {
-    return new GroupByLevelNode(
-        getPlanNodeId(),
-        getAggregationDescriptorList(),
-        getGroupByTimeParameter(),
-        getOutputColumnNames());
+    return new GroupByTimeNode(
+        getPlanNodeId(), getAggregationDescriptorList(), getGroupByTimeParameter());
   }
 
   @Override
@@ -109,12 +105,12 @@ public class GroupByLevelNode extends AggregationNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitGroupByLevel(this, context);
+    return visitor.visitGroupByTime(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.GROUP_BY_LEVEL.serialize(byteBuffer);
+    PlanNodeType.GROUP_BY_TIME.serialize(byteBuffer);
     ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
     for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
       aggregationDescriptor.serialize(byteBuffer);
@@ -125,13 +121,9 @@ public class GroupByLevelNode extends AggregationNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
-    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
-    for (String outputColumnName : outputColumnNames) {
-      ReadWriteIOUtils.write(outputColumnName, byteBuffer);
-    }
   }
 
-  public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
+  public static GroupByTimeNode deserialize(ByteBuffer byteBuffer) {
     int descriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
     while (descriptorSize > 0) {
@@ -143,34 +135,7 @@ public class GroupByLevelNode extends AggregationNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    int outputColumnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumnNames = new ArrayList<>();
-    while (outputColumnSize > 0) {
-      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
-      outputColumnSize--;
-    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new GroupByLevelNode(
-        planNodeId, aggregationDescriptorList, groupByTimeParameter, outputColumnNames);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    GroupByLevelNode that = (GroupByLevelNode) o;
-    return outputColumnNames.equals(that.outputColumnNames) && child.equals(that.child);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), outputColumnNames, child);
+    return new GroupByTimeNode(planNodeId, aggregationDescriptorList, groupByTimeParameter);
   }
 }

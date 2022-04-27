@@ -53,8 +53,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchema
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
@@ -65,7 +65,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
@@ -217,14 +217,14 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitSeriesAggregate(
-        SeriesAggregateScanNode node, LocalExecutionPlanContext context) {
+        SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
       PartialPath seriesPath = node.getSeriesPath();
       boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SeriesAggregateScanNode.class.getSimpleName());
+              SeriesAggregationScanNode.class.getSimpleName());
 
       SeriesAggregateScanOperator aggregateScanOperator =
           new SeriesAggregateScanOperator(
@@ -244,8 +244,8 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitDeviceMerge(DeviceMergeNode node, LocalExecutionPlanContext context) {
-      return super.visitDeviceMerge(node, context);
+    public Operator visitDeviceView(DeviceViewNode node, LocalExecutionPlanContext context) {
+      return super.visitDeviceView(node, context);
     }
 
     @Override
@@ -291,7 +291,7 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitRowBasedSeriesAggregate(
-        AggregateNode node, LocalExecutionPlanContext context) {
+        AggregationNode node, LocalExecutionPlanContext context) {
       return super.visitRowBasedSeriesAggregate(node, context);
     }
 

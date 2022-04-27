@@ -30,8 +30,8 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
@@ -59,32 +59,32 @@ public class ExchangeNodeSerdeTest {
     aggregationTypes.add(AggregationType.MAX_TIME);
     aggregateFuncMap.put(
         new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
-    AggregateNode aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
+    AggregationNode aggregationNode =
+        new AggregationNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
     SeriesScanNode seriesScanNode =
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
             new TRegionReplicaSet(
                 new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
-    aggregateNode.addChild(seriesScanNode);
+    aggregationNode.addChild(seriesScanNode);
 
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
 
-    deviceMergeNode.addChildDeviceNode("device", aggregateNode);
+    deviceViewNode.addChildDeviceNode("device", aggregationNode);
 
     aggregateFuncMap = new HashMap<>();
     aggregationTypes = new HashSet<>();
     aggregationTypes.add(AggregationType.MAX_TIME);
     aggregateFuncMap.put(
         new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
-    aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
-    aggregateNode.addChild(seriesScanNode);
+    aggregationNode =
+        new AggregationNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
+    aggregationNode.addChild(seriesScanNode);
 
-    deviceMergeNode.addChild(aggregateNode);
-    deviceMergeNode.addChild(seriesScanNode);
+    deviceViewNode.addChild(aggregationNode);
+    deviceViewNode.addChild(seriesScanNode);
 
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("TestExchangeNode"));
     FragmentSinkNode fragmentSinkNode =
@@ -95,7 +95,7 @@ public class ExchangeNodeSerdeTest {
         new PlanNodeId("test"));
     fragmentSinkNode.addChild(seriesScanNode);
     exchangeNode.setRemoteSourceNode(fragmentSinkNode);
-    exchangeNode.addChild(deviceMergeNode);
+    exchangeNode.addChild(deviceViewNode);
     exchangeNode.setUpstream(
         new TEndPoint("127.0.0.1", 6666),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),

@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.parameter;
 
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -33,10 +35,10 @@ public class FilterNullParameter {
   private final FilterNullPolicy filterNullPolicy;
 
   // indicate columns used to filter null
-  private final List<InputLocation> filterNullColumns;
+  private final List<Expression> filterNullColumns;
 
   public FilterNullParameter(
-      FilterNullPolicy filterNullPolicy, List<InputLocation> filterNullColumns) {
+      FilterNullPolicy filterNullPolicy, List<Expression> filterNullColumns) {
     this.filterNullPolicy = filterNullPolicy;
     this.filterNullColumns = filterNullColumns;
   }
@@ -45,14 +47,14 @@ public class FilterNullParameter {
     return filterNullPolicy;
   }
 
-  public List<InputLocation> getFilterNullColumns() {
+  public List<Expression> getFilterNullColumns() {
     return filterNullColumns;
   }
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(filterNullColumns.size(), byteBuffer);
-    for (InputLocation filterNullColumn : filterNullColumns) {
+    for (Expression filterNullColumn : filterNullColumns) {
       filterNullColumn.serialize(byteBuffer);
     }
   }
@@ -61,9 +63,9 @@ public class FilterNullParameter {
     FilterNullPolicy filterNullPolicy =
         FilterNullPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<InputLocation> filterNullColumns = new ArrayList<>(size);
+    List<Expression> filterNullColumns = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      filterNullColumns.add(InputLocation.deserialize(byteBuffer));
+      filterNullColumns.add(ExpressionType.deserialize(byteBuffer));
     }
     return new FilterNullParameter(filterNullPolicy, filterNullColumns);
   }

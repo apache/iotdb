@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -45,7 +45,7 @@ import java.util.Set;
 import static org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER;
 import static org.junit.Assert.assertEquals;
 
-public class SeriesAggregateScanNodeSerdeTest {
+public class SeriesAggregationScanNodeSerdeTest {
   @Test
   public void TestSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
     Set<String> st = new HashSet<>();
@@ -55,8 +55,8 @@ public class SeriesAggregateScanNodeSerdeTest {
     aggregateFuncList.add(AggregationType.MAX_TIME);
     GroupByTimeParameter groupByTimeComponent =
         new GroupByTimeParameter(1, 100, 1, 1, true, true, true);
-    SeriesAggregateScanNode seriesAggregateScanNode =
-        new SeriesAggregateScanNode(
+    SeriesAggregationScanNode seriesAggregationScanNode =
+        new SeriesAggregationScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
             new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN),
             Sets.newHashSet("s1"),
@@ -64,13 +64,13 @@ public class SeriesAggregateScanNodeSerdeTest {
             OrderBy.TIMESTAMP_ASC,
             new In<String>(st, VALUE_FILTER, true),
             groupByTimeComponent);
-    seriesAggregateScanNode.setRegionReplicaSet(
+    seriesAggregationScanNode.setRegionReplicaSet(
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
-    seriesAggregateScanNode.serialize(byteBuffer);
+    seriesAggregationScanNode.serialize(byteBuffer);
     byteBuffer.flip();
-    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), seriesAggregateScanNode);
+    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), seriesAggregationScanNode);
   }
 }

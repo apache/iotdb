@@ -31,8 +31,8 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
@@ -76,37 +76,37 @@ public class OffsetNodeSerdeTest {
                     "s1", org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)));
 
     FillNode fillNode = new FillNode(new PlanNodeId("TestFillNode"), FillPolicy.PREVIOUS);
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
 
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
     Set<AggregationType> aggregationTypes = new HashSet<>();
     aggregationTypes.add(AggregationType.MAX_TIME);
     aggregateFuncMap.put(
         new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
-    AggregateNode aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
+    AggregationNode aggregationNode =
+        new AggregationNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
     SeriesScanNode seriesScanNode =
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
             new TRegionReplicaSet(
                 new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
-    aggregateNode.addChild(seriesScanNode);
-    deviceMergeNode.addChildDeviceNode("device", aggregateNode);
+    aggregationNode.addChild(seriesScanNode);
+    deviceViewNode.addChildDeviceNode("device", aggregationNode);
 
     aggregateFuncMap = new HashMap<>();
     aggregationTypes = new HashSet<>();
     aggregationTypes.add(AggregationType.MAX_TIME);
     aggregateFuncMap.put(
         new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
-    aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
-    aggregateNode.addChild(seriesScanNode);
-    deviceMergeNode.addChild(aggregateNode);
-    deviceMergeNode.addChild(seriesScanNode);
+    aggregationNode =
+        new AggregationNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
+    aggregationNode.addChild(seriesScanNode);
+    deviceViewNode.addChild(aggregationNode);
+    deviceViewNode.addChild(seriesScanNode);
 
-    fillNode.addChild(deviceMergeNode);
+    fillNode.addChild(deviceViewNode);
     filterNode.addChild(fillNode);
 
     FilterNullNode filterNullNode =

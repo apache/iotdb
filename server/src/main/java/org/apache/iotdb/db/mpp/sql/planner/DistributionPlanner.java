@@ -39,7 +39,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNod
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 import java.util.ArrayList;
@@ -213,7 +213,7 @@ public class DistributionPlanner {
             split.setRegionReplicaSet(dataRegion);
             sources.add(split);
           }
-        } else if (child instanceof SeriesAggregateScanNode) {
+        } else if (child instanceof SeriesAggregationScanNode) {
           // TODO: (xingtanzjr) We should do the same thing for SeriesAggregateScanNode. Consider to
           // make SeriesAggregateScanNode
           // and SeriesScanNode to derived from the same parent Class because they have similar
@@ -345,7 +345,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSeriesAggregate(SeriesAggregateScanNode node, NodeGroupContext context) {
+    public PlanNode visitSeriesAggregate(SeriesAggregationScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
           node.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));

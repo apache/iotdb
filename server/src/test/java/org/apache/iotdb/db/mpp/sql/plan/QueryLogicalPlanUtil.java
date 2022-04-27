@@ -25,15 +25,15 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
@@ -196,15 +196,15 @@ public class QueryLogicalPlanUtil {
         new FilterNode(
             new PlanNodeId("test_query_7"), timeJoinNode2, expression, outputColumnNames);
 
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(new PlanNodeId("test_query_8"), OrderBy.TIMESTAMP_DESC);
-    deviceMergeNode.addChildDeviceNode("root.sg.d1", filterNode1);
-    deviceMergeNode.addChildDeviceNode("root.sg.d2", filterNode2);
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(new PlanNodeId("test_query_8"), OrderBy.TIMESTAMP_DESC);
+    deviceViewNode.addChildDeviceNode("root.sg.d1", filterNode1);
+    deviceViewNode.addChildDeviceNode("root.sg.d2", filterNode2);
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
             new PlanNodeId("test_query_9"),
-            deviceMergeNode,
+            deviceViewNode,
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 
@@ -228,7 +228,7 @@ public class QueryLogicalPlanUtil {
         Collections.singletonList(AggregationType.MAX_VALUE);
     Filter timeFilter = TimeFilter.gt(100);
     sourceNodeList.add(
-        new SeriesAggregateScanNode(
+        new SeriesAggregationScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
             Sets.newHashSet("s1", "s2"),
@@ -237,7 +237,7 @@ public class QueryLogicalPlanUtil {
             timeFilter,
             null));
     sourceNodeList.add(
-        new SeriesAggregateScanNode(
+        new SeriesAggregationScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
             Sets.newHashSet("s1", "s2"),
@@ -246,7 +246,7 @@ public class QueryLogicalPlanUtil {
             timeFilter,
             null));
     sourceNodeList.add(
-        new SeriesAggregateScanNode(
+        new SeriesAggregationScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
             Sets.newHashSet("s1", "s2"),
@@ -255,7 +255,7 @@ public class QueryLogicalPlanUtil {
             timeFilter,
             null));
     sourceNodeList.add(
-        new SeriesAggregateScanNode(
+        new SeriesAggregationScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
             Sets.newHashSet("s1", "s2"),
@@ -319,7 +319,7 @@ public class QueryLogicalPlanUtil {
         Collections.singletonList(AggregationType.MAX_VALUE);
     Filter timeFilter = TimeFilter.gt(100);
     sourceNodeList1.add(
-        new SeriesAggregateScanNode(
+        new SeriesAggregationScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
             Sets.newHashSet("s1", "s2"),
@@ -328,7 +328,7 @@ public class QueryLogicalPlanUtil {
             timeFilter,
             null));
     sourceNodeList1.add(
-        new SeriesAggregateScanNode(
+        new SeriesAggregationScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
             Sets.newHashSet("s1", "s2"),
@@ -337,7 +337,7 @@ public class QueryLogicalPlanUtil {
             timeFilter,
             null));
     sourceNodeList2.add(
-        new SeriesAggregateScanNode(
+        new SeriesAggregationScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
             Sets.newHashSet("s1", "s2"),
@@ -346,7 +346,7 @@ public class QueryLogicalPlanUtil {
             timeFilter,
             null));
     sourceNodeList2.add(
-        new SeriesAggregateScanNode(
+        new SeriesAggregationScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
             Sets.newHashSet("s1", "s2"),
@@ -360,15 +360,15 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode2 =
         new TimeJoinNode(new PlanNodeId("test_query_5"), OrderBy.TIMESTAMP_DESC, sourceNodeList2);
 
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(new PlanNodeId("test_query_6"), OrderBy.TIMESTAMP_DESC);
-    deviceMergeNode.addChildDeviceNode("root.sg.d1", timeJoinNode1);
-    deviceMergeNode.addChildDeviceNode("root.sg.d2", timeJoinNode2);
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(new PlanNodeId("test_query_6"), OrderBy.TIMESTAMP_DESC);
+    deviceViewNode.addChildDeviceNode("root.sg.d1", timeJoinNode1);
+    deviceViewNode.addChildDeviceNode("root.sg.d2", timeJoinNode2);
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
             new PlanNodeId("test_query_7"),
-            deviceMergeNode,
+            deviceViewNode,
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 
@@ -439,8 +439,8 @@ public class QueryLogicalPlanUtil {
         Sets.newHashSet(AggregationType.COUNT, AggregationType.LAST_VALUE));
     aggregateFuncMap.put(
         schemaMap.get("root.sg.d2.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
-    AggregateNode aggregateNode =
-        new AggregateNode(new PlanNodeId("test_query_6"), filterNode, aggregateFuncMap, null);
+    AggregationNode aggregationNode =
+        new AggregationNode(new PlanNodeId("test_query_6"), filterNode, aggregateFuncMap, null);
 
     int[] groupByLevels = new int[] {1};
     Map<ColumnHeader, ColumnHeader> groupedHeaderMap = new HashMap<>();
@@ -464,7 +464,7 @@ public class QueryLogicalPlanUtil {
         new ColumnHeader("root.sg.*.s1", AggregationType.LAST_VALUE.name(), TSDataType.INT32));
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
-            new PlanNodeId("test_query_5"), aggregateNode, groupByLevels, groupedHeaderMap);
+            new PlanNodeId("test_query_5"), aggregationNode, groupByLevels, groupedHeaderMap);
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
@@ -549,20 +549,20 @@ public class QueryLogicalPlanUtil {
         Sets.newHashSet(AggregationType.COUNT, AggregationType.LAST_VALUE));
     aggregateFuncMap2.put(
         schemaMap.get("root.sg.d2.s2"), Sets.newHashSet(AggregationType.MAX_VALUE));
-    AggregateNode aggregateNode1 =
-        new AggregateNode(new PlanNodeId("test_query_8"), filterNode1, aggregateFuncMap1, null);
-    AggregateNode aggregateNode2 =
-        new AggregateNode(new PlanNodeId("test_query_9"), filterNode2, aggregateFuncMap2, null);
+    AggregationNode aggregationNode1 =
+        new AggregationNode(new PlanNodeId("test_query_8"), filterNode1, aggregateFuncMap1, null);
+    AggregationNode aggregationNode2 =
+        new AggregationNode(new PlanNodeId("test_query_9"), filterNode2, aggregateFuncMap2, null);
 
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(new PlanNodeId("test_query_10"), OrderBy.TIMESTAMP_DESC);
-    deviceMergeNode.addChildDeviceNode("root.sg.d1", aggregateNode1);
-    deviceMergeNode.addChildDeviceNode("root.sg.d2", aggregateNode2);
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(new PlanNodeId("test_query_10"), OrderBy.TIMESTAMP_DESC);
+    deviceViewNode.addChildDeviceNode("root.sg.d1", aggregationNode1);
+    deviceViewNode.addChildDeviceNode("root.sg.d2", aggregationNode2);
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
             new PlanNodeId("test_query_11"),
-            deviceMergeNode,
+            deviceViewNode,
             FilterNullPolicy.CONTAINS_NULL,
             new ArrayList<>());
 

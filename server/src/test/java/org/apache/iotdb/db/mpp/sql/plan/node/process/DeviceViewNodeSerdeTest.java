@@ -27,8 +27,8 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -45,7 +45,7 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
-public class DeviceMergeNodeSerdeTest {
+public class DeviceViewNodeSerdeTest {
   @Test
   public void TestSerializeAndDeserialize() throws IllegalPathException {
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
@@ -53,37 +53,37 @@ public class DeviceMergeNodeSerdeTest {
     aggregationTypes.add(AggregationType.MAX_TIME);
     aggregateFuncMap.put(
         new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
-    AggregateNode aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
+    AggregationNode aggregationNode =
+        new AggregationNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
     SeriesScanNode seriesScanNode =
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
             new TRegionReplicaSet(
                 new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
-    aggregateNode.addChild(seriesScanNode);
+    aggregationNode.addChild(seriesScanNode);
 
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
 
-    deviceMergeNode.addChildDeviceNode("device", aggregateNode);
+    deviceViewNode.addChildDeviceNode("device", aggregationNode);
 
     aggregateFuncMap = new HashMap<>();
     aggregationTypes = new HashSet<>();
     aggregationTypes.add(AggregationType.MAX_TIME);
     aggregateFuncMap.put(
         new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
-    aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
-    aggregateNode.addChild(seriesScanNode);
+    aggregationNode =
+        new AggregationNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
+    aggregationNode.addChild(seriesScanNode);
 
-    deviceMergeNode.addChild(aggregateNode);
-    deviceMergeNode.addChild(seriesScanNode);
+    deviceViewNode.addChild(aggregationNode);
+    deviceViewNode.addChild(seriesScanNode);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    deviceMergeNode.serialize(byteBuffer);
+    deviceViewNode.serialize(byteBuffer);
     byteBuffer.flip();
     assertEquals(
-        (DeviceMergeNode) PlanNodeDeserializeHelper.deserialize(byteBuffer), deviceMergeNode);
+        (DeviceViewNode) PlanNodeDeserializeHelper.deserialize(byteBuffer), deviceViewNode);
   }
 }

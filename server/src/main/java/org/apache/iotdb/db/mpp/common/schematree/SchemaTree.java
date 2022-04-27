@@ -73,8 +73,7 @@ public class SchemaTree {
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
-  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
+  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern) throws MetadataException {
     // TODO: @zyk
     throw new NoTemplateOnMNodeException("");
   }

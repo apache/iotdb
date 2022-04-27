@@ -26,19 +26,23 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSch
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByTimeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 public abstract class PlanVisitor<R, C> {
@@ -53,11 +57,19 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSeriesAggregate(SeriesAggregateScanNode node, C context) {
+  public R visitSeriesAggregate(SeriesAggregationScanNode node, C context) {
     return visitPlan(node, context);
   }
 
-  public R visitDeviceMerge(DeviceMergeNode node, C context) {
+  public R visitAlignedSeriesScan(AlignedSeriesScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitAlignedSeriesAggregate(AlignedSeriesAggregationScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeviceView(DeviceViewNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -77,6 +89,10 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitGroupByTime(GroupByTimeNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   public R visitLimit(LimitNode node, C context) {
     return visitPlan(node, context);
   }
@@ -85,11 +101,15 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitRowBasedSeriesAggregate(AggregateNode node, C context) {
+  public R visitRowBasedSeriesAggregate(AggregationNode node, C context) {
     return visitPlan(node, context);
   }
 
   public R visitSort(SortNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitProject(ProjectNode node, C context) {
     return visitPlan(node, context);
   }
 
