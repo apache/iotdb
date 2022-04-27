@@ -59,6 +59,13 @@ public class MetaFormatUtils {
     }
   }
 
+  /** check whether the node name uses "." correctly */
+  private static void checkNameFormat(String name) throws MetadataException {
+    if (!((name.startsWith("`") && name.endsWith("`"))) && name.contains(".")) {
+      throw new MetadataException(String.format("%s is an illegal name.", name));
+    }
+  }
+
   /** check the characters in path or single node */
   private static void checkCharacters(String timeseries) throws MetadataException {
     if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
@@ -81,6 +88,7 @@ public class MetaFormatUtils {
   public static void checkNodeName(String name) throws MetadataException {
     checkCharacters(name);
     checkReservedNames(name);
+    checkNameFormat(name);
   }
 
   /** check whether the measurement ids in schema is well formatted */

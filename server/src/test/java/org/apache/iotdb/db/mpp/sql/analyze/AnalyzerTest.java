@@ -35,7 +35,7 @@ public class AnalyzerTest {
   @Test
   public void samePropertyKeyTest() {
     assertAnalyzeSemanticException(
-        "CREATE TIMESERIES root.sg1.d1.s1 INT32 TAGS(a=1) ATTRIBUTES(a=1)",
+        "CREATE TIMESERIES root.sg1.d1.s1 INT32 TAGS('a'='1') ATTRIBUTES('a'='1')",
         "Tag and attribute shouldn't have the same property key");
   }
 
