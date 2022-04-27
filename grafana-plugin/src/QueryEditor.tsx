@@ -65,6 +65,8 @@ const selectElement = [
 const paths = [''];
 const expressions = [''];
 const selectRaw = ['Raw', 'Aggregation'];
+const commonOption: SelectableValue<string> = { label: '*', value: '*' };
+const commonOptionDou: SelectableValue<string> = { label: '**', value: '**' };
 type Props = QueryEditorProps<DataSource, IoTDBQuery, IoTDBOptions>;
 
 export class QueryEditor extends PureComponent<Props, State> {
@@ -143,11 +145,15 @@ export class QueryEditor extends PureComponent<Props, State> {
 
   onTimeSeriesChange = (t: string[], options: Array<Array<SelectableValue<string>>>, isRemove: boolean) => {
     const { onChange, query } = this.props;
+    const commonOption: SelectableValue<string> = { label: '*', value: '*' };
     if (t.length === options.length) {
       this.props.datasource
         .nodeQuery(['root', ...t])
         .then((a) => {
-          const b = a.map((a) => a.text).map(toOption);
+          let b = a.map((a) => a.text).map(toOption);
+          if (b.length > 0) {
+            b = [commonOption, commonOptionDou, ...b];
+          }
           onChange({ ...query, paths: t, options: [...options, b] });
           if (isRemove) {
             this.setState({ timeSeries: t, options: [...options, b], shouldAdd: true });
@@ -177,7 +183,10 @@ export class QueryEditor extends PureComponent<Props, State> {
     }
     if (this.state.options.length === 1 && this.state.options[0][0].value === '') {
       this.props.datasource.nodeQuery(['root']).then((a) => {
-        const b = a.map((a) => a.text).map(toOption);
+        let b = a.map((a) => a.text).map(toOption);
+        if (b.length > 0) {
+          b = [commonOption, commonOptionDou, ...b];
+        }
         this.setState({ options: [b] });
       });
     }
