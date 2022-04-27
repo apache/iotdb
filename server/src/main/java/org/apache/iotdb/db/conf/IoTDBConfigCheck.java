@@ -401,7 +401,7 @@ public class IoTDBConfigCheck {
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
-      // upgrade finished, delete old system.properties file
+      // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
       }
