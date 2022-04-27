@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.ExecutionContext;
-import org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor;
+import org.apache.iotdb.db.mpp.schedule.DriverTaskThread;
 import org.apache.iotdb.db.mpp.schedule.queue.ID;
 import org.apache.iotdb.db.mpp.schedule.queue.IDIndexedAccessible;
 
@@ -37,13 +37,13 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * the scheduling element of {@link FragmentInstanceTaskExecutor}. It wraps a single
- * FragmentInstance.
+ * the scheduling element of {@link DriverTaskThread}. It wraps a single
+ * Driver.
  */
-public class FragmentInstanceTask implements IDIndexedAccessible {
+public class DriverTask implements IDIndexedAccessible {
 
-  private FragmentInstanceTaskID id;
-  private FragmentInstanceTaskStatus status;
+  private DriverTaskID id;
+  private DriverTaskStatus status;
   private final IDriver fragmentInstance;
 
   // the higher this field is, the higher probability it will be scheduled.
@@ -57,42 +57,42 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
   private String abortCause;
 
   /** Initialize a dummy instance for queryHolder */
-  public FragmentInstanceTask() {
+  public DriverTask() {
     this(new StubFragmentInstance(), 0L, null);
   }
 
-  public FragmentInstanceTask(IDriver instance, long timeoutMs, FragmentInstanceTaskStatus status) {
+  public DriverTask(IDriver instance, long timeoutMs, DriverTaskStatus status) {
     this.fragmentInstance = instance;
-    this.id = new FragmentInstanceTaskID(instance.getInfo());
+    this.id = new DriverTaskID(instance.getInfo());
     this.setStatus(status);
     this.schedulePriority = 0.0D;
     this.ddl = System.currentTimeMillis() + timeoutMs;
     this.lock = new ReentrantLock();
   }
 
-  public FragmentInstanceTaskID getId() {
+  public DriverTaskID getId() {
     return id;
   }
 
   @Override
   public void setId(ID id) {
-    this.id = (FragmentInstanceTaskID) id;
+    this.id = (DriverTaskID) id;
   }
 
-  public FragmentInstanceTaskStatus getStatus() {
+  public DriverTaskStatus getStatus() {
     return status;
   }
 
   public boolean isEndState() {
-    return status == FragmentInstanceTaskStatus.ABORTED
-        || status == FragmentInstanceTaskStatus.FINISHED;
+    return status == DriverTaskStatus.ABORTED
+        || status == DriverTaskStatus.FINISHED;
   }
 
   public IDriver getFragmentInstance() {
     return fragmentInstance;
   }
 
-  public void setStatus(FragmentInstanceTaskStatus status) {
+  public void setStatus(DriverTaskStatus status) {
     this.status = status;
   }
 
@@ -139,7 +139,7 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof FragmentInstanceTask && ((FragmentInstanceTask) o).getId().equals(id);
+    return o instanceof DriverTask && ((DriverTask) o).getId().equals(id);
   }
 
   public String getAbortCause() {
@@ -151,10 +151,10 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
   }
 
   /** a comparator of ddl, the less the ddl is, the low order it has. */
-  public static class TimeoutComparator implements Comparator<FragmentInstanceTask> {
+  public static class TimeoutComparator implements Comparator<DriverTask> {
 
     @Override
-    public int compare(FragmentInstanceTask o1, FragmentInstanceTask o2) {
+    public int compare(DriverTask o1, DriverTask o2) {
       if (o1.getId().equals(o2.getId())) {
         return 0;
       }
@@ -169,10 +169,10 @@ public class FragmentInstanceTask implements IDIndexedAccessible {
   }
 
   /** a comparator of ddl, the higher the schedulePriority is, the low order it has. */
-  public static class SchedulePriorityComparator implements Comparator<FragmentInstanceTask> {
+  public static class SchedulePriorityComparator implements Comparator<DriverTask> {
 
     @Override
-    public int compare(FragmentInstanceTask o1, FragmentInstanceTask o2) {
+    public int compare(DriverTask o1, DriverTask o2) {
       if (o1.getId().equals(o2.getId())) {
         return 0;
       }

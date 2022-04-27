@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.execution.IDriver;
 import java.util.List;
 
 /** the interface of fragment instance scheduling */
-public interface IFragmentInstanceScheduler {
+public interface IDriverScheduler {
 
   /**
    * Submit one or more {@link org.apache.iotdb.db.mpp.execution.IDriver} in one query for later
@@ -34,7 +34,7 @@ public interface IFragmentInstanceScheduler {
    * @param queryId the queryId these instances belong to.
    * @param instances the submitted instances.
    */
-  void submitFragmentInstances(QueryId queryId, List<IDriver> instances);
+  void submitDrivers(QueryId queryId, List<IDriver> instances);
 
   /**
    * Abort all the instances in this query.
@@ -44,7 +44,7 @@ public interface IFragmentInstanceScheduler {
   void abortQuery(QueryId queryId);
 
   /**
-   * Abort the fragment instance. If the instance is not existed, nothing will happen.
+   * Abort all Drivers of the fragment instance. If the instance is not existed, nothing will happen.
    *
    * @param instanceId the id of the fragment instance to be aborted.
    */

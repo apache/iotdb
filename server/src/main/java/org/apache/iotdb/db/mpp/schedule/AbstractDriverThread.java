@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.schedule;
 
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,18 +28,18 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-/** an abstract executor for {@link FragmentInstanceTask} */
-public abstract class AbstractExecutor extends Thread implements Closeable {
+/** an abstract executor for {@link DriverTask} */
+public abstract class AbstractDriverThread extends Thread implements Closeable {
 
-  private static final Logger logger = LoggerFactory.getLogger(AbstractExecutor.class);
-  private final IndexedBlockingQueue<FragmentInstanceTask> queue;
+  private static final Logger logger = LoggerFactory.getLogger(AbstractDriverThread.class);
+  private final IndexedBlockingQueue<DriverTask> queue;
   protected final ITaskScheduler scheduler;
   private volatile boolean closed;
 
-  public AbstractExecutor(
+  public AbstractDriverThread(
       String workerId,
       ThreadGroup tg,
-      IndexedBlockingQueue<FragmentInstanceTask> queue,
+      IndexedBlockingQueue<DriverTask> queue,
       ITaskScheduler scheduler) {
     super(tg, workerId);
     this.queue = queue;
@@ -51,7 +51,7 @@ public abstract class AbstractExecutor extends Thread implements Closeable {
   public void run() {
     while (!closed && !Thread.currentThread().isInterrupted()) {
       try {
-        FragmentInstanceTask next = queue.poll();
+        DriverTask next = queue.poll();
         execute(next);
       } catch (InterruptedException e) {
         break;
@@ -62,7 +62,7 @@ public abstract class AbstractExecutor extends Thread implements Closeable {
   }
 
   /** Processing a task. */
-  protected abstract void execute(FragmentInstanceTask task)
+  protected abstract void execute(DriverTask task)
       throws InterruptedException, ExecutionException;
 
   @Override
