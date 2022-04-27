@@ -23,9 +23,13 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -325,13 +329,36 @@ public class QueryPlanBuilder {
   }
 
   public void planSchemaMerge(boolean orderByHeat) {
-    SchemaMergeNode schemaMergeNode =
-        new SchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
+    SeriesSchemaMergeNode schemaMergeNode =
+        new SeriesSchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
     schemaMergeNode.addChild(this.getRoot());
     this.root = schemaMergeNode;
   }
 
   public void planSchemaFetchSource(PathPatternTree patternTree) {
     this.root = new SchemaFetchNode(context.getQueryId().genPlanNodeId(), patternTree);
+  }
+
+  public void planCountMerge() {
+    CountSchemaMergeNode countMergeNode =
+        new CountSchemaMergeNode(context.getQueryId().genPlanNodeId());
+    countMergeNode.addChild(this.getRoot());
+    this.root = countMergeNode;
+  }
+
+  public void planDevicesCountSource(PartialPath partialPath, boolean prefixPath) {
+    this.root = new DevicesCountNode(context.getQueryId().genPlanNodeId(), partialPath, prefixPath);
+  }
+
+  public void planTimeSeriesCountSource(PartialPath partialPath, boolean prefixPath) {
+    this.root =
+        new TimeSeriesCountNode(context.getQueryId().genPlanNodeId(), partialPath, prefixPath);
+  }
+
+  public void planLevelTimeSeriesCountSource(
+      PartialPath partialPath, boolean prefixPath, int level) {
+    this.root =
+        new LevelTimeSeriesCountNode(
+            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, level);
   }
 }

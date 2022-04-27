@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -32,78 +33,59 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public class DevicesSchemaScanNode extends SchemaScanNode {
+public class LevelTimeSeriesCountNode extends SchemaScanNode {
+  private final int level;
 
-  private final boolean hasSgCol;
-
-  public DevicesSchemaScanNode(
-      PlanNodeId id,
-      PartialPath path,
-      int limit,
-      int offset,
-      boolean isPrefixPath,
-      boolean hasSgCol) {
-    super(id, path, limit, offset, isPrefixPath);
-    this.hasSgCol = hasSgCol;
+  public LevelTimeSeriesCountNode(
+      PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, int level) {
+    super(id, partialPath, isPrefixPath);
+    this.level = level;
   }
 
-  public boolean isHasSgCol() {
-    return hasSgCol;
+  public int getLevel() {
+    return level;
   }
 
   @Override
   public PlanNode clone() {
-    return new DevicesSchemaScanNode(getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol);
+    return new LevelTimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, level);
   }
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    if (hasSgCol) {
-      return HeaderConstant.showDevicesWithSgHeader.getColumnHeaders();
-    }
-    return HeaderConstant.showDevicesHeader.getColumnHeaders();
+    return HeaderConstant.countLevelTimeSeriesHeader.getColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    if (hasSgCol) {
-      return HeaderConstant.showDevicesWithSgHeader.getRespColumns();
-    }
-    return HeaderConstant.showDevicesHeader.getRespColumns();
+    return HeaderConstant.countLevelTimeSeriesHeader.getRespColumns();
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    if (hasSgCol) {
-      return HeaderConstant.showDevicesWithSgHeader.getRespDataTypes();
-    }
-    return HeaderConstant.showDevicesHeader.getRespDataTypes();
+    return HeaderConstant.countLevelTimeSeriesHeader.getRespDataTypes();
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DEVICES_SCHEMA_SCAN.serialize(byteBuffer);
+    PlanNodeType.LEVEL_TIME_SERIES_COUNT.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
-    ReadWriteIOUtils.write(limit, byteBuffer);
-    ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
-    ReadWriteIOUtils.write(hasSgCol, byteBuffer);
+    ReadWriteIOUtils.write(level, byteBuffer);
   }
 
-  public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
-    String fullPath = ReadWriteIOUtils.readString(byteBuffer);
+  public static PlanNode deserialize(ByteBuffer buffer) {
+    String fullPath = ReadWriteIOUtils.readString(buffer);
     PartialPath path;
     try {
       path = new PartialPath(fullPath);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
     }
-    int limit = ReadWriteIOUtils.readInt(byteBuffer);
-    int offset = ReadWriteIOUtils.readInt(byteBuffer);
-    boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
-    boolean hasSgCol = ReadWriteIOUtils.readBool(byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DevicesSchemaScanNode(planNodeId, path, limit, offset, isPrefixPath, hasSgCol);
+    boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
+    int level = ReadWriteIOUtils.readInt(buffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
+    return new LevelTimeSeriesCountNode(planNodeId, path, isPrefixPath, level);
   }
 
   @Override
@@ -117,12 +99,12 @@ public class DevicesSchemaScanNode extends SchemaScanNode {
     if (!super.equals(o)) {
       return false;
     }
-    DevicesSchemaScanNode that = (DevicesSchemaScanNode) o;
-    return hasSgCol == that.hasSgCol;
+    LevelTimeSeriesCountNode that = (LevelTimeSeriesCountNode) o;
+    return level == that.level;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), hasSgCol);
+    return Objects.hash(super.hashCode(), level);
   }
 }
