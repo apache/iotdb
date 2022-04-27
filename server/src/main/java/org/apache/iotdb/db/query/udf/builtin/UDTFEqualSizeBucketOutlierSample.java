@@ -220,22 +220,29 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     @Override
     public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
       int windowSize = rowWindow.windowSize();
-      long row0x = rowWindow.getRow(0).getTime(),
-          row1x = rowWindow.getRow(windowSize - 1).getTime();
-      int row0y = rowWindow.getRow(0).getInt(0), row1y = rowWindow.getRow(windowSize - 1).getInt(0);
-      if (windowSize <= number + 2) {
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
         for (int i = 1; i < windowSize - 1; i++) {
           Row row = rowWindow.getRow(i);
           collector.putInt(row.getTime(), row.getInt(0));
         }
-        if (windowSize == number + 1) {
-          collector.putInt(row0x, row0y);
-        } else if (windowSize <= number) {
-          collector.putInt(row0x, row0y);
-          collector.putInt(row1x, row1y);
-        }
         return;
       }
+
+      long row0x = rowWindow.getRow(0).getTime(),
+          row1x = rowWindow.getRow(windowSize - 1).getTime();
+      int row0y = rowWindow.getRow(0).getInt(0), row1y = rowWindow.getRow(windowSize - 1).getInt(0);
 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
@@ -270,23 +277,30 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      long row0x = rowWindow.getRow(0).getTime(),
-          row1x = rowWindow.getRow(windowSize - 1).getTime();
-      long row0y = rowWindow.getRow(0).getLong(0),
-          row1y = rowWindow.getRow(windowSize - 1).getLong(0);
-      if (windowSize <= number + 2) {
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
         for (int i = 1; i < windowSize - 1; i++) {
           Row row = rowWindow.getRow(i);
           collector.putLong(row.getTime(), row.getLong(0));
         }
-        if (windowSize == number + 1) {
-          collector.putLong(row0x, row0y);
-        } else if (windowSize <= number) {
-          collector.putLong(row0x, row0y);
-          collector.putLong(row1x, row1y);
-        }
         return;
       }
+
+      long row0x = rowWindow.getRow(0).getTime(),
+          row1x = rowWindow.getRow(windowSize - 1).getTime();
+      long row0y = rowWindow.getRow(0).getLong(0),
+          row1y = rowWindow.getRow(windowSize - 1).getLong(0);
 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
@@ -321,23 +335,30 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      long row0x = rowWindow.getRow(0).getTime(),
-          row1x = rowWindow.getRow(windowSize - 1).getTime();
-      float row0y = rowWindow.getRow(0).getFloat(0),
-          row1y = rowWindow.getRow(windowSize - 1).getFloat(0);
-      if (windowSize <= number + 2) {
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
         for (int i = 1; i < windowSize - 1; i++) {
           Row row = rowWindow.getRow(i);
           collector.putFloat(row.getTime(), row.getFloat(0));
         }
-        if (windowSize == number + 1) {
-          collector.putFloat(row0x, row0y);
-        } else if (windowSize <= number) {
-          collector.putFloat(row0x, row0y);
-          collector.putFloat(row1x, row1y);
-        }
         return;
       }
+
+      long row0x = rowWindow.getRow(0).getTime(),
+          row1x = rowWindow.getRow(windowSize - 1).getTime();
+      float row0y = rowWindow.getRow(0).getFloat(0),
+          row1y = rowWindow.getRow(windowSize - 1).getFloat(0);
 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
@@ -373,23 +394,30 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      long row0x = rowWindow.getRow(0).getTime(),
-          row1x = rowWindow.getRow(windowSize - 1).getTime();
-      double row0y = rowWindow.getRow(0).getDouble(0),
-          row1y = rowWindow.getRow(windowSize - 1).getDouble(0);
-      if (windowSize <= number + 2) {
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
         for (int i = 1; i < windowSize - 1; i++) {
           Row row = rowWindow.getRow(i);
           collector.putDouble(row.getTime(), row.getDouble(0));
         }
-        if (windowSize == number + 1) {
-          collector.putDouble(row0x, row0y);
-        } else if (windowSize <= number) {
-          collector.putDouble(row0x, row0y);
-          collector.putDouble(row1x, row1y);
-        }
         return;
       }
+
+      long row0x = rowWindow.getRow(0).getTime(),
+          row1x = rowWindow.getRow(windowSize - 1).getTime();
+      double row0y = rowWindow.getRow(0).getDouble(0),
+          row1y = rowWindow.getRow(windowSize - 1).getDouble(0);
 
       PriorityQueue<Pair<Integer, Double>> pq =
           new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
@@ -425,39 +453,549 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
   private class CosOutlierSampler implements OutlierSampler {
 
     @Override
-    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector)
-        throws IOException {}
+    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        return;
+      }
+
+      // o -> -o.right, max heap
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> -o.right));
+
+      long lastTime, currentTime, nextTime, x1, x2;
+      int lastValue, currentValue, nextValue, y1, y2;
+      double value;
+
+      for (int i = 1; i < windowSize - 1; i++) {
+        lastTime = rowWindow.getRow(i - 1).getTime();
+        currentTime = rowWindow.getRow(i).getTime();
+        nextTime = rowWindow.getRow(i + 1).getTime();
+
+        lastValue = rowWindow.getRow(i - 1).getInt(0);
+        currentValue = rowWindow.getRow(i).getInt(0);
+        nextValue = rowWindow.getRow(i + 1).getInt(0);
+
+        x1 = currentTime - lastTime;
+        x2 = nextTime - currentTime;
+        y1 = currentValue - lastValue;
+        y2 = nextValue - currentValue;
+
+        value =
+            (x1 * x2 + y1 * y2)
+                / (Math.sqrt((double) x1 * x1 + y1 * y1) * Math.sqrt((double) x2 * x2 + y2 * y2));
+
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value < pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putInt(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getInt(0));
+      }
+    }
 
     @Override
     public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
-        throws IOException {}
+        throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        return;
+      }
+
+      // o -> -o.right, max heap
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> -o.right));
+
+      long lastTime, currentTime, nextTime, x1, x2;
+      long lastValue, currentValue, nextValue, y1, y2;
+      double value;
+
+      for (int i = 1; i < windowSize - 1; i++) {
+        lastTime = rowWindow.getRow(i - 1).getTime();
+        currentTime = rowWindow.getRow(i).getTime();
+        nextTime = rowWindow.getRow(i + 1).getTime();
+
+        lastValue = rowWindow.getRow(i - 1).getLong(0);
+        currentValue = rowWindow.getRow(i).getLong(0);
+        nextValue = rowWindow.getRow(i + 1).getLong(0);
+
+        x1 = currentTime - lastTime;
+        x2 = nextTime - currentTime;
+        y1 = currentValue - lastValue;
+        y2 = nextValue - currentValue;
+
+        value =
+            (x1 * x2 + y1 * y2)
+                / (Math.sqrt((double) x1 * x1 + y1 * y1) * Math.sqrt((double) x2 * x2 + y2 * y2));
+
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value < pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putLong(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getLong(0));
+      }
+    }
 
     @Override
     public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
-        throws IOException {}
+        throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        return;
+      }
+
+      // o -> -o.right, max heap
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> -o.right));
+
+      long lastTime, currentTime, nextTime, x1, x2;
+      float lastValue, currentValue, nextValue, y1, y2;
+      double value;
+
+      for (int i = 1; i < windowSize - 1; i++) {
+        lastTime = rowWindow.getRow(i - 1).getTime();
+        currentTime = rowWindow.getRow(i).getTime();
+        nextTime = rowWindow.getRow(i + 1).getTime();
+
+        lastValue = rowWindow.getRow(i - 1).getFloat(0);
+        currentValue = rowWindow.getRow(i).getFloat(0);
+        nextValue = rowWindow.getRow(i + 1).getFloat(0);
+
+        x1 = currentTime - lastTime;
+        x2 = nextTime - currentTime;
+        y1 = currentValue - lastValue;
+        y2 = nextValue - currentValue;
+
+        value = (x1 * x2 + y1 * y2) / (Math.sqrt(x1 * x1 + y1 * y1) * Math.sqrt(x2 * x2 + y2 * y2));
+
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value < pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putFloat(
+            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
+      }
+    }
 
     @Override
     public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
-        throws IOException {}
+        throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        return;
+      }
+
+      // o -> -o.right, max heap
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> -o.right));
+
+      long lastTime, currentTime, nextTime, x1, x2;
+      double lastValue, currentValue, nextValue, y1, y2;
+      double value;
+
+      for (int i = 1; i < windowSize - 1; i++) {
+        lastTime = rowWindow.getRow(i - 1).getTime();
+        currentTime = rowWindow.getRow(i).getTime();
+        nextTime = rowWindow.getRow(i + 1).getTime();
+
+        lastValue = rowWindow.getRow(i - 1).getDouble(0);
+        currentValue = rowWindow.getRow(i).getDouble(0);
+        nextValue = rowWindow.getRow(i + 1).getDouble(0);
+
+        x1 = currentTime - lastTime;
+        x2 = nextTime - currentTime;
+        y1 = currentValue - lastValue;
+        y2 = nextValue - currentValue;
+
+        value = (x1 * x2 + y1 * y2) / (Math.sqrt(x1 * x1 + y1 * y1) * Math.sqrt(x2 * x2 + y2 * y2));
+
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value < pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putDouble(
+            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
+      }
+    }
   }
 
   private class PrenextdisOutlierSampler implements OutlierSampler {
 
     @Override
-    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector)
-        throws IOException {}
+    public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putInt(row.getTime(), row.getInt(0));
+        }
+        return;
+      }
+
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+
+      long lastTime, currentTime, nextTime, x1, x2;
+      int lastValue, currentValue, nextValue, y1, y2;
+      double value;
+
+      for (int i = 1; i < windowSize - 1; i++) {
+        lastTime = rowWindow.getRow(i - 1).getTime();
+        currentTime = rowWindow.getRow(i).getTime();
+        nextTime = rowWindow.getRow(i + 1).getTime();
+
+        lastValue = rowWindow.getRow(i - 1).getInt(0);
+        currentValue = rowWindow.getRow(i).getInt(0);
+        nextValue = rowWindow.getRow(i + 1).getInt(0);
+
+        x1 = currentTime - lastTime;
+        x2 = nextTime - currentTime;
+        y1 = currentValue - lastValue;
+        y2 = nextValue - currentValue;
+
+        value =
+            (x1 > 0 ? x1 : -x1) + (y1 > 0 ? y1 : -y1) + (x2 > 0 ? x2 : -x2) + (y2 > 0 ? y2 : -y2);
+
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value > pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putInt(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getInt(0));
+      }
+    }
 
     @Override
     public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
-        throws IOException {}
+        throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putLong(row.getTime(), row.getLong(0));
+        }
+        return;
+      }
+
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+
+      long lastTime, currentTime, nextTime, x1, x2;
+      long lastValue, currentValue, nextValue, y1, y2;
+      double value;
+
+      for (int i = 1; i < windowSize - 1; i++) {
+        lastTime = rowWindow.getRow(i - 1).getTime();
+        currentTime = rowWindow.getRow(i).getTime();
+        nextTime = rowWindow.getRow(i + 1).getTime();
+
+        lastValue = rowWindow.getRow(i - 1).getLong(0);
+        currentValue = rowWindow.getRow(i).getLong(0);
+        nextValue = rowWindow.getRow(i + 1).getLong(0);
+
+        x1 = currentTime - lastTime;
+        x2 = nextTime - currentTime;
+        y1 = currentValue - lastValue;
+        y2 = nextValue - currentValue;
+
+        value =
+            (x1 > 0 ? x1 : -x1) + (y1 > 0 ? y1 : -y1) + (x2 > 0 ? x2 : -x2) + (y2 > 0 ? y2 : -y2);
+
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value > pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putLong(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getLong(0));
+      }
+    }
 
     @Override
     public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
-        throws IOException {}
+        throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putFloat(row.getTime(), row.getFloat(0));
+        }
+        return;
+      }
+
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+
+      long lastTime, currentTime, nextTime, x1, x2;
+      float lastValue, currentValue, nextValue, y1, y2;
+      double value;
+
+      for (int i = 1; i < windowSize - 1; i++) {
+        lastTime = rowWindow.getRow(i - 1).getTime();
+        currentTime = rowWindow.getRow(i).getTime();
+        nextTime = rowWindow.getRow(i + 1).getTime();
+
+        lastValue = rowWindow.getRow(i - 1).getFloat(0);
+        currentValue = rowWindow.getRow(i).getFloat(0);
+        nextValue = rowWindow.getRow(i + 1).getFloat(0);
+
+        x1 = currentTime - lastTime;
+        x2 = nextTime - currentTime;
+        y1 = currentValue - lastValue;
+        y2 = nextValue - currentValue;
+
+        value =
+            (x1 > 0 ? x1 : -x1) + (y1 > 0 ? y1 : -y1) + (x2 > 0 ? x2 : -x2) + (y2 > 0 ? y2 : -y2);
+
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value > pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putFloat(
+            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
+      }
+    }
 
     @Override
     public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
-        throws IOException {}
+        throws IOException {
+      int windowSize = rowWindow.windowSize();
+      if (windowSize <= number) {
+        for (int i = 0; i < windowSize; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        return;
+      } else if (windowSize == number + 1) {
+        for (int i = 0; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        return;
+      } else if (windowSize == number + 2) {
+        for (int i = 1; i < windowSize - 1; i++) {
+          Row row = rowWindow.getRow(i);
+          collector.putDouble(row.getTime(), row.getDouble(0));
+        }
+        return;
+      }
+
+      PriorityQueue<Pair<Integer, Double>> pq =
+          new PriorityQueue<>(number, Comparator.comparing(o -> o.right));
+
+      long lastTime, currentTime, nextTime, x1, x2;
+      double lastValue, currentValue, nextValue, y1, y2;
+      double value;
+
+      for (int i = 1; i < windowSize - 1; i++) {
+        lastTime = rowWindow.getRow(i - 1).getTime();
+        currentTime = rowWindow.getRow(i).getTime();
+        nextTime = rowWindow.getRow(i + 1).getTime();
+
+        lastValue = rowWindow.getRow(i - 1).getDouble(0);
+        currentValue = rowWindow.getRow(i).getDouble(0);
+        nextValue = rowWindow.getRow(i + 1).getDouble(0);
+
+        x1 = currentTime - lastTime;
+        x2 = nextTime - currentTime;
+        y1 = currentValue - lastValue;
+        y2 = nextValue - currentValue;
+
+        value =
+            (x1 > 0 ? x1 : -x1) + (y1 > 0 ? y1 : -y1) + (x2 > 0 ? x2 : -x2) + (y2 > 0 ? y2 : -y2);
+
+        if (pq.size() < number) {
+          pq.add(new Pair<>(i, value));
+        } else if (value > pq.peek().right) {
+          pq.poll();
+          pq.add(new Pair<>(i, value));
+        }
+      }
+
+      int[] arr = new int[number];
+      for (int i = 0; i < number; i++) {
+        arr[i] = pq.peek().left;
+        pq.poll();
+      }
+      Arrays.sort(arr);
+      for (int i = 0; i < number; i++) {
+        collector.putDouble(
+            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
+      }
+    }
   }
 
   @Override
