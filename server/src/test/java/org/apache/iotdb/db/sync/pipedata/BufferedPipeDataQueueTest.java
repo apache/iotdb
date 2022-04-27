@@ -73,7 +73,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput1 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(0)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(0)), false));
       for (int i = 0; i < 4; i++) {
         new TsFilePipeData("", i).serialize(pipeLogOutput1);
       }
@@ -82,7 +82,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput2 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(4)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(4)), false));
       for (int i = 4; i < 11; i++) {
         new TsFilePipeData("", i).serialize(pipeLogOutput2);
       }
@@ -91,7 +91,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput3 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(11)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(11)), false));
       pipeLogOutput3.close();
       // recovery
       BufferedPipeDataQueue pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir.getPath());
@@ -210,7 +210,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput1 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(0)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(0)), false));
       for (int i = 0; i < 4; i++) {
         PipeData pipeData = new TsFilePipeData("fake" + i, i);
         pipeDataList.add(pipeData);
@@ -221,7 +221,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput2 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(4)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(4)), false));
       for (int i = 4; i < 8; i++) {
         PipeData pipeData =
             new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);
@@ -239,7 +239,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput3 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(11)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(11)), false));
       pipeLogOutput3.close();
       // recovery
       BufferedPipeDataQueue pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir.getPath());
@@ -300,7 +300,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput1 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(0)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(0)), false));
       for (int i = 0; i < 4; i++) {
         PipeData pipeData = new TsFilePipeData("fake" + i, i);
         pipeDataList.add(pipeData);
@@ -311,7 +311,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput2 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(4)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(4)), false));
       for (int i = 4; i < 8; i++) {
         PipeData pipeData =
             new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);
@@ -329,7 +329,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput3 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(11)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(11)), false));
       pipeLogOutput3.close();
       // recovery
       BufferedPipeDataQueue pipeDataQueue = new BufferedPipeDataQueue(pipeLogDir.getPath());
@@ -387,7 +387,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput1 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(0)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(0)), false));
       for (int i = 0; i < 4; i++) {
         PipeData pipeData = new TsFilePipeData("fake" + i, i);
         pipeDataList.add(pipeData);
@@ -398,7 +398,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput2 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(4)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(4)), false));
       for (int i = 4; i < 8; i++) {
         PipeData pipeData =
             new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);
@@ -468,7 +468,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput1 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(0)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(0)), false));
       for (int i = 0; i < 4; i++) {
         PipeData pipeData = new TsFilePipeData("fake" + i, i);
         pipeDataList.add(pipeData);
@@ -479,7 +479,7 @@ public class BufferedPipeDataQueueTest {
       DataOutputStream pipeLogOutput2 =
           new DataOutputStream(
               new FileOutputStream(
-                  new File(pipeLogDir.getPath(), SyncConstant.getPipeLogName(4)), false));
+                  new File(pipeLogDir.getPath(), SyncPathUtil.getPipeLogName(4)), false));
       for (int i = 4; i < 8; i++) {
         PipeData pipeData =
             new DeletionPipeData(new Deletion(new PartialPath("fake" + i), 0, 99), i);

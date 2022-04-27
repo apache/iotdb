@@ -135,7 +135,7 @@ public class ReceiverManager {
    */
   public synchronized void writePipeMessage(
       String pipeName, String remoteIp, long createTime, PipeMessage message) {
-    String pipeIdentifier = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+    String pipeIdentifier = SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
     try {
       log.writePipeMsg(pipeIdentifier, message);
     } catch (IOException e) {
@@ -161,7 +161,7 @@ public class ReceiverManager {
   public synchronized List<PipeMessage> getPipeMessages(
       String pipeName, String remoteIp, long createTime, boolean consume) {
     List<PipeMessage> pipeMessageList = new ArrayList<>();
-    String pipeIdentifier = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+    String pipeIdentifier = SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
     if (consume) {
       try {
         log.comsumePipeMsg(pipeIdentifier);
