@@ -2506,7 +2506,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
   }
 
-  @SuppressWarnings("squid:S3776")
   private Expression parseExpression(IoTDBSqlParser.ExpressionContext context) {
     if (context.unaryInBracket != null) {
       return parseExpression(context.unaryInBracket);
@@ -2522,6 +2521,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     if (context.suffixPathCanInExpr() != null) {
       return new TimeSeriesOperand(parseSuffixPathCanInExpr(context.suffixPathCanInExpr()));
+    }
+
+    if (context.functionName() != null) {
+      return parseFunctionExpression(context);
     }
 
     if (context.expressionAfterUnaryOperator != null) {
@@ -2576,14 +2579,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       if (context.OPERATOR_OR() != null) {
         return new LogicOrExpression(leftExpression, rightExpression);
       }
+      throw new UnsupportedOperationException();
     }
 
-    if (context.functionName() != null) {
-      return parseFunctionExpression(context);
-    }
-
-    if (context.unaryBeforeRegularExpression != null) {
-      return parseRegularExpression(context);
+    if (context.unaryBeforeRegularOrLikeExpression != null) {
+      if (context.REGEXP() != null) {
+        return parseRegularExpression(context);
+      }
+      if (context.LIKE() != null) {
+        return parseLikeExpression(context);
+      }
+      throw new UnsupportedOperationException();
     }
 
     if (context.unaryBeforeInExpression != null) {
@@ -2627,11 +2633,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private Expression parseRegularExpression(ExpressionContext context) {
-    return null;
+    throw new UnsupportedOperationException();
+  }
+
+  private Expression parseLikeExpression(ExpressionContext context) {
+    throw new UnsupportedOperationException();
   }
 
   private Expression parseInExpression(ExpressionContext context) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   private Expression parseConstantOperand(ConstantContext constantContext) {

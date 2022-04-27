@@ -1620,6 +1620,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return new TimeSeriesOperand(parseSuffixPathCanInExpr(context.suffixPathCanInExpr()));
     }
 
+    if (context.functionName() != null) {
+      return parseFunctionExpression(context);
+    }
+
     if (context.expressionAfterUnaryOperator != null) {
       if (context.MINUS() != null) {
         return new NegationExpression(parseExpression(context.expressionAfterUnaryOperator));
@@ -1672,14 +1676,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (context.OPERATOR_OR() != null) {
         return new LogicOrExpression(leftExpression, rightExpression);
       }
+      throw new UnsupportedOperationException();
     }
 
-    if (context.functionName() != null) {
-      return parseFunctionExpression(context);
-    }
-
-    if (context.unaryBeforeRegularExpression != null) {
-      return parseRegularExpression(context);
+    if (context.unaryBeforeRegularOrLikeExpression != null) {
+      if (context.REGEXP() != null) {
+        return parseRegularExpression(context);
+      }
+      if (context.LIKE() != null) {
+        return parseLikeExpression(context);
+      }
+      throw new UnsupportedOperationException();
     }
 
     if (context.unaryBeforeInExpression != null) {
@@ -1723,11 +1730,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private Expression parseRegularExpression(ExpressionContext context) {
-    return null;
+    throw new UnsupportedOperationException();
+  }
+
+  private Expression parseLikeExpression(ExpressionContext context) {
+    throw new UnsupportedOperationException();
   }
 
   private Expression parseInExpression(ExpressionContext context) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   private Expression parseConstantOperand(ConstantContext constantContext) {
