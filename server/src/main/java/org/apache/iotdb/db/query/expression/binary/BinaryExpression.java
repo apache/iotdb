@@ -300,7 +300,7 @@ public abstract class BinaryExpression extends Expression {
   protected abstract String operator();
 
   @Override
-  protected void serialize(ByteBuffer byteBuffer) {
+  public void serialize(ByteBuffer byteBuffer) {
     Expression.serialize(leftExpression, byteBuffer);
     Expression.serialize(rightExpression, byteBuffer);
   }

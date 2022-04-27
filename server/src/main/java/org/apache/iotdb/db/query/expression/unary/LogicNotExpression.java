@@ -205,7 +205,7 @@ public class LogicNotExpression extends Expression {
   }
 
   @Override
-  protected void serialize(ByteBuffer byteBuffer) {
+  public void serialize(ByteBuffer byteBuffer) {
     Expression.serialize(expression, byteBuffer);
   }
 }

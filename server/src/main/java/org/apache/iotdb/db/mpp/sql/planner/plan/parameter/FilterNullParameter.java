@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.parameter;
 
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -65,7 +64,7 @@ public class FilterNullParameter {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<Expression> filterNullColumns = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      filterNullColumns.add(ExpressionType.deserialize(byteBuffer));
+      filterNullColumns.add(Expression.deserialize(byteBuffer));
     }
     return new FilterNullParameter(filterNullPolicy, filterNullColumns);
   }

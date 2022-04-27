@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.parameter;
 
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -85,7 +84,7 @@ public class AggregationDescriptor {
     int inputExpressionsSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<Expression> inputExpressions = new ArrayList<>();
     while (inputExpressionsSize > 0) {
-      inputExpressions.add(ExpressionType.deserialize(byteBuffer));
+      inputExpressions.add(Expression.deserialize(byteBuffer));
       inputExpressionsSize--;
     }
     return new AggregationDescriptor(aggregationType, step, inputExpressions);

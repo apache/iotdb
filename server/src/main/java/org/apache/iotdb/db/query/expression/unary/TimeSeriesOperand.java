@@ -172,7 +172,7 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  protected void serialize(ByteBuffer byteBuffer) {
+  public void serialize(ByteBuffer byteBuffer) {
     path.serialize(byteBuffer);
   }
 }

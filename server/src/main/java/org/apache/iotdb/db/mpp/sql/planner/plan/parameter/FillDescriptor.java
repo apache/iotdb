@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.parameter;
 
 import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -46,7 +45,7 @@ public class FillDescriptor {
 
   public static FillDescriptor deserialize(ByteBuffer byteBuffer) {
     FillPolicy fillPolicy = FillPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    Expression expression = ExpressionType.deserialize(byteBuffer);
+    Expression expression = Expression.deserialize(byteBuffer);
     return new FillDescriptor(fillPolicy, expression);
   }
 }

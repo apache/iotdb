@@ -23,7 +23,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ExpressionType;
 
 import com.google.common.collect.ImmutableList;
 
@@ -89,7 +88,7 @@ public class FilterNode extends ProcessNode {
   }
 
   public static FilterNode deserialize(ByteBuffer byteBuffer) {
-    Expression predicate = ExpressionType.deserialize(byteBuffer);
+    Expression predicate = Expression.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new FilterNode(planNodeId, predicate);
   }

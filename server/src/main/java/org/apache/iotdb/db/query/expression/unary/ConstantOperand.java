@@ -157,7 +157,7 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
-  protected void serialize(ByteBuffer byteBuffer) {
+  public void serialize(ByteBuffer byteBuffer) {
     dataType.serializeTo(byteBuffer);
     ReadWriteIOUtils.write(valueString, byteBuffer);
   }
