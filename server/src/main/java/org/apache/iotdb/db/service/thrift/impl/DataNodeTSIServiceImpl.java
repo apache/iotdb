@@ -287,7 +287,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException("error coed: " + result.status);
+        throw new RuntimeException("error code: " + result.status);
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(id);
