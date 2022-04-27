@@ -25,32 +25,30 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.commons.lang3.Validate;
-
 import java.nio.ByteBuffer;
-import java.util.regex.Pattern;
 
-public class RegularExpression extends UnaryExpression {
+public class LikeExpression extends UnaryExpression {
 
-  private final String patternString;
-  private final Pattern pattern;
+  private final String pattern;
 
-  public RegularExpression(Expression expression, String patternString) {
+  public LikeExpression(Expression expression, String pattern) {
     super(expression);
-    this.patternString = patternString;
-    pattern = Pattern.compile(patternString);
-  }
-
-  public RegularExpression(Expression expression, String patternString, Pattern pattern) {
-    super(expression);
-    this.patternString = patternString;
     this.pattern = pattern;
   }
 
-  public RegularExpression(ByteBuffer byteBuffer) {
+  public LikeExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
-    patternString = ReadWriteIOUtils.readString(byteBuffer);
-    pattern = Pattern.compile(Validate.notNull(patternString));
+    pattern = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  protected String getExpressionStringInternal() {
+    return expression + " LIKE " + pattern;
+  }
+
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.LIKE;
   }
 
   @Override
@@ -60,22 +58,12 @@ public class RegularExpression extends UnaryExpression {
 
   @Override
   protected Expression constructExpression(Expression childExpression) {
-    return new RegularExpression(childExpression, patternString, pattern);
-  }
-
-  @Override
-  protected String getExpressionStringInternal() {
-    return expression + " REGEXP " + patternString;
-  }
-
-  @Override
-  public ExpressionType getExpressionType() {
-    return ExpressionType.REGEXP;
+    return new LikeExpression(childExpression, pattern);
   }
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(pattern, byteBuffer);
   }
 }

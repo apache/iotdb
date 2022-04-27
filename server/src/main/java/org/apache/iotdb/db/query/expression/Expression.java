@@ -42,6 +42,8 @@ import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.InExpression;
+import org.apache.iotdb.db.query.expression.unary.LikeExpression;
 import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
@@ -292,13 +294,15 @@ public abstract class Expression {
         break;
 
       case 13:
-        throw new UnsupportedOperationException();
+        expression = new LikeExpression(byteBuffer);
+        break;
       case 14:
         expression = new RegularExpression(byteBuffer);
         break;
 
       case 15:
-        throw new UnsupportedOperationException();
+        expression = new InExpression(byteBuffer);
+        break;
 
       case 16:
         expression = new LogicAndExpression(byteBuffer);
