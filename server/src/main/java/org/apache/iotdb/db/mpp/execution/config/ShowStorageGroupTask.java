@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.db.mpp.execution.config;
 
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
+import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -36,6 +39,8 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -54,9 +59,20 @@ public class ShowStorageGroupTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TsBlock tsBlock = null;
+    List<String> storageGroupPaths = new ArrayList<>();
     if (config.isClusterMode()) {
-      // TODO send rpc to config node
+      List<String> storageGroupPathPattern =
+          Arrays.asList(showStorageGroupStatement.getPathPattern().getNodes());
+      ConfigNodeClient client = null;
+      try {
+        client = new ConfigNodeClient();
+        TStorageGroupSchemaResp resp =
+            client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
+        storageGroupPaths = new ArrayList<>(resp.getStorageGroupSchemaMap().keySet());
+      } catch (IoTDBConnectionException | BadNodeUrlException e) {
+        LOGGER.error("Failed to connect to config node.");
+        future.setException(e);
+      }
     } else {
       try {
         List<PartialPath> partialPaths =
@@ -64,22 +80,21 @@ public class ShowStorageGroupTask implements IConfigTask {
                 .getMatchedStorageGroups(
                     showStorageGroupStatement.getPathPattern(),
                     showStorageGroupStatement.isPrefixPath());
-        tsBlock = createTSBlock(partialPaths);
+        for (PartialPath partialPath : partialPaths) {
+          storageGroupPaths.add(partialPath.getFullPath());
+        }
       } catch (MetadataException e) {
         future.setException(e);
       }
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock));
     }
-    return future;
-  }
-
-  private TsBlock createTSBlock(List<PartialPath> partialPaths) {
+    // build TSBlock
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
-    for (PartialPath partialPath : partialPaths) {
+    for (String storageGroupPath : storageGroupPaths) {
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(new Binary(partialPath.getFullPath()));
+      builder.getColumnBuilder(0).writeBinary(new Binary(storageGroupPath));
       builder.declarePosition();
     }
-    return builder.build();
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build()));
+    return future;
   }
 }
