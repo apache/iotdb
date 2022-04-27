@@ -499,7 +499,7 @@ public class IoTDBConfig {
   /** indicate whether current mode is cluster */
   private boolean isClusterMode = false;
 
-  /** the data node id for cluster mode */
+  /** the data node id for cluster mode, the default value -1 should be changed after join cluster */
   private int dataNodeId = -1;
 
   /** Replace implementation class of influxdb protocol service */
