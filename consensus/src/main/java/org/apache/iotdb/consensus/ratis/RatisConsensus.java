@@ -413,6 +413,7 @@ class RatisConsensus implements IConsensus {
       }
       // TODO tuning for timeoutMs
       reply = client.getRaftClient().admin().transferLeadership(newRaftLeader.getId(), 2000);
+      client.returnSelf();
     } catch (IOException e) {
       return failed(new RatisRequestFailedException(e));
     }
@@ -517,7 +518,7 @@ class RatisConsensus implements IConsensus {
       SyncRatisClient client = getRaftClient(newGroupConf);
       reply =
           client.getRaftClient().admin().setConfiguration(new ArrayList<>(newGroupConf.getPeers()));
-      client.close();
+      client.returnSelf();
     } catch (IOException e) {
       throw new RatisRequestFailedException(e);
     }
