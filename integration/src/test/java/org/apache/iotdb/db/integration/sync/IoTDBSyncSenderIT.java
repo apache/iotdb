@@ -418,9 +418,6 @@ public class IoTDBSyncSenderIT {
       startPipe();
 
       Thread.sleep(1000L); // check
-      //      for (PipeData pipeData : transportClient.getPipeDataList()) {
-      //        System.out.println(pipeData);
-      //      }
       checkResult(
           Arrays.asList("schemaWithDel3InHistory", "ins1", "ins2", "ins3WithDel3InHistory"),
           transportClient.getPipeDataList());
@@ -456,9 +453,6 @@ public class IoTDBSyncSenderIT {
       stopPipe();
 
       Thread.sleep(1000L); // check
-      //      for (PipeData pipeData : transportClient.getPipeDataList()) {
-      //        System.out.println(pipeData);
-      //      }
       checkResult(
           Arrays.asList("schema", "ins1", "ins2", "del1", "ins3", "del2", "del3"),
           transportClient.getPipeDataList());
