@@ -19,10 +19,13 @@
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -113,32 +116,32 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case SetTimePartitionInterval:
           req = new SetTimePartitionIntervalReq();
           break;
-        case GetStorageGroup:
-          req = new GetOrCountStorageGroupReq(ConfigRequestType.GetStorageGroup);
-          break;
         case CountStorageGroup:
-          req = new GetOrCountStorageGroupReq(ConfigRequestType.CountStorageGroup);
+          req = new CountStorageGroupReq();
+          break;
+        case GetStorageGroup:
+          req = new GetStorageGroupReq();
           break;
         case CreateRegions:
           req = new CreateRegionsReq();
           break;
         case GetSchemaPartition:
-          req = new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetSchemaPartition);
+          req = new GetSchemaPartitionReq();
           break;
         case CreateSchemaPartition:
           req = new CreateSchemaPartitionReq();
           break;
         case GetOrCreateSchemaPartition:
-          req = new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetOrCreateSchemaPartition);
+          req = new GetOrCreateSchemaPartitionReq();
           break;
         case GetDataPartition:
-          req = new GetOrCreateDataPartitionReq(ConfigRequestType.GetDataPartition);
+          req = new GetDataPartitionReq();
           break;
         case CreateDataPartition:
           req = new CreateDataPartitionReq();
           break;
         case GetOrCreateDataPartition:
-          req = new GetOrCreateDataPartitionReq(ConfigRequestType.GetOrCreateDataPartition);
+          req = new GetOrCreateDataPartitionReq();
           break;
         case LIST_USER:
         case LIST_ROLE:

@@ -28,8 +28,8 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -126,7 +126,7 @@ public class PartitionInfo {
    * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(GetOrCreateSchemaPartitionReq physicalPlan) {
+  public DataSet getSchemaPartition(GetSchemaPartitionReq physicalPlan) {
     SchemaPartitionResp schemaPartitionResp = new SchemaPartitionResp();
     schemaPartitionReadWriteLock.readLock().lock();
 
@@ -192,7 +192,7 @@ public class PartitionInfo {
    * @param physicalPlan DataPartitionPlan with partitionSlotsMap
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
-  public DataSet getDataPartition(GetOrCreateDataPartitionReq physicalPlan) {
+  public DataSet getDataPartition(GetDataPartitionReq physicalPlan) {
     DataPartitionResp dataPartitionResp = new DataPartitionResp();
     dataPartitionReadWriteLock.readLock().lock();
 

@@ -22,7 +22,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -209,7 +210,7 @@ public class ClusterSchemaInfo {
   }
 
   /** @return The number of matched StorageGroups by the specific StorageGroup pattern */
-  public CountStorageGroupResp countMatchedStorageGroups(GetOrCountStorageGroupReq req) {
+  public CountStorageGroupResp countMatchedStorageGroups(CountStorageGroupReq req) {
     CountStorageGroupResp result = new CountStorageGroupResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
@@ -228,7 +229,7 @@ public class ClusterSchemaInfo {
   }
 
   /** @return All StorageGroupSchemas that matches to the specific StorageGroup pattern */
-  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetOrCountStorageGroupReq req) {
+  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetStorageGroupReq req) {
     StorageGroupSchemaResp result = new StorageGroupSchemaResp();
     storageGroupReadWriteLock.readLock().lock();
     try {

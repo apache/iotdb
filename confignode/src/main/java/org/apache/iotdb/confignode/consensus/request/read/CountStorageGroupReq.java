@@ -26,16 +26,25 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
-public class GetOrCountStorageGroupReq extends ConfigRequest {
+public class CountStorageGroupReq extends ConfigRequest {
 
   private String[] storageGroupPattern;
 
-  public GetOrCountStorageGroupReq(ConfigRequestType type) {
+  public CountStorageGroupReq() {
+    super(ConfigRequestType.CountStorageGroup);
+  }
+
+  public CountStorageGroupReq(ConfigRequestType type) {
     super(type);
   }
 
-  public GetOrCountStorageGroupReq(ConfigRequestType type, List<String> storageGroupPattern) {
-    this(type);
+  public CountStorageGroupReq(List<String> storageGroupPattern) {
+    this();
+    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
+  }
+
+  public CountStorageGroupReq(ConfigRequestType type, List<String> storageGroupPattern) {
+    super(type);
     this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
   }
 
@@ -66,7 +75,7 @@ public class GetOrCountStorageGroupReq extends ConfigRequest {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetOrCountStorageGroupReq that = (GetOrCountStorageGroupReq) o;
+    CountStorageGroupReq that = (CountStorageGroupReq) o;
     return Arrays.equals(storageGroupPattern, that.storageGroupPattern);
   }
 
