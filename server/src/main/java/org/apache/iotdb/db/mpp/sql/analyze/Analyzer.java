@@ -546,8 +546,8 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitCountDevices(CountDevicesStatement countDevicesStatement,
-        MPPQueryContext context) {
+    public Analysis visitCountDevices(
+        CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(countDevicesStatement);
 
@@ -559,45 +559,37 @@ public class Analyzer {
                       .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)));
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-      analysis.setRespDatasetHeader(
-          HeaderConstant.countDevicesHeader);
+      analysis.setRespDatasetHeader(HeaderConstant.countDevicesHeader);
       return analysis;
     }
 
     @Override
-    public Analysis visitCountTimeSeries(CountTimeSeriesStatement countTimeSeriesStatement,
-        MPPQueryContext context) {
+    public Analysis visitCountTimeSeries(
+        CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(countTimeSeriesStatement);
 
       SchemaPartition schemaPartitionInfo =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(
-                  countTimeSeriesStatement
-                      .getPartialPath()));
+              new PathPatternTree(countTimeSeriesStatement.getPartialPath()));
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-      analysis.setRespDatasetHeader(
-          HeaderConstant.countTimeSeriesHeader);
+      analysis.setRespDatasetHeader(HeaderConstant.countTimeSeriesHeader);
       return analysis;
     }
 
     @Override
     public Analysis visitCountLevelTimeSeries(
-        CountLevelTimeSeriesStatement countLevelTimeSeriesStatement,
-        MPPQueryContext context) {
+        CountLevelTimeSeriesStatement countLevelTimeSeriesStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(countLevelTimeSeriesStatement);
 
       SchemaPartition schemaPartitionInfo =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(
-                  countLevelTimeSeriesStatement
-                      .getPartialPath()));
+              new PathPatternTree(countLevelTimeSeriesStatement.getPartialPath()));
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-      analysis.setRespDatasetHeader(
-          HeaderConstant.countLevelTimeSeriesHeader);
+      analysis.setRespDatasetHeader(HeaderConstant.countLevelTimeSeriesHeader);
       return analysis;
     }
   }

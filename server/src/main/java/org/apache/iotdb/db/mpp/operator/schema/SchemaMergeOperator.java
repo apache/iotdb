@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.operator.schema;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import java.util.List;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import com.google.common.util.concurrent.ListenableFuture;
+
+import java.util.List;
 
 public class SchemaMergeOperator implements ProcessOperator {
   private final PlanNodeId planNodeId;

@@ -56,7 +56,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class CountMergeOperatorTest {
-  private static final String META_SCAN_OPERATOR_TEST_SG = "root.MetaScanOperatorTest";
+  private static final String COUNT_MERGE_OPERATOR_TEST_SG = "root.CountMergeOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -66,7 +66,7 @@ public class CountMergeOperatorTest {
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(
-        measurementSchemas, deviceIds, seqResources, unSeqResources, META_SCAN_OPERATOR_TEST_SG);
+        measurementSchemas, deviceIds, seqResources, unSeqResources, COUNT_MERGE_OPERATOR_TEST_SG);
   }
 
   @After
@@ -90,7 +90,7 @@ public class CountMergeOperatorTest {
       OperatorContext operatorContext =
           fragmentInstanceContext.addOperatorContext(
               1, planNodeId, TimeSeriesCountOperator.class.getSimpleName());
-      PartialPath partialPath = new PartialPath(META_SCAN_OPERATOR_TEST_SG);
+      PartialPath partialPath = new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG);
       ISchemaRegion schemaRegion =
           SchemaEngine.getInstance()
               .getSchemaRegion(
@@ -111,7 +111,7 @@ public class CountMergeOperatorTest {
           new TimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device1.*"),
+              new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG + ".device1.*"),
               false);
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
@@ -145,7 +145,7 @@ public class CountMergeOperatorTest {
           SchemaEngine.getInstance()
               .getSchemaRegion(
                   LocalConfigNode.getInstance()
-                      .getBelongedSchemaRegionId(new PartialPath(META_SCAN_OPERATOR_TEST_SG)));
+                      .getBelongedSchemaRegionId(new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG)));
       operatorContext
           .getInstanceContext()
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
@@ -153,14 +153,14 @@ public class CountMergeOperatorTest {
           new LevelTimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              new PartialPath(META_SCAN_OPERATOR_TEST_SG),
+              new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG),
               true,
               2);
       LevelTimeSeriesCountOperator timeSeriesCountOperator2 =
           new LevelTimeSeriesCountOperator(
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              new PartialPath(META_SCAN_OPERATOR_TEST_SG + ".device2"),
+              new PartialPath(COUNT_MERGE_OPERATOR_TEST_SG + ".device2"),
               true,
               2);
       CountMergeOperator countMergeOperator =
@@ -176,8 +176,8 @@ public class CountMergeOperatorTest {
       assertNotNull(tsBlock);
       for (int i = 0; i < 10; i++) {
         String path = tsBlock.getColumn(0).getBinary(i).getStringValue();
-        assertTrue(path.startsWith(META_SCAN_OPERATOR_TEST_SG + ".device"));
-        if (path.equals(META_SCAN_OPERATOR_TEST_SG + ".device2")) {
+        assertTrue(path.startsWith(COUNT_MERGE_OPERATOR_TEST_SG + ".device"));
+        if (path.equals(COUNT_MERGE_OPERATOR_TEST_SG + ".device2")) {
           assertEquals(20, tsBlock.getColumn(1).getInt(i));
         } else {
           assertEquals(10, tsBlock.getColumn(1).getInt(i));

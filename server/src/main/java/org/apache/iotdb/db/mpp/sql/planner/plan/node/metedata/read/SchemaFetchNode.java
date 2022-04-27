@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import java.nio.ByteBuffer;
-import java.util.List;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -28,6 +26,9 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.nio.ByteBuffer;
+import java.util.List;
 
 public class SchemaFetchNode extends SchemaScanNode {
 

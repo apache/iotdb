@@ -43,7 +43,8 @@ public class DeviceSchemaScanNodeSerdeTest {
   public void testSerializeAndDeserialize() throws IllegalPathException {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("offset"), 10);
     LimitNode limitNode = new LimitNode(new PlanNodeId("limit"), 10);
-    SeriesSchemaMergeNode schemaMergeNode = new SeriesSchemaMergeNode(new PlanNodeId("schemaMerge"));
+    SeriesSchemaMergeNode schemaMergeNode =
+        new SeriesSchemaMergeNode(new PlanNodeId("schemaMerge"));
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     DevicesSchemaScanNode devicesSchemaScanNode =
         new DevicesSchemaScanNode(

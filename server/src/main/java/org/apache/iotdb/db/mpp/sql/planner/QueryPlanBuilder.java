@@ -340,7 +340,8 @@ public class QueryPlanBuilder {
   }
 
   public void planCountMerge() {
-    CountSchemaMergeNode countMergeNode = new CountSchemaMergeNode(context.getQueryId().genPlanNodeId());
+    CountSchemaMergeNode countMergeNode =
+        new CountSchemaMergeNode(context.getQueryId().genPlanNodeId());
     countMergeNode.addChild(this.getRoot());
     this.root = countMergeNode;
   }
