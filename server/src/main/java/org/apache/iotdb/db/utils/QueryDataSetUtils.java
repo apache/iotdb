@@ -192,9 +192,6 @@ public class QueryDataSetUtils {
 
     int rowCount = 0;
     int[] valueOccupation = new int[columnNum];
-
-    // used to record a bitmap for every 8 points
-    int bitmap = 0;
     while (rowCount < fetchSize) {
       TsBlock tsBlock = queryExecution.getBatchResult();
       if (tsBlock == null) {
@@ -212,13 +209,13 @@ public class QueryDataSetUtils {
         // get DataOutputStream for current value column and its bitmap
         DataOutputStream dataOutputStream = dataOutputStreams[2 * k + 1];
         DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (k + 1)];
-
+        // used to record a bitmap for every 8 points
+        int bitmap = 0;
         Column column = tsBlock.getColumn(k);
         TSDataType type = column.getDataType();
         switch (type) {
           case INT32:
             for (int i = 0; i < currentCount; i++) {
-              rowCount++;
               if (column.isNull(i)) {
                 bitmap = bitmap << 1;
               } else {
@@ -226,7 +223,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeInt(column.getInt(i));
                 valueOccupation[k] += 4;
               }
-              if (rowCount != 0 && rowCount % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -235,7 +232,6 @@ public class QueryDataSetUtils {
             break;
           case INT64:
             for (int i = 0; i < currentCount; i++) {
-              rowCount++;
               if (column.isNull(i)) {
                 bitmap = bitmap << 1;
               } else {
@@ -243,7 +239,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeLong(column.getLong(i));
                 valueOccupation[k] += 8;
               }
-              if (rowCount != 0 && rowCount % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -252,7 +248,6 @@ public class QueryDataSetUtils {
             break;
           case FLOAT:
             for (int i = 0; i < currentCount; i++) {
-              rowCount++;
               if (column.isNull(i)) {
                 bitmap = bitmap << 1;
               } else {
@@ -260,7 +255,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeFloat(column.getFloat(i));
                 valueOccupation[k] += 4;
               }
-              if (rowCount != 0 && rowCount % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -269,7 +264,6 @@ public class QueryDataSetUtils {
             break;
           case DOUBLE:
             for (int i = 0; i < currentCount; i++) {
-              rowCount++;
               if (column.isNull(i)) {
                 bitmap = bitmap << 1;
               } else {
@@ -277,7 +271,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeDouble(column.getDouble(i));
                 valueOccupation[k] += 8;
               }
-              if (rowCount != 0 && rowCount % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -286,7 +280,6 @@ public class QueryDataSetUtils {
             break;
           case BOOLEAN:
             for (int i = 0; i < currentCount; i++) {
-              rowCount++;
               if (column.isNull(i)) {
                 bitmap = bitmap << 1;
               } else {
@@ -294,7 +287,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.writeBoolean(column.getBoolean(i));
                 valueOccupation[k] += 1;
               }
-              if (rowCount != 0 && rowCount % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -303,7 +296,6 @@ public class QueryDataSetUtils {
             break;
           case TEXT:
             for (int i = 0; i < currentCount; i++) {
-              rowCount++;
               if (column.isNull(i)) {
                 bitmap = bitmap << 1;
               } else {
@@ -313,7 +305,7 @@ public class QueryDataSetUtils {
                 dataOutputStream.write(binary.getValues());
                 valueOccupation[k] = valueOccupation[k] + 4 + binary.getLength();
               }
-              if (rowCount != 0 && rowCount % 8 == 0) {
+              if (i != 0 && i % 8 == 0) {
                 dataBitmapOutputStream.writeByte(bitmap);
                 // we should clear the bitmap every 8 points
                 bitmap = 0;
@@ -324,15 +316,13 @@ public class QueryDataSetUtils {
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.", type));
         }
+        // feed the remaining bitmap
+        int remaining = currentCount % 8;
+        if (remaining != 0) {
+          dataBitmapOutputStream.writeByte(bitmap << (8 - remaining));
+        }
       }
-    }
-    // feed the remaining bitmap
-    int remaining = rowCount % 8;
-    for (int k = 0; k < columnNum; k++) {
-      if (remaining != 0) {
-        DataOutputStream dataBitmapOutputStream = dataOutputStreams[2 * (k + 1)];
-        dataBitmapOutputStream.writeByte(bitmap << (8 - remaining));
-      }
+      rowCount += currentCount;
     }
 
     // calculate the time buffer size
