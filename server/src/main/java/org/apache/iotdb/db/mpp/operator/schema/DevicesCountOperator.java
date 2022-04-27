@@ -21,15 +21,13 @@ package org.apache.iotdb.db.mpp.operator.schema;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-
-import java.util.Collections;
 
 public class DevicesCountOperator implements SourceOperator {
   private final PlanNodeId sourceId;
@@ -63,7 +61,7 @@ public class DevicesCountOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(HeaderConstant.countDevicesHeader.getRespDataTypes());
     int count = 0;
     try {
       count =
