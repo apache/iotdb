@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -122,7 +123,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
       // carry out the compaction
       performer.setSourceFiles(selectedTsFileResourceList);
-      performer.setTargetFiles(Collections.singletonList(targetTsFileResource));
+      // As elements in targetFiles may be removed in ReadPointCompactionPerformer, we should use a
+      // mutable list instead of Collections.singletonList()
+      performer.setTargetFiles(new ArrayList<>(Collections.singletonList(targetTsFileResource)));
       performer.perform();
 
       CompactionUtils.moveTargetFile(
@@ -166,8 +169,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         isHoldingWriteLock[i] = true;
       }
 
-      if (targetTsFileResource.getTsFile().length()
-          < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
+      if (targetTsFileResource.getTsFile().exists()
+          && targetTsFileResource.getTsFile().length()
+              < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
         // the file size is smaller than magic string and version number
         throw new RuntimeException(
             String.format(
@@ -195,9 +199,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (Throwable throwable) {
       LOGGER.error(
-          "{} [Compaction] Throwable is caught during execution of SizeTieredCompaction, {}",
+          "{} [Compaction] Throwable is caught during execution of SizeTieredCompaction.",
           fullStorageGroupName,
-          throwable.getMessage());
+          throwable);
       LOGGER.warn("{} [Compaction] Start to handle exception", fullStorageGroupName);
       if (throwable instanceof InterruptedException) {
         Thread.currentThread().interrupt();

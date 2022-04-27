@@ -72,7 +72,6 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       doCompaction();
     } catch (InterruptedException e) {
       LOGGER.warn("Current task is interrupted");
-      Thread.interrupted();
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
@@ -81,7 +80,6 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       timeCost = System.currentTimeMillis() - startTime;
       finished = true;
     }
-
     return null;
   }
 
