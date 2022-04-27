@@ -44,8 +44,8 @@ from iotdb.Session import Session
 
 ip = "127.0.0.1"
 port_ = "6667"
-username_ = 'root'
-password_ = 'root'
+username_ = "root"
+password_ = "root"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 zone = session.get_time_zone()
@@ -99,20 +99,20 @@ session.delete_storage_groups(group_name_lst)
 
 ```python
 session.create_time_series(ts_path, data_type, encoding, compressor,
-        props=None, tags=None, attributes=None, alias=None)
+    props=None, tags=None, attributes=None, alias=None)
       
 session.create_multi_time_series(
-            ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
-            props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
-    )
+    ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
+    props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
+)
 ```
 
 * 创建对齐时间序列
 
 ```python
 session.create_aligned_time_series(
-            device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
-    )
+    device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+)
 ```
 
 注意：目前**暂不支持**使用传感器别名。
@@ -158,13 +158,12 @@ session.insert_tablet(tablet_)
 ```
 * Numpy Tablet
 
-相较于普通 Tablet，Numpy Tablet 使用 [numpy ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 来记录数值型数据。
+相较于普通 Tablet，Numpy Tablet 使用 [numpy.ndarray](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html) 来记录数值型数据。
 内存占用和序列化耗时会降低很多，写入效率也会有很大提升。
 
 **注意**
-1. Tablet 中的每一列值记录为一个 ndarray
-2. ndarray 需要为大端类型的数据类型，具体可参考下面的例子
-3. TEXT 类型数据不支持 ndarray
+1. Tablet 中的每一列时间戳和值记录为一个 ndarray
+2. ndarray 推荐使用如下面例子中的特定的 dtype，如果不使用，不会影响正确性。
 
 ```python
 data_types_ = [
@@ -176,16 +175,16 @@ data_types_ = [
     TSDataType.TEXT,
 ]
 np_values_ = [
-    np.array([False, True, False, True], np.dtype('>?')),
-    np.array([10, 100, 100, 0], np.dtype('>i4')),
-    np.array([11, 11111, 1, 0], np.dtype('>i8')),
-    np.array([1.1, 1.25, 188.1, 0], np.dtype('>f4')),
-    np.array([10011.1, 101.0, 688.25, 6.25], np.dtype('>f8')),
-    ["test01", "test02", "test03", "test04"],
+    np.array([False, True, False, True], TSDataType.BOOLEAN.np_dtype()),
+    np.array([10, 100, 100, 0], TSDataType.INT32.np_dtype()),
+    np.array([11, 11111, 1, 0], TSDataType.INT64.np_dtype()),
+    np.array([1.1, 1.25, 188.1, 0], TSDataType.FLOAT.np_dtype()),
+    np.array([10011.1, 101.0, 688.25, 6.25], TSDataType.DOUBLE.np_dtype()),
+    np.array(["test01", "test02", "test03", "test04"], TSDataType.TEXT.np_dtype()),
 ]
-np_timestamps_ = np.array([1, 2, 3, 4], np.dtype('>i8'))
+np_timestamps_ = np.array([1, 2, 3, 4], TSDataType.INT64.np_dtype())
 np_tablet_ = NumpyTablet(
-    "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
+  "root.sg_test_01.d_02", measurements_, data_types_, np_values_, np_timestamps_
 )
 session.insert_tablet(np_tablet_)
 ```
@@ -262,8 +261,8 @@ from iotdb.Session import Session
 
 ip = "127.0.0.1"
 port_ = "6667"
-username_ = 'root'
-password_ = 'root'
+username_ = "root"
+password_ = "root"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 result = session.execute_query_statement("SELECT ** FROM root")
@@ -288,7 +287,7 @@ class MyTestCase(unittest.TestCase):
 
     def test_something(self):
         with IoTDBContainer() as c:
-            session = Session('localhost', c.get_exposed_port(6667), 'root', 'root')
+            session = Session("localhost", c.get_exposed_port(6667), "root", "root")
             session.open(False)
             result = session.execute_query_statement("SHOW TIMESERIES")
             print(result)
@@ -340,8 +339,8 @@ from iotdb.Session import Session
 
 ip = "127.0.0.1"
 port_ = "6667"
-username_ = 'root'
-password_ = 'root'
+username_ = "root"
+password_ = "root"
 session = Session(ip, port_, username_, password_)
 session.open(False)
 zone = session.get_time_zone()

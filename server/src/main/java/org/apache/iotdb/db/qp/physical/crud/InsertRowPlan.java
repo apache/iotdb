@@ -342,8 +342,7 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
-    stream.writeInt(
-        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    stream.writeInt(measurements.length - getFailedMeasurementNumber());
 
     for (String m : measurements) {
       if (m != null) {
@@ -352,7 +351,7 @@ public class InsertRowPlan extends InsertPlan {
     }
 
     try {
-      stream.writeInt(dataTypes.length);
+      stream.writeInt(values.length - getFailedMeasurementNumber());
       putValues(stream);
     } catch (QueryProcessException e) {
       throw new IOException(e);
@@ -368,7 +367,6 @@ public class InsertRowPlan extends InsertPlan {
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
       if (values[i] == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, outputStream);
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -407,7 +405,6 @@ public class InsertRowPlan extends InsertPlan {
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
       if (values[i] == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, buffer);
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -493,8 +490,7 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   void serializeMeasurementsAndValues(ByteBuffer buffer) {
-    buffer.putInt(
-        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    buffer.putInt(measurements.length - getFailedMeasurementNumber());
 
     for (String measurement : measurements) {
       if (measurement != null) {
@@ -502,7 +498,7 @@ public class InsertRowPlan extends InsertPlan {
       }
     }
     try {
-      buffer.putInt(dataTypes.length);
+      buffer.putInt(values.length - getFailedMeasurementNumber());
       putValues(buffer);
     } catch (QueryProcessException e) {
       logger.error("Failed to serialize values for {}", this, e);

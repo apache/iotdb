@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.metrics.micrometer.reporter;
 
-import io.micrometer.jmx.JmxConfig;
-
-public interface IoTDBJmxConfig extends JmxConfig {
-  IoTDBJmxConfig DEFAULT = k -> null;
+public interface JmxConfig extends io.micrometer.jmx.JmxConfig {
+  JmxConfig DEFAULT = k -> null;
 
   @Override
   default String domain() {

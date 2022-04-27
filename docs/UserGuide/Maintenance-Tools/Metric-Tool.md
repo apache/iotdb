@@ -231,11 +231,17 @@ metricLevel: IMPORTANT
 predefinedMetrics:
   - JVM
 
-# Period time of push, only used by IoTDB Reporter
-pushPeriodInSecond: 5
-
 # The http server's port for prometheus exporter to get metric data.
 prometheusExporterPort: 9091
+
+# The config of iotdb reporter
+ioTDBReporterConfig:
+  host: 127.0.0.1
+  port: 6667
+  username: root
+  password: root
+  database: _metric
+  pushPeriodInSecond: 15
 ```
 
 Then you can get metrics data as follows
@@ -321,8 +327,14 @@ The following documents may help you have a good journey with Prometheus and Gra
 
 [Grafana query metrics from Prometheus](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
-Here are two demo pictures of IoTDB's metrics data in Grafana.
+### 5.3. Apache IoTDB Dashboard
+We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as follows:
 
-![metrics_demo_1](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/metrics_demo_1.png)
+![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-![metrics_demo_2](http://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/metrics_demo_2.png)
+How to get Apache IoTDB Dashboard:
+
+1. You can obtain the json files of Dashboards corresponding to different iotdb versions in the grafana-metrics-example folder.
+2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search for `Apache IoTDB Dashboard` and use
+
+When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target data source for Apache IoTDB Dashboard.

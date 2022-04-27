@@ -32,7 +32,6 @@
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-interface</artifactId>
             <version>0.13.1-SNAPSHOT</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
@@ -42,7 +41,7 @@
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-jmx</artifactId>
-            <version>4.1.2</version>
+            <version>${metrics.version}</version>
         </dependency>
         <dependency>
             <groupId>com.sun.jersey</groupId>

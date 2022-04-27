@@ -232,11 +232,17 @@ metricLevel: IMPORTANT
 predefinedMetrics:
   - JVM
 
-# 数据推送时间，该参数只对 IoTDB Reporter 生效
-pushPeriodInSecond: 5
-
 # Prometheus Reporter 使用的端口
-prometheusExporterPort: 9091                            
+prometheusExporterPort: 9091
+
+# IoTDB Reporter相关的配置
+ioTDBReporterConfig:
+  host: 127.0.0.1
+  port: 6667
+  username: root
+  password: root
+  database: _metric
+  pushPeriodInSecond: 15
 ```
 
 然后按照下面的操作获取metrics数据
@@ -322,8 +328,14 @@ static_configs:
 
 [Grafana从Prometheus查询数据并绘图的文档](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
-最后是IoTDB的metrics数据在Grafana中显示的效果图：
+### 5.3. Apache IoTDB Dashboard
+我们提供了Apache IoTDB Dashboard，在Grafana中显示的效果图如下所示：
 
-![metrics_demo_1](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/metrics_demo_1.png)
+![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-![metrics_demo_2](http://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/metrics_demo_2.png)
+Apache IoTDB Dashboard的获取方式：
+
+1. 您可以在grafana-metrics-example文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
+2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
+
+在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。

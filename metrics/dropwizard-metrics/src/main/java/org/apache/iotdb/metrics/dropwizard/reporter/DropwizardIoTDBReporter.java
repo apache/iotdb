@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metrics.dropwizard.reporter;
+package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -49,7 +49,8 @@ public class DropwizardIoTDBReporter implements Reporter {
             .prefixedWith("dropwizard:")
             .filter(MetricFilter.ALL)
             .build();
-    ioTDBReporter.start(metricConfig.getPushPeriodInSecond(), TimeUnit.SECONDS);
+    ioTDBReporter.start(
+        metricConfig.getIoTDBReporterConfig().getPushPeriodInSecond(), TimeUnit.SECONDS);
     return true;
   }
 

@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metrics.micrometer.reporter;
+package org.apache.iotdb.metrics.micrometer.reporter;
 
-import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBMeterRegistry;
-import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBRegistryConfig;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;

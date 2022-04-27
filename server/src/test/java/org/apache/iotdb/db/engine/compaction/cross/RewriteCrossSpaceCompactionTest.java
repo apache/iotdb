@@ -612,6 +612,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new AtomicInteger(0));
+    rewriteCrossSpaceCompactionTask.setSourceFilesToCompactionCandidate();
     rewriteCrossSpaceCompactionTask.checkValidAndSetMerging();
     // delete data in source file during compaction
     vsgp.delete(
@@ -721,6 +722,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new AtomicInteger(0));
+    rewriteCrossSpaceCompactionTask.setSourceFilesToCompactionCandidate();
     rewriteCrossSpaceCompactionTask.checkValidAndSetMerging();
     // delete data in source file during compaction
     vsgp.delete(
