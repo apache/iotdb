@@ -286,7 +286,9 @@ public class IoTDBSimpleQueryIT {
       // test set sdt property
       statement.execute(
           "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'="
-              + "'" + compDev + "'");
+              + "'"
+              + compDev
+              + "'");
 
       int[] originalValues = new int[1000];
 

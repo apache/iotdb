@@ -460,7 +460,8 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret.length, count);
 
-      statement.execute("ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3'='v3', 'attr4'='v4'");
+      statement.execute(
+          "ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3'='v3', 'attr4'='v4'");
       hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
@@ -547,7 +548,8 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret.length, count);
 
-      statement.execute("ALTER timeseries root.turbine.d1.s1 UPSERT TAGS('tag3'='v3', 'tag2'='newV2')");
+      statement.execute(
+          "ALTER timeseries root.turbine.d1.s1 UPSERT TAGS('tag3'='v3', 'tag2'='newV2')");
       hasResult = statement.execute("show timeseries where 'tag3'='v3'");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();

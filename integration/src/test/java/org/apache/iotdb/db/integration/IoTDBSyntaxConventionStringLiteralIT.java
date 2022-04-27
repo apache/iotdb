@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-
 import org.apache.iotdb.db.query.udf.builtin.BuiltinFunction;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
@@ -36,7 +35,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -44,7 +42,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
-
 public class IoTDBSyntaxConventionStringLiteralIT {
 
   @Before
@@ -57,38 +54,35 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
-  /**
-   * Legal cases of using StringLiteral with single quote
-   * in insert and select clause.
-   */
+  /** Legal cases of using StringLiteral with single quote in insert and select clause. */
   @Test
   public void testStringLiteralWithSingleQuote() {
     String[] insertData = {
-        "'string'",
-        "'`string`'",
-        "'``string'",
-        "'\"string\"'",
-        "'\"\"string'",
-        "'\\\"string\\\"'",
-        "'''string'",
-        "'\\'string'",
-        "'\\nstring'",
-        "'\\rstring'",
-        "'@#$%^&*()string'",
+      "'string'",
+      "'`string`'",
+      "'``string'",
+      "'\"string\"'",
+      "'\"\"string'",
+      "'\\\"string\\\"'",
+      "'''string'",
+      "'\\'string'",
+      "'\\nstring'",
+      "'\\rstring'",
+      "'@#$%^&*()string'",
     };
 
     String[] resultData = {
-        "string",
-        "`string`",
-        "``string",
-        "\"string\"",
-        "\"\"string",
-        "\"string\"",
-        "'string",
-        "'string",
-        "\nstring",
-        "\rstring",
-        "@#$%^&*()string",
+      "string",
+      "`string`",
+      "``string",
+      "\"string\"",
+      "\"\"string",
+      "\"string\"",
+      "'string",
+      "'string",
+      "\nstring",
+      "\rstring",
+      "@#$%^&*()string",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -128,38 +122,35 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
   }
 
-  /**
-   * Legal cases of using StringLiteral with double quote
-   * in insert and select clause.
-   */
+  /** Legal cases of using StringLiteral with double quote in insert and select clause. */
   @Test
   public void testStringLiteralWithDoubleQuote() {
     String[] insertData = {
-        "\"string\"",
-        "\"`string`\"",
-        "\"``string\"",
-        "\"'string'\"",
-        "\"''string\"",
-        "\"\\'string\\'\"",
-        "\"\"\"string\"",
-        "\"\\\"string\"",
-        "\"\\nstring\"",
-        "\"\\rstring\"",
-        "\"@#$%^&*()string\"",
+      "\"string\"",
+      "\"`string`\"",
+      "\"``string\"",
+      "\"'string'\"",
+      "\"''string\"",
+      "\"\\'string\\'\"",
+      "\"\"\"string\"",
+      "\"\\\"string\"",
+      "\"\\nstring\"",
+      "\"\\rstring\"",
+      "\"@#$%^&*()string\"",
     };
 
     String[] resultData = {
-        "string",
-        "`string`",
-        "``string",
-        "'string'",
-        "''string",
-        "'string'",
-        "\"string",
-        "\"string",
-        "\nstring",
-        "\rstring",
-        "@#$%^&*()string",
+      "string",
+      "`string`",
+      "``string",
+      "'string'",
+      "''string",
+      "'string'",
+      "\"string",
+      "\"string",
+      "\nstring",
+      "\rstring",
+      "@#$%^&*()string",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -199,11 +190,11 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
   }
 
-
   @Test
-  public void testStringLiteralIllegalCase(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:45 no viable alternative at input '(1, string'";
+  public void testStringLiteralIllegalCase() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:45 no viable alternative at input '(1, string'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
@@ -211,14 +202,15 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, string)");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testStringLiteralIllegalCase1(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:45 no viable alternative at input '(1, `string`'";
+  public void testStringLiteralIllegalCase1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:45 no viable alternative at input '(1, `string`'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
@@ -226,14 +218,15 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, `string`)");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testStringLiteralIllegalCase2(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:53 token recognition error at: '')'";
+  public void testStringLiteralIllegalCase2() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:53 token recognition error at: '')'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
@@ -241,14 +234,15 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, ''string')");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testStringLiteralIllegalCase3(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:53 token recognition error at: '\")'";
+  public void testStringLiteralIllegalCase3() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:53 token recognition error at: '\")'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
@@ -256,16 +250,16 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, \"\"string\")");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   /**
-   * LOAD/REMOVE/SETTLE use STRING_LITERAL to represent file path
-   * legal cases are in IoTDBLoadExternalTsfileIT
+   * LOAD/REMOVE/SETTLE use STRING_LITERAL to represent file path legal cases are in
+   * IoTDBLoadExternalTsfileIT
    */
   @Test
-  public void testFilePath(){
+  public void testFilePath() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("LOAD 'path'");
@@ -275,20 +269,21 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   }
 
   @Test
-  public void testFilePath1(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:5 no viable alternative at input 'LOAD path'";
+  public void testFilePath1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:5 no viable alternative at input 'LOAD path'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("LOAD path");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testFilePath2(){
+  public void testFilePath2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("REMOVE 'path'");
@@ -298,20 +293,21 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   }
 
   @Test
-  public void testFilePath3(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:7 mismatched input 'path' expecting STRING_LITERAL";
+  public void testFilePath3() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:7 mismatched input 'path' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("REMOVE path");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testFilePath4(){
+  public void testFilePath4() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SETTLE 'path'");
@@ -321,22 +317,24 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   }
 
   @Test
-  public void testFilePath5(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:7 mismatched input 'path' expecting {ROOT, STRING_LITERAL}";
+  public void testFilePath5() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:7 mismatched input 'path' expecting {ROOT, STRING_LITERAL}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SETTLE path");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testUserPassword(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:17 mismatched input 'test' expecting STRING_LITERAL";
+  public void testUserPassword() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:17 mismatched input 'test' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE USER test 'test'");
@@ -344,14 +342,15 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("CREATE USER test test");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testUserPassword1(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:17 mismatched input '`test`' expecting STRING_LITERAL";
+  public void testUserPassword1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:17 mismatched input '`test`' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE USER test \"test\"");
@@ -359,14 +358,15 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("CREATE USER test `test`");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testTriggerClassName(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:64 mismatched input 'org' expecting {AS, '.'}";
+  public void testTriggerClassName() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:64 mismatched input 'org' expecting {AS, '.'}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // show
@@ -401,15 +401,16 @@ public class IoTDBSyntaxConventionStringLiteralIT {
               + "as org.apache.iotdb.db.engine.trigger.example.Accumulator");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testTriggerClassName1(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:64 mismatched input '`org.apache.iotdb.db.engine.trigger.example.Accumulator`' "
-        + "expecting {AS, '.'}";
+  public void testTriggerClassName1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:64 mismatched input '`org.apache.iotdb.db.engine.trigger.example.Accumulator`' "
+            + "expecting {AS, '.'}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
@@ -418,14 +419,15 @@ public class IoTDBSyntaxConventionStringLiteralIT {
               + "as `org.apache.iotdb.db.engine.trigger.example.Accumulator`");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testUDFClassName(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:23 mismatched input 'org' expecting STRING_LITERAL";
+  public void testUDFClassName() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:23 mismatched input 'org' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // udf class name should be STRING_LITERAL
@@ -454,25 +456,254 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       statement.execute("create function udf as org.apache.iotdb.db.query.udf.example.Adder");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
-  public void testUDFClassName1(){
-    String errorMsg = "401: Error occurred while parsing SQL to physical plan: "
-        + "line 1:23 mismatched input '`org.apache.iotdb.db.query.udf.example.Adder`' "
-        + "expecting STRING_LITERAL";
+  public void testUDFClassName1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:23 mismatched input '`org.apache.iotdb.db.query.udf.example.Adder`' "
+            + "expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // udf class name should be STRING_LITERAL
       statement.execute("create function udf as `org.apache.iotdb.db.query.udf.example.Adder`");
       fail();
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg,e.getMessage());
+      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
+  @Test
+  public void testTriggerAttribute() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:127 mismatched input 'k1' expecting STRING_LITERAL";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s2 FLOAT");
+      // trigger attribute should be STRING_LITERAL
+      statement.execute(
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 "
+              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k1'='v1')");
+      boolean hasResult = statement.execute("show triggers");
+      assertTrue(hasResult);
 
+      statement.execute(
+          "create trigger trigger_2 before insert on root.vehicle.d1.s2 "
+              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (k1='v1')");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
 
+  @Test
+  public void testTriggerAttribute1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:127 mismatched input '`k1`' expecting STRING_LITERAL";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
+      // trigger attribute should be STRING_LITERAL
+      statement.execute(
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 "
+              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (`k1`='v1')");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testUDFAttribute() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:21 extraneous input '=' expecting {',', ')'}";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
+      statement.execute("INSERT INTO root.vehicle.d1(time,s1) values (1,2.0),(2,3.0)");
+      // UDF attribute should be STRING_LITERAL
+      ResultSet resultSet =
+          statement.executeQuery("select bottom_k(s1,'k' = '1') from root.vehicle.d1");
+      assertTrue(resultSet.next());
+      Assert.assertEquals("2.0", resultSet.getString(2));
+
+      statement.executeQuery("select bottom_k(s1,k = 1) from root.vehicle.d1");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testUDFAttribute1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:23 extraneous input '=' expecting {',', ')'}";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // UDF attribute should be STRING_LITERAL
+      statement.executeQuery("select bottom_k(s1,`k` = 1) from root.vehicle.d1");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTimeSeriesAttribute() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:92 mismatched input ',' expecting {<EOF>, ';'}";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // besides datatype,encoding,compression,compressor, attributes in create time series clause
+      // should be STRING_LITERAL
+      statement.execute(
+          "create timeseries root.vehicle.d1.s1 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s2 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY,'max_point_number' = '5'");
+      ResultSet resultSet = statement.executeQuery("show timeseries");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      statement.execute(
+          "create timeseries root.vehicle.d1.s2 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY,max_point_number = 5");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTimeSeriesAttribute1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:92 mismatched input ',' expecting {<EOF>, ';'}";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.vehicle.d1.s1 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY,`max_point_number` = 5");
+      ResultSet resultSet = statement.executeQuery("show timeseries");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTimeSeriesTags() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:98 mismatched input 'tag1' expecting STRING_LITERAL";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.vehicle.d1.s1 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "tags('tag1'='v1', 'tag2'='v2')");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s2 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "tags(tag1=v1)");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTimeSeriesTags1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:98 mismatched input '`tag1`' expecting STRING_LITERAL";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.vehicle.d1.s2 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "tags(`tag1`=v1)");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTimeSeriesAttributeClause() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:104 mismatched input 'attr1' expecting STRING_LITERAL";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.vehicle.d1.s1 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "attributes('attr1'='v1', 'attr2'='v2')");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s2 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "attributes(attr1=v1, attr2=v2)");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTimeSeriesAttributeClause1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:104 mismatched input '`attr1`' expecting STRING_LITERAL";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.vehicle.d1.s1 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "attributes(`attr1`=v1)");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testPipeSinkAttribute() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:36 mismatched input 'ip' expecting STRING_LITERAL";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE PIPESINK `test.*1` AS IoTDB (ip = '127.0.0.1')");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
+
+  @Test
+  public void testPipeSinkAttribute1() {
+    String errorMsg =
+        "401: Error occurred while parsing SQL to physical plan: "
+            + "line 1:31 mismatched input '`ip`' expecting STRING_LITERAL";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE PIPESINK test AS IoTDB (`ip` = '127.0.0.1')");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertEquals(errorMsg, e.getMessage());
+    }
+  }
 }

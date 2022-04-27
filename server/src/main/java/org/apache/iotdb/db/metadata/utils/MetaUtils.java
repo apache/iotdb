@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.ArrayList;
@@ -46,61 +47,55 @@ public class MetaUtils {
    * @throws IllegalPathException if path isn't correct, the exception will throw
    */
   public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
+    if (path.endsWith(TsFileConstant.PATH_SEPARATOR)) {
+      throw new IllegalPathException(path);
+    }
     List<String> nodes = new ArrayList<>();
     int startIndex = 0;
-    for (int i = 0; i < path.length(); i++) {
-      if (path.charAt(i) == IoTDBConstant.PATH_SEPARATOR) {
+    int endIndex;
+    int length = path.length();
+    for (int i = 0; i < length; i++) {
+      if (path.charAt(i) == TsFileConstant.PATH_SEPARATOR_CHAR) {
         String node = path.substring(startIndex, i);
         if (node.isEmpty()) {
           throw new IllegalPathException(path);
         }
         nodes.add(node);
         startIndex = i + 1;
-        if (startIndex == path.length()) {
+      } else if (path.charAt(i) == TsFileConstant.BACK_QUOTE) {
+        startIndex = i + 1;
+        endIndex = path.indexOf(TsFileConstant.BACK_QUOTE, startIndex);
+        if (endIndex == -1) {
+          // single '`', like root.sg.`s
           throw new IllegalPathException(path);
         }
-      } else if (path.charAt(i) == '"') {
-        if (i > 0 && path.charAt(i - 1) == '\\') {
-          continue;
-        }
-        int endIndex = path.indexOf('"', i + 1);
-        // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
-          endIndex = path.indexOf('"', endIndex + 1);
-        }
-        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
-          String node = path.substring(startIndex, endIndex + 1);
-          if (node.isEmpty()) {
+        while (endIndex != -1 && endIndex != length - 1) {
+          char afterQuote = path.charAt(endIndex + 1);
+          if (afterQuote == TsFileConstant.BACK_QUOTE) {
+            // for example, root.sg.```
+            if (endIndex == length - 2) {
+              throw new IllegalPathException(path);
+            }
+            endIndex = path.indexOf(TsFileConstant.BACK_QUOTE, endIndex + 2);
+          } else if (afterQuote == '.') {
+            break;
+          } else {
             throw new IllegalPathException(path);
           }
-          nodes.add(node);
-          i = endIndex + 1;
-          startIndex = endIndex + 2;
-        } else {
+        }
+        // replace `` with ` in a quoted identifier
+        String node = path.substring(startIndex, endIndex).replace("``", "`");
+        if (node.isEmpty()) {
           throw new IllegalPathException(path);
         }
-      } else if (path.charAt(i) == '\'') {
-        if (i > 0 && path.charAt(i - 1) == '\\') {
-          continue;
-        }
-        int endIndex = path.indexOf('\'', i + 1);
-        // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
-          endIndex = path.indexOf('\'', endIndex + 1);
-        }
-        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
-          String node = path.substring(startIndex, endIndex + 1);
-          if (node.isEmpty()) {
-            throw new IllegalPathException(path);
-          }
-          nodes.add(node);
-          i = endIndex + 1;
-          startIndex = endIndex + 2;
-        } else {
-          throw new IllegalPathException(path);
-        }
+
+        nodes.add(node);
+        // skip the '.' after '`'
+        i = endIndex + 1;
+        startIndex = endIndex + 2;
       }
     }
+    // last node
     if (startIndex <= path.length() - 1) {
       String node = path.substring(startIndex);
       if (node.isEmpty()) {

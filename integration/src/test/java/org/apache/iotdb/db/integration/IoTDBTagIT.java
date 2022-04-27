@@ -350,20 +350,18 @@ public class IoTDBTagIT {
       statement.execute(
           "create timeseries root.turbine.d1.s1(temperature1) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
               + "tags('tag1'='v1', 'tag2'='v2') "
-              + "attributes('attr1'='v1', 'attr2'='v2')"
-      );
+              + "attributes('attr1'='v1', 'attr2'='v2')");
       statement.execute(
           "create timeseries root.turbine.d1.s2(temperature2) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
               + "tags('tag1'='v1', 'tag2'='v2') "
-              + "attributes('attr1'='v1', 'attr2'='v2')"
-      );
+              + "attributes('attr1'='v1', 'attr2'='v2')");
       statement.execute(
           "create timeseries root.turbine.d1.s3(temperature3) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
               + "tags('tag1'='v1', 'tag2'='v2') "
-              + "attributes('attr1'='v1', 'attr2'='v2')"
-      );
+              + "attributes('attr1'='v1', 'attr2'='v2')");
       boolean hasResult =
-          statement.execute("show timeseries root.turbine.d1.** where 'tag1'='v1' limit 2 offset 1");
+          statement.execute(
+              "show timeseries root.turbine.d1.** where 'tag1'='v1' limit 2 offset 1");
       assertTrue(hasResult);
       int count = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -828,33 +826,33 @@ public class IoTDBTagIT {
             + "is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}");
 
     String[] sqls = {
-        "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='turbine this is a test1') "
-            + "attributes('H_Alarm'='100', 'M_Alarm'='50')",
-        "create timeseries root.turbine.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='kw', 'description'='turbine this is a test2') "
-            + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
-        "create timeseries root.turbine.d1.s0(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='turbine this is a test3') "
-            + "attributes('H_Alarm'='9', 'M_Alarm'='5')",
-        "create timeseries root.turbine.d2.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='turbine d2 this is a test1') "
-            + "attributes('MaxValue'='100', 'MinValue'='1')",
-        "create timeseries root.turbine.d2.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='kw', 'description'='turbine d2 this is a test2') "
-            + "attributes('MaxValue'='99.9', 'MinValue'='44.4')",
-        "create timeseries root.turbine.d2.s3(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='turbine d2 this is a test3') "
-            + "attributes('MaxValue'='9', 'MinValue'='5')",
-        "create timeseries root.ln.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='ln this is a test1') "
-            + "attributes('H_Alarm'='1000', 'M_Alarm'='500')",
-        "create timeseries root.ln.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='w', 'description'='ln this is a test2') "
-            + "attributes('H_Alarm'='9.9', 'M_Alarm'='4.4')",
-        "create timeseries root.ln.d1.s0(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='ln this is a test3') "
-            + "attributes('H_Alarm'='90', 'M_Alarm'='50')",
+      "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='f', 'description'='turbine this is a test1') "
+          + "attributes('H_Alarm'='100', 'M_Alarm'='50')",
+      "create timeseries root.turbine.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='kw', 'description'='turbine this is a test2') "
+          + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
+      "create timeseries root.turbine.d1.s0(status) with datatype=INT32, encoding=RLE "
+          + "tags('description'='turbine this is a test3') "
+          + "attributes('H_Alarm'='9', 'M_Alarm'='5')",
+      "create timeseries root.turbine.d2.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='f', 'description'='turbine d2 this is a test1') "
+          + "attributes('MaxValue'='100', 'MinValue'='1')",
+      "create timeseries root.turbine.d2.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='kw', 'description'='turbine d2 this is a test2') "
+          + "attributes('MaxValue'='99.9', 'MinValue'='44.4')",
+      "create timeseries root.turbine.d2.s3(status) with datatype=INT32, encoding=RLE "
+          + "tags('description'='turbine d2 this is a test3') "
+          + "attributes('MaxValue'='9', 'MinValue'='5')",
+      "create timeseries root.ln.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='f', 'description'='ln this is a test1') "
+          + "attributes('H_Alarm'='1000', 'M_Alarm'='500')",
+      "create timeseries root.ln.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='w', 'description'='ln this is a test2') "
+          + "attributes('H_Alarm'='9.9', 'M_Alarm'='4.4')",
+      "create timeseries root.ln.d1.s0(status) with datatype=INT32, encoding=RLE "
+          + "tags('description'='ln this is a test3') "
+          + "attributes('H_Alarm'='90', 'M_Alarm'='50')",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -920,33 +918,33 @@ public class IoTDBTagIT {
             + " is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"1000\",\"M_Alarm\":\"500\"}");
 
     String[] sqls = {
-        "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='turbine this is a test1') "
-            + "attributes('H_Alarm'='100', 'M_Alarm'='50')",
-        "create timeseries root.turbine.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='kw', 'description'='turbine this is a test2') "
-            + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
-        "create timeseries root.turbine.d1.s0(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='turbine this is a test3') "
-            + "attributes('H_Alarm'='9', 'M_Alarm'='5')",
-        "create timeseries root.turbine.d2.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='turbine d2 this is a test1') "
-            + "attributes('MaxValue'='100', 'MinValue'='1')",
-        "create timeseries root.turbine.d2.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='kw', 'description'='turbine d2 this is a test2') "
-            + "attributes('MaxValue'='99.9', 'MinValue'='44.4')",
-        "create timeseries root.turbine.d2.s3(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='turbine d2 this is a test3') "
-            + "attributes('MaxValue'='9', 'MinValue'='5')",
-        "create timeseries root.ln.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='ln this is a test1') "
-            + "attributes('H_Alarm'='1000', 'M_Alarm'='500')",
-        "create timeseries root.ln.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='w', 'description'='ln this is a test2') "
-            + "attributes('H_Alarm'='9.9', 'M_Alarm'='4.4')",
-        "create timeseries root.ln.d1.s0(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='ln this is a test3') "
-            + "attributes('H_Alarm'='90', 'M_Alarm'='50')",
+      "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='f', 'description'='turbine this is a test1') "
+          + "attributes('H_Alarm'='100', 'M_Alarm'='50')",
+      "create timeseries root.turbine.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='kw', 'description'='turbine this is a test2') "
+          + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
+      "create timeseries root.turbine.d1.s0(status) with datatype=INT32, encoding=RLE "
+          + "tags('description'='turbine this is a test3') "
+          + "attributes('H_Alarm'='9', 'M_Alarm'='5')",
+      "create timeseries root.turbine.d2.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='f', 'description'='turbine d2 this is a test1') "
+          + "attributes('MaxValue'='100', 'MinValue'='1')",
+      "create timeseries root.turbine.d2.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='kw', 'description'='turbine d2 this is a test2') "
+          + "attributes('MaxValue'='99.9', 'MinValue'='44.4')",
+      "create timeseries root.turbine.d2.s3(status) with datatype=INT32, encoding=RLE "
+          + "tags('description'='turbine d2 this is a test3') "
+          + "attributes('MaxValue'='9', 'MinValue'='5')",
+      "create timeseries root.ln.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='f', 'description'='ln this is a test1') "
+          + "attributes('H_Alarm'='1000', 'M_Alarm'='500')",
+      "create timeseries root.ln.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='w', 'description'='ln this is a test2') "
+          + "attributes('H_Alarm'='9.9', 'M_Alarm'='4.4')",
+      "create timeseries root.ln.d1.s0(status) with datatype=INT32, encoding=RLE "
+          + "tags('description'='ln this is a test3') "
+          + "attributes('H_Alarm'='90', 'M_Alarm'='50')",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1025,33 +1023,33 @@ public class IoTDBTagIT {
   @Test
   public void queryWithWhereOnNoneTagTest() {
     String[] sqls = {
-        "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='turbine this is a test1') "
-            + "attributes('H_Alarm'='100', 'M_Alarm'='50')",
-        "create timeseries root.turbine.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='kw', 'description'='turbine this is a test2') "
-            + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
-        "create timeseries root.turbine.d1.s0(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='turbine this is a test3') "
-            + "attributes('H_Alarm'='9', 'M_Alarm'='5')",
-        "create timeseries root.turbine.d2.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='f', 'description'='turbine d2 this is a test1') "
-            + "attributes('MaxValue'='100', 'MinValue'='1')",
-        "create timeseries root.turbine.d2.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='kw', 'description'='turbine d2 this is a test2') "
-            + "attributes('MaxValue'='99.9', 'MinValue'='44.4')",
-        "create timeseries root.turbine.d2.s3(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='turbine d2 this is a test3') "
-            + "attributes('MaxValue'='9', 'MinValue'='5')",
-        "create timeseries root.ln.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='c', 'description'='ln this is a test1') "
-            + "attributes('H_Alarm'='1000', 'M_Alarm'='500')",
-        "create timeseries root.ln.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('unit'='w', 'description'='ln this is a test2') "
-            + "attributes('H_Alarm'='9.9', 'M_Alarm'='4.4')",
-        "create timeseries root.ln.d1.s0(status) with datatype=INT32, encoding=RLE "
-            + "tags('description'='ln this is a test3') "
-            + "attributes('H_Alarm'='90', 'M_Alarm'='50')",
+      "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='f', 'description'='turbine this is a test1') "
+          + "attributes('H_Alarm'='100', 'M_Alarm'='50')",
+      "create timeseries root.turbine.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='kw', 'description'='turbine this is a test2') "
+          + "attributes('H_Alarm'='99.9', 'M_Alarm'='44.4')",
+      "create timeseries root.turbine.d1.s0(status) with datatype=INT32, encoding=RLE "
+          + "tags('description'='turbine this is a test3') "
+          + "attributes('H_Alarm'='9', 'M_Alarm'='5')",
+      "create timeseries root.turbine.d2.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='f', 'description'='turbine d2 this is a test1') "
+          + "attributes('MaxValue'='100', 'MinValue'='1')",
+      "create timeseries root.turbine.d2.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='kw', 'description'='turbine d2 this is a test2') "
+          + "attributes('MaxValue'='99.9', 'MinValue'='44.4')",
+      "create timeseries root.turbine.d2.s3(status) with datatype=INT32, encoding=RLE "
+          + "tags('description'='turbine d2 this is a test3') "
+          + "attributes('MaxValue'='9', 'MinValue'='5')",
+      "create timeseries root.ln.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='c', 'description'='ln this is a test1') "
+          + "attributes('H_Alarm'='1000', 'M_Alarm'='500')",
+      "create timeseries root.ln.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+          + "tags('unit'='w', 'description'='ln this is a test2') "
+          + "attributes('H_Alarm'='9.9', 'M_Alarm'='4.4')",
+      "create timeseries root.ln.d1.s0(status) with datatype=INT32, encoding=RLE "
+          + "tags('description'='ln this is a test3') "
+          + "attributes('H_Alarm'='90', 'M_Alarm'='50')",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

@@ -41,9 +41,7 @@ public class IoTDBPipeSink implements PipeSink {
   public void setAttribute(String attr, String value) throws PipeSinkException {
     attr = attr.toLowerCase();
     if (attr.equals("ip")) {
-      if (!value.startsWith("'") || !value.endsWith("'"))
-        throw new PipeSinkException(attr, value, TSDataType.TEXT.name());
-      ip = value.substring(1, value.length() - 1);
+      ip = value;
     } else if (attr.equals("port")) {
       try {
         port = Integer.parseInt(value);
