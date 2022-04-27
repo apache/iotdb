@@ -132,7 +132,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
    *       with current node can match one. The children will be pushed with the matched index + 1.
    * </ol>
    *
-   * <p>Each fullPath of the tree will be traversed at most once.
+   * <p>Each node and fullPath of the tree will be traversed at most once.
    */
   protected void getNext() {
     VisitorStackEntry<N> stackEntry;
@@ -159,7 +159,13 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           return;
         }
 
-        pushAllChildren(node, patternIndex, lastMultiLevelWildcardIndex);
+        if (!isLeafNode(node)) {
+          pushAllChildren(node, patternIndex, lastMultiLevelWildcardIndex);
+        }
+
+        if (nextMatchedNode != null) {
+          return;
+        }
 
         continue;
       }
@@ -169,11 +175,19 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           if (processFullMatchedNode(node)) {
             return;
           }
-          if (isPrefixMatch) {
-            pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
-          } else if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-            pushAllChildren(node, patternIndex, patternIndex);
+
+          if (!isLeafNode(node)) {
+            if (isPrefixMatch) {
+              pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+            } else if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+              pushAllChildren(node, patternIndex, patternIndex);
+            }
           }
+
+          if (nextMatchedNode != null) {
+            return;
+          }
+
           continue;
         }
 
@@ -181,18 +195,25 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           return;
         }
 
-        if (nodes[patternIndex + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-          pushAllChildren(node, patternIndex + 1, patternIndex + 1);
-        } else {
-          if (lastMultiLevelWildcardIndex > -1) {
-            pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
-          } else if (nodes[patternIndex + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-            pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+        if (!isLeafNode(node)) {
+          if (nodes[patternIndex + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            pushAllChildren(node, patternIndex + 1, patternIndex + 1);
           } else {
-            pushSingleChild(
-                node, nodes[patternIndex + 1], patternIndex + 1, lastMultiLevelWildcardIndex);
+            if (lastMultiLevelWildcardIndex > -1) {
+              pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+            } else if (nodes[patternIndex + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
+              pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+            } else {
+              pushSingleChild(
+                  node, nodes[patternIndex + 1], patternIndex + 1, lastMultiLevelWildcardIndex);
+            }
           }
         }
+
+        if (nextMatchedNode != null) {
+          return;
+        }
+
       } else {
         if (lastMultiLevelWildcardIndex == -1) {
           continue;
@@ -219,7 +240,17 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           }
         }
 
-        pushAllChildren(node, lastMatchIndex + 1, lastMultiLevelWildcardIndex);
+        if (processInternalMatchedNode(node)) {
+          return;
+        }
+
+        if (!isLeafNode(node)) {
+          pushAllChildren(node, lastMatchIndex + 1, lastMultiLevelWildcardIndex);
+        }
+
+        if (nextMatchedNode != null) {
+          return;
+        }
       }
     }
   }
@@ -243,16 +274,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   protected void pushSingleChild(
       N parent, String childName, int patternIndex, int lastMultiLevelWildcardIndex) {
-    ancestorStack.push(parent);
     N child = getChild(parent, childName);
-    if (child == null) {
-      visitorStack.push(
-          new VisitorStackEntry<>(
-              Collections.emptyIterator(),
-              patternIndex,
-              ancestorStack.size(),
-              lastMultiLevelWildcardIndex));
-    } else {
+    if (child != null) {
+      ancestorStack.push(parent);
       visitorStack.push(
           new VisitorStackEntry<>(
               Collections.singletonList(child).iterator(),
@@ -289,6 +313,19 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   protected boolean checkNameMatch(String targetName, N node) {
     return targetName.equals(node.getName());
   }
+
+  protected String[] generateFullPathNodes(N node) {
+    List<String> nodeNames = new ArrayList<>();
+    Iterator<N> iterator = ancestorStack.descendingIterator();
+    while (iterator.hasNext()) {
+      nodeNames.add(iterator.next().getName());
+    }
+    nodeNames.add(node.getName());
+    return nodeNames.toArray(new String[0]);
+  }
+
+  // Check whether the given node is a leaf node of this tree.
+  protected abstract boolean isLeafNode(N node);
 
   // Get a child with the given childName.
   protected abstract N getChild(N parent, String childName);

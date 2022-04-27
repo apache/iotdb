@@ -17,31 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.common.schematree;
+package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.tree.AbstractTreeVisitorWithLimitOffset;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.regex.Pattern;
 
-public class SchemaTreeVisitor
-    extends AbstractTreeVisitorWithLimitOffset<SchemaNode, MeasurementPath> {
+public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementPath> {
 
-  public SchemaTreeVisitor(
+  public SchemaTreeMeasurementVisitor(
       SchemaNode root, PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     super(root, pathPattern, slimit, soffset, isPrefixMatch);
-  }
-
-  public List<MeasurementPath> getAllResult() {
-    List<MeasurementPath> result = new ArrayList<>();
-    while (hasNext()) {
-      result.add(next());
-    }
-    return result;
   }
 
   @Override
@@ -66,16 +55,6 @@ public class SchemaTreeVisitor
   }
 
   @Override
-  protected SchemaNode getChild(SchemaNode parent, String childName) {
-    return parent.getChild(childName);
-  }
-
-  @Override
-  protected Iterator<SchemaNode> getChildrenIterator(SchemaNode parent) {
-    return parent.getChildrenIterator();
-  }
-
-  @Override
   protected boolean processFullMatchedNode(SchemaNode node) {
     if (node.isMeasurement()) {
       nextMatchedNode = node;
@@ -86,15 +65,10 @@ public class SchemaTreeVisitor
 
   @Override
   protected MeasurementPath generateResult() {
-    List<String> nodeNames = new ArrayList<>();
-    Iterator<SchemaNode> iterator = ancestorStack.descendingIterator();
-    while (iterator.hasNext()) {
-      nodeNames.add(iterator.next().getName());
-    }
-    nodeNames.add(nextMatchedNode.getName());
     MeasurementPath result =
         new MeasurementPath(
-            nodeNames.toArray(new String[0]), nextMatchedNode.getAsMeasurementNode().getSchema());
+            generateFullPathNodes(nextMatchedNode),
+            nextMatchedNode.getAsMeasurementNode().getSchema());
     result.setUnderAlignedEntity(ancestorStack.peek().getAsEntityNode().isAligned());
     String alias = nextMatchedNode.getAsMeasurementNode().getAlias();
     if (nodes[nodes.length - 1].equals(alias)) {
