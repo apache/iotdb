@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang.Validate;
@@ -76,6 +78,12 @@ public abstract class PlanNode {
   }
 
   public abstract int allowedChildCount();
+
+  public abstract List<ColumnHeader> getOutputColumnHeaders();
+
+  public abstract List<String> getOutputColumnNames();
+
+  public abstract List<TSDataType> getOutputColumnTypes();
 
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitPlan(this, context);

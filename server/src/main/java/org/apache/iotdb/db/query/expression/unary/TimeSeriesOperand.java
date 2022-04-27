@@ -38,7 +38,6 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceI
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -49,10 +48,14 @@ import java.util.Set;
 
 public class TimeSeriesOperand extends Expression {
 
-  protected PartialPath path;
+  private PartialPath path;
 
   public TimeSeriesOperand(PartialPath path) {
     this.path = path;
+  }
+
+  public TimeSeriesOperand(ByteBuffer byteBuffer) {
+    path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
   }
 
   public PartialPath getPath() {
@@ -163,18 +166,13 @@ public class TimeSeriesOperand extends Expression {
     return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
   }
 
-  public static TimeSeriesOperand deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    PartialPath partialPath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
-    TimeSeriesOperand timeSeriesOperand = new TimeSeriesOperand(partialPath);
-    timeSeriesOperand.isConstantOperandCache = isConstantOperandCache;
-    return timeSeriesOperand;
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.TIME_SERIES;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.TimeSeries.serialize(byteBuffer);
-    super.serialize(byteBuffer);
+  protected void serialize(ByteBuffer byteBuffer) {
     path.serialize(byteBuffer);
   }
 }

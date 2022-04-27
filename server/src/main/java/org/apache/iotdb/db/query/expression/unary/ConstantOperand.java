@@ -50,13 +50,24 @@ public class ConstantOperand extends Expression {
   private final String valueString;
   private final TSDataType dataType;
 
-  public ConstantOperand(TSDataType dataType, String str) {
+  public ConstantOperand(TSDataType dataType, String valueString) {
     this.dataType = Validate.notNull(dataType);
-    this.valueString = Validate.notNull(str);
+    this.valueString = Validate.notNull(valueString);
+  }
+
+  public ConstantOperand(ByteBuffer byteBuffer) {
+    dataType = TSDataType.deserializeFrom(byteBuffer);
+    valueString = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public boolean isNegativeNumber() {
+    return !dataType.equals(TSDataType.TEXT)
+        && !dataType.equals(TSDataType.BOOLEAN)
+        && Double.parseDouble(valueString) < 0;
   }
 
   @Override
@@ -140,20 +151,14 @@ public class ConstantOperand extends Expression {
     return valueString;
   }
 
-  public static ConstantOperand deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    String valueStr = ReadWriteIOUtils.readString(buffer);
-    TSDataType tsDataType = TSDataType.deserializeFrom(buffer);
-    ConstantOperand constantOperand = new ConstantOperand(tsDataType, valueStr);
-    constantOperand.isConstantOperandCache = isConstantOperandCache;
-    return constantOperand;
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.CONSTANT;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Constant.serialize(byteBuffer);
-    super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(valueString, byteBuffer);
+  protected void serialize(ByteBuffer byteBuffer) {
     dataType.serializeTo(byteBuffer);
+    ReadWriteIOUtils.write(valueString, byteBuffer);
   }
 }

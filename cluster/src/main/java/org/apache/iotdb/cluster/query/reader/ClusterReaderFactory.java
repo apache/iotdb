@@ -54,6 +54,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -556,15 +557,16 @@ public class ClusterReaderFactory {
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter, ascending);
     valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
-    return path.createSeriesReader(
-        allSensors,
-        dataType,
-        context,
-        queryDataSource,
-        timeFilter,
-        valueFilter,
-        new SlotTsFileFilter(requiredSlots),
-        ascending);
+    return ResourceByPathUtils.getResourceInstance(path)
+        .createSeriesReader(
+            allSensors,
+            dataType,
+            context,
+            queryDataSource,
+            timeFilter,
+            valueFilter,
+            new SlotTsFileFilter(requiredSlots),
+            ascending);
   }
 
   /**

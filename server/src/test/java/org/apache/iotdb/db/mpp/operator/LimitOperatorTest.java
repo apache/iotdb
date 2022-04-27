@@ -33,8 +33,8 @@ import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -140,8 +140,8 @@ public class LimitOperatorTest {
               OrderBy.TIMESTAMP_ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
-                  new SingleColumnMerger(new InputLocation(0, 0)),
-                  new SingleColumnMerger(new InputLocation(1, 0))));
+                  new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC),
+                  new SingleColumnMerger(new InputLocation(1, 0), OrderBy.TIMESTAMP_ASC)));
 
       LimitOperator limitOperator =
           new LimitOperator(

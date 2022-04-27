@@ -24,8 +24,9 @@ import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
-import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServer;
-import org.apache.iotdb.confignode.service.thrift.server.ConfigNodeRPCServerProcessor;
+import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
+import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,8 +43,20 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private final RegisterManager registerManager = new RegisterManager();
 
-  private ConfigNode() {
-    // empty constructor
+  private final ConfigNodeRPCService configNodeRPCService;
+
+  private ConfigManager configManager;
+
+  public ConfigNode() {
+    this.configNodeRPCService = new ConfigNodeRPCService();
+
+    try {
+      this.configManager = new ConfigManager();
+    } catch (IOException e) {
+      LOGGER.error("Can't start ConfigNode consensus group!", e);
+      stop();
+      System.exit(0);
+    }
   }
 
   public static void main(String[] args) {
@@ -53,11 +66,11 @@ public class ConfigNode implements ConfigNodeMBean {
   /** Register services */
   private void setUp() throws StartupException, IOException {
     LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
-    registerManager.register(JMXService.getInstance());
-    JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(new JMXService());
+    JMXService.registerMBean(this, mbeanName);
 
-    ConfigNodeRPCServer.getInstance().initSyncedServiceImpl(new ConfigNodeRPCServerProcessor());
-    registerManager.register(ConfigNodeRPCServer.getInstance());
+    configNodeRPCService.initSyncedServiceImpl(new ConfigNodeRPCServiceProcessor(configManager));
+    registerManager.register(configNodeRPCService);
     LOGGER.info("Init rpc server success");
   }
 
@@ -90,18 +103,5 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public void stop() {
     deactivate();
-  }
-
-  private static class ConfigNodeHolder {
-
-    private static final ConfigNode INSTANCE = new ConfigNode();
-
-    private ConfigNodeHolder() {
-      // empty constructor
-    }
-  }
-
-  public static ConfigNode getInstance() {
-    return ConfigNodeHolder.INSTANCE;
   }
 }

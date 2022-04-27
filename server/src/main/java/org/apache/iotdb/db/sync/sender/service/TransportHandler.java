@@ -21,9 +21,13 @@ package org.apache.iotdb.db.sync.sender.service;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
+import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
+import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.transport.client.ITransportClient;
+import org.apache.iotdb.db.sync.transport.client.TransportClient;
 import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.service.transport.thrift.SyncRequest;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
@@ -40,22 +44,23 @@ import java.util.concurrent.TimeUnit;
 
 public class TransportHandler {
   private static final Logger logger = LoggerFactory.getLogger(TransportHandler.class);
+  private static TransportHandler DEBUG_TRANSPORT_HANDLER = null; // test only
 
-  private final String pipeName;
+  private String pipeName;
+  private long createTime;
   private final String localIp;
-  private final long createTime;
-  private final ITransportClient transportClient;
+  protected ITransportClient transportClient;
 
-  private final ExecutorService transportExecutorService;
+  protected ExecutorService transportExecutorService;
   private Future transportFuture;
 
-  private final ScheduledExecutorService heartbeatExecutorService;
+  protected ScheduledExecutorService heartbeatExecutorService;
   private Future heartbeatFuture;
 
-  public TransportHandler(ITransportClient transportClient, String pipeName, long createTime) {
-    this.pipeName = pipeName;
-    this.createTime = createTime;
-    this.transportClient = transportClient;
+  public TransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
+    this.pipeName = pipe.getName();
+    this.createTime = pipe.getCreateTime();
+    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort());
 
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -80,8 +85,8 @@ public class TransportHandler {
     heartbeatFuture =
         heartbeatExecutorService.scheduleWithFixedDelay(
             this::sendHeartbeat,
-            SyncConstant.DEFAULT_HEARTBEAT_DELAY_SECONDS,
-            SyncConstant.DEFAULT_HEARTBEAT_DELAY_SECONDS,
+            SyncConstant.HEARTBEAT_DELAY_SECONDS,
+            SyncConstant.HEARTBEAT_DELAY_SECONDS,
             TimeUnit.SECONDS);
   }
 
@@ -123,5 +128,25 @@ public class TransportHandler {
               "Pipe %s sends heartbeat to receiver error, skip this time, because %s.",
               pipeName, e));
     }
+  }
+
+  public static TransportHandler getNewTransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
+    if (DEBUG_TRANSPORT_HANDLER == null) {
+      return new TransportHandler(pipe, pipeSink);
+    }
+    DEBUG_TRANSPORT_HANDLER.resetTransportClient(pipe); // test only
+    return DEBUG_TRANSPORT_HANDLER;
+  }
+
+  /** test */
+  @TestOnly
+  public static void setDebugTransportHandler(TransportHandler transportHandler) {
+    DEBUG_TRANSPORT_HANDLER = transportHandler;
+  }
+
+  @TestOnly
+  protected void resetTransportClient(Pipe pipe) {
+    this.pipeName = pipe.getName();
+    this.createTime = pipe.getCreateTime();
   }
 }

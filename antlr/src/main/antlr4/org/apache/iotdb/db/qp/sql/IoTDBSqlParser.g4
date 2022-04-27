@@ -822,15 +822,18 @@ dateExpression
 // multiplication, division, and modulus higher than that of addition and substraction.
 expression
     : LR_BRACKET unaryInBracket=expression RR_BRACKET
-    | (PLUS | MINUS) unaryAfterSign=expression
-    | OPERATOR_NOT unaryAfterNot=expression
+    | constant
+    | time=(TIME | TIMESTAMP)
+    | suffixPath
+    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
-    | leftExpression=expression (OPERATOR_AND | OPERATOR_OR) rightExpression=expression
-    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-    | suffixPath
-    | constant
+    | unaryBeforeRegularExpression=expression (REGEXP | LIKE) STRING_LITERAL
+    | unaryBeforeInExpression=expression OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    | leftExpression=expression OPERATOR_AND rightExpression=expression
+    | leftExpression=expression OPERATOR_OR rightExpression=expression
     ;
 
 functionName

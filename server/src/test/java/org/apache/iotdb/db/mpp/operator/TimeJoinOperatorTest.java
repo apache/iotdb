@@ -32,8 +32,8 @@ import org.apache.iotdb.db.mpp.execution.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.InputLocation;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -56,7 +56,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TimeJoinOperatorTest {
   private static final String TIME_JOIN_OPERATOR_TEST_SG = "root.TimeJoinOperatorTest";
@@ -135,8 +137,8 @@ public class TimeJoinOperatorTest {
               OrderBy.TIMESTAMP_ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
-                  new SingleColumnMerger(new InputLocation(0, 0)),
-                  new SingleColumnMerger(new InputLocation(1, 0))));
+                  new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC),
+                  new SingleColumnMerger(new InputLocation(1, 0), OrderBy.TIMESTAMP_ASC)));
       int count = 0;
       while (timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
@@ -249,9 +251,9 @@ public class TimeJoinOperatorTest {
               OrderBy.TIMESTAMP_ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
-                  new SingleColumnMerger(new InputLocation(0, 0)),
-                  new SingleColumnMerger(new InputLocation(1, 0)),
-                  new SingleColumnMerger(new InputLocation(2, 0))));
+                  new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC),
+                  new SingleColumnMerger(new InputLocation(1, 0), OrderBy.TIMESTAMP_ASC),
+                  new SingleColumnMerger(new InputLocation(2, 0), OrderBy.TIMESTAMP_ASC)));
       int count = 0;
       while (timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();

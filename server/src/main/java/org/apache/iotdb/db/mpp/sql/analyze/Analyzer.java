@@ -55,7 +55,6 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -326,198 +325,6 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitShowTimeSeries(
-        ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(showTimeSeriesStatement);
-
-      SchemaPartition schemaPartitionInfo =
-          partitionFetcher.getSchemaPartition(
-              new PathPatternTree(showTimeSeriesStatement.getPathPattern()));
-      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-      analysis.setRespDatasetHeader(HeaderConstant.showTimeSeriesHeader);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitShowStorageGroup(
-        ShowStorageGroupStatement showStorageGroupStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(showStorageGroupStatement);
-      analysis.setRespDatasetHeader(HeaderConstant.showStorageGroupHeader);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitShowDevices(
-        ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(showDevicesStatement);
-
-      SchemaPartition schemaPartitionInfo =
-          partitionFetcher.getSchemaPartition(
-              new PathPatternTree(showDevicesStatement.getPathPattern().concatNode("*")));
-
-      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
-      analysis.setRespDatasetHeader(
-          showDevicesStatement.hasSgCol()
-              ? HeaderConstant.showDevicesWithSgHeader
-              : HeaderConstant.showDevicesHeader);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitCreateRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitAlterUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitGrantUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitGrantRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitGrantRoleToUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitRevokeUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitRevokeRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitRevokeRoleFromUser(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitDropUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitDropRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListPrivilegesUser(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListPrivilegesRole(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListUserPrivileges(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListRolePrivileges(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListAllRoleOfUser(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListAllUserOfRole(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
     public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
       context.setQueryType(QueryType.WRITE);
       // TODO remove duplicate
@@ -678,6 +485,47 @@ public class Analyzer {
       analysis.setStatement(insertRowsOfOneDeviceStatement);
       analysis.setDataPartitionInfo(dataPartition);
 
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowTimeSeries(
+        ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showTimeSeriesStatement);
+
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(showTimeSeriesStatement.getPathPattern()));
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setRespDatasetHeader(HeaderConstant.showTimeSeriesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowStorageGroup(
+        ShowStorageGroupStatement showStorageGroupStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showStorageGroupStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showStorageGroupHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowDevices(
+        ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showDevicesStatement);
+
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(showDevicesStatement.getPathPattern().concatNode("*")));
+
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setRespDatasetHeader(
+          showDevicesStatement.hasSgCol()
+              ? HeaderConstant.showDevicesWithSgHeader
+              : HeaderConstant.showDevicesHeader);
       return analysis;
     }
 
