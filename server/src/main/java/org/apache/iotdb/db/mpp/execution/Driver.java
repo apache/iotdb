@@ -365,7 +365,7 @@ public abstract class Driver implements IDriver {
 
     try {
       root.close();
-      sinkHandle.close();
+      sinkHandle.setNoMoreTsBlocks();
     } catch (InterruptedException t) {
       // don't record the stack
       wasInterrupted = true;

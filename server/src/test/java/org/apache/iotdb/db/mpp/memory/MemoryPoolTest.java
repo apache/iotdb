@@ -247,4 +247,29 @@ public class MemoryPoolTest {
     } catch (IllegalArgumentException ignore) {
     }
   }
+
+  @Test
+  public void testTryCancelBlockedReservation() {
+    String queryId = "q0";
+    // Run out of memory.
+    Assert.assertTrue(pool.tryReserve(queryId, 512L));
+
+    ListenableFuture<Void> f = pool.reserve(queryId, 256L);
+    Assert.assertFalse(f.isDone());
+    // Cancel the reservation.
+    Assert.assertEquals(256L, pool.tryCancel(f));
+    Assert.assertTrue(f.isDone());
+    Assert.assertTrue(f.isCancelled());
+  }
+
+  @Test
+  public void testTryCancelCompletedReservation() {
+    String queryId = "q0";
+    ListenableFuture<Void> f = pool.reserve(queryId, 256L);
+    Assert.assertTrue(f.isDone());
+    // Cancel the reservation.
+    Assert.assertEquals(0L, pool.tryCancel(f));
+    Assert.assertTrue(f.isDone());
+    Assert.assertFalse(f.isCancelled());
+  }
 }
