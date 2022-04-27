@@ -88,6 +88,7 @@ public class TimeJoinNode extends ProcessNode {
     return children.stream()
         .map(PlanNode::getOutputColumnNames)
         .flatMap(List::stream)
+        .distinct()
         .collect(Collectors.toList());
   }
 

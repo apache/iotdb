@@ -55,7 +55,6 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
-import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -85,7 +84,7 @@ public class LogicalPlanner {
       analysis.getRespDatasetHeader().setColumnToTsBlockIndexMap(rootNode.getOutputColumnNames());
     }
 
-    return new LogicalQueryPlan(context, rootNode);
+    return new LogicalQueryPlan(context, rootNode, analysis.getTypes());
   }
 
   /**
@@ -108,52 +107,22 @@ public class LogicalPlanner {
 
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-
-      planBuilder
+      return new LogicalPlanBuilder(context)
           .planRawDataQuerySource(
               queryStatement.getDeviceNameToDeduplicatedPathsMap(),
               queryStatement.getResultOrder(),
               queryStatement.isAlignByDevice(),
               analysis.getQueryFilter(),
               queryStatement.getSelectedPathNames())
-          .planFilterNull(queryStatement.getFilterNullComponent())
           .planOffset(queryStatement.getRowOffset())
-          .planLimit(queryStatement.getRowLimit());
-
-      return planBuilder.getRoot();
+          .planLimit(queryStatement.getRowLimit())
+          .getRoot();
     }
 
     @Override
     public PlanNode visitAggregationQuery(
         AggregationQueryStatement queryStatement, MPPQueryContext context) {
-      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-
-      if (analysis.getQueryFilter() != null
-          && analysis.getQueryFilter().getType() != ExpressionType.GLOBAL_TIME) {
-        // with value filter
-        planBuilder.planAggregationSourceWithValueFilter(
-            queryStatement.getDeviceNameToAggregationsMap(),
-            queryStatement.getDeviceNameToDeduplicatedPathsMap(),
-            queryStatement.getResultOrder(),
-            queryStatement.isAlignByDevice(),
-            analysis.getQueryFilter(),
-            queryStatement.getSelectedPathNames());
-      } else {
-        // without value filter
-        planBuilder.planAggregationSourceWithoutValueFilter(
-            queryStatement.getDeviceNameToAggregationsMap(),
-            queryStatement.getResultOrder(),
-            queryStatement.isAlignByDevice(),
-            analysis.getQueryFilter());
-      }
-
-      planBuilder
-          .planGroupByLevel(queryStatement.getGroupByLevelComponent())
-          .planFilterNull(queryStatement.getFilterNullComponent())
-          .planOffset(queryStatement.getRowOffset())
-          .planLimit(queryStatement.getRowLimit());
-      return planBuilder.getRoot();
+      throw new UnsupportedOperationException();
     }
 
     @Override

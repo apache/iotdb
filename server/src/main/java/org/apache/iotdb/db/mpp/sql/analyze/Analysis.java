@@ -56,6 +56,8 @@ public class Analysis {
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
+  private TypeProvider typeProvider;
+
   public Analysis() {}
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
@@ -109,5 +111,9 @@ public class Analysis {
 
   public void setRespDatasetHeader(DatasetHeader respDatasetHeader) {
     this.respDatasetHeader = respDatasetHeader;
+  }
+
+  public TypeProvider getTypes() {
+    return typeProvider;
   }
 }

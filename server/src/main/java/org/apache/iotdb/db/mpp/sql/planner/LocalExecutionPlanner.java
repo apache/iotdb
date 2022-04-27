@@ -47,6 +47,7 @@ import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.sql.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
@@ -67,13 +68,18 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import com.google.common.collect.ImmutableMap;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -95,10 +101,11 @@ public class LocalExecutionPlanner {
 
   public DataDriver plan(
       PlanNode plan,
+      TypeProvider types,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
       DataRegion dataRegion) {
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
+    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
 
     Operator root = plan.accept(new Visitor(), context);
 
@@ -255,10 +262,6 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
-      PlanNode child = node.getChild();
-
-      IExpression filterExpression = node.getPredicate();
-      List<String> outputSymbols = node.getOutputColumnNames();
       return super.visitFilter(node, context);
     }
 
@@ -311,10 +314,32 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               TimeJoinOperator.class.getSimpleName());
-      List<OutputColumn> outputColumns = node.getOutputColumns();
+      List<OutputColumn> outputColumns = generateOutputColumns(node);
       List<ColumnMerger> mergers = createColumnMergers(outputColumns);
+      List<TSDataType> outputColumnTypes =
+          node.getOutputColumnNames().stream()
+              .map(name -> context.getTypes().getType(name))
+              .collect(Collectors.toList());
       return new TimeJoinOperator(
-          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes(), mergers);
+          operatorContext, children, node.getMergeOrder(), outputColumnTypes, mergers);
+    }
+
+    private List<OutputColumn> generateOutputColumns(TimeJoinNode node) {
+      Map<String, List<InputLocation>> outputColumnToInputLocMap = new HashMap<>();
+      for (int tsBlockIndex = 0; tsBlockIndex < node.getChildren().size(); tsBlockIndex++) {
+        PlanNode childNode = node.getChildren().get(tsBlockIndex);
+        for (int valueColumnIndex = 0;
+            valueColumnIndex < childNode.getOutputColumnNames().size();
+            valueColumnIndex++) {
+          String columnName = childNode.getOutputColumnNames().get(valueColumnIndex);
+          outputColumnToInputLocMap
+              .computeIfAbsent(columnName, key -> new ArrayList<>())
+              .add(new InputLocation(tsBlockIndex, valueColumnIndex));
+        }
+      }
+      return outputColumnToInputLocMap.values().stream()
+          .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))
+          .collect(Collectors.toList());
     }
 
     private List<ColumnMerger> createColumnMergers(List<OutputColumn> outputColumns) {
@@ -392,6 +417,21 @@ public class LocalExecutionPlanner {
           node.getPatternTree(),
           ((SchemaDriverContext) (context.instanceContext.getDriverContext())).getSchemaRegion());
     }
+
+    private ImmutableMap<String, Integer> makeLayout(PlanNode node) {
+      return makeLayoutFromOutputNames(node.getOutputColumnNames());
+    }
+
+    private ImmutableMap<String, Integer> makeLayoutFromOutputNames(
+        List<String> outputColumnNames) {
+      ImmutableMap.Builder<String, Integer> outputMappings = ImmutableMap.builder();
+      int channel = 0;
+      for (String outputColumnName : outputColumnNames) {
+        outputMappings.put(outputColumnName, channel);
+        channel++;
+      }
+      return outputMappings.buildOrThrow();
+    }
   }
 
   private static class InstanceHolder {
@@ -409,6 +449,15 @@ public class LocalExecutionPlanner {
     private ISinkHandle sinkHandle;
 
     private int nextOperatorId = 0;
+
+    private TypeProvider types;
+
+    public LocalExecutionPlanContext(TypeProvider types, FragmentInstanceContext instanceContext) {
+      this.types = types;
+      this.instanceContext = instanceContext;
+      this.paths = new ArrayList<>();
+      this.sourceOperators = new ArrayList<>();
+    }
 
     public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
       this.instanceContext = instanceContext;
@@ -445,6 +494,10 @@ public class LocalExecutionPlanner {
       checkArgument(this.sinkHandle == null, "There must be at most one SinkNode");
 
       this.sinkHandle = sinkHandle;
+    }
+
+    public TypeProvider getTypes() {
+      return types;
     }
   }
 }

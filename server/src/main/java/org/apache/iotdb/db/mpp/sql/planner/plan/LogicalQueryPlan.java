@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.sql.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 
 /**
@@ -29,10 +30,12 @@ public class LogicalQueryPlan {
 
   private final MPPQueryContext context;
   private final PlanNode rootNode;
+  private final TypeProvider types;
 
-  public LogicalQueryPlan(MPPQueryContext context, PlanNode rootNode) {
+  public LogicalQueryPlan(MPPQueryContext context, PlanNode rootNode, TypeProvider types) {
     this.context = context;
     this.rootNode = rootNode;
+    this.types = types;
   }
 
   public PlanNode getRootNode() {
@@ -41,5 +44,9 @@ public class LogicalQueryPlan {
 
   public MPPQueryContext getContext() {
     return context;
+  }
+
+  public TypeProvider getTypes() {
+    return types;
   }
 }
