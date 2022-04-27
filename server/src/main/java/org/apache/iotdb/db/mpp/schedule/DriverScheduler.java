@@ -147,7 +147,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         task.lock();
         try {
           task.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
-          clearFragmentInstanceTask(task);
+          clearDriverTask(task);
         } finally {
           task.unlock();
         }
@@ -164,7 +164,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     task.lock();
     try {
       task.setAbortCause(FragmentInstanceAbortedException.BY_FRAGMENT_ABORT_CALLED);
-      clearFragmentInstanceTask(task);
+      clearDriverTask(task);
     } finally {
       task.unlock();
     }
@@ -180,7 +180,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
     return task.getSchedulePriority();
   }
 
-  private void clearFragmentInstanceTask(DriverTask task) {
+  private void clearDriverTask(DriverTask task) {
     if (task.getStatus() != DriverTaskStatus.FINISHED) {
       task.setStatus(DriverTaskStatus.ABORTED);
     }
@@ -314,7 +314,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         }
         task.updateSchedulePriority(context);
         task.setStatus(DriverTaskStatus.FINISHED);
-        clearFragmentInstanceTask(task);
+        clearDriverTask(task);
       } finally {
         task.unlock();
       }
@@ -332,7 +332,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         logger.warn(
             "The task {} is aborted. All other tasks in the same query will be cancelled",
             task.getId().toString());
-        clearFragmentInstanceTask(task);
+        clearDriverTask(task);
       } finally {
         task.unlock();
       }
@@ -346,7 +346,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
           otherTask.lock();
           try {
             otherTask.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
-            clearFragmentInstanceTask(otherTask);
+            clearDriverTask(otherTask);
           } finally {
             otherTask.unlock();
           }
