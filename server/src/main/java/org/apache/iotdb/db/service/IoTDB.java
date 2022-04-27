@@ -139,6 +139,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(SenderService.getInstance());
     registerManager.register(WALManager.getInstance());
 
     // in mpp mode we need to start some other services
@@ -188,7 +189,6 @@ public class IoTDB implements IoTDBMBean {
       }
     }
 
-    registerManager.register(SenderService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
     // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.

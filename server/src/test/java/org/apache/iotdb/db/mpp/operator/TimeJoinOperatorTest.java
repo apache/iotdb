@@ -137,8 +137,8 @@ public class TimeJoinOperatorTest {
               OrderBy.TIMESTAMP_ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
-                  new SingleColumnMerger(new InputLocation(0, 0)),
-                  new SingleColumnMerger(new InputLocation(1, 0))));
+                  new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC),
+                  new SingleColumnMerger(new InputLocation(1, 0), OrderBy.TIMESTAMP_ASC)));
       int count = 0;
       while (timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();
@@ -251,9 +251,9 @@ public class TimeJoinOperatorTest {
               OrderBy.TIMESTAMP_ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
-                  new SingleColumnMerger(new InputLocation(0, 0)),
-                  new SingleColumnMerger(new InputLocation(1, 0)),
-                  new SingleColumnMerger(new InputLocation(2, 0))));
+                  new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC),
+                  new SingleColumnMerger(new InputLocation(1, 0), OrderBy.TIMESTAMP_ASC),
+                  new SingleColumnMerger(new InputLocation(2, 0), OrderBy.TIMESTAMP_ASC)));
       int count = 0;
       while (timeJoinOperator.hasNext()) {
         TsBlock tsBlock = timeJoinOperator.next();

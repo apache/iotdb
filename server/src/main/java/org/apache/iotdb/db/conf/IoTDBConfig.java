@@ -899,6 +899,12 @@ public class IoTDBConfig {
    */
   private int dataNodeSchemaCacheSize = 10000;
 
+  /**
+   * Cache size of partition cache in {@link
+   * org.apache.iotdb.db.mpp.sql.analyze.ClusterPartitionFetcher}
+   */
+  private int partitionCacheSize = 10000;
+
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
   }
@@ -2839,5 +2845,13 @@ public class IoTDBConfig {
 
   public void setDataNodeSchemaCacheSize(int dataNodeSchemaCacheSize) {
     this.dataNodeSchemaCacheSize = dataNodeSchemaCacheSize;
+  }
+
+  public int getPartitionCacheSize() {
+    return partitionCacheSize;
+  }
+
+  public void setPartitionCacheSize(int partitionCacheSize) {
+    this.partitionCacheSize = partitionCacheSize;
   }
 }

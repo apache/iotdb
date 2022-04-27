@@ -20,10 +20,15 @@ package org.apache.iotdb.confignode.consensus.request;
 
 public enum ConfigRequestType {
   RegisterDataNode,
-  QueryDataNodeInfo,
+  GetDataNodeInfo,
   SetStorageGroup,
+  SetTTL,
+  SetSchemaReplicationFactor,
+  SetDataReplicationFactor,
+  SetTimePartitionInterval,
   DeleteStorageGroup,
-  QueryStorageGroupSchema,
+  GetStorageGroup,
+  CountStorageGroup,
   CreateRegions,
   GetSchemaPartition,
   CreateSchemaPartition,

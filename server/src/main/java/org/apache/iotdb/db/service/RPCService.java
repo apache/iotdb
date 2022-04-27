@@ -43,11 +43,6 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
   }
 
   @Override
-  public ThriftService getImplementation() {
-    return getInstance();
-  }
-
-  @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException,
           NoSuchMethodException, InvocationTargetException {

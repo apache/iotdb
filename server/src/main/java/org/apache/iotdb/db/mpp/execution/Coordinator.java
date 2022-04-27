@@ -19,7 +19,10 @@
 package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -43,17 +46,28 @@ import java.util.concurrent.ScheduledExecutorService;
  * QueryExecution.
  */
 public class Coordinator {
-  private static final Logger LOG = LoggerFactory.getLogger(Coordinator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(Coordinator.class);
 
   private static final String COORDINATOR_EXECUTOR_NAME = "MPPCoordinator";
   private static final int COORDINATOR_EXECUTOR_SIZE = 1;
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 1;
 
-  private static final TEndPoint LOCAL_HOST =
+  private static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
       new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
+          IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
+
+  private static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
+      new TEndPoint(
+          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
           IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+
+  private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      INTERNAL_SERVICE_CLIENT_MANAGER =
+          new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+              .createClientManager(
+                  new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   private final ExecutorService executor;
   private final ScheduledExecutorService scheduledExecutor;
@@ -78,7 +92,13 @@ public class Coordinator {
       return new ConfigExecution(queryContext, statement, executor);
     }
     return new QueryExecution(
-        statement, queryContext, executor, scheduledExecutor, partitionFetcher, schemaFetcher);
+        statement,
+        queryContext,
+        executor,
+        scheduledExecutor,
+        partitionFetcher,
+        schemaFetcher,
+        INTERNAL_SERVICE_CLIENT_MANAGER);
   }
 
   public ExecutionResult execute(
@@ -92,7 +112,12 @@ public class Coordinator {
     IQueryExecution execution =
         createQueryExecution(
             statement,
-            new MPPQueryContext(sql, queryId, session, getHostEndpoint()),
+            new MPPQueryContext(
+                sql,
+                queryId,
+                session,
+                LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+                LOCAL_HOST_INTERNAL_ENDPOINT),
             partitionFetcher,
             schemaFetcher);
     queryExecutionMap.put(queryId, execution);
@@ -114,11 +139,6 @@ public class Coordinator {
   private ScheduledExecutorService getScheduledExecutor() {
     return IoTDBThreadPoolFactory.newScheduledThreadPool(
         COORDINATOR_SCHEDULED_EXECUTOR_SIZE, COORDINATOR_SCHEDULED_EXECUTOR_NAME);
-  }
-
-  // Get the hostname of current coordinator
-  private TEndPoint getHostEndpoint() {
-    return LOCAL_HOST;
   }
 
   public static Coordinator getInstance() {

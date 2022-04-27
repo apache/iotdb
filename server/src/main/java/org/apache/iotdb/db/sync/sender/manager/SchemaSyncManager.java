@@ -40,7 +40,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /**
@@ -80,20 +79,7 @@ public class SchemaSyncManager {
   }
 
   public void syncMetadataPlan(PhysicalPlan plan) {
-    try {
-      switch (plan.getOperatorType()) {
-        case DELETE_STORAGE_GROUP:
-          syncPipe.collectRealTimeMetaData(
-              splitDeleteTimeseriesPlanByDevice(
-                  plan.getPaths().get(0).concatNode(MULTI_LEVEL_PATH_WILDCARD)));
-          break;
-        default:
-          syncPipe.collectRealTimeMetaData(plan);
-          break;
-      }
-    } catch (MetadataException e) {
-
-    }
+    syncPipe.collectRealTimeMetaData(plan);
   }
 
   public void clear() {
@@ -144,7 +130,7 @@ public class SchemaSyncManager {
     return result;
   }
 
-  private DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
+  public DeleteTimeSeriesPlan splitDeleteTimeseriesPlanByDevice(PartialPath pathPattern)
       throws MetadataException {
     return new DeleteTimeSeriesPlan(splitPathPatternByDevice(pathPattern));
   }

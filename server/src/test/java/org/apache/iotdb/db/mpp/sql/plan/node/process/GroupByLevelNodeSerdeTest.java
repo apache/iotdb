@@ -59,7 +59,7 @@ import static org.junit.Assert.assertEquals;
 public class GroupByLevelNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     FilterNode filterNode =
         new FilterNode(
             new PlanNodeId("TestFilterNode"),

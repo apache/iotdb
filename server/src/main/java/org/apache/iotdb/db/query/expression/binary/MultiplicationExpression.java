@@ -50,7 +50,7 @@ public class MultiplicationExpression extends BinaryExpression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.MULTIPLICATION.getExpressionType();
+  public ExpressionType getExpressionType() {
+    return ExpressionType.MULTIPLICATION;
   }
 }
