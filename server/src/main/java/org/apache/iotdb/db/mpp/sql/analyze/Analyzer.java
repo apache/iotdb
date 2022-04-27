@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
@@ -526,6 +527,15 @@ public class Analyzer {
           showDevicesStatement.hasSgCol()
               ? HeaderConstant.showDevicesWithSgHeader
               : HeaderConstant.showDevicesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCountStorageGroup(
+        CountStorageGroupStatement countStorageGroupStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(countStorageGroupStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.countStorageGroupHeader);
       return analysis;
     }
 
