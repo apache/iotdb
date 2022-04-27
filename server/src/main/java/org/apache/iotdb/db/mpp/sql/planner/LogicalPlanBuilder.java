@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.planner;
 
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -28,15 +29,14 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNo
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,9 +60,7 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planRawDataQuerySource(
       Map<String, Set<PartialPath>> deviceNameToPathsMap,
       OrderBy scanOrder,
-      boolean isAlignByDevice,
-      IExpression queryFilter,
-      List<String> selectedPathList) {
+      boolean isAlignByDevice) {
     Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
 
     for (Map.Entry<String, Set<PartialPath>> entry : deviceNameToPathsMap.entrySet()) {
@@ -74,65 +72,59 @@ public class LogicalPlanBuilder {
             .computeIfAbsent(deviceName, k -> new ArrayList<>())
             .add(
                 new SeriesScanNode(
-                    context.getQueryId().genPlanNodeId(), path, allSensors, scanOrder));
+                    context.getQueryId().genPlanNodeId(),
+                    (MeasurementPath) path,
+                    allSensors,
+                    scanOrder));
       }
     }
 
     if (isAlignByDevice) {
-      planDeviceMerge(deviceNameToSourceNodesMap, scanOrder, queryFilter, selectedPathList);
+      planDeviceMerge(deviceNameToSourceNodesMap, scanOrder);
     } else {
-      planTimeJoin(deviceNameToSourceNodesMap, scanOrder, queryFilter, selectedPathList);
+      planTimeJoin(deviceNameToSourceNodesMap, scanOrder);
     }
 
     return this;
   }
 
   public void planTimeJoin(
-      Map<String, List<PlanNode>> deviceNameToSourceNodesMap,
-      OrderBy mergeOrder,
-      IExpression queryFilter,
-      List<String> selectedPathList) {
+      Map<String, List<PlanNode>> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
     List<PlanNode> sourceNodes =
         deviceNameToSourceNodesMap.entrySet().stream()
             .flatMap(entry -> entry.getValue().stream())
             .collect(Collectors.toList());
-    this.root = convergeWithTimeJoin(sourceNodes, mergeOrder, queryFilter, selectedPathList);
+    this.root = convergeWithTimeJoin(sourceNodes, mergeOrder);
   }
 
   public void planDeviceMerge(
-      Map<String, List<PlanNode>> deviceNameToSourceNodesMap,
-      OrderBy mergeOrder,
-      IExpression queryFilter,
-      List<String> selectedPathList) {
+      Map<String, List<PlanNode>> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
+    List<String> measurements =
+        deviceNameToSourceNodesMap.values().stream()
+            .flatMap(List::stream)
+            .map(node -> ((SeriesScanNode) node).getSeriesPath().getMeasurement())
+            .distinct()
+            .collect(Collectors.toList());
     DeviceViewNode deviceViewNode =
-        new DeviceViewNode(context.getQueryId().genPlanNodeId(), mergeOrder);
+        new DeviceViewNode(
+            context.getQueryId().genPlanNodeId(),
+            Arrays.asList(OrderBy.DEVICE_ASC, mergeOrder),
+            measurements);
     for (Map.Entry<String, List<PlanNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
-      deviceViewNode.addChildDeviceNode(
-          deviceName, convergeWithTimeJoin(planNodes, mergeOrder, queryFilter, selectedPathList));
+      deviceViewNode.addChildDeviceNode(deviceName, convergeWithTimeJoin(planNodes, mergeOrder));
     }
     this.root = deviceViewNode;
   }
 
-  private PlanNode convergeWithTimeJoin(
-      List<PlanNode> sourceNodes,
-      OrderBy mergeOrder,
-      IExpression queryFilter,
-      List<String> outputColumnNames) {
+  private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, OrderBy mergeOrder) {
     PlanNode tmpNode;
     if (sourceNodes.size() == 1) {
       tmpNode = sourceNodes.get(0);
     } else {
       tmpNode = new TimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, sourceNodes);
     }
-
-    if (queryFilter != null) {
-      tmpNode =
-          new FilterNode(
-              context.getQueryId().genPlanNodeId(), tmpNode, queryFilter, outputColumnNames);
-    }
-
     return tmpNode;
   }
 

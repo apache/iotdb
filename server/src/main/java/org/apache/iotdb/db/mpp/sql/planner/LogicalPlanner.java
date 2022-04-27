@@ -108,9 +108,7 @@ public class LogicalPlanner {
           .planRawDataQuerySource(
               queryStatement.getDeviceNameToDeduplicatedPathsMap(),
               queryStatement.getResultOrder(),
-              queryStatement.isAlignByDevice(),
-              analysis.getQueryFilter(),
-              queryStatement.getSelectedPathNames())
+              queryStatement.isAlignByDevice())
           .planOffset(queryStatement.getRowOffset())
           .planLimit(queryStatement.getRowLimit())
           .getRoot();
