@@ -1596,6 +1596,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return setStorageGroupStatement;
   }
 
+  // TODO @spricoder add TTL
+
   /** function for parsing file path used by LOAD statement. */
   public String parseFilePath(String src) {
     return src.substring(1, src.length() - 1);

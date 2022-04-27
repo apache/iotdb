@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesSta
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetTTLToStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
@@ -86,6 +87,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitSetStorageGroup(SetStorageGroupStatement alterTimeSeriesStatement, C context) {
     return visitStatement(alterTimeSeriesStatement, context);
+  }
+
+  public R visitSetTTLToStorageGroup(SetTTLToStorageGroupStatement setTTLToStorageGroupStatement, C context){
+    return visitStatement(setTTLToStorageGroupStatement, context);
   }
 
   /** Data Manipulation Language (DML) */

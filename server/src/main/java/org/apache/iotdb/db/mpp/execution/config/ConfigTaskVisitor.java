@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.config;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetTTLToStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -34,6 +35,11 @@ public class ConfigTaskVisitor
 
   public IConfigTask visitSetStorageGroup(SetStorageGroupStatement statement, TaskContext context) {
     return new SetStorageGroupTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitSetTTLToStorageGroup(SetTTLToStorageGroupStatement statement, TaskContext context) {
+    return new SetTTLToStorageGroupTask(statement);
   }
 
   @Override
