@@ -16,24 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.pipedata.queue;
+package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.db.sync.pipedata.PipeData;
+public class ConfigNodeConnectionException extends RuntimeException {
 
-import java.util.List;
-
-public interface PipeDataQueue {
-  boolean offer(PipeData data);
-
-  List<PipeData> pull(long serialNumber);
-
-  PipeData take() throws InterruptedException;
-
-  void commit();
-
-  boolean isEmpty();
-
-  void close();
-
-  void clear();
+  public ConfigNodeConnectionException(String message) {
+    super(message);
+  }
 }

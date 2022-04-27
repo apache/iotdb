@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,24 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.pipedata.queue;
 
-import org.apache.iotdb.db.sync.pipedata.PipeData;
+package org.apache.iotdb.db.metadata.tree;
 
-import java.util.List;
+public interface ITreeNode {
 
-public interface PipeDataQueue {
-  boolean offer(PipeData data);
-
-  List<PipeData> pull(long serialNumber);
-
-  PipeData take() throws InterruptedException;
-
-  void commit();
-
-  boolean isEmpty();
-
-  void close();
-
-  void clear();
+  String getName();
 }

@@ -32,33 +32,64 @@ public class SyncPathUtil {
     // forbidding instantiation
   }
 
+  // sync data structure
+  // data/sync
+  // |----sender dir
+  // |      |----sender pipe dir
+  // |             |----history pipe log dir
+  // |             |----realtime pipe log dir
+  // |             |----file data dir
+  // |----receiver dir
+  //        |-----receiver pipe dir
+  //                |----receiver pipe log dir
+  //                |----file data dir
+
   /** sender */
-  public static String getSenderPipeDir(String pipeName, long createTime) {
+  public static String getSenderDir() {
     return IoTDBDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator
-        + SyncConstant.SENDER_PIPE_DIR_NAME
-        + String.format("-%s-%d", pipeName, createTime);
+        + SyncConstant.SENDER_DIR_NAME;
   }
 
-  public static String getSenderHistoryPipeDataDir(String pipeName, long createTime) {
+  public static String getSenderPipeDir(String pipeName, long createTime) {
+    return getSenderDir() + File.separator + getSenderPipeDirName(pipeName, createTime);
+  }
+
+  public static String getSenderPipeDirName(String pipeName, long createTime) {
+    return String.format("%s-%d", pipeName, createTime);
+  }
+
+  public static String getSenderHistoryPipeLogDir(String pipeName, long createTime) {
     return getSenderPipeDir(pipeName, createTime)
         + File.separator
         + SyncConstant.HISTORY_PIPE_LOG_DIR_NAME;
   }
 
-  public static String getSenderRealTimePipeDataDir(String pipeName, long createTime) {
+  public static String getSenderRealTimePipeLogDir(String pipeName, long createTime) {
     return getSenderPipeDir(pipeName, createTime) + File.separator + SyncConstant.PIPE_LOG_DIR_NAME;
   }
 
-  /** receiver */
-  public static String getFileDataDirPath(IdentityInfo identityInfo) {
-    return SyncPathUtil.getReceiverFileDataDir(
-        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
+  public static String getSenderFileDataDir(String pipeName, long createTime) {
+    return getSenderPipeDir(pipeName, createTime)
+        + File.separator
+        + SyncConstant.FILE_DATA_DIR_NAME;
   }
 
-  public static String getPipeLogDirPath(IdentityInfo identityInfo) {
-    return SyncPathUtil.getReceiverPipeLogDir(
-        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
+  /** receiver */
+  public static String getReceiverDir() {
+    return IoTDBDescriptor.getInstance().getConfig().getSyncDir()
+        + File.separator
+        + SyncConstant.RECEIVER_DIR_NAME;
+  }
+
+  public static String getReceiverPipeDir(String pipeName, String remoteIp, long createTime) {
+    return getReceiverDir()
+        + File.separator
+        + getReceiverPipeDirName(pipeName, remoteIp, createTime);
+  }
+
+  public static String getReceiverPipeDirName(String pipeName, String remoteIp, long createTime) {
+    return String.format("%s-%d-%s", pipeName, createTime, remoteIp);
   }
 
   public static String getReceiverPipeLogDir(String pipeName, String remoteIp, long createTime) {
@@ -73,30 +104,31 @@ public class SyncPathUtil {
         + SyncConstant.FILE_DATA_DIR_NAME;
   }
 
-  public static String getReceiverPipeDir(String pipeName, String remoteIp, long createTime) {
-    return getReceiverDir()
-        + File.separator
-        + getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+  public static String getFileDataDirPath(IdentityInfo identityInfo) {
+    return SyncPathUtil.getReceiverFileDataDir(
+        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
   }
 
-  public static String getReceiverPipeFolderName(
-      String pipeName, String remoteIp, long createTime) {
-    return String.format("%s-%d-%s", pipeName, createTime, remoteIp);
+  public static String getPipeLogDirPath(IdentityInfo identityInfo) {
+    return SyncPathUtil.getReceiverPipeLogDir(
+        identityInfo.getPipeName(), identityInfo.getAddress(), identityInfo.getCreateTime());
   }
 
-  public static String getReceiverDir() {
-    return IoTDBDescriptor.getInstance().getConfig().getSyncDir()
-        + File.separator
-        + SyncConstant.RECEIVER_DIR;
-  }
-
+  /** common */
   public static String getSysDir() {
     return IoTDBDescriptor.getInstance().getConfig().getSyncDir()
         + File.separator
         + SyncConstant.SYNC_SYS_DIR;
   }
 
-  /** common */
+  public static String getPipeLogName(long serialNumber) {
+    return serialNumber + SyncConstant.PIPE_LOG_NAME_SUFFIX;
+  }
+
+  public static Long getSerialNumberFromPipeLogName(String pipeLogName) {
+    return Long.parseLong(pipeLogName.split(SyncConstant.PIPE_LOG_NAME_SEPARATOR)[0]);
+  }
+
   public static boolean createFile(File file) throws IOException {
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();

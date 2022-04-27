@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.execution.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
@@ -69,10 +68,7 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
     SyncDataNodeInternalServiceClient client = null;
     try {
       // TODO: (jackie tien) change the port
-      TEndPoint endPoint =
-          new TEndPoint(
-              instance.getHostEndpoint().getIp(),
-              IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+      TEndPoint endPoint = instance.getHostDataNode().internalEndPoint;
       client = internalServiceClientManager.borrowClient(endPoint);
       if (client == null) {
         throw new TException("Can't get client for node " + endPoint);
