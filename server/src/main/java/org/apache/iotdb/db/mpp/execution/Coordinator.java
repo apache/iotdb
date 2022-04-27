@@ -55,12 +55,12 @@ public class Coordinator {
 
   private static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
       new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
           IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort());
 
   private static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
       new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
           IoTDBDescriptor.getInstance().getConfig().getInternalPort());
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
