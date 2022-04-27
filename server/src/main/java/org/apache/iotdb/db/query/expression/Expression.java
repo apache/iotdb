@@ -39,12 +39,12 @@ import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -236,66 +236,78 @@ public abstract class Expression {
 
     Expression expression;
     switch (type) {
-      case 0:
-        expression = new AdditionExpression(byteBuffer);
-        break;
-      case 1:
-        expression = new DivisionExpression(byteBuffer);
-        break;
-      case 2:
-        expression = new EqualToExpression(byteBuffer);
-        break;
-      case 3:
-        expression = new GreaterEqualExpression(byteBuffer);
-        break;
-      case 4:
-        expression = new GreaterThanExpression(byteBuffer);
-        break;
-      case 5:
-        expression = new LessEqualExpression(byteBuffer);
-        break;
-      case 6:
-        expression = new LessThanExpression(byteBuffer);
-        break;
-      case 7:
-        expression = new LogicAndExpression(byteBuffer);
-        break;
-      case 8:
-        expression = new LogicOrExpression(byteBuffer);
-        break;
-      case 9:
-        expression = new ModuloExpression(byteBuffer);
-        break;
-      case 10:
-        expression = new MultiplicationExpression(byteBuffer);
-        break;
-      case 11:
-        expression = new NonEqualExpression(byteBuffer);
-        break;
-      case 12:
-        expression = new SubtractionExpression(byteBuffer);
-        break;
-      case 13:
-        expression = new FunctionExpression(byteBuffer);
-        break;
-      case 14:
-        expression = new LogicNotExpression(byteBuffer);
-        break;
-      case 15:
-        expression = new NegationExpression(byteBuffer);
-        break;
-      case 16:
-        expression = new TimeSeriesOperand(byteBuffer);
-        break;
-      case 17:
+      case -4:
         expression = new ConstantOperand(byteBuffer);
         break;
-      case 18:
-        expression = null;
+      case -3:
+        throw new UnsupportedOperationException();
+      case -2:
+        expression = new TimeSeriesOperand(byteBuffer);
         break;
-      case 19:
+      case -1:
+        expression = new FunctionExpression(byteBuffer);
+        break;
+
+      case 0:
+        expression = new NegationExpression(byteBuffer);
+        break;
+      case 1:
+        expression = new LogicNotExpression(byteBuffer);
+        break;
+
+      case 2:
+        expression = new MultiplicationExpression(byteBuffer);
+        break;
+      case 3:
+        expression = new DivisionExpression(byteBuffer);
+        break;
+      case 4:
+        expression = new ModuloExpression(byteBuffer);
+        break;
+
+      case 5:
+        expression = new AdditionExpression(byteBuffer);
+        break;
+      case 6:
+        expression = new SubtractionExpression(byteBuffer);
+        break;
+
+      case 7:
+        expression = new EqualToExpression(byteBuffer);
+        break;
+      case 8:
+        expression = new NonEqualExpression(byteBuffer);
+        break;
+      case 9:
+        expression = new GreaterEqualExpression(byteBuffer);
+        break;
+      case 10:
+        expression = new GreaterThanExpression(byteBuffer);
+        break;
+      case 11:
+        expression = new LessEqualExpression(byteBuffer);
+        break;
+      case 12:
+        expression = new LessThanExpression(byteBuffer);
+        break;
+
+      case 13:
+        throw new UnsupportedOperationException();
+      case 14:
         expression = new RegularExpression(byteBuffer);
         break;
+
+      case 15:
+        throw new UnsupportedOperationException();
+
+      case 16:
+        expression = new LogicAndExpression(byteBuffer);
+        break;
+
+      case 17:
+        expression = new LogicOrExpression(byteBuffer);
+        break;
+
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
     }
