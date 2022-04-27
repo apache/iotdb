@@ -1598,6 +1598,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "data_block_manager_keep_alive_time_in_ms",
                 Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
+
+    conf.setPartitionCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
   }
 
   /** Get default encode algorithm by data type */

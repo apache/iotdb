@@ -107,7 +107,7 @@ public class InternalServiceImplTest {
   }
 
   @Test
-  public void createTimeseriesTest() throws MetadataException {
+  public void testCreateTimeseries() throws MetadataException {
     CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("0"),
@@ -164,7 +164,7 @@ public class InternalServiceImplTest {
   }
 
   @Test
-  public void createAlignedTimeseriesTest() throws MetadataException {
+  public void testCreateAlignedTimeseries() throws MetadataException {
     CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode =
         new CreateAlignedTimeSeriesNode(
             new PlanNodeId("0"),

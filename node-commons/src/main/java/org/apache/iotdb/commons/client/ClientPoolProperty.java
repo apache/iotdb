@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.client;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPoolConfig;
 
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 public class ClientPoolProperty<V> {
 
@@ -76,7 +77,7 @@ public class ClientPoolProperty<V> {
 
     private DefaultProperty() {}
 
-    public static final long WAIT_CLIENT_TIMEOUT_MS = 10_000;
+    public static final long WAIT_CLIENT_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(10);
     public static final int MAX_TOTAL_CLIENT_FOR_EACH_NODE = 100;
     public static final int MAX_IDLE_CLIENT_FOR_EACH_NODE = 100;
   }

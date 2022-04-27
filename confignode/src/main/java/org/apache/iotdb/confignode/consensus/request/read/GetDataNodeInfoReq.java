@@ -25,15 +25,15 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
-public class QueryDataNodeInfoReq extends ConfigRequest {
+public class GetDataNodeInfoReq extends ConfigRequest {
 
   private int dataNodeID;
 
-  public QueryDataNodeInfoReq() {
-    super(ConfigRequestType.QueryDataNodeInfo);
+  public GetDataNodeInfoReq() {
+    super(ConfigRequestType.GetDataNodeInfo);
   }
 
-  public QueryDataNodeInfoReq(int dataNodeID) {
+  public GetDataNodeInfoReq(int dataNodeID) {
     this();
     this.dataNodeID = dataNodeID;
   }
@@ -44,7 +44,7 @@ public class QueryDataNodeInfoReq extends ConfigRequest {
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.QueryDataNodeInfo.ordinal());
+    buffer.putInt(ConfigRequestType.GetDataNodeInfo.ordinal());
     buffer.putInt(dataNodeID);
   }
 
@@ -57,7 +57,7 @@ public class QueryDataNodeInfoReq extends ConfigRequest {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    QueryDataNodeInfoReq that = (QueryDataNodeInfoReq) o;
+    GetDataNodeInfoReq that = (GetDataNodeInfoReq) o;
     return dataNodeID == that.dataNodeID;
   }
 

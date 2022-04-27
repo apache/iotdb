@@ -64,6 +64,12 @@ public class ConstantOperand extends Expression {
     return dataType;
   }
 
+  public boolean isNegativeNumber() {
+    return !dataType.equals(TSDataType.TEXT)
+        && !dataType.equals(TSDataType.BOOLEAN)
+        && Double.parseDouble(valueString) < 0;
+  }
+
   @Override
   public boolean isConstantOperandInternal() {
     return true;
@@ -146,8 +152,8 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.CONSTANT.getExpressionType();
+  public ExpressionType getExpressionType() {
+    return ExpressionType.CONSTANT;
   }
 
   @Override

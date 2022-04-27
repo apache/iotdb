@@ -28,11 +28,12 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.DataNodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -41,7 +42,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
@@ -63,6 +68,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -85,7 +91,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   @After
   public void after() throws IOException {
     DataNodeInfo.getInstance().clear();
-    StorageGroupInfo.getInstance().clear();
+    ClusterSchemaInfo.getInstance().clear();
     PartitionInfo.getInstance().clear();
     processor.close();
     FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
@@ -173,38 +179,94 @@ public class ConfigNodeRPCServiceProcessorTest {
   @Test
   public void setAndQueryStorageGroupTest() throws TException {
     TSStatus status;
-    final String sg = "root.sg0";
+    final String sg0 = "root.sg0";
+    final String sg1 = "root.sg1";
 
     // failed because there are not enough DataNodes
-    TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg));
-    status = processor.setStorageGroup(setReq);
+    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
+    status = processor.setStorageGroup(setReq0);
     Assert.assertEquals(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(), status.getCode());
     Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
 
     // register DataNodes
     registerDataNodes();
 
-    // set StorageGroup
-    status = processor.setStorageGroup(setReq);
+    // set StorageGroup0 by default values
+    status = processor.setStorageGroup(setReq0);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-    // query StorageGroupSchema
-    TStorageGroupSchemaResp resp = processor.getStorageGroupsSchema();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
-    Map<String, TStorageGroupSchema> schemaMap = resp.getStorageGroupSchemaMap();
-    Assert.assertEquals(1, schemaMap.size());
-    TStorageGroupSchema storageGroupSchema = schemaMap.get(sg);
+    // set StorageGroup1 by specific values
+    TSetStorageGroupReq setReq1 =
+        new TSetStorageGroupReq(
+            new TStorageGroupSchema(sg1)
+                .setTTL(1024L)
+                .setSchemaReplicationFactor(5)
+                .setDataReplicationFactor(5)
+                .setTimePartitionInterval(2048L));
+    status = processor.setStorageGroup(setReq1);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // test count all StorageGroups
+    TCountStorageGroupResp countResp =
+        processor.countMatchedStorageGroups(Arrays.asList("root", "**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
+    Assert.assertEquals(2, countResp.getCount());
+
+    // test count one StorageGroup
+    countResp = processor.countMatchedStorageGroups(Arrays.asList("root", "sg0", "**"));
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
+    Assert.assertEquals(1, countResp.getCount());
+
+    // test query all StorageGroupSchemas
+    TStorageGroupSchemaResp getResp =
+        processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "**"));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
+    Map<String, TStorageGroupSchema> schemaMap = getResp.getStorageGroupSchemaMap();
+    Assert.assertEquals(2, schemaMap.size());
+    TStorageGroupSchema storageGroupSchema = schemaMap.get(sg0);
     Assert.assertNotNull(storageGroupSchema);
-    Assert.assertEquals(sg, storageGroupSchema.getName());
+    Assert.assertEquals(sg0, storageGroupSchema.getName());
     Assert.assertEquals(Long.MAX_VALUE, storageGroupSchema.getTTL());
     Assert.assertEquals(3, storageGroupSchema.getSchemaReplicationFactor());
     Assert.assertEquals(3, storageGroupSchema.getDataReplicationFactor());
     Assert.assertEquals(604800, storageGroupSchema.getTimePartitionInterval());
+    storageGroupSchema = schemaMap.get(sg1);
+    Assert.assertNotNull(storageGroupSchema);
+    Assert.assertEquals(sg1, storageGroupSchema.getName());
+    Assert.assertEquals(1024L, storageGroupSchema.getTTL());
+    Assert.assertEquals(5, storageGroupSchema.getSchemaReplicationFactor());
+    Assert.assertEquals(5, storageGroupSchema.getDataReplicationFactor());
+    Assert.assertEquals(2048L, storageGroupSchema.getTimePartitionInterval());
 
     // test fail by re-register
-    status = processor.setStorageGroup(setReq);
+    status = processor.setStorageGroup(setReq0);
     Assert.assertEquals(
         TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode(), status.getCode());
+
+    // test StorageGroup setter interfaces
+    status = processor.setTTL(new TSetTTLReq(sg1, Long.MAX_VALUE));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.setSchemaReplicationFactor(new TSetSchemaReplicationFactorReq(sg1, 3));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.setDataReplicationFactor(new TSetDataReplicationFactorReq(sg1, 3));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    status = processor.setTimePartitionInterval(new TSetTimePartitionIntervalReq(sg1, 604800L));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // test setter results
+    getResp = processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "sg1"));
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
+    schemaMap = getResp.getStorageGroupSchemaMap();
+    Assert.assertEquals(1, schemaMap.size());
+    storageGroupSchema = schemaMap.get(sg1);
+    Assert.assertNotNull(storageGroupSchema);
+    Assert.assertEquals(sg1, storageGroupSchema.getName());
+    Assert.assertEquals(Long.MAX_VALUE, storageGroupSchema.getTTL());
+    Assert.assertEquals(3, storageGroupSchema.getSchemaReplicationFactor());
+    Assert.assertEquals(3, storageGroupSchema.getDataReplicationFactor());
+    Assert.assertEquals(604800, storageGroupSchema.getTimePartitionInterval());
   }
 
   /** Generate a PatternTree and serialize it into a ByteBuffer */

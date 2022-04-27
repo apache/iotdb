@@ -41,7 +41,9 @@ public interface ColumnMerger {
    * merge columns belonging to same series into one column
    *
    * @param inputTsBlocks all source TsBlocks, some of which will cantain source column
-   * @param inputIndex start index for each source TsBlock and size of it is equal to inputTsBlocks
+   * @param inputIndex start index for each source TsBlock and size of it is equal to inputTsBlocks,
+   *     we should only read from this array and not update it because others will use the start
+   *     index value in inputIndex array
    * @param updatedInputIndex current index for each source TsBlock after merging
    * @param timeBuilder result time column, which is already generated and used to indicate each
    *     row's timestamp

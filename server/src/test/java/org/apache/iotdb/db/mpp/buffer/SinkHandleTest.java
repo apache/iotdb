@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.mpp.buffer;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.db.mpp.memory.MemoryPool;
-import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Client;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent;
@@ -58,16 +59,20 @@ public class SinkHandleTest {
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryPool mockMemoryPool = Utils.createMockNonBlockedMemoryPool();
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
+    IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> mockClientManager =
+        Mockito.mock(IClientManager.class);
     // Construct a mock client.
-    Client mockClient = Mockito.mock(Client.class);
+    SyncDataNodeDataBlockServiceClient mockClient =
+        Mockito.mock(SyncDataNodeDataBlockServiceClient.class);
     try {
+      Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
       Mockito.doNothing()
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
       Mockito.doNothing()
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
-    } catch (TException e) {
+    } catch (TException | IOException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -85,9 +90,9 @@ public class SinkHandleTest {
             localFragmentInstanceId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
-            mockClient,
             Utils.createMockTsBlockSerde(mockTsBlockSize),
-            mockSinkHandleListener);
+            mockSinkHandleListener,
+            mockClientManager);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isClosed());
@@ -185,16 +190,20 @@ public class SinkHandleTest {
     SinkHandleListener mockSinkHandleListener = Mockito.mock(SinkHandleListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
+    IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> mockClientManager =
+        Mockito.mock(IClientManager.class);
     // Construct a mock client.
-    Client mockClient = Mockito.mock(Client.class);
+    SyncDataNodeDataBlockServiceClient mockClient =
+        Mockito.mock(SyncDataNodeDataBlockServiceClient.class);
     try {
+      Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
       Mockito.doNothing()
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
       Mockito.doNothing()
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
-    } catch (TException e) {
+    } catch (TException | IOException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -208,9 +217,9 @@ public class SinkHandleTest {
             localFragmentInstanceId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
-            mockClient,
             Utils.createMockTsBlockSerde(mockTsBlockSize),
-            mockSinkHandleListener);
+            mockSinkHandleListener,
+            mockClientManager);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isClosed());
@@ -353,17 +362,21 @@ public class SinkHandleTest {
     SinkHandleListener mockSinkHandleListener = Mockito.mock(SinkHandleListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
+    IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> mockClientManager =
+        Mockito.mock(IClientManager.class);
     // Construct a mock client.
-    Client mockClient = Mockito.mock(Client.class);
+    SyncDataNodeDataBlockServiceClient mockClient =
+        Mockito.mock(SyncDataNodeDataBlockServiceClient.class);
     TException mockException = new TException("Mock exception");
     try {
+      Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
       Mockito.doThrow(mockException)
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
       Mockito.doThrow(mockException)
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
-    } catch (TException e) {
+    } catch (TException | IOException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -377,9 +390,9 @@ public class SinkHandleTest {
             localFragmentInstanceId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
-            mockClient,
             Utils.createMockTsBlockSerde(mockTsBlockSize),
-            mockSinkHandleListener);
+            mockSinkHandleListener,
+            mockClientManager);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isClosed());
@@ -454,16 +467,20 @@ public class SinkHandleTest {
     SinkHandleListener mockSinkHandleListener = Mockito.mock(SinkHandleListener.class);
     // Construct several mock TsBlock(s).
     List<TsBlock> mockTsBlocks = Utils.createMockTsBlocks(numOfMockTsBlock, mockTsBlockSize);
+    IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> mockClientManager =
+        Mockito.mock(IClientManager.class);
     // Construct a mock client.
-    Client mockClient = Mockito.mock(Client.class);
+    SyncDataNodeDataBlockServiceClient mockClient =
+        Mockito.mock(SyncDataNodeDataBlockServiceClient.class);
     try {
+      Mockito.when(mockClientManager.borrowClient(remoteEndpoint)).thenReturn(mockClient);
       Mockito.doNothing()
           .when(mockClient)
           .onEndOfDataBlockEvent(Mockito.any(TEndOfDataBlockEvent.class));
       Mockito.doNothing()
           .when(mockClient)
           .onNewDataBlockEvent(Mockito.any(TNewDataBlockEvent.class));
-    } catch (TException e) {
+    } catch (TException | IOException e) {
       e.printStackTrace();
       Assert.fail();
     }
@@ -477,9 +494,9 @@ public class SinkHandleTest {
             localFragmentInstanceId,
             mockLocalMemoryManager,
             Executors.newSingleThreadExecutor(),
-            mockClient,
             Utils.createMockTsBlockSerde(mockTsBlockSize),
-            mockSinkHandleListener);
+            mockSinkHandleListener,
+            mockClientManager);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isClosed());

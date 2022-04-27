@@ -109,13 +109,19 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
+  public DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams) {
+    return null;
+  }
+
+  @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     return getDataPartition(sgNameToQueryParamsMap);
   }
 
   @Override
-  public DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> queryParams) {
+  public DataPartition getOrCreateDataPartition(
+      List<DataPartitionQueryParam> dataPartitionQueryParams) {
     return null;
   }
 }

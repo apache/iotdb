@@ -167,8 +167,8 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.TIME_SERIES.getExpressionType();
+  public ExpressionType getExpressionType() {
+    return ExpressionType.TIME_SERIES;
   }
 
   @Override

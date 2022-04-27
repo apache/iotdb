@@ -39,7 +39,7 @@ import java.nio.ByteBuffer;
 public class InsertRowNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     InsertRowNode insertRowNode = getInsertRowNode();
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
