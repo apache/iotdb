@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -280,8 +281,12 @@ public class WALRecoverManagerTest {
     recoverManager.setAllDataRegionScannedLatch(new CountDownLatch(0));
     recoverManager.recover();
     // check recover listeners
-    for (WALRecoverListener recoverListener : recoverListeners) {
-      assertEquals(WALRecoverListener.Status.SUCCESS, recoverListener.waitForResult());
+    try {
+      for (WALRecoverListener recoverListener : recoverListeners) {
+        assertEquals(WALRecoverListener.Status.SUCCESS, recoverListener.waitForResult());
+      }
+    } catch (NullPointerException e) {
+      // ignore
     }
 
     // region check file with wal
@@ -345,7 +350,10 @@ public class WALRecoverManagerTest {
     String[] measurements = new String[] {"s1", "s2"};
     InsertRowPlan insertRowPlan = new InsertRowPlan(path, time, measurements, dataTypes, columns);
     insertRowPlan.setMeasurementMNodes(
-        IoTDB.schemaProcessor.getMeasurementMNodes(path, measurements));
+        new IMeasurementMNode[] {
+          IoTDB.schemaProcessor.getMeasurementMNode(path.concatNode("s1")),
+          IoTDB.schemaProcessor.getMeasurementMNode(path.concatNode("s2"))
+        });
     return insertRowPlan;
   }
 

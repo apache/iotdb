@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -27,7 +26,6 @@ import org.apache.iotdb.db.mpp.sql.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
@@ -35,16 +33,28 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.crud.*;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -74,6 +84,8 @@ public class LogicalPlanner {
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, context);
       }
+
+      analysis.getRespDatasetHeader().setColumnToTsBlockIndexMap(rootNode.getOutputColumnNames());
     }
 
     return new LogicalQueryPlan(context, rootNode);
@@ -96,7 +108,7 @@ public class LogicalPlanner {
       QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
 
       planBuilder.planRawDataQuerySource(
-          queryStatement.getDeviceNameToPathsMap(),
+          queryStatement.getDeviceNameToDeduplicatedPathsMap(),
           queryStatement.getResultOrder(),
           queryStatement.isAlignByDevice(),
           analysis.getQueryFilter(),
@@ -119,7 +131,7 @@ public class LogicalPlanner {
         // with value filter
         planBuilder.planAggregationSourceWithValueFilter(
             queryStatement.getDeviceNameToAggregationsMap(),
-            queryStatement.getDeviceNameToPathsMap(),
+            queryStatement.getDeviceNameToDeduplicatedPathsMap(),
             queryStatement.getResultOrder(),
             queryStatement.isAlignByDevice(),
             analysis.getQueryFilter(),
@@ -262,121 +274,72 @@ public class LogicalPlanner {
     }
 
     @Override
-    public PlanNode visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitCreateRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitAlterUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitGrantUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitGrantRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitGrantRoleToUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitRevokeUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitRevokeRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitRevokeRoleFromUser(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitDropUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitDropRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitListUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitListRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitListPrivilegesUser(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitListPrivilegesRole(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitListUserPrivileges(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitListRolePrivileges(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitListAllRoleOfUser(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    @Override
-    public PlanNode visitListAllUserOfRole(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      return getNewAuthorNode(authorStatement, context);
-    }
-
-    public AuthorNode getNewAuthorNode(AuthorStatement authorStatement, MPPQueryContext context) {
-      try {
-        return new AuthorNode(
-            context.getQueryId().genPlanNodeId(),
-            authorStatement.getAuthorType(),
-            authorStatement.getUserName(),
-            authorStatement.getRoleName(),
-            authorStatement.getPassWord(),
-            authorStatement.getNewPassword(),
-            authorStatement.getPrivilegeList(),
-            authorStatement.getNodeName());
-      } catch (AuthException e) {
-        return null;
+    public PlanNode visitShowTimeSeries(
+        ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planTimeSeriesMetaSource(
+          showTimeSeriesStatement.getPathPattern(),
+          showTimeSeriesStatement.getKey(),
+          showTimeSeriesStatement.getValue(),
+          showTimeSeriesStatement.getLimit(),
+          showTimeSeriesStatement.getOffset(),
+          showTimeSeriesStatement.isOrderByHeat(),
+          showTimeSeriesStatement.isContains(),
+          showTimeSeriesStatement.isPrefixPath());
+      planBuilder.planSchemaMerge(showTimeSeriesStatement.isOrderByHeat());
+      if (showTimeSeriesStatement.getLimit() > 0) {
+        planBuilder.planOffset(showTimeSeriesStatement.getOffset());
+        planBuilder.planLimit(showTimeSeriesStatement.getLimit());
       }
+      return planBuilder.getRoot();
+    }
+
+    @Override
+    public PlanNode visitShowDevices(
+        ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planDeviceSchemaSource(
+          showDevicesStatement.getPathPattern(),
+          showDevicesStatement.getLimit(),
+          showDevicesStatement.getOffset(),
+          showDevicesStatement.isPrefixPath(),
+          showDevicesStatement.hasSgCol());
+      planBuilder.planSchemaMerge(false);
+      planBuilder.planOffset(showDevicesStatement.getOffset());
+      planBuilder.planLimit(showDevicesStatement.getLimit());
+      return planBuilder.getRoot();
+    }
+
+    @Override
+    public PlanNode visitCountDevices(
+        CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planDevicesCountSource(
+          countDevicesStatement.getPartialPath(), countDevicesStatement.isPrefixPath());
+      planBuilder.planCountMerge();
+      return planBuilder.getRoot();
+    }
+
+    @Override
+    public PlanNode visitCountTimeSeries(
+        CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planTimeSeriesCountSource(
+          countTimeSeriesStatement.getPartialPath(), countTimeSeriesStatement.isPrefixPath());
+      planBuilder.planCountMerge();
+      return planBuilder.getRoot();
+    }
+
+    @Override
+    public PlanNode visitCountLevelTimeSeries(
+        CountLevelTimeSeriesStatement countLevelTimeSeriesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planLevelTimeSeriesCountSource(
+          countLevelTimeSeriesStatement.getPartialPath(),
+          countLevelTimeSeriesStatement.isPrefixPath(),
+          countLevelTimeSeriesStatement.getLevel());
+      planBuilder.planCountMerge();
+      return planBuilder.getRoot();
     }
 
     @Override
@@ -471,6 +434,15 @@ public class LogicalPlanner {
             i);
       }
       return insertRowsNode;
+    }
+
+    @Override
+    public PlanNode visitSchemaFetch(
+        SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planSchemaFetchSource(schemaFetchStatement.getPatternTree());
+      planBuilder.planSchemaMerge(false);
+      return planBuilder.getRoot();
     }
   }
 }

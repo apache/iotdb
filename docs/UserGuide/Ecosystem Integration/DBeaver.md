@@ -51,23 +51,25 @@ DBeaver is a SQL client software application and a database administration tool.
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2010.56.51%20AM.png?raw=true)
 
-5. Add libs listed below and click `Find Class`.
-   
-   Another way is after running `mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies`, finding and adding a lib names `iotdb-jdbc-{version}-jar-with-dependencies.jar` under `iotdb/jdbc/target/`.
+5. Download [Sources](https://iotdb.apache.org/Download/)，unzip it and compile jdbc driver by the following command
 
+   ```shell
+   mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies
+   ```
+6. Find and add a lib named `apache-iotdb-jdbc-{version}-jar-with-dependencies.jar`, which should be under `jdbc/target/`, then select `Find Class`.
 
-   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.00.57%20AM.png?raw=true)
+   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202022-04-26%20at%205.57.32%20PM.png?raw=true)
 
-6. Edit the driver Settings
+8. Edit the driver Settings
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.03.03%20AM.png?raw=true)
 
-7. Open New DataBase Connection and select iotdb
+9. Open New DataBase Connection and select iotdb
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.05.44%20AM.png?raw=true) 
 
-8. Edit JDBC Connection Settings
-   
+10. Edit JDBC Connection Settings
+
    ```
    JDBC URL: jdbc:iotdb://127.0.0.1:6667/
    Username: root
@@ -75,10 +77,10 @@ DBeaver is a SQL client software application and a database administration tool.
    ```
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.09%20AM.png?raw=true)
 
-9. Test Connection
+11. Test Connection
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.31%20AM.png?raw=true)
 
-10. Enjoy IoTDB with DBeaver
+12. Enjoy IoTDB with DBeaver
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.08.33%20AM.png?raw=true)

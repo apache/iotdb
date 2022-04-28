@@ -19,15 +19,21 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
@@ -158,13 +164,20 @@ public class IoTDBDescriptor {
                   "rpc_advanced_compression_enable",
                   Boolean.toString(conf.isRpcAdvancedCompressionEnable()))));
 
+      conf.setConnectionTimeoutInMS(
+          Integer.parseInt(
+              properties.getProperty(
+                  "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+
+      conf.setSelectorNumOfClientManager(
+          Integer.parseInt(
+              properties.getProperty(
+                  "selector_thread_nums_of_client_manager",
+                  String.valueOf(conf.getSelectorNumOfClientManager()))));
+
       conf.setRpcPort(
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
-
-      conf.setMppPort(
-          Integer.parseInt(
-              properties.getProperty("mpp_port", Integer.toString(conf.getRpcPort()))));
 
       conf.setEnableInfluxDBRpcService(
           Boolean.parseBoolean(
@@ -236,15 +249,14 @@ public class IoTDBDescriptor {
       conf.setSchemaDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SCHEMA_FOLDER_NAME);
 
-      conf.setSyncDir(
-          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
-
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
       conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
+
+      conf.setSyncDir(properties.getProperty("sync_dir", conf.getSyncDir()));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
@@ -359,15 +371,35 @@ public class IoTDBDescriptor {
                   "enable_unseq_space_compaction",
                   Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
-      conf.setCrossCompactionStrategy(
-          CrossCompactionStrategy.getCrossCompactionStrategy(
+      conf.setCrossCompactionSelector(
+          CrossCompactionSelector.getCrossCompactionSelector(
               properties.getProperty(
-                  "cross_compaction_strategy", conf.getCrossCompactionStrategy().toString())));
+                  "cross_selector", conf.getCrossCompactionSelector().toString())));
 
-      conf.setInnerCompactionStrategy(
-          InnerCompactionStrategy.getInnerCompactionStrategy(
+      conf.setInnerSequenceCompactionSelector(
+          InnerSequenceCompactionSelector.getInnerSequenceCompactionSelector(
               properties.getProperty(
-                  "inner_compaction_strategy", conf.getInnerCompactionStrategy().toString())));
+                  "inner_seq_selector", conf.getInnerSequenceCompactionSelector().toString())));
+
+      conf.setInnerUnsequenceCompactionSelector(
+          InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionSelector(
+              properties.getProperty(
+                  "inner_unseq_selector", conf.getInnerUnsequenceCompactionSelector().toString())));
+
+      conf.setInnerSeqCompactionPerformer(
+          InnerSeqCompactionPerformer.getInnerSeqCompactionPerformer(
+              properties.getProperty(
+                  "inner_seq_performer", conf.getInnerSeqCompactionPerformer().toString())));
+
+      conf.setInnerUnseqCompactionPerformer(
+          InnerUnseqCompactionPerformer.getInnerUnseqCompactionPerformer(
+              properties.getProperty(
+                  "inner_unseq_performer", conf.getInnerUnseqCompactionPerformer().toString())));
+
+      conf.setCrossCompactionPerformer(
+          CrossCompactionPerformer.getCrossCompactionPerformer(
+              properties.getProperty(
+                  "cross_performer", conf.getCrossCompactionPerformer().toString())));
 
       conf.setCompactionPriority(
           CompactionPriority.valueOf(
@@ -391,15 +423,17 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "session_timeout_threshold",
                   Integer.toString(conf.getSessionTimeoutThreshold()))));
-
-      conf.setSyncEnable(
-          Boolean.parseBoolean(
-              properties.getProperty("is_sync_enable", Boolean.toString(conf.isSyncEnable()))));
-
-      conf.setSyncServerPort(
+      conf.setPipeServerPort(
           Integer.parseInt(
               properties
-                  .getProperty("sync_server_port", Integer.toString(conf.getSyncServerPort()))
+                  .getProperty("pipe_server_port", Integer.toString(conf.getPipeServerPort()))
+                  .trim()));
+      conf.setMaxNumberOfSyncFileRetry(
+          Integer.parseInt(
+              properties
+                  .getProperty(
+                      "max_number_of_sync_file_retry",
+                      Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
                   .trim()));
 
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
@@ -434,12 +468,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "default_index_window_range",
                   Integer.toString(conf.getDefaultIndexWindowRange()))));
-
-      conf.setIndexBufferSize(
-          Long.parseLong(
-              properties.getProperty(
-                  "index_buffer_size", Long.toString(conf.getIndexBufferSize()))));
-      // end: index parameter setting
 
       conf.setConcurrentQueryThread(
           Integer.parseInt(
@@ -798,6 +826,12 @@ public class IoTDBDescriptor {
               "iotdb_server_encrypt_decrypt_provider_parameter",
               conf.getEncryptDecryptProviderParameter()));
 
+      conf.setDataNodeSchemaCacheSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "datanode_schema_cache_size",
+                  String.valueOf(conf.getDataNodeSchemaCacheSize()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -929,14 +963,6 @@ public class IoTDBDescriptor {
 
     conf.setWalDirs(properties.getProperty("wal_dirs", conf.getWalDirs()[0]).split(","));
 
-    long fsyncWalDelayInMs =
-        Long.parseLong(
-            properties.getProperty(
-                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
-    if (fsyncWalDelayInMs > 0) {
-      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
-    }
-
     int maxWalNodesNum =
         Integer.parseInt(
             properties.getProperty(
@@ -969,6 +995,18 @@ public class IoTDBDescriptor {
       conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
     }
 
+    loadWALHotModifiedProps(properties);
+  }
+
+  private void loadWALHotModifiedProps(Properties properties) {
+    long fsyncWalDelayInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "fsync_wal_delay_in_ms", Long.toString(conf.getFsyncWalDelayInMs())));
+    if (fsyncWalDelayInMs > 0) {
+      conf.setFsyncWalDelayInMs(fsyncWalDelayInMs);
+    }
+
     long walFileSizeThreshold =
         Long.parseLong(
             properties.getProperty(
@@ -978,11 +1016,13 @@ public class IoTDBDescriptor {
       conf.setWalFileSizeThresholdInByte(walFileSizeThreshold);
     }
 
-    long walFileTTL =
-        Long.parseLong(
-            properties.getProperty("wal_file_ttl_in_ms", Long.toString(conf.getWalFileTTLInMs())));
-    if (walFileTTL > 0) {
-      conf.setWalFileTTLInMs(walFileTTL);
+    double walMinEffectiveInfoRatio =
+        Double.parseDouble(
+            properties.getProperty(
+                "wal_min_effective_info_ratio",
+                Double.toString(conf.getWalMinEffectiveInfoRatio())));
+    if (walMinEffectiveInfoRatio > 0) {
+      conf.setWalMinEffectiveInfoRatio(walMinEffectiveInfoRatio);
     }
 
     long walMemTableSnapshotThreshold =
@@ -1321,6 +1361,27 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+
+      // update sync config
+      conf.setPipeServerPort(
+          Integer.parseInt(
+              properties.getProperty(
+                  "pipe_server_port", String.valueOf(conf.getPipeServerPort()))));
+      conf.setMaxNumberOfSyncFileRetry(
+          Integer.parseInt(
+              properties
+                  .getProperty(
+                      "max_number_of_sync_file_retry",
+                      Integer.toString(conf.getMaxNumberOfSyncFileRetry()))
+                  .trim()));
+      conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
+
+      // update wal config
+      long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
+      loadWALHotModifiedProps(properties);
+      if (prevDeleteWalFilesPeriodInMs != conf.getDeleteWalFilesPeriodInMs()) {
+        WALManager.getInstance().rebootWALDeleteThread();
+      }
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1537,6 +1598,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "data_block_manager_keep_alive_time_in_ms",
                 Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
+
+    conf.setPartitionCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
   }
 
   /** Get default encode algorithm by data type */
@@ -1577,6 +1643,14 @@ public class IoTDBDescriptor {
       urlList.add(nodeUrl);
     }
     return urlList;
+  }
+
+  // These configurations are received from config node when registering
+  public void loadGlobalConfig(TGlobalConfig globalConfig) {
+    conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
+    conf.setConsensusProtocolClass(globalConfig.getDataNodeConsensusProtocolClass());
+    conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
+    conf.setPartitionInterval(globalConfig.timePartitionInterval);
   }
 
   private static class IoTDBDescriptorHolder {

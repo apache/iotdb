@@ -35,6 +35,7 @@ import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxSelectComponent;
 import org.apache.iotdb.db.protocol.influxdb.util.FieldUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.FilterUtils;
+import org.apache.iotdb.db.protocol.influxdb.util.JacksonUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.QueryResultUtils;
 import org.apache.iotdb.db.protocol.influxdb.util.StringUtils;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
@@ -50,7 +51,7 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryResultRsp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryResultRsp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -61,7 +62,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import com.google.gson.Gson;
 import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.QueryResult;
@@ -76,7 +76,7 @@ import java.util.Map;
 
 public class QueryHandler {
 
-  public static TSQueryResultRsp queryInfluxDB(
+  public static InfluxQueryResultRsp queryInfluxDB(
       String database,
       InfluxQueryOperator queryOperator,
       long sessionId,
@@ -85,7 +85,7 @@ public class QueryHandler {
     // The list of fields under the current measurement and the order of the specified rules
     Map<String, Integer> fieldOrders = getFieldOrders(database, measurement, serviceProvider);
     QueryResult queryResult;
-    TSQueryResultRsp tsQueryResultRsp = new TSQueryResultRsp();
+    InfluxQueryResultRsp tsQueryResultRsp = new InfluxQueryResultRsp();
     try {
       // contain filter condition or have common query the result of by traversal.
       if (queryOperator.getWhereComponent() != null
@@ -112,7 +112,7 @@ public class QueryHandler {
                 queryOperator.getSelectComponent(), database, measurement, serviceProvider);
       }
       return tsQueryResultRsp
-          .setResultJsonString(new Gson().toJson(queryResult))
+          .setResultJsonString(JacksonUtils.bean2Json(queryResult))
           .setStatus(RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
     } catch (AuthException e) {
       return tsQueryResultRsp.setStatus(
@@ -285,8 +285,7 @@ public class QueryHandler {
           serviceProvider.createQueryDataSet(
               queryContext, physicalPlan, InfluxConstant.DEFAULT_FETCH_SIZE);
       int fieldNums = 0;
-      Map<String, Integer> tagOrders =
-          InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
+      Map<String, Integer> tagOrders = InfluxDBMetaManager.getTagOrders(database, measurement);
       int tagOrderNums = tagOrders.size();
       while (queryDataSet.hasNext()) {
         List<Field> fields = queryDataSet.next().getFields();
@@ -820,8 +819,7 @@ public class QueryHandler {
     List<SingleSeriesExpression> fieldExpressions = new ArrayList<>();
     // maximum number of tags in the current query criteria
     int currentQueryMaxTagNum = 0;
-    Map<String, Integer> tagOrders =
-        InfluxDBMetaManager.getDatabase2Measurement2TagOrders().get(database).get(measurement);
+    Map<String, Integer> tagOrders = InfluxDBMetaManager.getTagOrders(database, measurement);
     for (IExpression expression : expressions) {
       SingleSeriesExpression singleSeriesExpression = ((SingleSeriesExpression) expression);
       // the current condition is in tag

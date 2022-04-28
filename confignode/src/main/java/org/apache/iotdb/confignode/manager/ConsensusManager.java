@@ -18,15 +18,13 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -38,8 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -52,40 +48,12 @@ public class ConsensusManager {
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  private SeriesPartitionExecutor executor;
-
   public ConsensusManager() throws IOException {
-    setSeriesPartitionExecutor();
     setConsensusLayer();
   }
 
   public void close() throws IOException {
     consensusImpl.stop();
-  }
-
-  /** Build DeviceGroupHashExecutor */
-  private void setSeriesPartitionExecutor() {
-    try {
-      Class<?> executor = Class.forName(conf.getSeriesPartitionExecutorClass());
-      Constructor<?> executorConstructor = executor.getConstructor(int.class);
-      this.executor =
-          (SeriesPartitionExecutor)
-              executorConstructor.newInstance(conf.getSeriesPartitionSlotNum());
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.error(
-          "Couldn't Constructor SeriesPartitionExecutor class: {}",
-          conf.getSeriesPartitionExecutorClass(),
-          e);
-      executor = null;
-    }
-  }
-
-  public SeriesPartitionSlot getSeriesPartitionSlot(String device) {
-    return executor.getSeriesPartitionSlot(device);
   }
 
   /** Build ConfigNodeGroup ConsensusLayer */
@@ -97,7 +65,7 @@ public class ConsensusManager {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
                 conf.getConfigNodeConsensusProtocolClass(),
-                new Endpoint(conf.getRpcAddress(), conf.getInternalPort()),
+                new TEndPoint(conf.getRpcAddress(), conf.getInternalPort()),
                 new File(conf.getConsensusDir()),
                 gid -> new PartitionRegionStateMachine())
             .orElseThrow(
@@ -113,24 +81,28 @@ public class ConsensusManager {
         "Set ConfigNode consensus group {}...",
         Arrays.toString(conf.getConfigNodeGroupAddressList()));
     List<Peer> peerList = new ArrayList<>();
-    for (Endpoint endpoint : conf.getConfigNodeGroupAddressList()) {
+    for (TEndPoint endpoint : conf.getConfigNodeGroupAddressList()) {
       peerList.add(new Peer(consensusGroupId, endpoint));
     }
     consensusImpl.addConsensusGroup(consensusGroupId, peerList);
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusWriteResponse write(PhysicalPlan plan) {
+  public ConsensusWriteResponse write(ConfigRequest plan) {
     return consensusImpl.write(consensusGroupId, plan);
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusReadResponse read(PhysicalPlan plan) {
+  public ConsensusReadResponse read(ConfigRequest plan) {
     return consensusImpl.read(consensusGroupId, plan);
   }
 
   public boolean isLeader() {
     return consensusImpl.isLeader(consensusGroupId);
+  }
+
+  public Peer getLeader() {
+    return consensusImpl.getLeader(consensusGroupId);
   }
 
   // TODO: Interfaces for LoadBalancer control

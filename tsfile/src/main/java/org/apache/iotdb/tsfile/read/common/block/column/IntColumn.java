@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
@@ -67,15 +68,35 @@ public class IntColumn implements Column {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT32;
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return ColumnEncoding.INT32_ARRAY;
+  }
+
+  @Override
   public int getInt(int position) {
     checkReadablePosition(position);
     return values[position + arrayOffset];
   }
 
   @Override
+  public Object getObject(int position) {
+    return getInt(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsInt(getInt(position));
+  }
+
+  @Override
+  public boolean mayHaveNull() {
+    return valueIsNull != null;
   }
 
   @Override

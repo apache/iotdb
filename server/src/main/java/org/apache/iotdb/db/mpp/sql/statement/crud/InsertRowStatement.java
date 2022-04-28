@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -176,8 +176,8 @@ public class InsertRowStatement extends InsertBaseStatement {
     dataTypes[index] = null;
   }
 
-  public List<TimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(StorageEngine.getTimePartitionSlot(time));
+  public List<TTimePartitionSlot> getTimePartitionSlots() {
+    return Collections.singletonList(StorageEngineV2.getTimePartitionSlot(time));
   }
 
   public boolean checkDataType(SchemaTree schemaTree) {
@@ -193,7 +193,10 @@ public class InsertRowStatement extends InsertBaseStatement {
           markFailedMeasurementInsertion(
               i,
               new DataTypeMismatchException(
-                  measurements[i], measurementSchemas.get(i).getType(), dataTypes[i]));
+                  devicePath.getFullPath(),
+                  measurements[i],
+                  measurementSchemas.get(i).getType(),
+                  dataTypes[i]));
         }
       }
     }

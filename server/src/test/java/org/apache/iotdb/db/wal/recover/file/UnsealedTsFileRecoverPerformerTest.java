@@ -55,7 +55,10 @@ import java.nio.channels.FileChannel;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class UnsealedTsFileRecoverPerformerTest {
   private static final String SG_NAME = "root.recover_sg";

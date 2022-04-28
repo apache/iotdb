@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
@@ -78,25 +78,25 @@ public class InsertTabletStatement extends InsertBaseStatement {
     }
     super.markFailedMeasurementInsertion(index, e);
     dataTypes[index] = null;
-    times[index] = Long.MAX_VALUE;
     columns[index] = null;
+    bitMaps[index] = null;
   }
 
-  public List<TimePartitionSlot> getTimePartitionSlots() {
-    List<TimePartitionSlot> result = new ArrayList<>();
+  public List<TTimePartitionSlot> getTimePartitionSlots() {
+    List<TTimePartitionSlot> result = new ArrayList<>();
     long startTime =
-        (times[0] / StorageEngine.getTimePartitionInterval())
-            * StorageEngine.getTimePartitionInterval(); // included
-    long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
-    TimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
+        (times[0] / StorageEngineV2.getTimePartitionInterval())
+            * StorageEngineV2.getTimePartitionInterval(); // included
+    long endTime = startTime + StorageEngineV2.getTimePartitionInterval(); // excluded
+    TTimePartitionSlot timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         result.add(timePartitionSlot);
         // next init
         endTime =
-            (times[i] / StorageEngine.getTimePartitionInterval() + 1)
-                * StorageEngine.getTimePartitionInterval();
-        timePartitionSlot = StorageEngine.getTimePartitionSlot(times[i]);
+            (times[i] / StorageEngineV2.getTimePartitionInterval() + 1)
+                * StorageEngineV2.getTimePartitionInterval();
+        timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[i]);
       }
     }
     result.add(timePartitionSlot);
@@ -117,7 +117,10 @@ public class InsertTabletStatement extends InsertBaseStatement {
           markFailedMeasurementInsertion(
               i,
               new DataTypeMismatchException(
-                  measurements[i], measurementSchemas.get(i).getType(), dataTypes[i]));
+                  devicePath.getFullPath(),
+                  measurements[i],
+                  measurementSchemas.get(i).getType(),
+                  dataTypes[i]));
         }
       }
     }

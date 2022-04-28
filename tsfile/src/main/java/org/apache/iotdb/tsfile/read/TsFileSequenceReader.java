@@ -1257,15 +1257,16 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
 
     tsFileInput.position(headerLength);
+    boolean isComplete = isComplete();
     if (fileSize == headerLength) {
       return headerLength;
-    } else if (isComplete()) {
+    } else if (isComplete) {
       loadMetadataSize();
       if (fastFinish) {
         return TsFileCheckStatus.COMPLETE_FILE;
       }
     }
-    // not a complete file, we will recover it...
+    // if not a complete file, we will recover it...
     long truncatedSize = headerLength;
     byte marker;
     List<long[]> timeBatch = new ArrayList<>();
@@ -1479,9 +1480,13 @@ public class TsFileSequenceReader implements AutoCloseable {
         // last chunk group Metadata
         chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
       }
-      truncatedSize = this.position() - 1;
+      if (isComplete) {
+        truncatedSize = TsFileCheckStatus.COMPLETE_FILE;
+      } else {
+        truncatedSize = this.position() - 1;
+      }
     } catch (Exception e) {
-      logger.info(
+      logger.warn(
           "TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",
           file,
           this.position(),

@@ -76,6 +76,7 @@ nodeName
     | QUTOED_ID_IN_NODE_NAME
     | LAST
     | COUNT
+    | DEVICE
     ;
 
 // Identifier
@@ -109,7 +110,7 @@ comparisonOperator
     | type = OPERATOR_GTE
     | type = OPERATOR_LT
     | type = OPERATOR_LTE
-    | type = OPERATOR_EQ
+    | type = OPERATOR_SEQ
     | type = OPERATOR_NEQ
     ;
 

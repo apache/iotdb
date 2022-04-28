@@ -57,6 +57,7 @@ public class WALNodeRecoverTask implements Runnable {
 
   @Override
   public void run() {
+    logger.info("Start recovering WAL node in the directory {}", logDirectory);
     try {
       recoverInfoFromCheckpoints();
       recoverTsFiles();
@@ -78,6 +79,9 @@ public class WALNodeRecoverTask implements Runnable {
     }
     // delete this wal node folder
     FileUtils.deleteDirectory(logDirectory);
+    logger.info(
+        "Successfully recover WAL node in the directory {}, so delete these wal files.",
+        logDirectory);
   }
 
   private void recoverInfoFromCheckpoints() {
@@ -91,7 +95,9 @@ public class WALNodeRecoverTask implements Runnable {
       File tsFile = new File(memTableInfo.getTsFilePath());
       UnsealedTsFileRecoverPerformer recoverPerformer =
           walRecoverManger.removeRecoverPerformer(tsFile.getAbsolutePath());
-      memTableId2RecoverPerformer.put(memTableInfo.getMemTableId(), recoverPerformer);
+      if (recoverPerformer != null) {
+        memTableId2RecoverPerformer.put(memTableInfo.getMemTableId(), recoverPerformer);
+      }
     }
   }
 

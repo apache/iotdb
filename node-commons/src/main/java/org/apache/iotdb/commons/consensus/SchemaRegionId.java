@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.commons.consensus;
 
-import java.nio.ByteBuffer;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+
 import java.util.Objects;
 
 public class SchemaRegionId implements ConsensusGroupId {
@@ -33,25 +34,18 @@ public class SchemaRegionId implements ConsensusGroupId {
   }
 
   @Override
-  public void serializeImpl(ByteBuffer buffer) {
-    buffer.put((byte) GroupType.SchemaRegion.ordinal());
-    buffer.putInt(id);
-  }
-
-  @Override
-  public void deserializeImpl(ByteBuffer buffer) {
-    // TODO: (xingtanzjr) should we add validation for the ordinal ?
-    id = buffer.getInt();
-  }
-
-  @Override
   public int getId() {
     return id;
   }
 
   @Override
-  public GroupType getType() {
-    return GroupType.SchemaRegion;
+  public void setId(int id) {
+    this.id = id;
+  }
+
+  @Override
+  public TConsensusGroupType getType() {
+    return TConsensusGroupType.SchemaRegion;
   }
 
   @Override
@@ -68,6 +62,10 @@ public class SchemaRegionId implements ConsensusGroupId {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, GroupType.SchemaRegion);
+    return Objects.hash(id, TConsensusGroupType.SchemaRegion);
+  }
+
+  public String toString() {
+    return String.format("%s[%d]", getType(), getId());
   }
 }

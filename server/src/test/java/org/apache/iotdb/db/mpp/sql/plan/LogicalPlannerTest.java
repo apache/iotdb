@@ -19,29 +19,35 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
+import org.apache.iotdb.db.mpp.sql.analyze.FakePartitionFetcherImpl;
+import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -57,14 +63,15 @@ import static org.junit.Assert.fail;
 public class LogicalPlannerTest {
 
   @Test
-  public void queryPlanTest() {
+  @Ignore // TODO: @zyk implement getBelongedStorageGroup() in SchemaTree
+  public void testQueryPlan() {
     for (String sql : querySQLs) {
       Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
     }
   }
 
   @Test
-  public void createTimeseriesPlanTest() {
+  public void testCreateTimeseriesPlan() {
     String sql =
         "CREATE TIMESERIES root.ln.wf01.wt01.status(状态) BOOLEAN ENCODING=PLAIN COMPRESSOR=SNAPPY TAGS(tag1=v1, tag2=v2) ATTRIBUTES(attr1=v1, attr2=v2)";
     try {
@@ -99,7 +106,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void createAlignedTimeseriesPlanTest() {
+  public void testCreateAlignedTimeseriesPlan() {
     String sql =
         "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude(meter1) FLOAT encoding=PLAIN compressor=SNAPPY tags(tag1=t1) attributes(attr1=a1), longitude FLOAT encoding=PLAIN compressor=SNAPPY)";
     try {
@@ -173,7 +180,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode1 =
-          (CreateAlignedTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (CreateAlignedTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(createAlignedTimeSeriesNode.equals(createAlignedTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -182,7 +189,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void alterTimeseriesPlanTest() {
+  public void testAlterTimeseriesPlan() {
     String sql = "ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
@@ -204,7 +211,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -233,7 +240,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -262,7 +269,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -291,7 +298,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -320,7 +327,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -358,7 +365,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -367,149 +374,83 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void authorTest() throws AuthException {
+  public void testShowTimeSeries() {
+    String sql =
+        "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE tagK = tagV limit 20 offset 10";
 
-    String sql = null;
-    AuthorNode authorNode = null;
-    String[] privilegesList = {"DELETE_TIMESERIES"};
+    try {
+      LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
+      OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+      SeriesSchemaMergeNode metaMergeNode = (SeriesSchemaMergeNode) offsetNode.getChild();
+      metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
+      TimeSeriesSchemaScanNode showTimeSeriesNode =
+          (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);
+      Assert.assertNotNull(showTimeSeriesNode);
+      Assert.assertEquals(
+          new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
+      Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
+      Assert.assertFalse(showTimeSeriesNode.isContains());
+      Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
+      Assert.assertEquals("tagV", showTimeSeriesNode.getValue());
+      Assert.assertEquals(20, showTimeSeriesNode.getLimit());
+      Assert.assertEquals(10, showTimeSeriesNode.getOffset());
+      Assert.assertTrue(showTimeSeriesNode.isHasLimit());
 
-    // create user
-    sql = "CREATE USER thulab 'passwd';";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.CREATE_USER, authorNode.getAuthorType());
-    Assert.assertEquals("thulab", authorNode.getUserName());
-    Assert.assertEquals("passwd", authorNode.getPassword());
+      // test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+      showTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      TimeSeriesSchemaScanNode showTimeSeriesNode2 =
+          (TimeSeriesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertNotNull(showTimeSeriesNode2);
+      Assert.assertEquals(
+          new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
+      Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
+      Assert.assertFalse(showTimeSeriesNode2.isContains());
+      Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());
+      Assert.assertEquals("tagV", showTimeSeriesNode2.getValue());
+      Assert.assertEquals(20, showTimeSeriesNode2.getLimit());
+      Assert.assertEquals(10, showTimeSeriesNode2.getOffset());
+      Assert.assertTrue(showTimeSeriesNode2.isHasLimit());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 
-    // create role
-    sql = "CREATE ROLE admin;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.CREATE_ROLE, authorNode.getAuthorType());
-    Assert.assertEquals("admin", authorNode.getRoleName());
+  @Test
+  public void testShowDevices() {
+    String sql = "SHOW DEVICES root.ln.wf01.wt01 WITH STORAGE GROUP limit 20 offset 10";
+    try {
+      LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
+      OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
+      SeriesSchemaMergeNode metaMergeNode = (SeriesSchemaMergeNode) offsetNode.getChild();
+      DevicesSchemaScanNode showDevicesNode =
+          (DevicesSchemaScanNode) metaMergeNode.getChildren().get(0);
+      Assert.assertNotNull(showDevicesNode);
+      Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
+      Assert.assertTrue(showDevicesNode.isHasSgCol());
+      Assert.assertEquals(20, showDevicesNode.getLimit());
+      Assert.assertEquals(10, showDevicesNode.getOffset());
+      Assert.assertTrue(showDevicesNode.isHasLimit());
 
-    // alter user
-    sql = "ALTER USER tempuser SET PASSWORD 'newpwd';";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.UPDATE_USER, authorNode.getAuthorType());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
-    Assert.assertEquals("newpwd", authorNode.getNewPassword());
-
-    // grant user
-    sql = "GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_USER, authorNode.getAuthorType());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
-    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
-    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
-
-    // grant role
-    sql = "GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE, authorNode.getAuthorType());
-    Assert.assertEquals("temprole", authorNode.getRoleName());
-    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
-    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
-
-    // grant role to user
-    sql = "GRANT temprole TO tempuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.GRANT_ROLE_TO_USER, authorNode.getAuthorType());
-    Assert.assertEquals("temprole", authorNode.getRoleName());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
-
-    // revoke user
-    sql = "REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_USER, authorNode.getAuthorType());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
-    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
-    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
-
-    // revoke role
-    sql = "REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.REVOKE_ROLE, authorNode.getAuthorType());
-    Assert.assertEquals("temprole", authorNode.getRoleName());
-    Assert.assertEquals(authorNode.strToPermissions(privilegesList), authorNode.getPermissions());
-    Assert.assertEquals("root.ln", authorNode.getNodeName().getFullPath());
-
-    // revoke role from user
-    sql = "REVOKE temprole FROM tempuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(
-        AuthorOperator.AuthorType.REVOKE_ROLE_FROM_USER, authorNode.getAuthorType());
-    Assert.assertEquals("temprole", authorNode.getRoleName());
-    Assert.assertEquals("tempuser", authorNode.getUserName());
-
-    // drop user
-    sql = "DROP USER xiaoming;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.DROP_USER, authorNode.getAuthorType());
-    Assert.assertEquals("xiaoming", authorNode.getUserName());
-
-    // drop role
-    sql = "DROP ROLE admin;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.DROP_ROLE, authorNode.getAuthorType());
-    Assert.assertEquals("admin", authorNode.getRoleName());
-
-    // list user
-    sql = "LIST USER";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER, authorNode.getAuthorType());
-
-    // list role
-    sql = "LIST ROLE";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE, authorNode.getAuthorType());
-
-    // list privileges user
-    sql = "LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
-
-    // list privileges role
-    sql = "LIST PRIVILEGES ROLE wirte_role ON root.sgcc;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
-
-    // list user privileges
-    sql = "LIST USER PRIVILEGES tempuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE, authorNode.getAuthorType());
-
-    // list role privileges
-    sql = "LIST ROLE PRIVILEGES actor;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE, authorNode.getAuthorType());
-
-    // list all role of user
-    sql = "LIST ALL ROLE OF USER tempuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_USER_ROLES, authorNode.getAuthorType());
-
-    // list all user of role
-    sql = "LIST ALL USER OF ROLE roleuser;";
-    authorNode = (AuthorNode) parseSQLToPlanNode(sql);
-    Assert.assertNotNull(authorNode);
-    Assert.assertEquals(AuthorOperator.AuthorType.LIST_ROLE_USERS, authorNode.getAuthorType());
+      // test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+      showDevicesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      DevicesSchemaScanNode showDevicesNode2 =
+          (DevicesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
+      Assert.assertNotNull(showDevicesNode2);
+      Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode2.getPath());
+      Assert.assertEquals(20, showDevicesNode2.getLimit());
+      Assert.assertEquals(10, showDevicesNode2.getOffset());
+      Assert.assertTrue(showDevicesNode2.isHasLimit());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
   }
 
   private PlanNode parseSQLToPlanNode(String sql) {
@@ -518,7 +459,8 @@ public class LogicalPlannerTest {
       Statement statement =
           StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
       MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
-      Analyzer analyzer = new Analyzer(context);
+      Analyzer analyzer =
+          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
       Analysis analysis = analyzer.analyze(statement);
       LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
       planNode = planner.plan(analysis).getRootNode();

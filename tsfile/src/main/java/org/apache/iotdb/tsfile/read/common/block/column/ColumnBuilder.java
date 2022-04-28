@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -58,14 +59,35 @@ public interface ColumnBuilder {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder);
+  /** Write an Object to the current entry, which should be the corresponding type; */
+  default ColumnBuilder writeObject(Object value) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /**
+   * Write value at index of passing column
+   *
+   * @param column source column whose type should be same as ColumnBuilder
+   * @param index index of source column to read from
+   */
+  ColumnBuilder write(Column column, int index);
 
   /** Appends a null value to the block. */
   ColumnBuilder appendNull();
 
+  /** Appends nullCount null value to the block. */
+  default ColumnBuilder appendNull(int nullCount) {
+    for (int i = 0; i < nullCount; i++) {
+      appendNull();
+    }
+    return this;
+  }
+
   /** Builds the block. This method can be called multiple times. */
   Column build();
+
+  /** Get the data type. */
+  TSDataType getDataType();
 
   /**
    * Returns the retained size of this column in memory, including over-allocations. This method is

@@ -19,41 +19,24 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.fill.LastPointReader;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -484,88 +467,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return ret;
   }
 
-  public LastPointReader createLastPointReader(
-      TSDataType dataType,
-      Set<String> deviceMeasurements,
-      QueryContext context,
-      QueryDataSource dataSource,
-      long queryTime,
-      Filter timeFilter) {
-    throw new UnsupportedOperationException("Should call exact sub class!");
-  }
-
-  public SeriesReader createSeriesReader(
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      QueryDataSource dataSource,
-      Filter timeFilter,
-      Filter valueFilter,
-      TsFileFilter fileFilter,
-      boolean ascending) {
-    throw new UnsupportedOperationException("Should call exact sub class!");
-  }
-
-  @TestOnly
-  public SeriesReader createSeriesReader(
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      List<TsFileResource> seqFileResource,
-      List<TsFileResource> unseqFileResource,
-      Filter timeFilter,
-      Filter valueFilter,
-      boolean ascending) {
-    throw new UnsupportedOperationException("Should call exact sub class!");
-  }
-
-  public TsFileResource createTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<IChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
-      throws IOException {
-    throw new UnsupportedOperationException("Should call exact sub class!");
-  }
-
-  public ITimeSeriesMetadata generateTimeSeriesMetadata(
-      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
-      throws IOException {
-    throw new UnsupportedOperationException("Should call exact sub class!");
-  }
-
-  /**
-   * get the ReadOnlyMemChunk from the given MemTable.
-   *
-   * @return ReadOnlyMemChunk
-   */
-  public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
-      throws QueryProcessException, IOException {
-    throw new UnsupportedOperationException("Should call exact sub class!");
-  }
-
-  /** get modifications from a memtable. */
-  protected List<Modification> getModificationsForMemtable(
-      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
-    List<Modification> modifications = new ArrayList<>();
-    boolean foundMemtable = false;
-    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
-      if (foundMemtable || entry.right.equals(memTable)) {
-        modifications.add(entry.left);
-        foundMemtable = true;
-      }
-    }
-    return modifications;
-  }
-
   @Override
   public PartialPath clone() {
     return new PartialPath(this.getNodes().clone());
-  }
-
-  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    throw new UnsupportedOperationException("Should call exact sub class!");
   }
 
   public void serialize(ByteBuffer byteBuffer) {

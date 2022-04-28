@@ -36,7 +36,7 @@ import org.influxdb.impl.TimeUtil;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.List;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
@@ -89,6 +89,7 @@ public class IoTDBInfluxDB implements InfluxDB {
         if (reflectField.getType().getName().equalsIgnoreCase("java.util.concurrent.TimeUnit")
             && reflectField.getName().equalsIgnoreCase("precision")) {
           precision = (TimeUnit) reflectField.get(point);
+          break;
         }
       } catch (IllegalAccessException e) {
         throw new IllegalArgumentException(e.getMessage());

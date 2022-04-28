@@ -114,8 +114,8 @@ public class SeriesScanOperator implements DataSourceOperator {
   }
 
   @Override
-  public boolean isFinished() throws IOException {
-    return finished || (finished = hasNext());
+  public boolean isFinished() {
+    return finished || (finished = !hasNext());
   }
 
   private boolean readChunkData() throws IOException {

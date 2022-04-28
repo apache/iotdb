@@ -21,15 +21,31 @@ package org.apache.iotdb.db.mpp.sql.planner;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.*;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -97,6 +113,10 @@ public class QueryPlanBuilder {
     for (Map.Entry<String, Map<PartialPath, Set<AggregationType>>> entry :
         deviceNameToAggregationsMap.entrySet()) {
       String deviceName = entry.getKey();
+      Set<String> allSensors =
+          entry.getValue().keySet().stream()
+              .map(PartialPath::getMeasurement)
+              .collect(Collectors.toSet());
 
       for (PartialPath path : entry.getValue().keySet()) {
         deviceNameToSourceNodesMap
@@ -105,6 +125,7 @@ public class QueryPlanBuilder {
                 new SeriesAggregateScanNode(
                     context.getQueryId().genPlanNodeId(),
                     path,
+                    allSensors,
                     new ArrayList<>(entry.getValue().get(path)),
                     scanOrder,
                     timeFilter,
@@ -253,10 +274,10 @@ public class QueryPlanBuilder {
         new FilterNullNode(
             context.getQueryId().genPlanNodeId(),
             this.getRoot(),
-            filterNullComponent.getWithoutPolicyType(),
-            filterNullComponent.getWithoutNullColumns().stream()
-                .map(Expression::getExpressionString)
-                .collect(Collectors.toList()));
+            new FilterNullParameter(
+                filterNullComponent.getWithoutPolicyType(),
+                new ArrayList<>() // TODO: support filtering based on partial columns
+                ));
   }
 
   public void planLimit(int rowLimit) {
@@ -273,5 +294,71 @@ public class QueryPlanBuilder {
     }
 
     this.root = new OffsetNode(context.getQueryId().genPlanNodeId(), this.getRoot(), rowOffset);
+  }
+
+  /** Meta Query* */
+  public void planTimeSeriesMetaSource(
+      PartialPath pathPattern,
+      String key,
+      String value,
+      int limit,
+      int offset,
+      boolean orderByHeat,
+      boolean contains,
+      boolean prefixPath) {
+    TimeSeriesSchemaScanNode timeSeriesMetaScanNode =
+        new TimeSeriesSchemaScanNode(
+            context.getQueryId().genPlanNodeId(),
+            pathPattern,
+            key,
+            value,
+            limit,
+            offset,
+            orderByHeat,
+            contains,
+            prefixPath);
+    this.root = timeSeriesMetaScanNode;
+  }
+
+  public void planDeviceSchemaSource(
+      PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
+    DevicesSchemaScanNode devicesSchemaScanNode =
+        new DevicesSchemaScanNode(
+            context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
+    this.root = devicesSchemaScanNode;
+  }
+
+  public void planSchemaMerge(boolean orderByHeat) {
+    SeriesSchemaMergeNode schemaMergeNode =
+        new SeriesSchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
+    schemaMergeNode.addChild(this.getRoot());
+    this.root = schemaMergeNode;
+  }
+
+  public void planSchemaFetchSource(PathPatternTree patternTree) {
+    this.root = new SchemaFetchNode(context.getQueryId().genPlanNodeId(), patternTree);
+  }
+
+  public void planCountMerge() {
+    CountSchemaMergeNode countMergeNode =
+        new CountSchemaMergeNode(context.getQueryId().genPlanNodeId());
+    countMergeNode.addChild(this.getRoot());
+    this.root = countMergeNode;
+  }
+
+  public void planDevicesCountSource(PartialPath partialPath, boolean prefixPath) {
+    this.root = new DevicesCountNode(context.getQueryId().genPlanNodeId(), partialPath, prefixPath);
+  }
+
+  public void planTimeSeriesCountSource(PartialPath partialPath, boolean prefixPath) {
+    this.root =
+        new TimeSeriesCountNode(context.getQueryId().genPlanNodeId(), partialPath, prefixPath);
+  }
+
+  public void planLevelTimeSeriesCountSource(
+      PartialPath partialPath, boolean prefixPath, int level) {
+    this.root =
+        new LevelTimeSeriesCountNode(
+            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, level);
   }
 }

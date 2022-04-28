@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 
@@ -25,7 +26,7 @@ import java.nio.ByteBuffer;
 
 public class PlanNodeDeserializeHelper {
 
-  public static PlanNode deserialize(ByteBuffer byteBuffer) {
+  public static PlanNode deserialize(ByteBuffer byteBuffer) throws IllegalPathException {
     PlanNode root = PlanNodeType.deserialize(byteBuffer);
     int childrenCount = byteBuffer.getInt();
     for (int i = 0; i < childrenCount; i++) {

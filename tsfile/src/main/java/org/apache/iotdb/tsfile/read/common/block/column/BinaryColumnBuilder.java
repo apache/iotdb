@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -35,7 +37,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
       ClassLayout.parseClass(BinaryColumnBuilder.class).instanceSize();
 
   private final ColumnBuilderStatus columnBuilderStatus;
-  private static final BinaryColumn NULL_VALUE_BLOCK =
+  public static final BinaryColumn NULL_VALUE_BLOCK =
       new BinaryColumn(0, 1, new boolean[] {true}, new Binary[1]);
 
   private boolean initialized;
@@ -70,25 +72,24 @@ public class BinaryColumnBuilder implements ColumnBuilder {
     return this;
   }
 
+  /** Write an Object to the current entry, which should be the Binary type; */
   @Override
-  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
-    return writeBinary(value.getBinary());
+  public ColumnBuilder writeObject(Object value) {
+    if (value instanceof Binary) {
+      writeBinary((Binary) value);
+      return this;
+    }
+    throw new UnSupportedDataTypeException("BinaryColumn only support Binary data type");
   }
 
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    BinaryColumn column = (BinaryColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeBinary(column.getBinary(index++));
-      } else {
-        appendNull();
-      }
-    }
-    return index;
+  public ColumnBuilder write(Column column, int index) {
+    return writeBinary(column.getBinary(index));
+  }
+
+  @Override
+  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
+    return writeBinary(value.getBinary());
   }
 
   @Override
@@ -110,6 +111,11 @@ public class BinaryColumnBuilder implements ColumnBuilder {
       return new RunLengthEncodedColumn(NULL_VALUE_BLOCK, positionCount);
     }
     return new BinaryColumn(0, positionCount, hasNullValue ? valueIsNull : null, values);
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.TEXT;
   }
 
   @Override

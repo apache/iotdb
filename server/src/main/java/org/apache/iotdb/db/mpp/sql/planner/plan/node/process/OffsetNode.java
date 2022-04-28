@@ -19,8 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -40,7 +39,7 @@ import java.util.Objects;
  * OffsetNode is used to skip top n result from upstream nodes. It uses the default order of
  * upstream nodes
  */
-public class OffsetNode extends ProcessNode implements IOutputPlanNode {
+public class OffsetNode extends ProcessNode {
 
   // The limit count
   private PlanNode child;
@@ -78,17 +77,17 @@ public class OffsetNode extends ProcessNode implements IOutputPlanNode {
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return ((IOutputPlanNode) child).getOutputColumnHeaders();
+    return child.getOutputColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ((IOutputPlanNode) child).getOutputColumnNames();
+    return child.getOutputColumnNames();
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return ((IOutputPlanNode) child).getOutputColumnTypes();
+    return child.getOutputColumnTypes();
   }
 
   @Override

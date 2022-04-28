@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -49,13 +50,24 @@ public class ConstantOperand extends Expression {
   private final String valueString;
   private final TSDataType dataType;
 
-  public ConstantOperand(TSDataType dataType, String str) {
+  public ConstantOperand(TSDataType dataType, String valueString) {
     this.dataType = Validate.notNull(dataType);
-    this.valueString = Validate.notNull(str);
+    this.valueString = Validate.notNull(valueString);
+  }
+
+  public ConstantOperand(ByteBuffer byteBuffer) {
+    dataType = TSDataType.deserializeFrom(byteBuffer);
+    valueString = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public boolean isNegativeNumber() {
+    return !dataType.equals(TSDataType.TEXT)
+        && !dataType.equals(TSDataType.BOOLEAN)
+        && Double.parseDouble(valueString) < 0;
   }
 
   @Override
@@ -106,6 +118,11 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
+  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
+    // Do nothing
+  }
+
+  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     // Do nothing
   }
@@ -113,7 +130,7 @@ public class ConstantOperand extends Expression {
   @Override
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
@@ -134,20 +151,14 @@ public class ConstantOperand extends Expression {
     return valueString;
   }
 
-  public static ConstantOperand deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    String valueStr = ReadWriteIOUtils.readString(buffer);
-    TSDataType tsDataType = TSDataType.deserializeFrom(buffer);
-    ConstantOperand constantOperand = new ConstantOperand(tsDataType, valueStr);
-    constantOperand.isConstantOperandCache = isConstantOperandCache;
-    return constantOperand;
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.CONSTANT;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Constant.serialize(byteBuffer);
-    super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(valueString, byteBuffer);
+  protected void serialize(ByteBuffer byteBuffer) {
     dataType.serializeTo(byteBuffer);
+    ReadWriteIOUtils.write(valueString, byteBuffer);
   }
 }

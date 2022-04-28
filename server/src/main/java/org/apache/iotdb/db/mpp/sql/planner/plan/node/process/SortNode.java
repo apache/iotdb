@@ -19,8 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -41,13 +40,13 @@ import java.util.Objects;
  * In general, the parameter in sortNode should be pushed down to the upstream operators. In our
  * optimized logical query plan, the sortNode should not appear.
  */
-public class SortNode extends ProcessNode implements IOutputPlanNode {
+public class SortNode extends ProcessNode {
 
   private PlanNode child;
 
   private final List<String> orderBy;
 
-  private OrderBy sortOrder;
+  private final OrderBy sortOrder;
 
   public SortNode(PlanNodeId id, List<String> orderBy, OrderBy sortOrder) {
     super(id);
@@ -82,17 +81,17 @@ public class SortNode extends ProcessNode implements IOutputPlanNode {
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return ((IOutputPlanNode) child).getOutputColumnHeaders();
+    return child.getOutputColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ((IOutputPlanNode) child).getOutputColumnNames();
+    return child.getOutputColumnNames();
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return ((IOutputPlanNode) child).getOutputColumnTypes();
+    return child.getOutputColumnTypes();
   }
 
   public OrderBy getSortOrder() {

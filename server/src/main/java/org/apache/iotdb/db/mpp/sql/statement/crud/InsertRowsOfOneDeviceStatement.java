@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
@@ -46,6 +52,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
       return;
     }
     devicePath = insertRowStatementList.get(0).getDevicePath();
+    isAligned = insertRowStatementList.get(0).isAligned;
     Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
       List<String> measurements = Arrays.asList(insertRowStatement.getMeasurements());
@@ -60,10 +67,10 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     dataTypes = measurementsAndDataType.values().toArray(new TSDataType[0]);
   }
 
-  public List<TimePartitionSlot> getTimePartitionSlots() {
-    Set<TimePartitionSlot> timePartitionSlotSet = new HashSet<>();
+  public List<TTimePartitionSlot> getTimePartitionSlots() {
+    Set<TTimePartitionSlot> timePartitionSlotSet = new HashSet<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      timePartitionSlotSet.add(StorageEngine.getTimePartitionSlot(insertRowStatement.getTime()));
+      timePartitionSlotSet.add(StorageEngineV2.getTimePartitionSlot(insertRowStatement.getTime()));
     }
     return new ArrayList<>(timePartitionSlotSet);
   }

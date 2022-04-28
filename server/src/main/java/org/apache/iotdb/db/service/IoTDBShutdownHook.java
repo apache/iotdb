@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.utils.MemUtils;
 
 import org.slf4j.Logger;
@@ -29,6 +30,9 @@ public class IoTDBShutdownHook extends Thread {
 
   @Override
   public void run() {
+    CompactionTaskManager.getInstance().stop();
+    // close rocksdb if possible to avoid lose data
+    IoTDB.configManager.clear();
     if (logger.isInfoEnabled()) {
       logger.info(
           "IoTDB exits. Jvm memory usage: {}",

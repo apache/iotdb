@@ -38,11 +38,6 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
   }
 
   @Override
-  public ThriftService getImplementation() {
-    return getInstance();
-  }
-
-  @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
     impl =

@@ -127,6 +127,13 @@ public class MetadataUpgradeTest {
     Assert.assertEquals(
         "root.test.sg3.d3",
         new ArrayList<>(schemaProcessor.getPathsUsingTemplate("template")).get(0));
+    Assert.assertTrue(
+        new File(schemaDirPath + File.separator + MetadataConstant.METADATA_LOG + ".bak").exists());
+    Assert.assertTrue(
+        new File(schemaDirPath + File.separator + MetadataConstant.TAG_LOG + ".bak").exists());
+    Assert.assertTrue(
+        new File(schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT + ".bak")
+            .exists());
   }
 
   private void prepareMLog() throws Exception {

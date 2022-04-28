@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
@@ -67,15 +68,35 @@ public class LongColumn implements Column {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT64;
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return ColumnEncoding.INT64_ARRAY;
+  }
+
+  @Override
   public long getLong(int position) {
     checkReadablePosition(position);
     return values[position + arrayOffset];
   }
 
   @Override
+  public Object getObject(int position) {
+    return getLong(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsLong(getLong(position));
+  }
+
+  @Override
+  public boolean mayHaveNull() {
+    return valueIsNull != null;
   }
 
   @Override

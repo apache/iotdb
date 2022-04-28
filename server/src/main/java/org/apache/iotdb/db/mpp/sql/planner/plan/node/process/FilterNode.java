@@ -19,8 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -40,7 +39,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
-public class FilterNode extends ProcessNode implements IOutputPlanNode {
+public class FilterNode extends ProcessNode {
 
   private PlanNode child;
 
@@ -58,10 +57,9 @@ public class FilterNode extends ProcessNode implements IOutputPlanNode {
     this(id, predicate);
     this.child = child;
     this.columnHeaders =
-        ((IOutputPlanNode) child)
-            .getOutputColumnHeaders().stream()
-                .filter(columnHeader -> outputColumnNames.contains(columnHeader.getColumnName()))
-                .collect(Collectors.toList());
+        child.getOutputColumnHeaders().stream()
+            .filter(columnHeader -> outputColumnNames.contains(columnHeader.getColumnName()))
+            .collect(Collectors.toList());
   }
 
   @Override

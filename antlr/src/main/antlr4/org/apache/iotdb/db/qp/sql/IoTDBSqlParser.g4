@@ -31,7 +31,7 @@ singleStatement
     ;
 
 statement
-    : ddlStatement | dmlStatement | dclStatement | utilityStatement
+    : ddlStatement | dmlStatement | dclStatement | utilityStatement | syncStatement
     ;
 
 ddlStatement
@@ -64,6 +64,10 @@ utilityStatement
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
+syncStatement
+    : startPipeServer | stopPipeServer | showPipeServer
+    | createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
+    | createPipe | showPipe | stopPipe | startPipe | dropPipe;
 
 /**
  * 2. Data Definition Language (DDL)
@@ -677,9 +681,68 @@ unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
     ;
 
+/**
+ * 6. syncStatement
+ */
+
+// pipesink statement
+createPipeSink
+    : CREATE PIPESINK pipeSinkName=ID AS pipeSinkType=ID (LR_BRACKET syncAttributeClauses RR_BRACKET)?
+    ;
+
+showPipeSinkType
+    : SHOW PIPESINKTYPE
+    ;
+
+showPipeSink
+    : SHOW ((PIPESINK (pipeSinkName=ID)?) | PIPESINKS)
+    ;
+
+dropPipeSink
+    : DROP PIPESINK pipeSinkName=ID
+    ;
+
+// pipe statement
+createPipe
+    : CREATE PIPE pipeName=ID TO pipeSinkName=ID (FROM LR_BRACKET selectStatement RR_BRACKET)? (WITH syncAttributeClauses)?
+    ;
+
+showPipe
+    : SHOW ((PIPE (pipeName=ID)?) | PIPES)
+    ;
+
+stopPipe
+    : STOP PIPE pipeName=ID
+    ;
+
+startPipe
+    : START PIPE pipeName=ID
+    ;
+
+dropPipe
+    : DROP PIPE pipeName=ID
+    ;
+
+// attribute clauses
+syncAttributeClauses
+    : propertyClause (COMMA propertyClause)*
+    ;
+
+// sync receiver
+startPipeServer
+    : START PIPESERVER
+    ;
+
+stopPipeServer
+    : STOP PIPESERVER
+    ;
+
+showPipeServer
+    : SHOW PIPESERVER
+    ;
 
 /**
- * 6. Common Clauses
+ * 7. Common Clauses
  */
 
 // IoTDB Objects
@@ -777,15 +840,18 @@ dateExpression
 // multiplication, division, and modulus higher than that of addition and substraction.
 expression
     : LR_BRACKET unaryInBracket=expression RR_BRACKET
-    | (PLUS | MINUS) unaryAfterSign=expression
-    | OPERATOR_NOT unaryAfterNot=expression
+    | constant
+    | time=(TIME | TIMESTAMP)
+    | suffixPathCanInExpr
+    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
-    | leftExpression=expression (OPERATOR_AND | OPERATOR_OR) rightExpression=expression
-    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-    | suffixPathCanInExpr
-    | constant
+    | unaryBeforeRegularExpression=expression (REGEXP | LIKE) STRING_LITERAL
+    | unaryBeforeInExpression=expression OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    | leftExpression=expression OPERATOR_AND rightExpression=expression
+    | leftExpression=expression OPERATOR_OR rightExpression=expression
     ;
 
 functionName
