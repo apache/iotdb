@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
-import org.apache.iotdb.confignode.rpc.thrift.TcheckUserPrivilegesReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -131,7 +131,7 @@ public class ClusterAuthorizer {
     return status;
   }
 
-  public TSStatus checkUserPrivileges(TcheckUserPrivilegesReq req) {
+  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) {
     ConfigNodeClient configNodeClient = null;
     TSStatus status = null;
     try {

@@ -22,15 +22,15 @@ package org.apache.iotdb.db.auth.authorizer;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
-import org.apache.iotdb.confignode.rpc.thrift.TcheckUserPrivilegesReq;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
+import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -291,15 +291,15 @@ public class AuthorizerManager implements IAuthorizer {
     if (statement instanceof AuthorStatement) {
       targetUser = ((AuthorStatement) statement).getUserName();
     }
-    if (statement instanceof ConfigStatement) {
+    if (statement instanceof IConfigStatement) {
       return AuthorityChecker.checkPermission(
-          username, ((ConfigStatement) statement).getPaths(), statement.getType(), targetUser);
+          username, ((IConfigStatement) statement).getPaths(), statement.getType(), targetUser);
     }
     return true;
   }
 
   public TSStatus checkPath(String username, List<String> allPath, int permission) {
     return clusterAuthorizer.checkUserPrivileges(
-        new TcheckUserPrivilegesReq(username, allPath, permission));
+        new TCheckUserPrivilegesReq(username, allPath, permission));
   }
 }

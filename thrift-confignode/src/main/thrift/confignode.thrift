@@ -143,7 +143,7 @@ struct TLoginReq {
     2: required string password
 }
 
-struct TcheckUserPrivilegesReq{
+struct TCheckUserPrivilegesReq{
     1: required string username;
     2: required list<string> paths
     3: required i32 permission
@@ -195,5 +195,5 @@ service ConfigIService {
 
   common.TSStatus login(TLoginReq req)
 
-  common.TSStatus checkUserPrivileges(TcheckUserPrivilegesReq req)
+  common.TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req)
 }

@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.mpp.sql.statement;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+
+import java.util.List;
 
 /**
  * ConfigStatement represents the statement which should be executed by ConfigNode All the
@@ -33,4 +36,11 @@ public interface IConfigStatement {
    * @return QueryType
    */
   QueryType getQueryType();
+
+  /**
+   * path for authorization authentication
+   *
+   * @return List
+   */
+  List<? extends PartialPath> getPaths();
 }

@@ -24,6 +24,9 @@ import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * SHOW STORAGE GROUP statement
  *
@@ -52,5 +55,10 @@ public class ShowStorageGroupStatement extends ShowStatement implements IConfigS
   @Override
   public QueryType getQueryType() {
     return QueryType.READ;
+  }
+
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return Collections.singletonList(pathPattern);
   }
 }
