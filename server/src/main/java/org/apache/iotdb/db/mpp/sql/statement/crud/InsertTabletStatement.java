@@ -131,14 +131,4 @@ public class InsertTabletStatement extends InsertBaseStatement {
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertTablet(this, context);
   }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    List<PartialPath> ret = new ArrayList<>();
-    for (String m : measurements) {
-      PartialPath fullPath = devicePath.concatNode(m);
-      ret.add(fullPath);
-    }
-    return ret;
-  }
 }

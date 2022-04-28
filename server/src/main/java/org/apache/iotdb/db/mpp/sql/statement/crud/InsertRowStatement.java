@@ -58,11 +58,6 @@ public class InsertRowStatement extends InsertBaseStatement {
     statementType = StatementType.INSERT;
   }
 
-  @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
-  }
-
   public long getTime() {
     return time;
   }
