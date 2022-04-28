@@ -30,9 +30,9 @@ import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L1PriorityQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L2PriorityQueue;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskID;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTaskID;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTaskStatus;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import org.slf4j.Logger;
@@ -49,18 +49,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /** the manager of fragment instances scheduling */
-public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IService {
+public class DriverScheduler implements IDriverScheduler, IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(FragmentInstanceScheduler.class);
+  private static final Logger logger = LoggerFactory.getLogger(DriverScheduler.class);
 
-  public static FragmentInstanceScheduler getInstance() {
+  public static DriverScheduler getInstance() {
     return InstanceHolder.instance;
   }
 
-  private final IndexedBlockingQueue<FragmentInstanceTask> readyQueue;
-  private final IndexedBlockingQueue<FragmentInstanceTask> timeoutQueue;
-  private final Set<FragmentInstanceTask> blockedTasks;
-  private final Map<QueryId, Set<FragmentInstanceTask>> queryMap;
+  private final IndexedBlockingQueue<DriverTask> readyQueue;
+  private final IndexedBlockingQueue<DriverTask> timeoutQueue;
+  private final Set<DriverTask> blockedTasks;
+  private final Map<QueryId, Set<DriverTask>> queryMap;
   private final ITaskScheduler scheduler;
   private IDataBlockManager blockManager; // TODO: init with real IDataBlockManager
 
@@ -68,17 +68,14 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   private static final int WORKER_THREAD_NUM = 4; // TODO: load from config files
   private static final int QUERY_TIMEOUT_MS = 10_000; // TODO: load from config files or requests
   private final ThreadGroup workerGroups;
-  private final List<AbstractExecutor> threads;
+  private final List<AbstractDriverThread> threads;
 
-  private FragmentInstanceScheduler() {
+  private DriverScheduler() {
     this.readyQueue =
         new L2PriorityQueue<>(
-            MAX_CAPACITY,
-            new FragmentInstanceTask.SchedulePriorityComparator(),
-            new FragmentInstanceTask());
+            MAX_CAPACITY, new DriverTask.SchedulePriorityComparator(), new DriverTask());
     this.timeoutQueue =
-        new L1PriorityQueue<>(
-            MAX_CAPACITY, new FragmentInstanceTask.TimeoutComparator(), new FragmentInstanceTask());
+        new L1PriorityQueue<>(MAX_CAPACITY, new DriverTask.TimeoutComparator(), new DriverTask());
     this.queryMap = new ConcurrentHashMap<>();
     this.blockedTasks = Collections.synchronizedSet(new HashSet<>());
     this.scheduler = new Scheduler();
@@ -90,14 +87,13 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   @Override
   public void start() throws StartupException {
     for (int i = 0; i < WORKER_THREAD_NUM; i++) {
-      AbstractExecutor t =
-          new FragmentInstanceTaskExecutor(
-              "Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
+      AbstractDriverThread t =
+          new DriverTaskThread("Worker-Thread-" + i, workerGroups, readyQueue, scheduler);
       threads.add(t);
       t.start();
     }
-    AbstractExecutor t =
-        new FragmentInstanceTimeoutSentinel(
+    AbstractDriverThread t =
+        new DriverTaskTimeoutSentinelThread(
             "Sentinel-Thread", workerGroups, timeoutQueue, scheduler);
     threads.add(t);
     t.start();
@@ -121,20 +117,18 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   }
 
   @Override
-  public void submitFragmentInstances(QueryId queryId, List<IDriver> instances) {
-    List<FragmentInstanceTask> tasks =
+  public void submitDrivers(QueryId queryId, List<IDriver> instances) {
+    List<DriverTask> tasks =
         instances.stream()
-            .map(
-                v ->
-                    new FragmentInstanceTask(v, QUERY_TIMEOUT_MS, FragmentInstanceTaskStatus.READY))
+            .map(v -> new DriverTask(v, QUERY_TIMEOUT_MS, DriverTaskStatus.READY))
             .collect(Collectors.toList());
     queryMap
         .computeIfAbsent(queryId, v -> Collections.synchronizedSet(new HashSet<>()))
         .addAll(tasks);
-    for (FragmentInstanceTask task : tasks) {
+    for (DriverTask task : tasks) {
       task.lock();
       try {
-        if (task.getStatus() != FragmentInstanceTaskStatus.READY) {
+        if (task.getStatus() != DriverTaskStatus.READY) {
           continue;
         }
         timeoutQueue.push(task);
@@ -147,13 +141,13 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
 
   @Override
   public void abortQuery(QueryId queryId) {
-    Set<FragmentInstanceTask> queryRelatedTasks = queryMap.remove(queryId);
+    Set<DriverTask> queryRelatedTasks = queryMap.remove(queryId);
     if (queryRelatedTasks != null) {
-      for (FragmentInstanceTask task : queryRelatedTasks) {
+      for (DriverTask task : queryRelatedTasks) {
         task.lock();
         try {
           task.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
-          clearFragmentInstanceTask(task);
+          clearDriverTask(task);
         } finally {
           task.unlock();
         }
@@ -163,14 +157,14 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
 
   @Override
   public void abortFragmentInstance(FragmentInstanceId instanceId) {
-    FragmentInstanceTask task = timeoutQueue.get(new FragmentInstanceTaskID(instanceId));
+    DriverTask task = timeoutQueue.get(new DriverTaskID(instanceId));
     if (task == null) {
       return;
     }
     task.lock();
     try {
       task.setAbortCause(FragmentInstanceAbortedException.BY_FRAGMENT_ABORT_CALLED);
-      clearFragmentInstanceTask(task);
+      clearDriverTask(task);
     } finally {
       task.unlock();
     }
@@ -178,7 +172,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
 
   @Override
   public double getSchedulePriority(FragmentInstanceId instanceId) {
-    FragmentInstanceTask task = timeoutQueue.get(new FragmentInstanceTaskID(instanceId));
+    DriverTask task = timeoutQueue.get(new DriverTaskID(instanceId));
     if (task == null) {
       throw new IllegalStateException(
           "the fragmentInstance " + instanceId.getFullId() + " has been cleared");
@@ -186,9 +180,9 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     return task.getSchedulePriority();
   }
 
-  private void clearFragmentInstanceTask(FragmentInstanceTask task) {
-    if (task.getStatus() != FragmentInstanceTaskStatus.FINISHED) {
-      task.setStatus(FragmentInstanceTaskStatus.ABORTED);
+  private void clearDriverTask(DriverTask task) {
+    if (task.getStatus() != DriverTaskStatus.FINISHED) {
+      task.setStatus(DriverTaskStatus.ABORTED);
     }
     if (task.getAbortCause() != null) {
       task.getFragmentInstance()
@@ -196,7 +190,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
               new FragmentInstanceAbortedException(
                   task.getFragmentInstance().getInfo(), task.getAbortCause()));
     }
-    if (task.getStatus() == FragmentInstanceTaskStatus.ABORTED) {
+    if (task.getStatus() == DriverTaskStatus.ABORTED) {
       blockManager.forceDeregisterFragmentInstance(
           new TFragmentInstanceId(
               task.getId().getQueryId().getId(),
@@ -206,7 +200,7 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     readyQueue.remove(task.getId());
     timeoutQueue.remove(task.getId());
     blockedTasks.remove(task);
-    Set<FragmentInstanceTask> tasks = queryMap.get(task.getId().getQueryId());
+    Set<DriverTask> tasks = queryMap.get(task.getId().getQueryId());
     if (tasks != null) {
       tasks.remove(task);
       if (tasks.isEmpty()) {
@@ -220,22 +214,22 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
   }
 
   @TestOnly
-  IndexedBlockingQueue<FragmentInstanceTask> getReadyQueue() {
+  IndexedBlockingQueue<DriverTask> getReadyQueue() {
     return readyQueue;
   }
 
   @TestOnly
-  IndexedBlockingQueue<FragmentInstanceTask> getTimeoutQueue() {
+  IndexedBlockingQueue<DriverTask> getTimeoutQueue() {
     return timeoutQueue;
   }
 
   @TestOnly
-  Set<FragmentInstanceTask> getBlockedTasks() {
+  Set<DriverTask> getBlockedTasks() {
     return blockedTasks;
   }
 
   @TestOnly
-  Map<QueryId, Set<FragmentInstanceTask>> getQueryMap() {
+  Map<QueryId, Set<DriverTask>> getQueryMap() {
     return queryMap;
   }
 
@@ -248,18 +242,18 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
 
     private InstanceHolder() {}
 
-    private static final FragmentInstanceScheduler instance = new FragmentInstanceScheduler();
+    private static final DriverScheduler instance = new DriverScheduler();
   }
   /** the default scheduler implementation */
   private class Scheduler implements ITaskScheduler {
     @Override
-    public void blockedToReady(FragmentInstanceTask task) {
+    public void blockedToReady(DriverTask task) {
       task.lock();
       try {
-        if (task.getStatus() != FragmentInstanceTaskStatus.BLOCKED) {
+        if (task.getStatus() != DriverTaskStatus.BLOCKED) {
           return;
         }
-        task.setStatus(FragmentInstanceTaskStatus.READY);
+        task.setStatus(DriverTaskStatus.READY);
         readyQueue.push(task);
         blockedTasks.remove(task);
       } finally {
@@ -268,13 +262,13 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     }
 
     @Override
-    public boolean readyToRunning(FragmentInstanceTask task) {
+    public boolean readyToRunning(DriverTask task) {
       task.lock();
       try {
-        if (task.getStatus() != FragmentInstanceTaskStatus.READY) {
+        if (task.getStatus() != DriverTaskStatus.READY) {
           return false;
         }
-        task.setStatus(FragmentInstanceTaskStatus.RUNNING);
+        task.setStatus(DriverTaskStatus.RUNNING);
       } finally {
         task.unlock();
       }
@@ -282,14 +276,14 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     }
 
     @Override
-    public void runningToReady(FragmentInstanceTask task, ExecutionContext context) {
+    public void runningToReady(DriverTask task, ExecutionContext context) {
       task.lock();
       try {
-        if (task.getStatus() != FragmentInstanceTaskStatus.RUNNING) {
+        if (task.getStatus() != DriverTaskStatus.RUNNING) {
           return;
         }
         task.updateSchedulePriority(context);
-        task.setStatus(FragmentInstanceTaskStatus.READY);
+        task.setStatus(DriverTaskStatus.READY);
         readyQueue.push(task);
       } finally {
         task.unlock();
@@ -297,14 +291,14 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     }
 
     @Override
-    public void runningToBlocked(FragmentInstanceTask task, ExecutionContext context) {
+    public void runningToBlocked(DriverTask task, ExecutionContext context) {
       task.lock();
       try {
-        if (task.getStatus() != FragmentInstanceTaskStatus.RUNNING) {
+        if (task.getStatus() != DriverTaskStatus.RUNNING) {
           return;
         }
         task.updateSchedulePriority(context);
-        task.setStatus(FragmentInstanceTaskStatus.BLOCKED);
+        task.setStatus(DriverTaskStatus.BLOCKED);
         blockedTasks.add(task);
       } finally {
         task.unlock();
@@ -312,22 +306,22 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
     }
 
     @Override
-    public void runningToFinished(FragmentInstanceTask task, ExecutionContext context) {
+    public void runningToFinished(DriverTask task, ExecutionContext context) {
       task.lock();
       try {
-        if (task.getStatus() != FragmentInstanceTaskStatus.RUNNING) {
+        if (task.getStatus() != DriverTaskStatus.RUNNING) {
           return;
         }
         task.updateSchedulePriority(context);
-        task.setStatus(FragmentInstanceTaskStatus.FINISHED);
-        clearFragmentInstanceTask(task);
+        task.setStatus(DriverTaskStatus.FINISHED);
+        clearDriverTask(task);
       } finally {
         task.unlock();
       }
     }
 
     @Override
-    public void toAborted(FragmentInstanceTask task) {
+    public void toAborted(DriverTask task) {
       task.lock();
       try {
         // If a task is already in an end state, it indicates that the task is finalized in other
@@ -338,21 +332,21 @@ public class FragmentInstanceScheduler implements IFragmentInstanceScheduler, IS
         logger.warn(
             "The task {} is aborted. All other tasks in the same query will be cancelled",
             task.getId().toString());
-        clearFragmentInstanceTask(task);
+        clearDriverTask(task);
       } finally {
         task.unlock();
       }
       QueryId queryId = task.getId().getQueryId();
-      Set<FragmentInstanceTask> queryRelatedTasks = queryMap.remove(queryId);
+      Set<DriverTask> queryRelatedTasks = queryMap.remove(queryId);
       if (queryRelatedTasks != null) {
-        for (FragmentInstanceTask otherTask : queryRelatedTasks) {
+        for (DriverTask otherTask : queryRelatedTasks) {
           if (task.equals(otherTask)) {
             continue;
           }
           otherTask.lock();
           try {
             otherTask.setAbortCause(FragmentInstanceAbortedException.BY_QUERY_CASCADING_ABORTED);
-            clearFragmentInstanceTask(otherTask);
+            clearDriverTask(otherTask);
           } finally {
             otherTask.unlock();
           }

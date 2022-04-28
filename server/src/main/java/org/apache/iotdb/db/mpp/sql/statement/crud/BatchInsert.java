@@ -16,31 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
-import org.apache.iotdb.db.utils.stats.CpuTimer;
+package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import io.airlift.units.Duration;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/** The execution context of a {@link DriverTask} */
-public class ExecutionContext {
-  private CpuTimer.CpuDuration cpuDuration;
-  private Duration timeSlice;
+import java.util.List;
 
-  public CpuTimer.CpuDuration getCpuDuration() {
-    return cpuDuration;
-  }
+/** BatchInsert contains multiple sub insert. */
+public interface BatchInsert {
 
-  public void setCpuDuration(CpuTimer.CpuDuration cpuDuration) {
-    this.cpuDuration = cpuDuration;
-  }
+  List<PartialPath> getDevicePaths();
 
-  public Duration getTimeSlice() {
-    return timeSlice;
-  }
+  List<String[]> getMeasurementsList();
 
-  public void setTimeSlice(Duration timeSlice) {
-    this.timeSlice = timeSlice;
-  }
+  List<TSDataType[]> getDataTypesList();
+
+  List<Boolean> getAlignedList();
 }

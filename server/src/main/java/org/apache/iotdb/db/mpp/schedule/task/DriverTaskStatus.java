@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.schedule.task;
 
-/** the status enum of {@link FragmentInstanceTask} */
-public enum FragmentInstanceTaskStatus {
+/** the status enum of {@link DriverTask} */
+public enum DriverTaskStatus {
   /* Ready to be executed */
   READY,
 
