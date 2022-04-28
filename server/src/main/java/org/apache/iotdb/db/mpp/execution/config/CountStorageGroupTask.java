@@ -61,7 +61,7 @@ public class CountStorageGroupTask implements IConfigTask {
     int storageGroupNum = 0;
     if (config.isClusterMode()) {
       List<String> storageGroupPathPattern =
-          Arrays.asList(countStorageGroupStatement.getPathPattern().getNodes());
+          Arrays.asList(countStorageGroupStatement.getPartialPath().getNodes());
       ConfigNodeClient client = null;
       try {
         client = new ConfigNodeClient();
@@ -76,7 +76,7 @@ public class CountStorageGroupTask implements IConfigTask {
         storageGroupNum =
             LocalConfigNode.getInstance()
                 .getStorageGroupNum(
-                    countStorageGroupStatement.getPathPattern(),
+                    countStorageGroupStatement.getPartialPath(),
                     countStorageGroupStatement.isPrefixPath());
       } catch (MetadataException e) {
         future.setException(e);
@@ -91,7 +91,7 @@ public class CountStorageGroupTask implements IConfigTask {
         new ColumnHeader(IoTDBConstant.COLUMN_COUNT, TSDataType.INT32);
     DatasetHeader datasetHeader =
         new DatasetHeader(Collections.singletonList(storageGroupColumnHeader), true);
-    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build()));
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
     return future;
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
 public class CountStorageGroupStatement extends CountStatement {
   private PartialPath partialPath;
@@ -27,10 +28,6 @@ public class CountStorageGroupStatement extends CountStatement {
   public CountStorageGroupStatement(PartialPath partialPath) {
     super(partialPath);
     this.partialPath = partialPath;
-  }
-
-  public PartialPath getPathPattern() {
-    return pathPattern;
   }
 
   @Override
