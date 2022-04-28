@@ -21,7 +21,11 @@ package org.apache.iotdb.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+
+import java.io.File;
+import java.nio.ByteBuffer;
 
 public class EmptyStateMachine implements IStateMachine {
 
@@ -40,4 +44,20 @@ public class EmptyStateMachine implements IStateMachine {
   public DataSet read(IConsensusRequest IConsensusRequest) {
     return null;
   }
+
+  @Override
+  public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+    return false;
+  }
+
+  @Override
+  public SnapshotMeta getLatestSnapshot(File snapshotDir) {
+    return null;
+  }
+
+  @Override
+  public void loadSnapshot(SnapshotMeta latest) {}
+
+  @Override
+  public void cleanUpOldSnapshots(File snapshotDir) {}
 }

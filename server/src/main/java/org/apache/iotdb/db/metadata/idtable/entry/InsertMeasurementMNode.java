@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -34,6 +35,9 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Generated entity implements IMeasurementMNode interface to unify insert logic through id table
@@ -63,6 +67,22 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   // region support methods
+
+  @Override
+  public List<TriggerExecutor> getUpperTriggerExecutorList() {
+    IMNode currentNode = this;
+    List<TriggerExecutor> results = new ArrayList<>();
+    while (currentNode != null && !IoTDBConstant.PATH_ROOT.equals(currentNode.getName())) {
+      TriggerExecutor executor = currentNode.getTriggerExecutor();
+      currentNode = currentNode.getParent();
+      if (executor == null) {
+        continue;
+      }
+      results.add(executor);
+    }
+    return results;
+  }
+
   @Override
   public TriggerExecutor getTriggerExecutor() {
     return triggerExecutor;

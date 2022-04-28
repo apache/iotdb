@@ -22,5 +22,5 @@ package org.apache.iotdb.db.mpp.execution.config;
 import com.google.common.util.concurrent.ListenableFuture;
 
 public interface IConfigTask {
-  ListenableFuture<Void> execute();
+  ListenableFuture<ConfigTaskResult> execute() throws InterruptedException;
 }

@@ -34,13 +34,19 @@ from .thrift.rpc.TSIService import (
     TSExecuteStatementReq,
     TSOpenSessionReq,
     TSCreateMultiTimeseriesReq,
-    TSCreateSchemaTemplateReq,
     TSCloseSessionReq,
     TSInsertTabletsReq,
     TSInsertRecordsReq,
     TSInsertRecordsOfOneDeviceReq,
 )
-from .thrift.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
+from .thrift.rpc.ttypes import (
+    TSDeleteDataReq,
+    TSProtocolVersion,
+    TSSetTimeZoneReq,
+    TSRawDataQueryReq,
+    TSLastDataQueryReq,
+    TSInsertStringRecordsOfOneDeviceReq,
+)
 
 # for debug
 # from IoTDBConstants import *
@@ -1023,3 +1029,125 @@ class Session(object):
 
         logger.error("error status is", status)
         return -1
+
+    def execute_raw_data_query(
+        self, paths: list, start_time: int, end_time: int
+    ) -> SessionDataSet:
+        request = TSRawDataQueryReq(
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            startTime=start_time,
+            endTime=end_time,
+            statementId=self.__statement_id,
+            enableRedirectQuery=False,
+        )
+        resp = self.__client.executeRawDataQuery(request)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
+
+    def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
+        request = TSLastDataQueryReq(
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            last_time,
+            self.__statement_id,
+            enableRedirectQuery=False,
+        )
+
+        resp = self.__client.executeLastDataQuery(request)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
+
+    def insert_string_records_of_one_device(
+        self,
+        device_id: str,
+        times: list,
+        measurements_list: list,
+        values_list: list,
+        have_sorted: bool = False,
+    ):
+        if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
+            raise RuntimeError(
+                "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
+            )
+        request = self.gen_insert_string_records_of_one_device_request(
+            device_id, times, measurements_list, values_list, have_sorted, False
+        )
+        status = self.__client.insertStringRecordsOfOneDevice(request)
+        logger.debug(
+            "insert one device {} message: {}".format(device_id, status.message)
+        )
+
+        return Session.verify_success(status)
+
+    def insert_aligned_string_records_of_one_device(
+        self,
+        device_id: str,
+        times: list,
+        measurements_list: list,
+        values: list,
+        have_sorted: bool = False,
+    ):
+        if (len(times) != len(measurements_list)) or (len(times) != len(values)):
+            raise RuntimeError(
+                "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
+            )
+        request = self.gen_insert_string_records_of_one_device_request(
+            device_id, times, measurements_list, values, have_sorted, True
+        )
+        status = self.__client.insertStringRecordsOfOneDevice(request)
+        logger.debug(
+            "insert one device {} message: {}".format(device_id, status.message)
+        )
+
+        return Session.verify_success(status)
+
+    def gen_insert_string_records_of_one_device_request(
+        self,
+        device_id,
+        times,
+        measurements_list,
+        values_list,
+        have_sorted,
+        is_aligned=False,
+    ):
+        if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
+            raise RuntimeError(
+                "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
+            )
+        if not Session.check_sorted(times):
+            # sort by timestamp
+            sorted_zipped = sorted(zip(times, measurements_list, values_list))
+            result = zip(*sorted_zipped)
+            times_list, measurements_list, values_list = [list(x) for x in result]
+        request = TSInsertStringRecordsOfOneDeviceReq(
+            self.__session_id,
+            device_id,
+            measurements_list,
+            values_list,
+            times,
+            is_aligned,
+        )
+        return request

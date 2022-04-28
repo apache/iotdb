@@ -19,13 +19,15 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
@@ -74,14 +76,16 @@ public enum PlanNodeType {
   DEVICES_SCHEMA_SCAN((short) 18),
   CREATE_TIME_SERIES((short) 19),
   EXCHANGE((short) 20),
-  AUTHOR((short) 21),
-  ALTER_TIME_SERIES((short) 22),
-  CREATE_ALIGNED_TIME_SERIES((short) 23),
-  TIME_SERIES_SCHEMA_SCAN((short) 24),
-  // TODO @xinzhongtianxia remove this
-  SHOW_DEVICES((short) 25),
-  SCHEMA_FETCH((short) 26),
-  SCHEMA_MERGE((short) 27);
+  ALTER_TIME_SERIES((short) 21),
+  CREATE_ALIGNED_TIME_SERIES((short) 22),
+  TIME_SERIES_SCHEMA_SCAN((short) 23),
+  SCHEMA_FETCH((short) 24),
+  SCHEMA_MERGE((short) 25),
+  STORAGE_GROUP_SCHEMA_SCAN((short) 26),
+  DEVICES_COUNT((short) 27),
+  TIME_SERIES_COUNT((short) 28),
+  LEVEL_TIME_SERIES_COUNT((short) 29),
+  COUNT_MERGE((short) 30);
 
   private final short nodeType;
 
@@ -152,19 +156,23 @@ public enum PlanNodeType {
       case 20:
         return ExchangeNode.deserialize(buffer);
       case 21:
-        return AuthorNode.deserialize(buffer);
-      case 22:
         return AlterTimeSeriesNode.deserialize(buffer);
-      case 23:
+      case 22:
         return CreateAlignedTimeSeriesNode.deserialize(buffer);
-      case 24:
+      case 23:
         return TimeSeriesSchemaScanNode.deserialize(buffer);
-      case 25:
-        return ShowDevicesNode.deserialize(buffer);
-      case 26:
+      case 24:
         return SchemaFetchNode.deserialize(buffer);
+      case 25:
+        return SeriesSchemaMergeNode.deserialize(buffer);
       case 27:
-        return SchemaMergeNode.deserialize(buffer);
+        return DevicesCountNode.deserialize(buffer);
+      case 28:
+        return TimeSeriesCountNode.deserialize(buffer);
+      case 29:
+        return LevelTimeSeriesCountNode.deserialize(buffer);
+      case 30:
+        return CountSchemaMergeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

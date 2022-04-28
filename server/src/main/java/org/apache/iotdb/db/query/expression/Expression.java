@@ -26,7 +26,27 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
+import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.query.expression.binary.EqualToExpression;
+import org.apache.iotdb.db.query.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.query.expression.binary.LessEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.query.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.InExpression;
+import org.apache.iotdb.db.query.expression.unary.LikeExpression;
+import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
+import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
@@ -64,10 +84,6 @@ public abstract class Expression {
 
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
-  }
-
-  public void bindInputColumnIndex(int inputColumnIndex) {
-    this.inputColumnIndex = inputColumnIndex;
   }
 
   public abstract void concat(
@@ -201,7 +217,110 @@ public abstract class Expression {
     }
   }
 
-  public void serialize(ByteBuffer byteBuffer) {
-    ReadWriteIOUtils.write(isConstantOperandCache, byteBuffer);
+  public abstract ExpressionType getExpressionType();
+
+  public static void serialize(Expression expression, ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(
+        expression.getExpressionType().getExpressionTypeInShortEnum(), byteBuffer);
+
+    expression.serialize(byteBuffer);
+
+    ReadWriteIOUtils.write(expression.inputColumnIndex != null, byteBuffer);
+    if (expression.inputColumnIndex != null) {
+      ReadWriteIOUtils.write(expression.inputColumnIndex, byteBuffer);
+    }
+  }
+
+  protected abstract void serialize(ByteBuffer byteBuffer);
+
+  public static Expression deserialize(ByteBuffer byteBuffer) {
+    short type = ReadWriteIOUtils.readShort(byteBuffer);
+
+    Expression expression;
+    switch (type) {
+      case -4:
+        expression = new ConstantOperand(byteBuffer);
+        break;
+      case -3:
+        throw new UnsupportedOperationException();
+      case -2:
+        expression = new TimeSeriesOperand(byteBuffer);
+        break;
+      case -1:
+        expression = new FunctionExpression(byteBuffer);
+        break;
+
+      case 0:
+        expression = new NegationExpression(byteBuffer);
+        break;
+      case 1:
+        expression = new LogicNotExpression(byteBuffer);
+        break;
+
+      case 2:
+        expression = new MultiplicationExpression(byteBuffer);
+        break;
+      case 3:
+        expression = new DivisionExpression(byteBuffer);
+        break;
+      case 4:
+        expression = new ModuloExpression(byteBuffer);
+        break;
+
+      case 5:
+        expression = new AdditionExpression(byteBuffer);
+        break;
+      case 6:
+        expression = new SubtractionExpression(byteBuffer);
+        break;
+
+      case 7:
+        expression = new EqualToExpression(byteBuffer);
+        break;
+      case 8:
+        expression = new NonEqualExpression(byteBuffer);
+        break;
+      case 9:
+        expression = new GreaterEqualExpression(byteBuffer);
+        break;
+      case 10:
+        expression = new GreaterThanExpression(byteBuffer);
+        break;
+      case 11:
+        expression = new LessEqualExpression(byteBuffer);
+        break;
+      case 12:
+        expression = new LessThanExpression(byteBuffer);
+        break;
+
+      case 13:
+        expression = new LikeExpression(byteBuffer);
+        break;
+      case 14:
+        expression = new RegularExpression(byteBuffer);
+        break;
+
+      case 15:
+        expression = new InExpression(byteBuffer);
+        break;
+
+      case 16:
+        expression = new LogicAndExpression(byteBuffer);
+        break;
+
+      case 17:
+        expression = new LogicOrExpression(byteBuffer);
+        break;
+
+      default:
+        throw new IllegalArgumentException("Invalid expression type: " + type);
+    }
+
+    boolean hasInputColumnIndex = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasInputColumnIndex) {
+      expression.inputColumnIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    }
+
+    return expression;
   }
 }

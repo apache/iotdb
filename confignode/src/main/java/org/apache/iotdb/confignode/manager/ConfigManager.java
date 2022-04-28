@@ -20,20 +20,30 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataNodesInfoDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataPartitionDataSet;
-import org.apache.iotdb.confignode.consensus.response.SchemaPartitionDataSet;
-import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaDataSet;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.physical.PhysicalPlanType;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.physical.crud.GetOrCreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
-import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
-import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
-import org.apache.iotdb.confignode.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,27 +59,25 @@ import java.util.Set;
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
 public class ConfigManager implements Manager {
 
-  private static final TSStatus ERROR_TSSTATUS =
-      new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-
-  /** manage consensus, write or read consensus */
+  /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private final ConsensusManager consensusManager;
 
-  /** manage data node */
+  /** Manage cluster DataNode information */
   private final DataNodeManager dataNodeManager;
 
-  /** manage assign data partition and schema partition */
+  /** Manage cluster schema */
+  private final ClusterSchemaManager clusterSchemaManager;
+
+  /** Manage cluster regions and partitions */
   private final PartitionManager partitionManager;
 
-  /** manager assign schema region and data region */
-  private final RegionManager regionManager;
-
+  /** Manage cluster authorization */
   private final PermissionManager permissionManager;
 
   public ConfigManager() throws IOException {
     this.dataNodeManager = new DataNodeManager(this);
     this.partitionManager = new PartitionManager(this);
-    this.regionManager = new RegionManager(this);
+    this.clusterSchemaManager = new ClusterSchemaManager(this);
     this.consensusManager = new ConsensusManager();
     this.permissionManager = new PermissionManager(this);
   }
@@ -84,46 +92,101 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet registerDataNode(PhysicalPlan physicalPlan) {
+  public DataSet registerDataNode(RegisterDataNodeReq registerDataNodeReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return dataNodeManager.registerDataNode((RegisterDataNodePlan) physicalPlan);
+      return dataNodeManager.registerDataNode(registerDataNodeReq);
     } else {
-      DataNodeConfigurationDataSet dataSet = new DataNodeConfigurationDataSet();
+      DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
       dataSet.setStatus(status);
       return dataSet;
     }
   }
 
   @Override
-  public DataSet getDataNodeInfo(PhysicalPlan physicalPlan) {
+  public DataSet getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return dataNodeManager.getDataNodeInfo((QueryDataNodeInfoPlan) physicalPlan);
+      return dataNodeManager.getDataNodeInfo(getDataNodeInfoReq);
     } else {
-      DataNodesInfoDataSet dataSet = new DataNodesInfoDataSet();
+      DataNodeLocationsResp dataSet = new DataNodeLocationsResp();
       dataSet.setStatus(status);
       return dataSet;
     }
   }
 
   @Override
-  public DataSet getStorageGroupSchema() {
+  public TSStatus setTTL(SetTTLReq setTTLReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return regionManager.getStorageGroupSchema();
+      return clusterSchemaManager.setTTL(setTTLReq);
     } else {
-      StorageGroupSchemaDataSet dataSet = new StorageGroupSchemaDataSet();
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus setSchemaReplicationFactor(
+      SetSchemaReplicationFactorReq setSchemaReplicationFactorReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.setSchemaReplicationFactor(setSchemaReplicationFactorReq);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus setDataReplicationFactor(
+      SetDataReplicationFactorReq setDataReplicationFactorReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.setDataReplicationFactor(setDataReplicationFactorReq);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus setTimePartitionInterval(
+      SetTimePartitionIntervalReq setTimePartitionIntervalReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.setTimePartitionInterval(setTimePartitionIntervalReq);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public DataSet countMatchedStorageGroups(CountStorageGroupReq countStorageGroupReq) {
+    TSStatus status = confirmLeader();
+    CountStorageGroupResp result = new CountStorageGroupResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.countMatchedStorageGroups(countStorageGroupReq);
+    } else {
+      result.setStatus(status);
+    }
+    return result;
+  }
+
+  @Override
+  public DataSet getMatchedStorageGroupSchemas(GetStorageGroupReq getStorageGroupReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.getMatchedStorageGroupSchema(getStorageGroupReq);
+    } else {
+      StorageGroupSchemaResp dataSet = new StorageGroupSchemaResp();
       dataSet.setStatus(status);
       return dataSet;
     }
   }
 
   @Override
-  public TSStatus setStorageGroup(PhysicalPlan physicalPlan) {
+  public TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return regionManager.setStorageGroup((SetStorageGroupPlan) physicalPlan);
+      return clusterSchemaManager.setStorageGroup(setStorageGroupReq);
     } else {
       return status;
     }
@@ -134,11 +197,10 @@ public class ConfigManager implements Manager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<String> devicePaths = patternTree.findAllDevicePaths();
-      List<String> storageGroups = getRegionManager().getStorageGroupNames();
+      List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
 
-      GetOrCreateSchemaPartitionPlan getSchemaPartitionPlan =
-          new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetSchemaPartition);
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+      GetSchemaPartitionReq getSchemaPartitionReq = new GetSchemaPartitionReq();
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
       boolean getAll = false;
       Set<String> getAllSet = new HashSet<>();
@@ -177,10 +239,10 @@ public class ConfigManager implements Manager {
         }
       }
 
-      getSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
-      return partitionManager.getSchemaPartition(getSchemaPartitionPlan);
+      getSchemaPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
+      return partitionManager.getSchemaPartition(getSchemaPartitionReq);
     } else {
-      SchemaPartitionDataSet dataSet = new SchemaPartitionDataSet();
+      SchemaPartitionResp dataSet = new SchemaPartitionResp();
       dataSet.setStatus(status);
       return dataSet;
     }
@@ -191,11 +253,11 @@ public class ConfigManager implements Manager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<String> devicePaths = patternTree.findAllDevicePaths();
-      List<String> storageGroups = getRegionManager().getStorageGroupNames();
+      List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
 
-      GetOrCreateSchemaPartitionPlan getOrCreateSchemaPartitionPlan =
-          new GetOrCreateSchemaPartitionPlan(PhysicalPlanType.GetOrCreateSchemaPartition);
-      Map<String, List<SeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+      GetOrCreateSchemaPartitionReq getOrCreateSchemaPartitionReq =
+          new GetOrCreateSchemaPartitionReq();
+      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
       for (String devicePath : devicePaths) {
         if (!devicePath.contains("*")) {
@@ -211,34 +273,34 @@ public class ConfigManager implements Manager {
         }
       }
 
-      getOrCreateSchemaPartitionPlan.setPartitionSlotsMap(partitionSlotsMap);
-      return partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
+      getOrCreateSchemaPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
+      return partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionReq);
     } else {
-      SchemaPartitionDataSet dataSet = new SchemaPartitionDataSet();
+      SchemaPartitionResp dataSet = new SchemaPartitionResp();
       dataSet.setStatus(status);
       return dataSet;
     }
   }
 
   @Override
-  public DataSet getDataPartition(PhysicalPlan physicalPlan) {
+  public DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+      return partitionManager.getDataPartition(getDataPartitionReq);
     } else {
-      DataPartitionDataSet dataSet = new DataPartitionDataSet();
+      DataPartitionResp dataSet = new DataPartitionResp();
       dataSet.setStatus(status);
       return dataSet;
     }
   }
 
   @Override
-  public DataSet getOrCreateDataPartition(PhysicalPlan physicalPlan) {
+  public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq getOrCreateDataPartitionReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getOrCreateDataPartition((GetOrCreateDataPartitionPlan) physicalPlan);
+      return partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
     } else {
-      DataPartitionDataSet dataSet = new DataPartitionDataSet();
+      DataPartitionResp dataSet = new DataPartitionResp();
       dataSet.setStatus(status);
       return dataSet;
     }
@@ -260,8 +322,8 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public RegionManager getRegionManager() {
-    return regionManager;
+  public ClusterSchemaManager getClusterSchemaManager() {
+    return clusterSchemaManager;
   }
 
   @Override
@@ -275,10 +337,34 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public TSStatus operatePermission(PhysicalPlan physicalPlan) {
-    if (physicalPlan instanceof AuthorPlan) {
-      return permissionManager.operatePermission((AuthorPlan) physicalPlan);
+  public TSStatus operatePermission(ConfigRequest configRequest) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return permissionManager.operatePermission((AuthorReq) configRequest);
+    } else {
+      return status;
     }
-    return ERROR_TSSTATUS;
+  }
+
+  @Override
+  public DataSet queryPermission(ConfigRequest configRequest) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return permissionManager.queryPermission((AuthorReq) configRequest);
+    } else {
+      PermissionInfoResp dataSet = new PermissionInfoResp();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+  }
+
+  @Override
+  public TSStatus login(String username, String password) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return AuthorInfo.getInstance().login(username, password);
+    } else {
+      return status;
+    }
   }
 }

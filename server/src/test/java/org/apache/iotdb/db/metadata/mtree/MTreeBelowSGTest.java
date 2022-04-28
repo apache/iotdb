@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -56,9 +58,9 @@ import static org.junit.Assert.fail;
 public abstract class MTreeBelowSGTest {
 
   MTreeAboveSG root;
-  MTreeBelowSG storageGroup;
+  IMTreeBelowSG storageGroup;
 
-  Set<MTreeBelowSG> usedMTree = new HashSet<>();
+  Set<IMTreeBelowSG> usedMTree = new HashSet<>();
 
   protected abstract void setConfig();
 
@@ -75,7 +77,7 @@ public abstract class MTreeBelowSGTest {
   public void tearDown() throws Exception {
     root.clear();
     root = null;
-    for (MTreeBelowSG mtree : usedMTree) {
+    for (IMTreeBelowSG mtree : usedMTree) {
       mtree.clear();
     }
     usedMTree.clear();
@@ -84,10 +86,16 @@ public abstract class MTreeBelowSGTest {
     rollBackConfig();
   }
 
-  private MTreeBelowSG getStorageGroup(PartialPath path) throws MetadataException {
+  private IMTreeBelowSG getStorageGroup(PartialPath path) throws MetadataException {
     try {
       root.setStorageGroup(path);
-      MTreeBelowSG mtree = new MTreeBelowSG(root.getStorageGroupNodeByStorageGroupPath(path), 0);
+      IMTreeBelowSG mtree;
+      if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
+          .equals(SchemaEngineMode.Schema_File)) {
+        mtree = new MTreeBelowSGCachedImpl(root.getStorageGroupNodeByStorageGroupPath(path), 0);
+      } else {
+        mtree = new MTreeBelowSGMemoryImpl(root.getStorageGroupNodeByStorageGroupPath(path), 0);
+      }
       usedMTree.add(mtree);
       return mtree;
     } catch (IOException e) {

@@ -18,8 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
+import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeMeasurementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -42,17 +48,87 @@ public class SchemaTreeTest {
     testSchemaTree(root);
   }
 
+  @Test
+  public void testMultiWildcard() throws IllegalPathException {
+    SchemaNode root = generateSchemaTreeWithInternalRepeatedName();
+
+    SchemaTreeMeasurementVisitor visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.**.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        4,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s", "root.a.a.a.s", "root.a.a.s"},
+        null,
+        new boolean[] {false, false, false, false});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.*.**.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        4,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s", "root.a.a.a.s", "root.a.a.s"},
+        null,
+        new boolean[] {false, false, false, false});
+
+    visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.a.**.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        3,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s", "root.a.a.a.s"},
+        null,
+        new boolean[] {false, false, false});
+
+    visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.a.**.*.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s"},
+        null,
+        new boolean[] {false, false, false});
+
+    visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.a.**.a.*.s"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.a.a.a.a.a.s", "root.a.a.a.a.s"},
+        null,
+        new boolean[] {false, false, false});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.c.s1"), 0, 0, false);
+    checkVisitorResult(
+        visitor,
+        2,
+        new String[] {"root.c.c.c.d.c.c.s1", "root.c.c.c.d.c.s1"},
+        null,
+        new boolean[] {false, false});
+
+    visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.c.d.c.s1"), 0, 0, false);
+    checkVisitorResult(visitor, 1, new String[] {"root.c.c.c.d.c.s1"}, null, new boolean[] {false});
+
+    visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.d.**.c.s1"), 0, 0, false);
+    checkVisitorResult(
+        visitor, 1, new String[] {"root.c.c.c.d.c.c.s1"}, null, new boolean[] {false});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.d.*.*"), 0, 0, false);
+    checkVisitorResult(visitor, 1, new String[] {"root.c.c.c.d.c.s1"}, null, new boolean[] {false});
+  }
+
   private void testSchemaTree(SchemaNode root) throws Exception {
 
-    SchemaTreeVisitor visitor =
-        new SchemaTreeVisitor(root, new PartialPath("root.sg.d2.a.s1"), 0, 0, false);
+    SchemaTreeMeasurementVisitor visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d2.a.s1"), 0, 0, false);
     checkVisitorResult(visitor, 1, new String[] {"root.sg.d2.a.s1"}, null, new boolean[] {true});
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.*.s2"), 0, 0, false);
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.*.s2"), 0, 0, false);
     checkVisitorResult(
         visitor, 2, new String[] {"root.sg.d1.s2", "root.sg.d2.s2"}, new String[] {"", ""}, null);
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.*.status"), 0, 0, false);
+    visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.*.status"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
@@ -60,7 +136,8 @@ public class SchemaTreeTest {
         new String[] {"status", "status"},
         null);
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.d2.*.*"), 0, 0, false);
+    visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d2.*.*"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
@@ -68,7 +145,7 @@ public class SchemaTreeTest {
         new String[] {"", ""},
         new boolean[] {true, true});
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.d1"), 0, 0, true);
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d1"), 0, 0, true);
     checkVisitorResult(
         visitor,
         2,
@@ -76,7 +153,7 @@ public class SchemaTreeTest {
         new String[] {"", ""},
         new boolean[] {false, false});
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.*.a"), 0, 0, true);
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.*.a"), 0, 0, true);
     checkVisitorResult(
         visitor,
         2,
@@ -85,7 +162,7 @@ public class SchemaTreeTest {
         new boolean[] {true, true},
         new int[] {0, 0});
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.*.*"), 2, 2, false);
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.*.*"), 2, 2, false);
     checkVisitorResult(
         visitor,
         2,
@@ -94,7 +171,7 @@ public class SchemaTreeTest {
         new boolean[] {false, false},
         new int[] {3, 4});
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.*"), 2, 3, true);
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.*"), 2, 3, true);
     checkVisitorResult(
         visitor,
         2,
@@ -103,7 +180,7 @@ public class SchemaTreeTest {
         new boolean[] {true, false},
         new int[] {4, 5});
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.d1.**"), 0, 0, false);
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d1.**"), 0, 0, false);
     checkVisitorResult(
         visitor,
         2,
@@ -111,7 +188,7 @@ public class SchemaTreeTest {
         new String[] {"", ""},
         new boolean[] {false, false});
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.d2.**"), 3, 1, true);
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.d2.**"), 3, 1, true);
     checkVisitorResult(
         visitor,
         3,
@@ -120,14 +197,63 @@ public class SchemaTreeTest {
         new boolean[] {true, false, false},
         new int[] {2, 3, 4});
 
-    visitor = new SchemaTreeVisitor(root, new PartialPath("root.sg.**.status"), 2, 1, true);
+    visitor =
+        new SchemaTreeMeasurementVisitor(root, new PartialPath("root.sg.**.status"), 2, 1, true);
     checkVisitorResult(
         visitor,
         2,
-        new String[] {"root.sg.d2.s2", "root.sg.d2.a.s2"},
+        new String[] {"root.sg.d2.a.s2", "root.sg.d2.s2"},
         new String[] {"status", "status"},
-        new boolean[] {false, true},
+        new boolean[] {true, false},
         new int[] {2, 3});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.*"), 10, 0, false);
+    checkVisitorResult(
+        visitor,
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false},
+        new int[] {1, 2, 3, 4, 5, 6});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.*.**"), 10, 0, false);
+    checkVisitorResult(
+        visitor,
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false},
+        new int[] {1, 2, 3, 4, 5, 6});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.*.**.**"), 10, 0, false);
+    checkVisitorResult(
+        visitor,
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false},
+        new int[] {1, 2, 3, 4, 5, 6});
   }
 
   /**
@@ -170,8 +296,51 @@ public class SchemaTreeTest {
     return root;
   }
 
+  /**
+   * Generate the following tree: root.a.s, root.a.a.s, root.a.a.a.s, root.a.a.a.a.s,
+   * root.a.a.a.a.a.s, root.c.c.c.d.c.s1, root.c.c.c.d.c.c.s1
+   *
+   * @return the root node of the generated schemTree
+   */
+  private SchemaNode generateSchemaTreeWithInternalRepeatedName() {
+    SchemaNode root = new SchemaInternalNode("root");
+
+    SchemaNode parent = root;
+    SchemaNode a;
+    MeasurementSchema schema = new MeasurementSchema("s", TSDataType.INT32);
+    SchemaNode s;
+    for (int i = 0; i < 5; i++) {
+      a = new SchemaEntityNode("a");
+      s = new SchemaMeasurementNode("s", schema);
+      a.addChild("s", s);
+      parent.addChild("a", a);
+      parent = a;
+    }
+
+    parent = root;
+    SchemaNode c;
+    for (int i = 0; i < 3; i++) {
+      c = new SchemaInternalNode("c");
+      parent.addChild("c", c);
+      parent = c;
+    }
+
+    SchemaNode d = new SchemaInternalNode("d");
+    parent.addChild("d", d);
+    parent = d;
+
+    for (int i = 0; i < 2; i++) {
+      c = new SchemaEntityNode("c");
+      c.addChild("s1", new SchemaMeasurementNode("s1", schema));
+      parent.addChild("c", c);
+      parent = c;
+    }
+
+    return root;
+  }
+
   private void checkVisitorResult(
-      SchemaTreeVisitor visitor,
+      SchemaTreeMeasurementVisitor visitor,
       int expectedNum,
       String[] expectedPath,
       String[] expectedAlias,
@@ -196,7 +365,7 @@ public class SchemaTreeTest {
   }
 
   private void checkVisitorResult(
-      SchemaTreeVisitor visitor,
+      SchemaTreeMeasurementVisitor visitor,
       int expectedNum,
       String[] expectedPath,
       String[] expectedAlias,
@@ -204,7 +373,7 @@ public class SchemaTreeTest {
       int[] expectedOffset) {
     checkVisitorResult(visitor, expectedNum, expectedPath, expectedAlias, expectedAligned);
 
-    visitor.resetStatus();
+    visitor.reset();
     int i = 0;
     MeasurementPath result;
     while (visitor.hasNext()) {
@@ -250,6 +419,25 @@ public class SchemaTreeTest {
         deviceSchemaInfo.getMeasurementSchemaList().stream()
             .map(MeasurementSchema::getMeasurementId)
             .collect(Collectors.toList()));
+  }
+
+  @Test
+  public void testGetMatchedDevices() throws Exception {
+    SchemaTree schemaTree = new SchemaTree(generateSchemaTree());
+
+    List<DeviceSchemaInfo> deviceSchemaInfoList =
+        schemaTree.getMatchedDevices(new PartialPath("root.sg.d2.a"), false);
+    Assert.assertEquals(1, deviceSchemaInfoList.size());
+    DeviceSchemaInfo deviceSchemaInfo = deviceSchemaInfoList.get(0);
+    Assert.assertEquals(new PartialPath("root.sg.d2.a"), deviceSchemaInfo.getDevicePath());
+    Assert.assertTrue(deviceSchemaInfo.isAligned());
+    Assert.assertEquals(2, deviceSchemaInfo.getMeasurements().size());
+
+    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.*"), false);
+    Assert.assertEquals(2, deviceSchemaInfoList.size());
+
+    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.**"), false);
+    Assert.assertEquals(3, deviceSchemaInfoList.size());
   }
 
   @Test

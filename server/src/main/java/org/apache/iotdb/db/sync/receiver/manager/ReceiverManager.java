@@ -39,8 +39,8 @@ public class ReceiverManager {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
 
   private boolean pipeServerEnable;
-  // <pipeName, <remoteIp, pipeInfo>>
-  private Map<String, Map<String, PipeInfo>> pipeInfoMap;
+  // <pipeName, <remoteIp, <createTime, status>>>
+  private Map<String, Map<String, Map<Long, PipeStatus>>> pipeInfos;
   // <pipeFolderName, pipeMsg>
   private Map<String, List<PipeMessage>> pipeMessageMap;
   private ReceiverLog log;
@@ -49,7 +49,7 @@ public class ReceiverManager {
     log = new ReceiverLog();
     ReceiverLogAnalyzer analyzer = new ReceiverLogAnalyzer();
     analyzer.scan();
-    pipeInfoMap = analyzer.getPipeInfoMap();
+    pipeInfos = analyzer.getPipeInfos();
     pipeServerEnable = analyzer.isPipeServerEnable();
     pipeMessageMap = analyzer.getPipeMessageMap();
   }
@@ -70,43 +70,57 @@ public class ReceiverManager {
 
   public void createPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     log.createPipe(pipeName, remoteIp, createTime);
-    if (!pipeInfoMap.containsKey(pipeName)) {
-      pipeInfoMap.put(pipeName, new HashMap<>());
+    pipeInfos.putIfAbsent(pipeName, new HashMap<>());
+    pipeInfos.get(pipeName).putIfAbsent(remoteIp, new HashMap<>());
+    pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.STOP);
+  }
+
+  public void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    log.startPipe(pipeName, remoteIp, createTime);
+    pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.RUNNING);
+  }
+
+  public void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    log.stopPipe(pipeName, remoteIp, createTime);
+    pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.STOP);
+  }
+
+  public void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    log.dropPipe(pipeName, remoteIp, createTime);
+    pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.DROP);
+  }
+
+  public List<PipeInfo> getPipeInfosByPipeName(String pipeName) {
+    if (!pipeInfos.containsKey(pipeName)) {
+      return Collections.emptyList();
     }
-    pipeInfoMap
-        .get(pipeName)
-        .put(remoteIp, new PipeInfo(pipeName, remoteIp, PipeStatus.STOP, createTime));
-  }
-
-  public void startPipe(String pipeName, String remoteIp) throws IOException {
-    log.startPipe(pipeName, remoteIp);
-    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.RUNNING);
-  }
-
-  public void stopPipe(String pipeName, String remoteIp) throws IOException {
-    log.stopPipe(pipeName, remoteIp);
-    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.STOP);
-  }
-
-  public void dropPipe(String pipeName, String remoteIp) throws IOException {
-    log.dropPipe(pipeName, remoteIp);
-    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.DROP);
-  }
-
-  public List<PipeInfo> getPipeInfos(String pipeName) {
-    List<PipeInfo> res;
-    if (pipeInfoMap.containsKey(pipeName)) {
-      res = new ArrayList<>(pipeInfoMap.get(pipeName).values());
-    } else {
-      res = Collections.emptyList();
+    List<PipeInfo> res = new ArrayList<>();
+    for (Map.Entry<String, Map<Long, PipeStatus>> remoteIpEntry :
+        pipeInfos.get(pipeName).entrySet()) {
+      for (Map.Entry<Long, PipeStatus> createTimeEntry : remoteIpEntry.getValue().entrySet()) {
+        res.add(
+            new PipeInfo(
+                pipeName,
+                remoteIpEntry.getKey(),
+                createTimeEntry.getValue(),
+                createTimeEntry.getKey()));
+      }
     }
     return res;
   }
 
+  public PipeInfo getPipeInfo(String pipeName, String remoteIp, long createTime) {
+    if (pipeInfos.containsKey(pipeName) && pipeInfos.get(pipeName).containsKey(remoteIp)) {
+      return new PipeInfo(
+          pipeName, remoteIp, pipeInfos.get(pipeName).get(remoteIp).get(createTime), createTime);
+    }
+    return null;
+  }
+
   public List<PipeInfo> getAllPipeInfos() {
     List<PipeInfo> res = new ArrayList<>();
-    for (String pipeName : pipeInfoMap.keySet()) {
-      res.addAll(pipeInfoMap.get(pipeName).values());
+    for (String pipeName : pipeInfos.keySet()) {
+      res.addAll(getPipeInfosByPipeName(pipeName));
     }
     return res;
   }
@@ -119,24 +133,19 @@ public class ReceiverManager {
    * @param createTime createTime of pipe
    * @param message pipe message
    */
-  public void writePipeMessage(
+  public synchronized void writePipeMessage(
       String pipeName, String remoteIp, long createTime, PipeMessage message) {
-    if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
-      synchronized (pipeInfoMap.get(pipeName).get(remoteIp)) {
-        String pipeIdentifier =
-            SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
-        try {
-          log.writePipeMsg(pipeIdentifier, message);
-        } catch (IOException e) {
-          logger.error(
-              "Can not write pipe message {} from {} to disk because {}",
-              message,
-              pipeIdentifier,
-              e.getMessage());
-        }
-        pipeMessageMap.computeIfAbsent(pipeIdentifier, i -> new ArrayList<>()).add(message);
-      }
+    String pipeIdentifier = SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
+    try {
+      log.writePipeMsg(pipeIdentifier, message);
+    } catch (IOException e) {
+      logger.error(
+          "Can not write pipe message {} from {} to disk because {}",
+          message,
+          pipeIdentifier,
+          e.getMessage());
     }
+    pipeMessageMap.computeIfAbsent(pipeIdentifier, i -> new ArrayList<>()).add(message);
   }
 
   /**
@@ -149,29 +158,24 @@ public class ReceiverManager {
    *     messages can be read next time.
    * @return recent messages
    */
-  public List<PipeMessage> getPipeMessages(
+  public synchronized List<PipeMessage> getPipeMessages(
       String pipeName, String remoteIp, long createTime, boolean consume) {
     List<PipeMessage> pipeMessageList = new ArrayList<>();
-    if (pipeInfoMap.containsKey(pipeName) && pipeInfoMap.get(pipeName).containsKey(remoteIp)) {
-      synchronized (pipeInfoMap.get(pipeName).get(remoteIp)) {
-        String pipeIdentifier =
-            SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
-        if (consume) {
-          try {
-            log.comsumePipeMsg(pipeIdentifier);
-          } catch (IOException e) {
-            logger.error(
-                "Can not read pipe message about {} from disk because {}",
-                pipeIdentifier,
-                e.getMessage());
-          }
-        }
-        if (pipeMessageMap.containsKey(pipeIdentifier)) {
-          pipeMessageList = pipeMessageMap.get(pipeIdentifier);
-          if (consume) {
-            pipeMessageMap.remove(pipeIdentifier);
-          }
-        }
+    String pipeIdentifier = SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
+    if (consume) {
+      try {
+        log.comsumePipeMsg(pipeIdentifier);
+      } catch (IOException e) {
+        logger.error(
+            "Can not read pipe message about {} from disk because {}",
+            pipeIdentifier,
+            e.getMessage());
+      }
+    }
+    if (pipeMessageMap.containsKey(pipeIdentifier)) {
+      pipeMessageList = pipeMessageMap.get(pipeIdentifier);
+      if (consume) {
+        pipeMessageMap.remove(pipeIdentifier);
       }
     }
     return pipeMessageList;

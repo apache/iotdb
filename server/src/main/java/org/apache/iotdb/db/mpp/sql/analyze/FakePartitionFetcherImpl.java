@@ -19,14 +19,24 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
-import org.apache.iotdb.commons.cluster.DataNodeLocation;
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.*;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
@@ -51,56 +61,76 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
         new DataPartition(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    Map<String, Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>>>
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
-    Map<SeriesPartitionSlot, Map<TimePartitionSlot, List<RegionReplicaSet>>> sgPartitionMap =
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
         new HashMap<>();
 
-    List<RegionReplicaSet> d1DataRegions = new ArrayList<>();
+    List<TRegionReplicaSet> d1DataRegions = new ArrayList<>();
     d1DataRegions.add(
-        new RegionReplicaSet(
-            new DataRegionId(1),
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
             Arrays.asList(
-                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
-                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
+                new TDataNodeLocation()
+                    .setDataNodeId(11)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(12)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.2", 9000)))));
     d1DataRegions.add(
-        new RegionReplicaSet(
-            new DataRegionId(2),
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2),
             Arrays.asList(
-                new DataNodeLocation(21, new Endpoint("192.0.2.1", 9000)),
-                new DataNodeLocation(22, new Endpoint("192.0.2.2", 9000)))));
-    Map<TimePartitionSlot, List<RegionReplicaSet>> d1DataRegionMap = new HashMap<>();
-    d1DataRegionMap.put(new TimePartitionSlot(), d1DataRegions);
+                new TDataNodeLocation()
+                    .setDataNodeId(21)
+                    .setExternalEndPoint(new TEndPoint("192.0.2.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(22)
+                    .setExternalEndPoint(new TEndPoint("192.0.2.2", 9000)))));
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> d1DataRegionMap = new HashMap<>();
+    d1DataRegionMap.put(new TTimePartitionSlot(), d1DataRegions);
 
-    List<RegionReplicaSet> d2DataRegions = new ArrayList<>();
+    List<TRegionReplicaSet> d2DataRegions = new ArrayList<>();
     d2DataRegions.add(
-        new RegionReplicaSet(
-            new DataRegionId(3),
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 3),
             Arrays.asList(
-                new DataNodeLocation(31, new Endpoint("192.0.3.1", 9000)),
-                new DataNodeLocation(32, new Endpoint("192.0.3.2", 9000)))));
-    Map<TimePartitionSlot, List<RegionReplicaSet>> d2DataRegionMap = new HashMap<>();
-    d2DataRegionMap.put(new TimePartitionSlot(), d2DataRegions);
+                new TDataNodeLocation()
+                    .setDataNodeId(31)
+                    .setExternalEndPoint(new TEndPoint("192.0.3.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(32)
+                    .setExternalEndPoint(new TEndPoint("192.0.3.2", 9000)))));
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> d2DataRegionMap = new HashMap<>();
+    d2DataRegionMap.put(new TTimePartitionSlot(), d2DataRegions);
 
-    List<RegionReplicaSet> d3DataRegions = new ArrayList<>();
+    List<TRegionReplicaSet> d3DataRegions = new ArrayList<>();
     d3DataRegions.add(
-        new RegionReplicaSet(
-            new DataRegionId(1),
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
             Arrays.asList(
-                new DataNodeLocation(11, new Endpoint("192.0.1.1", 9000)),
-                new DataNodeLocation(12, new Endpoint("192.0.1.2", 9000)))));
+                new TDataNodeLocation()
+                    .setDataNodeId(11)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(12)
+                    .setExternalEndPoint(new TEndPoint("192.0.1.2", 9000)))));
     d3DataRegions.add(
-        new RegionReplicaSet(
-            new DataRegionId(4),
+        new TRegionReplicaSet(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, 4),
             Arrays.asList(
-                new DataNodeLocation(41, new Endpoint("192.0.4.1", 9000)),
-                new DataNodeLocation(42, new Endpoint("192.0.4.2", 9000)))));
-    Map<TimePartitionSlot, List<RegionReplicaSet>> d3DataRegionMap = new HashMap<>();
-    d3DataRegionMap.put(new TimePartitionSlot(), d3DataRegions);
+                new TDataNodeLocation()
+                    .setDataNodeId(41)
+                    .setExternalEndPoint(new TEndPoint("192.0.4.1", 9000)),
+                new TDataNodeLocation()
+                    .setDataNodeId(42)
+                    .setExternalEndPoint(new TEndPoint("192.0.4.2", 9000)))));
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> d3DataRegionMap = new HashMap<>();
+    d3DataRegionMap.put(new TTimePartitionSlot(), d3DataRegions);
 
-    sgPartitionMap.put(new SeriesPartitionSlot(device1.length()), d1DataRegionMap);
-    sgPartitionMap.put(new SeriesPartitionSlot(device2.length()), d2DataRegionMap);
-    sgPartitionMap.put(new SeriesPartitionSlot(device3.length()), d3DataRegionMap);
+    sgPartitionMap.put(new TSeriesPartitionSlot(device1.length()), d1DataRegionMap);
+    sgPartitionMap.put(new TSeriesPartitionSlot(device2.length()), d2DataRegionMap);
+    sgPartitionMap.put(new TSeriesPartitionSlot(device3.length()), d3DataRegionMap);
 
     dataPartitionMap.put("root.sg", sgPartitionMap);
 
@@ -110,8 +140,19 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
   }
 
   @Override
+  public DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams) {
+    return null;
+  }
+
+  @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    return null;
+  }
+
+  @Override
+  public DataPartition getOrCreateDataPartition(
+      List<DataPartitionQueryParam> dataPartitionQueryParams) {
     return null;
   }
 }

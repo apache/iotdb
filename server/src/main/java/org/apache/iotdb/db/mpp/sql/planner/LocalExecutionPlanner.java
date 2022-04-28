@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
@@ -37,18 +35,30 @@ import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.operator.process.merge.ColumnMerger;
+import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
+import org.apache.iotdb.db.mpp.operator.schema.CountMergeOperator;
+import org.apache.iotdb.db.mpp.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.operator.schema.LevelTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaFetchOperator;
 import org.apache.iotdb.db.mpp.operator.schema.SchemaMergeOperator;
+import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
@@ -64,6 +74,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -76,7 +87,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 /**
- * used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
+ * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
  * Operator tree, but in the future, we may split one fragment instance into multiple pipeline to
  * run a fragment instance parallel and take full advantage of multi-cores
  */
@@ -159,6 +170,22 @@ public class LocalExecutionPlanner {
     }
 
     @Override
+    public Operator visitSchemaScan(SchemaScanNode node, LocalExecutionPlanContext context) {
+      if (node instanceof TimeSeriesSchemaScanNode) {
+        return visitTimeSeriesSchemaScan((TimeSeriesSchemaScanNode) node, context);
+      } else if (node instanceof DevicesSchemaScanNode) {
+        return visitDevicesSchemaScan((DevicesSchemaScanNode) node, context);
+      } else if (node instanceof DevicesCountNode) {
+        return visitDevicesCount((DevicesCountNode) node, context);
+      } else if (node instanceof TimeSeriesCountNode) {
+        return visitTimeSeriesCount((TimeSeriesCountNode) node, context);
+      } else if (node instanceof LevelTimeSeriesCountNode) {
+        return visitLevelTimeSeriesCount((LevelTimeSeriesCountNode) node, context);
+      }
+      return visitPlan(node, context);
+    }
+
+    @Override
     public Operator visitTimeSeriesSchemaScan(
         TimeSeriesSchemaScanNode node, LocalExecutionPlanContext context) {
       OperatorContext operatorContext =
@@ -167,6 +194,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               TimeSeriesSchemaScanOperator.class.getSimpleName());
       return new TimeSeriesSchemaScanOperator(
+          node.getPlanNodeId(),
           operatorContext,
           node.getLimit(),
           node.getOffset(),
@@ -175,8 +203,7 @@ public class LocalExecutionPlanner {
           node.getValue(),
           node.isContains(),
           node.isOrderByHeat(),
-          node.isPrefixPath(),
-          node.getOutputColumnNames());
+          node.isPrefixPath());
     }
 
     @Override
@@ -188,17 +215,18 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               DevicesSchemaScanOperator.class.getSimpleName());
       return new DevicesSchemaScanOperator(
+          node.getPlanNodeId(),
           operatorContext,
           node.getLimit(),
           node.getOffset(),
           node.getPath(),
           node.isPrefixPath(),
-          node.isHasSgCol(),
-          node.getOutputColumnNames());
+          node.isHasSgCol());
     }
 
     @Override
-    public Operator visitSchemaMerge(SchemaMergeNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaMerge(
+        SeriesSchemaMergeNode node, LocalExecutionPlanContext context) {
       List<Operator> children =
           node.getChildren().stream()
               .map(n -> n.accept(this, context))
@@ -208,13 +236,88 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               SchemaMergeOperator.class.getSimpleName());
-      return new SchemaMergeOperator(operatorContext, children);
+      return new SchemaMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    }
+
+    @Override
+    public Operator visitCountMerge(CountSchemaMergeNode node, LocalExecutionPlanContext context) {
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(n -> n.accept(this, context))
+              .collect(Collectors.toList());
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              CountSchemaMergeNode.class.getSimpleName());
+      return new CountMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    }
+
+    @Override
+    public Operator visitDevicesCount(DevicesCountNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              CountSchemaMergeNode.class.getSimpleName());
+      return new DevicesCountOperator(
+          node.getPlanNodeId(), operatorContext, node.getPath(), node.isPrefixPath());
+    }
+
+    @Override
+    public Operator visitTimeSeriesCount(
+        TimeSeriesCountNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              TimeSeriesCountNode.class.getSimpleName());
+      return new TimeSeriesCountOperator(
+          node.getPlanNodeId(), operatorContext, node.getPath(), node.isPrefixPath());
+    }
+
+    @Override
+    public Operator visitLevelTimeSeriesCount(
+        LevelTimeSeriesCountNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              LevelTimeSeriesCountNode.class.getSimpleName());
+      return new LevelTimeSeriesCountOperator(
+          node.getPlanNodeId(),
+          operatorContext,
+          node.getPath(),
+          node.isPrefixPath(),
+          node.getLevel());
     }
 
     @Override
     public Operator visitSeriesAggregate(
         SeriesAggregateScanNode node, LocalExecutionPlanContext context) {
-      return super.visitSeriesAggregate(node, context);
+      PartialPath seriesPath = node.getSeriesPath();
+      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SeriesAggregateScanNode.class.getSimpleName());
+
+      SeriesAggregateScanOperator aggregateScanOperator =
+          new SeriesAggregateScanOperator(
+              node.getPlanNodeId(),
+              seriesPath,
+              node.getAllSensors(),
+              operatorContext,
+              node.getAggregateFuncList(),
+              node.getTimeFilter(),
+              ascending,
+              node.getGroupByTimeParameter());
+
+      context.addSourceOperator(aggregateScanOperator);
+      context.addPath(seriesPath);
+
+      return aggregateScanOperator;
     }
 
     @Override
@@ -285,8 +388,31 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               TimeJoinOperator.class.getSimpleName());
+      List<OutputColumn> outputColumns = node.getOutputColumns();
+      List<ColumnMerger> mergers = createColumnMergers(outputColumns);
       return new TimeJoinOperator(
-          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes());
+          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes(), mergers);
+    }
+
+    private List<ColumnMerger> createColumnMergers(List<OutputColumn> outputColumns) {
+      List<ColumnMerger> mergers = new ArrayList<>(outputColumns.size());
+      for (OutputColumn outputColumn : outputColumns) {
+        ColumnMerger merger;
+        // only has one input column
+        if (outputColumn.isSingleInputColumn()) {
+          merger = new SingleColumnMerger(outputColumn.getInputLocation(0), OrderBy.TIMESTAMP_ASC);
+        } else if (!outputColumn.isOverlapped()) {
+          // has more than one input columns but time of these input columns is not overlapped
+          throw new UnsupportedOperationException(
+              "has more than one input columns but time of these input columns is not overlapped is not supported");
+        } else {
+          // has more than one input columns and time of these input columns is overlapped
+          throw new UnsupportedOperationException(
+              "has more than one input columns and time of these input columns is overlapped is not supported");
+        }
+        mergers.add(merger);
+      }
+      return mergers;
     }
 
     @Override
@@ -298,31 +424,27 @@ public class LocalExecutionPlanner {
               SeriesScanOperator.class.getSimpleName());
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
-      Endpoint source = node.getUpstreamEndpoint();
 
       ISourceHandle sourceHandle =
           DATA_BLOCK_MANAGER.createSourceHandle(
               localInstanceId.toThrift(),
               node.getPlanNodeId().getId(),
-              new Endpoint(
-                  source.getIp(),
-                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
-              remoteInstanceId.toThrift());
+              node.getUpstreamEndpoint(),
+              remoteInstanceId.toThrift(),
+              context.instanceContext::failed);
       return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     }
 
     @Override
     public Operator visitFragmentSink(FragmentSinkNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
-      Endpoint target = node.getDownStreamEndpoint();
+
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
       ISinkHandle sinkHandle =
           DATA_BLOCK_MANAGER.createSinkHandle(
               localInstanceId.toThrift(),
-              new Endpoint(
-                  target.getIp(),
-                  IoTDBDescriptor.getInstance().getConfig().getDataBlockManagerPort()),
+              node.getDownStreamEndpoint(),
               targetInstanceId.toThrift(),
               node.getDownStreamPlanNodeId().getId(),
               context.instanceContext);
@@ -355,6 +477,7 @@ public class LocalExecutionPlanner {
   private static class LocalExecutionPlanContext {
     private final FragmentInstanceContext instanceContext;
     private final List<PartialPath> paths;
+    // Used to lock corresponding query resources
     private final List<DataSourceOperator> sourceOperators;
     private ISinkHandle sinkHandle;
 

@@ -58,6 +58,11 @@ public abstract class BinaryExpression extends Expression {
     this.rightExpression = rightExpression;
   }
 
+  protected BinaryExpression(ByteBuffer byteBuffer) {
+    this.leftExpression = Expression.deserialize(byteBuffer);
+    this.rightExpression = Expression.deserialize(byteBuffer);
+  }
+
   public Expression getLeftExpression() {
     return leftExpression;
   }
@@ -276,13 +281,14 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public final String getExpressionStringInternal() {
     StringBuilder builder = new StringBuilder();
-    if (leftExpression instanceof BinaryExpression) {
+    if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(leftExpression.getExpressionString()).append(")");
     } else {
       builder.append(leftExpression.getExpressionString());
     }
     builder.append(" ").append(operator()).append(" ");
-    if (rightExpression instanceof BinaryExpression) {
+    if (rightExpression.getExpressionType().getPriority()
+        < this.getExpressionType().getPriority()) {
       builder.append("(").append(rightExpression.getExpressionString()).append(")");
     } else {
       builder.append(rightExpression.getExpressionString());
@@ -294,9 +300,8 @@ public abstract class BinaryExpression extends Expression {
   protected abstract String operator();
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
-    leftExpression.serialize(byteBuffer);
-    rightExpression.serialize(byteBuffer);
+  protected void serialize(ByteBuffer byteBuffer) {
+    Expression.serialize(leftExpression, byteBuffer);
+    Expression.serialize(rightExpression, byteBuffer);
   }
 }

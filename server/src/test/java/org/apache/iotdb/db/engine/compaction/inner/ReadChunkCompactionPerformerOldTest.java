@@ -127,7 +127,7 @@ public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
         assertEquals(record.getTimestamp(), record.getFields().get(0).getDoubleV(), 0.001);
         cut++;
       }
-      assertEquals(500, cut);
+      assertEquals(600, cut);
     }
   }
 }

@@ -76,7 +76,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
         LOGGER.error("Meet error when doing start checking", e);
         return -1;
       }
-      ConfigNode configNode = ConfigNode.getInstance();
+      ConfigNode configNode = new ConfigNode();
       configNode.active();
     } else if (MODE_ADD.equals(mode)) {
       // TODO: add node

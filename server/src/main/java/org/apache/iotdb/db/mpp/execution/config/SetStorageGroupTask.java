@@ -22,7 +22,12 @@ package org.apache.iotdb.db.mpp.execution.config;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -35,6 +40,9 @@ import org.slf4j.LoggerFactory;
 
 public class SetStorageGroupTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SetStorageGroupTask.class);
+
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private final SetStorageGroupStatement setStorageGroupStatement;
 
   public SetStorageGroupTask(SetStorageGroupStatement setStorageGroupStatement) {
@@ -42,32 +50,46 @@ public class SetStorageGroupTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<Void> execute() {
-    SettableFuture<Void> future = SettableFuture.create();
-    // Construct request using statement
-    TSetStorageGroupReq req =
-        new TSetStorageGroupReq(setStorageGroupStatement.getStorageGroupPath().getFullPath());
-
-    ConfigNodeClient configNodeClient = null;
-    try {
-      configNodeClient = new ConfigNodeClient();
-      // Send request to some API server
-      TSStatus tsStatus = configNodeClient.setStorageGroup(req);
-      // Get response or throw exception
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        LOGGER.error(
-            "Failed to execute set storage group {} in config node, status is {}.",
-            setStorageGroupStatement.getStorageGroupPath(),
-            tsStatus);
-        future.setException(new StatementExecutionException(tsStatus));
-      } else {
-        future.set(null);
+  public ListenableFuture<ConfigTaskResult> execute() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // TODO:(this judgement needs to be integrated in a high level framework)
+    if (config.isClusterMode()) {
+      // Construct request using statement
+      TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+      storageGroupSchema.setName(setStorageGroupStatement.getStorageGroupPath().getFullPath());
+      TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
+      ConfigNodeClient configNodeClient = null;
+      try {
+        configNodeClient = new ConfigNodeClient();
+        // Send request to some API server
+        TSStatus tsStatus = configNodeClient.setStorageGroup(req);
+        // Get response or throw exception
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+          LOGGER.error(
+              "Failed to execute set storage group {} in config node, status is {}.",
+              setStorageGroupStatement.getStorageGroupPath(),
+              tsStatus);
+          future.setException(new StatementExecutionException(tsStatus));
+        } else {
+          future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+        }
+      } catch (IoTDBConnectionException | BadNodeUrlException e) {
+        LOGGER.error("Failed to connect to config node.");
+        future.setException(e);
+      } finally {
+        if (configNodeClient != null) {
+          configNodeClient.close();
+        }
       }
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
-      LOGGER.error("Failed to connect to config node.");
-      future.setException(e);
+    } else {
+      try {
+        LocalConfigNode.getInstance()
+            .setStorageGroup(setStorageGroupStatement.getStorageGroupPath());
+      } catch (MetadataException e) {
+        future.setException(e);
+      }
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     }
-
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     return future;

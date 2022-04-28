@@ -194,10 +194,12 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
     curAggregateResults = new AggregateResult[paths.size()];
     for (SlidingWindowGroupByExecutor slidingWindowGroupByExecutor :
         slidingWindowGroupByExecutors) {
-      slidingWindowGroupByExecutor.setTimeRange(curStartTime, curEndTime);
+      slidingWindowGroupByExecutor.setTimeRange(
+          curAggrTimeRange.getMin(), curAggrTimeRange.getMax());
     }
     while (!isEndCal()) {
-      AggregateResult[] aggregations = calcResult(curPreAggrStartTime, curPreAggrEndTime);
+      AggregateResult[] aggregations =
+          calcResult(curPreAggrTimeRange.getMin(), curPreAggrTimeRange.getMax());
       for (int i = 0; i < aggregations.length; i++) {
         slidingWindowGroupByExecutors[i].update(aggregations[i].clone());
       }
