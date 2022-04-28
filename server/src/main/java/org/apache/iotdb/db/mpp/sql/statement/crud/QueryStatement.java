@@ -103,6 +103,11 @@ public class QueryStatement extends Statement {
     this.statementType = StatementType.QUERY;
   }
 
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return null;
+  }
+
   public QueryStatement(QueryStatement another) {
     this.statementType = StatementType.QUERY;
     this.selectComponent = another.getSelectComponent();

@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.mpp.sql.statement;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.parser.ASTVisitor;
+
+import java.util.List;
 
 /**
  * This class is a superclass of all statements.
@@ -59,4 +62,6 @@ public abstract class Statement extends StatementNode {
   public boolean isAuthenticationRequired() {
     return true;
   }
+
+  public abstract List<? extends PartialPath> getPaths();
 }

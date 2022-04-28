@@ -293,7 +293,7 @@ public class AuthorizerManager implements IAuthorizer {
     }
     if (statement instanceof IConfigStatement) {
       return AuthorityChecker.checkPermission(
-          username, ((IConfigStatement) statement).getPaths(), statement.getType(), targetUser);
+          username, statement.getPaths(), statement.getType(), targetUser);
     }
     return true;
   }
