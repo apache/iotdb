@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -44,21 +44,23 @@ public class SchemaFetchNode extends SchemaScanNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of();
-  }
-
-  @Override
-  public void addChild(PlanNode child) {}
-
-  @Override
   public PlanNode clone() {
     return new SchemaFetchNode(getPlanNodeId(), patternTree);
   }
 
   @Override
-  public int allowedChildCount() {
-    return 0;
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return null;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return null;
   }
 
   @Override

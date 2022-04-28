@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.source;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -39,12 +40,13 @@ import static org.junit.Assert.assertEquals;
 public class SeriesScanNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
+  public void testSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
     SeriesScanNode seriesScanNode =
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
-            new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     seriesScanNode.setTimeFilter(new GroupByFilter(1, 2, 3, 4));
     seriesScanNode.setScanOrder(OrderBy.TIMESTAMP_ASC);
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);

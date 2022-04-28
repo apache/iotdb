@@ -50,6 +50,11 @@
             <artifactId>client-cpp-tools-thrift</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>
@@ -164,7 +169,7 @@
                                             <destinationFile>${project.build.directory}/thrift/rpc.thrift</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>../thrift/src/main/thrift/common.thrift</sourceFile>
+                                            <sourceFile>../thrift-commons/src/main/thrift/common.thrift</sourceFile>
                                             <destinationFile>${project.build.directory}/thrift/common.thrift</destinationFile>
                                         </fileSet>
                                     </fileSets>

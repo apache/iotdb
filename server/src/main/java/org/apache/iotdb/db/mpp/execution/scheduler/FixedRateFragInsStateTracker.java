@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
@@ -27,8 +30,12 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
@@ -42,8 +49,9 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       QueryStateMachine stateMachine,
       ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
-      List<FragmentInstance> instances) {
-    super(stateMachine, executor, scheduledExecutor, instances);
+      List<FragmentInstance> instances,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+    super(stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
   }
 
   @Override
@@ -69,7 +77,7 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
         if (state != null) {
           stateMachine.updateFragInstanceState(instance.getId(), state);
         }
-      } catch (TException e) {
+      } catch (TException | IOException e) {
         // TODO: do nothing ?
         logger.error("error happened while fetching query state", e);
       }

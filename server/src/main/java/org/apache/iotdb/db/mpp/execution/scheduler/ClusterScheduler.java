@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -67,18 +70,21 @@ public class ClusterScheduler implements IScheduler {
       List<FragmentInstance> instances,
       QueryType queryType,
       ExecutorService executor,
-      ScheduledExecutorService scheduledExecutor) {
+      ScheduledExecutorService scheduledExecutor,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.queryContext = queryContext;
     this.stateMachine = stateMachine;
     this.instances = instances;
     this.queryType = queryType;
     this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
-    this.dispatcher = new SimpleFragInstanceDispatcher(executor);
+    this.dispatcher = new SimpleFragInstanceDispatcher(executor, internalServiceClientManager);
     this.stateTracker =
-        new FixedRateFragInsStateTracker(stateMachine, executor, scheduledExecutor, instances);
+        new FixedRateFragInsStateTracker(
+            stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
     this.queryTerminator =
-        new SimpleQueryTerminator(executor, queryContext.getQueryId(), instances);
+        new SimpleQueryTerminator(
+            executor, queryContext.getQueryId(), instances, internalServiceClientManager);
   }
 
   @Override
@@ -96,6 +102,7 @@ public class ClusterScheduler implements IScheduler {
       }
     } catch (InterruptedException | ExecutionException e) {
       // If the dispatch failed, we make the QueryState as failed, and return.
+      Thread.currentThread().interrupt();
       stateMachine.transitionToFailed(e);
       return;
     }

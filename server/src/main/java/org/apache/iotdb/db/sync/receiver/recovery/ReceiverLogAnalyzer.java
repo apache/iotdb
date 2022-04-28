@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.conf.SyncPathUtil;
-import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 
@@ -43,12 +42,14 @@ public class ReceiverLogAnalyzer {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverLogAnalyzer.class);
   // record recovery result of receiver server status
   private boolean pipeServerEnable = false;
-  private Map<String, Map<String, PipeInfo>> pipeInfoMap = new ConcurrentHashMap<>();
+  // <pipeName, <remoteIp, <createTime, status>>>
+  private Map<String, Map<String, Map<Long, PipeStatus>>> pipeInfos = new ConcurrentHashMap<>();
+  // <pipeFolderName, pipeMsg>
   private Map<String, List<PipeMessage>> pipeMessageMap = new ConcurrentHashMap<>();
 
   public void scan() throws StartupException {
     logger.info("Start to recover all sync state for sync receiver.");
-    pipeInfoMap = new ConcurrentHashMap<>();
+    pipeInfos = new ConcurrentHashMap<>();
     pipeMessageMap = new ConcurrentHashMap<>();
     pipeServerEnable = false;
     File serviceLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
@@ -96,8 +97,8 @@ public class ReceiverLogAnalyzer {
     return pipeServerEnable;
   }
 
-  public Map<String, Map<String, PipeInfo>> getPipeInfoMap() {
-    return pipeInfoMap;
+  public Map<String, Map<String, Map<Long, PipeStatus>>> getPipeInfos() {
+    return pipeInfos;
   }
 
   public Map<String, List<PipeMessage>> getPipeMessageMap() {
@@ -118,21 +119,16 @@ public class ReceiverLogAnalyzer {
       String[] items = logLine.split(",");
       String pipeName = items[0];
       String remoteIp = items[1];
-      PipeStatus status = PipeStatus.valueOf(items[2]);
-      if (status == PipeStatus.RUNNING) {
-        if (!pipeInfoMap.containsKey(pipeName)) {
-          pipeInfoMap.put(pipeName, new HashMap<>());
-        }
-        if (items.length == 4) {
-          // create
-          pipeInfoMap
-              .get(pipeName)
-              .put(remoteIp, new PipeInfo(pipeName, remoteIp, status, Long.parseLong(items[3])));
-        } else {
-          pipeInfoMap.get(pipeName).get(remoteIp).setStatus(status);
-        }
+      long createTime = Long.parseLong(items[2]);
+      if (items.length == 4) {
+        // start、stop、drop
+        PipeStatus status = PipeStatus.valueOf(items[3]);
+        pipeInfos.get(pipeName).get(remoteIp).put(createTime, status);
       } else {
-        pipeInfoMap.get(pipeName).get(remoteIp).setStatus(status);
+        // create
+        pipeInfos.putIfAbsent(pipeName, new HashMap<>());
+        pipeInfos.get(pipeName).putIfAbsent(remoteIp, new HashMap<>());
+        pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.STOP);
       }
     }
   }

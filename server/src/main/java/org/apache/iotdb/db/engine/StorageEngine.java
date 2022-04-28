@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.ShutdownException;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -180,16 +179,6 @@ public class StorageEngine implements IService {
 
   public static long getTimePartition(long time) {
     return enablePartition ? time / timePartitionInterval : 0;
-  }
-
-  public static TimePartitionSlot getTimePartitionSlot(long time) {
-    TimePartitionSlot timePartitionSlot = new TimePartitionSlot();
-    if (enablePartition) {
-      timePartitionSlot.setStartTime(time - time % timePartitionInterval);
-    } else {
-      timePartitionSlot.setStartTime(0);
-    }
-    return timePartitionSlot;
   }
 
   public static boolean isEnablePartition() {

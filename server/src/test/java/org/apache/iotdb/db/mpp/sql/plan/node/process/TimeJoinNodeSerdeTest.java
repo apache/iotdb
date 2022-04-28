@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -38,8 +39,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -62,7 +63,7 @@ import static org.junit.Assert.assertEquals;
 
 public class TimeJoinNodeSerdeTest {
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     FilterNode filterNode =
         new FilterNode(
             new PlanNodeId("TestFilterNode"),
@@ -74,9 +75,6 @@ public class TimeJoinNodeSerdeTest {
     FillNode fillNode = new FillNode(new PlanNodeId("TestFillNode"), FillPolicy.PREVIOUS);
     DeviceMergeNode deviceMergeNode =
         new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
-
-    FilterNullComponent filterNullComponent = new FilterNullComponent();
-    deviceMergeNode.setFilterNullComponent(filterNullComponent);
 
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
     Set<AggregationType> aggregationTypes = new HashSet<>();
@@ -90,7 +88,8 @@ public class TimeJoinNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
-            new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     aggregateNode.addChild(seriesScanNode);
     deviceMergeNode.addChildDeviceNode("device", aggregateNode);
 
@@ -110,7 +109,10 @@ public class TimeJoinNodeSerdeTest {
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
-            new PlanNodeId("TestFilterNullNode"), filterNode, FilterNullPolicy.ALL_NULL, null);
+            new PlanNodeId("TestFilterNullNode"),
+            filterNode,
+            FilterNullPolicy.ALL_NULL,
+            new ArrayList<>());
 
     Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
     groupedPathMap.put(
@@ -134,7 +136,8 @@ public class TimeJoinNodeSerdeTest {
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), OrderBy.TIMESTAMP_ASC);
-    timeJoinNode.setWithoutPolicy(FilterNullPolicy.CONTAINS_NULL);
+    timeJoinNode.setFilterNullParameter(
+        new FilterNullParameter(FilterNullPolicy.CONTAINS_NULL, new ArrayList<>()));
     timeJoinNode.addChild(sortNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     timeJoinNode.serialize(byteBuffer);

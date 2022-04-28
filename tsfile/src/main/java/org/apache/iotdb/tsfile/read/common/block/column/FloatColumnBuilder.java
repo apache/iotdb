@@ -34,7 +34,7 @@ public class FloatColumnBuilder implements ColumnBuilder {
 
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(FloatColumnBuilder.class).instanceSize();
-  private static final FloatColumn NULL_VALUE_BLOCK =
+  public static final FloatColumn NULL_VALUE_BLOCK =
       new FloatColumn(0, 1, new boolean[] {true}, new float[1]);
 
   private final ColumnBuilderStatus columnBuilderStatus;
@@ -90,19 +90,8 @@ public class FloatColumnBuilder implements ColumnBuilder {
   }
 
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    FloatColumn column = (FloatColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeFloat(column.getFloat(index++));
-      } else {
-        appendNull();
-      }
-    }
-    return index;
+  public ColumnBuilder write(Column column, int index) {
+    return writeFloat(column.getFloat(index));
   }
 
   @Override

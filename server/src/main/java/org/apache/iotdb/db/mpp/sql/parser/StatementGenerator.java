@@ -31,14 +31,30 @@ import org.apache.iotdb.db.mpp.sql.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.mpp.sql.statement.crud.*;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -149,10 +165,9 @@ public class StatementGenerator {
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
     insertStatement.setTime(insertRecordReq.getTimestamp());
-
-    insertStatement.fillValues(insertRecordReq.values);
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
+    insertStatement.fillValues(insertRecordReq.values);
     return insertStatement;
   }
 

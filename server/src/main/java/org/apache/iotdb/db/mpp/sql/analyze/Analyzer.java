@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -49,13 +49,15 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -296,32 +298,111 @@ public class Analyzer {
     public Analysis visitInsertTablet(
         InsertTabletStatement insertTabletStatement, MPPQueryContext context) {
       context.setQueryType(QueryType.WRITE);
-      SchemaTree schemaTree =
-          schemaFetcher.fetchSchemaWithAutoCreate(
-              insertTabletStatement.getDevicePath(),
-              insertTabletStatement.getMeasurements(),
-              insertTabletStatement.getDataTypes(),
-              insertTabletStatement.isAligned());
 
-      if (!insertTabletStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
       dataPartitionQueryParam.setTimePartitionSlotList(
           insertTabletStatement.getTimePartitionSlots());
-      sgNameToQueryParamsMap.put(
-          schemaTree.getBelongedStorageGroup(insertTabletStatement.getDevicePath()),
-          Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition;
-      dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+
+      DataPartition dataPartition =
+          partitionFetcher.getOrCreateDataPartition(
+              Collections.singletonList(dataPartitionQueryParam));
 
       Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
       analysis.setStatement(insertTabletStatement);
       analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
+
+      DataPartition dataPartition =
+          partitionFetcher.getOrCreateDataPartition(
+              Collections.singletonList(dataPartitionQueryParam));
+
+      Analysis analysis = new Analysis();
+      analysis.setStatement(insertRowStatement);
+      analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertRows(
+        InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+
+      List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+      for (InsertRowStatement insertRowStatement :
+          insertRowsStatement.getInsertRowStatementList()) {
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
+        dataPartitionQueryParam.setTimePartitionSlotList(
+            insertRowStatement.getTimePartitionSlots());
+        dataPartitionQueryParams.add(dataPartitionQueryParam);
+      }
+
+      DataPartition dataPartition =
+          partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
+
+      Analysis analysis = new Analysis();
+      analysis.setStatement(insertRowsStatement);
+      analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertMultiTablets(
+        InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+
+      List<DataPartitionQueryParam> dataPartitionQueryParams = new ArrayList<>();
+      for (InsertTabletStatement insertTabletStatement :
+          insertMultiTabletsStatement.getInsertTabletStatementList()) {
+        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+        dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
+        dataPartitionQueryParam.setTimePartitionSlotList(
+            insertTabletStatement.getTimePartitionSlots());
+        dataPartitionQueryParams.add(dataPartitionQueryParam);
+      }
+
+      DataPartition dataPartition =
+          partitionFetcher.getOrCreateDataPartition(dataPartitionQueryParams);
+
+      Analysis analysis = new Analysis();
+      analysis.setStatement(insertMultiTabletsStatement);
+      analysis.setDataPartitionInfo(dataPartition);
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitInsertRowsOfOneDevice(
+        InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(
+          insertRowsOfOneDeviceStatement.getDevicePath().getFullPath());
+      dataPartitionQueryParam.setTimePartitionSlotList(
+          insertRowsOfOneDeviceStatement.getTimePartitionSlots());
+
+      DataPartition dataPartition =
+          partitionFetcher.getOrCreateDataPartition(
+              Collections.singletonList(dataPartitionQueryParam));
+
+      Analysis analysis = new Analysis();
+      analysis.setStatement(insertRowsOfOneDeviceStatement);
+      analysis.setDataPartitionInfo(dataPartition);
+
       return analysis;
     }
 
@@ -356,7 +437,10 @@ public class Analyzer {
 
       SchemaPartition schemaPartitionInfo =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(showDevicesStatement.getPathPattern().concatNode("*")));
+              new PathPatternTree(
+                  showDevicesStatement
+                      .getPathPattern()
+                      .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)));
 
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(
@@ -367,326 +451,59 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitCreateUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitCreateRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitAlterUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitGrantUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitGrantRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitGrantRoleToUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitRevokeUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitRevokeRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitRevokeRoleFromUser(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitDropUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitDropRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListUser(AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListRole(AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListPrivilegesUser(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListPrivilegesRole(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListUserPrivileges(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListRolePrivileges(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListAllRoleOfUser(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitListAllUserOfRole(
-        AuthorStatement authorStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(authorStatement);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitInsertRow(InsertRowStatement insertRowStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      // TODO remove duplicate
-      SchemaTree schemaTree =
-          schemaFetcher.fetchSchemaWithAutoCreate(
-              insertRowStatement.getDevicePath(),
-              insertRowStatement.getMeasurements(),
-              insertRowStatement.getDataTypes(),
-              insertRowStatement.isAligned());
-
-      try {
-        insertRowStatement.transferType(schemaTree);
-      } catch (QueryProcessException e) {
-        throw new SemanticException(e.getMessage());
-      }
-
-      if (!insertRowStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
-      dataPartitionQueryParam.setTimePartitionSlotList(insertRowStatement.getTimePartitionSlots());
-      sgNameToQueryParamsMap.put(
-          schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
-          Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition =
-          partitionFetcher.getOrCreateDataPartition(sgNameToQueryParamsMap);
-
-      Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
-      analysis.setStatement(insertRowStatement);
-      analysis.setDataPartitionInfo(dataPartition);
-
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitInsertRows(
-        InsertRowsStatement insertRowsStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      // TODO remove duplicate
-      SchemaTree schemaTree =
-          schemaFetcher.fetchSchemaListWithAutoCreate(
-              insertRowsStatement.getDevicePaths(),
-              insertRowsStatement.getMeasurementsList(),
-              insertRowsStatement.getDataTypesList(),
-              insertRowsStatement.getAlignedList());
-
-      try {
-        insertRowsStatement.transferType(schemaTree);
-      } catch (QueryProcessException e) {
-        throw new SemanticException(e.getMessage());
-      }
-
-      if (!insertRowsStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (InsertRowStatement insertRowStatement :
-          insertRowsStatement.getInsertRowStatementList()) {
-        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-        dataPartitionQueryParam.setDevicePath(insertRowStatement.getDevicePath().getFullPath());
-        dataPartitionQueryParam.setTimePartitionSlotList(
-            insertRowStatement.getTimePartitionSlots());
-        sgNameToQueryParamsMap
-            .computeIfAbsent(
-                schemaTree.getBelongedStorageGroup(insertRowStatement.getDevicePath()),
-                key -> new ArrayList<>())
-            .add(dataPartitionQueryParam);
-      }
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-
-      Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
-      analysis.setStatement(insertRowsStatement);
-      analysis.setDataPartitionInfo(dataPartition);
-
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitInsertMultiTablets(
-        InsertMultiTabletsStatement insertMultiTabletsStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      // TODO remove duplicate
-      SchemaTree schemaTree =
-          schemaFetcher.fetchSchemaListWithAutoCreate(
-              insertMultiTabletsStatement.getDevicePaths(),
-              insertMultiTabletsStatement.getMeasurementsList(),
-              insertMultiTabletsStatement.getDataTypesList(),
-              insertMultiTabletsStatement.getAlignedList());
-
-      if (!insertMultiTabletsStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      for (InsertTabletStatement insertTabletStatement :
-          insertMultiTabletsStatement.getInsertTabletStatementList()) {
-        DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-        dataPartitionQueryParam.setDevicePath(insertTabletStatement.getDevicePath().getFullPath());
-        dataPartitionQueryParam.setTimePartitionSlotList(
-            insertTabletStatement.getTimePartitionSlots());
-        sgNameToQueryParamsMap
-            .computeIfAbsent(
-                schemaTree.getBelongedStorageGroup(insertTabletStatement.getDevicePath()),
-                key -> new ArrayList<>())
-            .add(dataPartitionQueryParam);
-      }
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-
-      Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
-      analysis.setStatement(insertMultiTabletsStatement);
-      analysis.setDataPartitionInfo(dataPartition);
-
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitInsertRowsOfOneDevice(
-        InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, MPPQueryContext context) {
-      context.setQueryType(QueryType.WRITE);
-      // TODO remove duplicate
-      SchemaTree schemaTree =
-          schemaFetcher.fetchSchemaWithAutoCreate(
-              insertRowsOfOneDeviceStatement.getDevicePath(),
-              insertRowsOfOneDeviceStatement.getMeasurements(),
-              insertRowsOfOneDeviceStatement.getDataTypes(),
-              insertRowsOfOneDeviceStatement.isAligned());
-
-      try {
-        insertRowsOfOneDeviceStatement.transferType(schemaTree);
-      } catch (QueryProcessException e) {
-        throw new SemanticException(e.getMessage());
-      }
-
-      if (!insertRowsOfOneDeviceStatement.checkDataType(schemaTree)) {
-        throw new SemanticException("Data type mismatch");
-      }
-
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-      dataPartitionQueryParam.setDevicePath(
-          insertRowsOfOneDeviceStatement.getDevicePath().getFullPath());
-      dataPartitionQueryParam.setTimePartitionSlotList(
-          insertRowsOfOneDeviceStatement.getTimePartitionSlots());
-      sgNameToQueryParamsMap.put(
-          schemaTree.getBelongedStorageGroup(insertRowsOfOneDeviceStatement.getDevicePath()),
-          Collections.singletonList(dataPartitionQueryParam));
-      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-
-      Analysis analysis = new Analysis();
-      analysis.setSchemaTree(schemaTree);
-      analysis.setStatement(insertRowsOfOneDeviceStatement);
-      analysis.setDataPartitionInfo(dataPartition);
-
-      return analysis;
-    }
-
-    @Override
     public Analysis visitSchemaFetch(
         SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
       analysis.setStatement(schemaFetchStatement);
       analysis.setSchemaPartitionInfo(schemaFetchStatement.getSchemaPartition());
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCountDevices(
+        CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(countDevicesStatement);
+
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(
+                  countDevicesStatement
+                      .getPartialPath()
+                      .concatNode(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)));
+
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setRespDatasetHeader(HeaderConstant.countDevicesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCountTimeSeries(
+        CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(countTimeSeriesStatement);
+
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(countTimeSeriesStatement.getPartialPath()));
+
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setRespDatasetHeader(HeaderConstant.countTimeSeriesHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCountLevelTimeSeries(
+        CountLevelTimeSeriesStatement countLevelTimeSeriesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(countLevelTimeSeriesStatement);
+
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(countLevelTimeSeriesStatement.getPartialPath()));
+
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      analysis.setRespDatasetHeader(HeaderConstant.countLevelTimeSeriesHeader);
       return analysis;
     }
   }

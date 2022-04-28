@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -45,7 +46,7 @@ import static org.junit.Assert.assertEquals;
 public class AggregateNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
     Set<AggregationType> aggregationTypes = new HashSet<>();
     aggregationTypes.add(AggregationType.MAX_TIME);
@@ -57,7 +58,8 @@ public class AggregateNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
-            new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     aggregateNode.addChild(seriesScanNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     aggregateNode.serialize(byteBuffer);

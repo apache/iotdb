@@ -34,7 +34,7 @@ public class IntColumnBuilder implements ColumnBuilder {
 
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(IntColumnBuilder.class).instanceSize();
-  private static final IntColumn NULL_VALUE_BLOCK =
+  public static final IntColumn NULL_VALUE_BLOCK =
       new IntColumn(0, 1, new boolean[] {true}, new int[1]);
 
   private final ColumnBuilderStatus columnBuilderStatus;
@@ -85,24 +85,13 @@ public class IntColumnBuilder implements ColumnBuilder {
   }
 
   @Override
-  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
-    return writeInt(value.getInt());
+  public ColumnBuilder write(Column column, int index) {
+    return writeInt(column.getInt(index));
   }
 
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    IntColumn column = (IntColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeInt(column.getInt(index++));
-      } else {
-        appendNull();
-      }
-    }
-    return index;
+  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
+    return writeInt(value.getInt());
   }
 
   @Override

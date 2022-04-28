@@ -19,18 +19,19 @@
 
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceStateResp;
 
 import org.apache.thrift.TException;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -42,31 +43,49 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
   protected ScheduledExecutorService scheduledExecutor;
   protected List<FragmentInstance> instances;
 
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      internalServiceClientManager;
+
   public AbstractFragInsStateTracker(
       QueryStateMachine stateMachine,
       ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
-      List<FragmentInstance> instances) {
+      List<FragmentInstance> instances,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.stateMachine = stateMachine;
     this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
     this.instances = instances;
+    this.internalServiceClientManager = internalServiceClientManager;
   }
 
   public abstract void start();
 
   public abstract void abort();
 
-  protected FragmentInstanceState fetchState(FragmentInstance instance) throws TException {
-    // TODO (jackie tien) change the port
-    InternalService.Iface client =
-        InternalServiceClientFactory.getInternalServiceClient(
-            new Endpoint(
-                instance.getHostEndpoint().getIp(),
-                IoTDBDescriptor.getInstance().getConfig().getInternalPort()));
-    TFragmentInstanceStateResp resp =
-        client.fetchFragmentInstanceState(new TFetchFragmentInstanceStateReq(getTId(instance)));
-    return FragmentInstanceState.valueOf(resp.state);
+  protected FragmentInstanceState fetchState(FragmentInstance instance)
+      throws TException, IOException {
+    SyncDataNodeInternalServiceClient client = null;
+    try {
+      // TODO: (jackie tien) change the port
+      TEndPoint endPoint = instance.getHostDataNode().internalEndPoint;
+      client = internalServiceClientManager.borrowClient(endPoint);
+      if (client == null) {
+        throw new TException("Can't get client for node " + endPoint);
+      }
+      TFragmentInstanceStateResp resp =
+          client.fetchFragmentInstanceState(new TFetchFragmentInstanceStateReq(getTId(instance)));
+      return FragmentInstanceState.valueOf(resp.state);
+    } catch (Throwable t) {
+      if (t instanceof TException && client != null) {
+        client.close();
+      }
+      throw t;
+    } finally {
+      if (client != null) {
+        client.returnSelf();
+      }
+    }
   }
 
   private TFragmentInstanceId getTId(FragmentInstance instance) {

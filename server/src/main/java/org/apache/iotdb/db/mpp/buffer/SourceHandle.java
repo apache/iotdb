@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
 import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
-import org.apache.iotdb.mpp.rpc.thrift.DataBlockService;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 import org.apache.iotdb.mpp.rpc.thrift.TGetDataBlockRequest;
@@ -36,7 +38,6 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,54 +54,52 @@ public class SourceHandle implements ISourceHandle {
 
   public static final int MAX_ATTEMPT_TIMES = 3;
 
-  private final String remoteHostname;
+  private final TEndPoint remoteEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
   private final TFragmentInstanceId localFragmentInstanceId;
   private final String localPlanNodeId;
   private final LocalMemoryManager localMemoryManager;
   private final ExecutorService executorService;
-  private final DataBlockService.Iface client;
   private final TsBlockSerde serde;
   private final SourceHandleListener sourceHandleListener;
 
   private final Map<Integer, TsBlock> sequenceIdToTsBlock = new HashMap<>();
   private final Map<Integer, Long> sequenceIdToDataBlockSize = new HashMap<>();
 
+  private final IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient>
+      dataBlockServiceClientManager;
+
   private volatile SettableFuture<Void> blocked = SettableFuture.create();
-  private long bufferRetainedSizeInBytes;
+  private long bufferRetainedSizeInBytes = 0L;
   private int currSequenceId = 0;
   private int nextSequenceId = 0;
   private int lastSequenceId = Integer.MAX_VALUE;
-  private boolean closed;
-  private Throwable throwable;
+  private boolean closed = false;
 
   public SourceHandle(
-      String remoteHostname,
+      TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
       LocalMemoryManager localMemoryManager,
       ExecutorService executorService,
-      DataBlockService.Iface client,
       TsBlockSerde serde,
-      SourceHandleListener sourceHandleListener) {
-    this.remoteHostname = Validate.notNull(remoteHostname);
+      SourceHandleListener sourceHandleListener,
+      IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> dataBlockServiceClientManager) {
+    this.remoteEndpoint = Validate.notNull(remoteEndpoint);
     this.remoteFragmentInstanceId = Validate.notNull(remoteFragmentInstanceId);
     this.localFragmentInstanceId = Validate.notNull(localFragmentInstanceId);
     this.localPlanNodeId = Validate.notNull(localPlanNodeId);
     this.localMemoryManager = Validate.notNull(localMemoryManager);
     this.executorService = Validate.notNull(executorService);
-    this.client = Validate.notNull(client);
     this.serde = Validate.notNull(serde);
     this.sourceHandleListener = Validate.notNull(sourceHandleListener);
     bufferRetainedSizeInBytes = 0L;
+    this.dataBlockServiceClientManager = dataBlockServiceClientManager;
   }
 
   @Override
-  public TsBlock receive() throws IOException {
-    if (throwable != null) {
-      throw new IOException(throwable);
-    }
+  public TsBlock receive() {
     if (closed) {
       throw new IllegalStateException("Source handle is closed.");
     }
@@ -195,9 +194,6 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    if (throwable != null) {
-      throw new RuntimeException(throwable);
-    }
     if (closed) {
       throw new IllegalStateException("Source handle is closed.");
     }
@@ -239,7 +235,7 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public boolean isFinished() {
-    return throwable == null && remoteTsBlockedConsumedUp();
+    return remoteTsBlockedConsumedUp();
   }
 
   // Return true indicates two points:
@@ -249,19 +245,19 @@ public class SourceHandle implements ISourceHandle {
     return currSequenceId - 1 == lastSequenceId;
   }
 
-  String getRemoteHostname() {
-    return remoteHostname;
+  public TEndPoint getRemoteEndpoint() {
+    return remoteEndpoint;
   }
 
-  TFragmentInstanceId getRemoteFragmentInstanceId() {
+  public TFragmentInstanceId getRemoteFragmentInstanceId() {
     return remoteFragmentInstanceId.deepCopy();
   }
 
-  TFragmentInstanceId getLocalFragmentInstanceId() {
+  public TFragmentInstanceId getLocalFragmentInstanceId() {
     return localFragmentInstanceId;
   }
 
-  String getLocalPlanNodeId() {
+  public String getLocalPlanNodeId() {
     return localPlanNodeId;
   }
 
@@ -278,7 +274,7 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public String toString() {
     return new StringJoiner(", ", SourceHandle.class.getSimpleName() + "[", "]")
-        .add("remoteHostname='" + remoteHostname + "'")
+        .add("remoteEndpoint='" + remoteEndpoint + "'")
         .add("remoteFragmentInstanceId=" + remoteFragmentInstanceId)
         .add("localFragmentInstanceId=" + localFragmentInstanceId)
         .add("localPlanNodeId='" + localPlanNodeId + "'")
@@ -322,7 +318,16 @@ public class SourceHandle implements ISourceHandle {
       int attempt = 0;
       while (attempt < MAX_ATTEMPT_TIMES) {
         attempt += 1;
+        SyncDataNodeDataBlockServiceClient client = null;
         try {
+          client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
+          if (client == null) {
+            logger.warn("can't get client for node {}", remoteEndpoint);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              throw new TException("Can't get client for node " + remoteEndpoint);
+            }
+            continue;
+          }
           TGetDataBlockResponse resp = client.getDataBlock(req);
           List<TsBlock> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
           for (ByteBuffer byteBuffer : resp.getTsBlocks()) {
@@ -343,7 +348,10 @@ public class SourceHandle implements ISourceHandle {
           executorService.submit(
               new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
           break;
-        } catch (TException e) {
+        } catch (Throwable e) {
+          if (e instanceof TException && client != null) {
+            client.close();
+          }
           logger.error(
               "Failed to get data block from {} due to {}, attempt times: {}",
               remoteFragmentInstanceId,
@@ -351,12 +359,16 @@ public class SourceHandle implements ISourceHandle {
               attempt);
           if (attempt == MAX_ATTEMPT_TIMES) {
             synchronized (SourceHandle.this) {
-              throwable = e;
               bufferRetainedSizeInBytes -= reservedBytes;
               localMemoryManager
                   .getQueryPool()
                   .free(localFragmentInstanceId.getQueryId(), reservedBytes);
+              sourceHandleListener.onFailure(SourceHandle.this, e);
             }
+          }
+        } finally {
+          if (client != null) {
+            client.returnSelf();
           }
         }
       }
@@ -386,10 +398,22 @@ public class SourceHandle implements ISourceHandle {
           new TAcknowledgeDataBlockEvent(remoteFragmentInstanceId, startSequenceId, endSequenceId);
       while (attempt < MAX_ATTEMPT_TIMES) {
         attempt += 1;
+        SyncDataNodeDataBlockServiceClient client = null;
         try {
-          client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
-          break;
-        } catch (TException e) {
+          client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
+          if (client == null) {
+            logger.warn("can't get client for node {}", remoteEndpoint);
+            if (attempt == MAX_ATTEMPT_TIMES) {
+              throw new TException("Can't get client for node " + remoteEndpoint);
+            }
+          } else {
+            client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
+            break;
+          }
+        } catch (Throwable e) {
+          if (e instanceof TException && client != null) {
+            client.close();
+          }
           logger.error(
               "Failed to send ack data block event [{}, {}) to {} due to {}, attempt times: {}",
               startSequenceId,
@@ -399,8 +423,12 @@ public class SourceHandle implements ISourceHandle {
               attempt);
           if (attempt == MAX_ATTEMPT_TIMES) {
             synchronized (this) {
-              throwable = e;
+              sourceHandleListener.onFailure(SourceHandle.this, e);
             }
+          }
+        } finally {
+          if (client != null) {
+            client.returnSelf();
           }
         }
       }

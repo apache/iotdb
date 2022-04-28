@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
@@ -33,10 +33,11 @@ public interface IDataBlockManager {
    * @param endpoint Hostname and Port of the remote fragment instance where the data blocks should
    *     be sent to.
    * @param remotePlanNodeId The sink plan node ID of the remote fragment instance.
+   * @param instanceContext The context of local fragment instance.
    */
   ISinkHandle createSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
-      Endpoint endpoint,
+      TEndPoint endpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
       FragmentInstanceContext instanceContext);
@@ -51,12 +52,14 @@ public interface IDataBlockManager {
    * @param endpoint Hostname and Port of the remote fragment instance where the data blocks should
    *     be received from.
    * @param remoteFragmentInstanceId ID of the remote fragment instance.
+   * @param onFailureCallback The callback on failure.
    */
   ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
-      Endpoint endpoint,
-      TFragmentInstanceId remoteFragmentInstanceId);
+      TEndPoint endpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      IDataBlockManagerCallback<Throwable> onFailureCallback);
 
   /**
    * Release all the related resources of a fragment instance, including data blocks that are not

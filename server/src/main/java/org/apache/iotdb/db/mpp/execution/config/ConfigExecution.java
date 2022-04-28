@@ -47,8 +47,10 @@ public class ConfigExecution implements IQueryExecution {
   private final ExecutorService executor;
 
   private final QueryStateMachine stateMachine;
-  private final SettableFuture<Boolean> result;
-
+  private final SettableFuture<ConfigTaskResult> taskFuture;
+  private TsBlock resultSet;
+  private DatasetHeader datasetHeader;
+  private boolean resultSetConsumed;
   private final IConfigTask task;
 
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
@@ -56,8 +58,9 @@ public class ConfigExecution implements IQueryExecution {
     this.statement = statement;
     this.executor = executor;
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
-    this.result = SettableFuture.create();
+    this.taskFuture = SettableFuture.create();
     this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
+    this.resultSetConsumed = false;
   }
 
   @TestOnly
@@ -67,21 +70,21 @@ public class ConfigExecution implements IQueryExecution {
     this.statement = statement;
     this.executor = executor;
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
-    this.result = SettableFuture.create();
+    this.taskFuture = SettableFuture.create();
     this.task = task;
   }
 
   @Override
   public void start() {
     try {
-      ListenableFuture<Void> future = task.execute();
+      ListenableFuture<ConfigTaskResult> future = task.execute();
       Futures.addCallback(
           future,
-          new FutureCallback<Void>() {
+          new FutureCallback<ConfigTaskResult>() {
             @Override
-            public void onSuccess(Void success) {
+            public void onSuccess(ConfigTaskResult taskRet) {
               stateMachine.transitionToFinished();
-              result.set(true);
+              taskFuture.set(taskRet);
             }
 
             @Override
@@ -91,13 +94,14 @@ public class ConfigExecution implements IQueryExecution {
           },
           executor);
     } catch (Throwable e) {
+      Thread.currentThread().interrupt();
       fail(e);
     }
   }
 
   public void fail(Throwable cause) {
     stateMachine.transitionToFailed(cause);
-    result.set(false);
+    taskFuture.set(new ConfigTaskResult(TSStatusCode.INTERNAL_SERVER_ERROR));
   }
 
   @Override
@@ -109,10 +113,12 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public ExecutionResult getStatus() {
     try {
-      Boolean success = result.get();
-      TSStatusCode statusCode =
-          success ? TSStatusCode.SUCCESS_STATUS : TSStatusCode.QUERY_PROCESS_ERROR;
-      String message = success ? "" : stateMachine.getFailureMessage();
+      ConfigTaskResult taskResult = taskFuture.get();
+      TSStatusCode statusCode = taskResult.getStatusCode();
+      resultSet = taskResult.getResultSet();
+      datasetHeader = taskResult.getResultSetHeader();
+      String message =
+          statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage();
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode, message));
     } catch (InterruptedException | ExecutionException e) {
       Thread.currentThread().interrupt();
@@ -124,25 +130,28 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public TsBlock getBatchResult() {
-    // TODO
+    if (!resultSetConsumed) {
+      resultSetConsumed = true;
+      return resultSet;
+    }
     return null;
   }
 
+  // According to the execution process of ConfigExecution, there is only one TsBlock for
+  // this execution. Thus, the hasNextResult will be false once the TsBlock is consumed
   @Override
   public boolean hasNextResult() {
-    return false;
+    return !resultSetConsumed && resultSet != null;
   }
 
   @Override
   public int getOutputValueColumnCount() {
-    // TODO
-    return 0;
+    return datasetHeader.getColumnHeaders().size();
   }
 
   @Override
   public DatasetHeader getDatasetHeader() {
-    // TODO
-    return null;
+    return datasetHeader;
   }
 
   @Override

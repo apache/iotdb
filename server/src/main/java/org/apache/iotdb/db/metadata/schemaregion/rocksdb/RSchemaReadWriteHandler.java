@@ -49,7 +49,6 @@ import org.rocksdb.RocksIterator;
 import org.rocksdb.Statistics;
 import org.rocksdb.WriteBatch;
 import org.rocksdb.WriteOptions;
-import org.rocksdb.util.SizeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,10 +91,9 @@ public class RSchemaReadWriteHandler {
 
   public static final String ROCKSDB_PATH = config.getSystemDir() + File.separator + ROCKSDB_FOLDER;
 
-  private static final long BLOCK_CACHE = 20L * 1024 * 1024 * 1024;
-  private static final long BLOCK_CACHE_COMPRESSED = 10L * 1024 * 1024 * 1024;
-
   private RocksDB rocksDB;
+
+  private RSchemaConfLoader rSchemaConfLoader;
 
   ConcurrentMap<String, ColumnFamilyHandle> columnFamilyHandleMap = new ConcurrentHashMap<>();
   List<ColumnFamilyDescriptor> columnFamilyDescriptors = new ArrayList<>();
@@ -105,7 +103,9 @@ public class RSchemaReadWriteHandler {
     RocksDB.loadLibrary();
   }
 
-  public RSchemaReadWriteHandler(String path) throws RocksDBException {
+  public RSchemaReadWriteHandler(String path, RSchemaConfLoader schemaConfLoader)
+      throws RocksDBException {
+    this.rSchemaConfLoader = schemaConfLoader;
     initReadWriteHandler(path);
   }
 
@@ -121,23 +121,24 @@ public class RSchemaReadWriteHandler {
       options
           .setCreateIfMissing(true)
           .setAllowMmapReads(true)
-          .setWriteBufferSize(64 * SizeUnit.KB)
-          .setMaxWriteBufferNumber(6)
-          .setMaxBackgroundJobs(10)
+          .setWriteBufferSize(rSchemaConfLoader.getWriteBufferSize())
+          .setMaxWriteBufferNumber(rSchemaConfLoader.getMaxWriteBufferNumber())
+          .setMaxBackgroundJobs(rSchemaConfLoader.getMaxBackgroundJobs())
           .setStatistics(new Statistics())
           .setLogger(rocksDBLogger);
 
-      final Filter bloomFilter = new BloomFilter(64);
+      final Filter bloomFilter = new BloomFilter(rSchemaConfLoader.getBloomFilterPolicy());
 
       final BlockBasedTableConfig tableOptions = new BlockBasedTableConfig();
-      Cache cache = new LRUCache(BLOCK_CACHE, 6);
+      Cache cache = new LRUCache(rSchemaConfLoader.getBlockCache(), 6);
       tableOptions
           .setBlockCache(cache)
           .setFilterPolicy(bloomFilter)
-          .setBlockSizeDeviation(5)
-          .setBlockRestartInterval(10)
+          .setBlockSizeDeviation(rSchemaConfLoader.getBlockSizeDeviation())
+          .setBlockSize(rSchemaConfLoader.getBlockSize())
+          .setBlockRestartInterval(rSchemaConfLoader.getBlockRestartInterval())
           .setCacheIndexAndFilterBlocks(true)
-          .setBlockCacheCompressed(new LRUCache(BLOCK_CACHE_COMPRESSED, 6));
+          .setBlockCacheCompressed(new LRUCache(rSchemaConfLoader.getBlockCacheCompressed(), 6));
 
       options.setTableFormatConfig(tableOptions);
 

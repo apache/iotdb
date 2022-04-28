@@ -18,11 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 public abstract class SchemaScanNode extends SourceNode {
@@ -32,15 +36,10 @@ public abstract class SchemaScanNode extends SourceNode {
   private boolean hasLimit;
   protected boolean isPrefixPath;
 
-  private RegionReplicaSet schemaRegionReplicaSet;
+  private TRegionReplicaSet schemaRegionReplicaSet;
 
   protected SchemaScanNode(PlanNodeId id) {
-    super(id);
-    limit = 0;
-    offset = 0;
-    path = null;
-    hasLimit = false;
-    isPrefixPath = false;
+    this(id, null, false);
   }
 
   protected SchemaScanNode(
@@ -52,6 +51,10 @@ public abstract class SchemaScanNode extends SourceNode {
     this.isPrefixPath = isPrefixPath;
   }
 
+  protected SchemaScanNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
+    this(id, partialPath, 0, 0, isPrefixPath);
+  }
+
   @Override
   public void open() throws Exception {}
 
@@ -59,6 +62,14 @@ public abstract class SchemaScanNode extends SourceNode {
   public int allowedChildCount() {
     return NO_CHILD_ALLOWED;
   }
+
+  @Override
+  public List<PlanNode> getChildren() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public void addChild(PlanNode child) {}
 
   @Override
   public void close() throws Exception {}
@@ -81,12 +92,12 @@ public abstract class SchemaScanNode extends SourceNode {
   }
 
   @Override
-  public RegionReplicaSet getRegionReplicaSet() {
+  public TRegionReplicaSet getRegionReplicaSet() {
     return schemaRegionReplicaSet;
   }
 
   @Override
-  public void setRegionReplicaSet(RegionReplicaSet schemaRegionReplicaSet) {
+  public void setRegionReplicaSet(TRegionReplicaSet schemaRegionReplicaSet) {
     this.schemaRegionReplicaSet = schemaRegionReplicaSet;
   }
 
@@ -112,6 +123,11 @@ public abstract class SchemaScanNode extends SourceNode {
 
   public void setHasLimit(boolean hasLimit) {
     this.hasLimit = hasLimit;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitSchemaScan(this, context);
   }
 
   @Override

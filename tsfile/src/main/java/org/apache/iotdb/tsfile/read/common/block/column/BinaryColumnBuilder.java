@@ -37,7 +37,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
       ClassLayout.parseClass(BinaryColumnBuilder.class).instanceSize();
 
   private final ColumnBuilderStatus columnBuilderStatus;
-  private static final BinaryColumn NULL_VALUE_BLOCK =
+  public static final BinaryColumn NULL_VALUE_BLOCK =
       new BinaryColumn(0, 1, new boolean[] {true}, new Binary[1]);
 
   private boolean initialized;
@@ -83,24 +83,13 @@ public class BinaryColumnBuilder implements ColumnBuilder {
   }
 
   @Override
-  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
-    return writeBinary(value.getBinary());
+  public ColumnBuilder write(Column column, int index) {
+    return writeBinary(column.getBinary(index));
   }
 
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    BinaryColumn column = (BinaryColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeBinary(column.getBinary(index++));
-      } else {
-        appendNull();
-      }
-    }
-    return index;
+  public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
+    return writeBinary(value.getBinary());
   }
 
   @Override

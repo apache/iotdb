@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.operator;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -28,10 +29,11 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -52,8 +54,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 
 public class SeriesAggregateScanOperatorTest {
@@ -64,16 +68,20 @@ public class SeriesAggregateScanOperatorTest {
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
+  private ExecutorService instanceNotificationExecutor;
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(
         measurementSchemas, deviceIds, seqResources, unSeqResources, SERIES_SCAN_OPERATOR_TEST_SG);
+    this.instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
   }
 
   @After
   public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
+    instanceNotificationExecutor.shutdown();
   }
 
   @Test
@@ -206,7 +214,7 @@ public class SeriesAggregateScanOperatorTest {
   @Test
   public void testGroupByWithoutGlobalTimeFilter() throws IllegalPathException {
     int[] result = new int[] {100, 100, 100, 100};
-    GroupByTimeComponent groupByTimeParameter = new GroupByTimeComponent(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     SeriesAggregateScanOperator seriesAggregateScanOperator =
         initSeriesAggregateScanOperator(
             Collections.singletonList(AggregationType.COUNT), null, true, groupByTimeParameter);
@@ -224,7 +232,7 @@ public class SeriesAggregateScanOperatorTest {
   public void testGroupByWithGlobalTimeFilter() throws IllegalPathException {
     int[] result = new int[] {0, 80, 100, 80};
     Filter timeFilter = new AndFilter(TimeFilter.gtEq(120), TimeFilter.ltEq(379));
-    GroupByTimeComponent groupByTimeParameter = new GroupByTimeComponent(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     SeriesAggregateScanOperator seriesAggregateScanOperator =
         initSeriesAggregateScanOperator(
             Collections.singletonList(AggregationType.COUNT),
@@ -255,7 +263,7 @@ public class SeriesAggregateScanOperatorTest {
     aggregationTypes.add(AggregationType.LAST_VALUE);
     aggregationTypes.add(AggregationType.MAX_VALUE);
     aggregationTypes.add(AggregationType.MIN_VALUE);
-    GroupByTimeComponent groupByTimeParameter = new GroupByTimeComponent(0, 399, 100, 100, true);
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
     SeriesAggregateScanOperator seriesAggregateScanOperator =
         initSeriesAggregateScanOperator(aggregationTypes, null, true, groupByTimeParameter);
     int count = 0;
@@ -274,7 +282,7 @@ public class SeriesAggregateScanOperatorTest {
   @Test
   public void testGroupBySlidingTimeWindow() throws IllegalPathException {
     int[] result = new int[] {50, 50, 50, 50, 50, 50, 50, 50};
-    GroupByTimeComponent groupByTimeParameter = new GroupByTimeComponent(0, 399, 100, 50, true);
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 50, true);
     SeriesAggregateScanOperator seriesAggregateScanOperator =
         initSeriesAggregateScanOperator(
             Collections.singletonList(AggregationType.COUNT), null, true, groupByTimeParameter);
@@ -292,7 +300,7 @@ public class SeriesAggregateScanOperatorTest {
   public void testGroupBySlidingTimeWindow2() throws IllegalPathException {
     int[] timeColumn = new int[] {0, 20, 30, 50, 60, 80, 90, 110, 120, 140};
     int[] result = new int[] {20, 10, 20, 10, 20, 10, 20, 10, 20, 9};
-    GroupByTimeComponent groupByTimeParameter = new GroupByTimeComponent(0, 149, 50, 30, true);
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 149, 50, 30, true);
     SeriesAggregateScanOperator seriesAggregateScanOperator =
         initSeriesAggregateScanOperator(
             Collections.singletonList(AggregationType.COUNT), null, true, groupByTimeParameter);
@@ -321,7 +329,7 @@ public class SeriesAggregateScanOperatorTest {
     aggregationTypes.add(AggregationType.LAST_VALUE);
     aggregationTypes.add(AggregationType.MAX_VALUE);
     aggregationTypes.add(AggregationType.MIN_VALUE);
-    GroupByTimeComponent groupByTimeParameter = new GroupByTimeComponent(0, 149, 50, 30, true);
+    GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 149, 50, 30, true);
     SeriesAggregateScanOperator seriesAggregateScanOperator =
         initSeriesAggregateScanOperator(aggregationTypes, null, true, groupByTimeParameter);
     int count = 0;
@@ -341,7 +349,7 @@ public class SeriesAggregateScanOperatorTest {
       List<AggregationType> aggregateFuncList,
       Filter timeFilter,
       boolean ascending,
-      GroupByTimeComponent groupByTimeParameter)
+      GroupByTimeParameter groupByTimeParameter)
       throws IllegalPathException {
     MeasurementPath measurementPath =
         new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
@@ -349,9 +357,12 @@ public class SeriesAggregateScanOperatorTest {
     QueryId queryId = new QueryId("stub_query");
     AtomicReference<FragmentInstanceState> state =
         new AtomicReference<>(FragmentInstanceState.RUNNING);
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
     FragmentInstanceContext fragmentInstanceContext =
-        new FragmentInstanceContext(
-            new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+        createFragmentInstanceContext(instanceId, stateMachine);
     PlanNodeId planNodeId = new PlanNodeId("1");
     fragmentInstanceContext.addOperatorContext(
         1, planNodeId, SeriesScanOperator.class.getSimpleName());

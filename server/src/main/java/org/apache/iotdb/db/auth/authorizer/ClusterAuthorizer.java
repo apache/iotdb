@@ -16,8 +16,117 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.auth.authorizer;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import com.google.common.util.concurrent.SettableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Locale;
+
 public class ClusterAuthorizer {
-  // TODO: send rpc to confignode
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAuthorizer.class);
+
+  public SettableFuture<ConfigTaskResult> operatePermission(TAuthorizerReq authorizerReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ConfigNodeClient configNodeClient = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      TSStatus tsStatus = configNodeClient.operatePermission(authorizerReq);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to execute {} in config node, status is {}.",
+            AuthorOperator.AuthorType.values()[authorizerReq.getAuthorType()]
+                .toString()
+                .toLowerCase(Locale.ROOT),
+            tsStatus);
+        future.setException(new StatementExecutionException(tsStatus));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      LOGGER.error("Failed to connect to config node.");
+      future.setException(e);
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+    }
+    // If the action is executed successfully, return the Future.
+    // If your operation is async, you can return the corresponding future directly.
+    return future;
+  }
+
+  public SettableFuture<ConfigTaskResult> queryPermission(TAuthorizerReq authorizerReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    ConfigNodeClient configNodeClient = null;
+    TsBlock tsBlock = null;
+    TAuthorizerResp authorizerResp;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      authorizerResp = configNodeClient.queryPermission(authorizerReq);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != authorizerResp.getStatus().getCode()) {
+        LOGGER.error(
+            "Failed to execute {} in config node, status is {}.",
+            AuthorOperator.AuthorType.values()[authorizerReq.getAuthorType()]
+                .toString()
+                .toLowerCase(Locale.ROOT),
+            authorizerResp.getStatus());
+        future.setException(new StatementExecutionException(authorizerResp.getStatus()));
+      } else {
+        // TODO: Construct result
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock, null));
+      }
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      LOGGER.error("Failed to connect to config node.");
+      future.setException(e);
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+    }
+    // If the action is executed successfully, return the Future.
+    // If your operation is async, you can return the corresponding future directly.
+    return future;
+  }
+
+  public TSStatus login(TLoginReq req) {
+    ConfigNodeClient configNodeClient = null;
+    TSStatus status = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      status = configNodeClient.login(req);
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      throw new ConfigNodeConnectionException("Couldn't connect config node");
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+      if (status == null) {
+        status = new TSStatus();
+      }
+    }
+    return status;
+  }
 }

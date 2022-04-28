@@ -82,10 +82,12 @@
         <module>tsfile</module>
         <module>antlr</module>
         <module>thrift</module>
+        <module>thrift-commons</module>
         <module>thrift-confignode</module>
         <module>thrift-cluster</module>
         <module>thrift-sync</module>
         <module>thrift-influxdb</module>
+        <module>thrift-procedure</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>influxdb-protocol</module>
@@ -114,6 +116,7 @@
         <module>metrics</module>
         <module>integration</module>
         <module>consensus</module>
+        <module>procedure</module>
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
@@ -496,6 +499,11 @@
                 <version>0.41</version>
             </dependency>
             <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>stats</artifactId>
+                <version>200</version>
+            </dependency>
+            <dependency>
                 <groupId>org.openjdk.jol</groupId>
                 <artifactId>jol-core</artifactId>
                 <version>0.2</version>
@@ -742,6 +750,7 @@
                         <!-- put all source folders not in src/main/java here-->
                         <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-commons/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-confignode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
@@ -909,6 +918,7 @@
                 </executions>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
                 </configuration>
             </plugin>
             <!--

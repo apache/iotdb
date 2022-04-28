@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonUtils;
 
@@ -164,6 +164,17 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
 
+      conf.setConnectionTimeoutInMS(
+          Integer.parseInt(
+              properties.getProperty(
+                  "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+
+      conf.setSelectorNumOfClientManager(
+          Integer.parseInt(
+              properties.getProperty(
+                  "selector_thread_nums_of_client_manager",
+                  String.valueOf(conf.getSelectorNumOfClientManager()))));
+
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
@@ -174,25 +185,31 @@ public class ConfigNodeDescriptor {
           Long.parseLong(
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
-      conf.setRegionReplicaCount(
+      conf.setSchemaReplicationFactor(
           Integer.parseInt(
               properties.getProperty(
-                  "region_replica_count", String.valueOf(conf.getRegionReplicaCount()))));
+                  "schema_replication_factor", String.valueOf(conf.getSchemaReplicationFactor()))));
 
-      conf.setSchemaRegionCount(
+      conf.setDataReplicationFactor(
           Integer.parseInt(
               properties.getProperty(
-                  "schema_region_count", String.valueOf(conf.getSchemaRegionCount()))));
+                  "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-      conf.setDataRegionCount(
+      conf.setInitialSchemaRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "data_region_count", String.valueOf(conf.getDataRegionCount()))));
+                  "initial_schema_region_count",
+                  String.valueOf(conf.getInitialSchemaRegionCount()))));
+
+      conf.setInitialDataRegionCount(
+          Integer.parseInt(
+              properties.getProperty(
+                  "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
 
       String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
 
       String[] addressList = addresses.split(",");
-      Endpoint[] endpointList = new Endpoint[addressList.length];
+      TEndPoint[] endpointList = new TEndPoint[addressList.length];
       for (int i = 0; i < addressList.length; i++) {
         endpointList[i] = CommonUtils.parseNodeUrl(addressList[i]);
       }

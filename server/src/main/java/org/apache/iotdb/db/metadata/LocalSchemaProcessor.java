@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -69,14 +70,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -721,7 +720,11 @@ public class LocalSchemaProcessor {
    * @return A HashSet instance which stores devices paths.
    */
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    return getBelongedSchemaRegion(timeseries).getBelongedDevices(timeseries);
+    Set<PartialPath> result = new TreeSet<>();
+    for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(timeseries, false)) {
+      result.addAll(schemaRegion.getBelongedDevices(timeseries));
+    }
+    return result;
   }
 
   /**
@@ -947,11 +950,6 @@ public class LocalSchemaProcessor {
     return getBelongedSchemaRegion(path).getDeviceNode(path);
   }
 
-  public IMeasurementMNode[] getMeasurementMNodes(PartialPath deviceId, String[] measurements)
-      throws MetadataException {
-    return getBelongedSchemaRegion(deviceId).getMeasurementMNodes(deviceId, measurements);
-  }
-
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
     try {
       return getBelongedSchemaRegion(fullPath).getMeasurementMNode(fullPath);
@@ -1067,38 +1065,6 @@ public class LocalSchemaProcessor {
   // endregion
 
   // region Interfaces only for Cluster module usage
-
-  /**
-   * Collect the timeseries schemas as IMeasurementSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  public void collectMeasurementSchema(
-      PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas) {
-    try {
-      for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(prefixPath, true)) {
-        schemaRegion.collectMeasurementSchema(prefixPath, measurementSchemas);
-      }
-    } catch (MetadataException ignored) {
-      // do nothing
-    }
-  }
-
-  /**
-   * Collect the timeseries schemas as TimeseriesSchema under "prefixPath".
-   *
-   * @apiNote :for cluster
-   */
-  public void collectTimeseriesSchema(
-      PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas) {
-    try {
-      for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(prefixPath, true)) {
-        schemaRegion.collectTimeseriesSchema(prefixPath, timeseriesSchemas);
-      }
-    } catch (MetadataException ignored) {
-      // do nothing
-    }
-  }
 
   /**
    * For a path, infer all storage groups it may belong to. The path can have wildcards. Resolve the

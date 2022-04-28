@@ -50,14 +50,10 @@ public class TsBlock {
    * Visible to give trusted classes like {@link TsBlockBuilder} access to a constructor that
    * doesn't defensively copy the valueColumns
    */
-  static TsBlock wrapBlocksWithoutCopy(
+  public static TsBlock wrapBlocksWithoutCopy(
       int positionCount, TimeColumn timeColumn, Column[] valueColumns) {
     return new TsBlock(false, positionCount, timeColumn, valueColumns);
   }
-
-  // TODO rethink about if we really need this field
-  // Describe the column info
-  private TsBlockMetadata metadata;
 
   private final TimeColumn timeColumn;
 
@@ -68,12 +64,12 @@ public class TsBlock {
 
   private volatile long retainedSizeInBytes = -1;
 
-  public TsBlock(TimeColumn timeColumn, Column... valueColumns) {
-    this(true, determinePositionCount(valueColumns), timeColumn, valueColumns);
-  }
-
   public TsBlock(int positionCount) {
     this(false, positionCount, null, EMPTY_COLUMNS);
+  }
+
+  public TsBlock(TimeColumn timeColumn, Column... valueColumns) {
+    this(true, determinePositionCount(valueColumns), timeColumn, valueColumns);
   }
 
   public TsBlock(int positionCount, TimeColumn timeColumn, Column... valueColumns) {
@@ -102,10 +98,6 @@ public class TsBlock {
   }
 
   public void next() {}
-
-  public TsBlockMetadata getMetadata() {
-    return metadata;
-  }
 
   public int getPositionCount() {
     return positionCount;
@@ -153,13 +145,29 @@ public class TsBlock {
   }
 
   public TsBlock appendValueColumn(Column column) {
-    requireNonNull(column, "column is null");
+    requireNonNull(column, "Column is null");
     if (positionCount != column.getPositionCount()) {
       throw new IllegalArgumentException("Block does not have same position count");
     }
 
     Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
     newBlocks[valueColumns.length] = column;
+    return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
+  }
+
+  /**
+   * Attention. This method uses System.arraycopy() to extend the valueColumn array, so its
+   * performance is not ensured if you have many insert operations.
+   */
+  public TsBlock insertValueColumn(int index, Column column) {
+    requireNonNull(column, "Column is null");
+    if (positionCount != column.getPositionCount()) {
+      throw new IllegalArgumentException("Block does not have same position count");
+    }
+
+    Column[] newBlocks = Arrays.copyOf(valueColumns, valueColumns.length + 1);
+    System.arraycopy(newBlocks, index, newBlocks, index + 1, valueColumns.length - index);
+    newBlocks[index] = column;
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 

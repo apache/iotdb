@@ -18,11 +18,16 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
@@ -100,15 +105,11 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSchemaMerge(SchemaMergeNode node, C context) {
+  public R visitSchemaMerge(SeriesSchemaMergeNode node, C context) {
     return visitPlan(node, context);
   };
 
   public R visitSchemaScan(SchemaScanNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitCreateAlignedTimeSeries(CreateAlignedTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -117,6 +118,22 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDevicesSchemaScan(DevicesSchemaScanNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDevicesCount(DevicesCountNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTimeSeriesCount(TimeSeriesCountNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitLevelTimeSeriesCount(LevelTimeSeriesCountNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitCountMerge(CountSchemaMergeNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -129,6 +146,14 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitSchemaFetch(SchemaFetchNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitCreateAlignedTimeSeries(CreateAlignedTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitAlterTimeSeries(AlterTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
 }

@@ -52,11 +52,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>node-commons</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>tsfile</artifactId>
             <version>${project.version}</version>
             <exclusions>
@@ -83,11 +78,6 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
         </dependency>
@@ -98,6 +88,10 @@
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>units</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>stats</artifactId>
         </dependency>
         <dependency>
             <groupId>io.airlift</groupId>
@@ -259,6 +253,11 @@
             <groupId>org.rocksdb</groupId>
             <artifactId>rocksdbjni</artifactId>
             <version>6.27.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>[${guava.version},)</version>
         </dependency>
     </dependencies>
     <build>

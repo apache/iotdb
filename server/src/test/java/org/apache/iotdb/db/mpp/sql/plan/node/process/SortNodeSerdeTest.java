@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -38,7 +39,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -62,7 +62,7 @@ import static org.junit.Assert.assertEquals;
 public class SortNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     FilterNode filterNode =
         new FilterNode(
             new PlanNodeId("TestFilterNode"),
@@ -75,9 +75,6 @@ public class SortNodeSerdeTest {
     DeviceMergeNode deviceMergeNode =
         new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
 
-    FilterNullComponent filterNullComponent = new FilterNullComponent();
-    deviceMergeNode.setFilterNullComponent(filterNullComponent);
-
     Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
     Set<AggregationType> aggregationTypes = new HashSet<>();
     aggregationTypes.add(AggregationType.MAX_TIME);
@@ -89,7 +86,8 @@ public class SortNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new AlignedPath("s1"),
-            new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     aggregateNode.addChild(seriesScanNode);
     deviceMergeNode.addChildDeviceNode("device", aggregateNode);
 
@@ -109,7 +107,10 @@ public class SortNodeSerdeTest {
 
     FilterNullNode filterNullNode =
         new FilterNullNode(
-            new PlanNodeId("TestFilterNullNode"), filterNode, FilterNullPolicy.ALL_NULL, null);
+            new PlanNodeId("TestFilterNullNode"),
+            filterNode,
+            FilterNullPolicy.ALL_NULL,
+            new ArrayList<>());
 
     Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
     groupedPathMap.put(

@@ -164,6 +164,17 @@ public class IoTDBDescriptor {
                   "rpc_advanced_compression_enable",
                   Boolean.toString(conf.isRpcAdvancedCompressionEnable()))));
 
+      conf.setConnectionTimeoutInMS(
+          Integer.parseInt(
+              properties.getProperty(
+                  "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
+
+      conf.setSelectorNumOfClientManager(
+          Integer.parseInt(
+              properties.getProperty(
+                  "selector_thread_nums_of_client_manager",
+                  String.valueOf(conf.getSelectorNumOfClientManager()))));
+
       conf.setRpcPort(
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
@@ -814,6 +825,12 @@ public class IoTDBDescriptor {
           properties.getProperty(
               "iotdb_server_encrypt_decrypt_provider_parameter",
               conf.getEncryptDecryptProviderParameter()));
+
+      conf.setDataNodeSchemaCacheSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "datanode_schema_cache_size",
+                  String.valueOf(conf.getDataNodeSchemaCacheSize()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
@@ -1581,6 +1598,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "data_block_manager_keep_alive_time_in_ms",
                 Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
+
+    conf.setPartitionCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
   }
 
   /** Get default encode algorithm by data type */

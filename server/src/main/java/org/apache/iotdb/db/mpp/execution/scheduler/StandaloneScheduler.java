@@ -18,22 +18,79 @@
  */
 package org.apache.iotdb.db.mpp.execution.scheduler;
 
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.FragmentInfo;
+import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
 import io.airlift.units.Duration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 
 public class StandaloneScheduler implements IScheduler {
 
-  private static final StorageEngine STORAGE_ENGINE = StorageEngine.getInstance();
+  private static final StorageEngineV2 STORAGE_ENGINE = StorageEngineV2.getInstance();
 
   private static final LocalSchemaProcessor SCHEMA_ENGINE = LocalSchemaProcessor.getInstance();
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterScheduler.class);
+
+  private MPPQueryContext queryContext;
+  // The stateMachine of the QueryExecution owned by this QueryScheduler
+  private QueryStateMachine stateMachine;
+  private QueryType queryType;
+  // The fragment instances which should be sent to corresponding Nodes.
+  private List<FragmentInstance> instances;
+
+  private ExecutorService executor;
+  private ScheduledExecutorService scheduledExecutor;
+
+  private IFragInstanceDispatcher dispatcher;
+  private IFragInstanceStateTracker stateTracker;
+  private IQueryTerminator queryTerminator;
+
+  public StandaloneScheduler(
+      MPPQueryContext queryContext,
+      QueryStateMachine stateMachine,
+      List<FragmentInstance> instances,
+      QueryType queryType,
+      ExecutorService executor,
+      ScheduledExecutorService scheduledExecutor,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+    this.queryContext = queryContext;
+    this.instances = instances;
+    this.queryType = queryType;
+    this.executor = executor;
+    this.scheduledExecutor = scheduledExecutor;
+    this.stateTracker =
+        new FixedRateFragInsStateTracker(
+            stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
+    this.queryTerminator =
+        new SimpleQueryTerminator(
+            executor, queryContext.getQueryId(), instances, internalServiceClientManager);
+  }
+
   @Override
-  public void start() {}
+  public void start() {
+    // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
+    // TODO: Other QueryTypes
+    if (queryType == QueryType.WRITE) {
+
+      return;
+    }
+  }
 
   @Override
   public void stop() {}

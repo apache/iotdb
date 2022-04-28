@@ -463,15 +463,20 @@ public class TsFileProcessorV2Test {
         ((long[]) columns[i])[(int) r] = r;
       }
     }
-    return new InsertTabletNode(
-        new QueryId("test_write").genPlanNodeId(),
-        new PartialPath(deviceId),
-        isAligned,
-        schemas,
-        dataTypes,
-        times,
-        null,
-        columns,
-        times.length);
+
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new QueryId("test_write").genPlanNodeId(),
+            new PartialPath(deviceId),
+            isAligned,
+            measurements,
+            dataTypes,
+            times,
+            null,
+            columns,
+            times.length);
+    insertTabletNode.setMeasurementSchemas(schemas);
+
+    return insertTabletNode;
   }
 }
