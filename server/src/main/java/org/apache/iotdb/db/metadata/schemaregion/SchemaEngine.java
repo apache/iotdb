@@ -25,8 +25,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConfLoader;
-import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
 import org.apache.iotdb.db.metadata.storagegroup.IStorageGroupSchemaManager;
 import org.apache.iotdb.db.metadata.storagegroup.StorageGroupSchemaManager;
 
@@ -51,7 +49,6 @@ public class SchemaEngine {
 
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
-  private RSchemaConfLoader rSchemaConfLoader;
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
 
   private static class SchemaEngineManagerHolder {
@@ -155,9 +152,6 @@ public class SchemaEngine {
             new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       case Rocksdb_based:
-        schemaRegion =
-            new RSchemaRegion(
-                storageGroup, schemaRegionId, storageGroupMNode, loadRocksdbConfFile());
         break;
       default:
         throw new UnsupportedOperationException(
@@ -172,11 +166,11 @@ public class SchemaEngine {
     schemaRegionMap.get(schemaRegionId).deleteSchemaRegion();
     schemaRegionMap.remove(schemaRegionId);
   }
-
-  private RSchemaConfLoader loadRocksdbConfFile() {
-    if (rSchemaConfLoader == null) {
-      rSchemaConfLoader = new RSchemaConfLoader();
-    }
-    return rSchemaConfLoader;
-  }
+  //
+  //  private RSchemaConfLoader loadRocksdbConfFile() {
+  //    if (rSchemaConfLoader == null) {
+  //      rSchemaConfLoader = new RSchemaConfLoader();
+  //    }
+  //    return rSchemaConfLoader;
+  //  }
 }
