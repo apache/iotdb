@@ -78,6 +78,7 @@ public class SchemaEngine {
   public Map<PartialPath, List<SchemaRegionId>> init() throws MetadataException {
     schemaRegionMap = new ConcurrentHashMap<>();
     schemaRegionStoredMode = SchemaEngineMode.valueOf(config.getSchemaEngineMode());
+    loadRSchemaRegion(null, new SchemaRegionId(1), null);
     logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
 
     return initSchemaRegion();
@@ -163,7 +164,7 @@ public class SchemaEngine {
             new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       case Rocksdb_based:
-        loadRSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+        schemaRegion = loadRSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -182,6 +183,7 @@ public class SchemaEngine {
   private ISchemaRegion loadRSchemaRegion(
       PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode node) {
     ISchemaRegion region = null;
+    logger.info("Creating instance for schema-engine-rocksdb");
     try {
       loadRSchemaRegionJar();
       Class<?> classForRSchemaRegion = Class.forName(RSCHEMA_REGION_CLASS_NAME);
@@ -203,13 +205,16 @@ public class SchemaEngine {
         | IllegalAccessException
         | MalformedURLException e) {
       logger.error("Cannot initialize RSchemaRegion", e);
+      return null;
     }
+    logger.error("{}", region.getClass());
     return region;
   }
 
   private void loadRSchemaRegionJar()
       throws NoSuchMethodException, MalformedURLException, InvocationTargetException,
           IllegalAccessException {
+    logger.info("Loading jar for schema-engine-rocksdb");
     File[] jars = new File(LIB_PATH).listFiles();
     for (File jar : jars) {
       if (jar.getName().contains("rocksdb")) {
