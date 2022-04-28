@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.commons.client.sync;
 
-import java.lang.reflect.Constructor;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.BaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
@@ -35,6 +34,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
+import java.lang.reflect.Constructor;
 import java.net.SocketException;
 
 public class SyncConfigNodeIServiceClient extends ConfigIService.Client
@@ -103,14 +103,20 @@ public class SyncConfigNodeIServiceClient extends ConfigIService.Client
     @Override
     public PooledObject<SyncConfigNodeIServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
-      Constructor<SyncConfigNodeIServiceClient> constructor = SyncConfigNodeIServiceClient.class.getConstructor(
-          clientFactoryProperty.getProtocolFactory().getClass(),
-          int.class,
-          endpoint.getClass(),
-          clientManager.getClass());
-      return new DefaultPooledObject<>(SyncThriftClientErrorHandler.newErrorHandlerClient(
-          SyncConfigNodeIServiceClient.class, constructor, clientFactoryProperty.getProtocolFactory(),
-          clientFactoryProperty.getConnectionTimeoutMs(), endpoint, clientManager));
+      Constructor<SyncConfigNodeIServiceClient> constructor =
+          SyncConfigNodeIServiceClient.class.getConstructor(
+              clientFactoryProperty.getProtocolFactory().getClass(),
+              int.class,
+              endpoint.getClass(),
+              clientManager.getClass());
+      return new DefaultPooledObject<>(
+          SyncThriftClientErrorHandler.newErrorHandlerClient(
+              SyncConfigNodeIServiceClient.class,
+              constructor,
+              clientFactoryProperty.getProtocolFactory(),
+              clientFactoryProperty.getConnectionTimeoutMs(),
+              endpoint,
+              clientManager));
     }
 
     @Override

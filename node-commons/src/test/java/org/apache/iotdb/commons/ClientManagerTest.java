@@ -247,7 +247,6 @@ public class ClientManagerTest {
       Assert.assertTrue(e.getMessage().startsWith("Borrow client from pool for node"));
     }
 
-
     // return one sync client
     syncClient1.close();
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));

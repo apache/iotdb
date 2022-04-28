@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.commons.client.sync;
 
-import java.lang.reflect.Constructor;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
@@ -26,10 +25,9 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 
 public class SyncThriftClientErrorHandler implements MethodInterceptor {
 
@@ -53,7 +51,7 @@ public class SyncThriftClientErrorHandler implements MethodInterceptor {
       if (e.getTargetException() instanceof TException) {
         LOGGER.error(
             "Error in calling method {}, err: {}", method.getName(), e.getTargetException());
-        ((SyncThriftClient)o).invalidate();
+        ((SyncThriftClient) o).invalidate();
       }
       throw new TException("Error in calling method " + method.getName(), e.getTargetException());
     } catch (Exception e) {
