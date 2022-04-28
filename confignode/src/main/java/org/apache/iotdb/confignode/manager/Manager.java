@@ -159,4 +159,13 @@ public interface Manager {
    * @return PermissionInfoDataSet
    */
   DataSet queryPermission(ConfigRequest configRequest);
+
+  /**
+   * login
+   *
+   * @param username
+   * @param password
+   * @return
+   */
+  TSStatus login(String username, String password);
 }

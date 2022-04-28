@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
@@ -292,6 +293,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     }
     PermissionInfoResp dataSet = (PermissionInfoResp) configManager.queryPermission(plan);
     return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
+  }
+
+  @Override
+  public TSStatus login(TLoginReq req) throws TException {
+    return configManager.login(req.getUserrname(), req.getPassword());
   }
 
   public void handleClientExit() {}

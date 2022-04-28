@@ -47,6 +47,9 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
@@ -250,6 +253,38 @@ public class LogicalPlanner {
           insertRowStatement.getTime(),
           insertRowStatement.getValues(),
           insertRowStatement.isNeedInferType());
+    }
+
+    @Override
+    public PlanNode visitCountDevices(
+        CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planDevicesCountSource(
+          countDevicesStatement.getPartialPath(), countDevicesStatement.isPrefixPath());
+      planBuilder.planCountMerge();
+      return planBuilder.getRoot();
+    }
+
+    @Override
+    public PlanNode visitCountTimeSeries(
+        CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planTimeSeriesCountSource(
+          countTimeSeriesStatement.getPartialPath(), countTimeSeriesStatement.isPrefixPath());
+      planBuilder.planCountMerge();
+      return planBuilder.getRoot();
+    }
+
+    @Override
+    public PlanNode visitCountLevelTimeSeries(
+        CountLevelTimeSeriesStatement countLevelTimeSeriesStatement, MPPQueryContext context) {
+      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
+      planBuilder.planLevelTimeSeriesCountSource(
+          countLevelTimeSeriesStatement.getPartialPath(),
+          countLevelTimeSeriesStatement.isPrefixPath(),
+          countLevelTimeSeriesStatement.getLevel());
+      planBuilder.planCountMerge();
+      return planBuilder.getRoot();
     }
 
     @Override

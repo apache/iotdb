@@ -19,29 +19,55 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class DeviceSchemaInfo {
 
-  private PartialPath devicePath;
-  private boolean isAligned;
-  private List<MeasurementSchema> measurementSchemaList;
+  private final PartialPath devicePath;
+  private final boolean isAligned;
+  private final List<SchemaMeasurementNode> measurementNodeList;
 
   public DeviceSchemaInfo(
-      PartialPath devicePath, boolean isAligned, List<MeasurementSchema> measurementSchemaList) {
+      PartialPath devicePath, boolean isAligned, List<SchemaMeasurementNode> measurementNodeList) {
     this.devicePath = devicePath;
     this.isAligned = isAligned;
-    this.measurementSchemaList = measurementSchemaList;
+    this.measurementNodeList = measurementNodeList;
   }
 
-  public List<MeasurementSchema> getMeasurementSchemaList() {
-    return measurementSchemaList;
+  public PartialPath getDevicePath() {
+    return devicePath;
   }
 
   public boolean isAligned() {
     return isAligned;
+  }
+
+  public List<MeasurementSchema> getMeasurementSchemaList() {
+    return measurementNodeList.stream()
+        .map(SchemaMeasurementNode::getSchema)
+        .collect(Collectors.toList());
+  }
+
+  public List<MeasurementPath> getMeasurements() {
+    return measurementNodeList.stream()
+        .map(
+            measurementNode -> {
+              MeasurementPath measurementPath =
+                  new MeasurementPath(
+                      devicePath.concatNode(measurementNode.getName()),
+                      measurementNode.getSchema());
+              measurementPath.setUnderAlignedEntity(isAligned);
+              if (measurementNode.getAlias() != null) {
+                measurementPath.setMeasurementAlias(measurementNode.getAlias());
+              }
+              return measurementPath;
+            })
+        .collect(Collectors.toList());
   }
 }

@@ -26,7 +26,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
@@ -43,7 +43,8 @@ public class DeviceSchemaScanNodeSerdeTest {
   public void testSerializeAndDeserialize() throws IllegalPathException {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("offset"), 10);
     LimitNode limitNode = new LimitNode(new PlanNodeId("limit"), 10);
-    SchemaMergeNode schemaMergeNode = new SchemaMergeNode(new PlanNodeId("schemaMerge"));
+    SeriesSchemaMergeNode schemaMergeNode =
+        new SeriesSchemaMergeNode(new PlanNodeId("schemaMerge"));
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     DevicesSchemaScanNode devicesSchemaScanNode =
         new DevicesSchemaScanNode(

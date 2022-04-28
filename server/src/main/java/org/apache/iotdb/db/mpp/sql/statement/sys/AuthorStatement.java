@@ -21,11 +21,12 @@ package org.apache.iotdb.db.mpp.sql.statement.sys;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
-import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
+import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
-public class AuthorStatement extends ConfigStatement {
+public class AuthorStatement extends Statement implements IConfigStatement {
 
   private final AuthorOperator.AuthorType authorType;
   private String userName;
