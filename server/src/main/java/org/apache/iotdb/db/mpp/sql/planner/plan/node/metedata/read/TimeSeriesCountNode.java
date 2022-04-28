@@ -19,70 +19,62 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class SchemaFetchNode extends SchemaScanNode {
+public class TimeSeriesCountNode extends SchemaScanNode {
 
-  private final PathPatternTree patternTree;
-
-  public SchemaFetchNode(PlanNodeId id, PathPatternTree patternTree) {
-    super(id);
-    this.patternTree = patternTree;
-  }
-
-  public PathPatternTree getPatternTree() {
-    return patternTree;
+  public TimeSeriesCountNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
+    super(id, partialPath, isPrefixPath);
   }
 
   @Override
   public PlanNode clone() {
-    return new SchemaFetchNode(getPlanNodeId(), patternTree);
+    return new TimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath);
   }
 
   @Override
   public List<ColumnHeader> getOutputColumnHeaders() {
-    return null;
+    return HeaderConstant.countTimeSeriesHeader.getColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return HeaderConstant.countTimeSeriesHeader.getRespColumns();
   }
 
   @Override
   public List<TSDataType> getOutputColumnTypes() {
-    return null;
+    return HeaderConstant.countTimeSeriesHeader.getRespDataTypes();
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SCHEMA_FETCH.serialize(byteBuffer);
-    patternTree.serialize(byteBuffer);
+    PlanNodeType.TIME_SERIES_COUNT.serialize(byteBuffer);
+    ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
+    ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
   }
 
-  public static SchemaFetchNode deserialize(ByteBuffer byteBuffer) {
-    PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
-    PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchNode(id, patternTree);
-  }
-
-  @Override
-  public void open() throws Exception {}
-
-  @Override
-  public void close() throws Exception {}
-
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaFetch(this, context);
+  public static PlanNode deserialize(ByteBuffer buffer) {
+    String fullPath = ReadWriteIOUtils.readString(buffer);
+    PartialPath path;
+    try {
+      path = new PartialPath(fullPath);
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
+    }
+    boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
+    return new TimeSeriesCountNode(planNodeId, path, isPrefixPath);
   }
 }
