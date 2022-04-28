@@ -74,6 +74,7 @@ public class AggregationNode extends ProcessNode {
   public AggregationNode(PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;
+    this.children = new ArrayList<>();
   }
 
   public AggregationNode(
@@ -83,6 +84,7 @@ public class AggregationNode extends ProcessNode {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
+    this.children = new ArrayList<>();
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -173,7 +175,7 @@ public class AggregationNode extends ProcessNode {
     AggregationNode that = (AggregationNode) o;
     return aggregationDescriptorList.equals(that.aggregationDescriptorList)
         && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
-        && children.equals(that.children);
+        && Objects.equals(children, that.children);
   }
 
   @Override

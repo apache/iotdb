@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class FillDescriptor {
 
@@ -47,5 +48,22 @@ public class FillDescriptor {
     FillPolicy fillPolicy = FillPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     Expression expression = Expression.deserialize(byteBuffer);
     return new FillDescriptor(fillPolicy, expression);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    FillDescriptor that = (FillDescriptor) o;
+    return fillPolicy == that.fillPolicy && Objects.equals(expression, that.expression);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fillPolicy, expression);
   }
 }

@@ -50,7 +50,6 @@ public class DeviceViewNodeSerdeTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     deviceViewNode.serialize(byteBuffer);
     byteBuffer.flip();
-    assertEquals(
-        (DeviceViewNode) PlanNodeDeserializeHelper.deserialize(byteBuffer), deviceViewNode);
+    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), deviceViewNode);
   }
 }

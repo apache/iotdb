@@ -82,8 +82,7 @@ public class DeviceViewNode extends ProcessNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException(
-        "addChild() is not allowed in DeviceViewNode, please use addChildDeviceNode()");
+    this.children.add(child);
   }
 
   @Override
