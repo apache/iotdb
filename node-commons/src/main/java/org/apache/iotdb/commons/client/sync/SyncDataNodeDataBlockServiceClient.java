@@ -36,7 +36,8 @@ import org.apache.thrift.transport.TTransportException;
 
 import java.net.SocketException;
 
-public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client {
+public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client
+    implements SyncThriftClient, AutoCloseable {
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> clientManager;
@@ -60,7 +61,7 @@ public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client 
     getInputProtocol().getTransport().open();
   }
 
-  public void returnSelf() {
+  public void close() {
     if (clientManager != null) {
       clientManager.returnClient(endpoint, this);
     }
@@ -71,7 +72,7 @@ public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client 
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
-  public void close() {
+  public void invalidate() {
     getInputProtocol().getTransport().close();
   }
 
@@ -96,18 +97,21 @@ public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client 
     @Override
     public void destroyObject(
         TEndPoint endpoint, PooledObject<SyncDataNodeDataBlockServiceClient> pooledObject) {
-      pooledObject.getObject().close();
+      pooledObject.getObject().invalidate();
     }
 
     @Override
     public PooledObject<SyncDataNodeDataBlockServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
-      return new DefaultPooledObject<>(
+      SyncDataNodeDataBlockServiceClient syncDataNodeDataBlockServiceClient =
           new SyncDataNodeDataBlockServiceClient(
               clientFactoryProperty.getProtocolFactory(),
               clientFactoryProperty.getConnectionTimeoutMs(),
               endpoint,
-              clientManager));
+              clientManager);
+      return new DefaultPooledObject<>(
+          SyncThriftClientErrorHandler.newErrorHandlerClient(
+              syncDataNodeDataBlockServiceClient, DataBlockService.Iface.class));
     }
 
     @Override

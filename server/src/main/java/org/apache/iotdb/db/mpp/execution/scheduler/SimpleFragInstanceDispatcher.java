@@ -28,7 +28,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,14 +57,10 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
         () -> {
           TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
           for (FragmentInstance instance : instances) {
-            SyncDataNodeInternalServiceClient client = null;
             TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
-            try {
-              // TODO: (jackie tien) change the port
-              client = internalServiceClientManager.borrowClient(endPoint);
-              if (client == null) {
-                throw new TException("Can't get client for node " + endPoint);
-              }
+            // TODO: (jackie tien) change the port
+            try (SyncDataNodeInternalServiceClient client =
+                internalServiceClientManager.borrowClient(endPoint)) {
               // TODO: (xingtanzjr) consider how to handle the buffer here
               ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
               instance.serializeRequest(buffer);
@@ -78,17 +73,8 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
             } catch (IOException e) {
               LOGGER.error("can't connect to node {}", endPoint, e);
               throw e;
-            } catch (TException e) {
-              LOGGER.error("sendFragmentInstance failed for node {}", endPoint, e);
-              if (client != null) {
-                client.close();
-              }
-              throw e;
-            } finally {
-              if (client != null) {
-                client.returnSelf();
-              }
             }
+
             if (!resp.accepted) {
               break;
             }

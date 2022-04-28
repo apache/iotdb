@@ -83,12 +83,12 @@ public class ClientManagerTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // return one sync client
-    syncClient1.returnSelf();
+    syncClient1.close();
     Assert.assertEquals(1, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // return another sync client
-    syncClient2.returnSelf();
+    syncClient2.close();
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(2, syncClusterManager.getPool().getNumIdle(endPoint));
 
@@ -185,12 +185,12 @@ public class ClientManagerTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // return one sync client
-    syncClient1.returnSelf();
+    syncClient1.close();
     Assert.assertEquals(1, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // return another sync client, clientManager should destroy this client
-    syncClient2.returnSelf();
+    syncClient2.close();
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
     Assert.assertFalse(syncClient2.getInputProtocol().getTransport().isOpen());
@@ -243,7 +243,7 @@ public class ClientManagerTest {
     Assert.assertNull(syncClient2);
 
     // return one sync client
-    syncClient1.returnSelf();
+    syncClient1.close();
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
 
@@ -254,7 +254,7 @@ public class ClientManagerTest {
     Assert.assertEquals(syncClient1, syncClient2);
 
     // return the only client
-    syncClient2.returnSelf();
+    syncClient2.close();
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
 
@@ -310,7 +310,7 @@ public class ClientManagerTest {
     Assert.assertNull(syncClient2);
 
     // return one sync client
-    syncClient1.returnSelf();
+    syncClient1.close();
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
 
@@ -348,13 +348,13 @@ public class ClientManagerTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // return one sync client
-    syncClient1.returnSelf();
+    syncClient1.close();
     Assert.assertEquals(1, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // invalid another sync client and return
     syncClient2.getInputProtocol().getTransport().close();
-    syncClient2.returnSelf();
+    syncClient2.close();
     Assert.assertEquals(0, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(1, syncClusterManager.getPool().getNumIdle(endPoint));
 
