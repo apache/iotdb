@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -173,7 +174,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           && targetTsFileResource.getTsFile().length()
               < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
         // the file size is smaller than magic string and version number
-        throw new RuntimeException(
+        throw new TsFileNotCompleteException(
             String.format(
                 "target file %s is smaller than magic string and version number size",
                 targetTsFileResource));
@@ -198,10 +199,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         FileUtils.delete(logFile);
       }
     } catch (Throwable throwable) {
-      LOGGER.error(
-          "{} [Compaction] Throwable is caught during execution of SizeTieredCompaction.",
-          fullStorageGroupName,
-          throwable);
       LOGGER.warn("{} [Compaction] Start to handle exception", fullStorageGroupName);
       if (throwable instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -232,6 +229,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             true,
             isSequence());
       }
+      throw throwable;
     } finally {
       releaseFileLocksAndResetMergingStatus();
     }
