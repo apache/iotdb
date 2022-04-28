@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
@@ -118,6 +119,19 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @Override
   public List<String> getOutputColumnNames() {
     return null;
+  }
+
+  @Override
+  public TSDataType[] getDataTypes() {
+    if (isNeedInferType) {
+      TSDataType[] predictedDataTypes = new TSDataType[dataTypes.length];
+      for (int i = 0; i < dataTypes.length; i++) {
+        predictedDataTypes[i] = TypeInferenceUtils.getPredictedDataType(values[i], true);
+      }
+      return predictedDataTypes;
+    }
+
+    return dataTypes;
   }
 
   public Object[] getValues() {
