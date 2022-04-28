@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
-import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
+import org.apache.iotdb.db.mpp.schedule.DriverScheduler;
+import org.apache.iotdb.db.mpp.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.sql.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
@@ -49,7 +49,7 @@ public class FragmentInstanceManager {
   private final Map<FragmentInstanceId, FragmentInstanceContext> instanceContext;
   private final Map<FragmentInstanceId, FragmentInstanceExecution> instanceExecution;
   private final LocalExecutionPlanner planner = LocalExecutionPlanner.getInstance();
-  private final IFragmentInstanceScheduler scheduler = FragmentInstanceScheduler.getInstance();
+  private final IDriverScheduler scheduler = DriverScheduler.getInstance();
 
   private final ScheduledExecutorService instanceManagementExecutor;
   private final ExecutorService instanceNotificationExecutor;

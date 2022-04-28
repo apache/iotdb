@@ -16,21 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.mpp.schedule.task;
 
-package org.apache.iotdb.db.mpp.sql.statement;
+/** the status enum of {@link DriverTask} */
+public enum DriverTaskStatus {
+  /* Ready to be executed */
+  READY,
 
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+  /* Being executed */
+  RUNNING,
 
-/**
- * ConfigStatement represents the statement which should be executed by ConfigNode All the
- * statements which need to be transformed into IConfigTask should extend this class
- */
-public abstract class ConfigStatement extends Statement {
+  /* Waiting upstream input or output consumed by downstream FragmentInstances */
+  BLOCKED,
 
-  /**
-   * Determine whether the operation to be performed is read or write
-   *
-   * @return QueryType
-   */
-  public abstract QueryType getQueryType();
+  /* Interrupted caused by timeout or coordinator's cancellation */
+  ABORTED,
+
+  /* Finished by met the EOF of upstream inputs */
+  FINISHED,
 }

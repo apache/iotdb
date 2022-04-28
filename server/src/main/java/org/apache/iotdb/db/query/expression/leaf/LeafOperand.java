@@ -16,22 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.schedule.task;
 
-/** the status enum of {@link FragmentInstanceTask} */
-public enum FragmentInstanceTaskStatus {
-  /* Ready to be executed */
-  READY,
+package org.apache.iotdb.db.query.expression.leaf;
 
-  /* Being executed */
-  RUNNING,
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 
-  /* Waiting upstream input or output consumed by downstream FragmentInstances */
-  BLOCKED,
+import java.time.ZoneId;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-  /* Interrupted caused by timeout or coordinator's cancellation */
-  ABORTED,
+public abstract class LeafOperand extends Expression {
 
-  /* Finished by met the EOF of upstream inputs */
-  FINISHED,
+  @Override
+  public final List<Expression> getExpressions() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public final void constructUdfExecutors(
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
+    // nothing to do
+  }
 }

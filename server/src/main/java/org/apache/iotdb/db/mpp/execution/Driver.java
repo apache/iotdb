@@ -47,10 +47,6 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.Boolean.TRUE;
 import static org.apache.iotdb.db.mpp.operator.Operator.NOT_BLOCKED;
 
-/**
- * Driver encapsulates some methods which are necessary for execution scheduler to run a fragment
- * instance
- */
 public abstract class Driver implements IDriver {
 
   protected static final Logger LOGGER = LoggerFactory.getLogger(Driver.class);
@@ -83,11 +79,6 @@ public abstract class Driver implements IDriver {
     driverBlockedFuture.set(future);
   }
 
-  /**
-   * Used to judge whether this fragment instance should be scheduled for execution anymore
-   *
-   * @return true if the FragmentInstance is done or terminated due to failure, otherwise false.
-   */
   @Override
   public boolean isFinished() {
     checkLockNotHeld("Cannot check finished status while holding the driver lock");
@@ -107,16 +98,6 @@ public abstract class Driver implements IDriver {
   /** release resource this driver used */
   protected abstract void releaseResource();
 
-  /**
-   * run the fragment instance for {@param duration} time slice, the time of this run is likely not
-   * to be equal to {@param duration}, the actual run time should be calculated by the caller
-   *
-   * @param duration how long should this fragment instance run
-   * @return the returned ListenableFuture<Void> is used to represent status of this processing if
-   *     isDone() return true, meaning that this fragment instance is not blocked and is ready for
-   *     next processing otherwise, meaning that this fragment instance is blocked and not ready for
-   *     next processing.
-   */
   @Override
   public ListenableFuture<Void> processFor(Duration duration) {
 
@@ -154,17 +135,11 @@ public abstract class Driver implements IDriver {
     return result.orElse(NOT_BLOCKED);
   }
 
-  /**
-   * the id information about this Fragment Instance.
-   *
-   * @return a {@link FragmentInstanceId} instance.
-   */
   @Override
   public FragmentInstanceId getInfo() {
     return driverContext.getId();
   }
 
-  /** clear resource used by this fragment instance */
   @Override
   public void close() {
     // mark the service for destruction
@@ -178,11 +153,6 @@ public abstract class Driver implements IDriver {
     tryWithLockUnInterruptibly(() -> TRUE);
   }
 
-  /**
-   * fail current driver
-   *
-   * @param t reason cause this failure
-   */
   @Override
   public void failed(Throwable t) {
     driverContext.failed(t);
