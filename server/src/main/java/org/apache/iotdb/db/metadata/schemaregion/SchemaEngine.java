@@ -32,6 +32,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -50,6 +56,11 @@ public class SchemaEngine {
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
+  private static final String RSCHEMA_REGION_CLASS_NAME =
+      "org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion";
+  private static final String RSCHEMA_CONF_LOADER_CLASS_NAME =
+      "org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConfLoader";
+  private static final String LIB_PATH = ".." + File.separator + "lib" + File.separator;
 
   private static class SchemaEngineManagerHolder {
 
@@ -152,6 +163,7 @@ public class SchemaEngine {
             new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       case Rocksdb_based:
+        loadRSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -165,6 +177,64 @@ public class SchemaEngine {
   public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
     schemaRegionMap.get(schemaRegionId).deleteSchemaRegion();
     schemaRegionMap.remove(schemaRegionId);
+  }
+
+  private ISchemaRegion loadRSchemaRegion(
+      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode node) {
+    ISchemaRegion region = null;
+    try {
+      loadRSchemaRegionJar();
+      Class<?> classForRSchemaRegion = Class.forName(RSCHEMA_REGION_CLASS_NAME);
+      Class<?> classForRSchemaConfLoader = Class.forName(RSCHEMA_CONF_LOADER_CLASS_NAME);
+      Constructor<?> constructor =
+          classForRSchemaRegion.getConstructor(
+              PartialPath.class,
+              SchemaRegionId.class,
+              IStorageGroupMNode.class,
+              classForRSchemaConfLoader);
+      region =
+          (ISchemaRegion)
+              constructor.newInstance(
+                  storageGroup, schemaRegionId, node, classForRSchemaConfLoader.newInstance());
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | InstantiationException
+        | IllegalAccessException
+        | MalformedURLException e) {
+      logger.error("Cannot initialize RSchemaRegion", e);
+    }
+    return region;
+  }
+
+  private void loadRSchemaRegionJar()
+      throws NoSuchMethodException, MalformedURLException, InvocationTargetException,
+          IllegalAccessException {
+    File[] jars = new File(LIB_PATH).listFiles();
+    for (File jar : jars) {
+      if (jar.getName().contains("rocksdb")) {
+        // 从URLClassLoader类中获取类所在文件夹的方法，jar也可以认为是一个文件夹
+        Method method = null;
+        try {
+          method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
+        } catch (NoSuchMethodException | SecurityException e) {
+          throw e;
+        }
+        // 获取方法的访问权限以便写回
+        boolean accessible = method.isAccessible();
+        try {
+          method.setAccessible(true);
+          // 获取系统类加载器
+          URLClassLoader classLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
+          URL url = jar.toURI().toURL();
+          method.invoke(classLoader, url);
+        } catch (Exception e) {
+          throw e;
+        } finally {
+          method.setAccessible(accessible);
+        }
+      }
+    }
   }
   //
   //  private RSchemaConfLoader loadRocksdbConfFile() {
