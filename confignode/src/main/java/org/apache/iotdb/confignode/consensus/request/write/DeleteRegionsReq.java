@@ -18,52 +18,62 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
-public class DeleteStorageGroupReq extends ConfigRequest {
+public class DeleteRegionsReq extends ConfigRequest {
 
-  private String storageGroup;
+  private final List<TConsensusGroupId> consensusGroupIds;
 
-  public DeleteStorageGroupReq() {
-    super(ConfigRequestType.DeleteStorageGroup);
+  public DeleteRegionsReq() {
+    super(ConfigRequestType.DeleteRegions);
+    this.consensusGroupIds = new ArrayList<>();
   }
 
-  public DeleteStorageGroupReq(String storageGroup) {
-    this();
-    this.storageGroup = storageGroup;
+  public void addConsensusGroupId(TConsensusGroupId consensusGroupId) {
+    consensusGroupIds.add(consensusGroupId);
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public List<TConsensusGroupId> getConsensusGroupIds() {
+    return consensusGroupIds;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.DeleteStorageGroup.ordinal());
+    buffer.putInt(ConfigRequestType.DeleteRegions.ordinal());
 
-    BasicStructureSerDeUtil.write(storageGroup, buffer);
+    buffer.putInt(consensusGroupIds.size());
+    for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
+      ThriftCommonsSerDeUtils.writeTConsensusGroupId(consensusGroupId, buffer);
+    }
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    int length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
+      consensusGroupIds.add(ThriftCommonsSerDeUtils.readTConsensusGroupId(buffer));
+    }
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    DeleteStorageGroupReq that = (DeleteStorageGroupReq) o;
-    return storageGroup.equals(that.storageGroup);
+    DeleteRegionsReq that = (DeleteRegionsReq) o;
+    return consensusGroupIds.equals(that.consensusGroupIds);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup);
+    return Objects.hash(consensusGroupIds);
   }
 }

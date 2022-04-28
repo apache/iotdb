@@ -97,7 +97,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     registerResp.convertToRpcDataNodeRegisterResp(resp);
-    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", resp, req);
+    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
     return resp;
   }
 
@@ -137,7 +137,9 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 
     SetStorageGroupReq setReq = new SetStorageGroupReq(storageGroupSchema);
-    return configManager.setStorageGroup(setReq);
+    TSStatus resp = configManager.setStorageGroup(setReq);
+    LOGGER.info("Execute SetStorageGroupRequest {} with result {}", req, resp);
+    return resp;
   }
 
   @Override

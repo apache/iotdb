@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.cli;
+package org.apache.iotdb.confignode.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.cli.handlers.InitRegionHandler;
-import org.apache.iotdb.confignode.client.ConfigNodeClientPoolFactory;
+import org.apache.iotdb.confignode.client.handlers.InitRegionHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 
@@ -48,45 +47,54 @@ public class AsyncClientPool {
   /**
    * Only use this interface when initialize SchemaRegion to set StorageGroup
    *
-   * @param endpoint The specific DataNode
+   * @param endPoint The specific DataNode
    */
   public void initSchemaRegion(
-      TEndPoint endpoint, TCreateSchemaRegionReq req, InitRegionHandler handler) {
-    AsyncDataNodeInternalServiceClient client = null;
+      TEndPoint endPoint, TCreateSchemaRegionReq req, InitRegionHandler handler) {
+    AsyncDataNodeInternalServiceClient client;
     try {
-      client = clientManager.borrowClient(endpoint);
+      client = clientManager.borrowClient(endPoint);
       if (client == null) {
-        LOGGER.error("Can't get client for DataNode {}", endpoint);
+        LOGGER.error("Can't get client for DataNode {}", endPoint);
         return;
       }
       client.createSchemaRegion(req, handler);
     } catch (IOException e) {
-      LOGGER.error("Can't connect to DataNode {}", endpoint, e);
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
     } catch (TException e) {
-      LOGGER.error("Create SchemaRegion on DataNode {} failed", endpoint, e);
+      LOGGER.error("Create SchemaRegion on DataNode {} failed", endPoint, e);
     }
   }
 
   /**
    * Only use this interface when initialize SchemaRegion to set StorageGroup
    *
-   * @param endpoint The specific DataNode
+   * @param endPoint The specific DataNode
    */
   public void initDataRegion(
-      TEndPoint endpoint, TCreateDataRegionReq req, InitRegionHandler handler) {
-    AsyncDataNodeInternalServiceClient client = null;
+      TEndPoint endPoint, TCreateDataRegionReq req, InitRegionHandler handler) {
+    AsyncDataNodeInternalServiceClient client;
     try {
-      client = clientManager.borrowClient(endpoint);
+      client = clientManager.borrowClient(endPoint);
       if (client == null) {
-        LOGGER.error("Can't get client for DataNode {}", endpoint);
+        LOGGER.error("Can't get client for DataNode {}", endPoint);
         return;
       }
       client.createDataRegion(req, handler);
     } catch (IOException e) {
-      LOGGER.error("Can't connect to DataNode {}", endpoint, e);
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
     } catch (TException e) {
-      LOGGER.error("Create DataRegion on DataNode {} failed", endpoint, e);
+      LOGGER.error("Create DataRegion on DataNode {} failed", endPoint, e);
     }
+  }
+
+  /**
+   * Always call this interface when a DataNode is restarted or removed
+   *
+   * @param endPoint The specific DataNode
+   */
+  public void resetClient(TEndPoint endPoint) {
+    clientManager.clear(endPoint);
   }
 
   // TODO: Is the ClientPool must be a singleton?

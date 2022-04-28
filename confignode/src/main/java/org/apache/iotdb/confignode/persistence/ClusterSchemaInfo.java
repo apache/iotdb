@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -85,6 +86,32 @@ public class ClusterSchemaInfo {
       // Set StorageGroupSchema
       mTree.getStorageGroupNodeByPath(partialPathName).setStorageGroupSchema(storageGroupSchema);
 
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      result
+          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setMessage("Error StorageGroup name");
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  /**
+   * Delete StorageGroup
+   *
+   * @param req DeleteStorageGroupReq
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) {
+    TSStatus result = new TSStatus();
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      // Delete StorageGroup
+      PartialPath partialPathName = new PartialPath(req.getStorageGroup());
+      mTree.setStorageGroup(partialPathName);
+      mTree.deleteStorageGroup(partialPathName);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);

@@ -36,6 +36,8 @@ import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -113,6 +115,15 @@ public class ConfigRequestSerDeTest {
   }
 
   @Test
+  public void DeleteStorageGroupReqTest() throws IOException {
+    DeleteStorageGroupReq req0 = new DeleteStorageGroupReq("root.sg0");
+    req0.serialize(buffer);
+    buffer.flip();
+    DeleteStorageGroupReq req1 = (DeleteStorageGroupReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
   public void SetTTLReqTest() throws IOException {
     SetTTLReq req0 = new SetTTLReq("root.sg0", Long.MAX_VALUE);
     req0.serialize(buffer);
@@ -184,7 +195,6 @@ public class ConfigRequestSerDeTest {
     dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
 
     CreateRegionsReq req0 = new CreateRegionsReq();
-    req0.setStorageGroup("sg");
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
@@ -198,6 +208,18 @@ public class ConfigRequestSerDeTest {
     req0.serialize(buffer);
     buffer.flip();
     CreateRegionsReq req1 = (CreateRegionsReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void DeleteRegionsPlanTest() throws IOException {
+    DeleteRegionsReq req0 = new DeleteRegionsReq();
+    req0.addConsensusGroupId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
+    req0.addConsensusGroupId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+
+    req0.serialize(buffer);
+    buffer.flip();
+    DeleteRegionsReq req1 = (DeleteRegionsReq) ConfigRequest.Factory.create(buffer);
     Assert.assertEquals(req0, req1);
   }
 

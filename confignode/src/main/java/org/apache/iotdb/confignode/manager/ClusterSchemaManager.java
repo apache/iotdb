@@ -24,8 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.cli.AsyncClientPool;
-import org.apache.iotdb.confignode.cli.handlers.InitRegionHandler;
+import org.apache.iotdb.confignode.client.AsyncClientPool;
+import org.apache.iotdb.confignode.client.handlers.InitRegionHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
@@ -95,7 +95,6 @@ public class ClusterSchemaManager {
                 "StorageGroup %s is already set.", setStorageGroupReq.getSchema().getName()));
       } else {
         CreateRegionsReq createRegionsReq = new CreateRegionsReq();
-        createRegionsReq.setStorageGroup(setStorageGroupReq.getSchema().getName());
 
         // Allocate default Regions
         allocateRegions(TConsensusGroupType.SchemaRegion, createRegionsReq, setStorageGroupReq);
@@ -106,9 +105,30 @@ public class ClusterSchemaManager {
         result = getConsensusManager().write(createRegionsReq).getStatus();
 
         // Create Regions in DataNode
-        boolean success = createRegions(createRegionsReq, setStorageGroupReq.getSchema().getTTL());
+        boolean success =
+            createRegions(
+                setStorageGroupReq.getSchema().getName(),
+                createRegionsReq,
+                setStorageGroupReq.getSchema().getTTL());
         if (!success) {
-          // TODO: Rollback SetStorageGroupReq and return error TSStatus
+          // TODO: Rollback SetStorageGroupReq and CreateRegionsReq after IT framework done
+          // Rollback SetStorageGroupReq
+          // DeleteStorageGroupReq deleteStorageGroupReq = new
+          // DeleteStorageGroupReq(setStorageGroupReq.getSchema().getName());
+          // getConsensusManager().write(deleteStorageGroupReq);
+
+          // Rollback CreateRegionsReq
+          // DeleteRegionsReq deleteRegionsReq = new DeleteRegionsReq();
+          // for (TRegionReplicaSet regionReplicaSet : createRegionsReq.getRegionReplicaSets()) {
+          //   deleteRegionsReq.addConsensusGroupId(regionReplicaSet.getRegionId());
+          // }
+          // getConsensusManager().write(deleteRegionsReq);
+
+          // TODO: Return error TSStatus after IT framework done
+          // LOGGER.error("Set StorageGroup failed because can't create SchemaRegions or DataRegions
+          // on some DataNodes.");
+          // result = new TSStatus(TSStatusCode.NO_CONNECTION.getStatusCode());
+          // result.setMessage("Can't connect to DataNode");
         }
       }
     }
@@ -150,7 +170,7 @@ public class ClusterSchemaManager {
     }
   }
 
-  private boolean createRegions(CreateRegionsReq createRegionsReq, long TTL) {
+  private boolean createRegions(String storageGroup, CreateRegionsReq createRegionsReq, long TTL) {
     int regionNum =
         initialSchemaRegionCount * schemaReplicationFactor
             + initialDataRegionCount * dataReplicationFactor;
@@ -175,10 +195,7 @@ public class ClusterSchemaManager {
               }
               AsyncClientPool.getInstance()
                   .initSchemaRegion(
-                      endPoint,
-                      genCreateSchemaRegionReq(
-                          createRegionsReq.getStorageGroup(), regionReplicaSet),
-                      handler);
+                      endPoint, genCreateSchemaRegionReq(storageGroup, regionReplicaSet), handler);
               break;
             case DataRegion:
               if (retry == 0) {
@@ -187,8 +204,7 @@ public class ClusterSchemaManager {
               AsyncClientPool.getInstance()
                   .initDataRegion(
                       endPoint,
-                      genCreateDataRegionReq(
-                          createRegionsReq.getStorageGroup(), regionReplicaSet, TTL),
+                      genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL),
                       handler);
           }
           index += 1;

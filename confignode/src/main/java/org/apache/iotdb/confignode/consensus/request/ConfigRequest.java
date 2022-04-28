@@ -29,6 +29,8 @@ import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -104,6 +106,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case SetStorageGroup:
           req = new SetStorageGroupReq();
           break;
+        case DeleteStorageGroup:
+          req = new DeleteStorageGroupReq();
+          break;
         case SetTTL:
           req = new SetTTLReq();
           break;
@@ -124,6 +129,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
           break;
         case CreateRegions:
           req = new CreateRegionsReq();
+          break;
+        case DeleteRegions:
+          req = new DeleteRegionsReq();
           break;
         case GetSchemaPartition:
           req = new GetSchemaPartitionReq();
