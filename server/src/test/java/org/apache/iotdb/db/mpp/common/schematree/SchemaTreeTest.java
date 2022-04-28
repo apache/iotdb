@@ -222,6 +222,38 @@ public class SchemaTreeTest {
         new String[] {"", "", "", "", "", ""},
         new boolean[] {false, false, true, true, false, false},
         new int[] {1, 2, 3, 4, 5, 6});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.*.**"), 10, 0, false);
+    checkVisitorResult(
+        visitor,
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false},
+        new int[] {1, 2, 3, 4, 5, 6});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.*.**.**"), 10, 0, false);
+    checkVisitorResult(
+        visitor,
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false},
+        new int[] {1, 2, 3, 4, 5, 6});
   }
 
   /**
