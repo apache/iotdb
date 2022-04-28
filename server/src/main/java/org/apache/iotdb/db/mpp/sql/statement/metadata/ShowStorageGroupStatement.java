@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
 /**
@@ -29,7 +31,7 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
  *
  * <p>SHOW STORAGE GROUP prefixPath?
  */
-public class ShowStorageGroupStatement extends ShowStatement {
+public class ShowStorageGroupStatement extends ShowStatement implements IConfigStatement {
 
   private final PartialPath pathPattern;
 
@@ -45,5 +47,10 @@ public class ShowStorageGroupStatement extends ShowStatement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowStorageGroup(this, context);
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 }
