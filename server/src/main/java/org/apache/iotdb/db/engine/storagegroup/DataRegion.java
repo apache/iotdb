@@ -3348,7 +3348,7 @@ public class DataRegion {
 
   @TestOnly
   public long getPartitionMaxFileVersions(long partitionId) {
-    return partitionMaxFileVersions.getOrDefault(partitionId, -1L);
+    return partitionMaxFileVersions.getOrDefault(partitionId, 0L);
   }
 
   public void addSettleFilesToList(
