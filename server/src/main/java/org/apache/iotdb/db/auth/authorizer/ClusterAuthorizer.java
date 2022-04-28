@@ -95,8 +95,8 @@ public class ClusterAuthorizer {
             authorizerResp.getStatus());
         future.setException(new StatementExecutionException(authorizerResp.getStatus()));
       } else {
-        // TODO: Construct tsBlock
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock));
+        // TODO: Construct result
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock, null));
       }
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
       LOGGER.error("Failed to connect to config node.");

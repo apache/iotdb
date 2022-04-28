@@ -499,6 +499,11 @@ public class IoTDBConfig {
   /** indicate whether current mode is cluster */
   private boolean isClusterMode = false;
 
+  /**
+   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   */
+  private int dataNodeId = -1;
+
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
 
@@ -2826,6 +2831,14 @@ public class IoTDBConfig {
 
   public void setClusterMode(boolean isClusterMode) {
     this.isClusterMode = isClusterMode;
+  }
+
+  public int getDataNodeId() {
+    return dataNodeId;
+  }
+
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId = dataNodeId;
   }
 
   public int getDataNodeSchemaCacheSize() {

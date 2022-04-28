@@ -25,12 +25,12 @@ import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
  * ConfigStatement represents the statement which should be executed by ConfigNode All the
  * statements which need to be transformed into IConfigTask should extend this class
  */
-public abstract class ConfigStatement extends Statement {
+public interface IConfigStatement {
 
   /**
    * Determine whether the operation to be performed is read or write
    *
    * @return QueryType
    */
-  public abstract QueryType getQueryType();
+  QueryType getQueryType();
 }
