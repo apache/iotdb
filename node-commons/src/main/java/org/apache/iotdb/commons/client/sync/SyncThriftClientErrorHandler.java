@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.commons.client.sync;
 
+import java.lang.reflect.Constructor;
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
+import net.sf.cglib.proxy.MethodProxy;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,34 +31,29 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
-public class SyncThriftClientErrorHandler<T extends SyncThriftClient> implements InvocationHandler {
+public class SyncThriftClientErrorHandler implements MethodInterceptor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncThriftClientErrorHandler.class);
 
-  private final T client;
-
-  private SyncThriftClientErrorHandler(T client) {
-    this.client = client;
-  }
-
   public static <V extends SyncThriftClient> V newErrorHandlerClient(
-      V target, Class<? super V> clazz) {
-    return (V)
-        Proxy.newProxyInstance(
-            target.getClass().getClassLoader(),
-            new Class[] {clazz},
-            new SyncThriftClientErrorHandler<V>(target));
+      Class<V> targetClass, Constructor<V> constructor, Object... args) {
+    Enhancer enhancer = new Enhancer();
+    enhancer.setSuperclass(targetClass);
+    enhancer.setCallback(new SyncThriftClientErrorHandler());
+    if (constructor == null) return (V) enhancer.create();
+    return (V) enhancer.create(constructor.getParameterTypes(), args);
   }
 
   @Override
-  public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+  public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy)
+      throws Throwable {
     try {
-      return method.invoke(client, args);
+      return methodProxy.invokeSuper(o, objects);
     } catch (InvocationTargetException e) {
       if (e.getTargetException() instanceof TException) {
         LOGGER.error(
             "Error in calling method {}, err: {}", method.getName(), e.getTargetException());
-        client.invalidate();
+        ((SyncThriftClient)o).invalidate();
       }
       throw new TException("Error in calling method " + method.getName(), e.getTargetException());
     } catch (Exception e) {

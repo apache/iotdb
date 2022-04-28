@@ -236,11 +236,17 @@ public class ClientManagerTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // get another sync client, should throw error and return null
-    long start = System.nanoTime();
-    SyncDataNodeInternalServiceClient syncClient2 = syncClusterManager.borrowClient(endPoint);
-    long end = System.nanoTime();
-    Assert.assertTrue(end - start >= DefaultProperty.WAIT_CLIENT_TIMEOUT_MS * 1_000_000);
-    Assert.assertNull(syncClient2);
+    SyncDataNodeInternalServiceClient syncClient2 = null;
+    try {
+      long start = System.nanoTime();
+      syncClient2 = syncClusterManager.borrowClient(endPoint);
+      long end = System.nanoTime();
+      Assert.assertTrue(end - start >= DefaultProperty.WAIT_CLIENT_TIMEOUT_MS * 1_000_000);
+      Assert.assertNotNull(syncClient2);
+    } catch (IOException e) {
+      Assert.assertTrue(e.getMessage().startsWith("Borrow client from pool for node"));
+    }
+
 
     // return one sync client
     syncClient1.close();
@@ -303,11 +309,16 @@ public class ClientManagerTest {
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
     // get another sync client, should wait waitClientTimeoutMS ms, throw error and return null
-    long start = System.nanoTime();
-    SyncDataNodeInternalServiceClient syncClient2 = syncClusterManager.borrowClient(endPoint);
-    long end = System.nanoTime();
-    Assert.assertTrue(end - start >= waitClientTimeoutMS * 1_000_000);
-    Assert.assertNull(syncClient2);
+    SyncDataNodeInternalServiceClient syncClient2 = null;
+    try {
+      long start = System.nanoTime();
+      syncClient2 = syncClusterManager.borrowClient(endPoint);
+      long end = System.nanoTime();
+      Assert.assertTrue(end - start >= waitClientTimeoutMS * 1_000_000);
+      Assert.assertNotNull(syncClient2);
+    } catch (IOException e) {
+      Assert.assertTrue(e.getMessage().startsWith("Borrow client from pool for node"));
+    }
 
     // return one sync client
     syncClient1.close();
