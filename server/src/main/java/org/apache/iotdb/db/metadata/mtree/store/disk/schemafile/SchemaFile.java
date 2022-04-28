@@ -749,7 +749,6 @@ public class SchemaFile implements ISchemaFile {
     }
 
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
-      // TODO: concurrent write will fail for this race condition
       if (entry.getValue().isCapableForSize(size)) {
         dirtyPages.putIfAbsent(entry.getKey(), entry.getValue());
         return pageInstCache.get(entry.getKey());
@@ -767,8 +766,6 @@ public class SchemaFile implements ISchemaFile {
    * @return an existed page
    */
   private ISchemaPage getPageInstance(int pageIdx) throws IOException, MetadataException {
-    // TODO: improve concurrent control
-    //  since now one page may be evicted after returned but before updated
     if (pageIdx > lastPageIndex) {
       throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
     }
@@ -777,7 +774,6 @@ public class SchemaFile implements ISchemaFile {
       return rootPage;
     }
 
-    // TODO: improve concurrent control
     pageLocks.readLock(pageIdx);
     try {
       if (dirtyPages.containsKey(pageIdx)) {
