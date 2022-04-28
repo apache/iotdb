@@ -20,12 +20,10 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -57,27 +55,11 @@ public class DevicesSchemaScanNode extends SchemaScanNode {
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    if (hasSgCol) {
-      return HeaderConstant.showDevicesWithSgHeader.getColumnHeaders();
-    }
-    return HeaderConstant.showDevicesHeader.getColumnHeaders();
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
     if (hasSgCol) {
       return HeaderConstant.showDevicesWithSgHeader.getRespColumns();
     }
     return HeaderConstant.showDevicesHeader.getRespColumns();
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    if (hasSgCol) {
-      return HeaderConstant.showDevicesWithSgHeader.getRespDataTypes();
-    }
-    return HeaderConstant.showDevicesHeader.getRespDataTypes();
   }
 
   @Override
