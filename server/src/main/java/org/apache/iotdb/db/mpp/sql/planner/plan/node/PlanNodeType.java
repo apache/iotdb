@@ -93,7 +93,8 @@ public enum PlanNodeType {
   GROUP_BY_TIME((short) 31),
   PROJECT((short) 32),
   ALIGNED_SERIES_SCAN((short) 33),
-  ALIGNED_SERIES_AGGREGATE_SCAN((short) 34);
+  ALIGNED_SERIES_AGGREGATE_SCAN((short) 34),
+  DEVICE_MERGE((short) 35);
 
   private final short nodeType;
 

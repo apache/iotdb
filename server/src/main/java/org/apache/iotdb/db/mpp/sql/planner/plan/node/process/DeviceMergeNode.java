@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -29,47 +30,36 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
-/**
- * DeviceViewNode is responsible for constructing a device-based view of a set of series. And output
- * the result with specific order. The order could be 'order by device' or 'order by timestamp'
- *
- * <p>Each output from its children should have the same schema. That means, the columns should be
- * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
- * contain n+1 columns where the new column is Device column.
- */
-public class DeviceViewNode extends ProcessNode {
+public class DeviceMergeNode extends ProcessNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first OrderBy in this list has higher priority.
   private final List<OrderBy> mergeOrders;
 
-  // The size devices and children should be the same.
-  private final List<String> devices = new ArrayList<>();
+  // the list of selected devices
+  private final List<String> devices;
 
-  // each child node whose output TsBlock contains the data belonged to one device.
-  private final List<PlanNode> children = new ArrayList<>();
+  private final List<PlanNode> children;
 
-  // measurement columns in result output
-  private final List<String> measurements;
-
-  public DeviceViewNode(PlanNodeId id, List<OrderBy> mergeOrders, List<String> measurements) {
+  public DeviceMergeNode(
+      PlanNodeId id, List<PlanNode> children, List<OrderBy> mergeOrders, List<String> devices) {
     super(id);
+    this.children = children;
     this.mergeOrders = mergeOrders;
-    this.measurements = measurements;
+    this.devices = devices;
   }
 
-  public DeviceViewNode(
-      PlanNodeId id, List<OrderBy> mergeOrders, List<String> measurements, List<String> devices) {
+  public DeviceMergeNode(PlanNodeId id, List<OrderBy> mergeOrders, List<String> devices) {
     super(id);
+    this.children = new ArrayList<>();
     this.mergeOrders = mergeOrders;
-    this.measurements = measurements;
-    this.devices.addAll(devices);
+    this.devices = devices;
   }
 
-  public void addChildDeviceNode(String deviceName, PlanNode childNode) {
-    this.devices.add(deviceName);
-    this.children.add(childNode);
+  public List<OrderBy> getMergeOrders() {
+    return mergeOrders;
   }
 
   public List<String> getDevices() {
@@ -93,44 +83,38 @@ public class DeviceViewNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new DeviceViewNode(getPlanNodeId(), mergeOrders, measurements, devices);
+    return new DeviceMergeNode(getPlanNodeId(), getMergeOrders(), getDevices());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return measurements;
+    return children.stream()
+        .map(PlanNode::getOutputColumnNames)
+        .flatMap(List::stream)
+        .distinct()
+        .collect(Collectors.toList());
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitDeviceView(this, context);
+    return visitor.visitDeviceMerge(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DEVICE_VIEW.serialize(byteBuffer);
+    PlanNodeType.DEVICE_MERGE.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), byteBuffer);
     ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(measurements.size(), byteBuffer);
-    for (String measurement : measurements) {
-      ReadWriteIOUtils.write(measurement, byteBuffer);
-    }
     ReadWriteIOUtils.write(devices.size(), byteBuffer);
     for (String deviceName : devices) {
       ReadWriteIOUtils.write(deviceName, byteBuffer);
     }
   }
 
-  public static DeviceViewNode deserialize(ByteBuffer byteBuffer) {
+  public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
     List<OrderBy> mergeOrders = new ArrayList<>();
     mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
     mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
-    int measurementsSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> measurements = new ArrayList<>();
-    while (measurementsSize > 0) {
-      measurements.add(ReadWriteIOUtils.readString(byteBuffer));
-      measurementsSize--;
-    }
     int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> devices = new ArrayList<>();
     while (devicesSize > 0) {
@@ -138,7 +122,7 @@ public class DeviceViewNode extends ProcessNode {
       devicesSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DeviceViewNode(planNodeId, mergeOrders, measurements, devices);
+    return new DeviceMergeNode(planNodeId, mergeOrders, devices);
   }
 
   @Override
@@ -152,15 +136,14 @@ public class DeviceViewNode extends ProcessNode {
     if (!super.equals(o)) {
       return false;
     }
-    DeviceViewNode that = (DeviceViewNode) o;
-    return mergeOrders.equals(that.mergeOrders)
-        && devices.equals(that.devices)
-        && children.equals(that.children)
-        && measurements.equals(that.measurements);
+    DeviceMergeNode that = (DeviceMergeNode) o;
+    return Objects.equals(mergeOrders, that.mergeOrders)
+        && Objects.equals(devices, that.devices)
+        && Objects.equals(children, that.children);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), mergeOrders, devices, children, measurements);
+    return Objects.hash(super.hashCode(), mergeOrders, devices, children);
   }
 }

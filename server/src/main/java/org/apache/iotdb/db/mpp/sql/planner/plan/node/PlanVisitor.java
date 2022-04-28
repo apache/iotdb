@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSer
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
@@ -74,6 +75,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitDeviceView(DeviceViewNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitDeviceMerge(DeviceMergeNode node, C context) {
     return visitPlan(node, context);
   }
 

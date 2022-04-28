@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
  * timestamp column. It will join two or more TsBlock by Timestamp column. The output result of
  * TimeJoinOperator is sorted by timestamp
  */
-// TODO: define the TimeJoinMergeNode for distributed plan
 public class TimeJoinNode extends ProcessNode {
 
   // This parameter indicates the order when executing multiway merge sort.

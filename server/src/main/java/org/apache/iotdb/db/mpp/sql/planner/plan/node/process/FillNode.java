@@ -116,15 +116,7 @@ public class FillNode extends ProcessNode {
       return false;
     }
     FillNode fillNode = (FillNode) o;
-    if (!fillDescriptorList.equals(fillNode.fillDescriptorList)) {
-      return false;
-    }
-    if (!child.equals(fillNode.child)) {
-      return false;
-    }
-    return true;
-    // return fillDescriptorList.equals(fillNode.fillDescriptorList) &&
-    // child.equals(fillNode.child);
+    return fillDescriptorList.equals(fillNode.fillDescriptorList) && child.equals(fillNode.child);
   }
 
   @Override

@@ -27,12 +27,12 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class GroupByTimeNode extends ProcessNode {
@@ -45,7 +45,7 @@ public class GroupByTimeNode extends ProcessNode {
   // Its value will be null if there is no `group by time` clause.
   @Nullable private final GroupByTimeParameter groupByTimeParameter;
 
-  private PlanNode child;
+  private List<PlanNode> children;
 
   public GroupByTimeNode(
       PlanNodeId id,
@@ -54,15 +54,16 @@ public class GroupByTimeNode extends ProcessNode {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
+    this.children = new ArrayList<>();
   }
 
   public GroupByTimeNode(
       PlanNodeId id,
-      PlanNode child,
+      List<PlanNode> children,
       List<AggregationDescriptor> aggregationDescriptorList,
       GroupByTimeParameter groupByTimeParameter) {
     this(id, aggregationDescriptorList, groupByTimeParameter);
-    this.child = child;
+    this.children = children;
   }
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
@@ -76,12 +77,12 @@ public class GroupByTimeNode extends ProcessNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
+    return children;
   }
 
   @Override
   public void addChild(PlanNode child) {
-    this.child = child;
+    this.children.add(child);
   }
 
   @Override
@@ -137,5 +138,28 @@ public class GroupByTimeNode extends ProcessNode {
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new GroupByTimeNode(planNodeId, aggregationDescriptorList, groupByTimeParameter);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    GroupByTimeNode that = (GroupByTimeNode) o;
+    return Objects.equals(aggregationDescriptorList, that.aggregationDescriptorList)
+        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
+        && Objects.equals(children, that.children);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        super.hashCode(), aggregationDescriptorList, groupByTimeParameter, children);
   }
 }
