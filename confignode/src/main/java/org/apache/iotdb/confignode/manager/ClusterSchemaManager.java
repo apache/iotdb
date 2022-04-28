@@ -100,36 +100,15 @@ public class ClusterSchemaManager {
         allocateRegions(TConsensusGroupType.SchemaRegion, createRegionsReq, setStorageGroupReq);
         allocateRegions(TConsensusGroupType.DataRegion, createRegionsReq, setStorageGroupReq);
 
+        // Create Regions in DataNode
+        createRegions(
+            setStorageGroupReq.getSchema().getName(),
+            createRegionsReq,
+            setStorageGroupReq.getSchema().getTTL());
+
         // Persist StorageGroup and Regions
         getConsensusManager().write(setStorageGroupReq);
         result = getConsensusManager().write(createRegionsReq).getStatus();
-
-        // Create Regions in DataNode
-        boolean success =
-            createRegions(
-                setStorageGroupReq.getSchema().getName(),
-                createRegionsReq,
-                setStorageGroupReq.getSchema().getTTL());
-        if (!success) {
-          // TODO: Rollback SetStorageGroupReq and CreateRegionsReq after IT framework done
-          // Rollback SetStorageGroupReq
-          // DeleteStorageGroupReq deleteStorageGroupReq = new
-          // DeleteStorageGroupReq(setStorageGroupReq.getSchema().getName());
-          // getConsensusManager().write(deleteStorageGroupReq);
-
-          // Rollback CreateRegionsReq
-          // DeleteRegionsReq deleteRegionsReq = new DeleteRegionsReq();
-          // for (TRegionReplicaSet regionReplicaSet : createRegionsReq.getRegionReplicaSets()) {
-          //   deleteRegionsReq.addConsensusGroupId(regionReplicaSet.getRegionId());
-          // }
-          // getConsensusManager().write(deleteRegionsReq);
-
-          // TODO: Return error TSStatus after IT framework done
-          // LOGGER.error("Set StorageGroup failed because can't create SchemaRegions or DataRegions
-          // on some DataNodes.");
-          // result = new TSStatus(TSStatusCode.NO_CONNECTION.getStatusCode());
-          // result.setMessage("Can't connect to DataNode");
-        }
       }
     }
     return result;
@@ -170,7 +149,8 @@ public class ClusterSchemaManager {
     }
   }
 
-  private boolean createRegions(String storageGroup, CreateRegionsReq createRegionsReq, long TTL) {
+  /** Create Regions on DataNode TODO: Async create Regions by LoadManager */
+  private void createRegions(String storageGroup, CreateRegionsReq createRegionsReq, long TTL) {
     int regionNum =
         initialSchemaRegionCount * schemaReplicationFactor
             + initialDataRegionCount * dataReplicationFactor;
@@ -221,11 +201,10 @@ public class ClusterSchemaManager {
     }
 
     if (bitSet.cardinality() < regionNum) {
-      return false;
+      LOGGER.error("Can't create SchemaRegions and DataRegions on DataNodes.");
     } else {
       LOGGER.info("Successfully create SchemaRegions on DataNodes: {}", schemaRegionEndPoints);
       LOGGER.info("Successfully create DataRegions on DataNodes: {}", dataRegionEndPoints);
-      return true;
     }
   }
 
