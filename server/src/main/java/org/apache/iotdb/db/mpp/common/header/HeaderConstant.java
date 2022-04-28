@@ -42,12 +42,52 @@ public class HeaderConstant {
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String COLUMN_COUNT = "count";
 
+  // column names for count statement
+  public static final String COLUMN_COLUMN = "column";
+  public static final String COLUMN_COUNT_DEVICES = "count(devices)";
+  public static final String COLUMN_COUNT_NODES = "count(nodes)";
+  public static final String COLUMN_COUNT_TIMESERIES = "count(timeseries)";
+  public static final String COLUMN_COUNT_STORAGE_GROUP = "count(storage group)";
+
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
   public static final DatasetHeader showDevicesHeader;
   public static final DatasetHeader showDevicesWithSgHeader;
   public static final DatasetHeader showStorageGroupHeader;
   public static final DatasetHeader countStorageGroupHeader;
+
+  // dataset header for count statement
+  public static final DatasetHeader countStorageGroupHeader;
+  public static final DatasetHeader countNodesHeader;
+  public static final DatasetHeader countDevicesHeader;
+  public static final DatasetHeader countTimeSeriesHeader;
+  public static final DatasetHeader countLevelTimeSeriesHeader;
+
+  static {
+    countStorageGroupHeader =
+        new DatasetHeader(
+            Collections.singletonList(
+                new ColumnHeader(COLUMN_COUNT_STORAGE_GROUP, TSDataType.INT32)),
+            true);
+    countNodesHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_COUNT_NODES, TSDataType.INT32)),
+            true);
+    countDevicesHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_COUNT_DEVICES, TSDataType.INT32)),
+            true);
+    countTimeSeriesHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_COUNT_TIMESERIES, TSDataType.INT32)),
+            true);
+    countLevelTimeSeriesHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_COLUMN, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_COUNT_TIMESERIES, TSDataType.INT32)),
+            true);
+  }
 
   static {
     showTimeSeriesHeader =

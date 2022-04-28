@@ -17,20 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.statement;
+package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
-/**
- * ConfigStatement represents the statement which should be executed by ConfigNode All the
- * statements which need to be transformed into IConfigTask should extend this class
- */
-public abstract class ConfigStatement extends Statement {
+public class CountDevicesStatement extends CountStatement {
+  public CountDevicesStatement(PartialPath partialPath) {
+    super(partialPath);
+  }
 
-  /**
-   * Determine whether the operation to be performed is read or write
-   *
-   * @return QueryType
-   */
-  public abstract QueryType getQueryType();
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitCountDevices(this, context);
+  }
 }

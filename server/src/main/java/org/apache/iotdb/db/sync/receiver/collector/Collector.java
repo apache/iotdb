@@ -84,7 +84,7 @@ public class Collector {
   }
 
   public void startPipe(String pipeName, String remoteIp, long createTime) {
-    String dir = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+    String dir = SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
     synchronized (dir.intern()) {
       if (!taskFutures.containsKey(dir)) {
         ScanTask task = new ScanTask(pipeName, remoteIp, createTime);
@@ -94,7 +94,7 @@ public class Collector {
   }
 
   public void stopPipe(String pipeName, String remoteIp, long createTime) {
-    String dir = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+    String dir = SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
     logger.info("try stop task key={}", dir);
     synchronized (dir.intern()) {
       if (taskFutures.containsKey(dir)) {
