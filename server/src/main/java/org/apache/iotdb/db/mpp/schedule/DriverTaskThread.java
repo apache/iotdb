@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.schedule;
 
 import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -30,24 +30,24 @@ import io.airlift.units.Duration;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-/** the worker thread of {@link FragmentInstanceTask} */
-public class FragmentInstanceTaskExecutor extends AbstractExecutor {
+/** the worker thread of {@link DriverTask} */
+public class DriverTaskThread extends AbstractDriverThread {
 
   public static final Duration EXECUTION_TIME_SLICE = new Duration(100, TimeUnit.MILLISECONDS);
 
   // As the callback is lightweight enough, there's no need to use another one thread to execute.
   private static final Executor listeningExecutor = MoreExecutors.directExecutor();
 
-  public FragmentInstanceTaskExecutor(
+  public DriverTaskThread(
       String workerId,
       ThreadGroup tg,
-      IndexedBlockingQueue<FragmentInstanceTask> queue,
+      IndexedBlockingQueue<DriverTask> queue,
       ITaskScheduler scheduler) {
     super(workerId, tg, queue, scheduler);
   }
 
   @Override
-  public void execute(FragmentInstanceTask task) throws InterruptedException {
+  public void execute(DriverTask task) throws InterruptedException {
     // try to switch it to RUNNING
     if (!scheduler.readyToRunning(task)) {
       return;
