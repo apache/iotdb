@@ -87,6 +87,7 @@ public class IoTDBSelectSchemaIT {
       "!true||s1>0",
       "-(-1)+s1",
       "sin(s1)+s1",
+      "((s1+1)*2-1)%2+1.5+s2"
     };
     String[] completeExpressions = {
       "root.sg.d1.s1+root.sg.d1.s2",
@@ -99,13 +100,14 @@ public class IoTDBSelectSchemaIT {
       "!true|root.sg.d1.s1>0",
       "-(-1)+root.sg.d1.s1",
       "sin(root.sg.d1.s1)+root.sg.d1.s1",
+      "((root.sg.d1.s1+1)*2-1)%2+1.5+root.sg.d1.s2",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s, %s, %s, %s, %s, %s, %s, %s, %s, %s from root.sg.d1",
+                  "select %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s from root.sg.d1",
                   expressions[0],
                   expressions[1],
                   expressions[2],
@@ -115,7 +117,8 @@ public class IoTDBSelectSchemaIT {
                   expressions[6],
                   expressions[7],
                   expressions[8],
-                  expressions[9]));
+                  expressions[9],
+                  expressions[10]));
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + expressions.length, columnCount);
 

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.expression.unary;
+package org.apache.iotdb.db.query.expression.leaf;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -27,7 +27,6 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -38,14 +37,12 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.commons.lang3.Validate;
 
 import java.nio.ByteBuffer;
-import java.time.ZoneId;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /** Constant operand */
-public class ConstantOperand extends Expression {
+public class ConstantOperand extends LeafOperand {
 
   private final String valueString;
   private final TSDataType dataType;
@@ -103,17 +100,6 @@ public class ConstantOperand extends Expression {
 
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
-    // Do nothing
-  }
-
-  @Override
-  public List<Expression> getExpressions() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public void constructUdfExecutors(
-      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     // Do nothing
   }
 

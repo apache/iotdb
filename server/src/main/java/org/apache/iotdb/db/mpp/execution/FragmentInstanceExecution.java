@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.execution;
 
 import org.apache.iotdb.db.mpp.buffer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
+import org.apache.iotdb.db.mpp.schedule.IDriverScheduler;
 
 import com.google.common.collect.ImmutableList;
 import io.airlift.stats.CounterStat;
@@ -29,8 +29,6 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.FragmentInstanceState.FAILED;
 
 public class FragmentInstanceExecution {
-
-  private final IFragmentInstanceScheduler scheduler;
 
   private final FragmentInstanceId instanceId;
   private final FragmentInstanceContext context;
@@ -44,31 +42,29 @@ public class FragmentInstanceExecution {
   private long lastHeartbeat;
 
   public static FragmentInstanceExecution createFragmentInstanceExecution(
-      IFragmentInstanceScheduler scheduler,
+      IDriverScheduler scheduler,
       FragmentInstanceId instanceId,
       FragmentInstanceContext context,
       IDriver driver,
       FragmentInstanceStateMachine stateMachine,
       CounterStat failedInstances) {
     FragmentInstanceExecution execution =
-        new FragmentInstanceExecution(scheduler, instanceId, context, driver, stateMachine);
-    execution.initialize(failedInstances);
+        new FragmentInstanceExecution(instanceId, context, driver, stateMachine);
+    execution.initialize(failedInstances, scheduler);
+    scheduler.submitDrivers(instanceId.getQueryId(), ImmutableList.of(driver));
     return execution;
   }
 
   private FragmentInstanceExecution(
-      IFragmentInstanceScheduler scheduler,
       FragmentInstanceId instanceId,
       FragmentInstanceContext context,
       IDriver driver,
       FragmentInstanceStateMachine stateMachine) {
-    this.scheduler = scheduler;
     this.instanceId = instanceId;
     this.context = context;
     this.driver = driver;
     this.sinkHandle = driver.getSinkHandle();
     this.stateMachine = stateMachine;
-    scheduler.submitFragmentInstances(instanceId.getQueryId(), ImmutableList.of(driver));
   }
 
   public void recordHeartbeat() {
@@ -101,7 +97,7 @@ public class FragmentInstanceExecution {
   }
 
   // this is a separate method to ensure that the `this` reference is not leaked during construction
-  private void initialize(CounterStat failedInstances) {
+  private void initialize(CounterStat failedInstances, IDriverScheduler scheduler) {
     requireNonNull(failedInstances, "failedInstances is null");
     stateMachine.addStateChangeListener(
         newState -> {

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.expression.unary;
+package org.apache.iotdb.db.query.expression.leaf;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -30,7 +30,6 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
@@ -40,13 +39,11 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.nio.ByteBuffer;
-import java.time.ZoneId;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TimeSeriesOperand extends Expression {
+public class TimeSeriesOperand extends LeafOperand {
 
   private PartialPath path;
 
@@ -69,11 +66,6 @@ public class TimeSeriesOperand extends Expression {
   @Override
   public boolean isConstantOperandInternal() {
     return false;
-  }
-
-  @Override
-  public List<Expression> getExpressions() {
-    return Collections.emptyList();
   }
 
   @Override
@@ -116,12 +108,6 @@ public class TimeSeriesOperand extends Expression {
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
     pathSet.add(path);
-  }
-
-  @Override
-  public void constructUdfExecutors(
-      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
-    // nothing to do
   }
 
   @Override
