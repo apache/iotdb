@@ -22,9 +22,8 @@ package org.apache.iotdb.db.mpp.memory;
 import com.google.common.util.concurrent.AbstractFuture;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.commons.lang3.Validate;
-
 import javax.annotation.Nullable;
+import org.apache.commons.lang3.Validate;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -141,14 +140,14 @@ public class MemoryPool {
    *     return 0.
    */
   public synchronized long tryCancel(ListenableFuture<Void> future) {
+    if (future.isDone()) {
+      return 0L;
+    }
+
     Validate.notNull(future);
     Validate.isTrue(
         future instanceof MemoryReservationFuture,
         "invalid future type " + future.getClass().getSimpleName());
-
-    if (future.isDone()) {
-      return 0L;
-    }
     future.cancel(true);
     return ((MemoryReservationFuture<Void>) future).getBytes();
   }
