@@ -513,6 +513,7 @@ public class DistributionPlanner {
 
     private SubPlan createSubPlan(PlanNode root) {
       PlanFragment fragment = new PlanFragment(getNextFragmentId(), root);
+      fragment.setTypeProvider(analysis.getTypeProvider());
       return new SubPlan(fragment);
     }
   }

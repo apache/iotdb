@@ -81,7 +81,7 @@ public class LogicalPlanner {
       analysis.getRespDatasetHeader().setColumnToTsBlockIndexMap(rootNode.getOutputColumnNames());
     }
 
-    return new LogicalQueryPlan(context, rootNode, analysis.getTypeProvider());
+    return new LogicalQueryPlan(context, rootNode);
   }
 
   /**
