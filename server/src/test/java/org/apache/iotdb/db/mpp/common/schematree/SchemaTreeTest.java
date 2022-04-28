@@ -112,6 +112,9 @@ public class SchemaTreeTest {
         new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.d.**.c.s1"), 0, 0, false);
     checkVisitorResult(
         visitor, 1, new String[] {"root.c.c.c.d.c.c.s1"}, null, new boolean[] {false});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.d.*.*"), 0, 0, false);
+    checkVisitorResult(visitor, 1, new String[] {"root.c.c.c.d.c.s1"}, null, new boolean[] {false});
   }
 
   private void testSchemaTree(SchemaNode root) throws Exception {
@@ -203,6 +206,22 @@ public class SchemaTreeTest {
         new String[] {"status", "status"},
         new boolean[] {true, false},
         new int[] {2, 3});
+
+    visitor = new SchemaTreeMeasurementVisitor(root, new PartialPath("root.**.*"), 10, 0, false);
+    checkVisitorResult(
+        visitor,
+        6,
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d2.a.s1",
+          "root.sg.d2.a.s2",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2"
+        },
+        new String[] {"", "", "", "", "", ""},
+        new boolean[] {false, false, true, true, false, false},
+        new int[] {1, 2, 3, 4, 5, 6});
   }
 
   /**
