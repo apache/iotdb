@@ -69,18 +69,18 @@ public class SessionExample {
 
     // set session fetchSize
     session.setFetchSize(10000);
+    //session.executeNonQueryStatement("set storage group to root.sg1");
 
-    try {
-      session.setStorageGroup("root.sg1");
-    } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-        throw e;
-      }
-    }
+//    try {
+//      session.setStorageGroup("root.sg1");
+//    } catch (StatementExecutionException e) {
+//      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+//        throw e;
+//      }
+//    }
 
     // createTemplate();
-    createTimeseries();
-    createMultiTimeseries();
+    //createTimeseries();
     insertRecord();
     insertTablet();
     //    insertTabletWithNullValues();
@@ -98,16 +98,16 @@ public class SessionExample {
     //    deleteTimeseries();
     //    setTimeout();
 
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    sessionEnableRedirect.setEnableQueryRedirection(true);
-    sessionEnableRedirect.open(false);
-
-    // set session fetchSize
-    sessionEnableRedirect.setFetchSize(10000);
-
-    insertRecord4Redirect();
-    query4Redirect();
-    sessionEnableRedirect.close();
+//    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+//    sessionEnableRedirect.setEnableQueryRedirection(true);
+//    sessionEnableRedirect.open(false);
+//
+//    // set session fetchSize
+//    sessionEnableRedirect.setFetchSize(10000);
+//
+//    insertRecord4Redirect();
+//    query4Redirect();
+//    sessionEnableRedirect.close();
     session.close();
   }
 
@@ -133,56 +133,60 @@ public class SessionExample {
 
   private static void createTimeseries()
       throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement("create timeseries root.sg1.d1.s1 with datatype=int64");
+    session.executeNonQueryStatement("create timeseries root.sg1.d1.s2 with datatype=int64");
+    session.executeNonQueryStatement("create timeseries root.sg1.d1.s3 with datatype=int64");
 
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S1)) {
-      session.createTimeseries(
-          ROOT_SG1_D1_S1, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    }
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S2)) {
-      session.createTimeseries(
-          ROOT_SG1_D1_S2, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    }
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S3)) {
-      session.createTimeseries(
-          ROOT_SG1_D1_S3, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    }
 
-    // create timeseries with tags and attributes
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S4)) {
-      Map<String, String> tags = new HashMap<>();
-      tags.put("tag1", "v1");
-      Map<String, String> attributes = new HashMap<>();
-      attributes.put("description", "v1");
-      session.createTimeseries(
-          ROOT_SG1_D1_S4,
-          TSDataType.INT64,
-          TSEncoding.RLE,
-          CompressionType.SNAPPY,
-          null,
-          tags,
-          attributes,
-          "temperature");
-    }
+//    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S1)) {
+//      session.createTimeseries(
+//          ROOT_SG1_D1_S1, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+////    }
+////    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S2)) {
+//      session.createTimeseries(
+//          ROOT_SG1_D1_S2, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+////    }
+////    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S3)) {
+//      session.createTimeseries(
+//          ROOT_SG1_D1_S3, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+////    }
+
+//    // create timeseries with tags and attributes
+//    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S4)) {
+//      Map<String, String> tags = new HashMap<>();
+//      tags.put("tag1", "v1");
+//      Map<String, String> attributes = new HashMap<>();
+//      attributes.put("description", "v1");
+//      session.createTimeseries(
+//          ROOT_SG1_D1_S4,
+//          TSDataType.INT64,
+//          TSEncoding.RLE,
+//          CompressionType.SNAPPY,
+//          null,
+//          tags,
+//          attributes,
+//          "temperature");
+//    }
 
     // create timeseries with SDT property, SDT will take place when flushing
-    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S5)) {
-      // COMPDEV is required
-      // COMPMAXTIME and COMPMINTIME are optional and their unit is ms
-      Map<String, String> props = new HashMap<>();
-      props.put("LOSS", "sdt");
-      props.put("COMPDEV", "0.01");
-      props.put("COMPMINTIME", "2");
-      props.put("COMPMAXTIME", "10");
-      session.createTimeseries(
-          ROOT_SG1_D1_S5,
-          TSDataType.INT64,
-          TSEncoding.RLE,
-          CompressionType.SNAPPY,
-          props,
-          null,
-          null,
-          null);
-    }
+//    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S5)) {
+//      // COMPDEV is required
+//      // COMPMAXTIME and COMPMINTIME are optional and their unit is ms
+//      Map<String, String> props = new HashMap<>();
+//      props.put("LOSS", "sdt");
+//      props.put("COMPDEV", "0.01");
+//      props.put("COMPMINTIME", "2");
+//      props.put("COMPMAXTIME", "10");
+//      session.createTimeseries(
+//          ROOT_SG1_D1_S5,
+//          TSDataType.INT64,
+//          TSEncoding.RLE,
+//          CompressionType.SNAPPY,
+//          props,
+//          null,
+//          null,
+//          null);
+//    }
   }
 
   private static void createMultiTimeseries()
