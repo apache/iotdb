@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.mpp.sql.statement.crud.BatchInsert;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -40,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertRowsNode extends InsertNode implements BatchInsert {
+public class InsertRowsNode extends InsertNode implements BatchInsertNode {
 
   /**
    * Suppose there is an InsertRowsNode, which contains 5 InsertRowNodes,
@@ -111,6 +110,13 @@ public class InsertRowsNode extends InsertNode implements BatchInsert {
       }
     }
     return true;
+  }
+
+  @Override
+  public void setMeasurementSchemas(SchemaTree schemaTree) {
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      insertRowNode.setMeasurementSchemas(schemaTree);
+    }
   }
 
   @Override
