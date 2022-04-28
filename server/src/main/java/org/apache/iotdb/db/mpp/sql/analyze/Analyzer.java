@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
@@ -96,10 +97,9 @@ public class Analyzer {
   private final class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> {
 
     @Override
-    public Analysis visitStatement(Statement statement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(statement);
-      return analysis;
+    public Analysis visitNode(StatementNode node, MPPQueryContext context) {
+      throw new UnsupportedOperationException(
+          "Unsupported statement type: " + node.getClass().getName());
     }
 
     @Override
@@ -118,8 +118,10 @@ public class Analyzer {
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
         // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
+        TypeProvider typeProvider = new TypeProvider();
         rewrittenStatement =
-            (QueryStatement) new WildcardsRemover().rewrite(rewrittenStatement, schemaTree);
+            (QueryStatement)
+                new WildcardsRemover().rewrite(rewrittenStatement, typeProvider, schemaTree);
 
         // fetch partition information
         Set<PartialPath> devicePathSet = new HashSet<>();
@@ -173,19 +175,19 @@ public class Analyzer {
         }
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
+        analysis.setTypeProvider(typeProvider);
         analysis.setRespDatasetHeader(queryStatement.constructDatasetHeader());
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException
           | PathNumOverLimitException
           | QueryFilterOptimizationException e) {
-        e.printStackTrace();
+        throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
     }
 
     @Override
     public Analysis visitInsert(InsertStatement insertStatement, MPPQueryContext context) {
-      // TODO: do analyze for insert statement
       context.setQueryType(QueryType.WRITE);
 
       long[] timeArray = insertStatement.getTimes();

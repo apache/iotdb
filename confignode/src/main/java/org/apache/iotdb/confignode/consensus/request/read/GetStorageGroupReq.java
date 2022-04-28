@@ -16,22 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.consensus.request.read;
 
-package org.apache.iotdb.db.mpp.sql.statement.crud;
-
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.util.List;
 
-/** BatchInsert contains multiple sub insert. */
-public interface BatchInsert {
+public class GetStorageGroupReq extends CountStorageGroupReq {
 
-  List<PartialPath> getDevicePaths();
+  public GetStorageGroupReq() {
+    super(ConfigRequestType.GetStorageGroup);
+  }
 
-  List<String[]> getMeasurementsList();
-
-  List<TSDataType[]> getDataTypesList();
-
-  List<Boolean> getAlignedList();
+  public GetStorageGroupReq(List<String> storageGroupPathPattern) {
+    super(ConfigRequestType.GetStorageGroup, storageGroupPathPattern);
+  }
 }

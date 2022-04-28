@@ -21,12 +21,10 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -44,18 +42,8 @@ public class DevicesCountNode extends SchemaScanNode {
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return HeaderConstant.countDevicesHeader.getColumnHeaders();
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
     return HeaderConstant.countDevicesHeader.getRespColumns();
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return HeaderConstant.countDevicesHeader.getRespDataTypes();
   }
 
   @Override
