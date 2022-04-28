@@ -19,21 +19,21 @@
 package org.apache.iotdb.db.mpp.schedule;
 
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
 
-/** the thread for watching the timeout of {@link FragmentInstanceTask} */
-public class FragmentInstanceTimeoutSentinel extends AbstractExecutor {
+/** the thread for watching the timeout of {@link DriverTask} */
+public class DriverTaskTimeoutSentinelThread extends AbstractDriverThread {
 
-  public FragmentInstanceTimeoutSentinel(
+  public DriverTaskTimeoutSentinelThread(
       String workerId,
       ThreadGroup tg,
-      IndexedBlockingQueue<FragmentInstanceTask> queue,
+      IndexedBlockingQueue<DriverTask> queue,
       ITaskScheduler scheduler) {
     super(workerId, tg, queue, scheduler);
   }
 
   @Override
-  public void execute(FragmentInstanceTask task) throws InterruptedException {
+  public void execute(DriverTask task) throws InterruptedException {
     task.lock();
     try {
       // if this task is already in an end state, it means that the resource releasing will be

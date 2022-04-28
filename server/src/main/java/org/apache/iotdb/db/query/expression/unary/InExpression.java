@@ -25,32 +25,44 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.commons.lang3.Validate;
-
 import java.nio.ByteBuffer;
-import java.util.regex.Pattern;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 
-public class RegularExpression extends UnaryExpression {
+public class InExpression extends UnaryExpression {
 
-  private final String patternString;
-  private final Pattern pattern;
+  private final LinkedHashSet<String> values;
 
-  public RegularExpression(Expression expression, String patternString) {
+  protected InExpression(Expression expression, LinkedHashSet<String> values) {
     super(expression);
-    this.patternString = patternString;
-    pattern = Pattern.compile(patternString);
+    this.values = values;
   }
 
-  public RegularExpression(Expression expression, String patternString, Pattern pattern) {
-    super(expression);
-    this.patternString = patternString;
-    this.pattern = pattern;
-  }
-
-  public RegularExpression(ByteBuffer byteBuffer) {
+  public InExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
-    patternString = ReadWriteIOUtils.readString(byteBuffer);
-    pattern = Pattern.compile(Validate.notNull(patternString));
+    final int size = ReadWriteIOUtils.readInt(byteBuffer);
+    values = new LinkedHashSet<>();
+    for (int i = 0; i < size; ++i) {
+      values.add(ReadWriteIOUtils.readString(byteBuffer));
+    }
+  }
+
+  @Override
+  protected String getExpressionStringInternal() {
+    StringBuilder valuesStringBuilder = new StringBuilder();
+    Iterator<String> iterator = values.iterator();
+    if (iterator.hasNext()) {
+      valuesStringBuilder.append(iterator.next());
+    }
+    while (iterator.hasNext()) {
+      valuesStringBuilder.append(", ").append(iterator.next());
+    }
+    return expression + " IN (" + valuesStringBuilder + ")";
+  }
+
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.IN;
   }
 
   @Override
@@ -60,22 +72,15 @@ public class RegularExpression extends UnaryExpression {
 
   @Override
   protected Expression constructExpression(Expression childExpression) {
-    return new RegularExpression(childExpression, patternString, pattern);
-  }
-
-  @Override
-  protected String getExpressionStringInternal() {
-    return expression + " REGEXP " + patternString;
-  }
-
-  @Override
-  public ExpressionType getExpressionType() {
-    return ExpressionType.REGEXP;
+    return new InExpression(childExpression, values);
   }
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(patternString, byteBuffer);
+    ReadWriteIOUtils.write(values.size(), byteBuffer);
+    for (String value : values) {
+      ReadWriteIOUtils.write(value, byteBuffer);
+    }
   }
 }

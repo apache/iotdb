@@ -22,13 +22,18 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -121,12 +126,15 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     return null;
   }
 
-  public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
-    return null;
-  }
-
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public boolean validateSchema(SchemaTree schemaTree) {
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      if (!insertRowNode.validateSchema(schemaTree)) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
@@ -152,6 +160,63 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     }
 
     return new ArrayList<>(splitMap.values());
+  }
+
+  public void addOneInsertRowNode(InsertRowNode node, int index) {
+    insertRowNodeList.add(node);
+    insertRowNodeIndexList.add(index);
+  }
+
+  public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
+    PartialPath devicePath;
+    PlanNodeId planNodeId;
+    List<InsertRowNode> insertRowNodeList = new ArrayList<>();
+    List<Integer> insertRowNodeIndex = new ArrayList<>();
+
+    try {
+      devicePath = new PartialPath(ReadWriteIOUtils.readString(byteBuffer));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowsOfOneDeviceNode", e);
+    }
+
+    int size = byteBuffer.getInt();
+    for (int i = 0; i < size; i++) {
+      InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId(""));
+      insertRowNode.setDevicePath(devicePath);
+      insertRowNode.setTime(byteBuffer.getLong());
+      insertRowNode.deserializeMeasurementsAndValues(byteBuffer);
+      insertRowNodeList.add(insertRowNode);
+    }
+    for (int i = 0; i < size; i++) {
+      insertRowNodeIndex.add(byteBuffer.getInt());
+    }
+
+    planNodeId = PlanNodeId.deserialize(byteBuffer);
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      insertRowNode.setPlanNodeId(planNodeId);
+    }
+
+    InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode = new InsertRowsOfOneDeviceNode(planNodeId);
+    insertRowsOfOneDeviceNode.setInsertRowNodeList(insertRowNodeList);
+    insertRowsOfOneDeviceNode.setInsertRowNodeIndexList(insertRowNodeIndex);
+    insertRowsOfOneDeviceNode.setDevicePath(devicePath);
+    return insertRowsOfOneDeviceNode;
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE.serialize(byteBuffer);
+    ReadWriteIOUtils.write(devicePath.getFullPath(), byteBuffer);
+
+    byteBuffer.putInt(insertRowNodeList.size());
+
+    for (InsertRowNode node : insertRowNodeList) {
+      byteBuffer.putLong(node.getTime());
+      node.serializeMeasurementsAndValues(byteBuffer);
+    }
+    for (Integer index : insertRowNodeIndexList) {
+      byteBuffer.putInt(index);
+    }
   }
 
   @Override

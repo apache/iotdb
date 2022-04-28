@@ -17,62 +17,55 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.expression.unary;
+package org.apache.iotdb.db.query.expression.leaf;
 
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
-import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
+import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.apache.commons.lang3.Validate;
 
 import java.nio.ByteBuffer;
-import java.time.ZoneId;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Constant operand */
-public class ConstantOperand extends Expression {
+public class TimeSeriesOperand extends LeafOperand {
 
-  private final String valueString;
-  private final TSDataType dataType;
+  private PartialPath path;
 
-  public ConstantOperand(TSDataType dataType, String valueString) {
-    this.dataType = Validate.notNull(dataType);
-    this.valueString = Validate.notNull(valueString);
+  public TimeSeriesOperand(PartialPath path) {
+    this.path = path;
   }
 
-  public ConstantOperand(ByteBuffer byteBuffer) {
-    dataType = TSDataType.deserializeFrom(byteBuffer);
-    valueString = ReadWriteIOUtils.readString(byteBuffer);
+  public TimeSeriesOperand(ByteBuffer byteBuffer) {
+    path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
   }
 
-  public TSDataType getDataType() {
-    return dataType;
+  public PartialPath getPath() {
+    return path;
   }
 
-  public boolean isNegativeNumber() {
-    return !dataType.equals(TSDataType.TEXT)
-        && !dataType.equals(TSDataType.BOOLEAN)
-        && Double.parseDouble(valueString) < 0;
+  public void setPath(PartialPath path) {
+    this.path = path;
   }
 
   @Override
   public boolean isConstantOperandInternal() {
-    return true;
+    return false;
   }
 
   @Override
@@ -80,51 +73,51 @@ public class ConstantOperand extends Expression {
       List<PartialPath> prefixPaths,
       List<Expression> resultExpressions,
       PathPatternTree patternTree) {
-    resultExpressions.add(this);
+    for (PartialPath prefixPath : prefixPaths) {
+      TimeSeriesOperand resultExpression = new TimeSeriesOperand(prefixPath.concatPath(path));
+      patternTree.appendPath(resultExpression.getPath());
+      resultExpressions.add(resultExpression);
+    }
   }
 
   @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    resultExpressions.add(this);
+    for (PartialPath prefixPath : prefixPaths) {
+      resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
+    }
   }
 
   @Override
-  public void removeWildcards(
-      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions) {
-    resultExpressions.add(this);
+  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws StatementAnalyzeException {
+    for (PartialPath actualPath : wildcardsRemover.removeWildcardInPath(path)) {
+      resultExpressions.add(new TimeSeriesOperand(actualPath));
+    }
   }
 
   @Override
   public void removeWildcards(
       org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions) {
-    resultExpressions.add(this);
+      List<Expression> resultExpressions)
+      throws LogicalOptimizeException {
+    for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
+      resultExpressions.add(new TimeSeriesOperand(actualPath));
+    }
   }
 
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
-    // Do nothing
-  }
-
-  @Override
-  public List<Expression> getExpressions() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public void constructUdfExecutors(
-      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
-    // Do nothing
+    pathSet.add(path);
   }
 
   @Override
   public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    // Do nothing
+    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
   }
 
   @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
-    // Do nothing
+    memoryAssigner.increaseExpressionReference(this);
   }
 
   @Override
@@ -137,28 +130,35 @@ public class ConstantOperand extends Expression {
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
-      expressionDataTypeMap.put(this, this.getDataType());
-      IntermediateLayer intermediateLayer =
-          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
-      expressionIntermediateLayerMap.put(this, intermediateLayer);
+      float memoryBudgetInMB = memoryAssigner.assign();
+
+      LayerPointReader parentLayerPointReader =
+          rawTimeSeriesInputLayer.constructPointReader(inputColumnIndex);
+      expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
+
+      expressionIntermediateLayerMap.put(
+          this,
+          memoryAssigner.getReference(this) == 1
+              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader)
+              : new SingleInputColumnMultiReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader));
     }
 
     return expressionIntermediateLayerMap.get(this);
   }
 
-  @Override
   public String getExpressionStringInternal() {
-    return valueString;
+    return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
   }
 
   @Override
   public ExpressionType getExpressionType() {
-    return ExpressionType.CONSTANT;
+    return ExpressionType.TIME_SERIES;
   }
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
-    dataType.serializeTo(byteBuffer);
-    ReadWriteIOUtils.write(valueString, byteBuffer);
+    path.serialize(byteBuffer);
   }
 }
