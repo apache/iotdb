@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.mpp.operator.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -346,7 +347,7 @@ public class SeriesAggregateScanOperatorTest {
   }
 
   public SeriesAggregateScanOperator initSeriesAggregateScanOperator(
-      List<AggregationType> aggregateFuncList,
+      List<Aggregator> aggregators,
       Filter timeFilter,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter)
@@ -373,7 +374,7 @@ public class SeriesAggregateScanOperatorTest {
             measurementPath,
             allSensors,
             fragmentInstanceContext.getOperatorContexts().get(0),
-            aggregateFuncList,
+            aggregators,
             timeFilter,
             ascending,
             groupByTimeParameter);

@@ -232,7 +232,7 @@ public class LocalExecutionPlanner {
               seriesPath,
               node.getAllSensors(),
               operatorContext,
-              node.getAggregateFuncList(),
+              null,
               node.getTimeFilter(),
               ascending,
               node.getGroupByTimeParameter());

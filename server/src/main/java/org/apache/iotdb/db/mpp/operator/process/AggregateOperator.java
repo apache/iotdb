@@ -18,16 +18,31 @@
  */
 package org.apache.iotdb.db.mpp.operator.process;
 
+import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.operator.aggregation.Aggregator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.List;
+
 public class AggregateOperator implements ProcessOperator {
+
+  private final OperatorContext operatorContext;
+  private final List<Aggregator> aggregators;
+  private final List<Operator> children;
+
+  public AggregateOperator(
+      OperatorContext operatorContext, List<Aggregator> aggregators, List<Operator> children) {
+    this.operatorContext = operatorContext;
+    this.aggregators = aggregators;
+    this.children = children;
+  }
 
   @Override
   public OperatorContext getOperatorContext() {
-    return null;
+    return operatorContext;
   }
 
   @Override

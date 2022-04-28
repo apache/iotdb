@@ -24,9 +24,9 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class InputLocation {
-  // which input tsblock
+  // which input tsBlock
   private final int tsBlockIndex;
-  // which value column of that tsblock
+  // which value column of that tsBlock
   private final int valueColumnIndex;
 
   public InputLocation(int tsBlockIndex, int valueColumnIndex) {

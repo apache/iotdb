@@ -104,6 +104,14 @@ public class TimeColumn implements Column {
     return new TimeColumn(positionOffset + arrayOffset, length, values);
   }
 
+  @Override
+  public Column subColumn(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+    return new TimeColumn(arrayOffset + fromIndex, positionCount - fromIndex, values);
+  }
+
   public long getStartTime() {
     return values[arrayOffset];
   }

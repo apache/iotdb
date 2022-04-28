@@ -122,6 +122,15 @@ public class DoubleColumn implements Column {
     return new DoubleColumn(positionOffset + arrayOffset, length, valueIsNull, values);
   }
 
+  @Override
+  public Column subColumn(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+    return new DoubleColumn(
+        arrayOffset + fromIndex, positionCount - fromIndex, valueIsNull, values);
+  }
+
   private void checkReadablePosition(int position) {
     if (position < 0 || position >= getPositionCount()) {
       throw new IllegalArgumentException("position is not valid");
