@@ -40,7 +40,7 @@ public class FillDescriptor {
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(fillPolicy.ordinal(), byteBuffer);
-    expression.serialize(byteBuffer);
+    Expression.serialize(expression, byteBuffer);
   }
 
   public static FillDescriptor deserialize(ByteBuffer byteBuffer) {

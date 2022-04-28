@@ -86,20 +86,20 @@ public class QueryLogicalPlanUtil {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_0"),
+            new PlanNodeId("0"),
             schemaMap.get("root.sg.d1.s1"),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_ASC));
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("test_query_1"),
+            new PlanNodeId("1"),
             schemaMap.get("root.sg.d1.s2"),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_ASC));
     TimeJoinNode timeJoinNode =
-        new TimeJoinNode(new PlanNodeId("test_query_2"), OrderBy.TIMESTAMP_DESC, sourceNodeList);
-    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("test_query_3"), timeJoinNode, 100);
-    LimitNode limitNode = new LimitNode(new PlanNodeId("test_query_4"), offsetNode, 100);
+        new TimeJoinNode(new PlanNodeId("2"), OrderBy.TIMESTAMP_ASC, sourceNodeList);
+    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("3"), timeJoinNode, 10);
+    LimitNode limitNode = new LimitNode(new PlanNodeId("4"), offsetNode, 10);
 
     querySQLs.add(sql);
     sqlToPlanMap.put(sql, limitNode);

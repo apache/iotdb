@@ -84,7 +84,7 @@ public class FilterNode extends ProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FILTER.serialize(byteBuffer);
-    predicate.serialize(byteBuffer);
+    Expression.serialize(predicate, byteBuffer);
   }
 
   public static FilterNode deserialize(ByteBuffer byteBuffer) {

@@ -54,7 +54,7 @@ public class FilterNullParameter {
     ReadWriteIOUtils.write(filterNullPolicy.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(filterNullColumns.size(), byteBuffer);
     for (Expression filterNullColumn : filterNullColumns) {
-      filterNullColumn.serialize(byteBuffer);
+      Expression.serialize(filterNullColumn, byteBuffer);
     }
   }
 

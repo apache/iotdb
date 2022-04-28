@@ -74,7 +74,7 @@ public class AggregationDescriptor {
     step.serialize(byteBuffer);
     ReadWriteIOUtils.write(inputExpressions.size(), byteBuffer);
     for (Expression expression : inputExpressions) {
-      expression.serialize(byteBuffer);
+      Expression.serialize(expression, byteBuffer);
     }
   }
 

@@ -18,15 +18,25 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
+import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
 
@@ -34,7 +44,19 @@ public class LimitNodeSerdeTest {
 
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
-    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("TestOffsetNode"), 2);
+    SeriesScanNode seriesScanNode =
+        new SeriesScanNode(
+            new PlanNodeId("TestSeriesScanNode"),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_DESC,
+            new GroupByFilter(1, 2, 3, 4),
+            null,
+            100,
+            100,
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+    OffsetNode offsetNode = new OffsetNode(new PlanNodeId("TestOffsetNode"), seriesScanNode, 2);
     LimitNode limitNode = new LimitNode(new PlanNodeId("TestLimitNode"), offsetNode, 3);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);

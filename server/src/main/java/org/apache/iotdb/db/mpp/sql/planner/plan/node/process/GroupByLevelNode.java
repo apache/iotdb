@@ -26,8 +26,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import com.google.common.collect.ImmutableList;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -77,7 +75,7 @@ public class GroupByLevelNode extends AggregationNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
+    return children;
   }
 
   @Override
