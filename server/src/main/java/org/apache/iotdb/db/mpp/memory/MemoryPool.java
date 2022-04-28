@@ -141,7 +141,9 @@ public class MemoryPool {
    *     return 0.
    */
   public synchronized long tryCancel(ListenableFuture<Void> future) {
-    if (future == null || future.isDone()) {
+    Validate.notNull(future);
+    // If the future is not a MemoryReservationFuture, it must have been completed.
+    if (future.isDone()) {
       return 0L;
     }
     Validate.isTrue(
