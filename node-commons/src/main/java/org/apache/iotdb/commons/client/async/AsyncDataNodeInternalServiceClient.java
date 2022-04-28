@@ -78,7 +78,7 @@ public class AsyncDataNodeInternalServiceClient extends InternalService.AsyncCli
    * return self if clientManager is not null, the method doesn't need to call by user, it will
    * trigger once client transport complete.
    */
-  public void returnSelf() {
+  private void returnSelf() {
     if (clientManager != null) {
       clientManager.returnClient(endpoint, this);
     }
