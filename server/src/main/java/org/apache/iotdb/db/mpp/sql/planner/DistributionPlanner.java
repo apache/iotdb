@@ -33,9 +33,11 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.AbstractSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
@@ -46,8 +48,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -120,14 +124,16 @@ public class DistributionPlanner {
 
     FragmentSinkNode sinkNode = new FragmentSinkNode(context.getQueryId().genPlanNodeId());
     sinkNode.setDownStream(
-        context.getHostEndpoint(),
+        context.getLocalDataBlockEndpoint(),
         context.getResultNodeContext().getVirtualFragmentInstanceId(),
         context.getResultNodeContext().getVirtualResultNodeId());
     sinkNode.setChild(rootInstance.getFragment().getRoot());
     context
         .getResultNodeContext()
         .setUpStream(
-            rootInstance.getHostEndpoint(), rootInstance.getId(), sinkNode.getPlanNodeId());
+            rootInstance.getHostDataNode().dataBlockManagerEndPoint,
+            rootInstance.getId(),
+            sinkNode.getPlanNodeId());
     rootInstance.getFragment().setRoot(sinkNode);
   }
 
@@ -143,8 +149,8 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSchemaMerge(SchemaMergeNode node, DistributionPlanContext context) {
-      SchemaMergeNode root = (SchemaMergeNode) node.clone();
+    public PlanNode visitSchemaMerge(SeriesSchemaMergeNode node, DistributionPlanContext context) {
+      SeriesSchemaMergeNode root = (SeriesSchemaMergeNode) node.clone();
       SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
       TreeSet<TRegionReplicaSet> schemaRegions =
           new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
@@ -161,11 +167,36 @@ public class DistributionPlanner {
       schemaRegions.forEach(
           region -> {
             SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
             schemaScanNode.setRegionReplicaSet(region);
             if (count > 1) {
               schemaScanNode.setLimit(schemaScanNode.getOffset() + schemaScanNode.getLimit());
               schemaScanNode.setOffset(0);
             }
+            root.addChild(schemaScanNode);
+          });
+      return root;
+    }
+
+    @Override
+    public PlanNode visitCountMerge(CountSchemaMergeNode node, DistributionPlanContext context) {
+      CountSchemaMergeNode root = (CountSchemaMergeNode) node.clone();
+      SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
+      Set<TRegionReplicaSet> schemaRegions = new HashSet<>();
+      analysis
+          .getSchemaPartitionInfo()
+          .getSchemaPartitionMap()
+          .forEach(
+              (storageGroup, deviceGroup) -> {
+                deviceGroup.forEach(
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        schemaRegions.add(schemaRegionReplicaSet));
+              });
+      schemaRegions.forEach(
+          region -> {
+            SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+            schemaScanNode.setRegionReplicaSet(region);
             root.addChild(schemaScanNode);
           });
       return root;
@@ -298,7 +329,12 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSchemaMerge(SchemaMergeNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaMerge(SeriesSchemaMergeNode node, NodeGroupContext context) {
+      return internalVisitSchemaMerge(node, context);
+    }
+
+    private PlanNode internalVisitSchemaMerge(
+        AbstractSchemaMergeNode node, NodeGroupContext context) {
       node.getChildren()
           .forEach(
               child -> {
@@ -323,6 +359,11 @@ public class DistributionPlanner {
                 }
               });
       return newNode;
+    }
+
+    @Override
+    public PlanNode visitCountMerge(CountSchemaMergeNode node, NodeGroupContext context) {
+      return internalVisitSchemaMerge(node, context);
     }
 
     @Override

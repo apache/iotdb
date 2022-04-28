@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
-import org.apache.iotdb.confignode.service.executor.PlanExecutor;
+import org.apache.iotdb.confignode.service.executor.ConfigRequestExecutor;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -42,10 +42,10 @@ public class PartitionRegionStateMachine implements IStateMachine {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
 
-  private final PlanExecutor executor;
+  private final ConfigRequestExecutor executor;
 
   public PartitionRegionStateMachine() {
-    this.executor = new PlanExecutor();
+    this.executor = new ConfigRequestExecutor();
   }
 
   @Override
@@ -99,7 +99,9 @@ public class PartitionRegionStateMachine implements IStateMachine {
   }
 
   @Override
-  public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {}
+  public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+    return false;
+  }
 
   @Override
   public SnapshotMeta getLatestSnapshot(File snapshotDir) {

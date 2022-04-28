@@ -826,6 +826,12 @@ public class IoTDBDescriptor {
               "iotdb_server_encrypt_decrypt_provider_parameter",
               conf.getEncryptDecryptProviderParameter()));
 
+      conf.setDataNodeSchemaCacheSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "datanode_schema_cache_size",
+                  String.valueOf(conf.getDataNodeSchemaCacheSize()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -1592,6 +1598,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "data_block_manager_keep_alive_time_in_ms",
                 Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
+
+    conf.setPartitionCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
   }
 
   /** Get default encode algorithm by data type */

@@ -69,6 +69,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -88,9 +90,11 @@ class RatisConsensus implements IConsensus {
   private final RaftProperties properties = new RaftProperties();
   private final RaftClientRpc clientRpc;
 
-  private final IClientManager<RaftGroup, RaftClient> clientManager =
-      new IClientManager.Factory<RaftGroup, RaftClient>()
+  private final IClientManager<RaftGroup, RatisClient> clientManager =
+      new IClientManager.Factory<RaftGroup, RatisClient>()
           .createClientManager(new RatisClientPoolFactory());
+
+  private Map<RaftGroupId, RaftGroup> lastSeen;
 
   private final ClientId localFakeId = ClientId.randomId();
   private final AtomicLong localFakeCallId = new AtomicLong(0);
@@ -98,13 +102,20 @@ class RatisConsensus implements IConsensus {
   private static final int DEFAULT_PRIORITY = 0;
   private static final int LEADER_PRIORITY = 1;
 
+  /**
+   * @param ratisStorageDir different groups of RatisConsensus Peer all share ratisStorageDir as
+   *     root dir
+   */
   public RatisConsensus(TEndPoint endpoint, File ratisStorageDir, IStateMachine.Registry registry)
       throws IOException {
+    lastSeen = new ConcurrentHashMap<>();
+
     // create a RaftPeer as endpoint of comm
     String address = Utils.IPAddress(endpoint);
     myself = Utils.toRaftPeer(endpoint, DEFAULT_PRIORITY);
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
+    RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
 
     // set the port which server listen to in RaftProperty object
     final int port = NetUtils.createSocketAddr(address).getPort();
@@ -173,13 +184,12 @@ class RatisConsensus implements IConsensus {
     }
 
     // 2. try raft client
-    RaftClient client = null;
     TSStatus writeResult;
     try {
-      client = buildClient(raftGroup);
-      RaftClientReply reply = client.io().send(message);
+      RatisClient client = getRaftClient(raftGroup);
+      RaftClientReply reply = client.getRaftClient().io().send(message);
       writeResult = Utils.deserializeFrom(reply.getMessage().getContent().asReadOnlyByteBuffer());
-      client.close();
+      client.returnSelf();
     } catch (IOException | TException e) {
       return failedWrite(new RatisRequestFailedException(e));
     }
@@ -235,14 +245,12 @@ class RatisConsensus implements IConsensus {
       return failed(new ConsensusGroupNotExistException(groupId));
     }
 
-    // build and store the corresponding client
-    RaftClient client = buildClient(group);
-
     // add RaftPeer myself to this RaftGroup
     RaftClientReply reply;
     try {
-      reply = client.getGroupManagementApi(myself.getId()).add(group);
-      client.close();
+      RatisClient client = getRaftClient(group);
+      reply = client.getRaftClient().getGroupManagementApi(myself.getId()).add(group);
+      client.returnSelf();
     } catch (IOException e) {
       return failed(new RatisRequestFailedException(e));
     }
@@ -267,13 +275,16 @@ class RatisConsensus implements IConsensus {
       return failed(new PeerNotInConsensusGroupException(groupId, myself));
     }
 
-    RaftClient client;
     // send remove group to myself
     RaftClientReply reply;
     try {
-      client = buildClient(raftGroup);
-      reply = client.getGroupManagementApi(myself.getId()).remove(raftGroupId, false, false);
-      client.close();
+      RatisClient client = getRaftClient(raftGroup);
+      reply =
+          client
+              .getRaftClient()
+              .getGroupManagementApi(myself.getId())
+              .remove(raftGroupId, false, false);
+      client.returnSelf();
     } catch (IOException e) {
       return failed(new RatisRequestFailedException(e));
     }
@@ -362,9 +373,6 @@ class RatisConsensus implements IConsensus {
       return failed(new ConsensusGroupNotExistException(groupId));
     }
 
-    // build the client and store it
-    buildClient(raftGroup);
-
     // add RaftPeer myself to this RaftGroup
     RaftClientReply reply;
     try {
@@ -375,6 +383,10 @@ class RatisConsensus implements IConsensus {
     return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
+  /**
+   * transferLeader in Ratis implementation is not guaranteed to transfer leadership to the
+   * designated peer Thus, it may produce undetermined results. Caller should not count on this API.
+   */
   @Override
   public ConsensusGenericResponse transferLeader(ConsensusGroupId groupId, Peer newLeader) {
     // By default, Ratis gives every Raft Peer same priority 0
@@ -402,16 +414,17 @@ class RatisConsensus implements IConsensus {
       }
     }
 
-    RaftClient client = buildClient(raftGroup);
     RaftClientReply reply = null;
     try {
-      RaftClientReply configChangeReply = client.admin().setConfiguration(newConfiguration);
+      RatisClient client = getRaftClient(raftGroup);
+      RaftClientReply configChangeReply =
+          client.getRaftClient().admin().setConfiguration(newConfiguration);
       if (!configChangeReply.isSuccess()) {
         return failed(new RatisRequestFailedException(configChangeReply.getException()));
       }
       // TODO tuning for timeoutMs
-      reply = client.admin().transferLeadership(newRaftLeader.getId(), 2000);
-      client.close();
+      reply = client.getRaftClient().admin().transferLeadership(newRaftLeader.getId(), 2000);
+      client.returnSelf();
     } catch (IOException e) {
       return failed(new RatisRequestFailedException(e));
     }
@@ -484,6 +497,12 @@ class RatisConsensus implements IConsensus {
     RaftGroup raftGroup = null;
     try {
       raftGroup = server.getDivision(raftGroupId).getGroup();
+      RaftGroup lastSeenGroup = lastSeen.getOrDefault(raftGroupId, null);
+      if (lastSeenGroup != null && !lastSeenGroup.equals(raftGroup)) {
+        // delete the pooled raft-client of the out-dated group and cache the latest
+        clientManager.clear(lastSeenGroup);
+        lastSeen.put(raftGroupId, raftGroup);
+      }
     } catch (IOException e) {
       logger.debug("get group failed ", e);
     }
@@ -498,50 +517,39 @@ class RatisConsensus implements IConsensus {
     return RaftGroup.valueOf(Utils.toRatisGroupId(groupId), raftPeers);
   }
 
-  private RaftClient buildClient(RaftGroup group) {
-    RaftProperties raftProperties = new RaftProperties();
-    RaftClient.Builder builder =
-        RaftClient.newBuilder()
-            .setProperties(raftProperties)
-            .setRaftGroup(group)
-            .setClientRpc(
-                new GrpcFactory(new Parameters())
-                    .newRaftClientRpc(ClientId.randomId(), raftProperties));
-    return builder.build();
-  }
-
-  // TODO use this function to get RaftClient
-  private RaftClient getRaftClient(RaftGroup group) {
+  private RatisClient getRaftClient(RaftGroup group) throws IOException {
     try {
       return clientManager.borrowClient(group);
     } catch (IOException e) {
       logger.error(String.format("Borrow client from pool for group %s failed.", group), e);
-      return null;
+      // rethrow the exception
+      throw e;
     }
   }
 
   private RaftClientReply sendReconfiguration(RaftGroup newGroupConf)
       throws RatisRequestFailedException {
-    RaftClient client = buildClient(newGroupConf);
     // notify the group leader of configuration change
     RaftClientReply reply;
     try {
-      reply = client.admin().setConfiguration(new ArrayList<>(newGroupConf.getPeers()));
-      client.close();
+      RatisClient client = getRaftClient(newGroupConf);
+      reply =
+          client.getRaftClient().admin().setConfiguration(new ArrayList<>(newGroupConf.getPeers()));
+      client.returnSelf();
     } catch (IOException e) {
       throw new RatisRequestFailedException(e);
     }
     return reply;
   }
 
-  private class RatisClientPoolFactory implements IClientPoolFactory<RaftGroup, RaftClient> {
+  private class RatisClientPoolFactory implements IClientPoolFactory<RaftGroup, RatisClient> {
     @Override
-    public KeyedObjectPool<RaftGroup, RaftClient> createClientPool(
-        ClientManager<RaftGroup, RaftClient> manager) {
+    public KeyedObjectPool<RaftGroup, RatisClient> createClientPool(
+        ClientManager<RaftGroup, RatisClient> manager) {
       return new GenericKeyedObjectPool<>(
-          new RatisClientFactory(
+          new RatisClient.Factory(
               manager, new ClientFactoryProperty.Builder().build(), properties, clientRpc),
-          new ClientPoolProperty.Builder<RaftClient>().build().getConfig());
+          new ClientPoolProperty.Builder<RatisClient>().build().getConfig());
     }
   }
 }

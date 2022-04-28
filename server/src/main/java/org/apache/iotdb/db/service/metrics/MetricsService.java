@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -27,8 +28,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.metrics.MetricService;
-import org.apache.iotdb.metrics.config.MetricConfig;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
@@ -40,7 +39,6 @@ import java.util.stream.Stream;
 
 public class MetricsService extends MetricService implements MetricsServiceMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
-  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());

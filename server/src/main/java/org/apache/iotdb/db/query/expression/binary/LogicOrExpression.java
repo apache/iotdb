@@ -49,7 +49,7 @@ public class LogicOrExpression extends BinaryExpression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.LOGIC_OR.getExpressionType();
+  public ExpressionType getExpressionType() {
+    return ExpressionType.LOGIC_OR;
   }
 }

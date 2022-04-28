@@ -41,6 +41,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class TsFilePipe implements Pipe {
@@ -73,9 +74,9 @@ public class TsFilePipe implements Pipe {
     this.syncDelOp = syncDelOp;
 
     this.historyQueue =
-        new BufferedPipeDataQueue(SyncPathUtil.getSenderHistoryPipeDataDir(name, createTime));
+        new BufferedPipeDataQueue(SyncPathUtil.getSenderHistoryPipeLogDir(name, createTime));
     this.realTimeQueue =
-        new BufferedPipeDataQueue(SyncPathUtil.getSenderRealTimePipeDataDir(name, createTime));
+        new BufferedPipeDataQueue(SyncPathUtil.getSenderRealTimePipeLogDir(name, createTime));
     this.pipeLog = new TsFilePipeLogger(this);
     this.collectRealTimeDataLock = new ReentrantLock();
 
@@ -298,7 +299,7 @@ public class TsFilePipe implements Pipe {
     status = PipeStatus.DROP;
   }
 
-  private void clear() throws PipeException {
+  private void clear() {
     deregisterMetadata();
     deregisterTsFile();
     isCollectingRealTimeData = false;
@@ -310,6 +311,20 @@ public class TsFilePipe implements Pipe {
     } catch (IOException e) {
       logger.warn(String.format("Clear pipe %s %d error.", name, createTime), e);
     }
+  }
+
+  @Override
+  public void close() throws PipeException {
+    if (status == PipeStatus.DROP) {
+      return;
+    }
+
+    deregisterMetadata();
+    deregisterTsFile();
+    isCollectingRealTimeData = false;
+
+    historyQueue.close();
+    realTimeQueue.close();
   }
 
   @Override
@@ -330,5 +345,45 @@ public class TsFilePipe implements Pipe {
   @Override
   public synchronized PipeStatus getStatus() {
     return status;
+  }
+
+  @Override
+  public String toString() {
+    return "TsFilePipe{"
+        + "createTime="
+        + createTime
+        + ", name='"
+        + name
+        + '\''
+        + ", pipeSink="
+        + pipeSink
+        + ", dataStartTime="
+        + dataStartTime
+        + ", syncDelOp="
+        + syncDelOp
+        + ", pipeLog="
+        + pipeLog
+        + ", isCollectingRealTimeData="
+        + isCollectingRealTimeData
+        + ", maxSerialNumber="
+        + maxSerialNumber
+        + ", status="
+        + status
+        + '}';
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    TsFilePipe that = (TsFilePipe) o;
+    return createTime == that.createTime
+        && Objects.equals(name, that.name)
+        && Objects.equals(pipeSink, that.pipeSink);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(createTime, name, pipeSink);
   }
 }

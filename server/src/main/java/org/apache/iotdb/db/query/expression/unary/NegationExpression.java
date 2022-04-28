@@ -192,18 +192,17 @@ public class NegationExpression extends Expression {
 
   @Override
   public String getExpressionStringInternal() {
-    if (expression instanceof FunctionExpression
-        || expression instanceof ConstantOperand
-        || expression instanceof TimeSeriesOperand) {
-      return "-" + expression.toString();
-    } else {
-      return "-(" + expression.toString() + ")";
-    }
+    return expression instanceof TimeSeriesOperand
+            || expression instanceof FunctionExpression
+            || (expression instanceof ConstantOperand
+                && !((ConstantOperand) expression).isNegativeNumber())
+        ? "-" + expression
+        : "-(" + expression + ")";
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.NEGATION.getExpressionType();
+  public ExpressionType getExpressionType() {
+    return ExpressionType.NEGATION;
   }
 
   @Override
