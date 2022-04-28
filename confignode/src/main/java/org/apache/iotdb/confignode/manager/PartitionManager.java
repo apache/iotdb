@@ -31,8 +31,8 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionRe
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.StorageGroupInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 
@@ -50,7 +50,7 @@ public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
-  private static final StorageGroupInfo storageGroupInfo = StorageGroupInfo.getInstance();
+  private static final ClusterSchemaInfo clusterSchemaInfo = ClusterSchemaInfo.getInstance();
   private static final PartitionInfo partitionInfo = PartitionInfo.getInstance();
 
   private final Manager configNodeManager;
@@ -118,7 +118,7 @@ public class PartitionManager {
           noAssignedSchemaPartitionSlotsMap.get(storageGroup);
       List<TRegionReplicaSet> schemaRegionReplicaSets =
           partitionInfo.getRegionReplicaSets(
-              storageGroupInfo.getRegionGroupIds(storageGroup, TConsensusGroupType.SchemaRegion));
+              clusterSchemaInfo.getRegionGroupIds(storageGroup, TConsensusGroupType.SchemaRegion));
       Random random = new Random();
 
       Map<TSeriesPartitionSlot, TRegionReplicaSet> allocateResult = new HashMap<>();
@@ -194,7 +194,7 @@ public class PartitionManager {
           noAssignedDataPartitionSlotsMap.get(storageGroup);
       List<TRegionReplicaSet> dataRegionEndPoints =
           partitionInfo.getRegionReplicaSets(
-              storageGroupInfo.getRegionGroupIds(storageGroup, TConsensusGroupType.DataRegion));
+              clusterSchemaInfo.getRegionGroupIds(storageGroup, TConsensusGroupType.DataRegion));
       Random random = new Random();
 
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> allocateResult =

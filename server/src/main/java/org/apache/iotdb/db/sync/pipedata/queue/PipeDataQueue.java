@@ -33,5 +33,7 @@ public interface PipeDataQueue {
 
   boolean isEmpty();
 
+  void close();
+
   void clear();
 }

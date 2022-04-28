@@ -19,34 +19,51 @@
 package org.apache.iotdb.db.query.expression;
 
 public enum ExpressionType {
-  ADDITION((short) 0),
-  DIVISION((short) 1),
-  EQUAL_TO((short) 2),
-  GREATER_EQUAL((short) 3),
-  GREATER_THAN((short) 4),
-  LESS_EQUAL((short) 5),
-  LESS_THAN((short) 6),
-  LOGIC_AND((short) 7),
-  LOGIC_OR((short) 8),
-  MODULO((short) 9),
-  MULTIPLICATION((short) 10),
-  NON_EQUAL((short) 11),
-  SUBTRACTION((short) 12),
-  FUNCTION((short) 13),
-  LOGIC_NOT((short) 14),
-  NEGATION((short) 15),
-  TIME_SERIES((short) 16),
-  CONSTANT((short) 17),
-  IN((short) 18),
-  REGULAR((short) 19);
+  CONSTANT((short) -4, (short) 1400),
+  TIME_COLUMN((short) -3, (short) 1300),
+  TIME_SERIES((short) -2, (short) 1200),
+  FUNCTION((short) -1, (short) 1100),
+
+  NEGATION((short) 0, (short) 1000),
+  LOGIC_NOT((short) 1, (short) 1000),
+
+  MULTIPLICATION((short) 2, (short) 900),
+  DIVISION((short) 3, (short) 900),
+  MODULO((short) 4, (short) 900),
+
+  ADDITION((short) 5, (short) 800),
+  SUBTRACTION((short) 6, (short) 800),
+
+  EQUAL_TO((short) 7, (short) 600),
+  NON_EQUAL((short) 8, (short) 600),
+  GREATER_EQUAL((short) 9, (short) 600),
+  GREATER_THAN((short) 10, (short) 600),
+  LESS_EQUAL((short) 11, (short) 600),
+  LESS_THAN((short) 12, (short) 600),
+
+  REGEXP((short) 13, (short) 500),
+  LIKE((short) 14, (short) 500),
+
+  IN((short) 15, (short) 400),
+
+  LOGIC_AND((short) 16, (short) 300),
+
+  LOGIC_OR((short) 17, (short) 200),
+  ;
 
   private final short expressionType;
+  private final short priority;
 
-  ExpressionType(short expressionType) {
+  ExpressionType(short expressionType, short priority) {
     this.expressionType = expressionType;
+    this.priority = priority;
   }
 
-  public short getExpressionType() {
+  public short getExpressionTypeInShortEnum() {
     return expressionType;
+  }
+
+  public short getPriority() {
+    return priority;
   }
 }

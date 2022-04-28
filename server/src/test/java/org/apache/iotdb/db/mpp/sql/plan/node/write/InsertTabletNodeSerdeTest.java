@@ -24,18 +24,22 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class InsertTabletNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
+  public void testSerializeAndDeserialize() throws IllegalPathException {
     InsertTabletNode insertTabletNode = getInsertTabletNode();
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
@@ -45,6 +49,43 @@ public class InsertTabletNodeSerdeTest {
     Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), byteBuffer.getShort());
 
     Assert.assertEquals(InsertTabletNode.deserialize(byteBuffer), insertTabletNode);
+
+    insertTabletNode = getInsertTabletNodeWithSchema();
+    byteBuffer = ByteBuffer.allocate(10000);
+    insertTabletNode.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), byteBuffer.getShort());
+
+    Assert.assertEquals(InsertTabletNode.deserialize(byteBuffer), insertTabletNode);
+  }
+
+  @Test
+  public void TestSerializeAndDeserializeForWAL() throws IllegalPathException, IOException {
+    InsertTabletNode insertTabletNode = getInsertTabletNodeWithSchema();
+
+    int serializedSize = insertTabletNode.serializedSize();
+
+    Assert.assertEquals(229, serializedSize);
+
+    byte[] bytes = new byte[serializedSize];
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+
+    insertTabletNode.serializeToWAL(walBuffer);
+
+    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+
+    Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), dataInputStream.readShort());
+
+    InsertTabletNode tmpNode = InsertTabletNode.deserialize(dataInputStream);
+
+    Assert.assertArrayEquals(tmpNode.getTimes(), insertTabletNode.getTimes());
+    Assert.assertEquals(tmpNode.getDevicePath(), insertTabletNode.getDevicePath());
+    Assert.assertEquals(tmpNode.isAligned(), insertTabletNode.isAligned());
+    Assert.assertArrayEquals(tmpNode.getColumns(), insertTabletNode.getColumns());
+    Assert.assertArrayEquals(tmpNode.getBitMaps(), insertTabletNode.getBitMaps());
+    Assert.assertArrayEquals(
+        tmpNode.getMeasurementSchemas(), insertTabletNode.getMeasurementSchemas());
   }
 
   private InsertTabletNode getInsertTabletNode() throws IllegalPathException {
@@ -76,13 +117,7 @@ public class InsertTabletNodeSerdeTest {
             new PlanNodeId("plannode 1"),
             new PartialPath("root.isp.d1"),
             false,
-            new MeasurementSchema[] {
-              new MeasurementSchema("s1", TSDataType.DOUBLE),
-              new MeasurementSchema("s2", TSDataType.FLOAT),
-              new MeasurementSchema("s3", TSDataType.INT64),
-              new MeasurementSchema("s4", TSDataType.INT32),
-              new MeasurementSchema("s5", TSDataType.BOOLEAN)
-            },
+            new String[] {"s1", "s2", "s3", "s4", "s5"},
             dataTypes,
             times,
             null,
@@ -90,5 +125,52 @@ public class InsertTabletNodeSerdeTest {
             times.length);
 
     return tabletNode;
+  }
+
+  private InsertTabletNode getInsertTabletNodeWithSchema() throws IllegalPathException {
+    long[] times = new long[] {110L, 111L, 112L, 113L};
+    TSDataType[] dataTypes = new TSDataType[5];
+    dataTypes[0] = TSDataType.DOUBLE;
+    dataTypes[1] = TSDataType.FLOAT;
+    dataTypes[2] = TSDataType.INT64;
+    dataTypes[3] = TSDataType.INT32;
+    dataTypes[4] = TSDataType.BOOLEAN;
+
+    Object[] columns = new Object[5];
+    columns[0] = new double[4];
+    columns[1] = new float[4];
+    columns[2] = new long[4];
+    columns[3] = new int[4];
+    columns[4] = new boolean[4];
+
+    for (int r = 0; r < 4; r++) {
+      ((double[]) columns[0])[r] = 1.0;
+      ((float[]) columns[1])[r] = 2;
+      ((long[]) columns[2])[r] = 10000;
+      ((int[]) columns[3])[r] = 100;
+      ((boolean[]) columns[4])[r] = false;
+    }
+
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId("plannode 1"),
+            new PartialPath("root.isp.d1"),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            dataTypes,
+            times,
+            null,
+            columns,
+            times.length);
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN)
+        });
+
+    return insertTabletNode;
   }
 }

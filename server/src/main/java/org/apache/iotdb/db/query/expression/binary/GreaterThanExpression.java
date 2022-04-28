@@ -50,7 +50,7 @@ public class GreaterThanExpression extends BinaryExpression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.GREATER_THAN.getExpressionType();
+  public ExpressionType getExpressionType() {
+    return ExpressionType.GREATER_THAN;
   }
 }

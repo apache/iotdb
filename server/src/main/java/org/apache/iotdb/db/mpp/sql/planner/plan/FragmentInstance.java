@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -44,7 +44,7 @@ public class FragmentInstance implements IConsensusRequest {
   // The Region where the FragmentInstance should run
   private TRegionReplicaSet regionReplicaSet;
 
-  private TEndPoint hostEndpoint;
+  private TDataNodeLocation hostDataNode;
 
   private Filter timeFilter;
 
@@ -67,7 +67,7 @@ public class FragmentInstance implements IConsensusRequest {
     this.regionReplicaSet = regionReplicaSet;
     // TODO: (xingtanzjr) We select the first Endpoint as the default target host for current
     // instance
-    this.hostEndpoint = regionReplicaSet.getDataNodeLocations().get(0).getConsensusEndPoint();
+    this.hostDataNode = regionReplicaSet.getDataNodeLocations().get(0);
   }
 
   public TRegionReplicaSet getRegionReplicaSet() {
@@ -76,10 +76,6 @@ public class FragmentInstance implements IConsensusRequest {
 
   public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
-  }
-
-  public TEndPoint getHostEndpoint() {
-    return hostEndpoint;
   }
 
   public PlanFragment getFragment() {
@@ -119,7 +115,8 @@ public class FragmentInstance implements IConsensusRequest {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
     ret.append(
-        String.format("Host: %s", getHostEndpoint() == null ? "Not set" : getHostEndpoint()));
+        String.format(
+            "Host: %s", getHostDataNode() == null ? "Not set" : getHostDataNode().dataNodeId));
     ret.append(
         String.format(
             "Region: %s",
@@ -138,7 +135,7 @@ public class FragmentInstance implements IConsensusRequest {
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType);
     fragmentInstance.regionReplicaSet = ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer);
-    fragmentInstance.hostEndpoint = ThriftCommonsSerDeUtils.readTEndPoint(buffer);
+    fragmentInstance.hostDataNode = ThriftCommonsSerDeUtils.readTDataNodeLocation(buffer);
 
     return fragmentInstance;
   }
@@ -153,7 +150,7 @@ public class FragmentInstance implements IConsensusRequest {
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
     ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
-    ThriftCommonsSerDeUtils.writeTEndPoint(hostEndpoint, buffer);
+    ThriftCommonsSerDeUtils.writeTDataNodeLocation(hostDataNode, buffer);
   }
 
   @Override
@@ -165,12 +162,16 @@ public class FragmentInstance implements IConsensusRequest {
         && type == instance.type
         && Objects.equals(fragment, instance.fragment)
         && Objects.equals(regionReplicaSet, instance.regionReplicaSet)
-        && Objects.equals(hostEndpoint, instance.hostEndpoint)
+        && Objects.equals(hostDataNode, instance.hostDataNode)
         && Objects.equals(timeFilter, instance.timeFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, type, fragment, regionReplicaSet, hostEndpoint, timeFilter);
+    return Objects.hash(id, type, fragment, regionReplicaSet, hostDataNode, timeFilter);
+  }
+
+  public TDataNodeLocation getHostDataNode() {
+    return hostDataNode;
   }
 }

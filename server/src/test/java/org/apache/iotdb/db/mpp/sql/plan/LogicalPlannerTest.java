@@ -28,11 +28,12 @@ import org.apache.iotdb.db.mpp.sql.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.sql.analyze.FakePartitionFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -63,14 +64,14 @@ public class LogicalPlannerTest {
 
   @Test
   @Ignore // TODO: @zyk implement getBelongedStorageGroup() in SchemaTree
-  public void queryPlanTest() {
+  public void testQueryPlan() {
     for (String sql : querySQLs) {
       Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
     }
   }
 
   @Test
-  public void createTimeseriesPlanTest() {
+  public void testCreateTimeseriesPlan() {
     String sql =
         "CREATE TIMESERIES root.ln.wf01.wt01.status(状态) BOOLEAN ENCODING=PLAIN COMPRESSOR=SNAPPY TAGS(tag1=v1, tag2=v2) ATTRIBUTES(attr1=v1, attr2=v2)";
     try {
@@ -105,7 +106,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void createAlignedTimeseriesPlanTest() {
+  public void testCreateAlignedTimeseriesPlan() {
     String sql =
         "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude(meter1) FLOAT encoding=PLAIN compressor=SNAPPY tags(tag1=t1) attributes(attr1=a1), longitude FLOAT encoding=PLAIN compressor=SNAPPY)";
     try {
@@ -179,7 +180,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode1 =
-          (CreateAlignedTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (CreateAlignedTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(createAlignedTimeSeriesNode.equals(createAlignedTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -188,7 +189,7 @@ public class LogicalPlannerTest {
   }
 
   @Test
-  public void alterTimeseriesPlanTest() {
+  public void testAlterTimeseriesPlan() {
     String sql = "ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
@@ -210,7 +211,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -239,7 +240,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -268,7 +269,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -297,7 +298,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -326,7 +327,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -364,7 +365,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
 
       AlterTimeSeriesNode alterTimeSeriesNode1 =
-          (AlterTimeSeriesNode) PlanNodeType.deserialize(byteBuffer);
+          (AlterTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(alterTimeSeriesNode.equals(alterTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
@@ -380,7 +381,7 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      SchemaMergeNode metaMergeNode = (SchemaMergeNode) offsetNode.getChild();
+      SeriesSchemaMergeNode metaMergeNode = (SeriesSchemaMergeNode) offsetNode.getChild();
       metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
       TimeSeriesSchemaScanNode showTimeSeriesNode =
           (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);
@@ -425,7 +426,7 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      SchemaMergeNode metaMergeNode = (SchemaMergeNode) offsetNode.getChild();
+      SeriesSchemaMergeNode metaMergeNode = (SeriesSchemaMergeNode) offsetNode.getChild();
       DevicesSchemaScanNode showDevicesNode =
           (DevicesSchemaScanNode) metaMergeNode.getChildren().get(0);
       Assert.assertNotNull(showDevicesNode);

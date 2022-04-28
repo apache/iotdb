@@ -499,6 +499,11 @@ public class IoTDBConfig {
   /** indicate whether current mode is cluster */
   private boolean isClusterMode = false;
 
+  /**
+   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   */
+  private int dataNodeId = -1;
+
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
 
@@ -895,6 +900,12 @@ public class IoTDBConfig {
    * org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache}.
    */
   private int dataNodeSchemaCacheSize = 10000;
+
+  /**
+   * Cache size of partition cache in {@link
+   * org.apache.iotdb.db.mpp.sql.analyze.ClusterPartitionFetcher}
+   */
+  private int partitionCacheSize = 10000;
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -2822,11 +2833,27 @@ public class IoTDBConfig {
     this.isClusterMode = isClusterMode;
   }
 
+  public int getDataNodeId() {
+    return dataNodeId;
+  }
+
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId = dataNodeId;
+  }
+
   public int getDataNodeSchemaCacheSize() {
     return dataNodeSchemaCacheSize;
   }
 
   public void setDataNodeSchemaCacheSize(int dataNodeSchemaCacheSize) {
     this.dataNodeSchemaCacheSize = dataNodeSchemaCacheSize;
+  }
+
+  public int getPartitionCacheSize() {
+    return partitionCacheSize;
+  }
+
+  public void setPartitionCacheSize(int partitionCacheSize) {
+    this.partitionCacheSize = partitionCacheSize;
   }
 }

@@ -40,7 +40,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
-import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
+import org.apache.iotdb.db.mpp.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -139,6 +139,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(SenderService.getInstance());
     registerManager.register(WALManager.getInstance());
 
     // in mpp mode we need to start some other services
@@ -146,7 +147,7 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(StorageEngineV2.getInstance());
       registerManager.register(DataBlockService.getInstance());
       registerManager.register(InternalService.getInstance());
-      registerManager.register(FragmentInstanceScheduler.getInstance());
+      registerManager.register(DriverScheduler.getInstance());
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
@@ -188,7 +189,6 @@ public class IoTDB implements IoTDBMBean {
       }
     }
 
-    registerManager.register(SenderService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
     // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.

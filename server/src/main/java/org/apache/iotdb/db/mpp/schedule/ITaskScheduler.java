@@ -18,60 +18,55 @@
  */
 package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTaskStatus;
 
-/** the scheduler interface of {@link FragmentInstanceTask} */
+/** the scheduler interface of {@link DriverTask} */
 public interface ITaskScheduler {
 
   /**
-   * Switch a task from {@link FragmentInstanceTaskStatus#BLOCKED} to {@link
-   * FragmentInstanceTaskStatus#READY}.
+   * Switch a task from {@link DriverTaskStatus#BLOCKED} to {@link DriverTaskStatus#READY}.
    *
    * @param task the task to be switched.
    */
-  void blockedToReady(FragmentInstanceTask task);
+  void blockedToReady(DriverTask task);
 
   /**
-   * Switch a task from {@link FragmentInstanceTaskStatus#READY} to {@link
-   * FragmentInstanceTaskStatus#RUNNING}.
+   * Switch a task from {@link DriverTaskStatus#READY} to {@link DriverTaskStatus#RUNNING}.
    *
    * @param task the task to be switched.
    * @return true if it's switched to the target status successfully, otherwise false.
    */
-  boolean readyToRunning(FragmentInstanceTask task);
+  boolean readyToRunning(DriverTask task);
 
   /**
-   * Switch a task from {@link FragmentInstanceTaskStatus#RUNNING} to {@link
-   * FragmentInstanceTaskStatus#READY}.
+   * Switch a task from {@link DriverTaskStatus#RUNNING} to {@link DriverTaskStatus#READY}.
    *
    * @param task the task to be switched.
    * @param context the execution context of last running.
    */
-  void runningToReady(FragmentInstanceTask task, ExecutionContext context);
+  void runningToReady(DriverTask task, ExecutionContext context);
 
   /**
-   * Switch a task from {@link FragmentInstanceTaskStatus#RUNNING} to {@link
-   * FragmentInstanceTaskStatus#BLOCKED}.
+   * Switch a task from {@link DriverTaskStatus#RUNNING} to {@link DriverTaskStatus#BLOCKED}.
    *
    * @param task the task to be switched.
    * @param context the execution context of last running.
    */
-  void runningToBlocked(FragmentInstanceTask task, ExecutionContext context);
+  void runningToBlocked(DriverTask task, ExecutionContext context);
 
   /**
-   * Switch a task from {@link FragmentInstanceTaskStatus#RUNNING} to {@link
-   * FragmentInstanceTaskStatus#FINISHED}.
+   * Switch a task from {@link DriverTaskStatus#RUNNING} to {@link DriverTaskStatus#FINISHED}.
    *
    * @param task the task to be switched.
    * @param context the execution context of last running.
    */
-  void runningToFinished(FragmentInstanceTask task, ExecutionContext context);
+  void runningToFinished(DriverTask task, ExecutionContext context);
 
   /**
-   * Switch a task to {@link FragmentInstanceTaskStatus#ABORTED}.
+   * Switch a task to {@link DriverTaskStatus#ABORTED}.
    *
    * @param task the task to be switched.
    */
-  void toAborted(FragmentInstanceTask task);
+  void toAborted(DriverTask task);
 }

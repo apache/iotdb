@@ -49,6 +49,7 @@ public class ConfigExecution implements IQueryExecution {
   private final QueryStateMachine stateMachine;
   private final SettableFuture<ConfigTaskResult> taskFuture;
   private TsBlock resultSet;
+  private DatasetHeader datasetHeader;
   private boolean resultSetConsumed;
   private final IConfigTask task;
 
@@ -115,6 +116,7 @@ public class ConfigExecution implements IQueryExecution {
       ConfigTaskResult taskResult = taskFuture.get();
       TSStatusCode statusCode = taskResult.getStatusCode();
       resultSet = taskResult.getResultSet();
+      datasetHeader = taskResult.getResultSetHeader();
       String message =
           statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage();
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode, message));
@@ -144,14 +146,12 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public int getOutputValueColumnCount() {
-    // TODO
-    return 0;
+    return datasetHeader.getColumnHeaders().size();
   }
 
   @Override
   public DatasetHeader getDatasetHeader() {
-    // TODO
-    return null;
+    return datasetHeader;
   }
 
   @Override
