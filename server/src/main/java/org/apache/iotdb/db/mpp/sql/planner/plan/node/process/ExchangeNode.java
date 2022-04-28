@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -110,8 +109,6 @@ public class ExchangeNode extends PlanNode {
   }
 
   public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
-    FragmentSinkNode fragmentSinkNode =
-        (FragmentSinkNode) PlanFragment.deserializeHelper(byteBuffer);
     TEndPoint endPoint =
         new TEndPoint(
             ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
@@ -120,14 +117,12 @@ public class ExchangeNode extends PlanNode {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
-    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
     return exchangeNode;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.EXCHANGE.serialize(byteBuffer);
-    remoteSourceNode.serialize(byteBuffer);
     ReadWriteIOUtils.write(upstreamEndpoint.getIp(), byteBuffer);
     ReadWriteIOUtils.write(upstreamEndpoint.getPort(), byteBuffer);
     upstreamInstanceId.serialize(byteBuffer);

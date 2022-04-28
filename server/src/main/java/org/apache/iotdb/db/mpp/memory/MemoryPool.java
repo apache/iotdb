@@ -141,7 +141,7 @@ public class MemoryPool {
    *     return 0.
    */
   public synchronized long tryCancel(ListenableFuture<Void> future) {
-    if (future.isDone()) {
+    if (future == null || future.isDone()) {
       return 0L;
     }
 
