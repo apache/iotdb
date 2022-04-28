@@ -16,31 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
-import org.apache.iotdb.db.utils.stats.CpuTimer;
+package org.apache.iotdb.db.query.expression.leaf;
 
-import io.airlift.units.Duration;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 
-/** The execution context of a {@link DriverTask} */
-public class ExecutionContext {
-  private CpuTimer.CpuDuration cpuDuration;
-  private Duration timeSlice;
+import java.time.ZoneId;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-  public CpuTimer.CpuDuration getCpuDuration() {
-    return cpuDuration;
+public abstract class LeafOperand extends Expression {
+
+  @Override
+  public final List<Expression> getExpressions() {
+    return Collections.emptyList();
   }
 
-  public void setCpuDuration(CpuTimer.CpuDuration cpuDuration) {
-    this.cpuDuration = cpuDuration;
-  }
-
-  public Duration getTimeSlice() {
-    return timeSlice;
-  }
-
-  public void setTimeSlice(Duration timeSlice) {
-    this.timeSlice = timeSlice;
+  @Override
+  public final void constructUdfExecutors(
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
+    // nothing to do
   }
 }

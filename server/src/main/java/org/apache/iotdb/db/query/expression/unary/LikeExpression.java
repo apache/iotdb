@@ -21,47 +21,49 @@ package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
-import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 
-public class NegationExpression extends UnaryExpression {
+public class LikeExpression extends UnaryExpression {
 
-  public NegationExpression(Expression expression) {
+  private final String pattern;
+
+  public LikeExpression(Expression expression, String pattern) {
     super(expression);
+    this.pattern = pattern;
   }
 
-  public NegationExpression(ByteBuffer byteBuffer) {
+  public LikeExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
+    pattern = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   @Override
-  protected Transformer constructTransformer(LayerPointReader pointReader) {
-    return new ArithmeticNegationTransformer(pointReader);
-  }
-
-  @Override
-  protected Expression constructExpression(Expression childExpression) {
-    return new NegationExpression(childExpression);
-  }
-
-  @Override
-  public String getExpressionStringInternal() {
-    return expression instanceof TimeSeriesOperand
-            || expression instanceof FunctionExpression
-            || (expression instanceof ConstantOperand
-                && !((ConstantOperand) expression).isNegativeNumber())
-        ? "-" + expression
-        : "-(" + expression + ")";
+  protected String getExpressionStringInternal() {
+    return expression + " LIKE " + pattern;
   }
 
   @Override
   public ExpressionType getExpressionType() {
-    return ExpressionType.NEGATION;
+    return ExpressionType.LIKE;
+  }
+
+  @Override
+  protected Transformer constructTransformer(LayerPointReader pointReader) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected Expression constructExpression(Expression childExpression) {
+    return new LikeExpression(childExpression, pattern);
+  }
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(pattern, byteBuffer);
   }
 }

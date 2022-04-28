@@ -23,9 +23,9 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.IDriver;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskID;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTaskID;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTaskStatus;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -36,9 +36,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class FragmentInstanceSchedulerTest {
+public class DriverSchedulerTest {
 
-  private final FragmentInstanceScheduler manager = FragmentInstanceScheduler.getInstance();
+  private final DriverScheduler manager = DriverScheduler.getInstance();
 
   @After
   public void tearDown() {
@@ -62,40 +62,37 @@ public class FragmentInstanceSchedulerTest {
     IDriver mockDriver2 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
     List<IDriver> instances = Arrays.asList(mockDriver1, mockDriver2);
-    manager.submitFragmentInstances(queryId, instances);
+    manager.submitDrivers(queryId, instances);
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertEquals(2, manager.getQueryMap().get(queryId).size());
     Assert.assertEquals(2, manager.getTimeoutQueue().size());
     Assert.assertEquals(2, manager.getReadyQueue().size());
-    FragmentInstanceTask task1 =
-        manager.getTimeoutQueue().get(new FragmentInstanceTaskID(instanceId1));
+    DriverTask task1 = manager.getTimeoutQueue().get(new DriverTaskID(instanceId1));
     Assert.assertNotNull(task1);
-    FragmentInstanceTask task2 =
-        manager.getTimeoutQueue().get(new FragmentInstanceTaskID(instanceId2));
+    DriverTask task2 = manager.getTimeoutQueue().get(new DriverTaskID(instanceId2));
     Assert.assertNotNull(task2);
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(task1));
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(task2));
-    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task1.getStatus());
-    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task2.getStatus());
+    Assert.assertEquals(DriverTaskStatus.READY, task1.getStatus());
+    Assert.assertEquals(DriverTaskStatus.READY, task2.getStatus());
 
     // Submit another task of the same query
     IDriver mockDriver3 = Mockito.mock(IDriver.class);
     FragmentInstanceId instanceId3 = new FragmentInstanceId(fragmentId, "inst-2");
     Mockito.when(mockDriver3.getInfo()).thenReturn(instanceId3);
-    manager.submitFragmentInstances(queryId, Collections.singletonList(mockDriver3));
+    manager.submitDrivers(queryId, Collections.singletonList(mockDriver3));
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertEquals(3, manager.getQueryMap().get(queryId).size());
     Assert.assertEquals(3, manager.getTimeoutQueue().size());
     Assert.assertEquals(3, manager.getReadyQueue().size());
-    FragmentInstanceTask task3 =
-        manager.getTimeoutQueue().get(new FragmentInstanceTaskID(instanceId3));
+    DriverTask task3 = manager.getTimeoutQueue().get(new DriverTaskID(instanceId3));
     Assert.assertNotNull(task3);
     Assert.assertTrue(manager.getQueryMap().get(queryId).contains(task3));
-    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task3.getStatus());
+    Assert.assertEquals(DriverTaskStatus.READY, task3.getStatus());
 
     // Submit another task of the different query
     QueryId queryId2 = new QueryId("test2");
@@ -103,18 +100,17 @@ public class FragmentInstanceSchedulerTest {
     FragmentInstanceId instanceId4 = new FragmentInstanceId(fragmentId2, "inst-0");
     IDriver mockDriver4 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver4.getInfo()).thenReturn(instanceId4);
-    manager.submitFragmentInstances(queryId2, Collections.singletonList(mockDriver4));
+    manager.submitDrivers(queryId2, Collections.singletonList(mockDriver4));
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(2, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId2));
     Assert.assertEquals(1, manager.getQueryMap().get(queryId2).size());
     Assert.assertEquals(4, manager.getTimeoutQueue().size());
     Assert.assertEquals(4, manager.getReadyQueue().size());
-    FragmentInstanceTask task4 =
-        manager.getTimeoutQueue().get(new FragmentInstanceTaskID(instanceId4));
+    DriverTask task4 = manager.getTimeoutQueue().get(new DriverTaskID(instanceId4));
     Assert.assertNotNull(task4);
     Assert.assertTrue(manager.getQueryMap().get(queryId2).contains(task4));
-    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task4.getStatus());
+    Assert.assertEquals(DriverTaskStatus.READY, task4.getStatus());
 
     // Abort one FragmentInstance
     Mockito.reset(mockDriver1);
@@ -127,10 +123,10 @@ public class FragmentInstanceSchedulerTest {
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
     Assert.assertEquals(3, manager.getTimeoutQueue().size());
     Assert.assertEquals(3, manager.getReadyQueue().size());
-    Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, task1.getStatus());
-    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task2.getStatus());
-    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task3.getStatus());
-    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task4.getStatus());
+    Assert.assertEquals(DriverTaskStatus.ABORTED, task1.getStatus());
+    Assert.assertEquals(DriverTaskStatus.READY, task2.getStatus());
+    Assert.assertEquals(DriverTaskStatus.READY, task3.getStatus());
+    Assert.assertEquals(DriverTaskStatus.READY, task4.getStatus());
     Mockito.verify(mockDriver1, Mockito.times(1)).failed(Mockito.any());
     Assert.assertEquals(
         FragmentInstanceAbortedException.BY_FRAGMENT_ABORT_CALLED, task1.getAbortCause());
@@ -151,10 +147,10 @@ public class FragmentInstanceSchedulerTest {
     Assert.assertFalse(manager.getQueryMap().containsKey(queryId));
     Assert.assertEquals(1, manager.getTimeoutQueue().size());
     Assert.assertEquals(1, manager.getReadyQueue().size());
-    Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, task1.getStatus());
-    Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, task2.getStatus());
-    Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, task3.getStatus());
-    Assert.assertEquals(FragmentInstanceTaskStatus.READY, task4.getStatus());
+    Assert.assertEquals(DriverTaskStatus.ABORTED, task1.getStatus());
+    Assert.assertEquals(DriverTaskStatus.ABORTED, task2.getStatus());
+    Assert.assertEquals(DriverTaskStatus.ABORTED, task3.getStatus());
+    Assert.assertEquals(DriverTaskStatus.READY, task4.getStatus());
     Mockito.verify(mockDriver1, Mockito.never()).failed(Mockito.any());
     Mockito.verify(mockDriver2, Mockito.times(1)).failed(Mockito.any());
     Mockito.verify(mockDriver3, Mockito.times(1)).failed(Mockito.any());

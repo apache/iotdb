@@ -24,8 +24,8 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.IDriver;
 import org.apache.iotdb.db.mpp.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.schedule.queue.L1PriorityQueue;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTaskStatus;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTaskStatus;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -36,7 +36,7 @@ import org.mockito.Mockito;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
-public class FragmentInstanceTimeoutSentinelTest {
+public class DriverTaskTimeoutSentinelThreadTest {
 
   @Test
   public void testHandleInvalidStateTask() throws ExecutionException, InterruptedException {
@@ -44,52 +44,49 @@ public class FragmentInstanceTimeoutSentinelTest {
     Mockito.when(mockScheduler.readyToRunning(Mockito.any()))
         .thenAnswer(
             ans -> {
-              FragmentInstanceTask task = ans.getArgument(0);
-              if (task.getStatus() != FragmentInstanceTaskStatus.READY) {
+              DriverTask task = ans.getArgument(0);
+              if (task.getStatus() != DriverTaskStatus.READY) {
                 return false;
               }
-              task.setStatus(FragmentInstanceTaskStatus.RUNNING);
+              task.setStatus(DriverTaskStatus.RUNNING);
               return true;
             });
     QueryId queryId = new QueryId("test");
     PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
     FragmentInstanceId instanceId = new FragmentInstanceId(fragmentId, "inst-0");
-    IndexedBlockingQueue<FragmentInstanceTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new FragmentInstanceTask.TimeoutComparator(), new FragmentInstanceTask());
+    IndexedBlockingQueue<DriverTask> taskQueue =
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
     IDriver mockDriver = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
 
-    AbstractExecutor executor =
-        new FragmentInstanceTaskExecutor(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+    AbstractDriverThread executor =
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
 
     // FINISHED status test
-    FragmentInstanceTask testTask =
-        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.FINISHED);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.FINISHED);
     executor.execute(testTask);
-    Assert.assertEquals(FragmentInstanceTaskStatus.FINISHED, testTask.getStatus());
+    Assert.assertEquals(DriverTaskStatus.FINISHED, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
     Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
 
     // ABORTED status test
-    testTask = new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.ABORTED);
+    testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.ABORTED);
     executor.execute(testTask);
-    Assert.assertEquals(FragmentInstanceTaskStatus.ABORTED, testTask.getStatus());
+    Assert.assertEquals(DriverTaskStatus.ABORTED, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
     Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
 
     // RUNNING status test
-    testTask = new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.RUNNING);
+    testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.RUNNING);
     executor.execute(testTask);
-    Assert.assertEquals(FragmentInstanceTaskStatus.RUNNING, testTask.getStatus());
+    Assert.assertEquals(DriverTaskStatus.RUNNING, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
     Mockito.verify(mockDriver, Mockito.never()).failed(Mockito.any());
 
     // BLOCKED status test
-    testTask = new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.BLOCKED);
+    testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.BLOCKED);
     executor.execute(testTask);
-    Assert.assertEquals(FragmentInstanceTaskStatus.BLOCKED, testTask.getStatus());
+    Assert.assertEquals(DriverTaskStatus.BLOCKED, testTask.getStatus());
     Mockito.verify(mockDriver, Mockito.never()).processFor(Mockito.any());
     Assert.assertNull(testTask.getAbortCause());
     Mockito.verify(mockScheduler, Mockito.never()).toAborted(Mockito.any());
@@ -104,16 +101,15 @@ public class FragmentInstanceTimeoutSentinelTest {
     Mockito.when(mockScheduler.readyToRunning(Mockito.any()))
         .thenAnswer(
             ans -> {
-              FragmentInstanceTask task = ans.getArgument(0);
-              if (task.getStatus() != FragmentInstanceTaskStatus.READY) {
+              DriverTask task = ans.getArgument(0);
+              if (task.getStatus() != DriverTaskStatus.READY) {
                 return false;
               }
-              task.setStatus(FragmentInstanceTaskStatus.RUNNING);
+              task.setStatus(DriverTaskStatus.RUNNING);
               return true;
             });
-    IndexedBlockingQueue<FragmentInstanceTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new FragmentInstanceTask.TimeoutComparator(), new FragmentInstanceTask());
+    IndexedBlockingQueue<DriverTask> taskQueue =
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a cancelled future
     IDriver mockDriver = Mockito.mock(IDriver.class);
@@ -124,11 +120,9 @@ public class FragmentInstanceTimeoutSentinelTest {
     Mockito.when(mockDriver.processFor(Mockito.any()))
         .thenReturn(Futures.immediateCancelledFuture());
 
-    AbstractExecutor executor =
-        new FragmentInstanceTaskExecutor(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
-    FragmentInstanceTask testTask =
-        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.READY);
+    AbstractDriverThread executor =
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertEquals(
@@ -146,16 +140,15 @@ public class FragmentInstanceTimeoutSentinelTest {
     Mockito.when(mockScheduler.readyToRunning(Mockito.any()))
         .thenAnswer(
             ans -> {
-              FragmentInstanceTask task = ans.getArgument(0);
-              if (task.getStatus() != FragmentInstanceTaskStatus.READY) {
+              DriverTask task = ans.getArgument(0);
+              if (task.getStatus() != DriverTaskStatus.READY) {
                 return false;
               }
-              task.setStatus(FragmentInstanceTaskStatus.RUNNING);
+              task.setStatus(DriverTaskStatus.RUNNING);
               return true;
             });
-    IndexedBlockingQueue<FragmentInstanceTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new FragmentInstanceTask.TimeoutComparator(), new FragmentInstanceTask());
+    IndexedBlockingQueue<DriverTask> taskQueue =
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a cancelled future
     IDriver mockDriver = Mockito.mock(IDriver.class);
@@ -165,11 +158,9 @@ public class FragmentInstanceTimeoutSentinelTest {
     Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
     Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(Futures.immediateVoidFuture());
     Mockito.when(mockDriver.isFinished()).thenReturn(true);
-    AbstractExecutor executor =
-        new FragmentInstanceTaskExecutor(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
-    FragmentInstanceTask testTask =
-        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.READY);
+    AbstractDriverThread executor =
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertNull(testTask.getAbortCause());
@@ -186,16 +177,15 @@ public class FragmentInstanceTimeoutSentinelTest {
     Mockito.when(mockScheduler.readyToRunning(Mockito.any()))
         .thenAnswer(
             ans -> {
-              FragmentInstanceTask task = ans.getArgument(0);
-              if (task.getStatus() != FragmentInstanceTaskStatus.READY) {
+              DriverTask task = ans.getArgument(0);
+              if (task.getStatus() != DriverTaskStatus.READY) {
                 return false;
               }
-              task.setStatus(FragmentInstanceTaskStatus.RUNNING);
+              task.setStatus(DriverTaskStatus.RUNNING);
               return true;
             });
-    IndexedBlockingQueue<FragmentInstanceTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new FragmentInstanceTask.TimeoutComparator(), new FragmentInstanceTask());
+    IndexedBlockingQueue<DriverTask> taskQueue =
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a blocked future
     ListenableFuture<Void> mockFuture = Mockito.mock(ListenableFuture.class);
@@ -216,11 +206,9 @@ public class FragmentInstanceTimeoutSentinelTest {
     Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
     Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(mockFuture);
     Mockito.when(mockDriver.isFinished()).thenReturn(false);
-    AbstractExecutor executor =
-        new FragmentInstanceTaskExecutor(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
-    FragmentInstanceTask testTask =
-        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.READY);
+    AbstractDriverThread executor =
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertNull(testTask.getAbortCause());
@@ -237,16 +225,15 @@ public class FragmentInstanceTimeoutSentinelTest {
     Mockito.when(mockScheduler.readyToRunning(Mockito.any()))
         .thenAnswer(
             ans -> {
-              FragmentInstanceTask task = ans.getArgument(0);
-              if (task.getStatus() != FragmentInstanceTaskStatus.READY) {
+              DriverTask task = ans.getArgument(0);
+              if (task.getStatus() != DriverTaskStatus.READY) {
                 return false;
               }
-              task.setStatus(FragmentInstanceTaskStatus.RUNNING);
+              task.setStatus(DriverTaskStatus.RUNNING);
               return true;
             });
-    IndexedBlockingQueue<FragmentInstanceTask> taskQueue =
-        new L1PriorityQueue<>(
-            100, new FragmentInstanceTask.TimeoutComparator(), new FragmentInstanceTask());
+    IndexedBlockingQueue<DriverTask> taskQueue =
+        new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a ready future
     ListenableFuture<Void> mockFuture = Mockito.mock(ListenableFuture.class);
@@ -267,11 +254,9 @@ public class FragmentInstanceTimeoutSentinelTest {
     Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
     Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(mockFuture);
     Mockito.when(mockDriver.isFinished()).thenReturn(false);
-    AbstractExecutor executor =
-        new FragmentInstanceTaskExecutor(
-            "0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
-    FragmentInstanceTask testTask =
-        new FragmentInstanceTask(mockDriver, 100L, FragmentInstanceTaskStatus.READY);
+    AbstractDriverThread executor =
+        new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
+    DriverTask testTask = new DriverTask(mockDriver, 100L, DriverTaskStatus.READY);
     executor.execute(testTask);
     Mockito.verify(mockDriver, Mockito.times(1)).processFor(Mockito.any());
     Assert.assertNull(testTask.getAbortCause());
