@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -195,10 +196,14 @@ public abstract class InsertNode extends WritePlanNode {
   public abstract boolean validateSchema(SchemaTree schemaTree);
 
   public void setMeasurementSchemas(SchemaTree schemaTree) {
-    DeviceSchemaInfo deviceSchemaInfo =
-        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    measurementSchemas =
-        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
+    try {
+      DeviceSchemaInfo deviceSchemaInfo =
+              schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+      measurementSchemas =
+              deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
+    }catch (PathNotExistException e){
+      throw new RuntimeException(e);
+    }
   }
 
   /**

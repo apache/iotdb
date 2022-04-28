@@ -21,6 +21,9 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -57,6 +60,8 @@ import java.util.Map;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
+
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
@@ -118,6 +123,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     SchemaTree schemaTree = fetchSchema(new PathPatternTree(devicePath, measurements));
 
+    if(!config.isAutoCreateSchemaEnabled()){
+      return schemaTree;
+    }
+
     schemaTree.mergeSchemaTree(
         checkAndAutoCreateMissingMeasurements(
             schemaTree, devicePath, measurements, tsDataTypes, isAligned));
@@ -177,8 +186,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       PartialPath devicePath,
       String[] measurements,
       TSDataType[] tsDataTypes) {
-    DeviceSchemaInfo deviceSchemaInfo =
-        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    DeviceSchemaInfo deviceSchemaInfo = null;
+    try {
+      deviceSchemaInfo =
+              schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    }catch (PathNotExistException e){
+      return new Pair<>(Arrays.asList(measurements), Arrays.asList(tsDataTypes));
+    }
+
     List<String> missingMeasurements = new ArrayList<>();
     List<TSDataType> dataTypesOfMissingMeasurement = new ArrayList<>();
     List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
@@ -236,10 +251,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
     // TODO: throw exception
-    int statusCode = executionResult.status.getCode();
-    if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-      throw new RuntimeException("cannot auto create schema, status is: " + executionResult.status);
+    try {
+      int statusCode = executionResult.status.getCode();
+      if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+        throw new RuntimeException("cannot auto create schema, status is: " + executionResult.status);
+      }
+    }finally {
+      coordinator.getQueryExecution(queryId).stopAndCleanup();
     }
   }
 
@@ -256,6 +275,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     SchemaTree schemaTree = fetchSchema(patternTree);
+
+    if(!config.isAutoCreateSchemaEnabled()){
+      return schemaTree;
+    }
 
     for (int i = 0; i < devicePathList.size(); i++) {
       schemaTree.mergeSchemaTree(
