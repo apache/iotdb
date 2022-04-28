@@ -82,7 +82,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -475,7 +475,7 @@ public class LocalExecutionPlanner {
     }
 
     private Map<String, List<InputLocation>> makeLayout(PlanNode node) {
-      Map<String, List<InputLocation>> outputMappings = new HashMap<>();
+      Map<String, List<InputLocation>> outputMappings = new LinkedHashMap<>();
       int tsBlockIndex = 0;
       for (PlanNode childNode : node.getChildren()) {
         int valueColumnIndex = 0;
