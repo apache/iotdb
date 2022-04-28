@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.MTreeLoadTaskManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConfLoader;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion;
@@ -81,6 +82,11 @@ public class SchemaEngine {
    */
   private Map<PartialPath, List<SchemaRegionId>> initSchemaRegion() throws MetadataException {
     Map<PartialPath, List<SchemaRegionId>> partitionTable = new HashMap<>();
+
+    // to load MTree concurrently
+    MTreeLoadTaskManager loadTaskManager = MTreeLoadTaskManager.getInstance();
+    loadTaskManager.init();
+
     for (PartialPath storageGroup : localStorageGroupSchemaManager.getAllStorageGroupPaths()) {
       List<SchemaRegionId> schemaRegionIdList = new ArrayList<>();
       partitionTable.put(storageGroup, schemaRegionIdList);
@@ -104,10 +110,13 @@ public class SchemaEngine {
           // the dir/file is not schemaRegionDir, ignore this.
           continue;
         }
-        createSchemaRegion(storageGroup, schemaRegionId);
+        // createSchemaRegion(storageGroup, schemaRegionId);
+        loadTaskManager.submit(createSchemaRegionTask(storageGroup, schemaRegionId));
         schemaRegionIdList.add(schemaRegionId);
       }
     }
+
+    loadTaskManager.clear();
     return partitionTable;
   }
 
@@ -139,6 +148,7 @@ public class SchemaEngine {
 
   public synchronized void createSchemaRegion(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
+    long debugDur = System.currentTimeMillis();
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       return;
@@ -166,6 +176,55 @@ public class SchemaEngine {
                 schemaRegionStoredMode));
     }
     schemaRegionMap.put(schemaRegionId, schemaRegion);
+    debugDur = System.currentTimeMillis() - debugDur;
+    logger.info(
+        String.format(
+            "Recover [%s] spend: %s ms",
+            storageGroup.concatNode(schemaRegionId.toString()), debugDur));
+  }
+
+  private Runnable createSchemaRegionTask(PartialPath storageGroup, SchemaRegionId schemaRegionId) {
+    // this method is called for concurrent recovery of schema regions
+    return () -> {
+      long debugDur = System.currentTimeMillis();
+      ISchemaRegion schemaRegion = this.schemaRegionMap.get(schemaRegionId);
+      if (schemaRegion != null) {
+        return;
+      }
+      try {
+        this.localStorageGroupSchemaManager.ensureStorageGroup(storageGroup);
+        IStorageGroupMNode storageGroupMNode =
+            this.localStorageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup);
+        switch (this.schemaRegionStoredMode) {
+          case Memory:
+            schemaRegion =
+                new SchemaRegionMemoryImpl(storageGroup, schemaRegionId, storageGroupMNode);
+            break;
+          case Schema_File:
+            schemaRegion =
+                new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, storageGroupMNode);
+            break;
+          case Rocksdb_based:
+            schemaRegion =
+                new RSchemaRegion(
+                    storageGroup, schemaRegionId, storageGroupMNode, loadRocksdbConfFile());
+            break;
+          default:
+            throw new UnsupportedOperationException(
+                String.format(
+                    "This mode [%s] is not supported. Please check and modify it.",
+                    schemaRegionStoredMode));
+        }
+        this.schemaRegionMap.put(schemaRegionId, schemaRegion);
+        debugDur = System.currentTimeMillis() - debugDur;
+        logger.info(
+            String.format(
+                "Recover [%s] spend: %s ms",
+                storageGroup.concatNode(schemaRegionId.toString()), debugDur));
+      } catch (MetadataException e) {
+        throw new RuntimeException(e);
+      }
+    };
   }
 
   public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {

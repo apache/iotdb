@@ -430,10 +430,20 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
-    if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+    try {
+      while (!memoryStatistics.isAllowToCreateNewSeries()) {
+        if (!config.getSchemaEngineMode().equals(SchemaEngineMode.Schema_File.toString())) {
+          throw new MetadataException(
+              "IoTDB system load is too large to create timeseries, "
+                  + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+        }
+
+        logger.warn("IoTDB loads too many timeseries, waiting for IO swapping...");
+        Thread.sleep(10000L);
+      }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      throw new MetadataException(e);
     }
 
     try {
