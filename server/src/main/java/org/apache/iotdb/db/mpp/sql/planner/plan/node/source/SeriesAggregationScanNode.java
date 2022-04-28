@@ -156,6 +156,10 @@ public class SeriesAggregationScanNode extends SourceNode {
         .collect(Collectors.toList());
   }
 
+  public void setTimeFilter(Filter timeFilter) {
+    this.timeFilter = timeFilter;
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return ImmutableList.of();
