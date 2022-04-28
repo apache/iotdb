@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** this class extends {@code Statement} and process insert statement. */
@@ -44,8 +45,13 @@ public class InsertStatement extends Statement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
+    for (String m : measurementList) {
+      PartialPath fullPath = device.concatNode(m);
+      ret.add(fullPath);
+    }
+    return ret;
   }
 
   public PartialPath getDevice() {

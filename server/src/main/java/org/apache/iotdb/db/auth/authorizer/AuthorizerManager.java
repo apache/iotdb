@@ -30,7 +30,6 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -291,11 +290,8 @@ public class AuthorizerManager implements IAuthorizer {
     if (statement instanceof AuthorStatement) {
       targetUser = ((AuthorStatement) statement).getUserName();
     }
-    if (statement instanceof IConfigStatement) {
-      return AuthorityChecker.checkPermission(
-          username, statement.getPaths(), statement.getType(), targetUser);
-    }
-    return true;
+    return AuthorityChecker.checkPermission(
+        username, statement.getPaths(), statement.getType(), targetUser);
   }
 
   public TSStatus checkPath(String username, List<String> allPath, int permission) {

@@ -104,7 +104,7 @@ public class QueryStatement extends Statement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return null;
   }
 
