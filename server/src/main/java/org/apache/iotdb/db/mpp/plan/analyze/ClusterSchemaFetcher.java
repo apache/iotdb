@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.execution.Coordinator;
 import org.apache.iotdb.db.mpp.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
@@ -49,7 +50,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -117,6 +117,19 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     SchemaTree schemaTree = fetchSchema(new PathPatternTree(devicePath, measurements));
 
+    schemaTree.mergeSchemaTree(
+        checkAndProcessMissingMeasurements(
+            schemaTree, devicePath, measurements, tsDataTypes, isAligned));
+
+    return schemaTree;
+  }
+
+  private SchemaTree checkAndProcessMissingMeasurements(
+      SchemaTree schemaTree,
+      PartialPath devicePath,
+      String[] measurements,
+      TSDataType[] tsDataTypes,
+      boolean isAligned) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
     List<String> missingMeasurements = new ArrayList<>();
@@ -132,7 +145,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     internalCreateTimeseries(
         devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned);
 
-    return schemaTree;
+    return fetchSchema(new PathPatternTree(devicePath, missingMeasurements));
   }
 
   private void internalCreateTimeseries(
@@ -140,6 +153,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<String> measurements,
       List<TSDataType> tsDataTypes,
       boolean isAligned) {
+
     if (isAligned) {
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
           new CreateAlignedTimeSeriesStatement();
@@ -152,6 +166,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         encodings.add(getDefaultEncoding(dataType));
         compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
       }
+      createAlignedTimeSeriesStatement.setEncodings(encodings);
+      createAlignedTimeSeriesStatement.setCompressors(compressors);
+
+      executeCreateStatement(createAlignedTimeSeriesStatement);
     } else {
       // todo @zyk implement batch create
       for (int i = 0; i < measurements.size(); i++) {
@@ -162,21 +180,46 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         createTimeSeriesStatement.setCompressor(
             TSFileDescriptor.getInstance().getConfig().getCompressor());
         createTimeSeriesStatement.setProps(Collections.emptyMap());
+
+        executeCreateStatement(createTimeSeriesStatement);
       }
+    }
+  }
+
+  private void executeCreateStatement(Statement statement) {
+    QueryId queryId =
+        new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
+    ExecutionResult executionResult =
+        coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
+    // TODO: throw exception
+    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException("cannot auto create schema, status is: " + executionResult.status);
     }
   }
 
   @Override
   public SchemaTree fetchSchemaListWithAutoCreate(
-      List<PartialPath> devicePath,
-      List<String[]> measurements,
-      List<TSDataType[]> tsDataTypes,
-      List<Boolean> aligned) {
-    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
-    for (int i = 0; i < devicePath.size(); i++) {
-      deviceToMeasurementMap.put(devicePath.get(i), Arrays.asList(measurements.get(i)));
+      List<PartialPath> devicePathList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<Boolean> isAlignedList) {
+
+    PathPatternTree patternTree = new PathPatternTree();
+    for (int i = 0; i < devicePathList.size(); i++) {
+      patternTree.appendPaths(devicePathList.get(i), Arrays.asList(measurementsList.get(i)));
     }
-    // todo implement auto create schema
-    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
+
+    SchemaTree schemaTree = fetchSchema(patternTree);
+
+    for (int i = 0; i < devicePathList.size(); i++) {
+      schemaTree.mergeSchemaTree(
+          checkAndProcessMissingMeasurements(
+              schemaTree,
+              devicePathList.get(i),
+              measurementsList.get(i),
+              tsDataTypesList.get(i),
+              isAlignedList.get(i)));
+    }
+    return schemaTree;
   }
 }
