@@ -131,7 +131,6 @@ public class ConfigNodeClient {
     for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
       cursor = (cursor + 1) % configNodes.size();
       TEndPoint tryEndpoint = configNodes.get(cursor);
-      tryHostNum++;
 
       try {
         connect(tryEndpoint);
