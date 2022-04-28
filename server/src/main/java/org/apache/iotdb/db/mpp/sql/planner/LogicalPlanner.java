@@ -55,9 +55,6 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.tsfile.read.expression.ExpressionType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
 
@@ -227,7 +224,6 @@ public class LogicalPlanner {
           insertRowStatement.getTime(),
           insertRowStatement.getValues(),
           insertRowStatement.isNeedInferType());
-          insertRowStatement.getValues());
     }
 
     @Override
@@ -372,43 +368,6 @@ public class LogicalPlanner {
             i);
       }
       return insertRowsOfOneDeviceNode;
-    }
-
-    @Override
-    public PlanNode visitShowTimeSeries(
-        ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
-      planBuilder.planTimeSeriesMetaSource(
-          showTimeSeriesStatement.getPathPattern(),
-          showTimeSeriesStatement.getKey(),
-          showTimeSeriesStatement.getValue(),
-          showTimeSeriesStatement.getLimit(),
-          showTimeSeriesStatement.getOffset(),
-          showTimeSeriesStatement.isOrderByHeat(),
-          showTimeSeriesStatement.isContains(),
-          showTimeSeriesStatement.isPrefixPath());
-      planBuilder.planSchemaMerge(showTimeSeriesStatement.isOrderByHeat());
-      if (showTimeSeriesStatement.getLimit() > 0) {
-        planBuilder.planOffset(showTimeSeriesStatement.getOffset());
-        planBuilder.planLimit(showTimeSeriesStatement.getLimit());
-      }
-      return planBuilder.getRoot();
-    }
-
-    @Override
-    public PlanNode visitShowDevices(
-        ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
-      planBuilder.planDeviceSchemaSource(
-          showDevicesStatement.getPathPattern(),
-          showDevicesStatement.getLimit(),
-          showDevicesStatement.getOffset(),
-          showDevicesStatement.isPrefixPath(),
-          showDevicesStatement.hasSgCol());
-      planBuilder.planSchemaMerge(false);
-      planBuilder.planOffset(showDevicesStatement.getOffset());
-      planBuilder.planLimit(showDevicesStatement.getLimit());
-      return planBuilder.getRoot();
     }
 
     @Override
