@@ -16,54 +16,71 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
+import java.util.Arrays;
+import java.util.List;
 
-public class DeleteStorageGroupReq extends ConfigRequest {
+public class CountStorageGroupReq extends ConfigRequest {
 
-  private String storageGroup;
+  private String[] storageGroupPattern;
 
-  public DeleteStorageGroupReq() {
-    super(ConfigRequestType.DeleteStorageGroup);
+  public CountStorageGroupReq() {
+    super(ConfigRequestType.CountStorageGroup);
   }
 
-  public DeleteStorageGroupReq(String storageGroup) {
+  public CountStorageGroupReq(ConfigRequestType type) {
+    super(type);
+  }
+
+  public CountStorageGroupReq(List<String> storageGroupPattern) {
     this();
-    this.storageGroup = storageGroup;
+    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public CountStorageGroupReq(ConfigRequestType type, List<String> storageGroupPattern) {
+    super(type);
+    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
+  }
+
+  public String[] getStorageGroupPattern() {
+    return storageGroupPattern;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.DeleteStorageGroup.ordinal());
+    buffer.putInt(getType().ordinal());
 
-    BasicStructureSerDeUtil.write(storageGroup, buffer);
+    buffer.putInt(storageGroupPattern.length);
+    for (String node : storageGroupPattern) {
+      BasicStructureSerDeUtil.write(node, buffer);
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+    int length = buffer.getInt();
+    storageGroupPattern = new String[length];
+    for (int i = 0; i < length; i++) {
+      storageGroupPattern[i] = BasicStructureSerDeUtil.readString(buffer);
+    }
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    DeleteStorageGroupReq that = (DeleteStorageGroupReq) o;
-    return storageGroup.equals(that.storageGroup);
+    CountStorageGroupReq that = (CountStorageGroupReq) o;
+    return Arrays.equals(storageGroupPattern, that.storageGroupPattern);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup);
+    return Arrays.hashCode(storageGroupPattern);
   }
 }

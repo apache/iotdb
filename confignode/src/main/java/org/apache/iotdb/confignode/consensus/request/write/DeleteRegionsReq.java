@@ -16,49 +16,51 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-public class GetOrCountStorageGroupReq extends ConfigRequest {
+public class DeleteRegionsReq extends ConfigRequest {
 
-  private String[] storageGroupPattern;
+  private final List<TConsensusGroupId> consensusGroupIds;
 
-  public GetOrCountStorageGroupReq(ConfigRequestType type) {
-    super(type);
+  public DeleteRegionsReq() {
+    super(ConfigRequestType.DeleteRegions);
+    this.consensusGroupIds = new ArrayList<>();
   }
 
-  public GetOrCountStorageGroupReq(ConfigRequestType type, List<String> storageGroupPattern) {
-    this(type);
-    this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
+  public void addConsensusGroupId(TConsensusGroupId consensusGroupId) {
+    consensusGroupIds.add(consensusGroupId);
   }
 
-  public String[] getStorageGroupPattern() {
-    return storageGroupPattern;
+  public List<TConsensusGroupId> getConsensusGroupIds() {
+    return consensusGroupIds;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
+    buffer.putInt(ConfigRequestType.DeleteRegions.ordinal());
 
-    buffer.putInt(storageGroupPattern.length);
-    for (String node : storageGroupPattern) {
-      BasicStructureSerDeUtil.write(node, buffer);
+    buffer.putInt(consensusGroupIds.size());
+    for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
+      ThriftCommonsSerDeUtils.writeTConsensusGroupId(consensusGroupId, buffer);
     }
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int length = buffer.getInt();
-    storageGroupPattern = new String[length];
     for (int i = 0; i < length; i++) {
-      storageGroupPattern[i] = BasicStructureSerDeUtil.readString(buffer);
+      consensusGroupIds.add(ThriftCommonsSerDeUtils.readTConsensusGroupId(buffer));
     }
   }
 
@@ -66,12 +68,12 @@ public class GetOrCountStorageGroupReq extends ConfigRequest {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetOrCountStorageGroupReq that = (GetOrCountStorageGroupReq) o;
-    return Arrays.equals(storageGroupPattern, that.storageGroupPattern);
+    DeleteRegionsReq that = (DeleteRegionsReq) o;
+    return consensusGroupIds.equals(that.consensusGroupIds);
   }
 
   @Override
   public int hashCode() {
-    return Arrays.hashCode(storageGroupPattern);
+    return Objects.hash(consensusGroupIds);
   }
 }
