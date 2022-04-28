@@ -85,13 +85,4 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertMultiTablets(this, context);
   }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    List<PartialPath> result = new ArrayList<>();
-    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
-      result.addAll(insertTabletStatement.getPaths());
-    }
-    return result;
-  }
 }

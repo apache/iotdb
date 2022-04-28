@@ -90,11 +90,9 @@ public class AuthorityChecker {
    * @param type Statement Type
    * @param targetUser target user
    * @return if permission-check is passed
-   * @throws AuthException Authentication Exception
    */
   public static boolean checkPermission(
-      String username, List<? extends PartialPath> paths, StatementType type, String targetUser)
-      throws AuthException {
+      String username, List<? extends PartialPath> paths, StatementType type, String targetUser) {
     if (SUPER_USER.equals(username)) {
       return true;
     }

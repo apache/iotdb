@@ -20,13 +20,10 @@
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
-
-import java.util.List;
 
 public class SchemaFetchStatement extends Statement {
 
@@ -55,10 +52,5 @@ public class SchemaFetchStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitSchemaFetch(this, context);
-  }
-
-  @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
   }
 }

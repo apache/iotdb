@@ -92,9 +92,4 @@ public class InsertRowsStatement extends InsertBaseStatement {
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRows(this, context);
   }
-
-  @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
-  }
 }

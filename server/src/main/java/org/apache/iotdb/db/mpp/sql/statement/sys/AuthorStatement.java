@@ -25,9 +25,6 @@ import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
-import java.util.Collections;
-import java.util.List;
-
 public class AuthorStatement extends ConfigStatement {
 
   private final AuthorOperator.AuthorType authorType;
@@ -46,60 +43,7 @@ public class AuthorStatement extends ConfigStatement {
   public AuthorStatement(AuthorOperator.AuthorType type) {
     super();
     authorType = type;
-    switch (authorType) {
-      case DROP_ROLE:
-        this.setType(StatementType.DELETE_ROLE);
-        break;
-      case DROP_USER:
-        this.setType(StatementType.DELETE_USER);
-        break;
-      case GRANT_ROLE:
-        this.setType(StatementType.GRANT_ROLE_PRIVILEGE);
-        break;
-      case GRANT_USER:
-        this.setType(StatementType.GRANT_USER_PRIVILEGE);
-        break;
-      case CREATE_ROLE:
-        this.setType(StatementType.CREATE_ROLE);
-        break;
-      case CREATE_USER:
-        this.setType(StatementType.CREATE_USER);
-        break;
-      case REVOKE_ROLE:
-        this.setType(StatementType.REVOKE_ROLE_PRIVILEGE);
-        break;
-      case REVOKE_USER:
-        this.setType(StatementType.REVOKE_USER_PRIVILEGE);
-        break;
-      case UPDATE_USER:
-        this.setType(StatementType.MODIFY_PASSWORD);
-        break;
-      case GRANT_ROLE_TO_USER:
-        this.setType(StatementType.GRANT_ROLE_PRIVILEGE);
-        break;
-      case REVOKE_ROLE_FROM_USER:
-        this.setType(StatementType.REVOKE_USER_ROLE);
-        break;
-      case LIST_USER_PRIVILEGE:
-        this.setType(StatementType.LIST_USER_PRIVILEGE);
-        break;
-      case LIST_ROLE_PRIVILEGE:
-        this.setType(StatementType.LIST_ROLE_PRIVILEGE);
-        break;
-      case LIST_USER_ROLES:
-        this.setType(StatementType.LIST_USER_ROLES);
-        break;
-      case LIST_ROLE_USERS:
-        this.setType(StatementType.LIST_ROLE_USERS);
-        break;
-      case LIST_USER:
-        this.setType(StatementType.LIST_USER);
-        break;
-      case LIST_ROLE:
-        this.setType(StatementType.LIST_ROLE);
-        break;
-      default:
-    }
+    statementType = StatementType.AUTHOR;
   }
 
   /**
@@ -199,10 +143,5 @@ public class AuthorStatement extends ConfigStatement {
         throw new IllegalArgumentException("Unknown operator: " + authorType);
     }
     return queryType;
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    return nodeName != null ? Collections.singletonList(nodeName) : Collections.emptyList();
   }
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
@@ -61,19 +60,6 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
   public CreateAlignedTimeSeriesStatement() {
     super();
     statementType = StatementType.CREATE_ALIGNED_TIMESERIES;
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    List<PartialPath> paths = new ArrayList<>();
-    for (String measurement : measurements) {
-      try {
-        paths.add(new PartialPath(devicePath.getFullPath(), measurement));
-      } catch (IllegalPathException e) {
-        logger.error("Failed to get paths of CreateAlignedTimeSeriesPlan. ", e);
-      }
-    }
-    return paths;
   }
 
   public PartialPath getDevicePath() {

@@ -80,6 +80,7 @@ public class AggregationQueryStatement extends QueryStatement {
     return deviceNameToAggregationsMap;
   }
 
+  @Override
   public DatasetHeader constructDatasetHeader() {
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     // TODO: consider Aggregation
@@ -121,6 +122,7 @@ public class AggregationQueryStatement extends QueryStatement {
     }
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAggregationQuery(this, context);
   }

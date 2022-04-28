@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.sql.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -94,10 +93,5 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRowsOfOneDevice(this, context);
-  }
-
-  @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
   }
 }

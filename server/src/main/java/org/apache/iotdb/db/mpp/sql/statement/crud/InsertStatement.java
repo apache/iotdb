@@ -43,11 +43,6 @@ public class InsertStatement extends Statement {
     statementType = StatementType.INSERT;
   }
 
-  @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
-  }
-
   public PartialPath getDevice() {
     return device;
   }

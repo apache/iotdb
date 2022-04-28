@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.StandalonePartitionFetcher;
 import org.apache.iotdb.db.mpp.sql.analyze.StandaloneSchemaFetcher;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
@@ -270,9 +271,11 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
         StatementGenerator.createStatement(
             statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
 
-    TSStatus status = AuthorizerManager.getInstance().checkAuthority(s, req.sessionId);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return RpcUtils.getTSExecuteStatementResp(status);
+    if (s instanceof ConfigStatement) {
+      TSStatus status = AuthorizerManager.getInstance().checkAuthority(s, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return RpcUtils.getTSExecuteStatementResp(status);
+      }
     }
 
     QUERY_FREQUENCY_RECORDER.incrementAndGet();
