@@ -17,15 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.statement.crud;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
 
-/** BatchInsert contains multiple sub insert. */
-public interface BatchInsert {
+/**
+ * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
+ * nodes needs to implement it.
+ */
+public interface BatchInsertNode {
 
   List<PartialPath> getDevicePaths();
 

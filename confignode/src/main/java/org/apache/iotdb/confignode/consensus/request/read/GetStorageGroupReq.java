@@ -20,9 +20,15 @@ package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
-public class GetOrCreateSchemaPartitionReq extends GetSchemaPartitionReq {
+import java.util.List;
 
-  public GetOrCreateSchemaPartitionReq() {
-    super(ConfigRequestType.GetOrCreateSchemaPartition);
+public class GetStorageGroupReq extends CountStorageGroupReq {
+
+  public GetStorageGroupReq() {
+    super(ConfigRequestType.GetStorageGroup);
+  }
+
+  public GetStorageGroupReq(List<String> storageGroupPathPattern) {
+    super(ConfigRequestType.GetStorageGroup, storageGroupPathPattern);
   }
 }
