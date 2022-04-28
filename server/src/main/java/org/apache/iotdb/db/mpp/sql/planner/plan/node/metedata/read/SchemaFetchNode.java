@@ -47,11 +47,6 @@ public class SchemaFetchNode extends SchemaScanNode {
   }
 
   @Override
-  public int allowedChildCount() {
-    return 0;
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
     return null;
   }

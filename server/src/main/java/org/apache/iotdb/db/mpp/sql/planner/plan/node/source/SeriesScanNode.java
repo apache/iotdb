@@ -32,7 +32,9 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
-import org.jetbrains.annotations.Nullable;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.util.HashSet;
@@ -53,7 +55,7 @@ public class SeriesScanNode extends SourceNode {
   private final MeasurementPath seriesPath;
 
   // all the sensors in seriesPath's device of current query
-  private final Set<String> allSensors;
+  @Nonnull private final Set<String> allSensors;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -75,7 +77,8 @@ public class SeriesScanNode extends SourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath, Set<String> allSensors) {
+  public SeriesScanNode(
+      PlanNodeId id, MeasurementPath seriesPath, @Nonnull Set<String> allSensors) {
     super(id);
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
@@ -137,6 +140,7 @@ public class SeriesScanNode extends SourceNode {
     this.offset = offset;
   }
 
+  @Nonnull
   public Set<String> getAllSensors() {
     return allSensors;
   }
@@ -238,10 +242,14 @@ public class SeriesScanNode extends SourceNode {
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Filter timeFilter = null;
-    if (isNull == 1) timeFilter = FilterFactory.deserialize(byteBuffer);
+    if (isNull == 1) {
+      timeFilter = FilterFactory.deserialize(byteBuffer);
+    }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Filter valueFilter = null;
-    if (isNull == 1) valueFilter = FilterFactory.deserialize(byteBuffer);
+    if (isNull == 1) {
+      valueFilter = FilterFactory.deserialize(byteBuffer);
+    }
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     TRegionReplicaSet dataRegionReplicaSet =

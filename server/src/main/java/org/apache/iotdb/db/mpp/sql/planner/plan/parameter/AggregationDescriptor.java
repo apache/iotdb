@@ -23,9 +23,6 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,14 +60,7 @@ public class AggregationDescriptor {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      aggregationType.serializeTo(dataOutputStream);
-    } catch (IOException ioException) {
-      ioException.printStackTrace();
-    }
-    byteBuffer.put(byteArrayOutputStream.toByteArray());
+    ReadWriteIOUtils.write(aggregationType.ordinal(), byteBuffer);
     step.serialize(byteBuffer);
     ReadWriteIOUtils.write(inputExpressions.size(), byteBuffer);
     for (Expression expression : inputExpressions) {
@@ -79,10 +69,11 @@ public class AggregationDescriptor {
   }
 
   public static AggregationDescriptor deserialize(ByteBuffer byteBuffer) {
-    AggregationType aggregationType = AggregationType.deserialize(byteBuffer);
+    AggregationType aggregationType =
+        AggregationType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     AggregationStep step = AggregationStep.deserialize(byteBuffer);
     int inputExpressionsSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<Expression> inputExpressions = new ArrayList<>();
+    List<Expression> inputExpressions = new ArrayList<>(inputExpressionsSize);
     while (inputExpressionsSize > 0) {
       inputExpressions.add(Expression.deserialize(byteBuffer));
       inputExpressionsSize--;

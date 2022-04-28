@@ -91,8 +91,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
     this.partitionExecutor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
-            IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
+            config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());
     this.partitionCache =
         new PartitionCache(
             config.getSeriesPartitionExecutorClass(), config.getSeriesPartitionSlotNum());

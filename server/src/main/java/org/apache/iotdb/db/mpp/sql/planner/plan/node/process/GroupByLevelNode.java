@@ -51,8 +51,6 @@ public class GroupByLevelNode extends AggregationNode {
   // column name of each output column
   private final List<String> outputColumnNames;
 
-  private final List<PlanNode> children;
-
   public GroupByLevelNode(
       PlanNodeId id,
       List<PlanNode> children,

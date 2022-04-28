@@ -461,7 +461,7 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(functionName, byteBuffer);
     ReadWriteIOUtils.write(functionAttributes, byteBuffer);
     ReadWriteIOUtils.write(expressions.size(), byteBuffer);

@@ -158,7 +158,7 @@ public class TimeSeriesOperand extends LeafOperand {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serialize(ByteBuffer byteBuffer) {
     path.serialize(byteBuffer);
   }
 }
