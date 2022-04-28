@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
 import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
+import org.apache.iotdb.db.mpp.sql.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.sql.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
@@ -107,7 +108,7 @@ public class FragmentInstanceManager {
                 DataDriver driver =
                     planner.plan(
                         instance.getFragment().getRoot(),
-                        instance.getFragment().getTypeProvider(),
+                        new TypeProvider(), // TODO: @Tian
                         context,
                         instance.getTimeFilter(),
                         dataRegion);
