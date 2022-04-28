@@ -144,8 +144,6 @@ public class MemoryPool {
     if (future == null || future.isDone()) {
       return 0L;
     }
-
-    Validate.notNull(future);
     Validate.isTrue(
         future instanceof MemoryReservationFuture,
         "invalid future type " + future.getClass().getSimpleName());

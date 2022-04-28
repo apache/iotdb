@@ -16,16 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.source;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -33,29 +36,22 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.nio.ByteBuffer;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
+import java.util.stream.Collectors;
 
-/**
- * SeriesScanNode is responsible for read data a specific series. When reading data, the
- * SeriesScanNode can read the raw data batch by batch. And also, it can leverage the filter and
- * other info to decrease the result set.
- *
- * <p>Children type: no child is allowed for SeriesScanNode
- */
-public class SeriesScanNode extends SourceNode {
+public class AlignedSeriesAggregationScanNode extends SourceNode {
 
-  // The path of the target series which will be scanned.
-  private final MeasurementPath seriesPath;
+  // The paths of the target series which will be aggregated.
+  private final AlignedPath alignedPath;
 
-  // all the sensors in seriesPath's device of current query
-  @Nonnull private final Set<String> allSensors;
+  // The list of aggregate functions, each AggregateDescriptor will be output as one column in
+  // result TsBlock
+  private final List<AggregationDescriptor> aggregationDescriptorList;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -65,51 +61,66 @@ public class SeriesScanNode extends SourceNode {
   // time filter for current series, could be null if doesn't exist
   @Nullable private Filter timeFilter;
 
-  // value filter for current series, could be null if doesn't exist
-  @Nullable private Filter valueFilter;
-
-  // Limit for result set. The default value is -1, which means no limit
-  private int limit;
-
-  // offset for result set. The default value is 0
-  private int offset;
+  // The parameter of `group by time`
+  // Its value will be null if there is no `group by time` clause,
+  @Nullable private GroupByTimeParameter groupByTimeParameter;
 
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  public SeriesScanNode(
-      PlanNodeId id, MeasurementPath seriesPath, @Nonnull Set<String> allSensors) {
+  public AlignedSeriesAggregationScanNode(
+      PlanNodeId id,
+      AlignedPath alignedPath,
+      List<AggregationDescriptor> aggregationDescriptorList) {
     super(id);
-    this.seriesPath = seriesPath;
-    this.allSensors = allSensors;
+    this.alignedPath = alignedPath;
+    this.aggregationDescriptorList = aggregationDescriptorList;
   }
 
-  public SeriesScanNode(
-      PlanNodeId id, MeasurementPath seriesPath, Set<String> allSensors, OrderBy scanOrder) {
-    this(id, seriesPath, allSensors);
+  public AlignedSeriesAggregationScanNode(
+      PlanNodeId id,
+      AlignedPath alignedPath,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      OrderBy scanOrder) {
+    this(id, alignedPath, aggregationDescriptorList);
     this.scanOrder = scanOrder;
   }
 
-  public SeriesScanNode(
+  public AlignedSeriesAggregationScanNode(
       PlanNodeId id,
-      MeasurementPath seriesPath,
-      Set<String> allSensors,
+      AlignedPath alignedPath,
+      List<AggregationDescriptor> aggregationDescriptorList,
       OrderBy scanOrder,
       @Nullable Filter timeFilter,
-      @Nullable Filter valueFilter,
-      int limit,
-      int offset,
+      @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet) {
-    this(id, seriesPath, allSensors, scanOrder);
+    this(id, alignedPath, aggregationDescriptorList, scanOrder);
     this.timeFilter = timeFilter;
-    this.valueFilter = valueFilter;
-    this.limit = limit;
-    this.offset = offset;
+    this.groupByTimeParameter = groupByTimeParameter;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
-  @Override
-  public void close() throws Exception {}
+  public AlignedPath getAlignedPath() {
+    return alignedPath;
+  }
+
+  public List<AggregationDescriptor> getAggregationDescriptorList() {
+    return aggregationDescriptorList;
+  }
+
+  public OrderBy getScanOrder() {
+    return scanOrder;
+  }
+
+  @Nullable
+  public Filter getTimeFilter() {
+    return timeFilter;
+  }
+
+  @Nullable
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return groupByTimeParameter;
+  }
 
   @Override
   public void open() throws Exception {}
@@ -120,52 +131,12 @@ public class SeriesScanNode extends SourceNode {
   }
 
   @Override
-  public void setRegionReplicaSet(TRegionReplicaSet dataRegion) {
-    this.regionReplicaSet = dataRegion;
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
   }
 
-  public int getLimit() {
-    return limit;
-  }
-
-  public int getOffset() {
-    return offset;
-  }
-
-  public void setLimit(int limit) {
-    this.limit = limit;
-  }
-
-  public void setOffset(int offset) {
-    this.offset = offset;
-  }
-
-  @Nonnull
-  public Set<String> getAllSensors() {
-    return allSensors;
-  }
-
-  public OrderBy getScanOrder() {
-    return scanOrder;
-  }
-
-  public void setScanOrder(OrderBy scanOrder) {
-    this.scanOrder = scanOrder;
-  }
-
-  public MeasurementPath getSeriesPath() {
-    return seriesPath;
-  }
-
-  @Nullable
-  public Filter getTimeFilter() {
-    return timeFilter;
-  }
-
-  @Nullable
-  public Filter getValueFilter() {
-    return valueFilter;
-  }
+  @Override
+  public void close() throws Exception {}
 
   @Override
   public List<PlanNode> getChildren() {
@@ -179,40 +150,42 @@ public class SeriesScanNode extends SourceNode {
 
   @Override
   public void addChild(PlanNode child) {
-    throw new UnsupportedOperationException("no child is allowed for SeriesScanNode");
+    throw new UnsupportedOperationException(
+        "no child is allowed for AlignedSeriesAggregationScanNode");
   }
 
   @Override
   public PlanNode clone() {
-    return new SeriesScanNode(
+    return new AlignedSeriesAggregationScanNode(
         getPlanNodeId(),
-        getSeriesPath(),
-        getAllSensors(),
+        getAlignedPath(),
+        getAggregationDescriptorList(),
         getScanOrder(),
         getTimeFilter(),
-        getValueFilter(),
-        getLimit(),
-        getOffset(),
-        this.regionReplicaSet);
+        getGroupByTimeParameter(),
+        getRegionReplicaSet());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ImmutableList.of(seriesPath.getFullPath());
+    return aggregationDescriptorList.stream()
+        .map(AggregationDescriptor::getOutputColumnNames)
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSeriesScan(this, context);
+    return visitor.visitAlignedSeriesAggregate(this, context);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SERIES_SCAN.serialize(byteBuffer);
-    seriesPath.serialize(byteBuffer);
-    ReadWriteIOUtils.write(allSensors.size(), byteBuffer);
-    for (String sensor : allSensors) {
-      ReadWriteIOUtils.write(sensor, byteBuffer);
+    PlanNodeType.ALIGNED_SERIES_AGGREGATE_SCAN.serialize(byteBuffer);
+    alignedPath.serialize(byteBuffer);
+    ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
+    for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
+      aggregationDescriptor.serialize(byteBuffer);
     }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     if (timeFilter == null) {
@@ -221,23 +194,21 @@ public class SeriesScanNode extends SourceNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       timeFilter.serialize(byteBuffer);
     }
-    if (valueFilter == null) {
+    if (groupByTimeParameter == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
     } else {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      valueFilter.serialize(byteBuffer);
+      groupByTimeParameter.serialize(byteBuffer);
     }
-    ReadWriteIOUtils.write(limit, byteBuffer);
-    ReadWriteIOUtils.write(offset, byteBuffer);
     ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
-  public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
-    MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
-    int allSensorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Set<String> allSensors = new HashSet<>();
-    for (int i = 0; i < allSensorSize; i++) {
-      allSensors.add(ReadWriteIOUtils.readString(byteBuffer));
+  public static AlignedSeriesAggregationScanNode deserialize(ByteBuffer byteBuffer) {
+    AlignedPath alignedPath = (AlignedPath) PathDeserializeUtil.deserialize(byteBuffer);
+    int aggregateDescriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    for (int i = 0; i < aggregateDescriptorSize; i++) {
+      aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
     }
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
@@ -246,32 +217,20 @@ public class SeriesScanNode extends SourceNode {
       timeFilter = FilterFactory.deserialize(byteBuffer);
     }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
-    Filter valueFilter = null;
+    GroupByTimeParameter groupByTimeParameter = null;
     if (isNull == 1) {
-      valueFilter = FilterFactory.deserialize(byteBuffer);
+      groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    int limit = ReadWriteIOUtils.readInt(byteBuffer);
-    int offset = ReadWriteIOUtils.readInt(byteBuffer);
-    TRegionReplicaSet dataRegionReplicaSet =
-        ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
+    TRegionReplicaSet regionReplicaSet = ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SeriesScanNode(
+    return new AlignedSeriesAggregationScanNode(
         planNodeId,
-        partialPath,
-        allSensors,
+        alignedPath,
+        aggregationDescriptorList,
         scanOrder,
         timeFilter,
-        valueFilter,
-        limit,
-        offset,
-        dataRegionReplicaSet);
-  }
-
-  @Override
-  public String toString() {
-    return String.format(
-        "SeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getSeriesPath(), this.getRegionReplicaSet());
+        groupByTimeParameter,
+        regionReplicaSet);
   }
 
   @Override
@@ -285,14 +244,12 @@ public class SeriesScanNode extends SourceNode {
     if (!super.equals(o)) {
       return false;
     }
-    SeriesScanNode that = (SeriesScanNode) o;
-    return limit == that.limit
-        && offset == that.offset
-        && seriesPath.equals(that.seriesPath)
-        && allSensors.equals(that.allSensors)
+    AlignedSeriesAggregationScanNode that = (AlignedSeriesAggregationScanNode) o;
+    return alignedPath.equals(that.alignedPath)
+        && aggregationDescriptorList.equals(that.aggregationDescriptorList)
         && scanOrder == that.scanOrder
         && Objects.equals(timeFilter, that.timeFilter)
-        && Objects.equals(valueFilter, that.valueFilter)
+        && Objects.equals(groupByTimeParameter, that.groupByTimeParameter)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
 
@@ -300,13 +257,11 @@ public class SeriesScanNode extends SourceNode {
   public int hashCode() {
     return Objects.hash(
         super.hashCode(),
-        seriesPath,
-        allSensors,
+        alignedPath,
+        aggregationDescriptorList,
         scanOrder,
         timeFilter,
-        valueFilter,
-        limit,
-        offset,
+        groupByTimeParameter,
         regionReplicaSet);
   }
 }

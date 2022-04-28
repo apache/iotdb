@@ -26,7 +26,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.AggregationStep;
@@ -35,72 +35,55 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 
 import org.apache.commons.compress.utils.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 
+import static org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER;
 import static org.junit.Assert.assertEquals;
 
-public class GroupByLevelNodeSerdeTest {
+public class AggregationNodeSerdeTest {
 
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
     GroupByTimeParameter groupByTimeParameter =
-        new GroupByTimeParameter(1, 100, 1, 1, true, true, true);
-    SeriesAggregationScanNode seriesAggregationScanNode1 =
+        new GroupByTimeParameter(1, 100, 1, 1, false, false, false);
+    SeriesAggregationScanNode seriesAggregationScanNode =
         new SeriesAggregationScanNode(
             new PlanNodeId("TestSeriesAggregateScanNode"),
-            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN),
+            Collections.singletonList(
+                new AggregationDescriptor(
+                    AggregationType.MAX_TIME,
+                    AggregationStep.INTERMEDIATE,
+                    Collections.singletonList(
+                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_ASC,
+            new In<>(Sets.newHashSet("s1", "s2"), VALUE_FILTER, true),
+            groupByTimeParameter,
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+    AggregationNode aggregationNode =
+        new AggregationNode(
+            new PlanNodeId("TestAggregateNode"),
+            Collections.singletonList(seriesAggregationScanNode),
             Collections.singletonList(
                 new AggregationDescriptor(
                     AggregationType.MAX_TIME,
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
-            Sets.newHashSet("s1"),
-            OrderBy.TIMESTAMP_ASC,
-            null,
-            groupByTimeParameter,
-            new TRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
-    SeriesAggregationScanNode seriesAggregationScanNode2 =
-        new SeriesAggregationScanNode(
-            new PlanNodeId("TestSeriesAggregateScanNode"),
-            new MeasurementPath("root.sg.d2.s1", TSDataType.INT32),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    AggregationType.MAX_TIME,
-                    AggregationStep.FINAL,
-                    Collections.singletonList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))))),
-            Sets.newHashSet("s1"),
-            OrderBy.TIMESTAMP_ASC,
-            null,
-            groupByTimeParameter,
-            new TRegionReplicaSet(
-                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+            groupByTimeParameter);
 
-    GroupByLevelNode groupByLevelNode =
-        new GroupByLevelNode(
-            new PlanNodeId("TestGroupByLevelNode"),
-            Arrays.asList(seriesAggregationScanNode1, seriesAggregationScanNode2),
-            Collections.singletonList(
-                new AggregationDescriptor(
-                    AggregationType.MAX_TIME,
-                    AggregationStep.FINAL,
-                    Arrays.asList(
-                        new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
-                        new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))))),
-            Collections.singletonList("root.sg.*.s1"));
-
-    ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
-    groupByLevelNode.serialize(byteBuffer);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    aggregationNode.serialize(byteBuffer);
     byteBuffer.flip();
-    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), groupByLevelNode);
+    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), aggregationNode);
   }
 }

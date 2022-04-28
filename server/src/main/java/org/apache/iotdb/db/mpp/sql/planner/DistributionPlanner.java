@@ -41,7 +41,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaM
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 import java.util.ArrayList;
@@ -219,7 +219,6 @@ public class DistributionPlanner {
         split.setRegionReplicaSet(dataRegion);
         timeJoinNode.addChild(split);
       }
-      timeJoinNode.initOutputColumns();
       return timeJoinNode;
     }
 
@@ -245,7 +244,7 @@ public class DistributionPlanner {
             split.setRegionReplicaSet(dataRegion);
             sources.add(split);
           }
-        } else if (child instanceof SeriesAggregateScanNode) {
+        } else if (child instanceof SeriesAggregationScanNode) {
           // TODO: (xingtanzjr) We should do the same thing for SeriesAggregateScanNode. Consider to
           // make SeriesAggregateScanNode
           // and SeriesScanNode to derived from the same parent Class because they have similar
@@ -285,7 +284,6 @@ public class DistributionPlanner {
             }
           });
 
-      root.initOutputColumns();
       return root;
     }
 
@@ -388,7 +386,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSeriesAggregate(SeriesAggregateScanNode node, NodeGroupContext context) {
+    public PlanNode visitSeriesAggregate(SeriesAggregationScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
           node.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
@@ -416,7 +414,6 @@ public class DistributionPlanner {
       // If the distributionType of all the children are same, no ExchangeNode need to be added.
       if (distributionType == NodeDistributionType.SAME_WITH_ALL_CHILDREN) {
         newNode.setChildren(visitedChildren);
-        newNode.initOutputColumns();
         return newNode;
       }
 
@@ -433,7 +430,6 @@ public class DistributionPlanner {
               newNode.addChild(child);
             }
           });
-      newNode.initOutputColumns();
       return newNode;
     }
 
