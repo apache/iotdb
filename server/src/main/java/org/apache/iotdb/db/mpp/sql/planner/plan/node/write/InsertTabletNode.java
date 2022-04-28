@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -219,7 +220,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         (times[0] / StorageEngine.getTimePartitionInterval())
             * StorageEngine.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
-    TTimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
+    TTimePartitionSlot timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
 
     List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
@@ -237,7 +238,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         endTime =
             (times[i] / StorageEngine.getTimePartitionInterval() + 1)
                 * StorageEngine.getTimePartitionInterval();
-        timePartitionSlot = StorageEngine.getTimePartitionSlot(times[i]);
+        timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[i]);
       }
     }
 

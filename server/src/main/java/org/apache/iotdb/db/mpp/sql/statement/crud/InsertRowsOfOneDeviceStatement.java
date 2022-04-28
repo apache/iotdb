@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -68,7 +68,7 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     Set<TTimePartitionSlot> timePartitionSlotSet = new HashSet<>();
     for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      timePartitionSlotSet.add(StorageEngine.getTimePartitionSlot(insertRowStatement.getTime()));
+      timePartitionSlotSet.add(StorageEngineV2.getTimePartitionSlot(insertRowStatement.getTime()));
     }
     return new ArrayList<>(timePartitionSlotSet);
   }

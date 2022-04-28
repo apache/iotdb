@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
@@ -72,7 +73,7 @@ public class InsertTabletStatement extends InsertBaseStatement {
         (times[0] / StorageEngine.getTimePartitionInterval())
             * StorageEngine.getTimePartitionInterval(); // included
     long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
-    TTimePartitionSlot timePartitionSlot = StorageEngine.getTimePartitionSlot(times[0]);
+    TTimePartitionSlot timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[0]);
     for (int i = 1; i < times.length; i++) { // times are sorted in session API.
       if (times[i] >= endTime) {
         result.add(timePartitionSlot);
@@ -80,7 +81,7 @@ public class InsertTabletStatement extends InsertBaseStatement {
         endTime =
             (times[i] / StorageEngine.getTimePartitionInterval() + 1)
                 * StorageEngine.getTimePartitionInterval();
-        timePartitionSlot = StorageEngine.getTimePartitionSlot(times[i]);
+        timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[i]);
       }
     }
     result.add(timePartitionSlot);

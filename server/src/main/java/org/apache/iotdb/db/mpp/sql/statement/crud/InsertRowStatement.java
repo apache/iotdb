@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
@@ -106,7 +106,7 @@ public class InsertRowStatement extends InsertBaseStatement {
   }
 
   public List<TTimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(StorageEngine.getTimePartitionSlot(time));
+    return Collections.singletonList(StorageEngineV2.getTimePartitionSlot(time));
   }
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
