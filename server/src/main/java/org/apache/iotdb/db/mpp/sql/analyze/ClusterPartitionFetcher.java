@@ -221,7 +221,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   /** get deviceToStorageGroup map */
   private Map<String, String> getDeviceToStorageGroup(List<String> devicePaths) {
     Map<String, String> deviceToStorageGroup = new HashMap<>();
-    // failed when devicePath contains **
+    // miss when devicePath contains **
     for (String devicePath : devicePaths) {
       if (devicePath.contains("**")) {
         return deviceToStorageGroup;
