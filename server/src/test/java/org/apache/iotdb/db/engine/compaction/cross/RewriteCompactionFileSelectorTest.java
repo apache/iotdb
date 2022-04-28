@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class RewriteCompactionFileSelectorTest extends MergeTest {
 
@@ -918,5 +919,32 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);
+  }
+
+  @Test
+  public void testDeleteInSelection() throws Exception {
+    RewriteCrossSpaceCompactionResource resource =
+        new RewriteCrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    Thread thread1 =
+        new Thread(
+            () -> {
+              try {
+                mergeFileSelector.select();
+              } catch (MergeException e) {
+                fail();
+              }
+            });
+    Thread thread2 =
+        new Thread(
+            () -> {
+              seqResources.get(0).setStatus(TsFileResourceStatus.DELETED);
+              unseqResources.get(0).setStatus(TsFileResourceStatus.DELETED);
+            });
+    thread1.start();
+    thread2.start();
+    thread1.join();
+    thread2.join();
   }
 }
