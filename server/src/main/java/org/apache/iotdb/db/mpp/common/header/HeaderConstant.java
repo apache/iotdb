@@ -54,7 +54,6 @@ public class HeaderConstant {
   public static final DatasetHeader showDevicesHeader;
   public static final DatasetHeader showDevicesWithSgHeader;
   public static final DatasetHeader showStorageGroupHeader;
-  public static final DatasetHeader countStorageGroupHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -119,8 +118,5 @@ public class HeaderConstant {
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT)),
             true);
-    countStorageGroupHeader =
-        new DatasetHeader(
-            Collections.singletonList(new ColumnHeader(COLUMN_COUNT, TSDataType.INT32)), true);
   }
 }
