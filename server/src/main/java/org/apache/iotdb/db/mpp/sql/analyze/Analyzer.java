@@ -273,7 +273,7 @@ public class Analyzer {
 
       SchemaPartition schemaPartitionInfo;
       schemaPartitionInfo =
-          partitionFetcher.getSchemaPartition(
+          partitionFetcher.getOrCreateSchemaPartition(
               new PathPatternTree(
                   createAlignedTimeSeriesStatement.getDevicePath(),
                   createAlignedTimeSeriesStatement.getMeasurements()));
