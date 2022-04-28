@@ -206,7 +206,7 @@ public class QueryExecution implements IQueryExecution {
     //   1. The client fetch all the result and the ResultHandle is finished.
     //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
     if (resultHandle != null && resultHandle.isFinished()) {
-      resultHandle.close();
+      resultHandle.abort();
     }
   }
 
@@ -220,7 +220,7 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public TsBlock getBatchResult() {
     try {
-      if (resultHandle.isClosed() || resultHandle.isFinished()) {
+      if (resultHandle.isAborted() || resultHandle.isFinished()) {
         return null;
       }
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
