@@ -248,7 +248,7 @@ public class LogicalPlanner {
     public PlanNode visitShowTimeSeries(
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      planBuilder
+      return planBuilder
           .planTimeSeriesMetaSource(
               showTimeSeriesStatement.getPathPattern(),
               showTimeSeriesStatement.getKey(),
@@ -260,15 +260,15 @@ public class LogicalPlanner {
               showTimeSeriesStatement.isPrefixPath())
           .planSchemaMerge(showTimeSeriesStatement.isOrderByHeat())
           .planOffset(showTimeSeriesStatement.getOffset())
-          .planLimit(showTimeSeriesStatement.getLimit());
-      return planBuilder.getRoot();
+          .planLimit(showTimeSeriesStatement.getLimit())
+          .getRoot();
     }
 
     @Override
     public PlanNode visitShowDevices(
         ShowDevicesStatement showDevicesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      planBuilder
+      return planBuilder
           .planDeviceSchemaSource(
               showDevicesStatement.getPathPattern(),
               showDevicesStatement.getLimit(),
@@ -277,40 +277,43 @@ public class LogicalPlanner {
               showDevicesStatement.hasSgCol())
           .planSchemaMerge(false)
           .planOffset(showDevicesStatement.getOffset())
-          .planLimit(showDevicesStatement.getLimit());
-      return planBuilder.getRoot();
+          .planLimit(showDevicesStatement.getLimit())
+          .getRoot();
     }
 
     @Override
     public PlanNode visitCountDevices(
         CountDevicesStatement countDevicesStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
-      planBuilder.planDevicesCountSource(
-          countDevicesStatement.getPartialPath(), countDevicesStatement.isPrefixPath());
-      planBuilder.planCountMerge();
-      return planBuilder.getRoot();
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      return planBuilder
+          .planDevicesCountSource(
+              countDevicesStatement.getPartialPath(), countDevicesStatement.isPrefixPath())
+          .planCountMerge()
+          .getRoot();
     }
 
     @Override
     public PlanNode visitCountTimeSeries(
         CountTimeSeriesStatement countTimeSeriesStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
-      planBuilder.planTimeSeriesCountSource(
-          countTimeSeriesStatement.getPartialPath(), countTimeSeriesStatement.isPrefixPath());
-      planBuilder.planCountMerge();
-      return planBuilder.getRoot();
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      return planBuilder
+          .planTimeSeriesCountSource(
+              countTimeSeriesStatement.getPartialPath(), countTimeSeriesStatement.isPrefixPath())
+          .planCountMerge()
+          .getRoot();
     }
 
     @Override
     public PlanNode visitCountLevelTimeSeries(
         CountLevelTimeSeriesStatement countLevelTimeSeriesStatement, MPPQueryContext context) {
-      QueryPlanBuilder planBuilder = new QueryPlanBuilder(context);
-      planBuilder.planLevelTimeSeriesCountSource(
-          countLevelTimeSeriesStatement.getPartialPath(),
-          countLevelTimeSeriesStatement.isPrefixPath(),
-          countLevelTimeSeriesStatement.getLevel());
-      planBuilder.planCountMerge();
-      return planBuilder.getRoot();
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      return planBuilder
+          .planLevelTimeSeriesCountSource(
+              countLevelTimeSeriesStatement.getPartialPath(),
+              countLevelTimeSeriesStatement.isPrefixPath(),
+              countLevelTimeSeriesStatement.getLevel())
+          .planCountMerge()
+          .getRoot();
     }
 
     @Override
@@ -411,10 +414,10 @@ public class LogicalPlanner {
     public PlanNode visitSchemaFetch(
         SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      planBuilder
+      return planBuilder
           .planSchemaFetchSource(schemaFetchStatement.getPatternTree())
-          .planSchemaMerge(false);
-      return planBuilder.getRoot();
+          .planSchemaMerge(false)
+          .getRoot();
     }
   }
 }
