@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
@@ -118,18 +119,64 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     SchemaTree schemaTree = fetchSchema(new PathPatternTree(devicePath, measurements));
 
     schemaTree.mergeSchemaTree(
-        checkAndProcessMissingMeasurements(
+        checkAndAutoCreateMissingMeasurements(
             schemaTree, devicePath, measurements, tsDataTypes, isAligned));
 
     return schemaTree;
   }
 
-  private SchemaTree checkAndProcessMissingMeasurements(
+  private SchemaTree checkAndAutoCreateMissingMeasurements(
       SchemaTree schemaTree,
       PartialPath devicePath,
       String[] measurements,
       TSDataType[] tsDataTypes,
       boolean isAligned) {
+
+    Pair<List<String>, List<TSDataType>> checkResult =
+        checkMissingMeasurements(schemaTree, devicePath, measurements, tsDataTypes);
+
+    List<String> missingMeasurements = checkResult.left;
+    List<TSDataType> dataTypesOfMissingMeasurement = checkResult.right;
+
+    if (missingMeasurements.isEmpty()) {
+      return new SchemaTree();
+    }
+
+    internalCreateTimeseries(
+        devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned);
+
+    SchemaTree reFetchSchemaTree =
+        fetchSchema(new PathPatternTree(devicePath, missingMeasurements));
+
+    Pair<List<String>, List<TSDataType>> recheckResult =
+        checkMissingMeasurements(
+            reFetchSchemaTree,
+            devicePath,
+            missingMeasurements.toArray(new String[0]),
+            dataTypesOfMissingMeasurement.toArray(new TSDataType[0]));
+
+    missingMeasurements = recheckResult.left;
+    if (!missingMeasurements.isEmpty()) {
+      StringBuilder stringBuilder = new StringBuilder();
+      stringBuilder.append("(");
+      for (String missingMeasurement : missingMeasurements) {
+        stringBuilder.append(missingMeasurement).append(" ");
+      }
+      stringBuilder.append(")");
+      throw new RuntimeException(
+          String.format(
+              "Failed to auto create schema, devicePath: %s, measurements: %s",
+              devicePath.getFullPath(), stringBuilder));
+    }
+
+    return reFetchSchemaTree;
+  }
+
+  private Pair<List<String>, List<TSDataType>> checkMissingMeasurements(
+      SchemaTree schemaTree,
+      PartialPath devicePath,
+      String[] measurements,
+      TSDataType[] tsDataTypes) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
     List<String> missingMeasurements = new ArrayList<>();
@@ -142,10 +189,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
     }
 
-    internalCreateTimeseries(
-        devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned);
-
-    return fetchSchema(new PathPatternTree(devicePath, missingMeasurements));
+    return new Pair<>(missingMeasurements, dataTypesOfMissingMeasurement);
   }
 
   private void internalCreateTimeseries(
@@ -192,7 +236,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     ExecutionResult executionResult =
         coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
     // TODO: throw exception
-    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    int statusCode = executionResult.status.getCode();
+    if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
       throw new RuntimeException("cannot auto create schema, status is: " + executionResult.status);
     }
   }
@@ -213,7 +259,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     for (int i = 0; i < devicePathList.size(); i++) {
       schemaTree.mergeSchemaTree(
-          checkAndProcessMissingMeasurements(
+          checkAndAutoCreateMissingMeasurements(
               schemaTree,
               devicePathList.get(i),
               measurementsList.get(i),
