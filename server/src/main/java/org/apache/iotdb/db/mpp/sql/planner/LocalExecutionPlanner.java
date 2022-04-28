@@ -72,8 +72,6 @@ import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import com.google.common.collect.ImmutableMap;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -314,28 +312,13 @@ public class LocalExecutionPlanner {
               TimeJoinOperator.class.getSimpleName());
       List<OutputColumn> outputColumns = generateOutputColumns(node);
       List<ColumnMerger> mergers = createColumnMergers(outputColumns);
-      List<TSDataType> outputColumnTypes =
-          node.getOutputColumnNames().stream()
-              .map(name -> context.getTypes().getType(name))
-              .collect(Collectors.toList());
+      List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
       return new TimeJoinOperator(
           operatorContext, children, node.getMergeOrder(), outputColumnTypes, mergers);
     }
 
     private List<OutputColumn> generateOutputColumns(TimeJoinNode node) {
-      Map<String, List<InputLocation>> outputColumnToInputLocMap = new HashMap<>();
-      for (int tsBlockIndex = 0; tsBlockIndex < node.getChildren().size(); tsBlockIndex++) {
-        PlanNode childNode = node.getChildren().get(tsBlockIndex);
-        for (int valueColumnIndex = 0;
-            valueColumnIndex < childNode.getOutputColumnNames().size();
-            valueColumnIndex++) {
-          String columnName = childNode.getOutputColumnNames().get(valueColumnIndex);
-          outputColumnToInputLocMap
-              .computeIfAbsent(columnName, key -> new ArrayList<>())
-              .add(new InputLocation(tsBlockIndex, valueColumnIndex));
-        }
-      }
-      return outputColumnToInputLocMap.values().stream()
+      return makeLayout(node).values().stream()
           .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))
           .collect(Collectors.toList());
     }
@@ -412,19 +395,26 @@ public class LocalExecutionPlanner {
           ((SchemaDriverContext) (context.instanceContext.getDriverContext())).getSchemaRegion());
     }
 
-    private ImmutableMap<String, Integer> makeLayout(PlanNode node) {
-      return makeLayoutFromOutputNames(node.getOutputColumnNames());
+    private Map<String, List<InputLocation>> makeLayout(PlanNode node) {
+      Map<String, List<InputLocation>> outputMappings = new HashMap<>();
+      int tsBlockIndex = 0;
+      for (PlanNode childNode : node.getChildren()) {
+        int valueColumnIndex = 0;
+        for (String columnName : childNode.getOutputColumnNames()) {
+          outputMappings
+              .computeIfAbsent(columnName, key -> new ArrayList<>())
+              .add(new InputLocation(tsBlockIndex, valueColumnIndex));
+          valueColumnIndex++;
+        }
+        tsBlockIndex++;
+      }
+      return outputMappings;
     }
 
-    private ImmutableMap<String, Integer> makeLayoutFromOutputNames(
-        List<String> outputColumnNames) {
-      ImmutableMap.Builder<String, Integer> outputMappings = ImmutableMap.builder();
-      int channel = 0;
-      for (String outputColumnName : outputColumnNames) {
-        outputMappings.put(outputColumnName, channel);
-        channel++;
-      }
-      return outputMappings.buildOrThrow();
+    private List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+      return node.getOutputColumnNames().stream()
+          .map(typeProvider::getType)
+          .collect(Collectors.toList());
     }
   }
 
@@ -444,10 +434,11 @@ public class LocalExecutionPlanner {
 
     private int nextOperatorId = 0;
 
-    private TypeProvider types;
+    private TypeProvider typeProvider;
 
-    public LocalExecutionPlanContext(TypeProvider types, FragmentInstanceContext instanceContext) {
-      this.types = types;
+    public LocalExecutionPlanContext(
+        TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
+      this.typeProvider = typeProvider;
       this.instanceContext = instanceContext;
       this.paths = new ArrayList<>();
       this.sourceOperators = new ArrayList<>();
@@ -490,8 +481,8 @@ public class LocalExecutionPlanner {
       this.sinkHandle = sinkHandle;
     }
 
-    public TypeProvider getTypes() {
-      return types;
+    public TypeProvider getTypeProvider() {
+      return typeProvider;
     }
   }
 }

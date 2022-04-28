@@ -107,7 +107,7 @@ public class FragmentInstanceManager {
                 DataDriver driver =
                     planner.plan(
                         instance.getFragment().getRoot(),
-                        instance.getFragment().getTypes(),
+                        instance.getFragment().getTypeProvider(),
                         context,
                         instance.getTimeFilter(),
                         dataRegion);

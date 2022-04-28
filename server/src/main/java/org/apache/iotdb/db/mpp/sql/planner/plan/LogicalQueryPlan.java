@@ -30,7 +30,7 @@ public class LogicalQueryPlan {
 
   private final MPPQueryContext context;
   private final PlanNode rootNode;
-  private TypeProvider types;
+  private TypeProvider typeProvider;
 
   public LogicalQueryPlan(MPPQueryContext context, PlanNode rootNode) {
     this.context = context;
@@ -40,7 +40,7 @@ public class LogicalQueryPlan {
   public LogicalQueryPlan(MPPQueryContext context, PlanNode rootNode, TypeProvider types) {
     this.context = context;
     this.rootNode = rootNode;
-    this.types = types;
+    this.typeProvider = types;
   }
 
   public PlanNode getRootNode() {
@@ -51,7 +51,7 @@ public class LogicalQueryPlan {
     return context;
   }
 
-  public TypeProvider getTypes() {
-    return types;
+  public TypeProvider getTypeProvider() {
+    return typeProvider;
   }
 }

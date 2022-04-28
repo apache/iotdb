@@ -115,8 +115,10 @@ public class Analyzer {
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
         // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
+        TypeProvider typeProvider = new TypeProvider();
         rewrittenStatement =
-            (QueryStatement) new WildcardsRemover().rewrite(rewrittenStatement, schemaTree);
+            (QueryStatement)
+                new WildcardsRemover().rewrite(rewrittenStatement, typeProvider, schemaTree);
 
         // fetch partition information
         Set<PartialPath> devicePathSet = new HashSet<>();
@@ -170,6 +172,7 @@ public class Analyzer {
         }
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
+        analysis.setTypeProvider(typeProvider);
         analysis.setRespDatasetHeader(queryStatement.constructDatasetHeader());
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException

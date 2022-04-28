@@ -113,7 +113,11 @@ public class Analysis {
     this.respDatasetHeader = respDatasetHeader;
   }
 
-  public TypeProvider getTypes() {
+  public TypeProvider getTypeProvider() {
     return typeProvider;
+  }
+
+  public void setTypeProvider(TypeProvider typeProvider) {
+    this.typeProvider = typeProvider;
   }
 }

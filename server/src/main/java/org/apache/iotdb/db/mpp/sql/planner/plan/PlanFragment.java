@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
-import org.apache.iotdb.db.mpp.sql.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -34,7 +33,6 @@ public class PlanFragment {
   // TODO once you add field for this class you need to change the serialize and deserialize methods
   private PlanFragmentId id;
   private PlanNode root;
-  private TypeProvider types;
 
   public PlanFragment(PlanFragmentId id, PlanNode root) {
     this.id = id;
@@ -51,10 +49,6 @@ public class PlanFragment {
 
   public void setRoot(PlanNode root) {
     this.root = root;
-  }
-
-  public TypeProvider getTypes() {
-    return types;
   }
 
   @Override
