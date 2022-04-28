@@ -72,7 +72,7 @@ public class AggregationNodeSerdeTest {
     AggregationNode aggregationNode =
         new AggregationNode(
             new PlanNodeId("TestAggregateNode"),
-            seriesAggregationScanNode,
+            Collections.singletonList(seriesAggregationScanNode),
             Collections.singletonList(
                 new AggregationDescriptor(
                     AggregationType.MAX_TIME,

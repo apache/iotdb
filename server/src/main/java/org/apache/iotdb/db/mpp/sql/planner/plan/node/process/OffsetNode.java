@@ -109,7 +109,7 @@ public class OffsetNode extends ProcessNode {
       return false;
     }
     OffsetNode that = (OffsetNode) o;
-    return offset == that.offset && Objects.equals(child, that.child);
+    return offset == that.offset && child.equals(that.child);
   }
 
   @Override

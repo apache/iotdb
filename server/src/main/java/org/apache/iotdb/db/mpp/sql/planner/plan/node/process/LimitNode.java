@@ -118,7 +118,7 @@ public class LimitNode extends ProcessNode {
       return false;
     }
     LimitNode that = (LimitNode) o;
-    return limit == that.limit && Objects.equals(child, that.child);
+    return limit == that.limit && child.equals(that.child);
   }
 
   @Override

@@ -516,7 +516,7 @@ public class QueryLogicalPlanUtil {
     AggregationNode aggregationNode =
         new AggregationNode(
             new PlanNodeId("test_query_6"),
-            filterNode,
+            Collections.singletonList(filterNode),
             Arrays.asList(
                 new AggregationDescriptor(
                     AggregationType.COUNT,
@@ -652,7 +652,7 @@ public class QueryLogicalPlanUtil {
     AggregationNode aggregationNode1 =
         new AggregationNode(
             new PlanNodeId("test_query_8"),
-            filterNode1,
+            Collections.singletonList(filterNode1),
             Arrays.asList(
                 new AggregationDescriptor(
                     AggregationType.COUNT,
@@ -672,7 +672,7 @@ public class QueryLogicalPlanUtil {
     AggregationNode aggregationNode2 =
         new AggregationNode(
             new PlanNodeId("test_query_9"),
-            filterNode2,
+            Collections.singletonList(filterNode2),
             Arrays.asList(
                 new AggregationDescriptor(
                     AggregationType.COUNT,

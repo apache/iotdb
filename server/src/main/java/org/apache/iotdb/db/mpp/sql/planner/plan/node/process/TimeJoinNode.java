@@ -126,7 +126,7 @@ public class TimeJoinNode extends ProcessNode {
       return false;
     }
     TimeJoinNode that = (TimeJoinNode) o;
-    return mergeOrder == that.mergeOrder && Objects.equals(children, that.children);
+    return mergeOrder == that.mergeOrder && children.equals(that.children);
   }
 
   @Override
