@@ -54,6 +54,11 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountNodesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
@@ -66,6 +71,10 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountDevicesContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountNodesContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountStorageGroupContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -431,6 +440,60 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showDevicesStatement.setSgCol(true);
     }
     return showDevicesStatement;
+  }
+
+  // Count Devices ========================================================================
+
+  @Override
+  public Statement visitCountDevices(CountDevicesContext ctx) {
+    PartialPath path;
+    if (ctx.prefixPath() != null) {
+      path = parsePrefixPath(ctx.prefixPath());
+    } else {
+      path = new PartialPath(SQLConstant.getSingleRootArray());
+    }
+    return new CountDevicesStatement(path);
+  }
+
+  // Count TimeSeries ========================================================================
+  @Override
+  public Statement visitCountTimeseries(CountTimeseriesContext ctx) {
+    PartialPath path;
+    if (ctx.prefixPath() != null) {
+      path = parsePrefixPath(ctx.prefixPath());
+    } else {
+      path = new PartialPath(SQLConstant.getSingleRootArray());
+    }
+    if (ctx.INTEGER_LITERAL() != null) {
+      int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
+      return new CountLevelTimeSeriesStatement(path, level);
+    }
+    return new CountTimeSeriesStatement(path);
+  }
+
+  // Count Nodes ========================================================================
+  @Override
+  public Statement visitCountNodes(CountNodesContext ctx) {
+    PartialPath path;
+    if (ctx.prefixPath() != null) {
+      path = parsePrefixPath(ctx.prefixPath());
+    } else {
+      path = new PartialPath(SQLConstant.getSingleRootArray());
+    }
+    int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
+    return new CountNodesStatement(path, level);
+  }
+
+  // Count StorageGroup ========================================================================
+  @Override
+  public Statement visitCountStorageGroup(CountStorageGroupContext ctx) {
+    PartialPath path;
+    if (ctx.prefixPath() != null) {
+      path = parsePrefixPath(ctx.prefixPath());
+    } else {
+      path = new PartialPath(SQLConstant.getSingleRootArray());
+    }
+    return new CountStatement(path);
   }
 
   /** Data Manipulation Language (DML) */

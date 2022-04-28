@@ -22,11 +22,14 @@ package org.apache.iotdb.db.mpp.execution;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.config.ConfigExecution;
 import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -36,6 +39,7 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 
@@ -59,8 +63,13 @@ public class ConfigExecutionTest {
         new TsBlock(
             new TimeColumn(1, new long[] {0}),
             new IntColumn(1, Optional.of(new boolean[] {false}), new int[] {1}));
+    DatasetHeader datasetHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader("TestValue", TSDataType.INT32)), false);
     IConfigTask task =
-        () -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock));
+        () ->
+            immediateFuture(
+                new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock, datasetHeader));
     ConfigExecution execution =
         new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
     execution.start();

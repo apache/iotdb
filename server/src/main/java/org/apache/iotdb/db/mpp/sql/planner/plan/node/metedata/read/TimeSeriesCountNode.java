@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -25,87 +26,55 @@ import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Objects;
 
-public class DevicesSchemaScanNode extends SchemaScanNode {
+public class TimeSeriesCountNode extends SchemaScanNode {
 
-  private final boolean hasSgCol;
-
-  public DevicesSchemaScanNode(
-      PlanNodeId id,
-      PartialPath path,
-      int limit,
-      int offset,
-      boolean isPrefixPath,
-      boolean hasSgCol) {
-    super(id, path, limit, offset, isPrefixPath);
-    this.hasSgCol = hasSgCol;
-  }
-
-  public boolean isHasSgCol() {
-    return hasSgCol;
+  public TimeSeriesCountNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
+    super(id, partialPath, isPrefixPath);
   }
 
   @Override
   public PlanNode clone() {
-    return new DevicesSchemaScanNode(getPlanNodeId(), path, limit, offset, isPrefixPath, hasSgCol);
+    return new TimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath);
+  }
+
+  @Override
+  public List<ColumnHeader> getOutputColumnHeaders() {
+    return HeaderConstant.countTimeSeriesHeader.getColumnHeaders();
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    if (hasSgCol) {
-      return HeaderConstant.showDevicesWithSgHeader.getRespColumns();
-    }
-    return HeaderConstant.showDevicesHeader.getRespColumns();
+    return HeaderConstant.countTimeSeriesHeader.getRespColumns();
+  }
+
+  @Override
+  public List<TSDataType> getOutputColumnTypes() {
+    return HeaderConstant.countTimeSeriesHeader.getRespDataTypes();
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.DEVICES_SCHEMA_SCAN.serialize(byteBuffer);
+    PlanNodeType.TIME_SERIES_COUNT.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
-    ReadWriteIOUtils.write(limit, byteBuffer);
-    ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
-    ReadWriteIOUtils.write(hasSgCol, byteBuffer);
   }
 
-  public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
-    String fullPath = ReadWriteIOUtils.readString(byteBuffer);
+  public static PlanNode deserialize(ByteBuffer buffer) {
+    String fullPath = ReadWriteIOUtils.readString(buffer);
     PartialPath path;
     try {
       path = new PartialPath(fullPath);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
     }
-    int limit = ReadWriteIOUtils.readInt(byteBuffer);
-    int offset = ReadWriteIOUtils.readInt(byteBuffer);
-    boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
-    boolean hasSgCol = ReadWriteIOUtils.readBool(byteBuffer);
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DevicesSchemaScanNode(planNodeId, path, limit, offset, isPrefixPath, hasSgCol);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    DevicesSchemaScanNode that = (DevicesSchemaScanNode) o;
-    return hasSgCol == that.hasSgCol;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), hasSgCol);
+    boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
+    return new TimeSeriesCountNode(planNodeId, path, isPrefixPath);
   }
 }

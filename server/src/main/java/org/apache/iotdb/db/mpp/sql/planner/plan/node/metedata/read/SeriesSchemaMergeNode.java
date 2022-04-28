@@ -16,66 +16,45 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 
-public class SchemaFetchNode extends SchemaScanNode {
+public class SeriesSchemaMergeNode extends AbstractSchemaMergeNode {
 
-  private final PathPatternTree patternTree;
+  private boolean orderByHeat;
 
-  public SchemaFetchNode(PlanNodeId id, PathPatternTree patternTree) {
+  public SeriesSchemaMergeNode(PlanNodeId id) {
     super(id);
-    this.patternTree = patternTree;
   }
 
-  public PathPatternTree getPatternTree() {
-    return patternTree;
+  public SeriesSchemaMergeNode(PlanNodeId id, boolean orderByHeat) {
+    this(id);
+    this.orderByHeat = orderByHeat;
   }
 
   @Override
   public PlanNode clone() {
-    return new SchemaFetchNode(getPlanNodeId(), patternTree);
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return 0;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
+    return new SeriesSchemaMergeNode(getPlanNodeId(), this.orderByHeat);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SCHEMA_FETCH.serialize(byteBuffer);
-    patternTree.serialize(byteBuffer);
+    PlanNodeType.SCHEMA_MERGE.serialize(byteBuffer);
   }
 
-  public static SchemaFetchNode deserialize(ByteBuffer byteBuffer) {
-    PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
+  public static SeriesSchemaMergeNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchNode(id, patternTree);
+    return new SeriesSchemaMergeNode(id);
   }
-
-  @Override
-  public void open() throws Exception {}
-
-  @Override
-  public void close() throws Exception {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaFetch(this, context);
+    return visitor.visitSchemaMerge(this, context);
   }
 }

@@ -19,9 +19,13 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -82,10 +86,14 @@ public enum PlanNodeType {
   SCHEMA_FETCH((short) 24),
   SCHEMA_MERGE((short) 25),
   STORAGE_GROUP_SCHEMA_SCAN((short) 26),
-  GROUP_BY_TIME((short) 27),
-  PROJECT((short) 28),
-  ALIGNED_SERIES_SCAN((short) 29),
-  ALIGNED_SERIES_AGGREGATE_SCAN((short) 30);
+  DEVICES_COUNT((short) 27),
+  TIME_SERIES_COUNT((short) 28),
+  LEVEL_TIME_SERIES_COUNT((short) 29),
+  COUNT_MERGE((short) 30),
+  GROUP_BY_TIME((short) 31),
+  PROJECT((short) 32),
+  ALIGNED_SERIES_SCAN((short) 33),
+  ALIGNED_SERIES_AGGREGATE_SCAN((short) 34);
 
   private final short nodeType;
 
@@ -164,14 +172,22 @@ public enum PlanNodeType {
       case 24:
         return SchemaFetchNode.deserialize(buffer);
       case 25:
-        return SchemaMergeNode.deserialize(buffer);
+        return SeriesSchemaMergeNode.deserialize(buffer);
       case 27:
-        return GroupByTimeNode.deserialize(buffer);
+        return DevicesCountNode.deserialize(buffer);
       case 28:
-        return ProjectNode.deserialize(buffer);
+        return TimeSeriesCountNode.deserialize(buffer);
       case 29:
-        return AlignedSeriesScanNode.deserialize(buffer);
+        return LevelTimeSeriesCountNode.deserialize(buffer);
       case 30:
+        return CountSchemaMergeNode.deserialize(buffer);
+      case 31:
+        return GroupByTimeNode.deserialize(buffer);
+      case 32:
+        return ProjectNode.deserialize(buffer);
+      case 33:
+        return AlignedSeriesScanNode.deserialize(buffer);
+      case 34:
         return AlignedSeriesAggregationScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);

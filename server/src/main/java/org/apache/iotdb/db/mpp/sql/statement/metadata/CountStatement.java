@@ -20,37 +20,28 @@
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
-import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 
 /**
- * SHOW STORAGE GROUP statement
+ * COUNT statement.
  *
  * <p>Here is the syntax definition:
  *
- * <p>SHOW STORAGE GROUP prefixPath?
+ * <p>COUNT {STORAGE GROUP | DEVICES | TIMESERIES | NODES} [prefixPath] [GROUP BY] LEVEL = level
  */
-public class ShowStorageGroupStatement extends ShowStatement implements IConfigStatement {
+public class CountStatement extends ShowStatement {
+  protected PartialPath partialPath;
 
-  private final PartialPath pathPattern;
-
-  public ShowStorageGroupStatement(PartialPath pathPattern) {
-    super();
-    this.pathPattern = pathPattern;
+  public CountStatement(PartialPath partialPath) {
+    this.partialPath = partialPath;
+    setType(StatementType.COUNT);
   }
 
-  public PartialPath getPathPattern() {
-    return pathPattern;
+  public PartialPath getPartialPath() {
+    return partialPath;
   }
 
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowStorageGroup(this, context);
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
+  public void setPartialPath(PartialPath partialPath) {
+    this.partialPath = partialPath;
   }
 }

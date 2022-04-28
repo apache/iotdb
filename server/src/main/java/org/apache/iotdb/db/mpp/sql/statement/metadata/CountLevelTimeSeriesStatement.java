@@ -20,37 +20,22 @@
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
-import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
-/**
- * SHOW STORAGE GROUP statement
- *
- * <p>Here is the syntax definition:
- *
- * <p>SHOW STORAGE GROUP prefixPath?
- */
-public class ShowStorageGroupStatement extends ShowStatement implements IConfigStatement {
+public class CountLevelTimeSeriesStatement extends CountStatement {
+  private int level;
 
-  private final PartialPath pathPattern;
-
-  public ShowStorageGroupStatement(PartialPath pathPattern) {
-    super();
-    this.pathPattern = pathPattern;
+  public CountLevelTimeSeriesStatement(PartialPath partialPath, int level) {
+    super(partialPath);
+    this.level = level;
   }
 
-  public PartialPath getPathPattern() {
-    return pathPattern;
+  public int getLevel() {
+    return level;
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowStorageGroup(this, context);
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.READ;
+    return visitor.visitCountLevelTimeSeries(this, context);
   }
 }
