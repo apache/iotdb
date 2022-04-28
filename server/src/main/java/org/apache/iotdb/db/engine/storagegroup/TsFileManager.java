@@ -222,18 +222,12 @@ public class TsFileManager {
       if (isTargetSequence) {
         // seq inner space compaction or cross space compaction
         for (TsFileResource resource : targetFileResources) {
-          if (!resource.getTsFile().exists()) {
-            continue;
-          }
           TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
           sequenceFiles.get(timePartition).keepOrderInsert(resource);
         }
       } else {
         // unseq inner space compaction
         for (TsFileResource resource : targetFileResources) {
-          if (!resource.getTsFile().exists()) {
-            continue;
-          }
           TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
           unsequenceFiles.get(timePartition).keepOrderInsert(resource);
         }

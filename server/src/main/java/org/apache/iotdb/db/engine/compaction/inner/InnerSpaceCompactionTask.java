@@ -101,6 +101,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     targetTsFileResource =
         TsFileNameGenerator.getInnerCompactionTargetFileResource(
             selectedTsFileResourceList, sequence);
+    List<TsFileResource> targetTsFileList =
+        new ArrayList<>(Collections.singletonList(targetTsFileResource));
     LOGGER.info(
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
@@ -115,8 +117,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     try {
       compactionLogger = new CompactionLogger(logFile);
       compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
-      compactionLogger.logFiles(
-          Collections.singletonList(targetTsFileResource), CompactionLogger.STR_TARGET_FILES);
+      compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
       LOGGER.info("{} [InnerSpaceCompactionTask] Close the logger", fullStorageGroupName);
       compactionLogger.close();
       LOGGER.info(
@@ -126,11 +127,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       performer.setSourceFiles(selectedTsFileResourceList);
       // As elements in targetFiles may be removed in ReadPointCompactionPerformer, we should use a
       // mutable list instead of Collections.singletonList()
-      performer.setTargetFiles(new ArrayList<>(Collections.singletonList(targetTsFileResource)));
+      performer.setTargetFiles(targetTsFileList);
       performer.perform();
 
-      CompactionUtils.moveTargetFile(
-          Collections.singletonList(targetTsFileResource), true, fullStorageGroupName);
+      CompactionUtils.moveTargetFile(targetTsFileList, true, fullStorageGroupName);
 
       LOGGER.info("{} [InnerSpaceCompactionTask] start to rename mods file", fullStorageGroupName);
       CompactionUtils.combineModsInInnerCompaction(
@@ -146,14 +146,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         tsFileManager.replace(
             selectedTsFileResourceList,
             Collections.emptyList(),
-            Collections.singletonList(targetTsFileResource),
+            targetTsFileList,
             timePartition,
             true);
       } else {
         tsFileManager.replace(
             Collections.emptyList(),
             selectedTsFileResourceList,
-            Collections.singletonList(targetTsFileResource),
+            targetTsFileList,
             timePartition,
             false);
       }
@@ -210,7 +210,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         CompactionExceptionHandler.handleException(
             fullStorageGroupName,
             logFile,
-            Collections.singletonList(targetTsFileResource),
+            targetTsFileList,
             selectedTsFileResourceList,
             Collections.emptyList(),
             tsFileManager,
@@ -221,7 +221,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         CompactionExceptionHandler.handleException(
             fullStorageGroupName,
             logFile,
-            Collections.singletonList(targetTsFileResource),
+            targetTsFileList,
             Collections.emptyList(),
             selectedTsFileResourceList,
             tsFileManager,
