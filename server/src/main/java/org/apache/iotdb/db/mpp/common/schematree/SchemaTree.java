@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
@@ -77,8 +76,7 @@ public class SchemaTree {
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores info of the devices matching the given path pattern.
    */
-  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
+  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
     SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
     return visitor.getAllResult();
   }
@@ -93,8 +91,14 @@ public class SchemaTree {
     }
 
     List<SchemaMeasurementNode> measurementNodeList = new ArrayList<>();
+    SchemaNode node;
     for (String measurement : measurements) {
-      measurementNodeList.add(cur.getChild(measurement).getAsMeasurementNode());
+      node = cur.getChild(measurement);
+      if (node == null) {
+        measurementNodeList.add(null);
+      } else {
+        measurementNodeList.add(cur.getChild(measurement).getAsMeasurementNode());
+      }
     }
 
     return new DeviceSchemaInfo(devicePath, cur.getAsEntityNode().isAligned(), measurementNodeList);

@@ -23,24 +23,37 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.execution.Coordinator;
+import org.apache.iotdb.db.mpp.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
@@ -100,9 +113,57 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
-    // todo implement auto create schema
-    return fetchSchema(new PathPatternTree(devicePath, measurements));
+      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean isAligned) {
+
+    SchemaTree schemaTree = fetchSchema(new PathPatternTree(devicePath, measurements));
+
+    DeviceSchemaInfo deviceSchemaInfo =
+        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    List<String> missingMeasurements = new ArrayList<>();
+    List<TSDataType> dataTypesOfMissingMeasurement = new ArrayList<>();
+    List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
+    for (int i = 0; i < measurements.length; i++) {
+      if (schemaList.get(i) == null) {
+        missingMeasurements.add(measurements[i]);
+        dataTypesOfMissingMeasurement.add(tsDataTypes[i]);
+      }
+    }
+
+    internalCreateTimeseries(
+        devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned);
+
+    return schemaTree;
+  }
+
+  private void internalCreateTimeseries(
+      PartialPath devicePath,
+      List<String> measurements,
+      List<TSDataType> tsDataTypes,
+      boolean isAligned) {
+    if (isAligned) {
+      CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement =
+          new CreateAlignedTimeSeriesStatement();
+      createAlignedTimeSeriesStatement.setDevicePath(devicePath);
+      createAlignedTimeSeriesStatement.setMeasurements(measurements);
+      createAlignedTimeSeriesStatement.setDataTypes(tsDataTypes);
+      List<TSEncoding> encodings = new ArrayList<>();
+      List<CompressionType> compressors = new ArrayList<>();
+      for (TSDataType dataType : tsDataTypes) {
+        encodings.add(getDefaultEncoding(dataType));
+        compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
+      }
+    } else {
+      // todo @zyk implement batch create
+      for (int i = 0; i < measurements.size(); i++) {
+        CreateTimeSeriesStatement createTimeSeriesStatement = new CreateTimeSeriesStatement();
+        createTimeSeriesStatement.setPath(devicePath.concatNode(measurements.get(i)));
+        createTimeSeriesStatement.setDataType(tsDataTypes.get(i));
+        createTimeSeriesStatement.setEncoding(getDefaultEncoding(tsDataTypes.get(i)));
+        createTimeSeriesStatement.setCompressor(
+            TSFileDescriptor.getInstance().getConfig().getCompressor());
+        createTimeSeriesStatement.setProps(Collections.emptyMap());
+      }
+    }
   }
 
   @Override
