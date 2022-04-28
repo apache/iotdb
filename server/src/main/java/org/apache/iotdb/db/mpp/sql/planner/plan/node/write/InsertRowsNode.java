@@ -22,11 +22,15 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.sql.statement.crud.BatchInsert;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -37,7 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertRowsNode extends InsertNode {
+public class InsertRowsNode extends InsertNode implements BatchInsert {
 
   /**
    * Suppose there is an InsertRowsNode, which contains 5 InsertRowNodes,
@@ -101,6 +105,16 @@ public class InsertRowsNode extends InsertNode {
   public void addChild(PlanNode child) {}
 
   @Override
+  public boolean validateSchema(SchemaTree schemaTree) {
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      if (!insertRowNode.validateSchema(schemaTree)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
@@ -140,12 +154,81 @@ public class InsertRowsNode extends InsertNode {
     return null;
   }
 
-  public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
-    return null;
+  @Override
+  public List<PartialPath> getDevicePaths() {
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      partialPaths.add(insertRowNode.devicePath);
+    }
+    return partialPaths;
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
+  public List<String[]> getMeasurementsList() {
+    List<String[]> measurementsList = new ArrayList<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      measurementsList.add(insertRowNode.measurements);
+    }
+    return measurementsList;
+  }
+
+  @Override
+  public List<TSDataType[]> getDataTypesList() {
+    List<TSDataType[]> dataTypesList = new ArrayList<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      dataTypesList.add(insertRowNode.dataTypes);
+    }
+    return dataTypesList;
+  }
+
+  @Override
+  public List<Boolean> getAlignedList() {
+    List<Boolean> alignedList = new ArrayList<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      alignedList.add(insertRowNode.isAligned);
+    }
+    return alignedList;
+  }
+
+  public static InsertRowsNode deserialize(ByteBuffer byteBuffer) {
+    PlanNodeId planNodeId;
+    List<InsertRowNode> insertRowNodeList = new ArrayList<>();
+    List<Integer> insertRowNodeIndex = new ArrayList<>();
+
+    int size = byteBuffer.getInt();
+    for (int i = 0; i < size; i++) {
+      InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId(""));
+      insertRowNode.subDeserialize(byteBuffer);
+      insertRowNodeList.add(insertRowNode);
+    }
+    for (int i = 0; i < size; i++) {
+      insertRowNodeIndex.add(byteBuffer.getInt());
+    }
+
+    planNodeId = PlanNodeId.deserialize(byteBuffer);
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      insertRowNode.setPlanNodeId(planNodeId);
+    }
+
+    InsertRowsNode insertRowsNode = new InsertRowsNode(planNodeId);
+    insertRowsNode.setInsertRowNodeList(insertRowNodeList);
+    insertRowsNode.setInsertRowNodeIndexList(insertRowNodeIndex);
+    return insertRowsNode;
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.INSERT_ROWS.serialize(byteBuffer);
+
+    byteBuffer.putInt(insertRowNodeList.size());
+
+    for (InsertRowNode node : insertRowNodeList) {
+      node.subSerialize(byteBuffer);
+    }
+    for (Integer index : insertRowNodeIndexList) {
+      byteBuffer.putInt(index);
+    }
+  }
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
