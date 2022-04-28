@@ -71,6 +71,7 @@ public class InsertRowStatement extends InsertBaseStatement {
 
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
     this.values = new Object[measurements.length];
+    this.dataTypes = new TSDataType[measurements.length];
     for (int i = 0; i < dataTypes.length; i++) {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
