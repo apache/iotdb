@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -45,6 +46,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -927,24 +929,32 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         new RewriteCrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    AtomicBoolean fail = new AtomicBoolean(false);
     Thread thread1 =
         new Thread(
             () -> {
               try {
                 mergeFileSelector.select();
-              } catch (MergeException e) {
-                fail();
+              } catch (Exception e) {
+                fail.set(true);
               }
             });
     Thread thread2 =
         new Thread(
             () -> {
-              seqResources.get(0).setStatus(TsFileResourceStatus.DELETED);
-              unseqResources.get(0).setStatus(TsFileResourceStatus.DELETED);
+              try {
+                FileUtils.delete(seqResources.get(0).getTsFile());
+                FileUtils.delete(unseqResources.get(0).getTsFile());
+              } catch (IOException e) {
+                fail.set(true);
+              }
             });
     thread1.start();
     thread2.start();
     thread1.join();
     thread2.join();
+    if (fail.get()) {
+      fail();
+    }
   }
 }

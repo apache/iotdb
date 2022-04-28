@@ -311,6 +311,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
 
     for (Integer seqFileIdx : tmpSelectedSeqFiles) {
       TsFileResource seqFile = resource.getSeqFiles().get(seqFileIdx);
+      if (!seqFile.getTsFile().exists()) {
+        return Long.MAX_VALUE;
+      }
       fileCost = seqMeasurement.measure(seqFile);
       if (fileCost > tempMaxSeqFileCost) {
         // only one file will be read at the same time, so only the largest one is recorded here
