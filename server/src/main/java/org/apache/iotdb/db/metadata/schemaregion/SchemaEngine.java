@@ -84,8 +84,7 @@ public class SchemaEngine {
     Map<PartialPath, List<SchemaRegionId>> partitionTable = new HashMap<>();
 
     // to load MTree concurrently
-    MTreeLoadTaskManager loadTaskManager = MTreeLoadTaskManager.getInstance();
-    loadTaskManager.init();
+    MTreeLoadTaskManager loadTaskManager = new MTreeLoadTaskManager();
 
     for (PartialPath storageGroup : localStorageGroupSchemaManager.getAllStorageGroupPaths()) {
       List<SchemaRegionId> schemaRegionIdList = new ArrayList<>();
@@ -110,7 +109,6 @@ public class SchemaEngine {
           // the dir/file is not schemaRegionDir, ignore this.
           continue;
         }
-        // createSchemaRegion(storageGroup, schemaRegionId);
         loadTaskManager.submit(createSchemaRegionTask(storageGroup, schemaRegionId));
         schemaRegionIdList.add(schemaRegionId);
       }
@@ -148,7 +146,6 @@ public class SchemaEngine {
 
   public synchronized void createSchemaRegion(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
-    long debugDur = System.currentTimeMillis();
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       return;
@@ -176,17 +173,12 @@ public class SchemaEngine {
                 schemaRegionStoredMode));
     }
     schemaRegionMap.put(schemaRegionId, schemaRegion);
-    debugDur = System.currentTimeMillis() - debugDur;
-    logger.info(
-        String.format(
-            "Recover [%s] spend: %s ms",
-            storageGroup.concatNode(schemaRegionId.toString()), debugDur));
   }
 
   private Runnable createSchemaRegionTask(PartialPath storageGroup, SchemaRegionId schemaRegionId) {
     // this method is called for concurrent recovery of schema regions
     return () -> {
-      long debugDur = System.currentTimeMillis();
+      long timeRecord = System.currentTimeMillis();
       ISchemaRegion schemaRegion = this.schemaRegionMap.get(schemaRegionId);
       if (schemaRegion != null) {
         return;
@@ -216,11 +208,11 @@ public class SchemaEngine {
                     schemaRegionStoredMode));
         }
         this.schemaRegionMap.put(schemaRegionId, schemaRegion);
-        debugDur = System.currentTimeMillis() - debugDur;
+        timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
             String.format(
                 "Recover [%s] spend: %s ms",
-                storageGroup.concatNode(schemaRegionId.toString()), debugDur));
+                storageGroup.concatNode(schemaRegionId.toString()), timeRecord));
       } catch (MetadataException e) {
         throw new RuntimeException(e);
       }

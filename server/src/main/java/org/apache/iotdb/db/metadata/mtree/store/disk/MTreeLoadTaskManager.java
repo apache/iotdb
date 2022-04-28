@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class MTreeLoadTaskManager {
 
@@ -32,29 +33,19 @@ public class MTreeLoadTaskManager {
 
   private volatile ExecutorService loadTaskExecutor;
 
-  private MTreeLoadTaskManager() {}
-
-  private static class MTreeLoadTaskManagerHolder {
-    private static final MTreeLoadTaskManager INSTANCE = new MTreeLoadTaskManager();
-
-    private MTreeLoadTaskManagerHolder() {}
-  }
-
-  public static MTreeLoadTaskManager getInstance() {
-    return MTreeLoadTaskManagerHolder.INSTANCE;
-  }
-
-  public void init() {
-    loadTaskExecutor = IoTDBThreadPoolFactory.newCachedThreadPool(MTREE_LOAD_THREAD_POOL_NAME);
+  public MTreeLoadTaskManager() {
+    loadTaskExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors(), MTREE_LOAD_THREAD_POOL_NAME);
   }
 
   public void clear() {
     if (loadTaskExecutor != null) {
       try {
         loadTaskExecutor.shutdown();
-        while (!loadTaskExecutor.isTerminated()) ;
+        while (!loadTaskExecutor.awaitTermination(1L, TimeUnit.DAYS)) ;
         loadTaskExecutor = null;
-      } catch (RuntimeException e) {
+      } catch (InterruptedException | RuntimeException e) {
         logger.error("Something wrong happened during MTree recovery: " + e.getMessage());
         e.printStackTrace();
       }
