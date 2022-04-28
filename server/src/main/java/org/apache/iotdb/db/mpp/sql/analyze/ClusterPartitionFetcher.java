@@ -555,27 +555,31 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           schemaPartition.getSchemaPartitionMap();
       Set<String> storageGroupNames = storageGroupPartitionMap.keySet();
       for (String device : devices) {
-        String storageGroup = null;
-        for (String storageGroupName : storageGroupNames) {
-          if (device.startsWith(storageGroupName)) {
-            storageGroup = storageGroupName;
-            break;
+        if (!device.contains("*")) {
+          String storageGroup = null;
+          for (String storageGroupName : storageGroupNames) {
+            if (device.startsWith(storageGroupName)) {
+              storageGroup = storageGroupName;
+              break;
+            }
           }
+          if (null == storageGroup) {
+            logger.error(
+                "Failed to get the storage group of {} when update SchemaPartitionCache", device);
+            continue;
+          }
+          TSeriesPartitionSlot seriesPartitionSlot =
+              partitionExecutor.getSeriesPartitionSlot(device);
+          TRegionReplicaSet regionReplicaSet =
+              storageGroupPartitionMap.get(storageGroup).getOrDefault(seriesPartitionSlot, null);
+          if (null == regionReplicaSet) {
+            logger.error(
+                "Failed to get the regionReplicaSet of {} when update SchemaPartitionCache",
+                device);
+            continue;
+          }
+          schemaPartitionCache.put(device, regionReplicaSet);
         }
-        if (null == storageGroup) {
-          logger.error(
-              "Failed to get the storage group of {} when update SchemaPartitionCache", device);
-          continue;
-        }
-        TSeriesPartitionSlot seriesPartitionSlot = partitionExecutor.getSeriesPartitionSlot(device);
-        TRegionReplicaSet regionReplicaSet =
-            storageGroupPartitionMap.get(storageGroup).getOrDefault(seriesPartitionSlot, null);
-        if (null == regionReplicaSet) {
-          logger.error(
-              "Failed to get the regionReplicaSet of {} when update SchemaPartitionCache", device);
-          continue;
-        }
-        schemaPartitionCache.put(device, regionReplicaSet);
       }
     }
 
