@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -108,10 +109,22 @@ public class PlanFragment {
   public void serialize(ByteBuffer byteBuffer) {
     id.serialize(byteBuffer);
     root.serialize(byteBuffer);
+    if (typeProvider == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      typeProvider.serialize(byteBuffer);
+    }
   }
 
   public static PlanFragment deserialize(ByteBuffer byteBuffer) {
-    return new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
+    PlanFragment planFragment =
+        new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
+    byte hasTypeProvider = ReadWriteIOUtils.readByte(byteBuffer);
+    if (hasTypeProvider == 1) {
+      planFragment.setTypeProvider(TypeProvider.deserialize(byteBuffer));
+    }
+    return planFragment;
   }
 
   // deserialize the plan node recursively

@@ -21,7 +21,9 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,6 +33,10 @@ public class TypeProvider {
 
   public TypeProvider() {
     this.typeMap = new HashMap<>();
+  }
+
+  public TypeProvider(Map<String, TSDataType> typeMap) {
+    this.typeMap = typeMap;
   }
 
   public TSDataType getType(String path) {
@@ -47,5 +53,25 @@ public class TypeProvider {
           String.format("inconsistent data type for path: %s", path));
     }
     this.typeMap.put(path, dataType);
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(typeMap.size(), byteBuffer);
+    for (Map.Entry<String, TSDataType> entry : typeMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
+      ReadWriteIOUtils.write(entry.getValue().ordinal(), byteBuffer);
+    }
+  }
+
+  public static TypeProvider deserialize(ByteBuffer byteBuffer) {
+    int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
+    Map<String, TSDataType> typeMap = new HashMap<>();
+    while (mapSize > 0) {
+      typeMap.put(
+          ReadWriteIOUtils.readString(byteBuffer),
+          TSDataType.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
+      mapSize--;
+    }
+    return new TypeProvider(typeMap);
   }
 }
