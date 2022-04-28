@@ -115,7 +115,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       return schemaPartition;
     } catch (IoTDBConnectionException e) {
-      throw new StatementAnalyzeException("An error occurred when executing getSchemaPartition()");
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
   }
 
@@ -138,7 +139,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       return schemaPartition;
     } catch (IoTDBConnectionException e) {
       throw new StatementAnalyzeException(
-          "An error occurred when executing getOrCreateSchemaPartition()");
+          "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
   }
 
@@ -152,7 +153,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         return parseDataPartitionResp(dataPartitionResp);
       }
     } catch (IoTDBConnectionException e) {
-      throw new StatementAnalyzeException("An error occurred when executing getDataPartition()");
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getDataPartition():" + e.getMessage());
     }
     return null;
   }
@@ -174,7 +176,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
       return dataPartition;
     } catch (IoTDBConnectionException e) {
-      throw new StatementAnalyzeException("An error occurred when executing getDataPartition()");
+      throw new StatementAnalyzeException(
+          "An error occurred when executing getDataPartition():" + e.getMessage());
     }
   }
 
@@ -190,7 +193,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
     } catch (IoTDBConnectionException e) {
       throw new StatementAnalyzeException(
-          "An error occurred when executing getOrCreateDataPartition()");
+          "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
     return null;
   }
@@ -215,16 +218,16 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       return dataPartition;
     } catch (IoTDBConnectionException e) {
       throw new StatementAnalyzeException(
-          "An error occurred when executing getOrCreateDataPartition()");
+          "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
   }
 
   /** get deviceToStorageGroup map */
   private Map<String, String> getDeviceToStorageGroup(List<String> devicePaths) {
     Map<String, String> deviceToStorageGroup = new HashMap<>();
-    // miss when devicePath contains **
+    // miss when devicePath contains *
     for (String devicePath : devicePaths) {
-      if (devicePath.contains("**")) {
+      if (devicePath.contains("*")) {
         return deviceToStorageGroup;
       }
     }
@@ -270,7 +273,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       } catch (IoTDBConnectionException | MetadataException e) {
         throw new StatementAnalyzeException(
-            "An error occurred when executing getOrCreateDataPartition()");
+            "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
       }
     }
     return deviceToStorageGroup;
