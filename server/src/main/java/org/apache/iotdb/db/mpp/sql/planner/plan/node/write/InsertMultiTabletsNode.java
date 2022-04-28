@@ -191,6 +191,13 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
+  public void setMeasurementSchemas(SchemaTree schemaTree) {
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      insertTabletNode.setMeasurementSchemas(schemaTree);
+    }
+  }
+
+  @Override
   public List<PartialPath> getDevicePaths() {
     List<PartialPath> partialPaths = new ArrayList<>();
     for (InsertTabletNode insertTabletNode : insertTabletNodeList) {

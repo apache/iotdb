@@ -58,6 +58,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -341,10 +342,13 @@ public class LogicalPlanner {
       // convert insert statement to insert node
       InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode =
           new InsertRowsOfOneDeviceNode(context.getQueryId().genPlanNodeId());
+
+      List<InsertRowNode> insertRowNodeList = new ArrayList<>();
+      List<Integer> insertRowNodeIndexList = new ArrayList<>();
       for (int i = 0; i < insertRowsOfOneDeviceStatement.getInsertRowStatementList().size(); i++) {
         InsertRowStatement insertRowStatement =
             insertRowsOfOneDeviceStatement.getInsertRowStatementList().get(i);
-        insertRowsOfOneDeviceNode.addOneInsertRowNode(
+        insertRowNodeList.add(
             new InsertRowNode(
                 insertRowsOfOneDeviceNode.getPlanNodeId(),
                 insertRowStatement.getDevicePath(),
@@ -353,9 +357,12 @@ public class LogicalPlanner {
                 insertRowStatement.getDataTypes(),
                 insertRowStatement.getTime(),
                 insertRowStatement.getValues(),
-                insertRowStatement.isNeedInferType()),
-            i);
+                insertRowStatement.isNeedInferType()));
+        insertRowNodeIndexList.add(i);
       }
+
+      insertRowsOfOneDeviceNode.setInsertRowNodeList(insertRowNodeList);
+      insertRowsOfOneDeviceNode.setInsertRowNodeIndexList(insertRowNodeIndexList);
       return insertRowsOfOneDeviceNode;
     }
 
