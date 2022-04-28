@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.mpp.sql.statement.crud.BatchInsert;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -40,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertMultiTabletsNode extends InsertNode implements BatchInsert {
+public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNode {
 
   /**
    * the value is used to indict the parent InsertTabletNode's index when the parent
@@ -189,6 +188,13 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsert {
   @Override
   public List<TSDataType> getOutputColumnTypes() {
     return null;
+  }
+
+  @Override
+  public void setMeasurementSchemas(SchemaTree schemaTree) {
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      insertTabletNode.setMeasurementSchemas(schemaTree);
+    }
   }
 
   @Override
