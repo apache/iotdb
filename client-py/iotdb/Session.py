@@ -34,14 +34,19 @@ from .thrift.rpc.TSIService import (
     TSExecuteStatementReq,
     TSOpenSessionReq,
     TSCreateMultiTimeseriesReq,
-    TSCreateSchemaTemplateReq,
     TSCloseSessionReq,
     TSInsertTabletsReq,
     TSInsertRecordsReq,
     TSInsertRecordsOfOneDeviceReq,
 )
-from .thrift.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq, TSRawDataQueryReq, \
-    TSLastDataQueryReq, TSInsertStringRecordsOfOneDeviceReq
+from .thrift.rpc.ttypes import (
+    TSDeleteDataReq,
+    TSProtocolVersion,
+    TSSetTimeZoneReq,
+    TSRawDataQueryReq,
+    TSLastDataQueryReq,
+    TSInsertStringRecordsOfOneDeviceReq,
+)
 
 # for debug
 # from IoTDBConstants import *
@@ -67,13 +72,13 @@ class Session(object):
     DEFAULT_ZONE_ID = time.strftime("%z")
 
     def __init__(
-            self,
-            host,
-            port,
-            user=DEFAULT_USER,
-            password=DEFAULT_PASSWORD,
-            fetch_size=DEFAULT_FETCH_SIZE,
-            zone_id=DEFAULT_ZONE_ID,
+        self,
+        host,
+        port,
+        user=DEFAULT_USER,
+        password=DEFAULT_PASSWORD,
+        fetch_size=DEFAULT_FETCH_SIZE,
+        zone_id=DEFAULT_ZONE_ID,
     ):
         self.__host = host
         self.__port = port
@@ -195,15 +200,15 @@ class Session(object):
         return Session.verify_success(status)
 
     def create_time_series(
-            self,
-            ts_path,
-            data_type,
-            encoding,
-            compressor,
-            props=None,
-            tags=None,
-            attributes=None,
-            alias=None,
+        self,
+        ts_path,
+        data_type,
+        encoding,
+        compressor,
+        props=None,
+        tags=None,
+        attributes=None,
+        alias=None,
     ):
         """
         create single time series
@@ -238,7 +243,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def create_aligned_time_series(
-            self, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+        self, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
     ):
         """
         create aligned time series
@@ -270,15 +275,15 @@ class Session(object):
         return Session.verify_success(status)
 
     def create_multi_time_series(
-            self,
-            ts_path_lst,
-            data_type_lst,
-            encoding_lst,
-            compressor_lst,
-            props_lst=None,
-            tags_lst=None,
-            attributes_lst=None,
-            alias_lst=None,
+        self,
+        ts_path_lst,
+        data_type_lst,
+        encoding_lst,
+        compressor_lst,
+        props_lst=None,
+        tags_lst=None,
+        attributes_lst=None,
+        alias_lst=None,
     ):
         """
         create multiple time series
@@ -375,7 +380,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def insert_aligned_str_record(
-            self, device_id, timestamp, measurements, string_values
+        self, device_id, timestamp, measurements, string_values
     ):
         """special case for inserting one row of String (TEXT) value"""
         if type(string_values) == str:
@@ -421,7 +426,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def insert_records(
-            self, device_ids, times, measurements_lst, types_lst, values_lst
+        self, device_ids, times, measurements_lst, types_lst, values_lst
     ):
         """
         insert multiple rows of data, records are independent to each other, in other words, there's no relationship
@@ -449,7 +454,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def insert_aligned_record(
-            self, device_id, timestamp, measurements, data_types, values
+        self, device_id, timestamp, measurements, data_types, values
     ):
         """
         insert one row of aligned record into database, if you want improve your performance, please use insertTablet method
@@ -476,7 +481,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def insert_aligned_records(
-            self, device_ids, times, measurements_lst, types_lst, values_lst
+        self, device_ids, times, measurements_lst, types_lst, values_lst
     ):
         """
         insert multiple aligned rows of data, records are independent to each other, in other words, there's no relationship
@@ -504,7 +509,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def test_insert_record(
-            self, device_id, timestamp, measurements, data_types, values
+        self, device_id, timestamp, measurements, data_types, values
     ):
         """
         this method NOT insert data into database and the server just return after accept the request, this method
@@ -529,7 +534,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def test_insert_records(
-            self, device_ids, times, measurements_lst, types_lst, values_lst
+        self, device_ids, times, measurements_lst, types_lst, values_lst
     ):
         """
         this method NOT insert data into database and the server just return after accept the request, this method
@@ -555,7 +560,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def gen_insert_record_req(
-            self, device_id, timestamp, measurements, data_types, values, is_aligned=False
+        self, device_id, timestamp, measurements, data_types, values, is_aligned=False
     ):
         if (len(values) != len(data_types)) or (len(values) != len(measurements)):
             raise RuntimeError(
@@ -572,7 +577,7 @@ class Session(object):
         )
 
     def gen_insert_str_record_req(
-            self, device_id, timestamp, measurements, data_types, values, is_aligned=False
+        self, device_id, timestamp, measurements, data_types, values, is_aligned=False
     ):
         if (len(values) != len(data_types)) or (len(values) != len(measurements)):
             raise RuntimeError(
@@ -583,19 +588,19 @@ class Session(object):
         )
 
     def gen_insert_records_req(
-            self,
-            device_ids,
-            times,
-            measurements_lst,
-            types_lst,
-            values_lst,
-            is_aligned=False,
+        self,
+        device_ids,
+        times,
+        measurements_lst,
+        types_lst,
+        values_lst,
+        is_aligned=False,
     ):
         if (
-                (len(device_ids) != len(measurements_lst))
-                or (len(times) != len(types_lst))
-                or (len(device_ids) != len(times))
-                or (len(times) != len(values_lst))
+            (len(device_ids) != len(measurements_lst))
+            or (len(times) != len(types_lst))
+            or (len(device_ids) != len(times))
+            or (len(times) != len(values_lst))
         ):
             raise RuntimeError(
                 "deviceIds, times, measurementsList and valuesList's size should be equal"
@@ -603,7 +608,7 @@ class Session(object):
 
         value_lst = []
         for values, data_types, measurements in zip(
-                values_lst, types_lst, measurements_lst
+            values_lst, types_lst, measurements_lst
         ):
             if (len(values) != len(data_types)) or (len(values) != len(measurements)):
                 raise RuntimeError(
@@ -686,7 +691,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def insert_records_of_one_device(
-            self, device_id, times_list, measurements_list, types_list, values_list
+        self, device_id, times_list, measurements_list, types_list, values_list
     ):
         # sort by timestamp
         sorted_zipped = sorted(
@@ -702,7 +707,7 @@ class Session(object):
         )
 
     def insert_records_of_one_device_sorted(
-            self, device_id, times_list, measurements_list, types_list, values_list
+        self, device_id, times_list, measurements_list, types_list, values_list
     ):
         """
         Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
@@ -719,9 +724,9 @@ class Session(object):
         # check parameter
         size = len(times_list)
         if (
-                size != len(measurements_list)
-                or size != len(types_list)
-                or size != len(values_list)
+            size != len(measurements_list)
+            or size != len(types_list)
+            or size != len(values_list)
         ):
             raise RuntimeError(
                 "insert records of one device error: types, times, measurementsList and valuesList's size should be equal"
@@ -744,7 +749,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def insert_aligned_records_of_one_device(
-            self, device_id, times_list, measurements_list, types_list, values_list
+        self, device_id, times_list, measurements_list, types_list, values_list
     ):
         # sort by timestamp
         sorted_zipped = sorted(
@@ -760,7 +765,7 @@ class Session(object):
         )
 
     def insert_aligned_records_of_one_device_sorted(
-            self, device_id, times_list, measurements_list, types_list, values_list
+        self, device_id, times_list, measurements_list, types_list, values_list
     ):
         """
         Insert multiple aligned rows, which can reduce the overhead of network. This method is just like jdbc
@@ -776,9 +781,9 @@ class Session(object):
         # check parameter
         size = len(times_list)
         if (
-                size != len(measurements_list)
-                or size != len(types_list)
-                or size != len(values_list)
+            size != len(measurements_list)
+            or size != len(types_list)
+            or size != len(values_list)
         ):
             raise RuntimeError(
                 "insert records of one device error: types, times, measurementsList and valuesList's size should be equal"
@@ -801,17 +806,17 @@ class Session(object):
         return Session.verify_success(status)
 
     def gen_insert_records_of_one_device_request(
-            self,
-            device_id,
-            times_list,
-            measurements_list,
-            values_list,
-            types_list,
-            is_aligned=False,
+        self,
+        device_id,
+        times_list,
+        measurements_list,
+        values_list,
+        types_list,
+        is_aligned=False,
     ):
         binary_value_list = []
         for values, data_types, measurements in zip(
-                values_list, types_list, measurements_list
+            values_list, types_list, measurements_list
         ):
             data_types = [data_type.value for data_type in data_types]
             if (len(values) != len(data_types)) or (len(values) != len(measurements)):
@@ -1025,9 +1030,18 @@ class Session(object):
         logger.error("error status is", status)
         return -1
 
-    def execute_raw_data_query(self, paths: list, start_time: int, end_time: int) -> SessionDataSet:
-        request = TSRawDataQueryReq(self.__session_id, paths, self.__fetch_size, startTime=start_time, endTime=end_time,
-                                    statementId=self.__statement_id, enableRedirectQuery=False)
+    def execute_raw_data_query(
+        self, paths: list, start_time: int, end_time: int
+    ) -> SessionDataSet:
+        request = TSRawDataQueryReq(
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            startTime=start_time,
+            endTime=end_time,
+            statementId=self.__statement_id,
+            enableRedirectQuery=False,
+        )
         resp = self.__client.executeRawDataQuery(request)
         return SessionDataSet(
             "",
@@ -1044,7 +1058,12 @@ class Session(object):
 
     def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
         request = TSLastDataQueryReq(
-            self.__session_id, paths, self.__fetch_size, last_time, self.__statement_id, enableRedirectQuery=False
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            last_time,
+            self.__statement_id,
+            enableRedirectQuery=False,
         )
 
         resp = self.__client.executeLastDataQuery(request)
@@ -1062,43 +1081,57 @@ class Session(object):
         )
 
     def insert_string_records_of_one_device(
-            self, device_id: str, times: list, measurements_list: list, values_list: list, have_sorted: bool = False
+        self,
+        device_id: str,
+        times: list,
+        measurements_list: list,
+        values_list: list,
+        have_sorted: bool = False,
     ):
         if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
             raise RuntimeError(
                 "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
             )
-        request = self.gen_insert_string_records_of_one_device_request(device_id, times, measurements_list, values_list,
-                                                                       have_sorted, False)
+        request = self.gen_insert_string_records_of_one_device_request(
+            device_id, times, measurements_list, values_list, have_sorted, False
+        )
         status = self.__client.insertStringRecordsOfOneDevice(request)
         logger.debug(
-            "insert one device {} message: {}".format(
-                device_id, status.message
-            )
+            "insert one device {} message: {}".format(device_id, status.message)
         )
 
         return Session.verify_success(status)
 
     def insert_aligned_string_records_of_one_device(
-            self, device_id: str, times: list, measurements_list: list, values: list, have_sorted: bool = False
+        self,
+        device_id: str,
+        times: list,
+        measurements_list: list,
+        values: list,
+        have_sorted: bool = False,
     ):
         if (len(times) != len(measurements_list)) or (len(times) != len(values)):
             raise RuntimeError(
                 "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
             )
-        request = self.gen_insert_string_records_of_one_device_request(device_id, times, measurements_list, values,
-                                                                       have_sorted, True)
+        request = self.gen_insert_string_records_of_one_device_request(
+            device_id, times, measurements_list, values, have_sorted, True
+        )
         status = self.__client.insertStringRecordsOfOneDevice(request)
         logger.debug(
-            "insert one device {} message: {}".format(
-                device_id, status.message
-            )
+            "insert one device {} message: {}".format(device_id, status.message)
         )
 
         return Session.verify_success(status)
 
     def gen_insert_string_records_of_one_device_request(
-            self, device_id, times, measurements_list, values_list, have_sorted, is_aligned=False
+        self,
+        device_id,
+        times,
+        measurements_list,
+        values_list,
+        have_sorted,
+        is_aligned=False,
     ):
         if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
             raise RuntimeError(
@@ -1106,13 +1139,15 @@ class Session(object):
             )
         if not Session.check_sorted(times):
             # sort by timestamp
-            sorted_zipped = sorted(
-                zip(times, measurements_list, values_list)
-            )
+            sorted_zipped = sorted(zip(times, measurements_list, values_list))
             result = zip(*sorted_zipped)
-            times_list, measurements_list, values_list = [
-                list(x) for x in result
-            ]
-        request = TSInsertStringRecordsOfOneDeviceReq(self.__session_id, device_id, measurements_list, values_list,
-                                                      times, is_aligned)
+            times_list, measurements_list, values_list = [list(x) for x in result]
+        request = TSInsertStringRecordsOfOneDeviceReq(
+            self.__session_id,
+            device_id,
+            measurements_list,
+            values_list,
+            times,
+            is_aligned,
+        )
         return request

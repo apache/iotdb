@@ -290,7 +290,10 @@ measurements_list = [
 values_list = [["False", "22", "33"], ["True", "1", "23"], ["False", "15", "26"]]
 
 session.insert_string_records_of_one_device(
-    "root.sg_test_01.d_03", time_list, measurements_list, values_list,
+    "root.sg_test_01.d_03",
+    time_list,
+    measurements_list,
+    values_list,
 )
 
 # insert aligned string record into the database.
@@ -302,18 +305,21 @@ measurements_list = [
 ]
 values_list = [["False", "22", "33"], ["True", "1", "23"], ["False", "15", "26"]]
 session.insert_aligned_string_records_of_one_device(
-    "root.sg_test_01.d_04", time_list, measurements_list, values_list,
+    "root.sg_test_01.d_04",
+    time_list,
+    measurements_list,
+    values_list,
 )
 
 with session.execute_raw_data_query(
-        ["root.sg_test_01.d_03.s_01", "root.sg_test_01.d_03.s_02"], 1, 4
+    ["root.sg_test_01.d_03.s_01", "root.sg_test_01.d_03.s_02"], 1, 4
 ) as session_data_set:
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():
         print(session_data_set.next())
 
 with session.execute_last_data_query(
-        ["root.sg_test_01.d_03.s_01", "root.sg_test_01.d_03.s_02"], 0
+    ["root.sg_test_01.d_03.s_01", "root.sg_test_01.d_03.s_02"], 0
 ) as session_data_set:
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():

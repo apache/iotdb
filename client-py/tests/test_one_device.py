@@ -56,16 +56,20 @@ def test_one_device():
             ["s_01", "s_02", "s_03"],
             ["s_01", "s_02", "s_03"],
         ]
-        values_list = [["False", "22", "33"], ["True", "1", "23"], ["False", "15", "26"]]
+        values_list = [
+            ["False", "22", "33"],
+            ["True", "1", "23"],
+            ["False", "15", "26"],
+        ]
 
         if (
-                session.insert_string_records_of_one_device(
-                    "root.str_test_01.d_01",
-                    time_list,
-                    measurements_list,
-                    values_list,
-                )
-                < 0
+            session.insert_string_records_of_one_device(
+                "root.str_test_01.d_01",
+                time_list,
+                measurements_list,
+                values_list,
+            )
+            < 0
         ):
             test_fail()
             print_message("insert string records of one device failed")
@@ -77,16 +81,20 @@ def test_one_device():
             ["s_01", "s_02", "s_03"],
             ["s_01", "s_02", "s_03"],
         ]
-        values_list = [["False", "22", "33"], ["True", "1", "23"], ["False", "15", "26"]]
+        values_list = [
+            ["False", "22", "33"],
+            ["True", "1", "23"],
+            ["False", "15", "26"],
+        ]
 
         if (
-                session.insert_aligned_string_records_of_one_device(
-                    "root.str_test_01.d_02",
-                    time_list,
-                    measurements_list,
-                    values_list,
-                )
-                < 0
+            session.insert_aligned_string_records_of_one_device(
+                "root.str_test_01.d_02",
+                time_list,
+                measurements_list,
+                values_list,
+            )
+            < 0
         ):
             test_fail()
             print_message("insert aligned record of one device failed")
