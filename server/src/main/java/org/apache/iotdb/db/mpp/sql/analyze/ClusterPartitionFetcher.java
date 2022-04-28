@@ -419,6 +419,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           }
         }
         if (!hit) {
+          logger.debug("{} cannot hit storage group cache", devicePath);
           return false;
         }
       }
