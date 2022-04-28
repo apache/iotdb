@@ -181,6 +181,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+    // Do not use data partition cache
     try {
       TDataPartitionResp dataPartitionResp =
           client.getOrCreateDataPartition(constructDataPartitionReq(sgNameToQueryParamsMap));
