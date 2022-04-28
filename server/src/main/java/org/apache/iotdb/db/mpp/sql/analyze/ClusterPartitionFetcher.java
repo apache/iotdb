@@ -410,13 +410,16 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         return false;
       }
       for (String devicePath : devicePaths) {
+        boolean hit = false;
         for (String storageGroup : storageGroupCache) {
           if (devicePath.startsWith(storageGroup)) {
             deviceToStorageGroupMap.put(devicePath, storageGroup);
-          } else {
-            logger.debug("Failed to get storage group cache");
-            return false;
+            hit = true;
+            break;
           }
+        }
+        if (!hit) {
+          return false;
         }
       }
       logger.debug("Hit storage group");
