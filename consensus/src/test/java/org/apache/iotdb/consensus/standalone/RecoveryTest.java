@@ -67,6 +67,7 @@ public class RecoveryTest {
 
   @After
   public void tearDown() throws IOException {
+    consensusImpl.stop();
     FileUtils.deleteFully(new File("./target/recovery"));
   }
 
