@@ -108,7 +108,7 @@ public class AuthorInfo {
     return false;
   }
 
-  public TSStatus authorNonQuery(AuthorReq authorReq) throws AuthException {
+  public TSStatus authorNonQuery(AuthorReq authorReq) {
     ConfigRequestType authorType = authorReq.getAuthorType();
     String userName = authorReq.getUserName();
     String roleName = authorReq.getRoleName();
@@ -163,12 +163,12 @@ public class AuthorInfo {
           throw new AuthException("unknown type: " + authorReq.getAuthorType());
       }
     } catch (AuthException e) {
-      throw new AuthException(e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_EXCEPTION_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public PermissionInfoResp executeListRole() throws AuthException {
+  public PermissionInfoResp executeListRole() {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> roleList = authorizer.listAllRoles();
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -178,7 +178,7 @@ public class AuthorInfo {
     return result;
   }
 
-  public PermissionInfoResp executeListUser() throws AuthException {
+  public PermissionInfoResp executeListUser() {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> userList = authorizer.listAllUsers();
     Map<String, List<String>> permissionInfo = new HashMap<>();
@@ -190,9 +190,19 @@ public class AuthorInfo {
 
   public PermissionInfoResp executeListRoleUsers(AuthorReq plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    Role role = authorizer.getRole(plan.getRoleName());
-    if (role == null) {
-      throw new AuthException("No such role : " + plan.getRoleName());
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    Role role;
+    try {
+      role = authorizer.getRole(plan.getRoleName());
+      if (role == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
     }
     List<String> roleUsersList = new ArrayList<>();
     List<String> userList = authorizer.listAllUsers();
@@ -202,7 +212,6 @@ public class AuthorInfo {
         roleUsersList.add(userN);
       }
     }
-    Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
@@ -211,15 +220,25 @@ public class AuthorInfo {
 
   public PermissionInfoResp executeListUserRoles(AuthorReq plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    User user = authorizer.getUser(plan.getUserName());
-    if (user == null) {
-      throw new AuthException("No such user : " + plan.getUserName());
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    User user;
+    try {
+      user = authorizer.getUser(plan.getUserName());
+      if (user == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
     }
     List<String> userRoleList = new ArrayList<>();
     for (String roleN : user.getRoleList()) {
       userRoleList.add(roleN);
     }
-    Map<String, List<String>> permissionInfo = new HashMap<>();
+
     permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
@@ -228,9 +247,19 @@ public class AuthorInfo {
 
   public PermissionInfoResp executeListRolePrivileges(AuthorReq plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    Role role = authorizer.getRole(plan.getRoleName());
-    if (role == null) {
-      throw new AuthException("No such role : " + plan.getRoleName());
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    Role role;
+    try {
+      role = authorizer.getRole(plan.getRoleName());
+      if (role == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
     }
     List<String> rolePrivilegesList = new ArrayList<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
@@ -239,7 +268,7 @@ public class AuthorInfo {
         rolePrivilegesList.add(pathPrivilege.toString());
       }
     }
-    Map<String, List<String>> permissionInfo = new HashMap<>();
+
     permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
@@ -248,12 +277,22 @@ public class AuthorInfo {
 
   public PermissionInfoResp executeListUserPrivileges(AuthorReq plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    User user = authorizer.getUser(plan.getUserName());
-    if (user == null) {
-      throw new AuthException("No such user : " + plan.getUserName());
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    User user;
+    try {
+      user = authorizer.getUser(plan.getUserName());
+      if (user == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
     }
     List<String> userPrivilegesList = new ArrayList<>();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
+
     if (IoTDBConstant.PATH_ROOT.equals(plan.getUserName())) {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
         userPrivilegesList.add(privilegeType.toString());
