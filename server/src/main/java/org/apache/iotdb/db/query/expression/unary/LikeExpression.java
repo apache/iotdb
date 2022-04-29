@@ -109,7 +109,7 @@ public class LikeExpression extends UnaryExpression {
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression + " LIKE " + pattern;
+    return expression + " LIKE '" + pattern + "'";
   }
 
   @Override
