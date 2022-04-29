@@ -177,7 +177,6 @@ public class ExchangeNode extends PlanNode {
     }
     ExchangeNode that = (ExchangeNode) o;
     return Objects.equals(child, that.child)
-        && Objects.equals(remoteSourceNode, that.remoteSourceNode)
         && Objects.equals(upstreamEndpoint, that.upstreamEndpoint)
         && Objects.equals(upstreamInstanceId, that.upstreamInstanceId)
         && Objects.equals(upstreamPlanNodeId, that.upstreamPlanNodeId);
