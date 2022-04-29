@@ -184,7 +184,7 @@ public class SchemaEngine {
     };
   }
 
-  public void createSchemaRegionWithoutExistenceCheck(
+  private void createSchemaRegionWithoutExistenceCheck(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion = null;
     this.localStorageGroupSchemaManager.ensureStorageGroup(storageGroup);
