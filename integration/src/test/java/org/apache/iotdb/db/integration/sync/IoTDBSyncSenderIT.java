@@ -186,6 +186,19 @@ public class IoTDBSyncSenderIT {
         Arrays.asList(simpleTsFilePipeData, simpleTsFilePipeData)); // del3 do not in history
   }
 
+  private void prepareIns4() throws Exception { // ins unsealed tsfile
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "insert into root.sg1.d1(timestamp, s1, s2, s3) values(300, 300, 316.25, 'i')");
+      statement.execute(
+          "insert into root.sg1.d1(timestamp, s1, s2, s3) values(165, 165, 165.25, 'j')");
+    }
+
+    resultMap.put("ins4", Arrays.asList(simpleTsFilePipeData, simpleTsFilePipeData));
+  }
+
   private void prepareDel1() throws Exception { // after ins1, add 2 deletions
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -239,7 +252,9 @@ public class IoTDBSyncSenderIT {
   }
 
   private void restart() throws Exception {
-    EnvironmentUtils.restartDaemon();
+    //    EnvironmentUtils.restartDaemon();
+    EnvironmentUtils.shutdownDaemon();
+    EnvironmentUtils.reactiveDaemon();
   }
 
   private void startPipe() throws Exception {
@@ -550,6 +565,45 @@ public class IoTDBSyncSenderIT {
       Thread.sleep(1000L); // check
       checkResult(
           Arrays.asList("schema", "ins1", "ins2", "del2WithoutIns3", "ins3", "del3"),
+          transportClient.getPipeDataList());
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
+    } finally {
+      try {
+        dropPipe();
+        Thread.sleep(1000L);
+      } catch (Exception e) {
+        e.printStackTrace();
+        Assert.fail();
+      }
+    }
+  }
+
+  @Test
+  public void testRestartWithUnsealedTsFile() {
+    try {
+      prepareSchema(); // history
+      prepareIns1();
+      prepareIns2();
+      prepareDel1();
+
+      preparePipeAndSetMock(); // realtime
+      startPipe();
+      stopPipe();
+      prepareDel2();
+      restart();
+      startPipe();
+      prepareIns3();
+      stopPipe();
+      prepareDel3();
+      prepareIns4();
+      startPipe();
+      restart();
+
+      Thread.sleep(1000L); // check
+      checkResult(
+          Arrays.asList("schema", "ins1", "ins2", "del2WithoutIns3", "ins3", "del3", "ins4"),
           transportClient.getPipeDataList());
     } catch (Exception e) {
       e.printStackTrace();
