@@ -18,21 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -40,11 +34,11 @@ import java.util.Objects;
  * OffsetNode is used to skip top n result from upstream nodes. It uses the default order of
  * upstream nodes
  */
-public class OffsetNode extends ProcessNode implements IOutputPlanNode {
+public class OffsetNode extends ProcessNode {
 
-  // The limit count
-  private PlanNode child;
   private final int offset;
+
+  private PlanNode child;
 
   public OffsetNode(PlanNodeId id, int offset) {
     super(id);
@@ -67,28 +61,18 @@ public class OffsetNode extends ProcessNode implements IOutputPlanNode {
   }
 
   @Override
-  public PlanNode clone() {
-    return new OffsetNode(getPlanNodeId(), offset);
-  }
-
-  @Override
   public int allowedChildCount() {
     return ONE_CHILD;
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return ((IOutputPlanNode) child).getOutputColumnHeaders();
+  public PlanNode clone() {
+    return new OffsetNode(getPlanNodeId(), offset);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return ((IOutputPlanNode) child).getOutputColumnNames();
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return ((IOutputPlanNode) child).getOutputColumnTypes();
+    return child.getOutputColumnNames();
   }
 
   @Override
@@ -116,26 +100,16 @@ public class OffsetNode extends ProcessNode implements IOutputPlanNode {
     return offset;
   }
 
-  @TestOnly
-  public Pair<String, List<String>> print() {
-    String title = String.format("[OffsetNode (%s)]", this.getPlanNodeId());
-    List<String> attributes = new ArrayList<>();
-    attributes.add("RowOffset: " + this.getOffset());
-    return new Pair<>(title, attributes);
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
-
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-
     OffsetNode that = (OffsetNode) o;
-    return offset == that.offset && Objects.equals(child, that.child);
+    return offset == that.offset && child.equals(that.child);
   }
 
   @Override

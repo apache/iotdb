@@ -22,5 +22,7 @@ package org.apache.iotdb.db.mpp.sql.statement.component;
 /** The order of query result set by timestamp */
 public enum OrderBy {
   TIMESTAMP_ASC,
-  TIMESTAMP_DESC
+  TIMESTAMP_DESC,
+  DEVICE_ASC,
+  DEVICE_DESC
 }

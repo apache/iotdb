@@ -18,17 +18,28 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public abstract class InsertNode extends WritePlanNode {
@@ -53,7 +64,7 @@ public abstract class InsertNode extends WritePlanNode {
   protected IDeviceID deviceID;
 
   /** Physical address of data region after splitting */
-  RegionReplicaSet dataRegionReplicaSet;
+  TRegionReplicaSet dataRegionReplicaSet;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -63,27 +74,20 @@ public abstract class InsertNode extends WritePlanNode {
       PlanNodeId id,
       PartialPath devicePath,
       boolean isAligned,
-      MeasurementSchema[] measurementSchemas,
+      String[] measurements,
       TSDataType[] dataTypes) {
     super(id);
     this.devicePath = devicePath;
     this.isAligned = isAligned;
-    this.measurementSchemas = measurementSchemas;
+    this.measurements = measurements;
     this.dataTypes = dataTypes;
-
-    this.measurements = new String[measurementSchemas.length];
-    for (int i = 0; i < measurementSchemas.length; i++) {
-      if (measurementSchemas[i] != null) {
-        measurements[i] = measurementSchemas[i].getMeasurementId();
-      }
-    }
   }
 
-  public RegionReplicaSet getDataRegionReplicaSet() {
+  public TRegionReplicaSet getDataRegionReplicaSet() {
     return dataRegionReplicaSet;
   }
 
-  public void setDataRegionReplicaSet(RegionReplicaSet dataRegionReplicaSet) {
+  public void setDataRegionReplicaSet(TRegionReplicaSet dataRegionReplicaSet) {
     this.dataRegionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -131,23 +135,94 @@ public abstract class InsertNode extends WritePlanNode {
     this.deviceID = deviceID;
   }
 
-  public RegionReplicaSet getRegionReplicaSet() {
+  protected void serializeMeasurementSchemaToWAL(IWALByteBufferView buffer) {
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
+      WALWriteUtils.write(measurementSchema, buffer);
+    }
+  }
+
+  protected int serializeMeasurementSchemaSize() {
+    int byteLen = 0;
+    for (MeasurementSchema measurementSchema : measurementSchemas) {
+      byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementId());
+      byteLen += 3 * Byte.BYTES;
+      Map<String, String> props = measurementSchema.getProps();
+      if (props == null) {
+        byteLen += Integer.BYTES;
+      } else {
+        byteLen += Integer.BYTES;
+        for (Map.Entry<String, String> entry : props.entrySet()) {
+          byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+          byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
+        }
+      }
+    }
+    return byteLen;
+  }
+
+  /** Make sure the measurement schema is already inited before calling this */
+  protected void deserializeMeasurementSchema(DataInputStream stream) throws IOException {
+    for (int i = 0; i < measurementSchemas.length; i++) {
+
+      measurementSchemas[i] =
+          new MeasurementSchema(
+              ReadWriteIOUtils.readString(stream),
+              TSDataType.deserialize(ReadWriteIOUtils.readByte(stream)),
+              TSEncoding.deserialize(ReadWriteIOUtils.readByte(stream)),
+              CompressionType.deserialize(ReadWriteIOUtils.readByte(stream)));
+
+      int size = ReadWriteIOUtils.readInt(stream);
+      if (size > 0) {
+        Map<String, String> props = new HashMap<>();
+        String key;
+        String value;
+        for (int j = 0; j < size; j++) {
+          key = ReadWriteIOUtils.readString(stream);
+          value = ReadWriteIOUtils.readString(stream);
+          props.put(key, value);
+        }
+        measurementSchemas[i].setProps(props);
+      }
+
+      measurements[i] = measurementSchemas[i].getMeasurementId();
+    }
+  }
+
+  public TRegionReplicaSet getRegionReplicaSet() {
     return dataRegionReplicaSet;
+  }
+
+  public abstract boolean validateSchema(SchemaTree schemaTree);
+
+  public void setMeasurementSchemas(SchemaTree schemaTree) {
+    DeviceSchemaInfo deviceSchemaInfo =
+        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    measurementSchemas =
+        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
+  }
+
+  /**
+   * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed
+   * measurements, the failed values or columns would be null as well. We'd better use
+   * "measurements[index] == null" to determine if the measurement failed.
+   *
+   * @param index failed measurement index
+   */
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    // todo partial insert
+    if (measurements[index] == null) {
+      return;
+    }
+    //    if (failedMeasurements == null) {
+    //      failedMeasurements = new ArrayList<>();
+    //    }
+    //    failedMeasurements.add(measurements[index]);
+    measurements[index] = null;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
-  }
-
-  protected int countFailedMeasurements() {
-    int result = 0;
-    for (MeasurementSchema measurement : measurementSchemas) {
-      if (measurement == null) {
-        result++;
-      }
-    }
-    return result;
   }
 
   @Override

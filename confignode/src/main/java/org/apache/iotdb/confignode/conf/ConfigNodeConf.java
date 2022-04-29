@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
 import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeConf {
 
@@ -32,9 +33,11 @@ public class ConfigNodeConf {
 
   /** used for communication between data node and config node */
   private int rpcPort = 22277;
-
   /** used for communication between config node and config node */
   private int internalPort = 22278;
+
+  /** Thrift socket and connection timeout between nodes */
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /** ConfigNode consensus protocol */
   private String configNodeConsensusProtocolClass =
@@ -43,8 +46,17 @@ public class ConfigNodeConf {
   private String dataNodeConsensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
   /** Used for building the ConfigNode consensus group */
-  private Endpoint[] configNodeGroupAddressList =
-      Collections.singletonList(new Endpoint("0.0.0.0", 22278)).toArray(new Endpoint[0]);
+  private TEndPoint[] configNodeGroupAddressList =
+      Collections.singletonList(new TEndPoint("0.0.0.0", 22278)).toArray(new TEndPoint[0]);
+
+  /**
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
 
   /** Number of SeriesPartitionSlots per StorageGroup */
   private int seriesPartitionSlotNum = 10000;
@@ -90,12 +102,17 @@ public class ConfigNodeConf {
   /** Default TTL for storage groups that are not set TTL by statements, in ms. */
   private long defaultTTL = Long.MAX_VALUE;
 
-  /** The number of replicas of each region */
-  private int regionReplicaCount = 3;
-  /** The number of SchemaRegions of each StorageGroup */
-  private int schemaRegionCount = 1;
-  /** The number of DataRegions of each StorageGroup */
-  private int dataRegionCount = 1;
+  /** Default number of SchemaRegion replicas */
+  private int schemaReplicationFactor = 3;
+
+  /** Default number of DataRegion replicas */
+  private int dataReplicationFactor = 3;
+
+  /** The initial number of SchemaRegions of each StorageGroup */
+  private int initialSchemaRegionCount = 1;
+
+  /** The initial number of DataRegions of each StorageGroup */
+  private int initialDataRegionCount = 1;
 
   public ConfigNodeConf() {
     // empty constructor
@@ -139,6 +156,10 @@ public class ConfigNodeConf {
 
   public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
   }
 
   public long getTimePartitionInterval() {
@@ -213,6 +234,19 @@ public class ConfigNodeConf {
     this.internalPort = internalPort;
   }
 
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public ConfigNodeConf setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
+    return this;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
+  }
+
   public String getConsensusDir() {
     return consensusDir;
   }
@@ -237,11 +271,11 @@ public class ConfigNodeConf {
     this.dataNodeConsensusProtocolClass = dataNodeConsensusProtocolClass;
   }
 
-  public Endpoint[] getConfigNodeGroupAddressList() {
+  public TEndPoint[] getConfigNodeGroupAddressList() {
     return configNodeGroupAddressList;
   }
 
-  public void setConfigNodeGroupAddressList(Endpoint[] configNodeGroupAddressList) {
+  public void setConfigNodeGroupAddressList(TEndPoint[] configNodeGroupAddressList) {
     this.configNodeGroupAddressList = configNodeGroupAddressList;
   }
 
@@ -277,27 +311,35 @@ public class ConfigNodeConf {
     this.defaultTTL = defaultTTL;
   }
 
-  public int getRegionReplicaCount() {
-    return regionReplicaCount;
+  public int getSchemaReplicationFactor() {
+    return schemaReplicationFactor;
   }
 
-  public void setDataRegionCount(int dataRegionCount) {
-    this.dataRegionCount = dataRegionCount;
+  public void setSchemaReplicationFactor(int schemaReplicationFactor) {
+    this.schemaReplicationFactor = schemaReplicationFactor;
   }
 
-  public int getSchemaRegionCount() {
-    return schemaRegionCount;
+  public int getDataReplicationFactor() {
+    return dataReplicationFactor;
   }
 
-  public void setSchemaRegionCount(int schemaRegionCount) {
-    this.schemaRegionCount = schemaRegionCount;
+  public void setDataReplicationFactor(int dataReplicationFactor) {
+    this.dataReplicationFactor = dataReplicationFactor;
   }
 
-  public int getDataRegionCount() {
-    return dataRegionCount;
+  public int getInitialSchemaRegionCount() {
+    return initialSchemaRegionCount;
   }
 
-  public void setRegionReplicaCount(int regionReplicaCount) {
-    this.regionReplicaCount = regionReplicaCount;
+  public void setInitialSchemaRegionCount(int initialSchemaRegionCount) {
+    this.initialSchemaRegionCount = initialSchemaRegionCount;
+  }
+
+  public int getInitialDataRegionCount() {
+    return initialDataRegionCount;
+  }
+
+  public void setInitialDataRegionCount(int initialDataRegionCount) {
+    this.initialDataRegionCount = initialDataRegionCount;
   }
 }

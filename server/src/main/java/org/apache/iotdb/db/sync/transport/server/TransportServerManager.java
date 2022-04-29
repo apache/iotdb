@@ -63,11 +63,6 @@ public class TransportServerManager extends ThriftService
   }
 
   @Override
-  public ThriftService getImplementation() {
-    return getInstance();
-  }
-
-  @Override
   public void initTProcessor() {
     initSyncedServiceImpl(null);
     serviceImpl = new TransportServiceImpl();

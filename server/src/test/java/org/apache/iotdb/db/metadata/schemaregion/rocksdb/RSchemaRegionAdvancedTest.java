@@ -49,7 +49,9 @@ public class RSchemaRegionAdvancedTest {
     RSchemaReadWriteHandler readWriteHandler = new RSchemaReadWriteHandler();
     RStorageGroupMNode storageGroupMNode =
         new RStorageGroupMNode(storageGroupPath.getFullPath(), -1, readWriteHandler);
-    schemaRegion = new RSchemaRegion(storageGroupPath, schemaRegionId, storageGroupMNode);
+    schemaRegion =
+        new RSchemaRegion(
+            storageGroupPath, schemaRegionId, storageGroupMNode, new RSchemaConfLoader());
 
     schemaRegion.createTimeseries(
         new PartialPath("root.vehicle.s0.d0.s0"),

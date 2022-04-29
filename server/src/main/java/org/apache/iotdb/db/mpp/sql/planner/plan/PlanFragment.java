@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.sql.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SourceNode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -33,6 +35,7 @@ public class PlanFragment {
   // TODO once you add field for this class you need to change the serialize and deserialize methods
   private PlanFragmentId id;
   private PlanNode root;
+  private TypeProvider typeProvider;
 
   public PlanFragment(PlanFragmentId id, PlanNode root) {
     this.id = id;
@@ -51,6 +54,14 @@ public class PlanFragment {
     this.root = root;
   }
 
+  public TypeProvider getTypeProvider() {
+    return typeProvider;
+  }
+
+  public void setTypeProvider(TypeProvider typeProvider) {
+    this.typeProvider = typeProvider;
+  }
+
   @Override
   public String toString() {
     return String.format("PlanFragment-%s", getId());
@@ -61,16 +72,16 @@ public class PlanFragment {
   // In current version, one PlanFragment should contain at least one SourceNode,
   // and the DataRegions of all SourceNodes should be same in one PlanFragment.
   // So we can use the DataRegion of one SourceNode as the PlanFragment's DataRegion.
-  public RegionReplicaSet getTargetRegion() {
+  public TRegionReplicaSet getTargetRegion() {
     return getNodeRegion(root);
   }
 
-  private RegionReplicaSet getNodeRegion(PlanNode root) {
+  private TRegionReplicaSet getNodeRegion(PlanNode root) {
     if (root instanceof SourceNode) {
       return ((SourceNode) root).getRegionReplicaSet();
     }
     for (PlanNode child : root.getChildren()) {
-      RegionReplicaSet result = getNodeRegion(child);
+      TRegionReplicaSet result = getNodeRegion(child);
       if (result != null) {
         return result;
       }
@@ -98,10 +109,22 @@ public class PlanFragment {
   public void serialize(ByteBuffer byteBuffer) {
     id.serialize(byteBuffer);
     root.serialize(byteBuffer);
+    if (typeProvider == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      typeProvider.serialize(byteBuffer);
+    }
   }
 
   public static PlanFragment deserialize(ByteBuffer byteBuffer) {
-    return new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
+    PlanFragment planFragment =
+        new PlanFragment(PlanFragmentId.deserialize(byteBuffer), deserializeHelper(byteBuffer));
+    byte hasTypeProvider = ReadWriteIOUtils.readByte(byteBuffer);
+    if (hasTypeProvider == 1) {
+      planFragment.setTypeProvider(TypeProvider.deserialize(byteBuffer));
+    }
+    return planFragment;
   }
 
   // deserialize the plan node recursively

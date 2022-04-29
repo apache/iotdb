@@ -18,26 +18,17 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -55,41 +46,39 @@ import java.util.stream.Collectors;
  * <p>If the group by level parameter is [0, 2], then these two columns will not belong to one
  * bucket. And the total buckets are `root.*.d1.s1` and `root.*.d2.s1`
  */
-public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
+public class GroupByLevelNode extends AggregationNode {
 
-  private final int[] groupByLevels;
-
-  private final Map<ColumnHeader, ColumnHeader> groupedPathMap;
-
-  private PlanNode child;
-
-  private final List<ColumnHeader> columnHeaders;
+  // column name of each output column
+  private final List<String> outputColumnNames;
 
   public GroupByLevelNode(
       PlanNodeId id,
-      PlanNode child,
-      int[] groupByLevels,
-      Map<ColumnHeader, ColumnHeader> groupedPathMap) {
-    super(id);
-    this.child = child;
-    this.groupByLevels = groupByLevels;
-    this.groupedPathMap = groupedPathMap;
-    this.columnHeaders = groupedPathMap.values().stream().distinct().collect(Collectors.toList());
+      List<PlanNode> children,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      List<String> outputColumnNames) {
+    super(id, aggregationDescriptorList);
+    this.children = children;
+    this.outputColumnNames = outputColumnNames;
+  }
+
+  public GroupByLevelNode(
+      PlanNodeId id,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      GroupByTimeParameter groupByTimeParameter,
+      List<String> outputColumnNames) {
+    super(id, aggregationDescriptorList, groupByTimeParameter);
+    this.outputColumnNames = outputColumnNames;
+    this.children = new ArrayList<>();
   }
 
   @Override
   public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
+    return children;
   }
 
   @Override
   public void addChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
-  public PlanNode clone() {
-    throw new NotImplementedException("Clone of GroupByLevelNode is not implemented");
+    this.children.add(child);
   }
 
   @Override
@@ -97,23 +86,21 @@ public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
     return CHILD_COUNT_NO_LIMIT;
   }
 
-  public int[] getGroupByLevels() {
-    return groupByLevels;
-  }
-
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return columnHeaders;
+  public PlanNode clone() {
+    return new GroupByLevelNode(
+        getPlanNodeId(),
+        getAggregationDescriptorList(),
+        getGroupByTimeParameter(),
+        getOutputColumnNames());
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    return aggregationDescriptorList.stream()
+        .map(AggregationDescriptor::getOutputColumnNames)
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
   }
 
   @Override
@@ -124,40 +111,43 @@ public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.GROUP_BY_LEVEL.serialize(byteBuffer);
-    ReadWriteIOUtils.write(groupByLevels.length, byteBuffer);
-    for (int i = 0; i < groupByLevels.length; i++) {
-      ReadWriteIOUtils.write(groupByLevels[i], byteBuffer);
+    ReadWriteIOUtils.write(aggregationDescriptorList.size(), byteBuffer);
+    for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
+      aggregationDescriptor.serialize(byteBuffer);
     }
-    ReadWriteIOUtils.write(groupedPathMap.size(), byteBuffer);
-    for (Map.Entry<ColumnHeader, ColumnHeader> e : groupedPathMap.entrySet()) {
-      e.getKey().serialize(byteBuffer);
-      e.getValue().serialize(byteBuffer);
+    if (groupByTimeParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, byteBuffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, byteBuffer);
+      groupByTimeParameter.serialize(byteBuffer);
+    }
+    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
+    for (String outputColumnName : outputColumnNames) {
+      ReadWriteIOUtils.write(outputColumnName, byteBuffer);
     }
   }
 
   public static GroupByLevelNode deserialize(ByteBuffer byteBuffer) {
-    int groupByLevelSize = ReadWriteIOUtils.readInt(byteBuffer);
-    int[] groupByLevels = new int[groupByLevelSize];
-    for (int i = 0; i < groupByLevelSize; i++) {
-      groupByLevels[i] = ReadWriteIOUtils.readInt(byteBuffer);
+    int descriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    while (descriptorSize > 0) {
+      aggregationDescriptorList.add(AggregationDescriptor.deserialize(byteBuffer));
+      descriptorSize--;
     }
-    int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<ColumnHeader, ColumnHeader> groupedPathMap = new HashMap<>();
-    for (int i = 0; i < mapSize; i++) {
-      groupedPathMap.put(
-          ColumnHeader.deserialize(byteBuffer), ColumnHeader.deserialize(byteBuffer));
+    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    GroupByTimeParameter groupByTimeParameter = null;
+    if (isNull == 1) {
+      groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
+    }
+    int outputColumnSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> outputColumnNames = new ArrayList<>();
+    while (outputColumnSize > 0) {
+      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      outputColumnSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new GroupByLevelNode(planNodeId, null, groupByLevels, groupedPathMap);
-  }
-
-  @TestOnly
-  public Pair<String, List<String>> print() {
-    String title = String.format("[GroupByLevelNode (%s)]", this.getPlanNodeId());
-    List<String> attributes = new ArrayList<>();
-    attributes.add("GroupByLevels: " + Arrays.toString(this.getGroupByLevels()));
-    attributes.add("ColumnNames: " + this.getOutputColumnNames());
-    return new Pair<>(title, attributes);
+    return new GroupByLevelNode(
+        planNodeId, aggregationDescriptorList, groupByTimeParameter, outputColumnNames);
   }
 
   @Override
@@ -165,21 +155,18 @@ public class GroupByLevelNode extends ProcessNode implements IOutputPlanNode {
     if (this == o) {
       return true;
     }
-
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-
+    if (!super.equals(o)) {
+      return false;
+    }
     GroupByLevelNode that = (GroupByLevelNode) o;
-    return Objects.equals(child, that.child)
-        && Arrays.equals(groupByLevels, that.groupByLevels)
-        && Objects.equals(groupedPathMap, that.groupedPathMap);
+    return outputColumnNames.equals(that.outputColumnNames) && children.equals(that.children);
   }
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(child, groupedPathMap);
-    result = 31 * result + Arrays.hashCode(groupByLevels);
-    return result;
+    return Objects.hash(super.hashCode(), outputColumnNames, children);
   }
 }

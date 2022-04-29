@@ -77,6 +77,8 @@ public abstract class PlanNode {
 
   public abstract int allowedChildCount();
 
+  public abstract List<String> getOutputColumnNames();
+
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitPlan(this, context);
   }

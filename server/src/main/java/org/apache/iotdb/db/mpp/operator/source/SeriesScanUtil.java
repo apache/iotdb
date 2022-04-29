@@ -136,12 +136,11 @@ public class SeriesScanUtil {
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
       mergeReader = getPriorityMergeReader();
-      this.curUnseqFileIndex = 0;
     } else {
       this.orderUtils = new DescTimeOrderUtils();
       mergeReader = getDescPriorityMergeReader();
-      this.curUnseqFileIndex = 0;
     }
+    this.curUnseqFileIndex = 0;
 
     unSeqTimeSeriesMetadata =
         new PriorityQueue<>(
@@ -271,6 +270,9 @@ public class SeriesScanUtil {
 
     if (firstChunkMetadata != null) {
       return true;
+      // hasNextFile() has not been invoked
+    } else if (firstTimeSeriesMetadata == null && cachedChunkMetadata.isEmpty()) {
+      return false;
     }
 
     while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
@@ -1085,6 +1087,10 @@ public class SeriesScanUtil {
     return timeFilter;
   }
 
+  public TimeOrderUtils getOrderUtils() {
+    return orderUtils;
+  }
+
   private class VersionPageReader {
 
     protected PriorityMergeReader.MergeReaderPriority version;
@@ -1121,7 +1127,11 @@ public class SeriesScanUtil {
     }
 
     TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
-      return data.getAllSatisfiedData(ascending);
+      TsBlock tsBlock = data.getAllSatisfiedData();
+      if (!ascending) {
+        tsBlock.reverse();
+      }
+      return tsBlock;
     }
 
     void setFilter(Filter filter) {

@@ -20,39 +20,28 @@ package org.apache.iotdb.db.mpp.operator.schema;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.Arrays;
-import java.util.List;
-
 public class DevicesSchemaScanOperator extends SchemaScanOperator {
   private final boolean hasSgCol;
 
-  private static final TSDataType[] RESOURCE_TYPES_WITH_SG = {
-    TSDataType.TEXT, TSDataType.TEXT, TSDataType.BOOLEAN,
-  };
-
-  private static final TSDataType[] RESOURCE_TYPES = {
-    TSDataType.TEXT, TSDataType.BOOLEAN,
-  };
-
   public DevicesSchemaScanOperator(
+      PlanNodeId sourceId,
       OperatorContext operatorContext,
       int limit,
       int offset,
       PartialPath partialPath,
       boolean isPrefixPath,
-      boolean hasSgCol,
-      List<String> columns) {
-    super(operatorContext, limit, offset, partialPath, isPrefixPath, columns);
+      boolean hasSgCol) {
+    super(sourceId, operatorContext, limit, offset, partialPath, isPrefixPath);
     this.hasSgCol = hasSgCol;
   }
 
@@ -60,7 +49,9 @@ public class DevicesSchemaScanOperator extends SchemaScanOperator {
   protected TsBlock createTsBlock() {
     TsBlockBuilder builder =
         new TsBlockBuilder(
-            hasSgCol ? Arrays.asList(RESOURCE_TYPES_WITH_SG) : Arrays.asList(RESOURCE_TYPES));
+            hasSgCol
+                ? HeaderConstant.showDevicesWithSgHeader.getRespDataTypes()
+                : HeaderConstant.showDevicesHeader.getRespDataTypes());
     try {
       ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
           .getSchemaRegion()
@@ -83,15 +74,10 @@ public class DevicesSchemaScanOperator extends SchemaScanOperator {
     builder.getColumnBuilder(0).writeBinary(new Binary(device.getName()));
     if (hasSgCol) {
       builder.getColumnBuilder(1).writeBinary(new Binary(device.getSgName()));
-      builder.getColumnBuilder(2).writeBoolean(device.isAligned());
+      builder.getColumnBuilder(2).writeBinary(new Binary(String.valueOf(device.isAligned())));
     } else {
-      builder.getColumnBuilder(1).writeBoolean(device.isAligned());
+      builder.getColumnBuilder(1).writeBinary(new Binary(String.valueOf(device.isAligned())));
     }
     builder.declarePosition();
-  }
-
-  @Override
-  public PlanNodeId getSourceId() {
-    return null;
   }
 }

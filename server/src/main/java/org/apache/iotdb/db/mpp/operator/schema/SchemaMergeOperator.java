@@ -21,21 +21,23 @@ package org.apache.iotdb.db.mpp.operator.schema;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.ProcessOperator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 
 public class SchemaMergeOperator implements ProcessOperator {
-
-  protected OperatorContext operatorContext;
-  protected int limit;
-  protected int offset;
+  private final PlanNodeId planNodeId;
+  private final OperatorContext operatorContext;
   private final boolean[] noMoreTsBlocks;
-  private boolean isFinished;
 
-  private List<Operator> children;
+  private final List<Operator> children;
 
-  public SchemaMergeOperator(OperatorContext operatorContext, List<Operator> children) {
+  public SchemaMergeOperator(
+      PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
+    this.planNodeId = planNodeId;
     this.operatorContext = operatorContext;
     this.children = children;
     noMoreTsBlocks = new boolean[children.size()];
@@ -48,7 +50,7 @@ public class SchemaMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    // ToDo consider SHOW LATEST
+    // ToDo @xinzhongtianxia consider SHOW LATEST
 
     for (int i = 0; i < children.size(); i++) {
       if (!noMoreTsBlocks[i]) {
@@ -70,6 +72,19 @@ public class SchemaMergeOperator implements ProcessOperator {
       }
     }
     return false;
+  }
+
+  @Override
+  public ListenableFuture<Void> isBlocked() {
+    for (int i = 0; i < children.size(); i++) {
+      if (!noMoreTsBlocks[i]) {
+        ListenableFuture<Void> blocked = children.get(i).isBlocked();
+        if (!blocked.isDone()) {
+          return blocked;
+        }
+      }
+    }
+    return NOT_BLOCKED;
   }
 
   @Override

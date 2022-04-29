@@ -48,7 +48,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.util.ArrayList;

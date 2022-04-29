@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -53,7 +54,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   private Map<String, String> attributes = null;
   private long tagOffset = -1;
 
-  private RegionReplicaSet regionReplicaSet;
+  private TRegionReplicaSet regionReplicaSet;
 
   public CreateTimeSeriesNode(
       PlanNodeId id,
@@ -169,6 +170,11 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     return NO_CHILD_ALLOWED;
   }
 
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
   public static CreateTimeSeriesNode deserialize(ByteBuffer byteBuffer) {
     String id;
     PartialPath path = null;
@@ -181,7 +187,6 @@ public class CreateTimeSeriesNode extends WritePlanNode {
     Map<String, String> tags = null;
     Map<String, String> attributes = null;
 
-    id = ReadWriteIOUtils.readString(byteBuffer);
     int length = byteBuffer.getInt();
     byte[] bytes = new byte[length];
     byteBuffer.get(bytes);
@@ -224,14 +229,15 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       attributes = ReadWriteIOUtils.readMap(byteBuffer);
     }
 
+    id = ReadWriteIOUtils.readString(byteBuffer);
     return new CreateTimeSeriesNode(
         new PlanNodeId(id), path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putShort((short) PlanNodeType.CREATE_TIME_SERIES.ordinal());
-    ReadWriteIOUtils.write(this.getPlanNodeId().getId(), byteBuffer);
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.CREATE_TIME_SERIES.serialize(byteBuffer);
+
     byte[] bytes = path.getFullPath().getBytes();
     byteBuffer.putInt(bytes.length);
     byteBuffer.put(bytes);
@@ -277,13 +283,7 @@ public class CreateTimeSeriesNode extends WritePlanNode {
       byteBuffer.put((byte) 1);
       ReadWriteIOUtils.write(attributes, byteBuffer);
     }
-
-    // no children node, need to set 0
-    byteBuffer.putInt(0);
   }
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C schemaRegion) {
@@ -313,19 +313,19 @@ public class CreateTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
-  public RegionReplicaSet getRegionReplicaSet() {
+  public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    RegionReplicaSet regionReplicaSet =
+    TRegionReplicaSet regionReplicaSet =
         analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDevice());
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }
 
-  public void setRegionReplicaSet(RegionReplicaSet regionReplicaSet) {
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
     this.regionReplicaSet = regionReplicaSet;
   }
 }

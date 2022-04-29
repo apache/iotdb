@@ -25,8 +25,14 @@ import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.filter.*;
+import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
+import org.apache.iotdb.db.mpp.common.filter.FunctionFilter;
+import org.apache.iotdb.db.mpp.common.filter.InFilter;
+import org.apache.iotdb.db.mpp.common.filter.LikeFilter;
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.filter.RegexpFilter;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.sql.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelController;
@@ -37,10 +43,15 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
 
 /**
  * This rewriter:
@@ -52,10 +63,11 @@ import java.util.*;
 public class WildcardsRemover {
 
   private SchemaTree schemaTree;
+  private TypeProvider typeProvider;
 
   private ColumnPaginationController paginationController;
 
-  public Statement rewrite(Statement statement, SchemaTree schemaTree)
+  public Statement rewrite(Statement statement, TypeProvider typeProvider, SchemaTree schemaTree)
       throws StatementAnalyzeException, PathNumOverLimitException {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.paginationController =
@@ -67,6 +79,7 @@ public class WildcardsRemover {
                 || queryStatement instanceof LastQueryStatement
                 || queryStatement.isGroupByLevel());
     this.schemaTree = schemaTree;
+    this.typeProvider = typeProvider;
 
     if (queryStatement.getIndexType() == null) {
       // remove wildcards in SELECT clause
@@ -266,6 +279,9 @@ public class WildcardsRemover {
           schemaTree.searchMeasurementPaths(
               path, paginationController.getCurLimit(), paginationController.getCurOffset(), false);
       paginationController.consume(pair.left.size(), pair.right);
+      pair.left.forEach(
+          measurementPath ->
+              typeProvider.setType(measurementPath.getFullPath(), measurementPath.getSeriesType()));
       return pair.left;
     } catch (Exception e) {
       e.printStackTrace();

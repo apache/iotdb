@@ -61,19 +61,19 @@ public class ReceiverLog {
   }
 
   public void createPipe(String pipeName, String remoteIp, long time) throws IOException {
+    writeLog(pipeName, remoteIp, time);
+  }
+
+  public void startPipe(String pipeName, String remoteIp, long time) throws IOException {
     writeLog(pipeName, remoteIp, PipeStatus.RUNNING, time);
   }
 
-  public void startPipe(String pipeName, String remoteIp) throws IOException {
-    writeLog(pipeName, remoteIp, PipeStatus.RUNNING);
+  public void stopPipe(String pipeName, String remoteIp, long time) throws IOException {
+    writeLog(pipeName, remoteIp, PipeStatus.STOP, time);
   }
 
-  public void stopPipe(String pipeName, String remoteIp) throws IOException {
-    writeLog(pipeName, remoteIp, PipeStatus.STOP);
-  }
-
-  public void dropPipe(String pipeName, String remoteIp) throws IOException {
-    writeLog(pipeName, remoteIp, PipeStatus.DROP);
+  public void dropPipe(String pipeName, String remoteIp, long time) throws IOException {
+    writeLog(pipeName, remoteIp, PipeStatus.DROP, time);
   }
 
   public void writePipeMsg(String pipeIdentifier, PipeMessage pipeMessage) throws IOException {
@@ -100,16 +100,16 @@ public class ReceiverLog {
     if (pipeServerWriter == null) {
       init();
     }
-    pipeServerWriter.write(String.format("%s,%s,%s,%d", pipeName, remoteIp, status, time));
+    pipeServerWriter.write(String.format("%s,%s,%d,%s", pipeName, remoteIp, time, status));
     pipeServerWriter.newLine();
     pipeServerWriter.flush();
   }
 
-  private void writeLog(String pipeName, String remoteIp, PipeStatus status) throws IOException {
+  private void writeLog(String pipeName, String remoteIp, long time) throws IOException {
     if (pipeServerWriter == null) {
       init();
     }
-    pipeServerWriter.write(String.format("%s,%s,%s", pipeName, remoteIp, status));
+    pipeServerWriter.write(String.format("%s,%s,%d", pipeName, remoteIp, time));
     pipeServerWriter.newLine();
     pipeServerWriter.flush();
   }

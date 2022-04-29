@@ -22,22 +22,25 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
-import org.apache.iotdb.db.mpp.schedule.IFragmentInstanceScheduler;
+import org.apache.iotdb.db.mpp.schedule.DriverScheduler;
+import org.apache.iotdb.db.mpp.schedule.IDriverScheduler;
 import org.apache.iotdb.db.mpp.sql.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 
+import io.airlift.stats.CounterStat;
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceExecution.createFragmentInstanceExecution;
 
 public class FragmentInstanceManager {
 
@@ -46,11 +49,15 @@ public class FragmentInstanceManager {
   private final Map<FragmentInstanceId, FragmentInstanceContext> instanceContext;
   private final Map<FragmentInstanceId, FragmentInstanceExecution> instanceExecution;
   private final LocalExecutionPlanner planner = LocalExecutionPlanner.getInstance();
-  private final IFragmentInstanceScheduler scheduler = FragmentInstanceScheduler.getInstance();
+  private final IDriverScheduler scheduler = DriverScheduler.getInstance();
 
   private final ScheduledExecutorService instanceManagementExecutor;
+  private final ExecutorService instanceNotificationExecutor;
 
   private final Duration infoCacheTime;
+
+  // record failed instances count
+  private final CounterStat failedInstances = new CounterStat();
 
   public static FragmentInstanceManager getInstance() {
     return FragmentInstanceManager.InstanceHolder.INSTANCE;
@@ -61,13 +68,15 @@ public class FragmentInstanceManager {
     this.instanceExecution = new ConcurrentHashMap<>();
     this.instanceManagementExecutor =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "instance-management");
+    this.instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(4, "instance-notification");
 
     this.infoCacheTime = new Duration(15, TimeUnit.MINUTES);
 
     instanceManagementExecutor.scheduleWithFixedDelay(
         () -> {
           try {
-            removeOldTasks();
+            removeOldInstances();
           } catch (Throwable e) {
             logger.warn("Error removing old tasks", e);
           }
@@ -85,24 +94,27 @@ public class FragmentInstanceManager {
         instanceExecution.computeIfAbsent(
             instanceId,
             id -> {
-              AtomicReference<FragmentInstanceState> state = new AtomicReference<>();
-              state.set(FragmentInstanceState.PLANNED);
+              FragmentInstanceStateMachine stateMachine =
+                  new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
               FragmentInstanceContext context =
                   instanceContext.computeIfAbsent(
                       instanceId,
-                      fragmentInstanceId -> new FragmentInstanceContext(fragmentInstanceId, state));
+                      fragmentInstanceId ->
+                          createFragmentInstanceContext(fragmentInstanceId, stateMachine));
 
               try {
                 DataDriver driver =
                     planner.plan(
                         instance.getFragment().getRoot(),
+                        instance.getFragment().getTypeProvider(),
                         context,
                         instance.getTimeFilter(),
                         dataRegion);
-                return new FragmentInstanceExecution(scheduler, instanceId, context, driver, state);
+                return createFragmentInstanceExecution(
+                    scheduler, instanceId, context, driver, stateMachine, failedInstances);
               } catch (Throwable t) {
-                context.failed(t);
+                stateMachine.failed(t);
                 return null;
               }
             });
@@ -118,31 +130,47 @@ public class FragmentInstanceManager {
         instanceExecution.computeIfAbsent(
             instanceId,
             id -> {
-              AtomicReference<FragmentInstanceState> state = new AtomicReference<>();
-              state.set(FragmentInstanceState.PLANNED);
+              FragmentInstanceStateMachine stateMachine =
+                  new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
 
               FragmentInstanceContext context =
                   instanceContext.computeIfAbsent(
                       instanceId,
-                      fragmentInstanceId -> new FragmentInstanceContext(fragmentInstanceId, state));
+                      fragmentInstanceId ->
+                          createFragmentInstanceContext(fragmentInstanceId, stateMachine));
 
               try {
                 SchemaDriver driver =
                     planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
-                return new FragmentInstanceExecution(scheduler, instanceId, context, driver, state);
+                return createFragmentInstanceExecution(
+                    scheduler, instanceId, context, driver, stateMachine, failedInstances);
               } catch (Throwable t) {
-                context.failed(t);
+                stateMachine.failed(t);
                 return null;
               }
             });
     return execution != null ? execution.getInstanceInfo() : createFailedInstanceInfo(instanceId);
   }
 
+  /** Aborts a FragmentInstance. */
   public FragmentInstanceInfo abortFragmentInstance(FragmentInstanceId fragmentInstanceId) {
     FragmentInstanceExecution execution = instanceExecution.remove(fragmentInstanceId);
     if (execution != null) {
       instanceContext.remove(fragmentInstanceId);
       execution.abort();
+      return execution.getInstanceInfo();
+    }
+    return null;
+  }
+
+  /** Cancels a FragmentInstance. */
+  public FragmentInstanceInfo cancelTask(FragmentInstanceId instanceId) {
+    requireNonNull(instanceId, "taskId is null");
+
+    FragmentInstanceExecution execution = instanceExecution.remove(instanceId);
+    if (execution != null) {
+      instanceContext.remove(instanceId);
+      execution.cancel();
       return execution.getInstanceInfo();
     }
     return null;
@@ -163,12 +191,16 @@ public class FragmentInstanceManager {
     return execution.getInstanceInfo();
   }
 
+  public CounterStat getFailedInstances() {
+    return failedInstances;
+  }
+
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
     return new FragmentInstanceInfo(
         FragmentInstanceState.FAILED, instanceContext.get(instanceId).getEndTime());
   }
 
-  private void removeOldTasks() {
+  private void removeOldInstances() {
     long oldestAllowedInstance = System.currentTimeMillis() - infoCacheTime.toMillis();
     instanceContext
         .entrySet()

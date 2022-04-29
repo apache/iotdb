@@ -23,6 +23,9 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentOverflowException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -633,6 +636,54 @@ public class Segment implements ISegment {
         } else if (RecordUtils.getRecordType(bufferR) == 4) {
           builder.append(
               String.format("(%s, %s),", pair.left, RecordUtils.getRecordAlias(bufferR)));
+        } else {
+          logger.error(String.format("Record Broken at: %s", pair));
+          throw new BufferUnderflowException();
+        }
+      } catch (BufferUnderflowException | BufferOverflowException e) {
+        logger.error(String.format("Segment broken with string: %s", builder.toString()));
+        logger.error(
+            String.format(
+                "Broken record bytes: %s",
+                Arrays.toString(Arrays.copyOfRange(bufferR.array(), pair.right, pair.right + 30))));
+        throw e;
+      }
+    }
+    builder.append("]");
+    return builder.toString();
+  }
+
+  @Override
+  public String inspect() {
+    // Internal/Entity presents as (name, is_aligned, child_segment_address)
+    // Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)
+    ByteBuffer bufferR = this.buffer.asReadOnlyBuffer();
+    StringBuilder builder = new StringBuilder("");
+    builder.append(
+        String.format(
+            "[length: %d, total_records: %d, spare_size:%d,",
+            this.length, keyAddressList.size(), freeAddr - pairLength - SEG_HEADER_SIZE));
+    bufferR.clear();
+    for (Pair<String, Short> pair : keyAddressList) {
+      bufferR.position(pair.right);
+      try {
+        if (RecordUtils.getRecordType(bufferR) == 0 || RecordUtils.getRecordType(bufferR) == 1) {
+          builder.append(
+              String.format(
+                  "(%s, %s, %s),",
+                  pair.left,
+                  RecordUtils.getAlignment(bufferR) ? "aligned" : "not_aligned",
+                  Long.toHexString(RecordUtils.getRecordSegAddr(bufferR))));
+        } else if (RecordUtils.getRecordType(bufferR) == 4) {
+          byte[] schemaBytes = RecordUtils.getSchemaBytes(bufferR);
+          builder.append(
+              String.format(
+                  "(%s, %s, %s, %s, %s),",
+                  pair.left,
+                  TSDataType.values()[schemaBytes[0]],
+                  TSEncoding.values()[schemaBytes[1]],
+                  CompressionType.values()[schemaBytes[2]],
+                  RecordUtils.getRecordAlias(bufferR)));
         } else {
           logger.error(String.format("Record Broken at: %s", pair));
           throw new BufferUnderflowException();

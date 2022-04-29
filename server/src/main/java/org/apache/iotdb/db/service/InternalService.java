@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.thrift.handler.InternalServiceThriftHandler;
+import org.apache.iotdb.db.service.thrift.impl.InternalServiceImpl;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService.Processor;
 
 public class InternalService extends ThriftService implements InternalServiceMBean {
@@ -37,11 +39,6 @@ public class InternalService extends ThriftService implements InternalServiceMBe
   @Override
   public ServiceType getID() {
     return ServiceType.INTERNAL_SERVICE;
-  }
-
-  @Override
-  public ThriftService getImplementation() {
-    return InternalServiceHolder.INSTANCE;
   }
 
   @Override
@@ -82,7 +79,7 @@ public class InternalService extends ThriftService implements InternalServiceMBe
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getMppPort();
+    return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
   private static class InternalServiceHolder {

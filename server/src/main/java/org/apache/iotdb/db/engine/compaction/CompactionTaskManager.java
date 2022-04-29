@@ -52,6 +52,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CompactionTaskManager implements IService {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+
+  private static final long MAX_WAITING_TIME = 120_000L;
+
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
 
   // The thread pool that executes the compaction task. The default number of threads for this pool
@@ -146,12 +149,11 @@ public class CompactionTaskManager implements IService {
   @TestOnly
   public synchronized void waitAllCompactionFinish() {
     long sleepingStartTime = 0;
-    long MAX_WAITING_TIME = 120_000L;
     if (taskExecutionPool != null) {
       while (taskExecutionPool.getActiveCount() > 0 || taskExecutionPool.getQueue().size() > 0) {
         // wait
         try {
-          Thread.sleep(200);
+          this.wait(200);
           sleepingStartTime += 200;
           if (sleepingStartTime % 10000 == 0) {
             logger.warn(
@@ -175,12 +177,8 @@ public class CompactionTaskManager implements IService {
     while (!taskExecutionPool.isTerminated()) {
       int timeMillis = 0;
       try {
-        Thread.sleep(200);
+        this.wait(200);
       } catch (InterruptedException e) {
-        logger.error(
-            "CompactionMergeTaskPoolManager {} shutdown",
-            ThreadName.COMPACTION_SERVICE.getName(),
-            e);
         Thread.currentThread().interrupt();
       }
       timeMillis += 200;
@@ -384,13 +382,33 @@ public class CompactionTaskManager implements IService {
     if (IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
       if (taskExecutionPool != null) {
         this.taskExecutionPool.shutdownNow();
-        this.taskExecutionPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+        if (!this.taskExecutionPool.awaitTermination(MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
+          throw new InterruptedException(
+              "Has been waiting over "
+                  + MAX_WAITING_TIME / 1000
+                  + " seconds for all compaction tasks to finish.");
+        }
+      }
+      if (subCompactionTaskExecutionPool != null) {
+        this.subCompactionTaskExecutionPool.shutdownNow();
+        if (!this.subCompactionTaskExecutionPool.awaitTermination(
+            MAX_WAITING_TIME, TimeUnit.MILLISECONDS)) {
+          throw new InterruptedException(
+              "Has been waiting over "
+                  + MAX_WAITING_TIME / 1000
+                  + " seconds for all sub compaction tasks to finish.");
+        }
       }
       this.taskExecutionPool =
           (WrappedScheduledExecutorService)
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
+      this.subCompactionTaskExecutionPool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(
+              IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
+                  * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
+              ThreadName.COMPACTION_SUB_SERVICE.getName());
       this.compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
       candidateCompactionTaskQueue.regsitPollLastHook(

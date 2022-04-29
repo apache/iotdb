@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -33,7 +34,7 @@ public class FloatColumnBuilder implements ColumnBuilder {
 
   private static final int INSTANCE_SIZE =
       ClassLayout.parseClass(FloatColumnBuilder.class).instanceSize();
-  private static final FloatColumn NULL_VALUE_BLOCK =
+  public static final FloatColumn NULL_VALUE_BLOCK =
       new FloatColumn(0, 1, new boolean[] {true}, new float[1]);
 
   private final ColumnBuilderStatus columnBuilderStatus;
@@ -78,20 +79,19 @@ public class FloatColumnBuilder implements ColumnBuilder {
     return writeFloat(value.getFloat());
   }
 
+  /** Write an Object to the current entry, which should be the Float type; */
   @Override
-  public int appendColumn(
-      TimeColumn timeColumn, Column valueColumn, int offset, TimeColumnBuilder timeBuilder) {
-    int count = timeBuilder.getPositionCount();
-    int index = offset;
-    FloatColumn column = (FloatColumn) valueColumn;
-    for (int i = 0; i < count; i++) {
-      if (timeColumn.getLong(index) == timeBuilder.getTime(i) && !valueColumn.isNull(index)) {
-        writeFloat(column.getFloat(index++));
-      } else {
-        appendNull();
-      }
+  public ColumnBuilder writeObject(Object value) {
+    if (value instanceof Float) {
+      writeFloat((Float) value);
+      return this;
     }
-    return index;
+    throw new UnSupportedDataTypeException("FloatColumn only support Float data type");
+  }
+
+  @Override
+  public ColumnBuilder write(Column column, int index) {
+    return writeFloat(column.getFloat(index));
   }
 
   @Override

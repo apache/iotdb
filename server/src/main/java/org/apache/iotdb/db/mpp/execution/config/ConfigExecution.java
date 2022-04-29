@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.config;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.ExecutionResult;
@@ -26,11 +27,8 @@ import org.apache.iotdb.db.mpp.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
-import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.FutureCallback;
@@ -42,8 +40,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.common.base.Throwables.throwIfInstanceOf;
-
 public class ConfigExecution implements IQueryExecution {
 
   private final MPPQueryContext context;
@@ -51,28 +47,44 @@ public class ConfigExecution implements IQueryExecution {
   private final ExecutorService executor;
 
   private final QueryStateMachine stateMachine;
-  private final SettableFuture<Boolean> result;
+  private final SettableFuture<ConfigTaskResult> taskFuture;
+  private TsBlock resultSet;
+  private DatasetHeader datasetHeader;
+  private boolean resultSetConsumed;
+  private final IConfigTask task;
 
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
     this.statement = statement;
     this.executor = executor;
     this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
-    this.result = SettableFuture.create();
+    this.taskFuture = SettableFuture.create();
+    this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
+    this.resultSetConsumed = false;
+  }
+
+  @TestOnly
+  public ConfigExecution(
+      MPPQueryContext context, Statement statement, ExecutorService executor, IConfigTask task) {
+    this.context = context;
+    this.statement = statement;
+    this.executor = executor;
+    this.stateMachine = new QueryStateMachine(context.getQueryId(), executor);
+    this.taskFuture = SettableFuture.create();
+    this.task = task;
   }
 
   @Override
   public void start() {
-    IConfigTask task = getTask(statement);
     try {
-      ListenableFuture<Void> future = task.execute();
+      ListenableFuture<ConfigTaskResult> future = task.execute();
       Futures.addCallback(
           future,
-          new FutureCallback<Void>() {
+          new FutureCallback<ConfigTaskResult>() {
             @Override
-            public void onSuccess(Void success) {
+            public void onSuccess(ConfigTaskResult taskRet) {
               stateMachine.transitionToFinished();
-              result.set(true);
+              taskFuture.set(taskRet);
             }
 
             @Override
@@ -82,81 +94,68 @@ public class ConfigExecution implements IQueryExecution {
           },
           executor);
     } catch (Throwable e) {
+      Thread.currentThread().interrupt();
       fail(e);
-      throwIfInstanceOf(e, Error.class);
     }
   }
 
   public void fail(Throwable cause) {
-    stateMachine.transitionToFailed();
-    result.cancel(false);
+    stateMachine.transitionToFailed(cause);
+    taskFuture.set(new ConfigTaskResult(TSStatusCode.INTERNAL_SERVER_ERROR));
   }
 
   @Override
   public void stop() {}
 
   @Override
+  public void stopAndCleanup() {}
+
+  @Override
   public ExecutionResult getStatus() {
     try {
-      if (result.isCancelled()) {
-        return new ExecutionResult(
-            context.getQueryId(), RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR));
-      }
-      Boolean success = result.get();
-      TSStatusCode statusCode =
-          success ? TSStatusCode.SUCCESS_STATUS : TSStatusCode.QUERY_PROCESS_ERROR;
-      return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode));
-
+      ConfigTaskResult taskResult = taskFuture.get();
+      TSStatusCode statusCode = taskResult.getStatusCode();
+      resultSet = taskResult.getResultSet();
+      datasetHeader = taskResult.getResultSetHeader();
+      String message =
+          statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage();
+      return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode, message));
     } catch (InterruptedException | ExecutionException e) {
       Thread.currentThread().interrupt();
       return new ExecutionResult(
-          context.getQueryId(), RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR));
+          context.getQueryId(),
+          RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR, e.getMessage()));
     }
   }
 
   @Override
   public TsBlock getBatchResult() {
-    // TODO
+    if (!resultSetConsumed) {
+      resultSetConsumed = true;
+      return resultSet;
+    }
     return null;
   }
 
+  // According to the execution process of ConfigExecution, there is only one TsBlock for
+  // this execution. Thus, the hasNextResult will be false once the TsBlock is consumed
   @Override
   public boolean hasNextResult() {
-    return false;
+    return !resultSetConsumed && resultSet != null;
   }
 
   @Override
   public int getOutputValueColumnCount() {
-    // TODO
-    return 0;
+    return datasetHeader.getColumnHeaders().size();
   }
 
   @Override
   public DatasetHeader getDatasetHeader() {
-    // TODO
-    return null;
+    return datasetHeader;
   }
 
   @Override
   public boolean isQuery() {
     return context.getQueryType() == QueryType.READ;
-  }
-
-  // TODO: consider a more suitable implementation for it
-  // Generate the corresponding IConfigTask by statement.
-  // Each type of statement will has a ConfigTask
-  private IConfigTask getTask(Statement statement) {
-    try {
-      switch (statement.getType()) {
-        case SET_STORAGE_GROUP:
-          return new SetStorageGroupTask((SetStorageGroupStatement) statement);
-        case AUTHOR:
-          return new AuthorizerConfigTask((AuthorStatement) statement);
-        default:
-          throw new NotImplementedException();
-      }
-    } catch (ClassCastException classCastException) {
-      throw new NotImplementedException();
-    }
   }
 }

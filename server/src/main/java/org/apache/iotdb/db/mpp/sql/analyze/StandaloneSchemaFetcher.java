@@ -18,14 +18,28 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class StandaloneSchemaFetcher implements ISchemaFetcher {
+
+  private final LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+  private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
 
   private StandaloneSchemaFetcher() {}
 
@@ -35,7 +49,22 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
-    return null;
+    Set<String> storageGroupSet = new HashSet<>();
+    SchemaTree schemaTree = new SchemaTree();
+    List<PartialPath> partialPathList = patternTree.splitToPathList();
+    try {
+      for (PartialPath path : partialPathList) {
+        String storageGroup = localConfigNode.getBelongedStorageGroup(path).getFullPath();
+        storageGroupSet.add(storageGroup);
+        SchemaRegionId schemaRegionId = localConfigNode.getBelongedSchemaRegionId(path);
+        ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+        schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
+      }
+    } catch (MetadataException e) {
+      throw new RuntimeException(e);
+    }
+    schemaTree.setStorageGroups(new ArrayList<>(storageGroupSet));
+    return schemaTree;
   }
 
   @Override
@@ -50,6 +79,11 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
       List<Boolean> aligned) {
-    return null;
+    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
+    for (int i = 0; i < devicePath.size(); i++) {
+      deviceToMeasurementMap.put(devicePath.get(i), Arrays.asList(measurements.get(i)));
+    }
+    // todo implement auto create schema
+    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
   }
 }

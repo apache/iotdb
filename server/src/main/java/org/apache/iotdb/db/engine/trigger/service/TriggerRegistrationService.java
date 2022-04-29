@@ -136,16 +136,12 @@ public class TriggerRegistrationService implements IService {
 
   private IMNode tryGetMNode(CreateTriggerPlan plan) throws TriggerManagementException {
     try {
-// <<<<<<< master
-//       return IoTDB.schemaProcessor.getMeasurementMNodeForTrigger(plan.getFullPath());
-
-      IMNode imNode = IoTDB.schemaProcessor.getNodeByPath(plan.getFullPath());
+      IMNode imNode = IoTDB.schemaProcessor.getMNodeForTrigger(plan.getFullPath());
       if (imNode == null) {
         throw new TriggerManagementException(
             String.format("Path [%s] does not exist", plan.getFullPath().getFullPath()));
       }
       return imNode;
-
     } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     }
@@ -162,7 +158,7 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  private void doRegister(CreateTriggerPlan plan, IMNode measurementMNode)
+  private void doRegister(CreateTriggerPlan plan, IMNode imNode)
       throws TriggerManagementException, TriggerExecutionException {
     TriggerRegistrationInformation information = new TriggerRegistrationInformation(plan);
     TriggerClassLoader classLoader =
@@ -170,7 +166,7 @@ public class TriggerRegistrationService implements IService {
 
     TriggerExecutor executor;
     try {
-      executor = new TriggerExecutor(information, classLoader, measurementMNode);
+      executor = new TriggerExecutor(information, classLoader, imNode);
       executor.onCreate();
     } catch (TriggerManagementException | TriggerExecutionException e) {
       TriggerClassLoaderManager.getInstance().deregister(plan.getClassName());
@@ -178,7 +174,7 @@ public class TriggerRegistrationService implements IService {
     }
 
     executors.put(plan.getTriggerName(), executor);
-    measurementMNode.setTriggerExecutor(executor);
+    imNode.setTriggerExecutor(executor);
 
     // update id table
     if (CONFIG.isEnableIDTable()) {
@@ -186,7 +182,7 @@ public class TriggerRegistrationService implements IService {
         IDTable idTable =
             IDTableManager.getInstance().getIDTable(plan.getFullPath().getDevicePath());
         if (executor.getIMNode().isMeasurement()) {
-          idTable.registerTrigger(plan.getFullPath(), (IMeasurementMNode) measurementMNode);
+          idTable.registerTrigger(plan.getFullPath(), (IMeasurementMNode) imNode);
         }
       } catch (MetadataException e) {
         throw new TriggerManagementException(e.getMessage(), e);
@@ -225,17 +221,14 @@ public class TriggerRegistrationService implements IService {
 
   private void doDeregister(DropTriggerPlan plan) throws TriggerManagementException {
     TriggerExecutor executor = executors.remove(plan.getTriggerName());
-// <<<<<<< master
-// //     IMeasurementMNode measurementMNode = executor.getMeasurementMNode();
-//     try {
-//       measurementMNode.setTriggerExecutor(null);
-//       IoTDB.schemaProcessor.releaseMeasurementMNodeAfterDropTrigger(executor.getMeasurementMNode());
-//     } catch (MetadataException e) {
-//       throw new TriggerManagementException(e.getMessage(), e);
-//     }
-// =======
-    executor.getIMNode().setTriggerExecutor(null);
-// >>>>>>> trigger_fullpath
+
+    IMNode imNode = executor.getIMNode();
+    try {
+      imNode.setTriggerExecutor(null);
+      IoTDB.schemaProcessor.releaseMNodeAfterDropTrigger(imNode);
+    } catch (MetadataException e) {
+      throw new TriggerManagementException(e.getMessage(), e);
+    }
 
     try {
       executor.onDrop();

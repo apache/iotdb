@@ -20,8 +20,15 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
+import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeDeviceVisitor;
+import org.apache.iotdb.db.mpp.common.schematree.visitor.SchemaTreeMeasurementVisitor;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -33,8 +40,8 @@ import java.util.Deque;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-import static org.apache.iotdb.db.mpp.common.schematree.SchemaNode.SCHEMA_ENTITY_NODE;
-import static org.apache.iotdb.db.mpp.common.schematree.SchemaNode.SCHEMA_MEASUREMENT_NODE;
+import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
+import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
 public class SchemaTree {
 
@@ -59,9 +66,21 @@ public class SchemaTree {
    */
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
-    SchemaTreeVisitor visitor =
-        new SchemaTreeVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
+    SchemaTreeMeasurementVisitor visitor =
+        new SchemaTreeMeasurementVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+  }
+
+  /**
+   * Get all device matching the path pattern.
+   *
+   * @param pathPattern the pattern of the target devices.
+   * @return A HashSet instance which stores info of the devices matching the given path pattern.
+   */
+  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
+    return visitor.getAllResult();
   }
 
   public DeviceSchemaInfo searchDeviceSchemaInfo(
@@ -73,13 +92,12 @@ public class SchemaTree {
       cur = cur.getChild(nodes[i]);
     }
 
-    List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
+    List<SchemaMeasurementNode> measurementNodeList = new ArrayList<>();
     for (String measurement : measurements) {
-      measurementSchemaList.add(cur.getChild(measurement).getAsMeasurementNode().getSchema());
+      measurementNodeList.add(cur.getChild(measurement).getAsMeasurementNode());
     }
 
-    return new DeviceSchemaInfo(
-        devicePath, cur.getAsEntityNode().isAligned(), measurementSchemaList);
+    return new DeviceSchemaInfo(devicePath, cur.getAsEntityNode().isAligned(), measurementNodeList);
   }
 
   public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {
@@ -210,7 +228,7 @@ public class SchemaTree {
    */
   public String getBelongedStorageGroup(PartialPath path) {
     for (String storageGroup : storageGroups) {
-      if (path.getFullPath().startsWith(storageGroup)) {
+      if (path.getFullPath().startsWith(storageGroup + ".")) {
         return storageGroup;
       }
     }

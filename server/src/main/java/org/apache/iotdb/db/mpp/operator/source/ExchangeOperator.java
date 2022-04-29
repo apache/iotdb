@@ -25,8 +25,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.IOException;
-
 public class ExchangeOperator implements SourceOperator {
 
   private final OperatorContext operatorContext;
@@ -51,12 +49,7 @@ public class ExchangeOperator implements SourceOperator {
 
   @Override
   public TsBlock next() {
-    try {
-      return sourceHandle.receive();
-    } catch (IOException e) {
-      throw new RuntimeException(
-          "Error happened while reading from source handle " + sourceHandle, e);
-    }
+    return sourceHandle.receive();
   }
 
   @Override
@@ -65,7 +58,7 @@ public class ExchangeOperator implements SourceOperator {
   }
 
   @Override
-  public boolean isFinished() throws IOException {
+  public boolean isFinished() {
     return sourceHandle.isFinished();
   }
 
@@ -88,6 +81,6 @@ public class ExchangeOperator implements SourceOperator {
 
   @Override
   public void close() throws Exception {
-    sourceHandle.close();
+    sourceHandle.abort();
   }
 }

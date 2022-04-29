@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.List;
 
 /** This interface defines a MNode's operation interfaces. */
 public interface IMNode extends Serializable {
@@ -87,6 +88,8 @@ public interface IMNode extends Serializable {
   IEntityMNode getAsEntityMNode();
 
   IMeasurementMNode getAsMeasurementMNode();
+
+  List<TriggerExecutor> getUpperTriggerExecutorList();
 
   TriggerExecutor getTriggerExecutor();
 

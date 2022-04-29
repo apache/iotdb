@@ -18,50 +18,37 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IOutputPlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.utils.IExpressionDeserializeUtil;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.query.expression.Expression;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 /** The FilterNode is responsible to filter the RowRecord from TsBlock. */
-public class FilterNode extends ProcessNode implements IOutputPlanNode {
+public class FilterNode extends ProcessNode {
 
   private PlanNode child;
 
-  private final IExpression predicate;
+  private final Expression predicate;
 
-  private List<ColumnHeader> columnHeaders;
-
-  public FilterNode(PlanNodeId id, IExpression predicate) {
+  public FilterNode(PlanNodeId id, Expression predicate) {
     super(id);
     this.predicate = predicate;
   }
 
-  public FilterNode(
-      PlanNodeId id, PlanNode child, IExpression predicate, List<String> outputColumnNames) {
+  public FilterNode(PlanNodeId id, PlanNode child, Expression predicate) {
     this(id, predicate);
     this.child = child;
-    this.columnHeaders =
-        ((IOutputPlanNode) child)
-            .getOutputColumnHeaders().stream()
-                .filter(columnHeader -> outputColumnNames.contains(columnHeader.getColumnName()))
-                .collect(Collectors.toList());
+  }
+
+  public Expression getPredicate() {
+    return predicate;
   }
 
   @Override
@@ -75,32 +62,18 @@ public class FilterNode extends ProcessNode implements IOutputPlanNode {
   }
 
   @Override
-  public PlanNode clone() {
-    return new FilterNode(getPlanNodeId(), predicate);
-  }
-
-  @Override
   public int allowedChildCount() {
     return ONE_CHILD;
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return columnHeaders;
+  public PlanNode clone() {
+    return new FilterNode(getPlanNodeId(), predicate);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return columnHeaders.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
-  }
-
-  public void setColumnHeaders(List<ColumnHeader> columnHeaders) {
-    this.columnHeaders = columnHeaders;
+    return child.getOutputColumnNames();
   }
 
   @Override
@@ -108,51 +81,16 @@ public class FilterNode extends ProcessNode implements IOutputPlanNode {
     return visitor.visitFilter(this, context);
   }
 
-  public static FilterNode deserialize(ByteBuffer byteBuffer) {
-    IExpression predicate = IExpressionDeserializeUtil.deserialize(byteBuffer);
-    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<ColumnHeader> columnHeaders = null;
-    if (columnSize != -1) {
-      columnHeaders = new ArrayList<>();
-      for (int i = 0; i < columnSize; i++) {
-        columnHeaders.add(ColumnHeader.deserialize(byteBuffer));
-      }
-    }
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    FilterNode filterNode = new FilterNode(planNodeId, predicate);
-    filterNode.setColumnHeaders(columnHeaders);
-    return filterNode;
-  }
-
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FILTER.serialize(byteBuffer);
-    predicate.serialize(byteBuffer);
-    if (columnHeaders == null) {
-      ReadWriteIOUtils.write(-1, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write(columnHeaders.size(), byteBuffer);
-      for (ColumnHeader columnHeader : columnHeaders) {
-        columnHeader.serialize(byteBuffer);
-      }
-    }
+    Expression.serialize(predicate, byteBuffer);
   }
 
-  public IExpression getPredicate() {
-    return predicate;
-  }
-
-  public PlanNode getChild() {
-    return child;
-  }
-
-  @TestOnly
-  public Pair<String, List<String>> print() {
-    String title = String.format("[FilterNode (%s)]", this.getPlanNodeId());
-    List<String> attributes = new ArrayList<>();
-    attributes.add("QueryFilter: " + this.getPredicate());
-    attributes.add("outputColumnNames: " + this.getOutputColumnNames());
-    return new Pair<>(title, attributes);
+  public static FilterNode deserialize(ByteBuffer byteBuffer) {
+    Expression predicate = Expression.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new FilterNode(planNodeId, predicate);
   }
 
   @Override
@@ -160,19 +98,18 @@ public class FilterNode extends ProcessNode implements IOutputPlanNode {
     if (this == o) {
       return true;
     }
-
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-
+    if (!super.equals(o)) {
+      return false;
+    }
     FilterNode that = (FilterNode) o;
-    return Objects.equals(child, that.child)
-        && Objects.equals(predicate, that.predicate)
-        && Objects.equals(columnHeaders, that.columnHeaders);
+    return child.equals(that.child) && predicate.equals(that.predicate);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(child, predicate, columnHeaders);
+    return Objects.hash(super.hashCode(), child, predicate);
   }
 }

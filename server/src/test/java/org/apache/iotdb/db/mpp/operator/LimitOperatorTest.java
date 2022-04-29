@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.operator;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -27,11 +28,14 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
-import org.apache.iotdb.db.mpp.execution.FragmentInstanceState;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.operator.process.merge.AscTimeComparator;
+import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -50,8 +54,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ExecutorService;
 
+import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -78,6 +83,8 @@ public class LimitOperatorTest {
 
   @Test
   public void batchTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
       MeasurementPath measurementPath1 =
           new MeasurementPath(TIME_JOIN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
@@ -85,11 +92,12 @@ public class LimitOperatorTest {
       allSensors.add("sensor0");
       allSensors.add("sensor1");
       QueryId queryId = new QueryId("stub_query");
-      AtomicReference<FragmentInstanceState> state =
-          new AtomicReference<>(FragmentInstanceState.RUNNING);
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
       FragmentInstanceContext fragmentInstanceContext =
-          new FragmentInstanceContext(
-              new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance"), state);
+          createFragmentInstanceContext(instanceId, stateMachine);
       PlanNodeId planNodeId1 = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, SeriesScanOperator.class.getSimpleName());
@@ -131,7 +139,11 @@ public class LimitOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
               OrderBy.TIMESTAMP_ASC,
-              Arrays.asList(TSDataType.INT32, TSDataType.INT32));
+              Arrays.asList(TSDataType.INT32, TSDataType.INT32),
+              Arrays.asList(
+                  new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
+                  new SingleColumnMerger(new InputLocation(1, 0), new AscTimeComparator())),
+              new AscTimeComparator());
 
       LimitOperator limitOperator =
           new LimitOperator(
@@ -169,6 +181,8 @@ public class LimitOperatorTest {
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
+    } finally {
+      instanceNotificationExecutor.shutdown();
     }
   }
 }

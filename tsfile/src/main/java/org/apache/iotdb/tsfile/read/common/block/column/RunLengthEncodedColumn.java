@@ -75,49 +75,49 @@ public class RunLengthEncodedColumn implements Column {
   @Override
   public boolean getBoolean(int position) {
     checkReadablePosition(position);
-    return value.getBoolean(position);
+    return value.getBoolean(0);
   }
 
   @Override
   public int getInt(int position) {
     checkReadablePosition(position);
-    return value.getInt(position);
+    return value.getInt(0);
   }
 
   @Override
   public long getLong(int position) {
     checkReadablePosition(position);
-    return value.getLong(position);
+    return value.getLong(0);
   }
 
   @Override
   public float getFloat(int position) {
     checkReadablePosition(position);
-    return value.getFloat(position);
+    return value.getFloat(0);
   }
 
   @Override
   public double getDouble(int position) {
     checkReadablePosition(position);
-    return value.getDouble(position);
+    return value.getDouble(0);
   }
 
   @Override
   public Binary getBinary(int position) {
     checkReadablePosition(position);
-    return value.getBinary(position);
+    return value.getBinary(0);
   }
 
   @Override
   public Object getObject(int position) {
     checkReadablePosition(position);
-    return value.getObject(position);
+    return value.getObject(0);
   }
 
   @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
-    return value.getTsPrimitiveType(position);
+    return value.getTsPrimitiveType(0);
   }
 
   @Override
@@ -145,6 +145,11 @@ public class RunLengthEncodedColumn implements Column {
   public Column getRegion(int positionOffset, int length) {
     checkValidRegion(positionCount, positionOffset, length);
     return new RunLengthEncodedColumn(value, length);
+  }
+
+  @Override
+  public void reverse() {
+    // do nothing because the underlying column has only one value
   }
 
   private void checkReadablePosition(int position) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -98,5 +99,22 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  @Override
+  public void setSchemaReplicationFactor(int schemaReplicationFactor) {}
+
+  @Override
+  public void setDataReplicationFactor(int dataReplicationFactor) {}
+
+  @Override
+  public void setTimePartitionInterval(long timePartitionInterval) {}
+
+  @Override
+  public void setStorageGroupSchema(TStorageGroupSchema schema) {}
+
+  @Override
+  public TStorageGroupSchema getStorageGroupSchema() {
+    return null;
   }
 }

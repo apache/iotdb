@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -56,9 +56,11 @@ public class Analysis {
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
+  private TypeProvider typeProvider;
+
   public Analysis() {}
 
-  public List<RegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
+  public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
     return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }
@@ -109,5 +111,13 @@ public class Analysis {
 
   public void setRespDatasetHeader(DatasetHeader respDatasetHeader) {
     this.respDatasetHeader = respDatasetHeader;
+  }
+
+  public TypeProvider getTypeProvider() {
+    return typeProvider;
+  }
+
+  public void setTypeProvider(TypeProvider typeProvider) {
+    this.typeProvider = typeProvider;
   }
 }

@@ -39,6 +39,7 @@ public class QueryStateMachine {
 
   // The executor will be used in all the state machines belonged to this query.
   private Executor stateMachineExecutor;
+  private Throwable failureException;
 
   public QueryStateMachine(QueryId queryId, ExecutorService executor) {
     this.name = String.format("QueryStateMachine[%s]", queryId);
@@ -60,7 +61,8 @@ public class QueryStateMachine {
     this.fragInstanceStateMap.put(id, state);
     // TODO: (xingtanzjr) we need to distinguish the Timeout situation
     if (state.isFailed()) {
-      transitionToFailed();
+      transitionToFailed(
+          new RuntimeException(String.format("FragmentInstance[%s] is failed.", id)));
     }
     boolean allFinished =
         fragInstanceStateMap.values().stream()
@@ -120,10 +122,18 @@ public class QueryStateMachine {
     queryState.set(QueryState.ABORTED);
   }
 
-  public void transitionToFailed() {
+  public void transitionToFailed(Throwable throwable) {
     if (queryState.get().isDone()) {
       return;
     }
+    this.failureException = throwable;
     queryState.set(QueryState.FAILED);
+  }
+
+  public String getFailureMessage() {
+    if (failureException != null) {
+      return failureException.getMessage();
+    }
+    return "no detailed failure reason in QueryStateMachine";
   }
 }

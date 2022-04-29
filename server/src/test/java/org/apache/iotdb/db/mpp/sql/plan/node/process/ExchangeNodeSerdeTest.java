@@ -18,78 +18,41 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.process;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.ShowDevicesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
 public class ExchangeNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws IllegalPathException {
-    Map<PartialPath, Set<AggregationType>> aggregateFuncMap = new HashMap<>();
-    Set<AggregationType> aggregationTypes = new HashSet<>();
-    aggregationTypes.add(AggregationType.MAX_TIME);
-    aggregateFuncMap.put(
-        new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
-    AggregateNode aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
-    aggregateNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
-
-    DeviceMergeNode deviceMergeNode =
-        new DeviceMergeNode(new PlanNodeId("TestDeviceMergeNode"), OrderBy.TIMESTAMP_ASC);
-
-    FilterNullComponent filterNullComponent = new FilterNullComponent();
-    deviceMergeNode.setFilterNullComponent(filterNullComponent);
-    deviceMergeNode.addChildDeviceNode("device", aggregateNode);
-
-    aggregateFuncMap = new HashMap<>();
-    aggregationTypes = new HashSet<>();
-    aggregationTypes.add(AggregationType.MAX_TIME);
-    aggregateFuncMap.put(
-        new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN), aggregationTypes);
-    aggregateNode =
-        new AggregateNode(new PlanNodeId("TestAggregateNode"), null, aggregateFuncMap, null);
-    aggregateNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
-
-    deviceMergeNode.addChild(aggregateNode);
-    deviceMergeNode.addChild(new ShowDevicesNode(new PlanNodeId("TestShowDevice")));
+  public void testSerializeAndDeserialize() throws IllegalPathException {
+    TimeJoinNode timeJoinNode =
+        new TimeJoinNode(new PlanNodeId("TestTimeJoinNode"), OrderBy.TIMESTAMP_ASC);
 
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("TestExchangeNode"));
     FragmentSinkNode fragmentSinkNode =
         new FragmentSinkNode(new PlanNodeId("TestFragmentSinkNode"));
     fragmentSinkNode.setDownStream(
-        new Endpoint("127.0.0.1", 6666),
+        new TEndPoint("127.0.0.1", 6666),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
         new PlanNodeId("test"));
-    fragmentSinkNode.addChild(new ShowDevicesNode(new PlanNodeId("ss")));
+    fragmentSinkNode.addChild(timeJoinNode);
     exchangeNode.setRemoteSourceNode(fragmentSinkNode);
-    exchangeNode.addChild(deviceMergeNode);
     exchangeNode.setUpstream(
-        new Endpoint("127.0.0.1", 6666),
+        new TEndPoint("127.0.0.1", 6666),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
         new PlanNodeId("test"));
 

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
@@ -28,12 +28,15 @@ import org.apache.iotdb.consensus.common.Peer;
 
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
+import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 
 import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
@@ -44,7 +47,7 @@ public class Utils {
   private static final String SchemaRegionAbbr = "SR";
   private static final String PartitionRegionAbbr = "PR";
 
-  public static String IPAddress(Endpoint endpoint) {
+  public static String IPAddress(TEndPoint endpoint) {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
   }
 
@@ -71,17 +74,17 @@ public class Utils {
     return String.format("%s-%d", groupTypeAbbr, consensusGroupId.getId());
   }
 
-  public static String RatisPeerId(Endpoint endpoint) {
+  public static String RatisPeerId(TEndPoint endpoint) {
     return String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
   }
 
-  public static Endpoint parseFromRatisId(String ratisId) {
+  public static TEndPoint parseFromRatisId(String ratisId) {
     String[] items = ratisId.split("-");
-    return new Endpoint(items[0], Integer.parseInt(items[1]));
+    return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
 
   // priority is used as ordinal of leader election
-  public static RaftPeer toRaftPeer(Endpoint endpoint, int priority) {
+  public static RaftPeer toRaftPeer(TEndPoint endpoint, int priority) {
     return RaftPeer.newBuilder()
         .setId(RatisPeerId(endpoint))
         .setAddress(IPAddress(endpoint))
@@ -93,10 +96,10 @@ public class Utils {
     return toRaftPeer(peer.getEndpoint(), priority);
   }
 
-  public static Endpoint getEndpoint(RaftPeer raftPeer) {
+  public static TEndPoint getEndpoint(RaftPeer raftPeer) {
     String address = raftPeer.getAddress(); // ip:port
     String[] split = address.split(":");
-    return new Endpoint(split[0], Integer.parseInt(split[1]));
+    return new TEndPoint(split[0], Integer.parseInt(split[1]));
   }
 
   /** Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme: */
@@ -159,5 +162,19 @@ public class Utils {
     TCompactProtocol protocol = new TCompactProtocol(byteBuffer);
     status.read(protocol);
     return status;
+  }
+
+  public static ByteBuffer getMetadataFromTermIndex(TermIndex termIndex) {
+    String ordinal = String.format("%d_%d", termIndex.getTerm(), termIndex.getIndex());
+    ByteBuffer metadata = ByteBuffer.wrap(ordinal.getBytes());
+    return metadata;
+  }
+
+  public static TermIndex getTermIndexFromMetadata(ByteBuffer metadata) {
+    Charset charset = Charset.defaultCharset();
+    CharBuffer charBuffer = charset.decode(metadata);
+    String ordinal = charBuffer.toString();
+    String[] items = ordinal.split("_");
+    return TermIndex.valueOf(Long.parseLong(items[0]), Long.parseLong(items[1]));
   }
 }

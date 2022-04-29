@@ -28,7 +28,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 
 public class SchemaFetchNode extends SchemaScanNode {
@@ -45,21 +44,13 @@ public class SchemaFetchNode extends SchemaScanNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of();
-  }
-
-  @Override
-  public void addChild(PlanNode child) {}
-
-  @Override
   public PlanNode clone() {
     return new SchemaFetchNode(getPlanNodeId(), patternTree);
   }
 
   @Override
-  public int allowedChildCount() {
-    return 0;
+  public List<String> getOutputColumnNames() {
+    return ImmutableList.of();
   }
 
   @Override
@@ -76,11 +67,6 @@ public class SchemaFetchNode extends SchemaScanNode {
 
   @Override
   public void open() throws Exception {}
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return Collections.singletonList("SchemaTree");
-  }
 
   @Override
   public void close() throws Exception {}
