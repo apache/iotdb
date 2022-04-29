@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 import java.util.List;
@@ -32,7 +33,8 @@ import java.util.List;
 public class Aggregator {
 
   private final Accumulator accumulator;
-  private final List<InputLocation> inputLocationList;
+  // In some intermediate result input, inputLocation[] should include two columns
+  private final List<InputLocation[]> inputLocationList;
   private final AggregationStep step;
   private final TSDataType intermediateType;
   private final TSDataType finalType;
@@ -42,7 +44,7 @@ public class Aggregator {
   public Aggregator(
       Accumulator accumulator,
       AggregationStep step,
-      List<InputLocation> inputLocationList,
+      List<InputLocation[]> inputLocationList,
       TSDataType intermediateType,
       TSDataType finalType) {
     this.accumulator = accumulator;
@@ -52,11 +54,33 @@ public class Aggregator {
     this.finalType = finalType;
   }
 
+  // Used for SeriesAggregateScanOperator
   public void processTsBlock(TsBlock tsBlock) {
     if (step.isInputRaw()) {
       accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
     } else {
       accumulator.addIntermediate(tsBlock.getColumns(new int[] {0}));
+    }
+  }
+
+  // Used for aggregateOperator
+  public void processTsBlocks(TsBlock[] tsBlock) {
+    for (InputLocation[] inputLocations : inputLocationList) {
+      if (step.isInputRaw()) {
+        TsBlock rawTsBlock = tsBlock[inputLocations[0].getTsBlockIndex()];
+        Column[] timeValueColumn = new Column[2];
+        timeValueColumn[0] = rawTsBlock.getTimeColumn();
+        timeValueColumn[1] = rawTsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+        accumulator.addInput(timeValueColumn, timeRange);
+      } else {
+        Column[] columns = new Column[inputLocations.length];
+        for (int i = 0; i < inputLocations.length; i++) {
+          columns[i] =
+              tsBlock[inputLocations[i].getTsBlockIndex()].getColumn(
+                  inputLocations[i].getValueColumnIndex());
+        }
+        accumulator.addIntermediate(columns);
+      }
     }
   }
 

@@ -19,16 +19,4 @@
 
 package org.apache.iotdb.db.mpp.operator.aggregation;
 
-public class AggregatorFactory {
-
-  public static Aggregator createAggregator() {
-    Accumulator accumulator;
-    if (step.isInputRaw()) {
-      accumulator = accumulatorFactory.createAccumulator(lambdaProviders);
-    } else {
-      accumulator = accumulatorFactory.createIntermediateAccumulator(lambdaProviders);
-    }
-    return new Aggregator(
-        accumulator, step, intermediateType, finalType, inputChannels, maskChannel);
-  }
-}
+public class AggregatorFactory {}
