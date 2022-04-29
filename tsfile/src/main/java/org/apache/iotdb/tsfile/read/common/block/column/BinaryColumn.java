@@ -86,6 +86,11 @@ public class BinaryColumn implements Column {
   }
 
   @Override
+  public Object getObject(int position) {
+    return getBinary(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsBinary(getBinary(position));
@@ -116,6 +121,22 @@ public class BinaryColumn implements Column {
   public Column getRegion(int positionOffset, int length) {
     checkValidRegion(getPositionCount(), positionOffset, length);
     return new BinaryColumn(positionOffset + arrayOffset, length, valueIsNull, values);
+  }
+
+  @Override
+  public void reverse() {
+    for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+      Binary valueTmp = values[i];
+      values[i] = values[j];
+      values[j] = valueTmp;
+    }
+    if (valueIsNull != null) {
+      for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+        boolean isNullTmp = valueIsNull[i];
+        valueIsNull[i] = valueIsNull[j];
+        valueIsNull[j] = isNullTmp;
+      }
+    }
   }
 
   private void checkReadablePosition(int position) {

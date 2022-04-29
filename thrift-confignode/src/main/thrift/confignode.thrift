@@ -23,39 +23,34 @@ namespace py iotdb.thrift.confignode
 
 // DataNode
 struct TDataNodeRegisterReq {
-  1: required common.EndPoint endPoint
+  1: required common.TDataNodeLocation dataNodeLocation
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
   2: optional map<string, TStorageGroupSchema> statusMap
 }
 
 struct TGlobalConfig {
-  1: optional string dataNodeConsensusProtocolClass
-  2: optional i32 seriesPartitionSlotNum
-  3: optional string seriesPartitionExecutorClass
+  1: required string dataNodeConsensusProtocolClass
+  2: required i32 seriesPartitionSlotNum
+  3: required string seriesPartitionExecutorClass
+  4: required i64 timePartitionInterval
 }
 
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
-  2: optional i32 dataNodeID
+  2: optional i32 dataNodeId
   3: optional TGlobalConfig globalConfig
 }
 
-struct TDataNodeMessageResp {
+struct TDataNodeLocationResp {
   1: required common.TSStatus status
-  // map<DataNodeId, DataNodeMessage>
-  2: optional map<i32, TDataNodeMessage> dataNodeMessageMap
-}
-
-struct TDataNodeMessage {
-  1: required i32 dataNodeId
-  2: required common.EndPoint endPoint
+  // map<DataNodeId, DataNodeLocation>
+  2: optional map<i32, common.TDataNodeLocation> dataNodeLocationMap
 }
 
 // StorageGroup
 struct TSetStorageGroupReq {
-  1: required string storageGroup
-  2: optional i64 TTL
+  1: required TStorageGroupSchema storageGroup
 }
 
 struct TDeleteStorageGroupReq {
@@ -67,6 +62,27 @@ struct TSetTTLReq {
   2: required i64 TTL
 }
 
+
+struct TSetSchemaReplicationFactorReq {
+  1: required string storageGroup
+  2: required i32 schemaReplicationFactor
+}
+
+struct TSetDataReplicationFactorReq {
+  1: required string storageGroup
+  2: required i32 dataReplicationFactor
+}
+
+struct TSetTimePartitionIntervalReq {
+  1: required string storageGroup
+  2: required i64 timePartitionInterval
+}
+
+struct TCountStorageGroupResp {
+  1: required common.TSStatus status
+  2: optional i32 count
+}
+
 struct TStorageGroupSchemaResp {
   1: required common.TSStatus status
   // map<string, StorageGroupMessage>
@@ -74,12 +90,13 @@ struct TStorageGroupSchemaResp {
 }
 
 struct TStorageGroupSchema {
-  1: required string storageGroup
+  1: required string name
   2: optional i64 TTL
-  // list<DataRegionId>
-  3: optional list<binary> dataRegionGroupIds
-  // list<SchemaRegionId>
-  4: optional list<binary> schemaRegionGroupIds
+  3: optional i32 schemaReplicationFactor
+  4: optional i32 dataReplicationFactor
+  5: optional i64 timePartitionInterval
+  6: optional list<common.TConsensusGroupId> dataRegionGroupIds
+  7: optional list<common.TConsensusGroupId> schemaRegionGroupIds
 }
 
 // Schema
@@ -116,13 +133,23 @@ struct TAuthorizerReq {
   7: required string nodeName
 }
 
+struct TAuthorizerResp {
+    1: required common.TSStatus status
+    2: required map<string, list<string>> authorizerInfo
+}
+
+struct TLoginReq {
+    1: required string userrname
+    2: required string password
+}
+
 service ConfigIService {
 
   /* DataNode */
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  TDataNodeMessageResp getDataNodesMessage(i32 dataNodeID)
+  TDataNodeLocationResp getDataNodeLocations(i32 dataNodeId)
 
   /* StorageGroup */
 
@@ -132,7 +159,15 @@ service ConfigIService {
 
   common.TSStatus setTTL(TSetTTLReq req)
 
-  TStorageGroupSchemaResp getStorageGroupsSchema()
+  common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
+
+  common.TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req)
+
+  common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
+
+  TCountStorageGroupResp countMatchedStorageGroups(list<string> storageGroupPathPattern)
+
+  TStorageGroupSchemaResp getMatchedStorageGroupSchemas(list<string> storageGroupPathPattern)
 
   /* Schema */
 
@@ -147,6 +182,10 @@ service ConfigIService {
   TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
   /* Authorize */
+
   common.TSStatus operatePermission(TAuthorizerReq req)
 
+  TAuthorizerResp queryPermission(TAuthorizerReq req)
+
+  common.TSStatus login(TLoginReq req)
 }

@@ -26,14 +26,14 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 public enum InnerSequenceCompactionSelector {
   SIZE_TIERED;
 
-  public static InnerSequenceCompactionSelector getInnerSequenceCompactionStrategy(String name) {
-    if ("SIZE_TIERED_COMPACTION".equalsIgnoreCase(name)) {
+  public static InnerSequenceCompactionSelector getInnerSequenceCompactionSelector(String name) {
+    if (SIZE_TIERED.toString().equalsIgnoreCase(name)) {
       return SIZE_TIERED;
     }
-    throw new RuntimeException("Illegal Compaction Strategy " + name);
+    throw new RuntimeException("Illegal Compaction Selector " + name);
   }
 
-  public IInnerSeqSpaceSelector getCompactionSelector(
+  public IInnerSeqSpaceSelector createInstance(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,

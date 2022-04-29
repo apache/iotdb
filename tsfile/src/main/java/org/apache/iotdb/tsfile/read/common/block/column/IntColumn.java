@@ -84,6 +84,11 @@ public class IntColumn implements Column {
   }
 
   @Override
+  public Object getObject(int position) {
+    return getInt(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsInt(getInt(position));
@@ -114,6 +119,22 @@ public class IntColumn implements Column {
   public Column getRegion(int positionOffset, int length) {
     checkValidRegion(getPositionCount(), positionOffset, length);
     return new IntColumn(positionOffset + arrayOffset, length, valueIsNull, values);
+  }
+
+  @Override
+  public void reverse() {
+    for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+      int valueTmp = values[i];
+      values[i] = values[j];
+      values[j] = valueTmp;
+    }
+    if (valueIsNull != null) {
+      for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+        boolean isNullTmp = valueIsNull[i];
+        valueIsNull[i] = valueIsNull[j];
+        valueIsNull[j] = isNullTmp;
+      }
+    }
   }
 
   private void checkReadablePosition(int position) {

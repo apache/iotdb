@@ -19,31 +19,19 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.partition.TimePartitionSlot;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class InsertRowStatement extends InsertBaseStatement {
-  private static final Logger logger = LoggerFactory.getLogger(InsertRowStatement.class);
 
   private static final byte TYPE_RAW_STRING = -1;
   private static final byte TYPE_NULL = -2;
@@ -83,6 +71,7 @@ public class InsertRowStatement extends InsertBaseStatement {
 
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
     this.values = new Object[measurements.length];
+    this.dataTypes = new TSDataType[measurements.length];
     for (int i = 0; i < dataTypes.length; i++) {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
@@ -117,87 +106,8 @@ public class InsertRowStatement extends InsertBaseStatement {
     }
   }
 
-  /**
-   * if inferType is true, transfer String[] values to specific data types (Integer, Long, Float,
-   * Double, Binary)
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void transferType(SchemaTree schemaTree) throws QueryProcessException {
-    List<MeasurementSchema> measurementSchemas =
-        schemaTree
-            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
-            .getMeasurementSchemaList();
-    if (isNeedInferType) {
-      for (int i = 0; i < measurementSchemas.size(); i++) {
-        if (measurementSchemas.get(i) == null) {
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(
-                i,
-                new QueryProcessException(
-                    new PathNotExistException(
-                        devicePath.getFullPath()
-                            + IoTDBConstant.PATH_SEPARATOR
-                            + measurements[i])));
-          } else {
-            throw new QueryProcessException(
-                new PathNotExistException(
-                    devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
-          }
-          continue;
-        }
-
-        dataTypes[i] = measurementSchemas.get(i).getType();
-        try {
-          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
-        } catch (Exception e) {
-          logger.warn(
-              "{}.{} data type is not consistent, input {}, registered {}",
-              devicePath,
-              measurements[i],
-              values[i],
-              dataTypes[i]);
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i, e);
-          } else {
-            throw e;
-          }
-        }
-      }
-    }
-  }
-
-  @Override
-  public void markFailedMeasurementInsertion(int index, Exception e) {
-    if (measurements[index] == null) {
-      return;
-    }
-    super.markFailedMeasurementInsertion(index, e);
-    values[index] = null;
-    dataTypes[index] = null;
-  }
-
-  public List<TimePartitionSlot> getTimePartitionSlots() {
-    return Collections.singletonList(StorageEngine.getTimePartitionSlot(time));
-  }
-
-  public boolean checkDataType(SchemaTree schemaTree) {
-    List<MeasurementSchema> measurementSchemas =
-        schemaTree
-            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
-            .getMeasurementSchemaList();
-    for (int i = 0; i < measurementSchemas.size(); i++) {
-      if (dataTypes[i] != measurementSchemas.get(i).getType()) {
-        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          return false;
-        } else {
-          markFailedMeasurementInsertion(
-              i,
-              new DataTypeMismatchException(
-                  measurements[i], measurementSchemas.get(i).getType(), dataTypes[i]));
-        }
-      }
-    }
-    return true;
+  public List<TTimePartitionSlot> getTimePartitionSlots() {
+    return Collections.singletonList(StorageEngineV2.getTimePartitionSlot(time));
   }
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

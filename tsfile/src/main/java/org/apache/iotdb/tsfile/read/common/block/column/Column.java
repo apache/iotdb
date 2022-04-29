@@ -60,6 +60,11 @@ public interface Column {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
+  /** Gets an Object at {@code position}. */
+  default Object getObject(int position) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
   /** Gets a TsPrimitiveType at {@code position}. */
   default TsPrimitiveType getTsPrimitiveType(int position) {
     throw new UnsupportedOperationException(getClass().getName());
@@ -97,4 +102,7 @@ public interface Column {
    * also be released. If the region column is released, this block may also be released.
    */
   Column getRegion(int positionOffset, int length);
+
+  /** reverse the column */
+  void reverse();
 }

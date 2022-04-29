@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.db.mpp.execution.FragmentInstanceContext;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
-
-import org.apache.thrift.transport.TTransportException;
-
-import java.io.IOException;
 
 public interface IDataBlockManager {
   /**
@@ -32,19 +30,17 @@ public interface IDataBlockManager {
    *
    * @param localFragmentInstanceId ID of the local fragment instance who generates and sends data
    *     blocks to the sink handle.
-   * @param remoteHostname Hostname of the remote fragment instance where the data blocks should be
-   *     sent to.
-   * @param remotePort Port of the remote fragment instance where the data blocks should be sent to.
-   * @param remoteFragmentInstanceId ID of the remote fragment instance.
+   * @param endpoint Hostname and Port of the remote fragment instance where the data blocks should
+   *     be sent to.
    * @param remotePlanNodeId The sink plan node ID of the remote fragment instance.
+   * @param instanceContext The context of local fragment instance.
    */
   ISinkHandle createSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
-      String remoteHostname,
-      int remotePort,
+      TEndPoint endpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
-      String remotePlanNodeId)
-      throws TTransportException, IOException;
+      String remotePlanNodeId,
+      FragmentInstanceContext instanceContext);
 
   /**
    * Create a source handle who fetches data blocks from a remote upstream fragment instance for a
@@ -53,19 +49,17 @@ public interface IDataBlockManager {
    * @param localFragmentInstanceId ID of the local fragment instance who receives data blocks from
    *     the source handle.
    * @param localPlanNodeId The local sink plan node ID.
-   * @param remoteHostname Hostname of the remote fragment instance where the data blocks should be
-   *     received from.
-   * @param remotePort Port of the remote fragment instance where the data blocks should be received
-   *     from.
+   * @param endpoint Hostname and Port of the remote fragment instance where the data blocks should
+   *     be received from.
    * @param remoteFragmentInstanceId ID of the remote fragment instance.
+   * @param onFailureCallback The callback on failure.
    */
   ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
-      String remoteHostname,
-      int remotePort,
-      TFragmentInstanceId remoteFragmentInstanceId)
-      throws IOException;
+      TEndPoint endpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      IDataBlockManagerCallback<Throwable> onFailureCallback);
 
   /**
    * Release all the related resources of a fragment instance, including data blocks that are not

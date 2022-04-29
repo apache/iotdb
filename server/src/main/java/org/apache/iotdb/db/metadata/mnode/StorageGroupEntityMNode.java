@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 
 import java.io.IOException;
@@ -50,6 +51,23 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  @Override
+  public void setSchemaReplicationFactor(int schemaReplicationFactor) {}
+
+  @Override
+  public void setDataReplicationFactor(int dataReplicationFactor) {}
+
+  @Override
+  public void setTimePartitionInterval(long timePartitionInterval) {}
+
+  @Override
+  public void setStorageGroupSchema(TStorageGroupSchema schema) {}
+
+  @Override
+  public TStorageGroupSchema getStorageGroupSchema() {
+    return null;
   }
 
   @Override

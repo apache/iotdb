@@ -85,6 +85,11 @@ public class BooleanColumn implements Column {
   }
 
   @Override
+  public Object getObject(int position) {
+    return getBoolean(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsBoolean(getBoolean(position));
@@ -115,6 +120,22 @@ public class BooleanColumn implements Column {
   public Column getRegion(int positionOffset, int length) {
     checkValidRegion(getPositionCount(), positionOffset, length);
     return new BooleanColumn(positionOffset + arrayOffset, length, valueIsNull, values);
+  }
+
+  @Override
+  public void reverse() {
+    for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+      boolean valueTmp = values[i];
+      values[i] = values[j];
+      values[j] = valueTmp;
+    }
+    if (valueIsNull != null) {
+      for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+        boolean isNullTmp = valueIsNull[i];
+        valueIsNull[i] = valueIsNull[j];
+        valueIsNull[j] = isNullTmp;
+      }
+    }
   }
 
   private void checkReadablePosition(int position) {

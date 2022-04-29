@@ -19,18 +19,24 @@
 
 package org.apache.iotdb.db.mpp.sql.plan;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
 import org.apache.iotdb.db.mpp.execution.QueryExecution;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.analyze.FakePartitionFetcherImpl;
+import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
 import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -38,9 +44,25 @@ import java.time.ZoneId;
 
 public class QueryPlannerTest {
 
+  private static IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      internalServiceClientManager;
+
+  @BeforeClass
+  public static void setUp() {
+    internalServiceClientManager =
+        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+            .createClientManager(
+                new DataNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+  }
+
+  @AfterClass
+  public static void destroy() {
+    internalServiceClientManager.close();
+  }
+
   @Ignore
   @Test
-  public void TestSqlToDistributedPlan() {
+  public void testSqlToDistributedPlan() {
 
     String querySql = "SELECT d1.*, d333.s1 FROM root.sg LIMIT 10";
 
@@ -50,9 +72,16 @@ public class QueryPlannerTest {
         new QueryExecution(
             stmt,
             new MPPQueryContext(
-                querySql, new QueryId("query1"), new SessionInfo(), QueryType.READ, new Endpoint()),
+                querySql,
+                new QueryId("query1"),
+                new SessionInfo(),
+                new TEndPoint(),
+                new TEndPoint()),
             IoTDBThreadPoolFactory.newSingleThreadExecutor("test_query"),
-            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("test_query_scheduled"));
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("test_query_scheduled"),
+            new FakePartitionFetcherImpl(),
+            new FakeSchemaFetcherImpl(),
+            internalServiceClientManager);
     queryExecution.doLogicalPlan();
     System.out.printf("SQL: %s%n%n", querySql);
     System.out.println("===== Step 1: Logical Plan =====");

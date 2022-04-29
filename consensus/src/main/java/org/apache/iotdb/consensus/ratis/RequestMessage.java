@@ -34,7 +34,7 @@ public class RequestMessage implements Message {
 
   private final IConsensusRequest actualRequest;
   private volatile ByteString serializedContent;
-  private final int DEFAULT_BUFFER_SIZE = 1024 * 10;
+  private static final int DEFAULT_BUFFER_SIZE = 2048 * 10;
 
   public RequestMessage(IConsensusRequest request) {
     this.actualRequest = request;
@@ -61,7 +61,6 @@ public class RequestMessage implements Message {
             actualRequest.serializeRequest(byteBuffer);
             byteBuffer.flip();
             serializedContent = ByteString.copyFrom(byteBuffer);
-            byteBuffer.flip();
           }
         }
       }

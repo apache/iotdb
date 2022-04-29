@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -55,9 +55,9 @@ public class GroupByTimeDataSetTest {
     GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
-      Assert.assertEquals(startTimeArray[cnt], pair.left);
-      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      TimeRange timeRange = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], timeRange.getMin());
+      Assert.assertEquals(endTimeArray[cnt], timeRange.getMax());
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);
@@ -83,9 +83,9 @@ public class GroupByTimeDataSetTest {
     GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
-      Assert.assertEquals(startTimeArray[cnt], pair.left);
-      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      TimeRange timeRange = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], timeRange.getMin());
+      Assert.assertEquals(endTimeArray[cnt], timeRange.getMax());
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);
@@ -111,9 +111,9 @@ public class GroupByTimeDataSetTest {
     GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
-      Assert.assertEquals(startTimeArray[cnt], pair.left);
-      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      TimeRange timeRange = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], timeRange.getMin());
+      Assert.assertEquals(endTimeArray[cnt], timeRange.getMax());
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);
@@ -141,9 +141,9 @@ public class GroupByTimeDataSetTest {
     GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
-      Assert.assertEquals(startTimeArray[cnt], pair.left);
-      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      TimeRange timeRange = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], timeRange.getMin());
+      Assert.assertEquals(endTimeArray[cnt], timeRange.getMax());
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);
@@ -170,9 +170,9 @@ public class GroupByTimeDataSetTest {
     GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
-      Assert.assertEquals(startTimeArray[cnt], pair.left);
-      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      TimeRange timeRange = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], timeRange.getMin());
+      Assert.assertEquals(endTimeArray[cnt], timeRange.getMax());
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);
@@ -202,10 +202,10 @@ public class GroupByTimeDataSetTest {
     GroupByTimeDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
+      TimeRange timeRange = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
-      Assert.assertEquals(startTimeArray[cnt], pair.left);
-      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      Assert.assertEquals(startTimeArray[cnt], timeRange.getMin());
+      Assert.assertEquals(endTimeArray[cnt], timeRange.getMax());
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);
@@ -240,10 +240,10 @@ public class GroupByTimeDataSetTest {
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
+      TimeRange timeRange = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
-      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
-      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) timeRange.getMin())));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) timeRange.getMax())));
       cnt++;
     }
 
@@ -294,10 +294,10 @@ public class GroupByTimeDataSetTest {
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
+      TimeRange timeRange = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
-      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
-      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) timeRange.getMin())));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) timeRange.getMax())));
       cnt++;
     }
 
@@ -334,10 +334,10 @@ public class GroupByTimeDataSetTest {
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
+      TimeRange timeRange = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
-      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
-      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) timeRange.getMin())));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) timeRange.getMax())));
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);
@@ -388,10 +388,10 @@ public class GroupByTimeDataSetTest {
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
+      TimeRange timeRange = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
-      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
-      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) timeRange.getMin())));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) timeRange.getMax())));
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);
@@ -442,10 +442,10 @@ public class GroupByTimeDataSetTest {
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
+      TimeRange timeRange = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
-      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
-      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) timeRange.getMin())));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) timeRange.getMax())));
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);
@@ -481,10 +481,10 @@ public class GroupByTimeDataSetTest {
     int cnt = 0;
 
     while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
+      TimeRange timeRange = groupByEngine.nextTimePartition();
       Assert.assertTrue(cnt < startTimeArray.length);
-      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
-      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) timeRange.getMin())));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) timeRange.getMax())));
       cnt++;
     }
     Assert.assertEquals(startTimeArray.length, cnt);

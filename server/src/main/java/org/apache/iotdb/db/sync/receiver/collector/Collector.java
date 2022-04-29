@@ -34,7 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 /** scan sync receiver folder and load pipeData into IoTDB */
 public class Collector {
@@ -43,11 +46,9 @@ public class Collector {
   private static final int WAIT_TIMEOUT = 2000;
   private ExecutorService executorService;
   private Map<String, Future> taskFutures;
-  private Map<String, ScanTask> scanTaskMap;
 
   public Collector() {
     taskFutures = new ConcurrentHashMap<>();
-    scanTaskMap = new ConcurrentHashMap<>();
   }
 
   public void startCollect() {
@@ -83,30 +84,23 @@ public class Collector {
   }
 
   public void startPipe(String pipeName, String remoteIp, long createTime) {
-    String dir = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
+    String dir = SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
     synchronized (dir.intern()) {
       if (!taskFutures.containsKey(dir)) {
         ScanTask task = new ScanTask(pipeName, remoteIp, createTime);
-        scanTaskMap.put(dir, task);
         taskFutures.put(dir, executorService.submit(task));
       }
     }
   }
 
   public void stopPipe(String pipeName, String remoteIp, long createTime) {
-    String dir = SyncPathUtil.getReceiverPipeFolderName(pipeName, remoteIp, createTime);
-    logger.debug("try stop task key={}", dir);
+    String dir = SyncPathUtil.getReceiverPipeDirName(pipeName, remoteIp, createTime);
+    logger.info("try stop task key={}", dir);
     synchronized (dir.intern()) {
       if (taskFutures.containsKey(dir)) {
         taskFutures.get(dir).cancel(true);
-        try {
-          scanTaskMap.get(dir).getStopCountDown().await(1000, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-          logger.warn("Task {} is not cancelled after 1000 ms.", dir);
-        }
         taskFutures.remove(dir);
-        scanTaskMap.remove(dir);
-        logger.debug("stop task success, key={}", dir);
+        logger.info("stop task success, key={}", dir);
       }
     }
   }
@@ -115,17 +109,11 @@ public class Collector {
     private final String pipeName;
     private final String remoteIp;
     private final long createTime;
-    private CountDownLatch stopCountDown;
 
     private ScanTask(String pipeName, String remoteIp, long createTime) {
       this.pipeName = pipeName;
       this.remoteIp = remoteIp;
       this.createTime = createTime;
-      this.stopCountDown = new CountDownLatch(1);
-    }
-
-    public CountDownLatch getStopCountDown() {
-      return stopCountDown;
     }
 
     @Override
@@ -177,7 +165,6 @@ public class Collector {
           break;
         }
       }
-      stopCountDown.countDown();
     }
   }
 }

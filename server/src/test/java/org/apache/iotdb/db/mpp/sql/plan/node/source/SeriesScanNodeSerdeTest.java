@@ -18,17 +18,20 @@
  */
 package org.apache.iotdb.db.mpp.sql.plan.node.source;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.sql.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
+import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -39,14 +42,20 @@ import static org.junit.Assert.assertEquals;
 public class SeriesScanNodeSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
+  public void testSerializeAndDeserialize() throws QueryProcessException, IllegalPathException {
     SeriesScanNode seriesScanNode =
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
-            new AlignedPath("s1"),
-            new RegionReplicaSet(new DataRegionId(1), new ArrayList<>()));
-    seriesScanNode.setTimeFilter(new GroupByFilter(1, 2, 3, 4));
-    seriesScanNode.setScanOrder(OrderBy.TIMESTAMP_ASC);
+            new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
+            Sets.newHashSet("s1"),
+            OrderBy.TIMESTAMP_DESC,
+            new GroupByFilter(1, 2, 3, 4),
+            null,
+            100,
+            100,
+            new TRegionReplicaSet(
+                new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     seriesScanNode.serialize(byteBuffer);
     byteBuffer.flip();

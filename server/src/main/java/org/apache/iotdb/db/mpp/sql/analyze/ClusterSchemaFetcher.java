@@ -18,24 +18,91 @@
  */
 package org.apache.iotdb.db.mpp.sql.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.execution.Coordinator;
+import org.apache.iotdb.db.mpp.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.utils.Binary;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
+  private final Coordinator coordinator = Coordinator.getInstance();
+  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
+
+  private static final class ClusterSchemaFetcherHolder {
+    private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();
+
+    private ClusterSchemaFetcherHolder() {}
+  }
+
+  public static ClusterSchemaFetcher getInstance() {
+    return ClusterSchemaFetcherHolder.INSTANCE;
+  }
+
+  private ClusterSchemaFetcher() {}
+
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
-    return null;
+    SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
+    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
+        schemaPartition.getSchemaPartitionMap();
+    List<String> storageGroups = new ArrayList<>(schemaPartitionMap.keySet());
+
+    SchemaFetchStatement schemaFetchStatement = new SchemaFetchStatement(patternTree);
+    schemaFetchStatement.setSchemaPartition(schemaPartition);
+
+    QueryId queryId =
+        new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
+    ExecutionResult executionResult =
+        coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
+    // TODO: (xingtanzjr) throw exception
+    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new RuntimeException("cannot fetch schema, status is: " + executionResult.status);
+    }
+    SchemaTree result = new SchemaTree();
+    while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+      TsBlock tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+      if (tsBlock == null) {
+        break;
+      }
+      result.setStorageGroups(storageGroups);
+      Binary binary;
+      SchemaTree fetchedSchemaTree;
+      Column column = tsBlock.getColumn(0);
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        binary = column.getBinary(i);
+        fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
+        result.mergeSchemaTree(fetchedSchemaTree);
+      }
+    }
+    // TODO: (xingtanzjr) need to release this query's resource here. This is a temporary way
+    coordinator.getQueryExecution(queryId).stopAndCleanup();
+    return result;
   }
 
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
-    return null;
+    // todo implement auto create schema
+    return fetchSchema(new PathPatternTree(devicePath, measurements));
   }
 
   @Override
@@ -44,6 +111,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
       List<Boolean> aligned) {
-    return null;
+    Map<PartialPath, List<String>> deviceToMeasurementMap = new HashMap<>();
+    for (int i = 0; i < devicePath.size(); i++) {
+      deviceToMeasurementMap.put(devicePath.get(i), Arrays.asList(measurements.get(i)));
+    }
+    // todo implement auto create schema
+    return fetchSchema(new PathPatternTree(deviceToMeasurementMap));
   }
 }

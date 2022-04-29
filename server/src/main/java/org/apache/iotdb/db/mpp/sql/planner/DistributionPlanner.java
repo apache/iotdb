@@ -18,34 +18,40 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner;
 
-import org.apache.iotdb.commons.partition.RegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.sql.planner.plan.IFragmentParallelPlaner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
-import org.apache.iotdb.db.mpp.sql.planner.plan.SimpleFragmentParallelPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.SimplePlanNodeRewriter;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.AbstractSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -84,7 +90,10 @@ public class DistributionPlanner {
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
     SubPlan subPlan = splitFragment(rootWithExchange);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
-    SetSinkForRootInstance(subPlan, fragmentInstances);
+    // Only execute this step for READ operation
+    if (context.getQueryType() == QueryType.READ) {
+      SetSinkForRootInstance(subPlan, fragmentInstances);
+    }
     return new DistributedQueryPlan(
         logicalPlan.getContext(), subPlan, subPlan.getPlanFragmentList(), fragmentInstances);
   }
@@ -93,7 +102,9 @@ public class DistributionPlanner {
   // And for parallel-able fragment, clone it into several instances with different params.
   public List<FragmentInstance> planFragmentInstances(SubPlan subPlan) {
     IFragmentParallelPlaner parallelPlaner =
-        new SimpleFragmentParallelPlanner(subPlan, analysis, context);
+        context.getQueryType() == QueryType.READ
+            ? new SimpleFragmentParallelPlanner(subPlan, analysis, context)
+            : new WriteFragmentParallelPlanner(subPlan, analysis, context);
     return parallelPlaner.parallelPlan();
   }
 
@@ -113,14 +124,16 @@ public class DistributionPlanner {
 
     FragmentSinkNode sinkNode = new FragmentSinkNode(context.getQueryId().genPlanNodeId());
     sinkNode.setDownStream(
-        context.getHostEndpoint(),
+        context.getLocalDataBlockEndpoint(),
         context.getResultNodeContext().getVirtualFragmentInstanceId(),
         context.getResultNodeContext().getVirtualResultNodeId());
     sinkNode.setChild(rootInstance.getFragment().getRoot());
     context
         .getResultNodeContext()
         .setUpStream(
-            rootInstance.getHostEndpoint(), rootInstance.getId(), sinkNode.getPlanNodeId());
+            rootInstance.getHostDataNode().dataBlockManagerEndPoint,
+            rootInstance.getId(),
+            sinkNode.getPlanNodeId());
     rootInstance.getFragment().setRoot(sinkNode);
   }
 
@@ -136,11 +149,11 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaMerge(SchemaMergeNode node, DistributionPlanContext context) {
-      SchemaMergeNode root = (SchemaMergeNode) node.clone();
+    public PlanNode visitSchemaMerge(SeriesSchemaMergeNode node, DistributionPlanContext context) {
+      SeriesSchemaMergeNode root = (SeriesSchemaMergeNode) node.clone();
       SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
-      TreeSet<RegionReplicaSet> schemaRegions =
-          new TreeSet<>(Comparator.comparingInt(region -> region.getConsensusGroupId().getId()));
+      TreeSet<TRegionReplicaSet> schemaRegions =
+          new TreeSet<>(Comparator.comparingInt(region -> region.getRegionId().getId()));
       analysis
           .getSchemaPartitionInfo()
           .getSchemaPartitionMap()
@@ -153,15 +166,60 @@ public class DistributionPlanner {
       int count = schemaRegions.size();
       schemaRegions.forEach(
           region -> {
-            SchemaScanNode metaScanNode = (SchemaScanNode) seed.clone();
-            metaScanNode.setRegionReplicaSet(region);
+            SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+            schemaScanNode.setRegionReplicaSet(region);
             if (count > 1) {
-              metaScanNode.setLimit(metaScanNode.getOffset() + metaScanNode.getLimit());
-              metaScanNode.setOffset(0);
+              schemaScanNode.setLimit(schemaScanNode.getOffset() + schemaScanNode.getLimit());
+              schemaScanNode.setOffset(0);
             }
-            root.addChild(metaScanNode);
+            root.addChild(schemaScanNode);
           });
       return root;
+    }
+
+    @Override
+    public PlanNode visitCountMerge(CountSchemaMergeNode node, DistributionPlanContext context) {
+      CountSchemaMergeNode root = (CountSchemaMergeNode) node.clone();
+      SchemaScanNode seed = (SchemaScanNode) node.getChildren().get(0);
+      Set<TRegionReplicaSet> schemaRegions = new HashSet<>();
+      analysis
+          .getSchemaPartitionInfo()
+          .getSchemaPartitionMap()
+          .forEach(
+              (storageGroup, deviceGroup) -> {
+                deviceGroup.forEach(
+                    (deviceGroupId, schemaRegionReplicaSet) ->
+                        schemaRegions.add(schemaRegionReplicaSet));
+              });
+      schemaRegions.forEach(
+          region -> {
+            SchemaScanNode schemaScanNode = (SchemaScanNode) seed.clone();
+            schemaScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+            schemaScanNode.setRegionReplicaSet(region);
+            root.addChild(schemaScanNode);
+          });
+      return root;
+    }
+
+    // TODO: (xingtanzjr) a temporary way to resolve the distribution of single SeriesScanNode issue
+    @Override
+    public PlanNode visitSeriesScan(SeriesScanNode node, DistributionPlanContext context) {
+      List<TRegionReplicaSet> dataDistribution =
+          analysis.getPartitionInfo(node.getSeriesPath(), node.getTimeFilter());
+      if (dataDistribution.size() == 1) {
+        node.setRegionReplicaSet(dataDistribution.get(0));
+        return node;
+      }
+      TimeJoinNode timeJoinNode =
+          new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
+      for (TRegionReplicaSet dataRegion : dataDistribution) {
+        SeriesScanNode split = (SeriesScanNode) node.clone();
+        split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+        split.setRegionReplicaSet(dataRegion);
+        timeJoinNode.addChild(split);
+      }
+      return timeJoinNode;
     }
 
     @Override
@@ -176,17 +234,17 @@ public class DistributionPlanner {
           // If the child is SeriesScanNode, we need to check whether this node should be seperated
           // into several splits.
           SeriesScanNode handle = (SeriesScanNode) child;
-          List<RegionReplicaSet> dataDistribution =
+          List<TRegionReplicaSet> dataDistribution =
               analysis.getPartitionInfo(handle.getSeriesPath(), handle.getTimeFilter());
           // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
           // SeriesScanNode.
-          for (RegionReplicaSet dataRegion : dataDistribution) {
+          for (TRegionReplicaSet dataRegion : dataDistribution) {
             SeriesScanNode split = (SeriesScanNode) handle.clone();
             split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
             split.setRegionReplicaSet(dataRegion);
             sources.add(split);
           }
-        } else if (child instanceof SeriesAggregateScanNode) {
+        } else if (child instanceof SeriesAggregationScanNode) {
           // TODO: (xingtanzjr) We should do the same thing for SeriesAggregateScanNode. Consider to
           // make SeriesAggregateScanNode
           // and SeriesScanNode to derived from the same parent Class because they have similar
@@ -200,23 +258,29 @@ public class DistributionPlanner {
       }
 
       // Step 2: For the source nodes, group them by the DataRegion.
-      Map<RegionReplicaSet, List<SeriesScanNode>> sourceGroup =
+      Map<TRegionReplicaSet, List<SeriesScanNode>> sourceGroup =
           sources.stream().collect(Collectors.groupingBy(SeriesScanNode::getRegionReplicaSet));
       // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
       // and make the
       // new TimeJoinNode as the child of current TimeJoinNode
       // TODO: (xingtanzjr) optimize the procedure here to remove duplicated TimeJoinNode
+      final boolean[] addParent = {false};
       sourceGroup.forEach(
           (dataRegion, seriesScanNodes) -> {
             if (seriesScanNodes.size() == 1) {
               root.addChild(seriesScanNodes.get(0));
             } else {
-              // We clone a TimeJoinNode from root to make the params to be consistent.
-              // But we need to assign a new ID to it
-              TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
-              root.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-              seriesScanNodes.forEach(parentOfGroup::addChild);
-              root.addChild(parentOfGroup);
+              if (!addParent[0]) {
+                seriesScanNodes.forEach(root::addChild);
+                addParent[0] = true;
+              } else {
+                // We clone a TimeJoinNode from root to make the params to be consistent.
+                // But we need to assign a new ID to it
+                TimeJoinNode parentOfGroup = (TimeJoinNode) root.clone();
+                root.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+                seriesScanNodes.forEach(parentOfGroup::addChild);
+                root.addChild(parentOfGroup);
+              }
             }
           });
 
@@ -239,6 +303,10 @@ public class DistributionPlanner {
   private class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
     @Override
     public PlanNode visitPlan(PlanNode node, NodeGroupContext context) {
+      // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
+      if (node instanceof WritePlanNode) {
+        return node;
+      }
       // Visit all the children of current node
       List<PlanNode> children =
           node.getChildren().stream()
@@ -259,7 +327,12 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaMerge(SchemaMergeNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaMerge(SeriesSchemaMergeNode node, NodeGroupContext context) {
+      return internalVisitSchemaMerge(node, context);
+    }
+
+    private PlanNode internalVisitSchemaMerge(
+        AbstractSchemaMergeNode node, NodeGroupContext context) {
       node.getChildren()
           .forEach(
               child -> {
@@ -287,11 +360,21 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitMetaScan(SchemaScanNode node, NodeGroupContext context) {
+    public PlanNode visitCountMerge(CountSchemaMergeNode node, NodeGroupContext context) {
+      return internalVisitSchemaMerge(node, context);
+    }
+
+    @Override
+    public PlanNode visitSchemaScan(SchemaScanNode node, NodeGroupContext context) {
       NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
       nodeDistribution.region = node.getRegionReplicaSet();
       context.putNodeDistribution(node.getPlanNodeId(), nodeDistribution);
       return node;
+    }
+
+    @Override
+    public PlanNode visitSchemaFetch(SchemaFetchNode node, NodeGroupContext context) {
+      return visitSchemaScan(node, context);
     }
 
     @Override
@@ -303,7 +386,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSeriesAggregate(SeriesAggregateScanNode node, NodeGroupContext context) {
+    public PlanNode visitSeriesAggregate(SeriesAggregationScanNode node, NodeGroupContext context) {
       context.putNodeDistribution(
           node.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
@@ -320,7 +403,7 @@ public class DistributionPlanner {
                 visitedChildren.add(visit(child, context));
               });
 
-      RegionReplicaSet dataRegion = calculateDataRegionByChildren(visitedChildren, context);
+      TRegionReplicaSet dataRegion = calculateDataRegionByChildren(visitedChildren, context);
       NodeDistributionType distributionType =
           nodeDistributionIsSame(visitedChildren, context)
               ? NodeDistributionType.SAME_WITH_ALL_CHILDREN
@@ -350,14 +433,20 @@ public class DistributionPlanner {
       return newNode;
     }
 
-    private RegionReplicaSet calculateDataRegionByChildren(
+    private TRegionReplicaSet calculateDataRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
-      // We always make the dataRegion of TimeJoinNode to be the same as its first child.
-      // TODO: (xingtanzjr) We need to implement more suitable policies here
-      return context.getNodeDistribution(children.get(0).getPlanNodeId()).region;
+      // Step 1: calculate the count of children group by DataRegion.
+      Map<TRegionReplicaSet, Long> groupByRegion =
+          children.stream()
+              .collect(
+                  Collectors.groupingBy(
+                      child -> context.getNodeDistribution(child.getPlanNodeId()).region,
+                      Collectors.counting()));
+      // Step 2: return the RegionReplicaSet with max count
+      return Collections.max(groupByRegion.entrySet(), Map.Entry.comparingByValue()).getKey();
     }
 
-    private RegionReplicaSet calculateSchemaRegionByChildren(
+    private TRegionReplicaSet calculateSchemaRegionByChildren(
         List<PlanNode> children, NodeGroupContext context) {
       // We always make the schemaRegion of MetaMergeNode to be the same as its first child.
       return context.getNodeDistribution(children.get(0).getPlanNodeId()).region;
@@ -407,9 +496,9 @@ public class DistributionPlanner {
 
   private class NodeDistribution {
     private NodeDistributionType type;
-    private RegionReplicaSet region;
+    private TRegionReplicaSet region;
 
-    private NodeDistribution(NodeDistributionType type, RegionReplicaSet region) {
+    private NodeDistribution(NodeDistributionType type, TRegionReplicaSet region) {
       this.type = type;
       this.region = region;
     }
@@ -433,12 +522,17 @@ public class DistributionPlanner {
     }
 
     private void splitToSubPlan(PlanNode root, SubPlan subPlan) {
+      // TODO: (xingtanzjr) we apply no action for IWritePlanNode currently
+      if (root instanceof WritePlanNode) {
+        return;
+      }
       if (root instanceof ExchangeNode) {
         // We add a FragmentSinkNode for newly created PlanFragment
         ExchangeNode exchangeNode = (ExchangeNode) root;
         FragmentSinkNode sinkNode = new FragmentSinkNode(context.getQueryId().genPlanNodeId());
         sinkNode.setChild(exchangeNode.getChild());
         sinkNode.setDownStreamPlanNodeId(exchangeNode.getPlanNodeId());
+
         // Record the source node info in the ExchangeNode so that we can keep the connection of
         // these nodes/fragments
         exchangeNode.setRemoteSourceNode(sinkNode);

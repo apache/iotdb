@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -502,5 +503,13 @@ public class MTreeAboveSG {
     } catch (IllegalPathException e) {
       throw new IllegalPathException(pathPattern.getFullPath());
     }
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    // TODO: @yukun serialize MTreeAboveSG to ByteBuffer
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    // TODO: @yukun deserialize MTreeAboveSG from ByteBuffer
   }
 }

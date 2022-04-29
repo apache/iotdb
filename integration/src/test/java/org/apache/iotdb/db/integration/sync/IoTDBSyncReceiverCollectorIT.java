@@ -131,7 +131,7 @@ public class IoTDBSyncReceiverCollectorIT {
     outputStream.writeLong(-1);
     outputStream.close();
     int serialNum = 0;
-    File pipeLog1 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum));
+    File pipeLog1 = new File(pipeLogDir1.getPath(), SyncPathUtil.getPipeLogName(serialNum));
     DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
     List<PhysicalPlan> planList = new ArrayList<>();
     planList.add(new SetStorageGroupPlan(new PartialPath("root.vehicle")));
@@ -182,7 +182,7 @@ public class IoTDBSyncReceiverCollectorIT {
       pipeData.serialize(pipeLogOutput);
     }
     pipeLogOutput.close();
-    File pipeLog2 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum));
+    File pipeLog2 = new File(pipeLogDir1.getPath(), SyncPathUtil.getPipeLogName(serialNum));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog2, false));
     List<File> tsFiles = SyncTestUtil.getTsFilePaths(tmpDir);
     for (File f : tsFiles) {
@@ -303,7 +303,7 @@ public class IoTDBSyncReceiverCollectorIT {
     outputStream.writeLong(-1);
     outputStream.close();
     int serialNum1 = 0;
-    File pipeLog1 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum1));
+    File pipeLog1 = new File(pipeLogDir1.getPath(), SyncPathUtil.getPipeLogName(serialNum1));
     DataOutputStream pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
     List<PhysicalPlan> planList = new ArrayList<>();
     planList.add(new SetStorageGroupPlan(new PartialPath("root.vehicle")));
@@ -328,7 +328,7 @@ public class IoTDBSyncReceiverCollectorIT {
       pipeData.serialize(pipeLogOutput);
     }
     pipeLogOutput.close();
-    File pipeLog2 = new File(pipeLogDir1.getPath(), SyncConstant.getPipeLogName(serialNum1));
+    File pipeLog2 = new File(pipeLogDir1.getPath(), SyncPathUtil.getPipeLogName(serialNum1));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog2, false));
     List<File> tsFiles =
         SyncTestUtil.getTsFilePaths(new File(tmpDir, "sequence" + File.separator + "root.vehicle"));
@@ -355,7 +355,7 @@ public class IoTDBSyncReceiverCollectorIT {
             new FileOutputStream(new File(pipeLogDir2, SyncConstant.COMMIT_LOG_NAME), true));
     outputStream.writeLong(-1);
     outputStream.close();
-    pipeLog1 = new File(pipeLogDir2.getPath(), SyncConstant.getPipeLogName(serialNum2));
+    pipeLog1 = new File(pipeLogDir2.getPath(), SyncPathUtil.getPipeLogName(serialNum2));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog1, false));
     pipeData =
         new SchemaPipeData(new SetStorageGroupPlan(new PartialPath("root.sg1")), serialNum2++);
@@ -389,7 +389,7 @@ public class IoTDBSyncReceiverCollectorIT {
             serialNum2++);
     pipeData.serialize(pipeLogOutput);
     pipeLogOutput.close();
-    pipeLog2 = new File(pipeLogDir2.getPath(), SyncConstant.getPipeLogName(serialNum2));
+    pipeLog2 = new File(pipeLogDir2.getPath(), SyncPathUtil.getPipeLogName(serialNum2));
     pipeLogOutput = new DataOutputStream(new FileOutputStream(pipeLog2, false));
     tsFiles =
         SyncTestUtil.getTsFilePaths(new File(tmpDir, "sequence" + File.separator + "root.sg1"));

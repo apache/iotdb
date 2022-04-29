@@ -18,14 +18,12 @@
  */
 package org.apache.iotdb.influxdb.protocol.dto;
 
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.session.Session;
 
-import org.influxdb.InfluxDBException;
-
 public class SessionPoint {
-  private final String host;
-  private final int rpcPort;
+  private String host;
+  private int rpcPort;
   private final String username;
   private final String password;
 
@@ -37,8 +35,6 @@ public class SessionPoint {
   }
 
   public SessionPoint(Session session) {
-
-    InfluxEndPoint endPoint = null;
     String username = null;
     String password = null;
 
@@ -49,9 +45,10 @@ public class SessionPoint {
         if (reflectField
                 .getType()
                 .getName()
-                .equalsIgnoreCase("org.apache.iotdb.service.rpc.thrift.EndPoint")
+                .equalsIgnoreCase("org.apache.iotdb.common.rpc.thrift.TEndPoint")
             && reflectField.getName().equalsIgnoreCase("defaultEndPoint")) {
-          endPoint = (InfluxEndPoint) reflectField.get(session);
+          this.rpcPort = ((TEndPoint) reflectField.get(session)).port;
+          this.host = ((TEndPoint) reflectField.get(session)).ip;
         }
         if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
             && reflectField.getName().equalsIgnoreCase("username")) {
@@ -65,12 +62,7 @@ public class SessionPoint {
         throw new IllegalArgumentException(e.getMessage());
       }
     }
-    if (endPoint == null) {
-      throw new InfluxDBException("session's ip and port is null");
-    }
 
-    this.host = endPoint.ip;
-    this.rpcPort = endPoint.port;
     this.username = username;
     this.password = password;
   }
