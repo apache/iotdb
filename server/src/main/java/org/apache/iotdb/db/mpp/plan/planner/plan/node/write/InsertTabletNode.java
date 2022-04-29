@@ -167,9 +167,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public boolean validateSchema(SchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo;
     try {
-      deviceSchemaInfo =
-              schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    }catch (PathNotExistException e){
+      deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    } catch (PathNotExistException e) {
       return false;
     }
 

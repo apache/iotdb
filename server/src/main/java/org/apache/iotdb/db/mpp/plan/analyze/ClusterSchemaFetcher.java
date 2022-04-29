@@ -123,7 +123,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     SchemaTree schemaTree = fetchSchema(new PathPatternTree(devicePath, measurements));
 
-    if(!config.isAutoCreateSchemaEnabled()){
+    if (!config.isAutoCreateSchemaEnabled()) {
       return schemaTree;
     }
 
@@ -188,9 +188,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       TSDataType[] tsDataTypes) {
     DeviceSchemaInfo deviceSchemaInfo = null;
     try {
-      deviceSchemaInfo =
-              schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    }catch (PathNotExistException e){
+      deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    } catch (PathNotExistException e) {
       return new Pair<>(Arrays.asList(measurements), Arrays.asList(tsDataTypes));
     }
 
@@ -254,10 +253,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     try {
       int statusCode = executionResult.status.getCode();
       if (statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              || statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-        throw new RuntimeException("cannot auto create schema, status is: " + executionResult.status);
+          && statusCode != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+        throw new RuntimeException(
+            "cannot auto create schema, status is: " + executionResult.status);
       }
-    }finally {
+    } finally {
       coordinator.getQueryExecution(queryId).stopAndCleanup();
     }
   }
@@ -276,7 +276,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     SchemaTree schemaTree = fetchSchema(patternTree);
 
-    if(!config.isAutoCreateSchemaEnabled()){
+    if (!config.isAutoCreateSchemaEnabled()) {
       return schemaTree;
     }
 

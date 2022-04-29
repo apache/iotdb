@@ -198,10 +198,10 @@ public abstract class InsertNode extends WritePlanNode {
   public void setMeasurementSchemas(SchemaTree schemaTree) {
     try {
       DeviceSchemaInfo deviceSchemaInfo =
-              schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+          schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
       measurementSchemas =
-              deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
-    }catch (PathNotExistException e){
+          deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
+    } catch (PathNotExistException e) {
       throw new RuntimeException(e);
     }
   }

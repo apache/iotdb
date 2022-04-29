@@ -82,13 +82,13 @@ public class SchemaTree {
     return visitor.getAllResult();
   }
 
-  public DeviceSchemaInfo searchDeviceSchemaInfo(
-      PartialPath devicePath, List<String> measurements) throws PathNotExistException{
+  public DeviceSchemaInfo searchDeviceSchemaInfo(PartialPath devicePath, List<String> measurements)
+      throws PathNotExistException {
 
     String[] nodes = devicePath.getNodes();
     SchemaNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
-      if(cur == null){
+      if (cur == null) {
         throw new PathNotExistException(devicePath.getFullPath());
       }
       cur = cur.getChild(nodes[i]);
