@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesAggregateScanOperator;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.sql.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
@@ -60,8 +61,8 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaScanNod
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
@@ -72,15 +73,18 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -102,10 +106,11 @@ public class LocalExecutionPlanner {
 
   public DataDriver plan(
       PlanNode plan,
+      TypeProvider types,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
       DataRegion dataRegion) {
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
+    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
 
     Operator root = plan.accept(new Visitor(), context);
 
@@ -294,14 +299,14 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitSeriesAggregate(
-        SeriesAggregateScanNode node, LocalExecutionPlanContext context) {
+        SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
       PartialPath seriesPath = node.getSeriesPath();
       boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SeriesAggregateScanNode.class.getSimpleName());
+              SeriesAggregationScanNode.class.getSimpleName());
 
       SeriesAggregateScanOperator aggregateScanOperator =
           new SeriesAggregateScanOperator(
@@ -321,8 +326,8 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitDeviceMerge(DeviceMergeNode node, LocalExecutionPlanContext context) {
-      return super.visitDeviceMerge(node, context);
+    public Operator visitDeviceView(DeviceViewNode node, LocalExecutionPlanContext context) {
+      return super.visitDeviceView(node, context);
     }
 
     @Override
@@ -332,10 +337,6 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
-      PlanNode child = node.getChild();
-
-      IExpression filterExpression = node.getPredicate();
-      List<String> outputSymbols = node.getOutputColumnNames();
       return super.visitFilter(node, context);
     }
 
@@ -368,7 +369,7 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitRowBasedSeriesAggregate(
-        AggregateNode node, LocalExecutionPlanContext context) {
+        AggregationNode node, LocalExecutionPlanContext context) {
       return super.visitRowBasedSeriesAggregate(node, context);
     }
 
@@ -388,10 +389,17 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               TimeJoinOperator.class.getSimpleName());
-      List<OutputColumn> outputColumns = node.getOutputColumns();
+      List<OutputColumn> outputColumns = generateOutputColumns(node);
       List<ColumnMerger> mergers = createColumnMergers(outputColumns);
+      List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
       return new TimeJoinOperator(
-          operatorContext, children, node.getMergeOrder(), node.getOutputColumnTypes(), mergers);
+          operatorContext, children, node.getMergeOrder(), outputColumnTypes, mergers);
+    }
+
+    private List<OutputColumn> generateOutputColumns(TimeJoinNode node) {
+      return makeLayout(node).values().stream()
+          .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))
+          .collect(Collectors.toList());
     }
 
     private List<ColumnMerger> createColumnMergers(List<OutputColumn> outputColumns) {
@@ -465,6 +473,28 @@ public class LocalExecutionPlanner {
           node.getPatternTree(),
           ((SchemaDriverContext) (context.instanceContext.getDriverContext())).getSchemaRegion());
     }
+
+    private Map<String, List<InputLocation>> makeLayout(PlanNode node) {
+      Map<String, List<InputLocation>> outputMappings = new LinkedHashMap<>();
+      int tsBlockIndex = 0;
+      for (PlanNode childNode : node.getChildren()) {
+        int valueColumnIndex = 0;
+        for (String columnName : childNode.getOutputColumnNames()) {
+          outputMappings
+              .computeIfAbsent(columnName, key -> new ArrayList<>())
+              .add(new InputLocation(tsBlockIndex, valueColumnIndex));
+          valueColumnIndex++;
+        }
+        tsBlockIndex++;
+      }
+      return outputMappings;
+    }
+
+    private List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+      return node.getOutputColumnNames().stream()
+          .map(typeProvider::getType)
+          .collect(Collectors.toList());
+    }
   }
 
   private static class InstanceHolder {
@@ -482,6 +512,16 @@ public class LocalExecutionPlanner {
     private ISinkHandle sinkHandle;
 
     private int nextOperatorId = 0;
+
+    private TypeProvider typeProvider;
+
+    public LocalExecutionPlanContext(
+        TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
+      this.typeProvider = typeProvider;
+      this.instanceContext = instanceContext;
+      this.paths = new ArrayList<>();
+      this.sourceOperators = new ArrayList<>();
+    }
 
     public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
       this.instanceContext = instanceContext;
@@ -518,6 +558,10 @@ public class LocalExecutionPlanner {
       checkArgument(this.sinkHandle == null, "There must be at most one SinkNode");
 
       this.sinkHandle = sinkHandle;
+    }
+
+    public TypeProvider getTypeProvider() {
+      return typeProvider;
     }
   }
 }

@@ -69,7 +69,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private static final List<String> ROOT_PATH = Arrays.asList("root", "**");
   private final ConfigNodeClient client;
 
-  private SeriesPartitionExecutor partitionExecutor;
+  private final SeriesPartitionExecutor partitionExecutor;
 
   private PartitionCache partitionCache;
 
@@ -102,7 +102,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.findAllDevicePaths();
-      Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths);
+      Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths, false);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(deviceToStorageGroupMap);
       if (null == schemaPartition) {
         TSchemaPartitionResp schemaPartitionResp =
@@ -125,7 +125,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     try {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.findAllDevicePaths();
-      Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths);
+      Map<String, String> deviceToStorageGroupMap = getDeviceToStorageGroup(devicePaths, true);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(deviceToStorageGroupMap);
       if (null == schemaPartition) {
         TSchemaPartitionResp schemaPartitionResp =
@@ -163,7 +163,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   public DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams) {
     try {
       Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-          splitDataPartitionQueryParam(dataPartitionQueryParams);
+          splitDataPartitionQueryParam(dataPartitionQueryParams, false);
       DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
       if (null == dataPartition) {
         TDataPartitionResp dataPartitionResp =
@@ -203,7 +203,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
     try {
       Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParams =
-          splitDataPartitionQueryParam(dataPartitionQueryParams);
+          splitDataPartitionQueryParam(dataPartitionQueryParams, true);
       DataPartition dataPartition = partitionCache.getDataPartition(splitDataPartitionQueryParams);
       if (null == dataPartition) {
         TDataPartitionResp dataPartitionResp =
@@ -223,7 +223,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   /** get deviceToStorageGroup map */
-  private Map<String, String> getDeviceToStorageGroup(List<String> devicePaths) {
+  private Map<String, String> getDeviceToStorageGroup(
+      List<String> devicePaths, boolean isAutoCreate) {
     Map<String, String> deviceToStorageGroup = new HashMap<>();
     // miss when devicePath contains *
     for (String devicePath : devicePaths) {
@@ -232,7 +233,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       }
     }
     // first try to hit cache
-    if (!partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup)) {
+    boolean firstTryResult = partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup);
+    if (!firstTryResult) {
       List<String> storageGroupPathPattern = ROOT_PATH;
       try {
         TStorageGroupSchemaResp storageGroupSchemaResp =
@@ -245,7 +247,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           partitionCache.updateStorageCache(storageGroupNames);
           // second try to hit cache
           deviceToStorageGroup = new HashMap<>();
-          if (!partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup)) {
+          boolean secondTryResult =
+              partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup);
+          if (!secondTryResult && isAutoCreate) {
             // try to auto create storage group
             Set<String> storageGroupNamesNeedCreated = new HashSet<>();
             for (String devicePath : devicePaths) {
@@ -265,7 +269,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             partitionCache.updateStorageCache(storageGroupNamesNeedCreated);
             // third try to hit cache
             deviceToStorageGroup = new HashMap<>();
-            if (!partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup)) {
+            boolean thirdTryResult =
+                partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup);
+            if (!thirdTryResult) {
               throw new StatementAnalyzeException(
                   "Failed to get Storage Group Map when executing getOrCreateDataPartition()");
             }
@@ -281,20 +287,23 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   /** split data partition query param by storage group */
   private Map<String, List<DataPartitionQueryParam>> splitDataPartitionQueryParam(
-      List<DataPartitionQueryParam> dataPartitionQueryParams) {
+      List<DataPartitionQueryParam> dataPartitionQueryParams, boolean isAutoCreate) {
     List<String> devicePaths = new ArrayList<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       devicePaths.add(dataPartitionQueryParam.getDevicePath());
     }
-    Map<String, String> deviceToStorageGroup = getDeviceToStorageGroup(devicePaths);
+    Map<String, String> deviceToStorageGroup = getDeviceToStorageGroup(devicePaths, isAutoCreate);
 
     Map<String, List<DataPartitionQueryParam>> result = new HashMap<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
-      String storageGroup = deviceToStorageGroup.get(dataPartitionQueryParam.getDevicePath());
-      if (!result.containsKey(storageGroup)) {
-        result.put(storageGroup, new ArrayList<>());
+      String devicePath = dataPartitionQueryParam.getDevicePath();
+      if (deviceToStorageGroup.containsKey(devicePath)) {
+        String storageGroup = deviceToStorageGroup.get(devicePath);
+        if (!result.containsKey(storageGroup)) {
+          result.put(storageGroup, new ArrayList<>());
+        }
+        result.get(storageGroup).add(dataPartitionQueryParam);
       }
-      result.get(storageGroup).add(dataPartitionQueryParam);
     }
     return result;
   }
@@ -335,59 +344,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private SchemaPartition parseSchemaPartitionResp(TSchemaPartitionResp schemaPartitionResp) {
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap = new HashMap<>();
-    for (Map.Entry<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> sgEntry :
-        schemaPartitionResp.getSchemaRegionMap().entrySet()) {
-      // for each sg
-      String storageGroupName = sgEntry.getKey();
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> deviceToSchemaRegionMap = new HashMap<>();
-      for (Map.Entry<TSeriesPartitionSlot, TRegionReplicaSet> deviceEntry :
-          sgEntry.getValue().entrySet()) {
-        deviceToSchemaRegionMap.put(
-            new TSeriesPartitionSlot(deviceEntry.getKey().getSlotId()),
-            new TRegionReplicaSet(deviceEntry.getValue()));
-      }
-      schemaPartitionMap.put(storageGroupName, deviceToSchemaRegionMap);
-    }
     return new SchemaPartition(
-        schemaPartitionMap,
-        config.getSeriesPartitionExecutorClass(),
-        config.getSeriesPartitionSlotNum());
+        schemaPartitionResp.getSchemaRegionMap(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+        IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
   }
 
   private DataPartition parseDataPartitionResp(TDataPartitionResp dataPartitionResp) {
-    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        dataPartitionMap = new HashMap<>();
-    for (Map.Entry<
-            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        sgEntry : dataPartitionResp.getDataPartitionMap().entrySet()) {
-      // for each sg
-      String storageGroupName = sgEntry.getKey();
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-          respDeviceToRegionsMap = sgEntry.getValue();
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-          deviceToRegionsMap = new HashMap<>();
-      for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-          deviceEntry : respDeviceToRegionsMap.entrySet()) {
-        // for each device
-        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionToRegionsMap =
-            new HashMap<>();
-        for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionEntry :
-            deviceEntry.getValue().entrySet()) {
-          // for each time partition
-          timePartitionToRegionsMap.put(
-              new TTimePartitionSlot(timePartitionEntry.getKey().getStartTime()),
-              timePartitionEntry.getValue().stream()
-                  .map(TRegionReplicaSet::new)
-                  .collect(Collectors.toList()));
-        }
-        deviceToRegionsMap.put(
-            new TSeriesPartitionSlot(deviceEntry.getKey().getSlotId()), timePartitionToRegionsMap);
-      }
-      dataPartitionMap.put(storageGroupName, deviceToRegionsMap);
-    }
     return new DataPartition(
-        dataPartitionMap,
+        dataPartitionResp.getDataPartitionMap(),
         config.getSeriesPartitionExecutorClass(),
         config.getSeriesPartitionSlotNum());
   }
@@ -546,27 +511,31 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           schemaPartition.getSchemaPartitionMap();
       Set<String> storageGroupNames = storageGroupPartitionMap.keySet();
       for (String device : devices) {
-        String storageGroup = null;
-        for (String storageGroupName : storageGroupNames) {
-          if (device.startsWith(storageGroupName)) {
-            storageGroup = storageGroupName;
-            break;
+        if (!device.contains("*")) {
+          String storageGroup = null;
+          for (String storageGroupName : storageGroupNames) {
+            if (device.startsWith(storageGroupName)) {
+              storageGroup = storageGroupName;
+              break;
+            }
           }
+          if (null == storageGroup) {
+            logger.error(
+                "Failed to get the storage group of {} when update SchemaPartitionCache", device);
+            continue;
+          }
+          TSeriesPartitionSlot seriesPartitionSlot =
+              partitionExecutor.getSeriesPartitionSlot(device);
+          TRegionReplicaSet regionReplicaSet =
+              storageGroupPartitionMap.get(storageGroup).getOrDefault(seriesPartitionSlot, null);
+          if (null == regionReplicaSet) {
+            logger.error(
+                "Failed to get the regionReplicaSet of {} when update SchemaPartitionCache",
+                device);
+            continue;
+          }
+          schemaPartitionCache.put(device, regionReplicaSet);
         }
-        if (null == storageGroup) {
-          logger.error(
-              "Failed to get the storage group of {} when update SchemaPartitionCache", device);
-          continue;
-        }
-        TSeriesPartitionSlot seriesPartitionSlot = partitionExecutor.getSeriesPartitionSlot(device);
-        TRegionReplicaSet regionReplicaSet =
-            storageGroupPartitionMap.get(storageGroup).getOrDefault(seriesPartitionSlot, null);
-        if (null == regionReplicaSet) {
-          logger.error(
-              "Failed to get the regionReplicaSet of {} when update SchemaPartitionCache", device);
-          continue;
-        }
-        schemaPartitionCache.put(device, regionReplicaSet);
       }
     }
 
@@ -575,7 +544,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       for (Map.Entry<
               String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           entry1 : dataPartition.getDataPartitionMap().entrySet()) {
-        String storageGroup = entry1.getKey();
         for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
             entry2 : entry1.getValue().entrySet()) {
           TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -51,7 +52,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Random;
 
 public class ConfigNodeClient {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
@@ -70,6 +70,8 @@ public class ConfigNodeClient {
   private TEndPoint configLeader;
 
   private List<TEndPoint> configNodes;
+
+  private int cursor = 0;
 
   public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
     // Read config nodes from configuration
@@ -123,21 +125,14 @@ public class ConfigNodeClient {
       }
     }
 
-    Random random = new Random();
     if (transport != null) {
       transport.close();
     }
-    int currHostIndex = random.nextInt(configNodes.size());
-    int tryHostNum = 0;
-    for (int j = currHostIndex; j < configNodes.size(); j++) {
-      if (tryHostNum == configNodes.size()) {
-        break;
-      }
-      TEndPoint tryEndpoint = configNodes.get(j);
-      if (j == configNodes.size() - 1) {
-        j = -1;
-      }
-      tryHostNum++;
+
+    for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
+      cursor = (cursor + 1) % configNodes.size();
+      TEndPoint tryEndpoint = configNodes.get(cursor);
+
       try {
         connect(tryEndpoint);
         return;
@@ -145,6 +140,7 @@ public class ConfigNodeClient {
         logger.warn("The current node may have been down {},try next node", tryEndpoint);
       }
     }
+
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
@@ -219,6 +215,22 @@ public class ConfigNodeClient {
         TSStatus status = client.deleteStorageGroup(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+  }
+
+  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern)
+      throws IoTDBConnectionException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
         }
       } catch (TException e) {
         configLeader = null;
