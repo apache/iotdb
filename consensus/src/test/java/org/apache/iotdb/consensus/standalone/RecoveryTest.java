@@ -48,7 +48,7 @@ public class RecoveryTest {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
                 STANDALONE_CONSENSUS_CLASS_NAME,
-                new TEndPoint("localhost", 6667),
+                new TEndPoint("localhost", 9000),
                 new File("./target/recovery"),
                 gid -> new EmptyStateMachine())
             .orElseThrow(
@@ -74,7 +74,7 @@ public class RecoveryTest {
   public void recoveryTest() throws Exception {
     consensusImpl.addConsensusGroup(
         schemaRegionId,
-        Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 6667))));
+        Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 9000))));
 
     consensusImpl.stop();
     consensusImpl = null;
@@ -84,7 +84,7 @@ public class RecoveryTest {
     ConsensusGenericResponse response =
         consensusImpl.addConsensusGroup(
             schemaRegionId,
-            Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 6667))));
+            Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 9000))));
 
     Assert.assertEquals(
         response.getException().getMessage(),
