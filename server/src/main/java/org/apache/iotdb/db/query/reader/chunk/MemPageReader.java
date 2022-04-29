@@ -66,10 +66,8 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public TsBlock getAllSatisfiedData(boolean ascending) throws IOException {
+  public TsBlock getAllSatisfiedData() throws IOException {
     TSDataType dataType = chunkMetadata.getDataType();
-    // TODO we still need to consider data type, ascending and descending here
-
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);

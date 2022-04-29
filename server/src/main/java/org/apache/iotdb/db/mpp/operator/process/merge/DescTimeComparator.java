@@ -16,28 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.reader;
+package org.apache.iotdb.db.mpp.operator.process.merge;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+public class DescTimeComparator implements TimeComparator {
 
-import java.io.IOException;
-
-public interface IPageReader {
-
-  default BatchData getAllSatisfiedPageData() throws IOException {
-    return getAllSatisfiedPageData(true);
+  /** @return if order by time desc, return true if time >= endTime, otherwise false */
+  @Override
+  public boolean satisfy(long time, long endTime) {
+    return time >= endTime;
   }
 
-  BatchData getAllSatisfiedPageData(boolean ascending) throws IOException;
-
-  TsBlock getAllSatisfiedData() throws IOException;
-
-  Statistics getStatistics();
-
-  void setFilter(Filter filter);
-
-  boolean isModified();
+  @Override
+  public long getSatisfiedTime(long time1, long time2) {
+    return Math.max(time1, time2);
+  }
 }

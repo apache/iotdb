@@ -35,8 +35,11 @@ import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.operator.process.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.operator.process.merge.ColumnMerger;
+import org.apache.iotdb.db.mpp.operator.process.merge.DescTimeComparator;
 import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
+import org.apache.iotdb.db.mpp.operator.process.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.operator.schema.DevicesSchemaScanOperator;
@@ -99,6 +102,10 @@ public class LocalExecutionPlanner {
 
   private static final DataBlockManager DATA_BLOCK_MANAGER =
       DataBlockService.getInstance().getDataBlockManager();
+
+  private static final TimeComparator ASC_TIME_COMPARATOR = new AscTimeComparator();
+
+  private static final TimeComparator DESC_TIME_COMPARATOR = new DescTimeComparator();
 
   public static LocalExecutionPlanner getInstance() {
     return InstanceHolder.INSTANCE;
@@ -389,11 +396,20 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               TimeJoinOperator.class.getSimpleName());
+      TimeComparator timeComparator =
+          node.getMergeOrder() == OrderBy.TIMESTAMP_ASC
+              ? ASC_TIME_COMPARATOR
+              : DESC_TIME_COMPARATOR;
       List<OutputColumn> outputColumns = generateOutputColumns(node);
-      List<ColumnMerger> mergers = createColumnMergers(outputColumns);
+      List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
       List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
       return new TimeJoinOperator(
-          operatorContext, children, node.getMergeOrder(), outputColumnTypes, mergers);
+          operatorContext,
+          children,
+          node.getMergeOrder(),
+          outputColumnTypes,
+          mergers,
+          timeComparator);
     }
 
     private List<OutputColumn> generateOutputColumns(TimeJoinNode node) {
@@ -402,13 +418,14 @@ public class LocalExecutionPlanner {
           .collect(Collectors.toList());
     }
 
-    private List<ColumnMerger> createColumnMergers(List<OutputColumn> outputColumns) {
+    private List<ColumnMerger> createColumnMergers(
+        List<OutputColumn> outputColumns, TimeComparator timeComparator) {
       List<ColumnMerger> mergers = new ArrayList<>(outputColumns.size());
       for (OutputColumn outputColumn : outputColumns) {
         ColumnMerger merger;
         // only has one input column
         if (outputColumn.isSingleInputColumn()) {
-          merger = new SingleColumnMerger(outputColumn.getInputLocation(0), OrderBy.TIMESTAMP_ASC);
+          merger = new SingleColumnMerger(outputColumn.getInputLocation(0), timeComparator);
         } else if (!outputColumn.isOverlapped()) {
           // has more than one input columns but time of these input columns is not overlapped
           throw new UnsupportedOperationException(

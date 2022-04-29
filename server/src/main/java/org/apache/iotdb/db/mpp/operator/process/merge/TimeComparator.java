@@ -16,28 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.reader;
+package org.apache.iotdb.db.mpp.operator.process.merge;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+public interface TimeComparator {
 
-import java.io.IOException;
+  /** @return true if time is satisfied with endTime, otherwise false */
+  boolean satisfy(long time, long endTime);
 
-public interface IPageReader {
-
-  default BatchData getAllSatisfiedPageData() throws IOException {
-    return getAllSatisfiedPageData(true);
-  }
-
-  BatchData getAllSatisfiedPageData(boolean ascending) throws IOException;
-
-  TsBlock getAllSatisfiedData() throws IOException;
-
-  Statistics getStatistics();
-
-  void setFilter(Filter filter);
-
-  boolean isModified();
+  /** @return min(time1, time2) if order by time asc, max(time1, time2) if order by desc */
+  long getSatisfiedTime(long time1, long time2);
 }
