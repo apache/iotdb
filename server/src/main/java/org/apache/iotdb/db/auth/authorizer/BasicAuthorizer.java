@@ -404,4 +404,20 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
     roleManager.replaceAllRoles(roles);
   }
+
+  public IUserManager getUserManager() {
+    return userManager;
+  }
+
+  public void setUserManager(IUserManager userManager) {
+    this.userManager = userManager;
+  }
+
+  public IRoleManager getRoleManager() {
+    return roleManager;
+  }
+
+  public void setRoleManager(IRoleManager roleManager) {
+    this.roleManager = roleManager;
+  }
 }
