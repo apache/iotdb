@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.protocol.influxdb.function;
 
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 
 import java.util.List;
 

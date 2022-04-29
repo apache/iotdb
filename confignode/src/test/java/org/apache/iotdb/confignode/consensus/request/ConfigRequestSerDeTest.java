@@ -26,13 +26,18 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -110,6 +115,15 @@ public class ConfigRequestSerDeTest {
   }
 
   @Test
+  public void DeleteStorageGroupReqTest() throws IOException {
+    DeleteStorageGroupReq req0 = new DeleteStorageGroupReq("root.sg0");
+    req0.serialize(buffer);
+    buffer.flip();
+    DeleteStorageGroupReq req1 = (DeleteStorageGroupReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
   public void SetTTLReqTest() throws IOException {
     SetTTLReq req0 = new SetTTLReq("root.sg0", Long.MAX_VALUE);
     req0.serialize(buffer);
@@ -149,14 +163,20 @@ public class ConfigRequestSerDeTest {
   }
 
   @Test
-  public void GetOrCountStorageGroupReqTest() throws IOException {
-    GetOrCountStorageGroupReq req0 =
-        new GetOrCountStorageGroupReq(
-            ConfigRequestType.CountStorageGroup, Arrays.asList("root", "sg"));
+  public void CountStorageGroupReqTest() throws IOException {
+    CountStorageGroupReq req0 = new CountStorageGroupReq(Arrays.asList("root", "sg"));
     req0.serialize(buffer);
     buffer.flip();
-    GetOrCountStorageGroupReq req1 =
-        (GetOrCountStorageGroupReq) ConfigRequest.Factory.create(buffer);
+    CountStorageGroupReq req1 = (CountStorageGroupReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void GetStorageGroupReqTest() throws IOException {
+    GetStorageGroupReq req0 = new GetStorageGroupReq(Arrays.asList("root", "sg"));
+    req0.serialize(buffer);
+    buffer.flip();
+    CountStorageGroupReq req1 = (CountStorageGroupReq) ConfigRequest.Factory.create(buffer);
     Assert.assertEquals(req0, req1);
   }
 
@@ -175,7 +195,6 @@ public class ConfigRequestSerDeTest {
     dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
 
     CreateRegionsReq req0 = new CreateRegionsReq();
-    req0.setStorageGroup("sg");
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
@@ -189,6 +208,18 @@ public class ConfigRequestSerDeTest {
     req0.serialize(buffer);
     buffer.flip();
     CreateRegionsReq req1 = (CreateRegionsReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void DeleteRegionsPlanTest() throws IOException {
+    DeleteRegionsReq req0 = new DeleteRegionsReq();
+    req0.addConsensusGroupId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
+    req0.addConsensusGroupId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+
+    req0.serialize(buffer);
+    buffer.flip();
+    DeleteRegionsReq req1 = (DeleteRegionsReq) ConfigRequest.Factory.create(buffer);
     Assert.assertEquals(req0, req1);
   }
 
@@ -221,6 +252,22 @@ public class ConfigRequestSerDeTest {
   }
 
   @Test
+  public void GetSchemaPartitionPlanTest() throws IOException {
+    String storageGroup = "root.sg0";
+    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
+
+    Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+    partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
+
+    GetSchemaPartitionReq req0 = new GetSchemaPartitionReq();
+    req0.setPartitionSlotsMap(partitionSlotsMap);
+    req0.serialize(buffer);
+    buffer.flip();
+    GetSchemaPartitionReq req1 = (GetSchemaPartitionReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
   public void GetOrCreateSchemaPartitionPlanTest() throws IOException {
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
@@ -228,8 +275,7 @@ public class ConfigRequestSerDeTest {
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
 
-    GetOrCreateSchemaPartitionReq req0 =
-        new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetOrCreateSchemaPartition);
+    GetOrCreateSchemaPartitionReq req0 = new GetOrCreateSchemaPartitionReq();
     req0.setPartitionSlotsMap(partitionSlotsMap);
     req0.serialize(buffer);
     buffer.flip();
@@ -277,6 +323,26 @@ public class ConfigRequestSerDeTest {
   }
 
   @Test
+  public void GetDataPartitionPlanTest() throws IOException {
+    String storageGroup = "root.sg0";
+    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
+    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
+
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap =
+        new HashMap<>();
+    partitionSlotsMap.put(storageGroup, new HashMap<>());
+    partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
+    partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
+
+    GetDataPartitionReq req0 = new GetDataPartitionReq();
+    req0.setPartitionSlotsMap(partitionSlotsMap);
+    req0.serialize(buffer);
+    buffer.flip();
+    GetDataPartitionReq req1 = (GetDataPartitionReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
   public void GetOrCreateDataPartitionPlanTest() throws IOException {
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
@@ -288,8 +354,7 @@ public class ConfigRequestSerDeTest {
     partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
     partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
 
-    GetOrCreateDataPartitionReq req0 =
-        new GetOrCreateDataPartitionReq(ConfigRequestType.GetDataPartition);
+    GetOrCreateDataPartitionReq req0 = new GetOrCreateDataPartitionReq();
     req0.setPartitionSlotsMap(partitionSlotsMap);
     req0.serialize(buffer);
     buffer.flip();

@@ -103,6 +103,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // redirected
     // to another host when scheduling
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
+    fragmentInstance.getFragment().setTypeProvider(analysis.getTypeProvider());
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
   }

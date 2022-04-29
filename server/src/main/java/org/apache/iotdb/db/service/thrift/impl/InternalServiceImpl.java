@@ -37,12 +37,18 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.analyze.SchemaValidator;
+import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
@@ -93,9 +99,22 @@ public class InternalServiceImpl implements InternalService.Iface {
         return new TSendFragmentInstanceResp(!info.getState().isFailed());
       case WRITE:
         TSendFragmentInstanceResp response = new TSendFragmentInstanceResp();
-        ConsensusWriteResponse resp =
-            ConsensusImpl.getInstance()
-                .write(groupId, new ByteBufferConsensusRequest(req.fragmentInstance.body));
+        ConsensusWriteResponse resp;
+
+        FragmentInstance fragmentInstance =
+            FragmentInstance.deserializeFrom(req.fragmentInstance.body);
+        PlanNode planNode = fragmentInstance.getFragment().getRoot();
+        if (planNode instanceof InsertNode) {
+          try {
+            SchemaTree schemaTree = SchemaValidator.validate((InsertNode) planNode);
+            ((InsertNode) planNode).setMeasurementSchemas(schemaTree);
+          } catch (SemanticException e) {
+            response.setAccepted(false);
+            response.setMessage(e.getMessage());
+            return response;
+          }
+        }
+        resp = ConsensusImpl.getInstance().write(groupId, fragmentInstance);
         // TODO need consider more status
         response.setAccepted(
             TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode());
