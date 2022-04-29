@@ -17,64 +17,46 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core.transformer;
+package org.apache.iotdb.db.query.udf.core.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 
 import java.io.IOException;
 
-public class ArithmeticNegationTransformer extends Transformer {
+public abstract class UnaryTransformer extends Transformer {
 
-  private final LayerPointReader layerPointReader;
+  protected final LayerPointReader layerPointReader;
 
-  public ArithmeticNegationTransformer(LayerPointReader layerPointReader) {
+  public UnaryTransformer(LayerPointReader layerPointReader) {
     this.layerPointReader = layerPointReader;
   }
 
   @Override
-  public boolean isConstantPointReader() {
+  public final boolean isConstantPointReader() {
     return layerPointReader.isConstantPointReader();
   }
 
   @Override
-  protected boolean cacheValue() throws QueryProcessException, IOException {
+  protected final boolean cacheValue() throws QueryProcessException, IOException {
     if (!layerPointReader.next()) {
       return false;
     }
-    // Constant doesn't have currentTime(), it will be determined by the other part in
-    // BinaryTransformer
+
     if (!isConstantPointReader()) {
       cachedTime = layerPointReader.currentTime();
     }
+
     if (layerPointReader.isCurrentNull()) {
       currentNull = true;
     } else {
-      switch (layerPointReader.getDataType()) {
-        case INT32:
-          cachedInt = -layerPointReader.currentInt();
-          break;
-        case INT64:
-          cachedLong = -layerPointReader.currentLong();
-          break;
-        case FLOAT:
-          cachedFloat = -layerPointReader.currentFloat();
-          break;
-        case DOUBLE:
-          cachedDouble = -layerPointReader.currentDouble();
-          break;
-        default:
-          throw new QueryProcessException(
-              "Unsupported data type: " + layerPointReader.getDataType().toString());
-      }
+      transformAndCache();
     }
+
     layerPointReader.readyForNext();
     return true;
   }
 
-  @Override
-  public TSDataType getDataType() {
-    return layerPointReader.getDataType();
-  }
+  protected abstract void transformAndCache() throws QueryProcessException, IOException;
 }
