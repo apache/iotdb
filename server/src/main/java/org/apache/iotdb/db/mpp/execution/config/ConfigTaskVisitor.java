@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.execution.config;
 
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
@@ -29,6 +30,12 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor
     extends StatementVisitor<IConfigTask, ConfigTaskVisitor.TaskContext> {
+
+  @Override
+  public IConfigTask visitNode(StatementNode node, TaskContext context) {
+    throw new UnsupportedOperationException(
+        "Unsupported statement type: " + node.getClass().getName());
+  }
 
   @Override
   public IConfigTask visitStatement(Statement statement, TaskContext context) {

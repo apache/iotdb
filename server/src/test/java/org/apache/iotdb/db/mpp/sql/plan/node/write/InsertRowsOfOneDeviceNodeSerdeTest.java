@@ -31,6 +31,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class InsertRowsOfOneDeviceNodeSerdeTest {
 
@@ -39,7 +41,9 @@ public class InsertRowsOfOneDeviceNodeSerdeTest {
     PartialPath device = new PartialPath("root.sg.d");
     InsertRowsOfOneDeviceNode node = new InsertRowsOfOneDeviceNode(new PlanNodeId("plan node 1"));
     node.setDevicePath(device);
-    node.addOneInsertRowNode(
+    List<InsertRowNode> insertRowNodeList = new ArrayList<>();
+    List<Integer> insertRowNodeIndexList = new ArrayList<>();
+    insertRowNodeList.add(
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
             device,
@@ -48,10 +52,9 @@ public class InsertRowsOfOneDeviceNodeSerdeTest {
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64},
             1000L,
             new Object[] {1.0, 2f, 300L},
-            false),
-        0);
+            false));
 
-    node.addOneInsertRowNode(
+    insertRowNodeList.add(
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
             device,
@@ -60,8 +63,12 @@ public class InsertRowsOfOneDeviceNodeSerdeTest {
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
             2000L,
             new Object[] {2.0, false},
-            false),
-        1);
+            false));
+    insertRowNodeIndexList.add(0);
+    insertRowNodeIndexList.add(1);
+
+    node.setInsertRowNodeList(insertRowNodeList);
+    node.setInsertRowNodeIndexList(insertRowNodeIndexList);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
     node.serialize(byteBuffer);

@@ -17,27 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.sql.planner.plan.parameter;
+package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
-import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
 
-public class Aggregation {
+/**
+ * BatchInsertNode contains multiple sub insert. Insert node which contains multiple sub insert
+ * nodes needs to implement it.
+ */
+public interface BatchInsertNode {
 
-  // aggregation function name
-  private AggregationType aggregationType;
+  List<PartialPath> getDevicePaths();
 
-  // indicate the input and output type
-  private AggregationStep step;
+  List<String[]> getMeasurementsList();
 
-  // indicate this aggregation should use which value column of which input TsBlock
-  private List<InputLocation> inputLocations;
+  List<TSDataType[]> getDataTypesList();
 
-  // datatype of each input value column
-  private List<TSDataType> inputDateTypes;
-
-  // datatype of output value column
-  private TSDataType outputDateType;
+  List<Boolean> getAlignedList();
 }

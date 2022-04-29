@@ -18,15 +18,11 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.sql.statement.component.FillPolicy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -39,18 +35,23 @@ import java.util.Objects;
 /** FillNode is used to fill the empty field in one row. */
 public class FillNode extends ProcessNode {
 
-  private PlanNode child;
+  // descriptions of how null values are filled
+  private List<FillDescriptor> fillDescriptorList;
 
-  // The policy to discard the result from upstream node
-  private FillPolicy fillPolicy;
+  private PlanNode child;
 
   public FillNode(PlanNodeId id) {
     super(id);
   }
 
-  public FillNode(PlanNodeId id, FillPolicy policy) {
+  public FillNode(PlanNodeId id, List<FillDescriptor> fillDescriptorList) {
     this(id);
-    this.fillPolicy = policy;
+    this.fillDescriptorList = fillDescriptorList;
+  }
+
+  public FillNode(PlanNodeId id, PlanNode child, List<FillDescriptor> fillDescriptorList) {
+    this(id, fillDescriptorList);
+    this.child = child;
   }
 
   @Override
@@ -64,32 +65,18 @@ public class FillNode extends ProcessNode {
   }
 
   @Override
-  public PlanNode clone() {
-    return new FillNode(getPlanNodeId(), fillPolicy);
-  }
-
-  @Override
   public int allowedChildCount() {
     return ONE_CHILD;
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return child.getOutputColumnHeaders();
+  public PlanNode clone() {
+    return new FillNode(getPlanNodeId(), fillDescriptorList);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
     return child.getOutputColumnNames();
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return child.getOutputColumnTypes();
-  }
-
-  public FillPolicy getFillPolicy() {
-    return fillPolicy;
   }
 
   @Override
@@ -100,27 +87,21 @@ public class FillNode extends ProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FILL.serialize(byteBuffer);
-    ReadWriteIOUtils.write(fillPolicy.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(fillDescriptorList.size(), byteBuffer);
+    for (FillDescriptor fillDescriptor : fillDescriptorList) {
+      fillDescriptor.serialize(byteBuffer);
+    }
   }
 
   public static FillNode deserialize(ByteBuffer byteBuffer) {
-    int fillIndex = ReadWriteIOUtils.readInt(byteBuffer);
+    int fillDescriptorsSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<FillDescriptor> fillDescriptorList = new ArrayList<>();
+    while (fillDescriptorsSize > 0) {
+      fillDescriptorList.add(FillDescriptor.deserialize(byteBuffer));
+      fillDescriptorsSize--;
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FillNode(planNodeId, FillPolicy.values()[fillIndex]);
-  }
-
-  public FillNode(PlanNodeId id, PlanNode child, FillPolicy fillPolicy) {
-    this(id);
-    this.child = child;
-    this.fillPolicy = fillPolicy;
-  }
-
-  @TestOnly
-  public Pair<String, List<String>> print() {
-    String title = String.format("[FillNode (%s)]", this.getPlanNodeId());
-    List<String> attributes = new ArrayList<>();
-    attributes.add("FillPolicy: " + this.getFillPolicy());
-    return new Pair<>(title, attributes);
+    return new FillNode(planNodeId, fillDescriptorList);
   }
 
   @Override
@@ -135,11 +116,11 @@ public class FillNode extends ProcessNode {
       return false;
     }
     FillNode fillNode = (FillNode) o;
-    return Objects.equals(child, fillNode.child) && fillPolicy == fillNode.fillPolicy;
+    return fillDescriptorList.equals(fillNode.fillDescriptorList) && child.equals(fillNode.child);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), child, fillPolicy);
+    return Objects.hash(super.hashCode(), fillDescriptorList, child);
   }
 }

@@ -22,14 +22,12 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.mpp.sql.statement.crud.BatchInsert;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -40,7 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertMultiTabletsNode extends InsertNode implements BatchInsert {
+public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNode {
 
   /**
    * the value is used to indict the parent InsertTabletNode's index when the parent
@@ -177,18 +175,15 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsert {
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return null;
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
     return null;
   }
 
   @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return null;
+  public void setMeasurementSchemas(SchemaTree schemaTree) {
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      insertTabletNode.setMeasurementSchemas(schemaTree);
+    }
   }
 
   @Override

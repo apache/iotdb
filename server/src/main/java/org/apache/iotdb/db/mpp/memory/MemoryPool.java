@@ -35,7 +35,7 @@ import java.util.Queue;
 /** A thread-safe memory pool. */
 public class MemoryPool {
 
-  private static class MemoryReservationFuture<V> extends AbstractFuture<V> {
+  public static class MemoryReservationFuture<V> extends AbstractFuture<V> {
     private final String queryId;
     private final long bytes;
 
@@ -133,6 +133,26 @@ public class MemoryPool {
     return true;
   }
 
+  /**
+   * Cancel the specified memory reservation. If the reservation has finished, do nothing.
+   *
+   * @param future The future returned from {@link #reserve(String, long)}
+   * @return If the future has not complete, return the number of bytes being reserved. Otherwise,
+   *     return 0.
+   */
+  public synchronized long tryCancel(ListenableFuture<Void> future) {
+    Validate.notNull(future);
+    // If the future is not a MemoryReservationFuture, it must have been completed.
+    if (future.isDone()) {
+      return 0L;
+    }
+    Validate.isTrue(
+        future instanceof MemoryReservationFuture,
+        "invalid future type " + future.getClass().getSimpleName());
+    future.cancel(true);
+    return ((MemoryReservationFuture<Void>) future).getBytes();
+  }
+
   public synchronized void free(String queryId, long bytes) {
     Validate.notNull(queryId);
     Validate.isTrue(bytes > 0L);
@@ -155,12 +175,9 @@ public class MemoryPool {
     Iterator<MemoryReservationFuture<Void>> iterator = memoryReservationFutures.iterator();
     while (iterator.hasNext()) {
       MemoryReservationFuture<Void> future = iterator.next();
-
       if (future.isCancelled()) {
-        iterator.remove();
         continue;
       }
-
       long bytesToReserve = future.getBytes();
       if (maxBytes - reservedBytes < bytesToReserve) {
         return;

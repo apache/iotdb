@@ -23,9 +23,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.io.Closeable;
-
-public interface ISourceHandle extends Closeable {
+public interface ISourceHandle {
 
   /** Get the local fragment instance ID that this source handle belongs to. */
   TFragmentInstanceId getLocalFragmentInstanceId();
@@ -48,13 +46,12 @@ public interface ISourceHandle extends Closeable {
   /** Get a future that will be completed when the input buffer is not empty. */
   ListenableFuture<Void> isBlocked();
 
-  /** If this handle is closed. */
-  boolean isClosed();
+  /** If this handle is aborted. */
+  boolean isAborted();
 
   /**
-   * Close the handle. Discard all tsblocks which may still be in the memory buffer and complete the
+   * Abort the handle. Discard all tsblocks which may still be in the memory buffer and complete the
    * future returned by {@link #isBlocked()}.
    */
-  @Override
-  void close();
+  void abort();
 }

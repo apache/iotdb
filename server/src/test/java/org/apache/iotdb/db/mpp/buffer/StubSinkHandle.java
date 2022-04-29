@@ -69,10 +69,16 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void setNoMoreTsBlocks() {}
+  public void setNoMoreTsBlocks() {
+    if (closed) {
+      return;
+    }
+    closed = true;
+    instanceContext.transitionToFlushing();
+  }
 
   @Override
-  public boolean isClosed() {
+  public boolean isAborted() {
     return closed;
   }
 
@@ -82,16 +88,8 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void close() {
-    if (closed) {
-      return;
-    }
-    closed = true;
-    instanceContext.transitionToFlushing();
-  }
-
-  @Override
   public void abort() {
+    closed = true;
     tsBlocks.clear();
   }
 
