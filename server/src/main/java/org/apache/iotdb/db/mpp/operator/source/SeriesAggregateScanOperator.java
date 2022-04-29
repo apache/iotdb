@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.utils.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -39,9 +40,10 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * This operator is responsible to do the aggregation calculation for one series based on global
@@ -94,9 +96,11 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
             null,
             ascending);
     this.aggregators = aggregators;
-    tsBlockBuilder =
-        new TsBlockBuilder(
-            aggregators.stream().map(Aggregator::getOutputType).collect(Collectors.toList()));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (Aggregator aggregator : aggregators) {
+      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
+    }
+    tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter);
   }
 
@@ -216,10 +220,14 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
     // Use start time of current time range as time column
     timeColumnBuilder.writeLong(curTimeRange.getMin());
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (int i = 0; i < aggregators.size(); i++) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[1];
-      columnBuilder[0] = columnBuilders[i];
-      aggregators.get(i).outputResult(columnBuilder);
+    int columnIndex = 0;
+    for (Aggregator aggregator : aggregators) {
+      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
+      columnBuilder[0] = columnBuilders[columnIndex++];
+      if (columnBuilder.length > 1) {
+        columnBuilder[1] = columnBuilders[columnIndex++];
+      }
+      aggregator.outputResult(columnBuilder);
     }
     tsBlockBuilder.declarePosition();
     resultTsBlock = tsBlockBuilder.build();
@@ -261,7 +269,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   @SuppressWarnings("squid:S3776")
   private void calcFromBatch(TsBlock tsBlock, TimeRange curTimeRange) {
     // check if the batchData does not contain points in current interval
-    if (!satisfied(tsBlock, curTimeRange)) {
+    if (tsBlock == null || !satisfied(tsBlock, curTimeRange)) {
       return;
     }
 

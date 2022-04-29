@@ -59,6 +59,10 @@ public class AggregationDescriptor {
     return aggregationType;
   }
 
+  public AggregationStep getStep() {
+    return step;
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(aggregationType.ordinal(), byteBuffer);
     step.serialize(byteBuffer);

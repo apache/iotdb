@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.operator.aggregation;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -25,20 +26,44 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 public interface Accumulator {
 
-  // Column should be like: | Time | Value |
+  /** Column should be like: | Time | Value | */
   void addInput(Column[] column, TimeRange timeRange);
 
+  /**
+   * For aggregation function like COUNT, SUM, partialResult should be single; But for AVG,
+   * last_value, it should be double column with dictionary order.
+   */
   void addIntermediate(Column[] partialResult);
 
+  /**
+   * This method can only be used in seriesAggregateScanOperator, it will use different statistics
+   * based on the type of Accumulator.
+   */
   void addStatistics(Statistics statistics);
 
+  /**
+   * Attention: setFinal should be invoked only once, and addInput() and addIntermediate() are not
+   * allowed again.
+   */
   void setFinal(Column finalResult);
 
+  /**
+   * For aggregation function like COUNT, SUM, partialResult should be single, so its output column
+   * is single too; But for AVG, last_value, it should be double column with dictionary order.
+   */
   void outputIntermediate(ColumnBuilder[] tsBlockBuilder);
 
+  /** Final result is single column for any aggregation function. */
   void outputFinal(ColumnBuilder tsBlockBuilder);
 
   void reset();
 
+  /**
+   * For first_value or last_value in decreasing order, we can get final result by the first record.
+   */
   boolean hasFinalResult();
+
+  TSDataType[] getIntermediateType();
+
+  TSDataType getFinalType();
 }

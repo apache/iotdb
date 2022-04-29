@@ -19,4 +19,28 @@
 
 package org.apache.iotdb.db.mpp.operator.aggregation;
 
-public class AggregatorFactory {}
+import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+public class AccumulatorFactory {
+
+  public static Accumulator createAccumulator(
+      AggregationType aggregationType, TSDataType tsDataType) {
+    switch (aggregationType) {
+      case COUNT:
+        return new CountAccumulator();
+      case AVG:
+        return new AvgAccumulator(tsDataType);
+      case SUM:
+      case EXTREME:
+      case MAX_TIME:
+      case MIN_TIME:
+      case MAX_VALUE:
+      case MIN_VALUE:
+      case LAST_VALUE:
+      case FIRST_VALUE:
+      default:
+        return null;
+    }
+  }
+}

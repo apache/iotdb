@@ -36,22 +36,14 @@ public class Aggregator {
   // In some intermediate result input, inputLocation[] should include two columns
   private final List<InputLocation[]> inputLocationList;
   private final AggregationStep step;
-  private final TSDataType intermediateType;
-  private final TSDataType finalType;
 
-  private TimeRange timeRange;
+  private TimeRange timeRange = new TimeRange(0, Long.MAX_VALUE);
 
   public Aggregator(
-      Accumulator accumulator,
-      AggregationStep step,
-      List<InputLocation[]> inputLocationList,
-      TSDataType intermediateType,
-      TSDataType finalType) {
+      Accumulator accumulator, AggregationStep step, List<InputLocation[]> inputLocationList) {
     this.accumulator = accumulator;
     this.step = step;
     this.inputLocationList = inputLocationList;
-    this.intermediateType = intermediateType;
-    this.finalType = finalType;
   }
 
   // Used for SeriesAggregateScanOperator
@@ -96,11 +88,11 @@ public class Aggregator {
     accumulator.addStatistics(statistics);
   }
 
-  public TSDataType getOutputType() {
+  public TSDataType[] getOutputType() {
     if (step.isOutputPartial()) {
-      return intermediateType;
+      return new TSDataType[] {accumulator.getFinalType()};
     } else {
-      return finalType;
+      return accumulator.getIntermediateType();
     }
   }
 

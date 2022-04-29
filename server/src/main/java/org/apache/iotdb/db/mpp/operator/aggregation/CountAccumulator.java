@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.operator.aggregation;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -28,6 +29,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 public class CountAccumulator implements Accumulator {
 
   private long countValue = 0;
+
+  public CountAccumulator() {}
 
   // Column should be like: | Time | Value |
   @Override
@@ -42,12 +45,13 @@ public class CountAccumulator implements Accumulator {
     }
   }
 
-  // partialResult should be like: | partialCountValue1 | partialCountValue2 |
+  // partialResult should be like: | partialCountValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    for (int i = 0; i < partialResult.length; i++) {
-      countValue += partialResult[i].getLong(0);
+    if (partialResult.length != 1) {
+      throw new IllegalArgumentException("partialResult of Count should be 1");
     }
+    countValue += partialResult[0].getLong(0);
   }
 
   @Override
@@ -80,5 +84,15 @@ public class CountAccumulator implements Accumulator {
   @Override
   public boolean hasFinalResult() {
     return false;
+  }
+
+  @Override
+  public TSDataType[] getIntermediateType() {
+    return new TSDataType[] {TSDataType.INT64};
+  }
+
+  @Override
+  public TSDataType getFinalType() {
+    return TSDataType.INT64;
   }
 }

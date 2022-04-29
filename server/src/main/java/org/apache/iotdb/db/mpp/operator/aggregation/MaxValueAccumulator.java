@@ -19,25 +19,24 @@
 
 package org.apache.iotdb.db.mpp.operator.aggregation;
 
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-public class AvgAccumulator implements Accumulator {
+public class MaxValueAccumulator implements Accumulator {
 
-  private TSDataType seriesDataType;
-  private long countValue;
-  private double sumValue;
+  private TsPrimitiveType maxResult;
+  private boolean hasCandidateResult;
 
-  public AvgAccumulator(TSDataType seriesDataType) {
-    this.seriesDataType = seriesDataType;
+  public MaxValueAccumulator(TSDataType seriesDataType) {
+    this.maxResult = TsPrimitiveType.getByType(seriesDataType);
   }
 
+  // Column should be like: | Time | Value |
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
@@ -46,53 +45,46 @@ public class AvgAccumulator implements Accumulator {
       if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
-      countValue++;
-      updateSumValue(column[1].getObject(i));
+      updateResult((Comparable<Object>) column[1].getObject(i));
     }
   }
 
-  // partialResult should be like: | countValue1 | sumValue1 |
+  // partialResult should be like: | partialMaxValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    if (partialResult.length != 2) {
-      throw new IllegalArgumentException("partialResult of Avg should be 2");
+    if (partialResult.length != 1) {
+      throw new IllegalArgumentException("partialResult of MaxValue should be 1");
     }
-    countValue += partialResult[0].getLong(0);
-    updateSumValue(partialResult[1].getObject(0));
+    updateResult((Comparable<Object>) partialResult[0].getObject(0));
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
-    countValue += statistics.getCount();
-    if (statistics instanceof IntegerStatistics) {
-      sumValue += statistics.getSumLongValue();
-    } else {
-      sumValue += statistics.getSumDoubleValue();
-    }
+    Comparable<Object> maxValue = (Comparable<Object>) statistics.getMaxValue();
+    updateResult(maxValue);
   }
 
-  // Set sumValue to finalResult and keep countValue equals to 1
+  // finalResult should be single column, like: | finalCountValue |
   @Override
   public void setFinal(Column finalResult) {
-    reset();
-    updateSumValue(finalResult.getObject(0));
+    maxResult.setObject(finalResult.getObject(0));
   }
 
+  // columnBuilder should be single in countAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    columnBuilders[0].writeLong(countValue);
-    columnBuilders[1].writeDouble(sumValue);
+    columnBuilders[0].writeObject(maxResult.getValue());
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeDouble(sumValue / countValue);
+    columnBuilder.writeObject(maxResult.getValue());
   }
 
   @Override
   public void reset() {
-    this.countValue = 0;
-    this.sumValue = 0.0;
+    hasCandidateResult = false;
+    this.maxResult.reset();
   }
 
   @Override
@@ -102,33 +94,21 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public TSDataType[] getIntermediateType() {
-    return new TSDataType[] {TSDataType.INT64, TSDataType.DOUBLE};
+    return new TSDataType[] {maxResult.getDataType()};
   }
 
   @Override
   public TSDataType getFinalType() {
-    return TSDataType.DOUBLE;
+    return maxResult.getDataType();
   }
 
-  private void updateSumValue(Object sumVal) throws UnSupportedDataTypeException {
-    switch (seriesDataType) {
-      case INT32:
-        sumValue += (int) sumVal;
-        break;
-      case INT64:
-        sumValue = (long) sumVal;
-        break;
-      case FLOAT:
-        sumValue = (float) sumVal;
-        break;
-      case DOUBLE:
-        sumValue = (double) sumVal;
-        break;
-      case TEXT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", seriesDataType));
+  private void updateResult(Comparable<Object> minVal) {
+    if (minVal == null) {
+      return;
+    }
+    if (!hasCandidateResult || minVal.compareTo(maxResult.getValue()) > 0) {
+      hasCandidateResult = true;
+      maxResult.setObject(minVal);
     }
   }
 }
