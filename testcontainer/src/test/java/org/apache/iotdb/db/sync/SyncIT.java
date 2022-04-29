@@ -20,7 +20,11 @@ package org.apache.iotdb.db.sync;
 
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.DockerComposeContainer;
@@ -29,7 +33,11 @@ import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.io.File;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -142,6 +150,21 @@ public class SyncIT {
     senderStatement.execute("flush");
   }
 
+  private void prepareDel1() throws Exception { // after ins1, add 2 deletions
+    senderStatement.execute("delete from root.sg1.d1.s1 where time == 3");
+    senderStatement.execute("delete from root.sg1.d1.s2 where time >= 1 and time <= 2");
+  }
+
+  private void prepareDel2() throws Exception { // after ins2, add 3 deletions
+    senderStatement.execute("delete from root.sg1.d1.s3 where time <= 65");
+  }
+
+  private void prepareDel3() throws Exception { // after ins3, add 5 deletions, 2 schemas{
+    senderStatement.execute("delete from root.sg1.d1.* where time <= 2");
+    senderStatement.execute("delete timeseries root.sg1.d2.*");
+    senderStatement.execute("delete storage group root.sg2");
+  }
+
   private void preparePipe() throws Exception {
     receiverStatement.execute("start pipeserver");
     senderStatement.execute(
@@ -181,6 +204,23 @@ public class SyncIT {
           "65,f,100,25.0,null,65,null",
           "100,e,65,16.25,null,100,null",
           "200,h,100,16.65,100,null,null"
+        };
+    checkResult(receiverStatement, "select ** from root", columnNames, results, true);
+  }
+
+  private void checkResultWithDeletion() throws Exception {
+    String[] columnNames =
+        new String[] {
+          "root.sg1.d1.s3", "root.sg1.d1.s1", "root.sg1.d1.s2",
+        };
+    String[] results =
+        new String[] {
+          "3,null,null,65.25",
+          "16,null,25,100.0",
+          "25,null,16,65.16",
+          "65,null,100,25.0",
+          "100,e,65,16.25",
+          "200,h,100,16.65"
         };
     checkResult(receiverStatement, "select ** from root", columnNames, results, true);
   }
@@ -250,6 +290,64 @@ public class SyncIT {
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRealTimeAndStopInsert() {
+    try {
+      preparePipe(); // realtime
+      startPipe();
+      prepareSchema();
+      prepareIns1();
+      stopPipe();
+      prepareIns2();
+      startPipe();
+      prepareIns3();
+      checkResult();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testHistoryDel() {
+    try {
+      prepareSchema(); // history
+      prepareIns1();
+      prepareIns2();
+      prepareIns3();
+      prepareDel1();
+      prepareDel2();
+      prepareDel3();
+      preparePipe(); // realtime
+      startPipe();
+      checkResultWithDeletion();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRealtimeDel() {
+    try {
+      prepareSchema(); // history
+      prepareIns1();
+      preparePipe(); // realtime
+      startPipe();
+      prepareIns2();
+      prepareDel1();
+      stopPipe();
+      prepareIns3();
+      startPipe();
+      prepareDel2();
+      prepareDel3();
+      checkResultWithDeletion();
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
     }
   }
 
