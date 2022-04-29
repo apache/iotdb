@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.log;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -38,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -54,6 +54,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
   private Map<Node, List<Node>> directToIndirectFollowerMap = new ConcurrentHashMap<>();
   private long dispatchedEntryNum;
   private int recalculateMapInterval = 1;
+  private Random random = new Random();
 
   public IndirectLogDispatcher(RaftMember member) {
     super(member);
@@ -100,7 +101,10 @@ public class IndirectLogDispatcher extends LogDispatcher {
     NodeStatus status = NodeStatusManager.getINSTANCE().getNodeStatus(node, false);
     //    return 1.0
     //        / (status.getStatus().fanoutRequestNum + 1);
-    double pow = Math.pow(100.0, maxLatency / status.getSendEntryLatencyStatistic().getAvg());
+    double pow =
+        Math.pow(
+            ClusterDescriptor.getInstance().getConfig().getRelayWeightBase(),
+            maxLatency / status.getSendEntryLatencyStatistic().getAvg());
     status.setRelayWeight(pow);
     return pow;
   }
@@ -114,12 +118,16 @@ public class IndirectLogDispatcher extends LogDispatcher {
     nodesEnabled.clear();
     directToIndirectFollowerMap.clear();
 
-    int firstLevelSize = ClusterDescriptor.getInstance().getConfig().getRelayFirstLevelSize();
+    double firstLevelSizeDouble =
+        ClusterDescriptor.getInstance().getConfig().getRelayFirstLevelSize();
+    int firstLevelSize = (int) firstLevelSizeDouble;
+    double firstLevelRemain = firstLevelSizeDouble - firstLevelSize;
+    if (random.nextDouble() < firstLevelRemain) {
+      firstLevelSize++;
+    }
     List<Node> firstLevelNodes;
 
     if (ClusterDescriptor.getInstance().getConfig().isOptimizeIndirectBroadcasting()) {
-      QueryCoordinator instance = QueryCoordinator.getINSTANCE();
-      orderedNodes = instance.reorderNodes(allNodes);
       long thisLoad = Statistic.getTotalFanout() + 1;
       double maxLatency =
           NodeStatusManager.getINSTANCE()

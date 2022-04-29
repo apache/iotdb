@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.clusterinfo.ClusterInfoServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.NodeReport;
+import org.apache.iotdb.cluster.server.monitor.NodeStatus;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.raft.DataRaftHeartBeatService;
@@ -80,11 +81,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.UNKNOWN_CLIENT_IP;
@@ -297,6 +303,28 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     public void run() {
       logger.info(Timer.getReport());
       NodeStatusManager.getINSTANCE().report();
+      List<Entry<Node, NodeStatus>> nodeStatusEntryList =
+          new ArrayList<>(NodeStatusManager.getINSTANCE().getNodeStatusMap().entrySet());
+      nodeStatusEntryList.sort(Comparator.comparing(e -> e.getKey().getInternalIp()));
+      List<Long> sendNums =
+          nodeStatusEntryList.stream()
+              .map(e -> e.getValue().getSendEntryNum().get())
+              .collect(Collectors.toList());
+      List<Long> sendLatencySums =
+          nodeStatusEntryList.stream()
+              .map(e -> e.getValue().getSendEntryLatencySum().get())
+              .collect(Collectors.toList());
+      List<Double> sendLatencyAvg =
+          nodeStatusEntryList.stream()
+              .map(
+                  e ->
+                      e.getValue().getSendEntryLatencySum().get()
+                          * 1.0
+                          / e.getValue().getSendEntryNum().get())
+              .collect(Collectors.toList());
+      logger.info("Send nums: {}", sendNums);
+      logger.info("Send latency sum: {}", sendLatencySums);
+      logger.info("Send latency avg: {}", sendLatencyAvg);
     }
   }
 

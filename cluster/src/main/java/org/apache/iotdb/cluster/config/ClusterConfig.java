@@ -192,7 +192,9 @@ public class ClusterConfig {
 
   private int relaySenderNum = 8;
 
-  private int relayFirstLevelSize = 1;
+  private double relayFirstLevelSize = 1.0;
+
+  private double relayWeightBase = 1.0;
 
   private boolean optimizeIndirectBroadcasting = false;
 
@@ -603,11 +605,19 @@ public class ClusterConfig {
     this.optimizeIndirectBroadcasting = optimizeIndirectBroadcasting;
   }
 
-  public int getRelayFirstLevelSize() {
+  public double getRelayFirstLevelSize() {
     return relayFirstLevelSize;
   }
 
-  public void setRelayFirstLevelSize(int relayFirstLevelSize) {
+  public void setRelayFirstLevelSize(double relayFirstLevelSize) {
     this.relayFirstLevelSize = relayFirstLevelSize;
+  }
+
+  public double getRelayWeightBase() {
+    return relayWeightBase;
+  }
+
+  public void setRelayWeightBase(double relayWeightBase) {
+    this.relayWeightBase = relayWeightBase;
   }
 }

@@ -115,7 +115,14 @@ public class NodeStatusManager {
    */
   public NodeStatus getNodeStatus(Node node, boolean tryUpdate) {
     // avoid duplicated computing of concurrent queries
-    NodeStatus nodeStatus = nodeStatusMap.computeIfAbsent(node, n -> new NodeStatus());
+    NodeStatus nodeStatus =
+        nodeStatusMap.computeIfAbsent(
+            node,
+            n -> {
+              NodeStatus status = new NodeStatus();
+              status.setStatus(new TNodeStatus());
+              return status;
+            });
     if (metaGroupMember == null || node.equals(metaGroupMember.getThisNode())) {
       return nodeStatus;
     }
