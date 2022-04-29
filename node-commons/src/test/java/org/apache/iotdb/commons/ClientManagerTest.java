@@ -41,7 +41,7 @@ import java.net.ServerSocket;
 
 public class ClientManagerTest {
 
-  private final TEndPoint endPoint = new TEndPoint("localhost", 9000);
+  private final TEndPoint endPoint = new TEndPoint("localhost", 9003);
 
   private ServerSocket metaServer;
   private Thread metaServerListeningThread;
