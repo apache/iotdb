@@ -27,11 +27,11 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.io.IOException;
 import java.util.regex.Pattern;
 
-public class StringRegularTransformer extends UnaryTransformer {
+public class RegularTransformer extends UnaryTransformer {
 
   private final Pattern pattern;
 
-  public StringRegularTransformer(LayerPointReader layerPointReader, Pattern pattern) {
+  public RegularTransformer(LayerPointReader layerPointReader, Pattern pattern) {
     super(layerPointReader);
     this.pattern = pattern;
   }
@@ -49,7 +49,7 @@ public class StringRegularTransformer extends UnaryTransformer {
     }
 
     Binary binary = layerPointReader.currentBinary();
-    if (pattern.matcher(binary.getStringValue()).matches()) {
+    if (pattern.matcher(binary.getStringValue()).find()) {
       cachedBinary = binary;
     } else {
       currentNull = true;

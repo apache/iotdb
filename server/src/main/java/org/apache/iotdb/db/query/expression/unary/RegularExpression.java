@@ -23,6 +23,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.transformer.unary.RegularTransformer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
@@ -55,7 +56,7 @@ public class RegularExpression extends UnaryExpression {
 
   @Override
   protected Transformer constructTransformer(LayerPointReader pointReader) {
-    throw new UnsupportedOperationException();
+    return new RegularTransformer(pointReader, pattern);
   }
 
   @Override
