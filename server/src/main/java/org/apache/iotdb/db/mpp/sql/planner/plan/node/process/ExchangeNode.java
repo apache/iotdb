@@ -110,7 +110,7 @@ public class ExchangeNode extends PlanNode {
     FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
     PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
     int outputColumnNamesSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> outputColumnNames = new ArrayList<>();
+    List<String> outputColumnNames = new ArrayList<>(outputColumnNamesSize);
     while (outputColumnNamesSize > 0) {
       outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
       outputColumnNamesSize--;
