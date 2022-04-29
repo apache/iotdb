@@ -113,7 +113,15 @@ public class SchemaEngine {
           // the dir/file is not schemaRegionDir, ignore this.
           continue;
         }
-        schemaRegionRecoverPools.submit(createSchemaRegionTask(storageGroup, schemaRegionId));
+        schemaRegionRecoverPools.submit(recoverSchemaRegionTask(storageGroup, schemaRegionId));
+
+        for(SchemaRegionId scId: schemaRegionIdList) {
+          if (scId.equals(schemaRegionId)) {
+            throw new MetadataException(String.format("SchemaRegion [%s] is duplicated within StorageGroup [%s].",
+                schemaRegionId, storageGroup.getFullPath()));
+          }
+        }
+
         schemaRegionIdList.add(schemaRegionId);
       }
     }
@@ -158,20 +166,25 @@ public class SchemaEngine {
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      return;
+      throw new MetadataException(String.format("SchemaRegion [%s] is duplicated between [%s] and [%s], " +
+              "and the former one has been recovered.",
+          schemaRegionId, schemaRegion.getStorageGroupFullPath(), storageGroup.getFullPath()));
     }
     createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
   }
 
-  private Runnable createSchemaRegionTask(PartialPath storageGroup, SchemaRegionId schemaRegionId) {
+  private Runnable recoverSchemaRegionTask(PartialPath storageGroup, SchemaRegionId schemaRegionId) {
     // this method is called for concurrent recovery of schema regions
     return () -> {
       long timeRecord = System.currentTimeMillis();
       ISchemaRegion schemaRegion = this.schemaRegionMap.get(schemaRegionId);
-      if (schemaRegion != null) {
-        return;
-      }
       try {
+        if (schemaRegion != null) {
+          throw new MetadataException(String.format("SchemaRegion [%s] is duplicated between [%s] and [%s], " +
+                  "and the former one has been recovered.",
+              schemaRegionId, schemaRegion.getStorageGroupFullPath(), storageGroup.getFullPath()));
+        }
+
         createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
         timeRecord = System.currentTimeMillis() - timeRecord;
         logger.info(
