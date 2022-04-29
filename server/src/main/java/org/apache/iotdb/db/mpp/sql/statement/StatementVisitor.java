@@ -61,9 +61,7 @@ public abstract class StatementVisitor<R, C> {
   }
 
   /** Top Level Description */
-  public R visitNode(StatementNode node, C context) {
-    return null;
-  }
+  public abstract R visitNode(StatementNode node, C context);
 
   public R visitStatement(Statement statement, C context) {
     return visitNode(statement, context);

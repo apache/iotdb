@@ -19,5 +19,7 @@
 package org.apache.iotdb.db.mpp.sql.statement.component;
 
 public enum FillPolicy {
-  PREVIOUS
+  PREVIOUS,
+  LINEAR,
+  VALUE
 }

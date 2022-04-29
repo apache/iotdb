@@ -21,8 +21,8 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.BatchInsertNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertNode;
-import org.apache.iotdb.db.mpp.sql.statement.crud.BatchInsert;
 
 public class SchemaValidator {
 
@@ -31,14 +31,14 @@ public class SchemaValidator {
   public static SchemaTree validate(InsertNode insertNode) {
 
     SchemaTree schemaTree;
-    if (insertNode instanceof BatchInsert) {
-      BatchInsert batchInsert = (BatchInsert) insertNode;
+    if (insertNode instanceof BatchInsertNode) {
+      BatchInsertNode batchInsertNode = (BatchInsertNode) insertNode;
       schemaTree =
           schemaFetcher.fetchSchemaListWithAutoCreate(
-              batchInsert.getDevicePaths(),
-              batchInsert.getMeasurementsList(),
-              batchInsert.getDataTypesList(),
-              batchInsert.getAlignedList());
+              batchInsertNode.getDevicePaths(),
+              batchInsertNode.getMeasurementsList(),
+              batchInsertNode.getDataTypesList(),
+              batchInsertNode.getAlignedList());
     } else {
       schemaTree =
           schemaFetcher.fetchSchemaWithAutoCreate(
