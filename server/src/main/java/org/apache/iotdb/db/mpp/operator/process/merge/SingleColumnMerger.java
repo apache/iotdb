@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.operator.process.merge;
 
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
@@ -29,21 +28,13 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 /** only has one input column */
 public class SingleColumnMerger implements ColumnMerger {
 
-  private static final TimeComparator ASC_TIME_COMPARATOR = new AscTimeComparator();
-
-  private static final TimeComparator DESC_TIME_COMPARATOR = new DescTimeComparator();
-
   private final InputLocation location;
 
   private final TimeComparator comparator;
 
-  public SingleColumnMerger(InputLocation location, OrderBy orderBy) {
+  public SingleColumnMerger(InputLocation location, TimeComparator comparator) {
     this.location = location;
-    if (orderBy == OrderBy.TIMESTAMP_ASC) {
-      comparator = ASC_TIME_COMPARATOR;
-    } else {
-      comparator = DESC_TIME_COMPARATOR;
-    }
+    this.comparator = comparator;
   }
 
   @Override
@@ -95,30 +86,6 @@ public class SingleColumnMerger implements ColumnMerger {
       }
       // update the index after merging
       updatedInputIndex[tsBlockIndex] = index;
-    }
-  }
-
-  private interface TimeComparator {
-
-    /** @return true if time is satisfied with endTime, otherwise false */
-    boolean satisfy(long time, long endTime);
-  }
-
-  private static class AscTimeComparator implements TimeComparator {
-
-    /** @return if order by time asc, return true if time <= endTime, otherwise false */
-    @Override
-    public boolean satisfy(long time, long endTime) {
-      return time <= endTime;
-    }
-  }
-
-  private static class DescTimeComparator implements TimeComparator {
-
-    /** @return if order by time desc, return true if time >= endTime, otherwise false */
-    @Override
-    public boolean satisfy(long time, long endTime) {
-      return time >= endTime;
     }
   }
 }

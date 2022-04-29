@@ -159,8 +159,7 @@ public class PageReader implements IPageReader {
   }
 
   @Override
-  public TsBlock getAllSatisfiedData(boolean ascending) throws IOException {
-    // TODO we still need to consider data type, ascending and descending here
+  public TsBlock getAllSatisfiedData() throws IOException {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
