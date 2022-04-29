@@ -177,6 +177,18 @@ class StandAloneConsensus implements IConsensus {
     stateMachineMap.computeIfPresent(
         groupId,
         (k, v) -> {
+          String groupPath =
+              storageDir
+                  + File.separator
+                  + groupId.getType()
+                  + "_"
+                  + groupId.getId()
+                  + "_"
+                  + thisNode.ip
+                  + "_"
+                  + thisNode.port;
+          File file = new File(groupPath);
+          file.delete();
           exist.set(true);
           v.stop();
           return null;
