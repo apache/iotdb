@@ -34,13 +34,13 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,6 +55,7 @@ public class SchemaEngine {
 
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
+  private URLClassLoader urlClassLoader = null;
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
   private static final String RSCHEMA_REGION_CLASS_NAME =
       "org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion";
@@ -78,7 +79,6 @@ public class SchemaEngine {
   public Map<PartialPath, List<SchemaRegionId>> init() throws MetadataException {
     schemaRegionMap = new ConcurrentHashMap<>();
     schemaRegionStoredMode = SchemaEngineMode.valueOf(config.getSchemaEngineMode());
-    loadRSchemaRegion(null, new SchemaRegionId(1), null);
     logger.info("used schema engine mode: {}.", schemaRegionStoredMode);
 
     return initSchemaRegion();
@@ -186,18 +186,18 @@ public class SchemaEngine {
     logger.info("Creating instance for schema-engine-rocksdb");
     try {
       loadRSchemaRegionJar();
-      Class<?> classForRSchemaRegion = Class.forName(RSCHEMA_REGION_CLASS_NAME);
-      Class<?> classForRSchemaConfLoader = Class.forName(RSCHEMA_CONF_LOADER_CLASS_NAME);
+      Class<?> classForRSchemaRegion = urlClassLoader.loadClass(RSCHEMA_REGION_CLASS_NAME);
+      Class<?> classForRSchemaConfLoader = urlClassLoader.loadClass(RSCHEMA_CONF_LOADER_CLASS_NAME);
       Constructor<?> constructor =
           classForRSchemaRegion.getConstructor(
               PartialPath.class,
               SchemaRegionId.class,
               IStorageGroupMNode.class,
               classForRSchemaConfLoader);
+      Object rSchemaLoader = classForRSchemaConfLoader.getConstructor().newInstance();
       region =
           (ISchemaRegion)
-              constructor.newInstance(
-                  storageGroup, schemaRegionId, node, classForRSchemaConfLoader.newInstance());
+              constructor.newInstance(storageGroup, schemaRegionId, node, rSchemaLoader);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -211,41 +211,17 @@ public class SchemaEngine {
     return region;
   }
 
-  private void loadRSchemaRegionJar()
-      throws NoSuchMethodException, MalformedURLException, InvocationTargetException,
-          IllegalAccessException {
+  private void loadRSchemaRegionJar() throws MalformedURLException {
     logger.info("Loading jar for schema-engine-rocksdb");
-    File[] jars = new File(LIB_PATH).listFiles();
-    for (File jar : jars) {
-      if (jar.getName().contains("rocksdb")) {
-        // 从URLClassLoader类中获取类所在文件夹的方法，jar也可以认为是一个文件夹
-        Method method = null;
-        try {
-          method = URLClassLoader.class.getDeclaredMethod("addURL", URL.class);
-        } catch (NoSuchMethodException | SecurityException e) {
-          throw e;
-        }
-        // 获取方法的访问权限以便写回
-        boolean accessible = method.isAccessible();
-        try {
-          method.setAccessible(true);
-          // 获取系统类加载器
-          URLClassLoader classLoader = (URLClassLoader) ClassLoader.getSystemClassLoader();
-          URL url = jar.toURI().toURL();
-          method.invoke(classLoader, url);
-        } catch (Exception e) {
-          throw e;
-        } finally {
-          method.setAccessible(accessible);
+    if (urlClassLoader == null) {
+      File[] jars = new File(LIB_PATH).listFiles();
+      List<URL> dependentJars = new LinkedList<>();
+      for (File jar : jars) {
+        if (jar.getName().contains("rocksdb")) {
+          dependentJars.add(new URL("file:" + jar.getAbsolutePath()));
         }
       }
+      urlClassLoader = new URLClassLoader(dependentJars.toArray(new URL[] {}));
     }
   }
-  //
-  //  private RSchemaConfLoader loadRocksdbConfFile() {
-  //    if (rSchemaConfLoader == null) {
-  //      rSchemaConfLoader = new RSchemaConfLoader();
-  //    }
-  //    return rSchemaConfLoader;
-  //  }
 }
