@@ -74,4 +74,13 @@ public class InsertRowsStatement extends InsertBaseStatement {
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRows(this, context);
   }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    List<PartialPath> result = new ArrayList<>();
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      result.addAll(insertRowStatement.getPaths());
+    }
+    return result;
+  }
 }
