@@ -85,7 +85,7 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public int allowedChildCount() {
-    return CHILD_COUNT_NO_LIMIT;
+    return ONE_CHILD;
   }
 
   @Override
@@ -129,6 +129,7 @@ public class ExchangeNode extends PlanNode {
     ReadWriteIOUtils.write(upstreamEndpoint.getPort(), byteBuffer);
     upstreamInstanceId.serialize(byteBuffer);
     upstreamPlanNodeId.serialize(byteBuffer);
+    List<String> outputColumnNames = remoteSourceNode.getOutputColumnNames();
     ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, byteBuffer);
@@ -164,7 +165,6 @@ public class ExchangeNode extends PlanNode {
 
   public void setRemoteSourceNode(FragmentSinkNode remoteSourceNode) {
     this.remoteSourceNode = remoteSourceNode;
-    this.outputColumnNames = remoteSourceNode.getOutputColumnNames();
   }
 
   public void cleanChildren() {
