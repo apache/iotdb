@@ -25,8 +25,9 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import javax.annotation.concurrent.GuardedBy;
 import org.apache.commons.lang3.Validate;
+
+import javax.annotation.concurrent.GuardedBy;
 
 import java.util.LinkedList;
 import java.util.Queue;
