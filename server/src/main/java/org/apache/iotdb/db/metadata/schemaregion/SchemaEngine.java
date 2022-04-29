@@ -115,10 +115,12 @@ public class SchemaEngine {
         }
         schemaRegionRecoverPools.submit(recoverSchemaRegionTask(storageGroup, schemaRegionId));
 
-        for(SchemaRegionId scId: schemaRegionIdList) {
+        for (SchemaRegionId scId : schemaRegionIdList) {
           if (scId.equals(schemaRegionId)) {
-            throw new MetadataException(String.format("SchemaRegion [%s] is duplicated within StorageGroup [%s].",
-                schemaRegionId, storageGroup.getFullPath()));
+            throw new MetadataException(
+                String.format(
+                    "SchemaRegion [%s] is duplicated within StorageGroup [%s].",
+                    schemaRegionId, storageGroup.getFullPath()));
           }
         }
 
@@ -166,23 +168,30 @@ public class SchemaEngine {
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      throw new MetadataException(String.format("SchemaRegion [%s] is duplicated between [%s] and [%s], " +
-              "and the former one has been recovered.",
-          schemaRegionId, schemaRegion.getStorageGroupFullPath(), storageGroup.getFullPath()));
+      throw new MetadataException(
+          String.format(
+              "SchemaRegion [%s] is duplicated between [%s] and [%s], "
+                  + "and the former one has been recovered.",
+              schemaRegionId, schemaRegion.getStorageGroupFullPath(), storageGroup.getFullPath()));
     }
     createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
   }
 
-  private Runnable recoverSchemaRegionTask(PartialPath storageGroup, SchemaRegionId schemaRegionId) {
+  private Runnable recoverSchemaRegionTask(
+      PartialPath storageGroup, SchemaRegionId schemaRegionId) {
     // this method is called for concurrent recovery of schema regions
     return () -> {
       long timeRecord = System.currentTimeMillis();
       ISchemaRegion schemaRegion = this.schemaRegionMap.get(schemaRegionId);
       try {
         if (schemaRegion != null) {
-          throw new MetadataException(String.format("SchemaRegion [%s] is duplicated between [%s] and [%s], " +
-                  "and the former one has been recovered.",
-              schemaRegionId, schemaRegion.getStorageGroupFullPath(), storageGroup.getFullPath()));
+          throw new MetadataException(
+              String.format(
+                  "SchemaRegion [%s] is duplicated between [%s] and [%s], "
+                      + "and the former one has been recovered.",
+                  schemaRegionId,
+                  schemaRegion.getStorageGroupFullPath(),
+                  storageGroup.getFullPath()));
         }
 
         createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
