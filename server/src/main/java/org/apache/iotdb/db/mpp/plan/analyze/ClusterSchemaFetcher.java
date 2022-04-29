@@ -80,13 +80,23 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
-    SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
+    return fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
+  }
+
+  private SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition) {
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
         schemaPartition.getSchemaPartitionMap();
     List<String> storageGroups = new ArrayList<>(schemaPartitionMap.keySet());
 
     SchemaFetchStatement schemaFetchStatement = new SchemaFetchStatement(patternTree);
     schemaFetchStatement.setSchemaPartition(schemaPartition);
+
+    SchemaTree result = executeSchemaFetchQuery(schemaFetchStatement);
+    result.setStorageGroups(storageGroups);
+    return result;
+  }
+
+  private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
 
     QueryId queryId =
         new QueryId(String.valueOf(SessionManager.getInstance().requestQueryId(false)));
@@ -102,7 +112,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       if (tsBlock == null) {
         break;
       }
-      result.setStorageGroups(storageGroups);
+
       Binary binary;
       SchemaTree fetchedSchemaTree;
       Column column = tsBlock.getColumn(0);
@@ -120,12 +130,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean isAligned) {
-
-    SchemaTree schemaTree = fetchSchema(new PathPatternTree(devicePath, measurements));
+    PathPatternTree patternTree = new PathPatternTree(devicePath, measurements);
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      return schemaTree;
+      return fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
     }
+
+    SchemaTree schemaTree =
+        fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
 
     schemaTree.mergeSchemaTree(
         checkAndAutoCreateMissingMeasurements(
@@ -186,7 +198,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       PartialPath devicePath,
       String[] measurements,
       TSDataType[] tsDataTypes) {
-    DeviceSchemaInfo deviceSchemaInfo = null;
+    DeviceSchemaInfo deviceSchemaInfo;
     try {
       deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
     } catch (PathNotExistException e) {
@@ -274,11 +286,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       patternTree.appendPaths(devicePathList.get(i), Arrays.asList(measurementsList.get(i)));
     }
 
-    SchemaTree schemaTree = fetchSchema(patternTree);
-
     if (!config.isAutoCreateSchemaEnabled()) {
-      return schemaTree;
+      return fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
     }
+
+    SchemaTree schemaTree =
+        fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
 
     for (int i = 0; i < devicePathList.size(); i++) {
       schemaTree.mergeSchemaTree(
