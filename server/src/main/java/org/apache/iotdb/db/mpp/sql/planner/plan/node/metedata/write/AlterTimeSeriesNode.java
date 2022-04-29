@@ -21,13 +21,17 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement.AlterType;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -35,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class AlterTimeSeriesNode extends PlanNode {
+public class AlterTimeSeriesNode extends WritePlanNode {
   private PartialPath path;
   private AlterType alterType;
 
@@ -52,6 +56,8 @@ public class AlterTimeSeriesNode extends PlanNode {
 
   private Map<String, String> tagsMap;
   private Map<String, String> attributesMap;
+
+  private TRegionReplicaSet regionReplicaSet;
 
   public AlterTimeSeriesNode(
       PlanNodeId id,
@@ -269,5 +275,22 @@ public class AlterTimeSeriesNode extends PlanNode {
   public int hashCode() {
     return Objects.hash(
         this.getPlanNodeId(), path, alias, alterType, alterMap, attributesMap, tagsMap);
+  }
+
+  @Override
+  public TRegionReplicaSet getRegionReplicaSet() {
+    return regionReplicaSet;
+  }
+
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+  }
+
+  @Override
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+    TRegionReplicaSet regionReplicaSet =
+        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDevice());
+    setRegionReplicaSet(regionReplicaSet);
+    return ImmutableList.of(this);
   }
 }
