@@ -94,7 +94,12 @@ public class InsertTabletStatement extends InsertBaseStatement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
+    for (String m : measurements) {
+      PartialPath fullPath = devicePath.concatNode(m);
+      ret.add(fullPath);
+    }
+    return ret;
   }
 }

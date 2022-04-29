@@ -58,7 +58,7 @@ public class ShowStorageGroupStatement extends ShowStatement implements IConfigS
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.singletonList(pathPattern);
   }
 }

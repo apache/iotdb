@@ -105,7 +105,7 @@ public class QueryStatement extends Statement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return null;
+    return fromComponent.getPrefixPaths();
   }
 
   public QueryStatement(QueryStatement another) {

@@ -76,7 +76,11 @@ public class InsertRowsStatement extends InsertBaseStatement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
+  public List<PartialPath> getPaths() {
+    List<PartialPath> result = new ArrayList<>();
+    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
+      result.addAll(insertRowStatement.getPaths());
+    }
+    return result;
   }
 }

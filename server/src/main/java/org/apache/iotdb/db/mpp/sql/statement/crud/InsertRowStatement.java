@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -47,8 +48,13 @@ public class InsertRowStatement extends InsertBaseStatement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
+    for (String m : measurements) {
+      PartialPath fullPath = devicePath.concatNode(m);
+      ret.add(fullPath);
+    }
+    return ret;
   }
 
   public long getTime() {

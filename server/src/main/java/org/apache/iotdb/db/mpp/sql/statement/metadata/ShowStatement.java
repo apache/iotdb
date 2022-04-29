@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 
+import java.util.Collections;
 import java.util.List;
 
 public class ShowStatement extends Statement {
@@ -38,8 +39,8 @@ public class ShowStatement extends Statement {
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return null;
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   public int getLimit() {
