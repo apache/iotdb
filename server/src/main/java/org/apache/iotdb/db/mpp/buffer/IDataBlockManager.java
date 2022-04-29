@@ -30,14 +30,20 @@ public interface IDataBlockManager {
    *
    * @param localFragmentInstanceId ID of the local fragment instance who generates and sends data
    *     blocks to the sink handle.
-   * @param endpoint Hostname and Port of the remote fragment instance where the data blocks should
-   *     be sent to.
+   * @param remoteEndpoint Hostname and Port of the remote fragment instance where the data blocks
+   *     should be sent to.
    * @param remotePlanNodeId The sink plan node ID of the remote fragment instance.
    * @param instanceContext The context of local fragment instance.
    */
   ISinkHandle createSinkHandle(
       TFragmentInstanceId localFragmentInstanceId,
-      TEndPoint endpoint,
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      String remotePlanNodeId,
+      FragmentInstanceContext instanceContext);
+
+  ISinkHandle createLocalSinkHandle(
+      TFragmentInstanceId localFragmentInstanceId,
       TFragmentInstanceId remoteFragmentInstanceId,
       String remotePlanNodeId,
       FragmentInstanceContext instanceContext);
@@ -49,15 +55,21 @@ public interface IDataBlockManager {
    * @param localFragmentInstanceId ID of the local fragment instance who receives data blocks from
    *     the source handle.
    * @param localPlanNodeId The local sink plan node ID.
-   * @param endpoint Hostname and Port of the remote fragment instance where the data blocks should
-   *     be received from.
+   * @param remoteEndpoint Hostname and Port of the remote fragment instance where the data blocks
+   *     should be received from.
    * @param remoteFragmentInstanceId ID of the remote fragment instance.
    * @param onFailureCallback The callback on failure.
    */
   ISourceHandle createSourceHandle(
       TFragmentInstanceId localFragmentInstanceId,
       String localPlanNodeId,
-      TEndPoint endpoint,
+      TEndPoint remoteEndpoint,
+      TFragmentInstanceId remoteFragmentInstanceId,
+      IDataBlockManagerCallback<Throwable> onFailureCallback);
+
+  ISourceHandle createLocalSourceHandle(
+      TFragmentInstanceId localFragmentInstanceId,
+      String localPlanNodeId,
       TFragmentInstanceId remoteFragmentInstanceId,
       IDataBlockManagerCallback<Throwable> onFailureCallback);
 
