@@ -199,7 +199,7 @@ public class TimeJoinOperator implements ProcessOperator {
       return true;
     }
     finished = true;
-    for (int i = 0; i < columnCount; i++) {
+    for (int i = 0; i < inputCount; i++) {
       // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
       if (!noMoreTsBlocks[i] || !empty(i)) {
         finished = false;
