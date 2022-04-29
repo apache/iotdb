@@ -137,7 +137,7 @@ public class InternalServiceImpl implements InternalService.Iface {
 
     // TODO need to be implemented and currently in order not to print NotImplementedException log,
     // we simply return null
-    return null;
+    return new TCancelResp(true);
     //    throw new NotImplementedException();
   }
 

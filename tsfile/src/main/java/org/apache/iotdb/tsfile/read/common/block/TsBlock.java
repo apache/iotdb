@@ -194,6 +194,13 @@ public class TsBlock {
     return new TsBlockSingleColumnIterator(0, columnIndex);
   }
 
+  public void reverse() {
+    timeColumn.reverse();
+    for (Column valueColumn : valueColumns) {
+      valueColumn.reverse();
+    }
+  }
+
   public TsBlockRowIterator getTsBlockRowIterator() {
     return new TsBlockRowIterator(0);
   }

@@ -213,7 +213,9 @@ public class SourceHandle implements ISourceHandle {
     if (blocked != null && !blocked.isDone()) {
       blocked.cancel(true);
     }
-    bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
+    if (blockedOnMemory != null) {
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
+    }
     sequenceIdToDataBlockSize.clear();
     if (bufferRetainedSizeInBytes > 0) {
       localMemoryManager

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -214,6 +215,22 @@ public class ConfigNodeClient {
         TSStatus status = client.deleteStorageGroup(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+  }
+
+  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern)
+      throws IoTDBConnectionException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
         }
       } catch (TException e) {
         configLeader = null;

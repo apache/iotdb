@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -36,6 +35,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
@@ -117,18 +117,21 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return null;
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
     return null;
   }
 
   @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return null;
+  public TSDataType[] getDataTypes() {
+    if (isNeedInferType) {
+      TSDataType[] predictedDataTypes = new TSDataType[dataTypes.length];
+      for (int i = 0; i < dataTypes.length; i++) {
+        predictedDataTypes[i] = TypeInferenceUtils.getPredictedDataType(values[i], true);
+      }
+      return predictedDataTypes;
+    }
+
+    return dataTypes;
   }
 
   public Object[] getValues() {

@@ -47,7 +47,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -63,7 +62,6 @@ import static org.junit.Assert.fail;
 public class LogicalPlannerTest {
 
   @Test
-  @Ignore // TODO: @zyk implement getBelongedStorageGroup() in SchemaTree
   public void testQueryPlan() {
     for (String sql : querySQLs) {
       Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
