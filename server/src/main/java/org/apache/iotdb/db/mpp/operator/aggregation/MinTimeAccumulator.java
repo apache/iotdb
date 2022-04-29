@@ -17,5 +17,83 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.operator.aggregation;public class MinTimeAccumulator {
+package org.apache.iotdb.db.mpp.operator.aggregation;
+
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+
+public class MinTimeAccumulator implements Accumulator {
+
+  private boolean hasCandidateResult;
+  private long minTime = Long.MAX_VALUE;
+
+  public MinTimeAccumulator() {}
+
+  // Column should be like: | Time |
+  @Override
+  public void addInput(Column[] column, TimeRange timeRange) {
+    long curTime = column[0].getLong(0);
+    if (curTime < timeRange.getMax() && curTime >= timeRange.getMin()) {
+      updateMinTime(curTime);
+    }
+  }
+
+  // partialResult should be like: | partialMinTimeValue |
+  @Override
+  public void addIntermediate(Column[] partialResult) {
+    if (partialResult.length != 1) {
+      throw new IllegalArgumentException("partialResult of MinTime should be 1");
+    }
+    updateMinTime(partialResult[0].getLong(0));
+  }
+
+  @Override
+  public void addStatistics(Statistics statistics) {
+    updateMinTime(statistics.getStartTime());
+  }
+
+  // finalResult should be single column, like: | finalMinTime |
+  @Override
+  public void setFinal(Column finalResult) {
+    minTime = finalResult.getLong(0);
+  }
+
+  // columnBuilder should be single in minTimeAccumulator
+  @Override
+  public void outputIntermediate(ColumnBuilder[] columnBuilders) {
+    columnBuilders[0].writeLong(minTime);
+  }
+
+  @Override
+  public void outputFinal(ColumnBuilder columnBuilder) {
+    columnBuilder.writeLong(minTime);
+  }
+
+  @Override
+  public void reset() {
+    this.minTime = Long.MAX_VALUE;
+  }
+
+  @Override
+  public boolean hasFinalResult() {
+    return hasCandidateResult;
+  }
+
+  @Override
+  public TSDataType[] getIntermediateType() {
+    return new TSDataType[] {TSDataType.INT64};
+  }
+
+  @Override
+  public TSDataType getFinalType() {
+    return TSDataType.INT64;
+  }
+
+  private void updateMinTime(long curTime) {
+    hasCandidateResult = true;
+    minTime = Math.min(minTime, curTime);
+  }
 }

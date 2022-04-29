@@ -17,5 +17,93 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.operator.aggregation;public class LastValueAccumulator {
+package org.apache.iotdb.db.mpp.operator.aggregation;
+
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+public class LastValueAccumulator implements Accumulator {
+
+  private TsPrimitiveType lastValue;
+  private long maxTime = Long.MIN_VALUE;
+
+  public LastValueAccumulator(TSDataType seriesDataType) {
+    lastValue = TsPrimitiveType.getByType(seriesDataType);
+  }
+
+  // Column should be like: | Time | Value |
+  @Override
+  public void addInput(Column[] column, TimeRange timeRange) {
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax()) {
+        updateLastValue(column[1].getObject(0), curTime);
+      }
+    }
+  }
+
+  // partialResult should be like: | LastValue | MaxTime |
+  @Override
+  public void addIntermediate(Column[] partialResult) {
+    if (partialResult.length != 2) {
+      throw new IllegalArgumentException("partialResult of LastValue should be 2");
+    }
+    updateLastValue(partialResult[0].getObject(0), partialResult[1].getLong(0));
+  }
+
+  @Override
+  public void addStatistics(Statistics statistics) {
+    updateLastValue(statistics.getLastValue(), statistics.getEndTime());
+  }
+
+  // finalResult should be single column, like: | finalLastValue |
+  @Override
+  public void setFinal(Column finalResult) {
+    reset();
+    lastValue.setObject(finalResult.getObject(0));
+  }
+
+  // columnBuilder should be double in LastValueAccumulator
+  @Override
+  public void outputIntermediate(ColumnBuilder[] columnBuilders) {
+    columnBuilders[0].writeObject(lastValue.getValue());
+    columnBuilders[1].writeLong(maxTime);
+  }
+
+  @Override
+  public void outputFinal(ColumnBuilder columnBuilder) {
+    columnBuilder.writeObject(lastValue.getValue());
+  }
+
+  @Override
+  public void reset() {
+    this.maxTime = Long.MIN_VALUE;
+    this.lastValue.reset();
+  }
+
+  @Override
+  public boolean hasFinalResult() {
+    return false;
+  }
+
+  @Override
+  public TSDataType[] getIntermediateType() {
+    return new TSDataType[] {lastValue.getDataType(), TSDataType.INT64};
+  }
+
+  @Override
+  public TSDataType getFinalType() {
+    return lastValue.getDataType();
+  }
+
+  private void updateLastValue(Object value, long curTime) {
+    if (curTime > maxTime) {
+      maxTime = curTime;
+      lastValue.setObject(value);
+    }
+  }
 }

@@ -59,7 +59,8 @@ public interface Accumulator {
   void reset();
 
   /**
-   * For first_value or last_value in decreasing order, we can get final result by the first record.
+   * This method can only be used in seriesAggregateScanOperator. For first_value or last_value in
+   * decreasing order, we can get final result by the first record.
    */
   boolean hasFinalResult();
 
