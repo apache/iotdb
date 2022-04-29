@@ -17,31 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core.transformer;
+package org.apache.iotdb.db.query.udf.core.transformer.multi;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
-import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
+import org.apache.iotdb.db.query.udf.core.reader.LayerRowReader;
 
 import java.io.IOException;
 
-public class UDFQueryRowWindowTransformer extends UDFQueryTransformer {
+public class UDFQueryRowTransformer extends UDFQueryTransformer {
 
-  protected final LayerRowWindowReader layerRowWindowReader;
+  protected final LayerRowReader layerRowReader;
 
-  public UDFQueryRowWindowTransformer(
-      LayerRowWindowReader layerRowWindowReader, UDTFExecutor executor) {
+  public UDFQueryRowTransformer(LayerRowReader layerRowReader, UDTFExecutor executor) {
     super(executor);
-    this.layerRowWindowReader = layerRowWindowReader;
+    this.layerRowReader = layerRowReader;
   }
 
   @Override
-  protected boolean executeUDFOnce() throws QueryProcessException, IOException {
-    if (!layerRowWindowReader.next()) {
+  protected boolean executeUDFOnce() throws IOException, QueryProcessException {
+    if (!layerRowReader.next()) {
       return false;
     }
-    executor.execute(layerRowWindowReader.currentWindow());
-    layerRowWindowReader.readyForNext();
+    if (layerRowReader.isCurrentNull()) {
+      currentNull = true;
+    }
+    executor.execute(layerRowReader.currentRow(), currentNull);
+    layerRowReader.readyForNext();
     return true;
   }
 }

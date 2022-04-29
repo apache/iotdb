@@ -17,19 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core.transformer;
+package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class CompareLessEqualTransformer extends CompareBinaryTransformer {
+public abstract class CompareBinaryTransformer extends BinaryTransformer {
 
-  public CompareLessEqualTransformer(
+  protected CompareBinaryTransformer(
       LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     super(leftPointReader, rightPointReader);
   }
 
   @Override
-  protected boolean evaluateBoolean(double leftOperand, double rightOperand) {
-    return Double.compare(leftOperand, rightOperand) <= 0;
+  protected TransformerType getTransformerType() {
+    return TransformerType.Comparative;
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.BOOLEAN;
   }
 }
