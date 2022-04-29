@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.parameter;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.nio.ByteBuffer;
+
 /**
  * This attribute indicates the input and output type of the {@code Aggregator}.
  *
@@ -67,6 +71,26 @@ public enum AggregationStep {
   public static AggregationStep partialInput(AggregationStep step) {
     if (step.isOutputPartial()) {
       return AggregationStep.INTERMEDIATE;
+    }
+    return AggregationStep.FINAL;
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(isInputRaw(), byteBuffer);
+    ReadWriteIOUtils.write(isOutputPartial(), byteBuffer);
+  }
+
+  public static AggregationStep deserialize(ByteBuffer byteBuffer) {
+    boolean isInputRaw = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean isOutputPartial = ReadWriteIOUtils.readBool(byteBuffer);
+    if (isInputRaw && isOutputPartial) {
+      return AggregationStep.PARTIAL;
+    }
+    if (!isInputRaw && isOutputPartial) {
+      return AggregationStep.INTERMEDIATE;
+    }
+    if (isInputRaw) {
+      return AggregationStep.SINGLE;
     }
     return AggregationStep.FINAL;
   }

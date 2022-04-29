@@ -31,22 +31,17 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
-import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -57,7 +52,7 @@ import static org.junit.Assert.assertEquals;
 public class FragmentInstanceSerdeTest {
 
   @Test
-  public void TestSerializeAndDeserializeForTree1() throws IllegalPathException {
+  public void testSerializeAndDeserializeForTree1() throws IllegalPathException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
@@ -86,7 +81,7 @@ public class FragmentInstanceSerdeTest {
   }
 
   @Test
-  public void TestSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
+  public void testSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
@@ -125,37 +120,32 @@ public class FragmentInstanceSerdeTest {
             null,
             FilterNullPolicy.ALL_NULL,
             new ArrayList<>());
-    IExpression expression =
-        BinaryExpression.and(
-            new SingleSeriesExpression(
-                new MeasurementPath("root.sg.d1.s2"),
-                new Gt<Integer>(
-                    10, org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)),
-            new SingleSeriesExpression(
-                new MeasurementPath("root.sg.d2.s2"),
-                new Gt<Integer>(
-                    10, org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER)));
-
-    FilterNode filterNode = new FilterNode(new PlanNodeId("FilterNode"), expression);
 
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("TimeJoinNode"), OrderBy.TIMESTAMP_DESC);
-    timeJoinNode.setFilterNullParameter(
-        new FilterNullParameter(FilterNullPolicy.CONTAINS_NULL, new ArrayList<>()));
     SeriesScanNode seriesScanNode1 =
-        new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
+        new SeriesScanNode(
+            new PlanNodeId("SeriesScanNode1"),
+            new MeasurementPath("root.sg.d1.s2"),
+            Sets.newHashSet("s2"));
     seriesScanNode1.setRegionReplicaSet(
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
-        new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
+        new SeriesScanNode(
+            new PlanNodeId("SeriesScanNode2"),
+            new MeasurementPath("root.sg.d2.s1"),
+            Sets.newHashSet("s1", "s2"));
     seriesScanNode2.setRegionReplicaSet(
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), new ArrayList<>()));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
-        new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
+        new SeriesScanNode(
+            new PlanNodeId("SeriesScanNode3"),
+            new MeasurementPath("root.sg.d2.s2"),
+            Sets.newHashSet("s1", "s2"));
     seriesScanNode3.setRegionReplicaSet(
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), new ArrayList<>()));
@@ -165,8 +155,7 @@ public class FragmentInstanceSerdeTest {
     timeJoinNode.addChild(seriesScanNode1);
     timeJoinNode.addChild(seriesScanNode2);
     timeJoinNode.addChild(seriesScanNode3);
-    filterNode.addChild(timeJoinNode);
-    filterNullNode.addChild(filterNode);
+    filterNullNode.addChild(timeJoinNode);
     limitNode.addChild(filterNullNode);
     offsetNode.addChild(limitNode);
 

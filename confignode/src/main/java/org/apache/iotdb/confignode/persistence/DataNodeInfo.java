@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -111,7 +111,7 @@ public class DataNodeInfo {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeLocationsResp getDataNodeInfo(QueryDataNodeInfoReq plan) {
+  public DataNodeLocationsResp getDataNodeInfo(GetDataNodeInfoReq plan) {
     DataNodeLocationsResp result = new DataNodeLocationsResp();
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 

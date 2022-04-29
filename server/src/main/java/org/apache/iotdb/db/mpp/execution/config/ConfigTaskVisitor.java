@@ -20,19 +20,41 @@
 package org.apache.iotdb.db.mpp.execution.config;
 
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor
     extends StatementVisitor<IConfigTask, ConfigTaskVisitor.TaskContext> {
 
+  @Override
+  public IConfigTask visitNode(StatementNode node, TaskContext context) {
+    throw new UnsupportedOperationException(
+        "Unsupported statement type: " + node.getClass().getName());
+  }
+
+  @Override
   public IConfigTask visitStatement(Statement statement, TaskContext context) {
     throw new NotImplementedException("ConfigTask is not implemented for: " + statement);
   }
 
+  @Override
   public IConfigTask visitSetStorageGroup(SetStorageGroupStatement statement, TaskContext context) {
     return new SetStorageGroupTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitShowStorageGroup(
+      ShowStorageGroupStatement statement, TaskContext context) {
+    return new ShowStorageGroupTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitAuthor(AuthorStatement statement, TaskContext context) {
+    return new AuthorizerConfigTask(statement);
   }
 
   public static class TaskContext {}

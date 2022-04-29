@@ -50,7 +50,7 @@ public class AdditionExpression extends BinaryExpression {
   }
 
   @Override
-  protected short getExpressionType() {
-    return ExpressionType.ADDITION.getExpressionType();
+  public ExpressionType getExpressionType() {
+    return ExpressionType.ADDITION;
   }
 }

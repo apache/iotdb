@@ -27,7 +27,7 @@ import org.junit.Test;
 
 public class FragmentInstanceIdTest {
   @Test
-  public void TestFromThrift() {
+  public void testFromThrift() {
     String queryId = "test_query";
     TFragmentInstanceId tId = new TFragmentInstanceId(queryId, 1, "0");
     FragmentInstanceId id = FragmentInstanceId.fromThrift(tId);

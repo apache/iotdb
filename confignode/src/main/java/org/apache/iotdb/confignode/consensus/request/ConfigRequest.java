@@ -19,15 +19,24 @@
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.QueryStorageGroupSchemaReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.slf4j.Logger;
@@ -86,40 +95,61 @@ public abstract class ConfigRequest implements IConsensusRequest {
         throw new IOException("unrecognized log type " + typeNum);
       }
       ConfigRequestType type = ConfigRequestType.values()[typeNum];
-      ConfigRequest plan;
+      ConfigRequest req;
       switch (type) {
         case RegisterDataNode:
-          plan = new RegisterDataNodeReq();
+          req = new RegisterDataNodeReq();
           break;
-        case QueryDataNodeInfo:
-          plan = new QueryDataNodeInfoReq();
+        case GetDataNodeInfo:
+          req = new GetDataNodeInfoReq();
           break;
         case SetStorageGroup:
-          plan = new SetStorageGroupReq();
+          req = new SetStorageGroupReq();
           break;
-        case QueryStorageGroupSchema:
-          plan = new QueryStorageGroupSchemaReq();
+        case DeleteStorageGroup:
+          req = new DeleteStorageGroupReq();
+          break;
+        case SetTTL:
+          req = new SetTTLReq();
+          break;
+        case SetSchemaReplicationFactor:
+          req = new SetSchemaReplicationFactorReq();
+          break;
+        case SetDataReplicationFactor:
+          req = new SetDataReplicationFactorReq();
+          break;
+        case SetTimePartitionInterval:
+          req = new SetTimePartitionIntervalReq();
+          break;
+        case CountStorageGroup:
+          req = new CountStorageGroupReq();
+          break;
+        case GetStorageGroup:
+          req = new GetStorageGroupReq();
           break;
         case CreateRegions:
-          plan = new CreateRegionsReq();
+          req = new CreateRegionsReq();
+          break;
+        case DeleteRegions:
+          req = new DeleteRegionsReq();
           break;
         case GetSchemaPartition:
-          plan = new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetSchemaPartition);
+          req = new GetSchemaPartitionReq();
           break;
         case CreateSchemaPartition:
-          plan = new CreateSchemaPartitionReq();
+          req = new CreateSchemaPartitionReq();
           break;
         case GetOrCreateSchemaPartition:
-          plan = new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetOrCreateSchemaPartition);
+          req = new GetOrCreateSchemaPartitionReq();
           break;
         case GetDataPartition:
-          plan = new GetOrCreateDataPartitionReq(ConfigRequestType.GetDataPartition);
+          req = new GetDataPartitionReq();
           break;
         case CreateDataPartition:
-          plan = new CreateDataPartitionReq();
+          req = new CreateDataPartitionReq();
           break;
         case GetOrCreateDataPartition:
-          plan = new GetOrCreateDataPartitionReq(ConfigRequestType.GetOrCreateDataPartition);
+          req = new GetOrCreateDataPartitionReq();
           break;
         case LIST_USER:
         case LIST_ROLE:
@@ -138,13 +168,13 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case REVOKE_ROLE:
         case REVOKE_ROLE_FROM_USER:
         case UPDATE_USER:
-          plan = new AuthorReq(type);
+          req = new AuthorReq(type);
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);
       }
-      plan.deserializeImpl(buffer);
-      return plan;
+      req.deserializeImpl(buffer);
+      return req;
     }
 
     private Factory() {

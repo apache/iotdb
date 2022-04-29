@@ -45,10 +45,6 @@ public class SetStorageGroupReq extends ConfigRequest {
     return schema;
   }
 
-  public void setSchema(TStorageGroupSchema schema) {
-    this.schema = schema;
-  }
-
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(ConfigRequestType.SetStorageGroup.ordinal());

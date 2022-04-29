@@ -19,27 +19,34 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AuthorNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByTimeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
@@ -53,7 +60,7 @@ import java.nio.ByteBuffer;
 
 public enum PlanNodeType {
   AGGREGATE((short) 0),
-  DEVICE_MERGE((short) 1),
+  DEVICE_VIEW((short) 1),
   FILL((short) 2),
   FILTER((short) 3),
   FILTER_NULL((short) 4),
@@ -73,13 +80,21 @@ public enum PlanNodeType {
   DEVICES_SCHEMA_SCAN((short) 18),
   CREATE_TIME_SERIES((short) 19),
   EXCHANGE((short) 20),
-  AUTHOR((short) 21),
-  ALTER_TIME_SERIES((short) 22),
-  CREATE_ALIGNED_TIME_SERIES((short) 23),
-  TIME_SERIES_SCHEMA_SCAN((short) 24),
-  SCHEMA_FETCH((short) 25),
-  SCHEMA_MERGE((short) 26),
-  STORAGE_GROUP_SCHEMA_SCAN((short) 27);
+  ALTER_TIME_SERIES((short) 21),
+  CREATE_ALIGNED_TIME_SERIES((short) 22),
+  TIME_SERIES_SCHEMA_SCAN((short) 23),
+  SCHEMA_FETCH((short) 24),
+  SCHEMA_MERGE((short) 25),
+  STORAGE_GROUP_SCHEMA_SCAN((short) 26),
+  DEVICES_COUNT((short) 27),
+  TIME_SERIES_COUNT((short) 28),
+  LEVEL_TIME_SERIES_COUNT((short) 29),
+  COUNT_MERGE((short) 30),
+  GROUP_BY_TIME((short) 31),
+  PROJECT((short) 32),
+  ALIGNED_SERIES_SCAN((short) 33),
+  ALIGNED_SERIES_AGGREGATE_SCAN((short) 34),
+  DEVICE_MERGE((short) 35);
 
   private final short nodeType;
 
@@ -108,9 +123,9 @@ public enum PlanNodeType {
     short nodeType = buffer.getShort();
     switch (nodeType) {
       case 0:
-        return AggregateNode.deserialize(buffer);
+        return AggregationNode.deserialize(buffer);
       case 1:
-        return DeviceMergeNode.deserialize(buffer);
+        return DeviceViewNode.deserialize(buffer);
       case 2:
         return FillNode.deserialize(buffer);
       case 3:
@@ -132,7 +147,7 @@ public enum PlanNodeType {
       case 11:
         return SeriesScanNode.deserialize(buffer);
       case 12:
-        return SeriesAggregateScanNode.deserialize(buffer);
+        return SeriesAggregationScanNode.deserialize(buffer);
       case 13:
         return InsertTabletNode.deserialize(buffer);
       case 14:
@@ -150,17 +165,31 @@ public enum PlanNodeType {
       case 20:
         return ExchangeNode.deserialize(buffer);
       case 21:
-        return AuthorNode.deserialize(buffer);
-      case 22:
         return AlterTimeSeriesNode.deserialize(buffer);
-      case 23:
+      case 22:
         return CreateAlignedTimeSeriesNode.deserialize(buffer);
-      case 24:
+      case 23:
         return TimeSeriesSchemaScanNode.deserialize(buffer);
-      case 25:
+      case 24:
         return SchemaFetchNode.deserialize(buffer);
-      case 26:
-        return SchemaMergeNode.deserialize(buffer);
+      case 25:
+        return SeriesSchemaMergeNode.deserialize(buffer);
+      case 27:
+        return DevicesCountNode.deserialize(buffer);
+      case 28:
+        return TimeSeriesCountNode.deserialize(buffer);
+      case 29:
+        return LevelTimeSeriesCountNode.deserialize(buffer);
+      case 30:
+        return CountSchemaMergeNode.deserialize(buffer);
+      case 31:
+        return GroupByTimeNode.deserialize(buffer);
+      case 32:
+        return ProjectNode.deserialize(buffer);
+      case 33:
+        return AlignedSeriesScanNode.deserialize(buffer);
+      case 34:
+        return AlignedSeriesAggregationScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

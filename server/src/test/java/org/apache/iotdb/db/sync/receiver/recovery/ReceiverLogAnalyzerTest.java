@@ -87,8 +87,8 @@ public class ReceiverLogAnalyzerTest {
 
   @Test
   public void testMessageLog() {
-    String pipeIdentifier1 = SyncPathUtil.getReceiverPipeFolderName(pipe1, ip1, createdTime1);
-    String pipeIdentifier2 = SyncPathUtil.getReceiverPipeFolderName(pipe2, ip2, createdTime2);
+    String pipeIdentifier1 = SyncPathUtil.getReceiverPipeDirName(pipe1, ip1, createdTime1);
+    String pipeIdentifier2 = SyncPathUtil.getReceiverPipeDirName(pipe2, ip2, createdTime2);
     try {
       ReceiverLog log = new ReceiverLog();
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
@@ -116,8 +116,8 @@ public class ReceiverLogAnalyzerTest {
       Assert.assertEquals(info, map.get(pipeIdentifier1).get(1));
       Assert.assertEquals(warn, map.get(pipeIdentifier1).get(2));
     } catch (Exception e) {
-      Assert.fail();
       e.printStackTrace();
+      Assert.fail();
     }
   }
 }

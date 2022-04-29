@@ -21,14 +21,15 @@ package org.apache.iotdb.db.mpp.sql.analyze;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaEntityNode;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaInternalNode;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaMeasurementNode;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaNode;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
+import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.util.Collections;
 import java.util.List;
 
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
@@ -37,6 +38,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
+    schemaTree.setStorageGroups(Collections.singletonList("root.sg"));
     return schemaTree;
   }
 

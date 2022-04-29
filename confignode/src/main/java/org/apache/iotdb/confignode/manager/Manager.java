@@ -20,6 +20,17 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -67,33 +78,45 @@ public interface Manager {
   /**
    * Register DataNode
    *
-   * @param configRequest RegisterDataNodePlan
    * @return DataNodeConfigurationDataSet
    */
-  DataSet registerDataNode(ConfigRequest configRequest);
+  DataSet registerDataNode(RegisterDataNodeReq registerDataNodeReq);
 
   /**
    * Get DataNode info
    *
-   * @param configRequest QueryDataNodeInfoPlan
    * @return DataNodesInfoDataSet
    */
-  DataSet getDataNodeInfo(ConfigRequest configRequest);
+  DataSet getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq);
+
+  TSStatus setTTL(SetTTLReq configRequest);
+
+  TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorReq configRequest);
+
+  TSStatus setDataReplicationFactor(SetDataReplicationFactorReq configRequest);
+
+  TSStatus setTimePartitionInterval(SetTimePartitionIntervalReq configRequest);
+
+  /**
+   * Count StorageGroups
+   *
+   * @return The number of matched StorageGroups
+   */
+  DataSet countMatchedStorageGroups(CountStorageGroupReq countStorageGroupReq);
 
   /**
    * Get StorageGroupSchemas
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getStorageGroupSchema();
+  DataSet getMatchedStorageGroupSchemas(GetStorageGroupReq getOrCountStorageGroupReq);
 
   /**
    * Set StorageGroup
    *
-   * @param configRequest SetStorageGroupReq
    * @return status
    */
-  TSStatus setStorageGroup(ConfigRequest configRequest);
+  TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq);
 
   /**
    * Get SchemaPartition
@@ -112,18 +135,16 @@ public interface Manager {
   /**
    * Get DataPartition
    *
-   * @param configRequest DataPartitionPlan
    * @return DataPartitionDataSet
    */
-  DataSet getDataPartition(ConfigRequest configRequest);
+  DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq);
 
   /**
    * Get or create DataPartition
    *
-   * @param configRequest DataPartitionPlan
    * @return DataPartitionDataSet
    */
-  DataSet getOrCreateDataPartition(ConfigRequest configRequest);
+  DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq getOrCreateDataPartitionReq);
 
   /**
    * Operate Permission
@@ -140,4 +161,13 @@ public interface Manager {
    * @return PermissionInfoDataSet
    */
   DataSet queryPermission(ConfigRequest configRequest);
+
+  /**
+   * login
+   *
+   * @param username
+   * @param password
+   * @return
+   */
+  TSStatus login(String username, String password);
 }

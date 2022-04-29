@@ -20,8 +20,9 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.AsyncClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.QueryDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
@@ -78,6 +79,9 @@ public class DataNodeManager {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
 
     if (DataNodeInfo.getInstance().containsValue(plan.getLocation())) {
+      // Reset client
+      AsyncClientPool.getInstance().resetClient(plan.getLocation().getInternalEndPoint());
+
       TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
       dataSet.setStatus(status);
@@ -100,7 +104,7 @@ public class DataNodeManager {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeLocationsResp getDataNodeInfo(QueryDataNodeInfoReq plan) {
+  public DataNodeLocationsResp getDataNodeInfo(GetDataNodeInfoReq plan) {
     return (DataNodeLocationsResp) getConsensusManager().read(plan).getDataset();
   }
 
