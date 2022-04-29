@@ -48,6 +48,8 @@ public class ExchangeNode extends PlanNode {
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
 
+  private List<String> outputColumnNames;
+
   public ExchangeNode(PlanNodeId id) {
     super(id);
   }
@@ -88,7 +90,7 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return outputColumnNames;
   }
 
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
@@ -151,6 +153,7 @@ public class ExchangeNode extends PlanNode {
 
   public void setRemoteSourceNode(FragmentSinkNode remoteSourceNode) {
     this.remoteSourceNode = remoteSourceNode;
+    this.outputColumnNames = remoteSourceNode.getOutputColumnNames();
   }
 
   public void cleanChildren() {
