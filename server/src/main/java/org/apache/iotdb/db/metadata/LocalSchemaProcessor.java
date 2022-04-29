@@ -216,8 +216,9 @@ public class LocalSchemaProcessor {
         break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
-        // cause we only has one path for one DeleteTimeSeriesPlan
-        deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
+        for (PartialPath path : deleteTimeSeriesPlan.getPaths()) {
+          deleteTimeseries(path);
+        }
         break;
       case SET_STORAGE_GROUP:
         SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
