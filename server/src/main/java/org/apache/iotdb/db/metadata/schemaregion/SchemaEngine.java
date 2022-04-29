@@ -172,7 +172,8 @@ public class SchemaEngine {
                   + "and the former one has been recovered.",
               schemaRegionId, schemaRegion.getStorageGroupFullPath(), storageGroup.getFullPath()));
     }
-    createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId);
+    schemaRegionMap.put(
+        schemaRegionId, createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId));
   }
 
   private Callable<ISchemaRegion> recoverSchemaRegionTask(
