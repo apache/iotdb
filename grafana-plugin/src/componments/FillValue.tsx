@@ -14,23 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import React, { FunctionComponent } from 'react';
 import { SegmentInput } from '@grafana/ui';
 
 export interface Props {
-  condition: string;
-  onChange: (conditionStr: string) => void;
+  fill: string;
+  onChange: (fillValue: string) => void;
 }
 
-export const WhereValue: FunctionComponent<Props> = ({ condition, onChange }) => (
+export const FillValue: FunctionComponent<Props> = ({ fill, onChange }) => (
   <>
     {
       <>
         <SegmentInput
           className="min-width-8"
           placeholder="(optional)"
-          value={condition}
+          value={fill}
           onChange={(string) => onChange(string.toString())}
         />
       </>

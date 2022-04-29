@@ -16,24 +16,57 @@
  */
 import defaults from 'lodash/defaults';
 import React, { ChangeEvent, PureComponent } from 'react';
-import { QueryEditorProps } from '@grafana/data';
+import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from './datasource';
-import { IoTDBOptions, IoTDBQuery } from './types';
-import { QueryInlineField } from './componments/Form';
+import { GroupBy, IoTDBOptions, IoTDBQuery } from './types';
+import { QueryField, QueryInlineField } from './componments/Form';
+import { TimeSeries } from './componments/TimeSeries';
 import { SelectValue } from './componments/SelectValue';
-import { FromValue } from 'componments/FromValue';
-import { WhereValue } from 'componments/WhereValue';
-import { ControlValue } from 'componments/ControlValue';
+import { FromValue } from './componments/FromValue';
+import { WhereValue } from './componments/WhereValue';
+import { ControlValue } from './componments/ControlValue';
+import { FillValue } from './componments/FillValue';
+import { Segment } from '@grafana/ui';
+import { toOption } from './functions';
+
+import { GroupByLabel } from './componments/GroupBy';
+import { AggregateFun } from './componments/AggregateFun';
 
 interface State {
   expression: string[];
   prefixPath: string[];
   condition: string;
   control: string;
+
+  timeSeries: string[];
+  options: Array<Array<SelectableValue<string>>>;
+  aggregateFun: string;
+  groupBy: GroupBy;
+  fillClauses: string;
+  isAggregated: boolean;
+  aggregated: string;
+  shouldAdd: boolean;
 }
+
+const selectElement = [
+  '---remove---',
+  'SUM',
+  'COUNT',
+  'AVG',
+  'EXTREME',
+  'MAX_VALUE',
+  'MIN_VALUE',
+  'FIRST_VALUE',
+  'LAST_VALUE',
+  'MAX_TIME',
+  'MIN_TIME',
+];
 
 const paths = [''];
 const expressions = [''];
+const selectRaw = ['Raw', 'Aggregation'];
+const commonOption: SelectableValue<string> = { label: '*', value: '*' };
+const commonOptionDou: SelectableValue<string> = { label: '**', value: '**' };
 type Props = QueryEditorProps<DataSource, IoTDBQuery, IoTDBOptions>;
 
 export class QueryEditor extends PureComponent<Props, State> {
@@ -42,6 +75,18 @@ export class QueryEditor extends PureComponent<Props, State> {
     prefixPath: paths,
     condition: '',
     control: '',
+    timeSeries: [],
+    options: [[toOption('')]],
+    aggregateFun: '',
+    groupBy: {
+      samplingInterval: '',
+      step: '',
+      groupByLevel: '',
+    },
+    fillClauses: '',
+    isAggregated: false,
+    aggregated: selectRaw[0],
+    shouldAdd: true,
   };
 
   onSelectValueChange = (exp: string[]) => {
@@ -67,45 +112,229 @@ export class QueryEditor extends PureComponent<Props, State> {
     this.setState({ control: c });
   };
 
+  onAggregationsChange = (a: string) => {
+    const { onChange, query } = this.props;
+    if (a === '---remove---') {
+      a = '';
+    }
+    this.setState({ aggregateFun: a });
+    onChange({ ...query, aggregateFun: a });
+  };
+
+  onFillsChange = (f: string) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query, fillClauses: f });
+    this.setState({ fillClauses: f });
+  };
+
+  onGroupByChange = (g: GroupBy) => {
+    const { onChange, query } = this.props;
+    this.setState({ groupBy: g });
+    onChange({ ...query, groupBy: g });
+  };
+
   onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
-    onChange({ ...query, queryText: event.target.value });
+    onChange({ ...query });
   };
+
+  onSelectRawChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query });
+  };
+
+  onTimeSeriesChange = (t: string[], options: Array<Array<SelectableValue<string>>>, isRemove: boolean) => {
+    const { onChange, query } = this.props;
+    const commonOption: SelectableValue<string> = { label: '*', value: '*' };
+    if (t.length === options.length) {
+      this.props.datasource
+        .nodeQuery(['root', ...t])
+        .then((a) => {
+          let b = a.map((a) => a.text).map(toOption);
+          if (b.length > 0) {
+            b = [commonOption, commonOptionDou, ...b];
+          }
+          onChange({ ...query, paths: t, options: [...options, b] });
+          if (isRemove) {
+            this.setState({ timeSeries: t, options: [...options, b], shouldAdd: true });
+          } else {
+            this.setState({ timeSeries: t, options: [...options, b] });
+          }
+        })
+        .catch((e) => {
+          if (e === 'measurement') {
+            onChange({ ...query, paths: t });
+            this.setState({ timeSeries: t, shouldAdd: false });
+          } else {
+            this.setState({ shouldAdd: false });
+          }
+        });
+    } else {
+      this.setState({ timeSeries: t });
+      onChange({ ...query, paths: t });
+    }
+  };
+
+  componentDidMount() {
+    if (this.props.query.aggregated) {
+      this.setState({ isAggregated: this.props.query.isAggregated, aggregated: this.props.query.aggregated });
+    } else {
+      this.props.query.aggregated = selectRaw[0];
+    }
+    if (this.state.options.length === 1 && this.state.options[0][0].value === '') {
+      this.props.datasource.nodeQuery(['root']).then((a) => {
+        let b = a.map((a) => a.text).map(toOption);
+        if (b.length > 0) {
+          b = [commonOption, commonOptionDou, ...b];
+        }
+        this.setState({ options: [b] });
+      });
+    }
+  }
 
   render() {
     const query = defaults(this.props.query);
-    const { expression, prefixPath, condition, control } = query;
-
+    var { expression, prefixPath, condition, control, fillClauses, aggregateFun, paths, options, aggregated, groupBy } =
+      query;
     return (
       <>
         {
           <>
             <div className="gf-form">
-              <QueryInlineField label={'SELECT'}>
-                <SelectValue
-                  expressions={expression ? expression : this.state.expression}
-                  onChange={this.onSelectValueChange}
-                />
-              </QueryInlineField>
+              <Segment
+                onChange={({ value: value = '' }) => {
+                  const { onChange, query } = this.props;
+                  if (value === selectRaw[0]) {
+                    this.props.query.aggregated = selectRaw[0];
+                    this.props.query.aggregateFun = '';
+                    const nextTimeSeries = this.props.query.paths.filter((_, i) => i < 0);
+                    const nextOptions = this.props.query.options.filter((_, i) => i < 0);
+                    this.onTimeSeriesChange(nextTimeSeries, nextOptions, true);
+                    if (this.props.query.groupBy?.samplingInterval) {
+                      this.props.query.groupBy.samplingInterval = '';
+                    }
+                    if (this.props.query.groupBy?.groupByLevel) {
+                      this.props.query.groupBy.groupByLevel = '';
+                    }
+                    if (this.props.query.groupBy?.step) {
+                      this.props.query.groupBy.step = '';
+                    }
+                    this.props.query.condition = '';
+                    this.props.query.fillClauses = '';
+                    this.props.query.isAggregated = false;
+                    this.setState({
+                      isAggregated: false,
+                      aggregated: selectRaw[0],
+                      shouldAdd: true,
+                      aggregateFun: '',
+                      fillClauses: '',
+                      condition: '',
+                    });
+                    onChange({ ...query, aggregated: value, isAggregated: false });
+                  } else {
+                    this.props.query.aggregated = selectRaw[1];
+                    this.props.query.expression = [''];
+                    this.props.query.prefixPath = [''];
+                    this.props.query.condition = '';
+                    this.props.query.control = '';
+                    this.props.query.isAggregated = true;
+                    this.setState({
+                      isAggregated: true,
+                      aggregated: selectRaw[1],
+                      expression: [''],
+                      prefixPath: [''],
+                      condition: '',
+                      control: '',
+                    });
+                    onChange({ ...query, aggregated: value, isAggregated: true });
+                  }
+                }}
+                options={selectRaw.map(toOption)}
+                value={aggregated ? aggregated : this.state.aggregated}
+                className="query-keyword width-6"
+              />
             </div>
-            <div className="gf-form">
-              <QueryInlineField label={'FROM'}>
-                <FromValue
-                  prefixPath={prefixPath ? prefixPath : this.state.prefixPath}
-                  onChange={this.onFromValueChange}
-                />
-              </QueryInlineField>
-            </div>
-            <div className="gf-form">
-              <QueryInlineField label={'WHERE'}>
-                <WhereValue condition={condition} onChange={this.onWhereValueChange} />
-              </QueryInlineField>
-            </div>
-            <div className="gf-form">
-              <QueryInlineField label={'CONTROL'}>
-                <ControlValue control={control} onChange={this.onControlValueChange} />
-              </QueryInlineField>
-            </div>
+            {!this.state.isAggregated && (
+              <>
+                <div className="gf-form">
+                  <QueryInlineField label={'SELECT'}>
+                    <SelectValue
+                      expressions={expression ? expression : this.state.expression}
+                      onChange={this.onSelectValueChange}
+                    />
+                  </QueryInlineField>
+                </div>
+                <div className="gf-form">
+                  <QueryInlineField label={'FROM'}>
+                    <FromValue
+                      prefixPath={prefixPath ? prefixPath : this.state.prefixPath}
+                      onChange={this.onFromValueChange}
+                    />
+                  </QueryInlineField>
+                </div>
+                <div className="gf-form">
+                  <QueryInlineField label={'WHERE'}>
+                    <WhereValue
+                      condition={condition ? condition : this.state.condition}
+                      onChange={this.onWhereValueChange}
+                    />
+                  </QueryInlineField>
+                </div>
+                <div className="gf-form">
+                  <QueryInlineField label={'CONTROL'}>
+                    <ControlValue
+                      control={control ? control : this.state.control}
+                      onChange={this.onControlValueChange}
+                    />
+                  </QueryInlineField>
+                </div>
+              </>
+            )}
+            {this.state.isAggregated && (
+              <>
+                <div className="gf-form">
+                  <QueryInlineField label={'TIME-SERIES'}>
+                    <TimeSeries
+                      timeSeries={paths ? paths : this.state.timeSeries}
+                      onChange={this.onTimeSeriesChange}
+                      variableOptionGroup={options ? options : this.state.options}
+                      shouldAdd={this.state.shouldAdd}
+                    />
+                  </QueryInlineField>
+                </div>
+                <div className="gf-form">
+                  <QueryInlineField label={'FUNCTION'}>
+                    <AggregateFun
+                      aggregateFun={aggregateFun ? aggregateFun : this.state.aggregateFun}
+                      onChange={this.onAggregationsChange}
+                      variableOptionGroup={selectElement.map(toOption)}
+                    />
+                  </QueryInlineField>
+                </div>
+                <div className="gf-form">
+                  <QueryInlineField label={'WHERE'}>
+                    <WhereValue
+                      condition={condition ? condition : this.state.condition}
+                      onChange={this.onWhereValueChange}
+                    />
+                  </QueryInlineField>
+                </div>
+                <div className="gf-form">
+                  <QueryInlineField label={'GROUP BY'}>
+                    <QueryField label={'SAMPLING INTERVAL'} />
+                    <GroupByLabel groupBy={groupBy ? groupBy : this.state.groupBy} onChange={this.onGroupByChange} />
+                  </QueryInlineField>
+                </div>
+                <div className="gf-form">
+                  <QueryInlineField label={'FILL'}>
+                    <FillValue
+                      fill={fillClauses ? fillClauses : this.state.fillClauses}
+                      onChange={this.onFillsChange}
+                    />
+                  </QueryInlineField>
+                </div>
+              </>
+            )}
           </>
         }
       </>

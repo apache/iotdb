@@ -16,24 +16,29 @@
  */
 
 import React, { FunctionComponent } from 'react';
-import { SegmentInput } from '@grafana/ui';
+import { SelectableValue } from '@grafana/data';
+import { Segment } from '@grafana/ui';
 
 export interface Props {
-  condition: string;
-  onChange: (conditionStr: string) => void;
+  aggregateFun: string;
+  onChange: (path: string) => void;
+  variableOptionGroup: Array<SelectableValue<string>>;
 }
 
-export const WhereValue: FunctionComponent<Props> = ({ condition, onChange }) => (
-  <>
-    {
-      <>
-        <SegmentInput
-          className="min-width-8"
-          placeholder="(optional)"
-          value={condition}
-          onChange={(string) => onChange(string.toString())}
-        />
-      </>
-    }
-  </>
-);
+export const AggregateFun: FunctionComponent<Props> = ({ aggregateFun, onChange, variableOptionGroup }) => {
+  return (
+    <Segment
+      allowCustomValue={false}
+      options={[...variableOptionGroup]}
+      value={aggregateFun}
+      onChange={(item: SelectableValue<string>) => {
+        let itemString = '';
+        if (item.value) {
+          itemString = item.value;
+        }
+        onChange(itemString);
+      }}
+      className="width-6"
+    />
+  );
+};
