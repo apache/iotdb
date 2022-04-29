@@ -418,12 +418,18 @@ public class SchemaFile implements ISchemaFile {
   public void delete(IMNode node) throws IOException, MetadataException {
     long recSegAddr = node.getParent() == null ? ROOT_INDEX : getNodeAddress(node.getParent());
     recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName());
-    getPageInstance(getPageIndex(recSegAddr)).removeRecord(getSegIndex(recSegAddr), node.getName());
+    ISchemaPage tarPage = getPageInstance(getPageIndex(recSegAddr));
+    dirtyPages.putIfAbsent(tarPage.getPageIndex(), tarPage);
+    tarPage.removeRecord(getSegIndex(recSegAddr), node.getName());
 
     if (!node.isMeasurement()) {
       long delSegAddr = getNodeAddress(node);
-      getPageInstance(getPageIndex(delSegAddr)).deleteSegment(getSegIndex(delSegAddr));
+      tarPage = getPageInstance(getPageIndex(delSegAddr));
+      dirtyPages.putIfAbsent(tarPage.getPageIndex(), tarPage);
+      tarPage.deleteSegment(getSegIndex(delSegAddr));
     }
+
+    flushAllDirtyPages();
   }
 
   @Override
