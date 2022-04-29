@@ -168,6 +168,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     }
 
     List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
+    this.measurementSchemas = measurementSchemas.toArray(new MeasurementSchema[0]);
 
     if (isNeedInferType) {
       try {

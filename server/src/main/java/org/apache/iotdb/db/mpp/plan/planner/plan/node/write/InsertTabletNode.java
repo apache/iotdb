@@ -178,6 +178,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
 
     List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
+    this.measurementSchemas = measurementSchemas.toArray(new MeasurementSchema[0]);
+
     for (int i = 0; i < measurementSchemas.size(); i++) {
       if (dataTypes[i] != measurementSchemas.get(i).getType()) {
         if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {

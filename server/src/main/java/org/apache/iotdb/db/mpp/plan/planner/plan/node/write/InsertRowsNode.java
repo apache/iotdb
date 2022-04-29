@@ -113,13 +113,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   }
 
   @Override
-  public void setMeasurementSchemas(SchemaTree schemaTree) {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.setMeasurementSchemas(schemaTree);
-    }
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;

@@ -148,13 +148,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
-  public void setMeasurementSchemas(SchemaTree schemaTree) {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.setMeasurementSchemas(schemaTree);
-    }
-  }
-
-  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     List<WritePlanNode> result = new ArrayList<>();
 

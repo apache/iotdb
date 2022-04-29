@@ -106,8 +106,7 @@ public class InternalServiceImpl implements InternalService.Iface {
         PlanNode planNode = fragmentInstance.getFragment().getRoot();
         if (planNode instanceof InsertNode) {
           try {
-            SchemaTree schemaTree = SchemaValidator.validate((InsertNode) planNode);
-            ((InsertNode) planNode).setMeasurementSchemas(schemaTree);
+            SchemaValidator.validate((InsertNode) planNode);
           } catch (SemanticException e) {
             response.setAccepted(false);
             response.setMessage(e.getMessage());
