@@ -25,7 +25,6 @@ import org.apache.iotdb.itbase.category.RemoteTest;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -179,29 +178,6 @@ public class IoTDBDeleteStorageGroupIT {
         }
       }
       assertEquals(1, count);
-    }
-  }
-
-  @Test
-  public void testSelectIntoAndDeleteStorageGroup() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create schema template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
-      statement.execute("set schema template t1 to root.sg1.d1;");
-      statement.execute("create timeseries of schema template on root.sg1.d1;");
-      statement.execute("show timeseries root.sg1.**;");
-      statement.execute("show devices root.sg1.**;");
-      statement.execute("insert into root.sg1.d1(time, temperature, status) values(1, 1, TRUE);");
-      statement.execute(
-          "insert into root.sg1.d1(time, temperature, status) values(2, 2, FALSE), (3, 3, TRUE);");
-      statement.execute("select temperature into h1 from root.sg1.**;");
-      statement.execute("select temperature,h1 from root.sg1.**;");
-      statement.execute("show schema templates;");
-      statement.execute("delete storage group root.**;");
-      statement.execute("drop schema template t1;");
-    } catch (Exception e) {
-      Assert.fail();
     }
   }
 }

@@ -57,7 +57,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountNodesStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
@@ -494,7 +494,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       path = new PartialPath(SQLConstant.getSingleRootArray());
     }
-    return new CountStatement(path);
+    return new CountStorageGroupStatement(path);
   }
 
   /** Data Manipulation Language (DML) */

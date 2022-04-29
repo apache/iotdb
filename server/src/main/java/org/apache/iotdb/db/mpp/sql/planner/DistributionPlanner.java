@@ -532,6 +532,7 @@ public class DistributionPlanner {
         FragmentSinkNode sinkNode = new FragmentSinkNode(context.getQueryId().genPlanNodeId());
         sinkNode.setChild(exchangeNode.getChild());
         sinkNode.setDownStreamPlanNodeId(exchangeNode.getPlanNodeId());
+
         // Record the source node info in the ExchangeNode so that we can keep the connection of
         // these nodes/fragments
         exchangeNode.setRemoteSourceNode(sinkNode);
