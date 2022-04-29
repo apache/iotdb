@@ -27,6 +27,7 @@ public class UDTFQueryStatement extends QueryStatement {
     super(queryStatement);
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitUDTFQuery(this, context);
   }

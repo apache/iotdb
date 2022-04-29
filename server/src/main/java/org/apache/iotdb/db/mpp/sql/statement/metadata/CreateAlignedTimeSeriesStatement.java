@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
@@ -26,6 +27,9 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +45,9 @@ import java.util.Map;
  */
 public class CreateAlignedTimeSeriesStatement extends Statement {
 
+  private static final Logger logger =
+      LoggerFactory.getLogger(CreateAlignedTimeSeriesStatement.class);
+
   private PartialPath devicePath;
   private List<String> measurements = new ArrayList<>();
   private List<TSDataType> dataTypes = new ArrayList<>();
@@ -54,6 +61,19 @@ public class CreateAlignedTimeSeriesStatement extends Statement {
   public CreateAlignedTimeSeriesStatement() {
     super();
     statementType = StatementType.CREATE_ALIGNED_TIMESERIES;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    List<PartialPath> paths = new ArrayList<>();
+    for (String measurement : measurements) {
+      try {
+        paths.add(new PartialPath(devicePath.getFullPath(), measurement));
+      } catch (IllegalPathException e) {
+        logger.error("Failed to get paths of CreateAlignedTimeSeriesStatement. ", e);
+      }
+    }
+    return paths;
   }
 
   public PartialPath getDevicePath() {
