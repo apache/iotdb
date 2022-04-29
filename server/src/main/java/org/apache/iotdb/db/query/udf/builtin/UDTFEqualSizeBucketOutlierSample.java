@@ -76,23 +76,11 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
       avg /= windowSize;
       for (int i = 0; i < windowSize; i++) {
-        double value = rowWindow.getRow(i).getInt(0) - avg;
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        double value = Math.abs(rowWindow.getRow(i).getInt(0) - avg);
+        addToMinHeap(pq, i, value);
       }
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putInt(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getInt(0));
-      }
+
+      putPQValueInt(pq, rowWindow, collector);
     }
 
     @Override
@@ -115,23 +103,11 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
       avg /= windowSize;
       for (int i = 0; i < windowSize; i++) {
-        double value = rowWindow.getRow(i).getLong(0) - avg;
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        double value = Math.abs(rowWindow.getRow(i).getLong(0) - avg);
+        addToMinHeap(pq, i, value);
       }
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putLong(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getLong(0));
-      }
+
+      putPQValueLong(pq, rowWindow, collector);
     }
 
     @Override
@@ -154,24 +130,11 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
       avg /= windowSize;
       for (int i = 0; i < windowSize; i++) {
-        double value = rowWindow.getRow(i).getFloat(0) - avg;
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        double value = Math.abs(rowWindow.getRow(i).getFloat(0) - avg);
+        addToMinHeap(pq, i, value);
       }
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putFloat(
-            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
-      }
+
+      putPQValueFloat(pq, rowWindow, collector);
     }
 
     @Override
@@ -194,24 +157,11 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       }
       avg /= windowSize;
       for (int i = 0; i < windowSize; i++) {
-        double value = rowWindow.getRow(i).getDouble(0) - avg;
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        double value = Math.abs(rowWindow.getRow(i).getDouble(0) - avg);
+        addToMinHeap(pq, i, value);
       }
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putDouble(
-            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
-      }
+
+      putPQValueDouble(pq, rowWindow, collector);
     }
   }
 
@@ -220,23 +170,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     @Override
     public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putInt(row.getTime(), row.getInt(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putInt(row.getTime(), row.getInt(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putInt(row.getTime(), row.getInt(0));
-        }
+      if (isWindowSizeTooSmallInt(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -255,45 +189,17 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       for (int i = 1; i < windowSize - 1; i++) {
         Row row = rowWindow.getRow(i);
         double value = Math.abs(A * row.getTime() + B * row.getInt(0) + C) / denominator;
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMinHeap(pq, i, value);
       }
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putInt(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getInt(0));
-      }
+
+      putPQValueInt(pq, rowWindow, collector);
     }
 
     @Override
     public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putLong(row.getTime(), row.getLong(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putLong(row.getTime(), row.getLong(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putLong(row.getTime(), row.getLong(0));
-        }
+      if (isWindowSizeTooSmallLong(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -313,45 +219,17 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       for (int i = 1; i < windowSize - 1; i++) {
         Row row = rowWindow.getRow(i);
         double value = Math.abs(A * row.getTime() + B * row.getLong(0) + C) / denominator;
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMinHeap(pq, i, value);
       }
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putLong(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getLong(0));
-      }
+
+      putPQValueLong(pq, rowWindow, collector);
     }
 
     @Override
     public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putFloat(row.getTime(), row.getFloat(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putFloat(row.getTime(), row.getFloat(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putFloat(row.getTime(), row.getFloat(0));
-        }
+      if (isWindowSizeTooSmallFloat(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -371,46 +249,17 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       for (int i = 1; i < windowSize - 1; i++) {
         Row row = rowWindow.getRow(i);
         double value = Math.abs(A * row.getTime() + B * row.getFloat(0) + C) / denominator;
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMinHeap(pq, i, value);
       }
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putFloat(
-            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
-      }
+
+      putPQValueFloat(pq, rowWindow, collector);
     }
 
     @Override
     public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putDouble(row.getTime(), row.getDouble(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putDouble(row.getTime(), row.getDouble(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putDouble(row.getTime(), row.getDouble(0));
-        }
+      if (isWindowSizeTooSmallDouble(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -430,23 +279,10 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       for (int i = 1; i < windowSize - 1; i++) {
         Row row = rowWindow.getRow(i);
         double value = Math.abs(A * row.getTime() + B * row.getDouble(0) + C) / denominator;
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMinHeap(pq, i, value);
       }
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putDouble(
-            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
-      }
+
+      putPQValueDouble(pq, rowWindow, collector);
     }
   }
 
@@ -455,23 +291,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     @Override
     public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putInt(row.getTime(), row.getInt(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putInt(row.getTime(), row.getInt(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putInt(row.getTime(), row.getInt(0));
-        }
+      if (isWindowSizeTooSmallInt(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -501,46 +321,17 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
             (x1 * x2 + y1 * y2)
                 / (Math.sqrt((double) x1 * x1 + y1 * y1) * Math.sqrt((double) x2 * x2 + y2 * y2));
 
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value < pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMaxHeap(pq, i, value);
       }
 
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putInt(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getInt(0));
-      }
+      putPQValueInt(pq, rowWindow, collector);
     }
 
     @Override
     public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putLong(row.getTime(), row.getLong(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putLong(row.getTime(), row.getLong(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putLong(row.getTime(), row.getLong(0));
-        }
+      if (isWindowSizeTooSmallLong(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -570,46 +361,17 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
             (x1 * x2 + y1 * y2)
                 / (Math.sqrt((double) x1 * x1 + y1 * y1) * Math.sqrt((double) x2 * x2 + y2 * y2));
 
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value < pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMaxHeap(pq, i, value);
       }
 
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putLong(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getLong(0));
-      }
+      putPQValueLong(pq, rowWindow, collector);
     }
 
     @Override
     public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putFloat(row.getTime(), row.getFloat(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putFloat(row.getTime(), row.getFloat(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putFloat(row.getTime(), row.getFloat(0));
-        }
+      if (isWindowSizeTooSmallFloat(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -637,47 +399,17 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
 
         value = (x1 * x2 + y1 * y2) / (Math.sqrt(x1 * x1 + y1 * y1) * Math.sqrt(x2 * x2 + y2 * y2));
 
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value < pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMaxHeap(pq, i, value);
       }
 
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putFloat(
-            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
-      }
+      putPQValueFloat(pq, rowWindow, collector);
     }
 
     @Override
     public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putDouble(row.getTime(), row.getDouble(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putDouble(row.getTime(), row.getDouble(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putDouble(row.getTime(), row.getDouble(0));
-        }
+      if (isWindowSizeTooSmallDouble(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -705,24 +437,10 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
 
         value = (x1 * x2 + y1 * y2) / (Math.sqrt(x1 * x1 + y1 * y1) * Math.sqrt(x2 * x2 + y2 * y2));
 
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value < pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMaxHeap(pq, i, value);
       }
 
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putDouble(
-            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
-      }
+      putPQValueDouble(pq, rowWindow, collector);
     }
   }
 
@@ -731,23 +449,7 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
     @Override
     public void outlierSampleInt(RowWindow rowWindow, PointCollector collector) throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putInt(row.getTime(), row.getInt(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putInt(row.getTime(), row.getInt(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putInt(row.getTime(), row.getInt(0));
-        }
+      if (isWindowSizeTooSmallInt(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -767,54 +469,24 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getInt(0);
         nextValue = rowWindow.getRow(i + 1).getInt(0);
 
-        x1 = currentTime - lastTime;
-        x2 = nextTime - currentTime;
-        y1 = currentValue - lastValue;
-        y2 = nextValue - currentValue;
+        x1 = Math.abs(currentTime - lastTime);
+        x2 = Math.abs(nextTime - currentTime);
+        y1 = Math.abs(currentValue - lastValue);
+        y2 = Math.abs(nextValue - currentValue);
 
-        value =
-            (x1 > 0 ? x1 : -x1) + (y1 > 0 ? y1 : -y1) + (x2 > 0 ? x2 : -x2) + (y2 > 0 ? y2 : -y2);
+        value = x1 + y1 + x2 + y2;
 
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMinHeap(pq, i, value);
       }
 
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putInt(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getInt(0));
-      }
+      putPQValueInt(pq, rowWindow, collector);
     }
 
     @Override
     public void outlierSampleLong(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putLong(row.getTime(), row.getLong(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putLong(row.getTime(), row.getLong(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putLong(row.getTime(), row.getLong(0));
-        }
+      if (isWindowSizeTooSmallLong(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -834,54 +506,24 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getLong(0);
         nextValue = rowWindow.getRow(i + 1).getLong(0);
 
-        x1 = currentTime - lastTime;
-        x2 = nextTime - currentTime;
-        y1 = currentValue - lastValue;
-        y2 = nextValue - currentValue;
+        x1 = Math.abs(currentTime - lastTime);
+        x2 = Math.abs(nextTime - currentTime);
+        y1 = Math.abs(currentValue - lastValue);
+        y2 = Math.abs(nextValue - currentValue);
 
-        value =
-            (x1 > 0 ? x1 : -x1) + (y1 > 0 ? y1 : -y1) + (x2 > 0 ? x2 : -x2) + (y2 > 0 ? y2 : -y2);
+        value = x1 + y1 + x2 + y2;
 
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMinHeap(pq, i, value);
       }
 
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putLong(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getLong(0));
-      }
+      putPQValueLong(pq, rowWindow, collector);
     }
 
     @Override
     public void outlierSampleFloat(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putFloat(row.getTime(), row.getFloat(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putFloat(row.getTime(), row.getFloat(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putFloat(row.getTime(), row.getFloat(0));
-        }
+      if (isWindowSizeTooSmallFloat(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -901,55 +543,24 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getFloat(0);
         nextValue = rowWindow.getRow(i + 1).getFloat(0);
 
-        x1 = currentTime - lastTime;
-        x2 = nextTime - currentTime;
-        y1 = currentValue - lastValue;
-        y2 = nextValue - currentValue;
+        x1 = Math.abs(currentTime - lastTime);
+        x2 = Math.abs(nextTime - currentTime);
+        y1 = Math.abs(currentValue - lastValue);
+        y2 = Math.abs(nextValue - currentValue);
 
-        value =
-            (x1 > 0 ? x1 : -x1) + (y1 > 0 ? y1 : -y1) + (x2 > 0 ? x2 : -x2) + (y2 > 0 ? y2 : -y2);
+        value = x1 + y1 + x2 + y2;
 
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMinHeap(pq, i, value);
       }
 
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putFloat(
-            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
-      }
+      putPQValueFloat(pq, rowWindow, collector);
     }
 
     @Override
     public void outlierSampleDouble(RowWindow rowWindow, PointCollector collector)
         throws IOException {
       int windowSize = rowWindow.windowSize();
-      if (windowSize <= number) {
-        for (int i = 0; i < windowSize; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putDouble(row.getTime(), row.getDouble(0));
-        }
-        return;
-      } else if (windowSize == number + 1) {
-        for (int i = 0; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putDouble(row.getTime(), row.getDouble(0));
-        }
-        return;
-      } else if (windowSize == number + 2) {
-        for (int i = 1; i < windowSize - 1; i++) {
-          Row row = rowWindow.getRow(i);
-          collector.putDouble(row.getTime(), row.getDouble(0));
-        }
+      if (isWindowSizeTooSmallDouble(rowWindow, collector, windowSize)) {
         return;
       }
 
@@ -969,32 +580,17 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         currentValue = rowWindow.getRow(i).getDouble(0);
         nextValue = rowWindow.getRow(i + 1).getDouble(0);
 
-        x1 = currentTime - lastTime;
-        x2 = nextTime - currentTime;
-        y1 = currentValue - lastValue;
-        y2 = nextValue - currentValue;
+        x1 = Math.abs(currentTime - lastTime);
+        x2 = Math.abs(nextTime - currentTime);
+        y1 = Math.abs(currentValue - lastValue);
+        y2 = Math.abs(nextValue - currentValue);
 
-        value =
-            (x1 > 0 ? x1 : -x1) + (y1 > 0 ? y1 : -y1) + (x2 > 0 ? x2 : -x2) + (y2 > 0 ? y2 : -y2);
+        value = x1 + y1 + x2 + y2;
 
-        if (pq.size() < number) {
-          pq.add(new Pair<>(i, value));
-        } else if (value > pq.peek().right) {
-          pq.poll();
-          pq.add(new Pair<>(i, value));
-        }
+        addToMinHeap(pq, i, value);
       }
 
-      int[] arr = new int[number];
-      for (int i = 0; i < number; i++) {
-        arr[i] = pq.peek().left;
-        pq.poll();
-      }
-      Arrays.sort(arr);
-      for (int i = 0; i < number; i++) {
-        collector.putDouble(
-            rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
-      }
+      putPQValueDouble(pq, rowWindow, collector);
     }
   }
 
@@ -1063,5 +659,176 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
         throw new UDFInputSeriesDataTypeNotValidException(
             0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
+  }
+
+  public void addToMinHeap(PriorityQueue<Pair<Integer, Double>> pq, int i, double value) {
+    if (pq.size() < number) {
+      pq.add(new Pair<>(i, value));
+    } else if (value > pq.peek().right) {
+      pq.poll();
+      pq.add(new Pair<>(i, value));
+    }
+  }
+
+  public void addToMaxHeap(PriorityQueue<Pair<Integer, Double>> pq, int i, double value) {
+    if (pq.size() < number) {
+      pq.add(new Pair<>(i, value));
+    } else if (value < pq.peek().right) {
+      pq.poll();
+      pq.add(new Pair<>(i, value));
+    }
+  }
+
+  public void putPQValueInt(
+      PriorityQueue<Pair<Integer, Double>> pq, RowWindow rowWindow, PointCollector collector)
+      throws IOException {
+    int[] arr = new int[number];
+    for (int i = 0; i < number; i++) {
+      arr[i] = pq.peek().left;
+      pq.poll();
+    }
+    Arrays.sort(arr);
+    for (int i = 0; i < number; i++) {
+      collector.putInt(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getInt(0));
+    }
+  }
+
+  public void putPQValueLong(
+      PriorityQueue<Pair<Integer, Double>> pq, RowWindow rowWindow, PointCollector collector)
+      throws IOException {
+    int[] arr = new int[number];
+    for (int i = 0; i < number; i++) {
+      arr[i] = pq.peek().left;
+      pq.poll();
+    }
+    Arrays.sort(arr);
+    for (int i = 0; i < number; i++) {
+      collector.putLong(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getLong(0));
+    }
+  }
+
+  public void putPQValueFloat(
+      PriorityQueue<Pair<Integer, Double>> pq, RowWindow rowWindow, PointCollector collector)
+      throws IOException {
+    int[] arr = new int[number];
+    for (int i = 0; i < number; i++) {
+      arr[i] = pq.peek().left;
+      pq.poll();
+    }
+    Arrays.sort(arr);
+    for (int i = 0; i < number; i++) {
+      collector.putFloat(rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getFloat(0));
+    }
+  }
+
+  public void putPQValueDouble(
+      PriorityQueue<Pair<Integer, Double>> pq, RowWindow rowWindow, PointCollector collector)
+      throws IOException {
+    int[] arr = new int[number];
+    for (int i = 0; i < number; i++) {
+      arr[i] = pq.peek().left;
+      pq.poll();
+    }
+    Arrays.sort(arr);
+    for (int i = 0; i < number; i++) {
+      collector.putDouble(
+          rowWindow.getRow(arr[i]).getTime(), rowWindow.getRow(arr[i]).getDouble(0));
+    }
+  }
+
+  public boolean isWindowSizeTooSmallInt(
+      RowWindow rowWindow, PointCollector collector, int windowSize) throws IOException {
+    if (windowSize <= number) {
+      for (int i = 0; i < windowSize; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putInt(row.getTime(), row.getInt(0));
+      }
+      return true;
+    } else if (windowSize == number + 1) {
+      for (int i = 0; i < windowSize - 1; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putInt(row.getTime(), row.getInt(0));
+      }
+      return true;
+    } else if (windowSize == number + 2) {
+      for (int i = 1; i < windowSize - 1; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putInt(row.getTime(), row.getInt(0));
+      }
+      return true;
+    }
+    return false;
+  }
+
+  public boolean isWindowSizeTooSmallLong(
+      RowWindow rowWindow, PointCollector collector, int windowSize) throws IOException {
+    if (windowSize <= number) {
+      for (int i = 0; i < windowSize; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putLong(row.getTime(), row.getLong(0));
+      }
+      return true;
+    } else if (windowSize == number + 1) {
+      for (int i = 0; i < windowSize - 1; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putLong(row.getTime(), row.getLong(0));
+      }
+      return true;
+    } else if (windowSize == number + 2) {
+      for (int i = 1; i < windowSize - 1; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putLong(row.getTime(), row.getLong(0));
+      }
+      return true;
+    }
+    return false;
+  }
+
+  public boolean isWindowSizeTooSmallFloat(
+      RowWindow rowWindow, PointCollector collector, int windowSize) throws IOException {
+    if (windowSize <= number) {
+      for (int i = 0; i < windowSize; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putFloat(row.getTime(), row.getFloat(0));
+      }
+      return true;
+    } else if (windowSize == number + 1) {
+      for (int i = 0; i < windowSize - 1; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putFloat(row.getTime(), row.getFloat(0));
+      }
+      return true;
+    } else if (windowSize == number + 2) {
+      for (int i = 1; i < windowSize - 1; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putFloat(row.getTime(), row.getFloat(0));
+      }
+      return true;
+    }
+    return false;
+  }
+
+  public boolean isWindowSizeTooSmallDouble(
+      RowWindow rowWindow, PointCollector collector, int windowSize) throws IOException {
+    if (windowSize <= number) {
+      for (int i = 0; i < windowSize; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putDouble(row.getTime(), row.getDouble(0));
+      }
+      return true;
+    } else if (windowSize == number + 1) {
+      for (int i = 0; i < windowSize - 1; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putDouble(row.getTime(), row.getDouble(0));
+      }
+      return true;
+    } else if (windowSize == number + 2) {
+      for (int i = 1; i < windowSize - 1; i++) {
+        Row row = rowWindow.getRow(i);
+        collector.putDouble(row.getTime(), row.getDouble(0));
+      }
+      return true;
+    }
+    return false;
   }
 }
