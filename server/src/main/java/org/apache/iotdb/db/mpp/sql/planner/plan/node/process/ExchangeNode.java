@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
@@ -32,6 +31,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -93,6 +93,10 @@ public class ExchangeNode extends PlanNode {
     return outputColumnNames;
   }
 
+  public void setOutputColumnNames(List<String> outputColumnNames) {
+    this.outputColumnNames = outputColumnNames;
+  }
+
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.upstreamEndpoint = endPoint;
     this.upstreamInstanceId = instanceId;
@@ -100,28 +104,35 @@ public class ExchangeNode extends PlanNode {
   }
 
   public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
-    FragmentSinkNode fragmentSinkNode =
-        (FragmentSinkNode) PlanFragment.deserializeHelper(byteBuffer);
     TEndPoint endPoint =
         new TEndPoint(
             ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
     PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
+    int outputColumnNamesSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> outputColumnNames = new ArrayList<>();
+    while (outputColumnNamesSize > 0) {
+      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      outputColumnNamesSize--;
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
-    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
+    exchangeNode.setOutputColumnNames(outputColumnNames);
     return exchangeNode;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.EXCHANGE.serialize(byteBuffer);
-    remoteSourceNode.serialize(byteBuffer);
     ReadWriteIOUtils.write(upstreamEndpoint.getIp(), byteBuffer);
     ReadWriteIOUtils.write(upstreamEndpoint.getPort(), byteBuffer);
     upstreamInstanceId.serialize(byteBuffer);
     upstreamPlanNodeId.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
+    for (String outputColumnName : outputColumnNames) {
+      ReadWriteIOUtils.write(outputColumnName, byteBuffer);
+    }
   }
 
   public PlanNode getChild() {
