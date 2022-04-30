@@ -1128,7 +1128,11 @@ public class SeriesScanUtil {
     }
 
     TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
-      return data.getAllSatisfiedData(ascending);
+      TsBlock tsBlock = data.getAllSatisfiedData();
+      if (!ascending) {
+        tsBlock.reverse();
+      }
+      return tsBlock;
     }
 
     void setFilter(Filter filter) {

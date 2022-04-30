@@ -29,8 +29,8 @@ import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -80,6 +80,7 @@ public class AggregationQueryStatement extends QueryStatement {
     return deviceNameToAggregationsMap;
   }
 
+  @Override
   public DatasetHeader constructDatasetHeader() {
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     // TODO: consider Aggregation
@@ -121,6 +122,7 @@ public class AggregationQueryStatement extends QueryStatement {
     }
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAggregationQuery(this, context);
   }

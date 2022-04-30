@@ -38,9 +38,9 @@ import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
 

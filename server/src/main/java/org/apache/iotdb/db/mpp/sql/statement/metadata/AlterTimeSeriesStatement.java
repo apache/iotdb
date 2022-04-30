@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -54,6 +56,11 @@ public class AlterTimeSeriesStatement extends Statement {
   public AlterTimeSeriesStatement() {
     super();
     statementType = StatementType.ALTER_TIMESERIES;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.singletonList(path);
   }
 
   public PartialPath getPath() {

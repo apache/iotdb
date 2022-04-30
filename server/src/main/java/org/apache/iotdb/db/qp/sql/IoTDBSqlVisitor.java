@@ -142,11 +142,12 @@ import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -2559,6 +2560,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           parseFullPathInExpression(context.fullPathInExpression(), inWithoutNull));
     }
 
+    if (context.functionName() != null) {
+      return parseFunctionExpression(context, inWithoutNull);
+    }
+
     if (context.expressionAfterUnaryOperator != null) {
       if (context.MINUS() != null) {
         return new NegationExpression(
@@ -2613,18 +2618,21 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       if (context.OPERATOR_OR() != null) {
         return new LogicOrExpression(leftExpression, rightExpression);
       }
+      throw new UnsupportedOperationException();
     }
 
-    if (context.functionName() != null) {
-      return parseFunctionExpression(context, inWithoutNull);
-    }
-
-    if (context.unaryBeforeRegularExpression != null) {
-      return parseRegularExpression(context);
+    if (context.unaryBeforeRegularOrLikeExpression != null) {
+      if (context.REGEXP() != null) {
+        return parseRegularExpression(context, inWithoutNull);
+      }
+      if (context.LIKE() != null) {
+        return parseLikeExpression(context, inWithoutNull);
+      }
+      throw new UnsupportedOperationException();
     }
 
     if (context.unaryBeforeInExpression != null) {
-      return parseInExpression(context);
+      return parseInExpression(context, inWithoutNull);
     }
 
     throw new UnsupportedOperationException();
@@ -2664,12 +2672,18 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return functionExpression;
   }
 
-  private Expression parseRegularExpression(ExpressionContext context) {
-    return null;
+  private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {
+    return new RegularExpression(
+        parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
-  private Expression parseInExpression(ExpressionContext context) {
-    return null;
+  private Expression parseLikeExpression(ExpressionContext context, boolean inWithoutNull) {
+    throw new UnsupportedOperationException();
+  }
+
+  private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
+    throw new UnsupportedOperationException();
   }
 
   private Expression parseConstantOperand(ConstantContext constantContext) {

@@ -33,18 +33,152 @@ A string is a sequence of characters, enclosed within either single quote (`'`) 
 "another string"
 ```
 
+We will unescape the string unless it is used as a file path. Examples can be found in the usage scenarios part.
+
+More information about escape characters can be found in : [Characters (The Java™ Tutorials > Learning the Java Language > Numbers and Strings)](https://docs.oracle.com/javase/tutorial/java/data/characters.html)
+
+#### Usage Scenarios
+
 Usages of string literals:
 
 - Values of  `TEXT` type data in `INSERT` or `SELECT` statements 
-- Full Java class names in UDF and trigger management statements 
-- Attribute fields (including attribute keys and attribute values) in UDF / trigger execution or management statements 
-- File paths in `LOAD` / `REMOVE` / `SETTLE` statements 
+
+  ```SQL
+  # insert
+  insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
+  insert into root.ln.wf02.wt02(timestamp,hardware) values(2, '\\')
+  
+  # select data from root.ln.wf02.wt02, '\\' is unescpaed as '\'.
+  +-----------------------------+--------------------------+
+  |                         Time|root.ln.wf02.wt02.hardware|
+  +-----------------------------+--------------------------+
+  |1970-01-01T08:00:00.001+08:00|                        v1|
+  +-----------------------------+--------------------------+
+  |1970-01-01T08:00:00.002+08:00|                         \|
+  +-----------------------------+--------------------------+
+  
+  # select 
+  select code from root.sg1.d1 where code in ('string1', 'string2');
+  ```
+
+- Used in`LOAD` / `REMOVE` / `SETTLE` instructions to represent file path. File path will  not be unescaped. 
+
+  ```SQL
+  # load
+  LOAD 'examplePath'
+  
+  # remove
+  REMOVE 'examplePath'
+  
+  # SETTLE
+  SETTLE 'examplePath'
+  ```
+
 - Password fields in user management statements
+
+  ```SQL
+  # 'write_pwd' is a password
+  CREATE USER ln_write_user 'write_pwd'
+  ```
+
+- Full Java class names in UDF and trigger management statements 
+
+  ```SQL
+  # Trigger example. Full java class names after 'AS' should be string literals.
+  CREATE TRIGGER `alert-listener-sg1d1s1`
+  AFTER INSERT
+  ON root.sg1.d1.s1
+  AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
+  WITH (
+    'lo' = '0', 
+    'hi' = '100.0'
+  )
+  
+  # UDF example. Full java class names after 'AS' should be string literals.
+  CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample'
+  ```
+
+- `AS` function provided by IoTDB can assign an alias to time series selected in query. Alias can be string or identifier.
+
+  ```SQL
+  select s1 as 'temperature', s2 as 'speed' from root.ln.wf01.wt01;
+  
+  # Header of dataset
+  +-----------------------------+-----------|-----+
+  |                         Time|temperature|speed|
+  +-----------------------------+-----------|-----+
+  ```
+
+- The key of an attribute can be String Literal and identifier, the value of an attribute can be Constant(including String Literal) and identifer. Using string literal to represent  key and value is recommended.
+
+  1. Attributes fields of trigger. See the attributes after `With` clause in the example below:
+
+  ```SQL
+  # exmaple
+  CREATE TRIGGER `alert-listener-sg1d1s1`
+  AFTER INSERT
+  ON root.sg1.d1.s1
+  AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
+  WITH (
+    'lo' = '0', 
+    'hi' = '100.0'
+  )
+  ```
+
+  2. Attributes fields of UDF. See the attributes in select clause in the example below:
+
+  ```sql
+  # 示例
+  SELECT example(s1, s2, 'key1'='value1', 'key2'='value2') FROM root.sg.d1;
+  ```
+
+  3. Key-value pair to represent tag/attributes in timeseries.
+
+  ```SQL
+  # create timeseries
+  CREATE timeseries root.turbine.d1.s1(temprature) 
+  WITH datatype=FLOAT, encoding=RLE, compression=SNAPPY, 'max_point_number' = '5'
+  TAGS('tag1' = 'v1', 'tag2'= 'v2') ATTRIBUTES('attr1' = 'v1', 'attr2' = 'v2')
+  
+  # alter tags and attributes of timeseries
+  ALTER timeseries root.turbine.d1.s1 SET 'newTag1' = 'newV1', 'attr1' = 'newV1'
+  
+  # rename tag
+  ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'newTag1'
+  
+  # upsert alias, tags, attributes
+  ALTER timeseries root.turbine.d1.s1 UPSERT 
+  ALIAS='newAlias' TAGS('tag2' = 'newV2', tag3=v3) ATTRIBUTES('attr3' ='v3', 'attr4'='v4')
+  
+  # add new tags
+  ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3' = 'v3', 'tag4' = 'v4'
+  
+  # add new attributes
+  ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3' = 'v3', 'attr4' = 'v4'
+  
+  # query for timeseries
+  SHOW timeseries root.ln.** WHRER 'unit' = 'c'
+  ```
+
+  4. Attributes fields of Pipe and PipeSink. 
+
+  ```SQL
+  # PipeSink example 
+  CREATE PIPESINK my_iotdb AS IoTDB ('ip' = 'your ip')
+  
+  # Pipe example
+  CREATE PIPE my_pipe TO my_iotdb FROM 
+  (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
+  ```
+
+#### How to use quotation marks in String Literals
 
 There are several ways to include quote characters within a string:
 
  - Precede the quote character by an escape character (\\).
  - `'` inside a string quoted with `"` needs no special treatment and need not be doubled or escaped. In the same way, `"` inside a string quoted with `'` needs no special treatment.
+ - A `'` inside a string quoted with `'` may be written as `''`.
+- A `"` inside a string quoted with `"` may be written as `""`.
 
 The following examples demonstrate how quoting and escaping work:
 ```js
@@ -53,11 +187,14 @@ The following examples demonstrate how quoting and escaping work:
 '""string""'  // ""string""
 'str\'ing'  // str'ing
 '\'string'  // 'string
+'''string'  // 'string
+
 "string" // string
 "'string'"  // 'string'
 "''string''"  // ''string''
 "str\"ing"  // str"ing
 "\"string"  // "string
+"""string"  // "string
 ```
 
 ### Numeric Literals
@@ -88,79 +225,266 @@ The constants `TRUE` and `FALSE` evaluate to 1 and 0, respectively. The constant
 
 The `NULL` value means “no data.” `NULL` can be written in any lettercase.
 
-
 ## Identifiers
 
-Certain objects within IoTDB, including `TRIGGER`, `FUNCTION`(UDF), `CONTINUOUS QUERY`, `SCHEMA TEMPLATE`, `USER`, `ROLE` and other object names are known as identifiers.
+#### Usage scenarios
 
-What you need to know about identifiers:
+Certain objects within IoTDB, including `TRIGGER`, `FUNCTION`(UDF), `CONTINUOUS QUERY`, `SCHEMA TEMPLATE`, `USER`, `ROLE`,`Pipe`,`PipeSink`,`alias` and other object names are known as identifiers.
+
+#### Constraints
+
+Below are basic constraints of identifiers, specific identifiers may have other constraints, for example, `user` should consists of more than 4 characters. 
 
 - Permitted characters in unquoted identifiers:
   - [0-9 a-z A-Z _ : @ # $ { }] (letters, digits, some special characters)
   - ['\u2E80'..'\u9FFF'] (UNICODE Chinese characters)
-- Identifiers may begin with a digit and consist solely of digits, **which is not recommended!**
+- Identifiers may begin with a digit, unquoted identifiers can not consists of solely digits.
 - Identifiers are case sensitive.
-- Note: User and role names are not case-sensitive, and special characters are not allowed to be escaped.
 
-If an identifier contains special characters or is a keyword, you must quote it whenever you refer to it.
-The identifier quote character is the backtick (`):
-```sql
-id  // parsed as id
-ID  // parsed as ID
-id0  // parsed as id0
-_id  // parsed as _id
-0id  // parsed as 0id
-233  // parsed as 233 (not recommended!)
-ab!  // invalid
-`ab!`  // parsed as ab!
-`"ab"`  // parsed as "ab"
-`a`b`  // invalid
-`a\`b`  // parsed as a`b
+You need to quote the identifier with back quote(`) in the following cases:
+
+- Identifier contains special characters.
+- Using Key words as identifier
+- Identifier consists of solely digits.
+
+#### How to use quotations marks in quoted identifiers
+
+`'` and `"` can be used directly in quoted identifiers.
+
+` may be written as `` in quoted  identifiers. See the example below:
+
+```SQL
+# create template t1't"t
+create schema template `t1't"t` 
+(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+
+# create template t1`t
+create schema template `t1``t` 
+(temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
+
+#### Examples
+
+Examples of case in which quoted identifier is used ：
+
+- Trigger name should be quoted in cases described above ：
+
+  ```sql
+  # create trigger named alert.`listener-sg1d1s1
+  CREATE TRIGGER `alert.``listener-sg1d1s1`
+  AFTER INSERT
+  ON root.sg1.d1.s1
+  AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
+  WITH (
+    'lo' = '0', 
+    'hi' = '100.0'
+  )
+  ```
+
+- UDF name should be quoted in cases described above ：
+
+  ```sql
+  # craete function named select, select is a keyword.
+  CREATE FUNCTION `select` AS 'org.apache.iotdb.udf.UDTFExample'
+  ```
+
+- Template name should be quoted in cases described above ：
+
+  ```sql
+  # create template named 111, 111 consists of solely digits.
+  create schema template `111` 
+  (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+  ```
+
+- User and Role name should be quoted in cases described above, blank space is not allow in User and Role name whether quoted or not ：
+
+  ```sql
+  # create user special`user.
+  CREATE USER `special``user.` 'write_pwd'
+  
+  # create role `select`
+  CREATE ROLE `select`
+  ```
+
+- Continuous query name should be quoted in cases described above ：
+
+  ```sql
+  # create continuous query test.cq
+  CREATE CONTINUOUS QUERY `test.cq` 
+  BEGIN 
+    SELECT max_value(temperature) 
+    INTO temperature_max 
+    FROM root.ln.*.* 
+    GROUP BY time(10s) 
+  END
+  ```
+
+- Pipe、PipeSink should be quoted in cases described above ：
+
+  ```sql
+  # create PipeSink test.*1
+  CREATE PIPESINK `test.*1` AS IoTDB ('ip' = '输入你的IP')
+  
+  # create Pipe test.*2
+  CREATE PIPE `test.*2` TO `test.*1` FROM 
+  (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
+  ```
+
+- `AS` function provided by IoTDB can assign an alias to time series selected in query. Alias can be string or identifier.
+
+  ```sql
+  select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
+  
+  # Header of result dataset
+  +-----------------------------+-----------|-----+
+  |                         Time|temperature|speed|
+  +-----------------------------+-----------|-----+
+  ```
+
+- The key of an attribute can be String Literal and identifier, the value of an attribute can be Constant(including String Literal) and identifer. Using string literal to represent  key and value is recommended. Below are examples of using identifier in key-value of tags and attributes:
+
+  ```SQL
+  # create timeseries
+  CREATE timeseries root.turbine.d1.s1(temprature) 
+  WITH datatype=FLOAT, encoding=RLE, compression=SNAPPY, max_point_number = 5
+  TAGS(tag1 = v1, tag2 = v2) ATTRIBUTES(attr1 = v1, attr2 = v2)
+  
+  # alter tags and attributes of timeseries
+  ALTER timeseries root.turbine.d1.s1 SET newTag1 = newV1, attr1 = newV1
+  
+  # rename tag
+  ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+  
+  # upsert alias, tags, attributes
+  ALTER timeseries root.turbine.d1.s1 UPSERT 
+  ALIAS = newAlias TAGS(tag2 = newV2, tag3=v3) ATTRIBUTES(attr3 = v3, attr4 = v4)
+  
+  # add new tags
+  ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3 = v3, tag4 = v4
+  
+  # add new attributes
+  ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3 = v3, attr4 = v4
+  
+  # query for timeseries
+  SHOW timeseries root.ln.** WHRER unit = c
+  ```
 
 ## Node Names in Path
 
-We call the part of a path divided by `.` as a `node`. 
+Node name is a special identifier, it can also be wildcard `*` and `**`. When creating timeseries, node name can not be wildcard. In query statment, you can use wildcard to match one or more nodes of path.
 
-The constraints of node names are almost the same as the identifiers, but you should note the following points:
+### Wildcard
 
-- `root` is a reserved word, and it is only allowed to appear at the beginning layer of the time series. If `root` appears in other layers, it cannot be parsed and an error will be reported.
-- Character `.` is not permitted in unquoted or quoted node names. If you must do it (even if it is not recommended), you can enclose it within either single quote (`'`) or double quote (`"`). In this case, quotes are recognized as part of the node name to avoid ambiguity.
-- Among the node name enclosed in the reverse quota, single quotes and double quotes need to use a backslash to escape.
-- In particular, if the system is deployed on a Windows machine, the storage group layer name will be **case-insensitive**. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
+`*` represents one node. For example, `root.vehicle.*.sensor1` represents a 4-node path which is prefixed with `root.vehicle` and suffixed with `sensor1`.
 
-Examples:
+`**` represents (`*`)+, which is one or more nodes of `*`. For example, `root.vehicle.device1.**` represents all paths prefixed by `root.vehicle.device1` with nodes num greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc; `root.vehicle.**.sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 4 nodes.
 
-```sql
-CREATE TIMESERIES root.a.b.s1+s2/s3.c WITH DATATYPE=INT32, ENCODING=RLE
-// invalid!
+As `*` can also be used in expressions of select clause to represent multiplication, below are examples to help you better understand the usage of `* `:
 
-CREATE TIMESERIES root.a.b.`s1+s2/s3`.c WITH DATATYPE=INT32, ENCODING=RLE
-// root.a.b.`s1+s2/s3`.c will be parsed as Path[root, a, b, s1+s2/s3, c]
+```SQL
+# create timeseries root.sg.a*b
+create timeseries root.sg.`a*b` with datatype=FLOAT,encoding=PLAIN;
+
+# As described in Identifier part, a*b should be quoted.
+# "create timeseries root.sg.a*b with datatype=FLOAT,encoding=PLAIN" is wrong. 
+
+# create timeseries root.sg.a
+create timeseries root.sg.a with datatype=FLOAT,encoding=PLAIN;
+
+# create timeseries root.sg.b
+create timeseries root.sg.b with datatype=FLOAT,encoding=PLAIN;
+
+# query data of root.sg.a*b
+select `a*b` from root.sg
+# Header of result dataset
+|Time|root.sg.a*b|
+
+# multiplication of root.sg.a and root.sg.b
+select a*b from root.sg
+# Header of result dataset
+|Time|root.sg.a * root.sg.b|
 ```
 
-```sql
-CREATE TIMESERIES root.a.b.select WITH DATATYPE=INT32, ENCODING=RLE
-// invalid!
+### Identifier
 
-CREATE TIMESERIES root.a.b.`select` WITH DATATYPE=INT32, ENCODING=RLE
-// root.a.b.`select` will be parsed as Path[root, a, b, `select`]
+When node name is not wildcard, it is a identifier, which means the constraints on it is the same as described in Identifier part.
+
+Node name quoted with back quote will also be wrapped with back quote in result dataset if it contains . or `, otherwise node name will not be quoted in result dataset. Below are examples to help you understand
+
+- Create timeseries stament:
+
+```SQL
+# Node name contains special characters like ` and .,all nodes of this timeseries are: ["root","sg","www.`baidu.com"]
+create timeseries root.sg.`www.``baidu.com`.a with datatype=FLOAT,encoding=PLAIN;
+
+# Node name is a key word.
+create timeseries root.sg.`select`.a with datatype=FLOAT,encoding=PLAIN;
+
+# Node name consists of solely digits.
+create timeseries root.sg.`111` with datatype=FLOAT,encoding=PLAIN;
 ```
 
-```sql
-CREATE TIMESERIES root.a.b.`s1.s2`.c WITH DATATYPE=INT32, ENCODING=RLE
-// invalid!
+After executing above statments, execute "show timeseries"，below is the result：
 
-CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
-// root.a.b."s1.s2".c will be parsed as Path[root, a, b, "s1.s2", c]
+```SQL
++---------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|                 timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++---------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|           root.sg.select.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
+|              root.sg.111.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
+|root.sg.`www.``baidu.com`.a| null|      root.sg|   FLOAT|   PLAIN|     SNAPPY|null|      null|
++---------------------------+-----+-------------+--------+--------+-----------+----+----------+
 ```
 
-```sql
-CREATE TIMESERIES root.a.b.`s1"s2`.c WITH DATATYPE=INT32, ENCODING=RLE
-// invalid!
+- Insert statment:
 
-CREATE TIMESERIES root.a.b.`s1\"s2`.c WITH DATATYPE=INT32, ENCODING=RLE
-// root.a.b.`s1\"s2`.c be parsed as Path[root, a, b, s1\"s2, c]
+```SQL
+# Node name contains special characters like . and `
+insert into root.sg.`www.``baidu.com`(timestamp, a) values(1, 2);
+
+# Node name is a key word.
+insert into root.sg.`select`(timestamp, a) values (1, 2);
+
+# Node name consists of solely digits.
+insert into root.sg(timestamp, `111`) values (1, 2);
+```
+
+- Query statement:
+
+```SQL
+# Node name contains special characters like . and `
+select a from root.sg.`www.``baidu.com`;
+
+# Node name is a key word.
+select a from root.sg.`select`
+
+# Node name consists of solely digits.
+select `111` from root.sg
+```
+
+Results:
+
+```SQL
+# select a from root.sg.`www.``baidu.com`
++-----------------------------+---------------------------+
+|                         Time|root.sg.`www.``baidu.com`.a|
++-----------------------------+---------------------------+
+|1970-01-01T08:00:00.001+08:00|                        2.0|
++-----------------------------+---------------------------+
+
+# select a from root.sg.`select`
++-----------------------------+----------------+
+|                         Time|root.sg.select.a|
++-----------------------------+----------------+
+|1970-01-01T08:00:00.001+08:00|             2.0|
++-----------------------------+----------------+
+
+# select `111` from root.sg
++-----------------------------+-----------+
+|                         Time|root.sg.111|
++-----------------------------+-----------+
+|1970-01-01T08:00:00.001+08:00|        2.0|
++-----------------------------+-----------+
 ```
 
 ## Keywords and Reserved Words
@@ -169,49 +493,6 @@ Keywords are words that have significance in SQL require special treatment for u
 Certain keywords, such as TIME and ROOT, are reserved and cannot use as identifiers and node names (even after escaping).
 
 [Keywords and Reserved Words](Keywords.md) shows the keywords and reserved words in IoTDB 0.13.
-
-## Expressions
-
-IoTDB supports the execution of arbitrary nested expressions consisting of numbers, time series, arithmetic expressions, and time series generating functions (including user-defined functions) in the `select` clause.
-
-Note: Node names that consist solely of digits, `'` and `"` in an expression must be enclosed in backticks (`).
-```sql
--- There exists timeseries: root.sg.d.0, root.sg.d.'a' and root.sg."d".b
-select 0 from root.sg.d  -- ambiguity exists, parsing failed
-select 'a' from root.sg.d -- ambiguity exists, parsing failed
-select "d".b from root.sg -- ambiguity exists, parsing failed
-select `0` from root.sg.d  -- query from root.sg.d.0
-select `0` + 0 from root.sg.d -- valid expression, add number 0 to each point of root.sg.d.0
-select myudf(`'a'`, 'x') from root.sg.d -- valid expression, call function myudf with timeseries root.sg.d.'a' as the 1st parameter, and a string constant 'x' as the 2nd parameter
-```
-
-## Quote Symbol
-
-### Double quotes ("), single quotes (')
-
-Double quotes and single quotes are used in the following scenarios:
-
-1. String literals are represented by strings enclosed in single or double quotes.
-2. If you want to use the path separator (`.`) in the path node name, you need to enclose the node name in single or double quotes. In this case, to avoid ambiguity, the quotes are treated as part of the node name by the system.
-
-### Backticks (\`)
-
-Backticks are used in the following scenarios:
-
-1. When using special characters in an identifier, the identifier needs to be enclosed in backticks.
-2. When using special characters other than path separators in the path node name, the path node name needs to be enclosed in backticks. In this case, the backticks are not considered part of the node name by the system.
-
-### Backslash (\\)
-
-backslashes are used in the following scenarios:
-
-- In string literals, double or single quote should be escaped with a backslash.
-  - e.g. "str\\"ing" is parsed as str"ing, 'str\\'ing' is parsed as str'ing.
-- In an identifier, backtick should be escaped with a backslash.
-  - e.g. \`na\\\`me\` is parsed as na\`me.
-- In path node names, double or single quote should be escaped with a backslash. To avoid ambiguity, backslashes are recognized as part of the node name.
-  - e.g. root.sg1.d1."a\\"b" is parsed as Path[root, sg1, d1, "a\\"b"], root.sg1.d1.'a\\'b' is parsed as Path[ root, sg1, d1, 'a\\'b'], root.sg1.d1.\`a\\"b\` is parsed as Path[root, sg1, d1, a\\"b], root.sg1.d1.\`a\\'b\` is parsed as Path[root, sg1, d1, a\\'b].
-  
 
 ## Learn More
 

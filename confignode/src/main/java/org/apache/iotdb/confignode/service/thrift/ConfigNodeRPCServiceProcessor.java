@@ -22,9 +22,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -42,6 +44,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -95,7 +98,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     registerResp.convertToRpcDataNodeRegisterResp(resp);
-    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", resp, req);
+    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
     return resp;
   }
 
@@ -135,7 +138,9 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 
     SetStorageGroupReq setReq = new SetStorageGroupReq(storageGroupSchema);
-    return configManager.setStorageGroup(setReq);
+    TSStatus resp = configManager.setStorageGroup(setReq);
+    LOGGER.info("Execute SetStorageGroupRequest {} with result {}", req, resp);
+    return resp;
   }
 
   @Override
@@ -173,8 +178,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     CountStorageGroupResp countStorageGroupResp =
         (CountStorageGroupResp)
             configManager.countMatchedStorageGroups(
-                new GetOrCountStorageGroupReq(
-                    ConfigRequestType.CountStorageGroup, storageGroupPathPattern));
+                new CountStorageGroupReq(storageGroupPathPattern));
 
     TCountStorageGroupResp resp = new TCountStorageGroupResp();
     countStorageGroupResp.convertToRPCCountStorageGroupResp(resp);
@@ -187,8 +191,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     StorageGroupSchemaResp storageGroupSchemaResp =
         (StorageGroupSchemaResp)
             configManager.getMatchedStorageGroupSchemas(
-                new GetOrCountStorageGroupReq(
-                    ConfigRequestType.GetStorageGroup, storageGroupPathPattern));
+                new GetStorageGroupReq(storageGroupPathPattern));
 
     TStorageGroupSchemaResp resp = new TStorageGroupSchemaResp();
     storageGroupSchemaResp.convertToRPCStorageGroupSchemaResp(resp);
@@ -222,8 +225,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
-    GetOrCreateDataPartitionReq getDataPartitionReq =
-        new GetOrCreateDataPartitionReq(ConfigRequestType.GetDataPartition);
+    GetDataPartitionReq getDataPartitionReq = new GetDataPartitionReq();
     getDataPartitionReq.convertFromRpcTDataPartitionReq(req);
     DataPartitionResp dataResp =
         (DataPartitionResp) configManager.getDataPartition(getDataPartitionReq);
@@ -235,8 +237,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
-    GetOrCreateDataPartitionReq getOrCreateDataPartitionReq =
-        new GetOrCreateDataPartitionReq(ConfigRequestType.GetOrCreateDataPartition);
+    GetOrCreateDataPartitionReq getOrCreateDataPartitionReq = new GetOrCreateDataPartitionReq();
     getOrCreateDataPartitionReq.convertFromRpcTDataPartitionReq(req);
     DataPartitionResp dataResp =
         (DataPartitionResp) configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
@@ -298,6 +299,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus login(TLoginReq req) throws TException {
     return configManager.login(req.getUserrname(), req.getPassword());
+  }
+
+  @Override
+  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+    return configManager.checkUserPrivileges(
+        req.getUsername(), req.getPaths(), req.getPermission());
   }
 
   public void handleClientExit() {}

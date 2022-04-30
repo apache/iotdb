@@ -33,6 +33,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.operator.process.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
@@ -61,7 +62,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.FragmentInstanceContext.createFragmentInstanceContext;
-import static org.apache.iotdb.db.mpp.schedule.FragmentInstanceTaskExecutor.EXECUTION_TIME_SLICE;
+import static org.apache.iotdb.db.mpp.schedule.DriverTaskThread.EXECUTION_TIME_SLICE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -145,8 +146,9 @@ public class DataDriverTest {
               OrderBy.TIMESTAMP_ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
-                  new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC),
-                  new SingleColumnMerger(new InputLocation(1, 0), OrderBy.TIMESTAMP_ASC)));
+                  new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
+                  new SingleColumnMerger(new InputLocation(1, 0), new AscTimeComparator())),
+              new AscTimeComparator());
 
       LimitOperator limitOperator =
           new LimitOperator(

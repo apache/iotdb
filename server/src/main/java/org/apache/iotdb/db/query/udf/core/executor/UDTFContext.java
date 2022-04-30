@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.executor;
 
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 
 import java.time.ZoneId;

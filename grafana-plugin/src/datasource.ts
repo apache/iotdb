@@ -32,17 +32,32 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
     this.username = instanceSettings.jsonData.username;
   }
   applyTemplateVariables(query: IoTDBQuery, scopedVars: ScopedVars) {
-    query.expression.map(
-      (_, index) => (query.expression[index] = getTemplateSrv().replace(query.expression[index], scopedVars))
-    );
-    query.prefixPath.map(
-      (_, index) => (query.prefixPath[index] = getTemplateSrv().replace(query.prefixPath[index], scopedVars))
-    );
-    if (query.condition) {
-      query.condition = getTemplateSrv().replace(query.condition, scopedVars);
-    }
-    if (query.control) {
-      query.control = getTemplateSrv().replace(query.control, scopedVars);
+    if (query.aggregated === 'Raw') {
+      query.expression.map(
+        (_, index) => (query.expression[index] = getTemplateSrv().replace(query.expression[index], scopedVars))
+      );
+      query.prefixPath.map(
+        (_, index) => (query.prefixPath[index] = getTemplateSrv().replace(query.prefixPath[index], scopedVars))
+      );
+      if (query.condition) {
+        query.condition = getTemplateSrv().replace(query.condition, scopedVars);
+      }
+      if (query.control) {
+        query.control = getTemplateSrv().replace(query.control, scopedVars);
+      }
+    } else {
+      if (query.groupBy?.samplingInterval) {
+        query.groupBy.samplingInterval = getTemplateSrv().replace(query.groupBy.samplingInterval, scopedVars);
+      }
+      if (query.groupBy?.step) {
+        query.groupBy.step = getTemplateSrv().replace(query.groupBy.step, scopedVars);
+      }
+      if (query.groupBy?.groupByLevel) {
+        query.groupBy.groupByLevel = getTemplateSrv().replace(query.groupBy.groupByLevel, scopedVars);
+      }
+      if (query.fillClauses) {
+        query.fillClauses = getTemplateSrv().replace(query.fillClauses, scopedVars);
+      }
     }
     return query;
   }
@@ -51,6 +66,35 @@ export class DataSource extends DataSourceWithBackend<IoTDBQuery, IoTDBOptions> 
     query = getTemplateSrv().replace(query, options.scopedVars);
     const sql = { sql: query };
     return this.getVariablesResult(sql);
+  }
+
+  nodeQuery(query: any, options?: any): Promise<MetricFindValue[]> {
+    return this.getChildPaths(query);
+  }
+
+  async getChildPaths(detachedPath: string[]) {
+    const myHeader = new Headers();
+    myHeader.append('Content-Type', 'application/json');
+    const Authorization = 'Basic ' + Buffer.from(this.username + ':' + this.password).toString('base64');
+    myHeader.append('Authorization', Authorization);
+    if (this.url.substr(this.url.length - 1, 1) === '/') {
+      this.url = this.url.substr(0, this.url.length - 1);
+    }
+    return await getBackendSrv()
+      .datasourceRequest({
+        method: 'POST',
+        url: this.url + '/grafana/v1/node',
+        data: detachedPath,
+        headers: myHeader,
+      })
+      .then((response) => {
+        if (response.data instanceof Array) {
+          return response.data;
+        } else {
+          throw 'the result is not array';
+        }
+      })
+      .then((data) => data.map(toMetricFindValue));
   }
 
   async getVariablesResult(sql: object) {

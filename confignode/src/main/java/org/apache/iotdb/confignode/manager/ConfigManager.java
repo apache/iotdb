@@ -22,12 +22,14 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -41,7 +43,6 @@ import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
-import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -157,7 +158,7 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet countMatchedStorageGroups(GetOrCountStorageGroupReq countStorageGroupReq) {
+  public DataSet countMatchedStorageGroups(CountStorageGroupReq countStorageGroupReq) {
     TSStatus status = confirmLeader();
     CountStorageGroupResp result = new CountStorageGroupResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -169,7 +170,7 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getMatchedStorageGroupSchemas(GetOrCountStorageGroupReq getStorageGroupReq) {
+  public DataSet getMatchedStorageGroupSchemas(GetStorageGroupReq getStorageGroupReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.getMatchedStorageGroupSchema(getStorageGroupReq);
@@ -196,9 +197,7 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<String> devicePaths = patternTree.findAllDevicePaths();
       List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
-
-      GetOrCreateSchemaPartitionReq getSchemaPartitionReq =
-          new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetSchemaPartition);
+      GetSchemaPartitionReq getSchemaPartitionReq = new GetSchemaPartitionReq();
       Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
       boolean getAll = false;
@@ -206,7 +205,7 @@ public class ConfigManager implements Manager {
       for (String devicePath : devicePaths) {
         boolean matchStorageGroup = false;
         for (String storageGroup : storageGroups) {
-          if (devicePath.contains(storageGroup)) {
+          if (devicePath.startsWith(storageGroup + ".")) {
             matchStorageGroup = true;
             if (devicePath.contains("*")) {
               // Get all SchemaPartitions of this StorageGroup if the devicePath contains "*"
@@ -255,14 +254,14 @@ public class ConfigManager implements Manager {
       List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
 
       GetOrCreateSchemaPartitionReq getOrCreateSchemaPartitionReq =
-          new GetOrCreateSchemaPartitionReq(ConfigRequestType.GetOrCreateSchemaPartition);
+          new GetOrCreateSchemaPartitionReq();
       Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
       for (String devicePath : devicePaths) {
         if (!devicePath.contains("*")) {
           // Only check devicePaths that without "*"
           for (String storageGroup : storageGroups) {
-            if (devicePath.contains(storageGroup)) {
+            if (devicePath.startsWith(storageGroup + ".")) {
               partitionSlotsMap
                   .computeIfAbsent(storageGroup, key -> new ArrayList<>())
                   .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
@@ -282,7 +281,7 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet getDataPartition(GetOrCreateDataPartitionReq getDataPartitionReq) {
+  public DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return partitionManager.getDataPartition(getDataPartitionReq);
@@ -361,7 +360,17 @@ public class ConfigManager implements Manager {
   public TSStatus login(String username, String password) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorInfo.getInstance().login(username, password);
+      return permissionManager.login(username, password);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
       return status;
     }
