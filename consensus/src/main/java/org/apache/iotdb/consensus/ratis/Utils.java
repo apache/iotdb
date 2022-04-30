@@ -37,41 +37,42 @@ import org.apache.thrift.transport.TByteBuffer;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 public class Utils {
   private static final int tempBufferSize = 1024;
   private static final byte PADDING_MAGIC = 0x47;
-  private static final String DataRegionAbbr = "DR";
-  private static final String SchemaRegionAbbr = "SR";
-  private static final String PartitionRegionAbbr = "PR";
+  private static final long DataRegionType = 0x01;
+  private static final long SchemaRegionType = 0x02;
+  private static final long PartitionRegionType = 0x03;
 
   public static String IPAddress(TEndPoint endpoint) {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
   }
 
-  public static String groupFullName(ConsensusGroupId consensusGroupId) {
+  /** Encode the ConsensusGroupId into 6 bytes 2 Bytes for Group Type 4 Bytes for Group ID */
+  public static long groupEncode(ConsensusGroupId consensusGroupId) {
     // use abbreviations to prevent overflow
-    String groupTypeAbbr = null;
+    long groupType = 0L;
     switch (consensusGroupId.getType()) {
       case DataRegion:
         {
-          groupTypeAbbr = DataRegionAbbr;
+          groupType = DataRegionType;
           break;
         }
       case SchemaRegion:
         {
-          groupTypeAbbr = SchemaRegionAbbr;
+          groupType = SchemaRegionType;
           break;
         }
       case PartitionRegion:
         {
-          groupTypeAbbr = PartitionRegionAbbr;
+          groupType = PartitionRegionType;
           break;
         }
     }
-    return String.format("%s-%d", groupTypeAbbr, consensusGroupId.getId());
+    long groupCode = groupType << 32;
+    groupCode += (long) consensusGroupId.getId();
+    return groupCode;
   }
 
   public static String RatisPeerId(TEndPoint endpoint) {
@@ -104,12 +105,13 @@ public class Utils {
 
   /** Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme: */
   public static RaftGroupId toRatisGroupId(ConsensusGroupId consensusGroupId) {
-    String groupFullName = groupFullName(consensusGroupId);
-    byte[] bGroupName = groupFullName.getBytes(StandardCharsets.UTF_8);
-    byte[] bPaddedGroupName = Arrays.copyOf(bGroupName, 16);
-    for (int i = bGroupName.length; i < 16; i++) {
+    long groupCode = groupEncode(consensusGroupId);
+    byte[] bGroupCode = ByteBuffer.allocate(Long.BYTES).putLong(groupCode).array();
+    byte[] bPaddedGroupName = new byte[16];
+    for (int i = 0; i < 10; i++) {
       bPaddedGroupName[i] = PADDING_MAGIC;
     }
+    System.arraycopy(bGroupCode, 2, bPaddedGroupName, 10, bGroupCode.length - 2);
 
     return RaftGroupId.valueOf(ByteString.copyFrom(bPaddedGroupName));
   }
@@ -117,32 +119,22 @@ public class Utils {
   /** Given raftGroupId, decrypt ConsensusGroupId out of it */
   public static ConsensusGroupId toConsensusGroupId(RaftGroupId raftGroupId) {
     byte[] padded = raftGroupId.toByteString().toByteArray();
-    int validOffset = padded.length - 1;
-    while (padded[validOffset] == PADDING_MAGIC) {
-      validOffset--;
-    }
-    String consensusGroupString = new String(padded, 0, validOffset + 1);
-    String[] items = consensusGroupString.split("-");
+    long type = (padded[10] << 8) + padded[11];
+    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);
+    byteBuffer.put(padded, 12, 4);
+    byteBuffer.flip();
+    int gid = byteBuffer.getInt();
     ConsensusGroupId id;
-    switch (items[0]) {
-      case DataRegionAbbr:
-        {
-          id = new DataRegionId(Integer.parseInt(items[1]));
-          break;
-        }
-      case PartitionRegionAbbr:
-        {
-          id = new PartitionRegionId(Integer.parseInt(items[1]));
-          break;
-        }
-      case SchemaRegionAbbr:
-        {
-          id = new SchemaRegionId(Integer.parseInt(items[1]));
-          break;
-        }
-      default:
-        throw new IllegalArgumentException(
-            String.format("Unexpected consensusGroupId %s", items[0]));
+
+    if (type == DataRegionType) {
+      id = new DataRegionId(gid);
+    } else if (type == PartitionRegionType) {
+      id = new PartitionRegionId(gid);
+    } else if (type == SchemaRegionType) {
+      id = new SchemaRegionId(gid);
+    } else {
+      throw new IllegalArgumentException(
+          String.format("Unexpected consensusGroupId Type %d", type));
     }
     return id;
   }
