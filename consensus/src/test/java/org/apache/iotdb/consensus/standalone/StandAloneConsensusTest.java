@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -113,20 +112,12 @@ public class StandAloneConsensusTest {
     }
 
     @Override
-    public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+    public boolean takeSnapshot(File snapshotDir) {
       return false;
     }
 
     @Override
-    public SnapshotMeta getLatestSnapshot(File snapshotDir) {
-      return null;
-    }
-
-    @Override
-    public void loadSnapshot(SnapshotMeta latest) {}
-
-    @Override
-    public void cleanUpOldSnapshots(File snapshotDir) {}
+    public void loadSnapshot(File latestSnapshotRootDir) {}
   }
 
   @Before

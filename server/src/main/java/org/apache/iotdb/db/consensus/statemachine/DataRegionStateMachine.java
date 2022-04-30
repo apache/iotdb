@@ -22,7 +22,6 @@ package org.apache.iotdb.db.consensus.statemachine;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
@@ -39,7 +38,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class DataRegionStateMachine extends BaseStateMachine {
@@ -62,20 +60,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
   public void stop() {}
 
   @Override
-  public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+  public boolean takeSnapshot(File snapshotDir) {
     return false;
   }
 
   @Override
-  public SnapshotMeta getLatestSnapshot(File snapshotDir) {
-    return null;
-  }
-
-  @Override
-  public void loadSnapshot(SnapshotMeta latest) {}
-
-  @Override
-  public void cleanUpOldSnapshots(File snapshotDir) {}
+  public void loadSnapshot(File latestSnapshotRootDir) {}
 
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
