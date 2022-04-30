@@ -236,17 +236,18 @@ public class ClientManagerTest {
     Assert.assertEquals(1, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
-    // get another sync client, should throw error and return null
+    // get another sync client, should wait waitClientTimeoutMS ms, throw error
     SyncDataNodeInternalServiceClient syncClient2 = null;
+    long start = 0, end;
     try {
-      long start = System.nanoTime();
+      start = System.nanoTime();
       syncClient2 = syncClusterManager.borrowClient(endPoint);
-      long end = System.nanoTime();
-      Assert.assertTrue(end - start >= DefaultProperty.WAIT_CLIENT_TIMEOUT_MS * 1_000_000);
-      Assert.assertNotNull(syncClient2);
     } catch (IOException e) {
+      end = System.nanoTime();
+      Assert.assertTrue(end - start >= DefaultProperty.WAIT_CLIENT_TIMEOUT_MS * 1_000_000);
       Assert.assertTrue(e.getMessage().startsWith("Borrow client from pool for node"));
     }
+    Assert.assertNull(syncClient2);
 
     // return one sync client
     syncClient1.close();
@@ -308,15 +309,14 @@ public class ClientManagerTest {
     Assert.assertEquals(1, syncClusterManager.getPool().getNumActive(endPoint));
     Assert.assertEquals(0, syncClusterManager.getPool().getNumIdle(endPoint));
 
-    // get another sync client, should wait waitClientTimeoutMS ms, throw error and return null
-    SyncDataNodeInternalServiceClient syncClient2 = null;
+    // get another sync client, should wait waitClientTimeoutMS ms, throw error
+    long start = 0, end;
     try {
-      long start = System.nanoTime();
-      syncClient2 = syncClusterManager.borrowClient(endPoint);
-      long end = System.nanoTime();
-      Assert.assertTrue(end - start >= waitClientTimeoutMS * 1_000_000);
-      Assert.assertNotNull(syncClient2);
+      start = System.nanoTime();
+      syncClusterManager.borrowClient(endPoint);
     } catch (IOException e) {
+      end = System.nanoTime();
+      Assert.assertTrue(end - start >= waitClientTimeoutMS * 1_000_000);
       Assert.assertTrue(e.getMessage().startsWith("Borrow client from pool for node"));
     }
 
