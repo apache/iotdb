@@ -44,7 +44,6 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -299,11 +298,6 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus login(TLoginReq req) throws TException {
     return configManager.login(req.getUserrname(), req.getPassword());
-  }
-
-  @Override
-  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
-    return null;
   }
 
   public void handleClientExit() {}
