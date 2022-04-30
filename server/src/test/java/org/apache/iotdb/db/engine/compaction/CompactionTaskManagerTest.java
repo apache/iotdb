@@ -178,7 +178,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new SizeTieredCompactionTask(
             "root.compactionTest", "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
-    manager.addTaskToWaitingQueue(task1);
+    Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
     manager.submitTaskFromTaskQueue();
     while (manager.getTotalTaskCount() > 0) {
       Thread.sleep(10);
