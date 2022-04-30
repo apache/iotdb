@@ -117,14 +117,18 @@ public class DataRegionTest {
       values[i] = record.dataPointList.get(i).getValue();
     }
     QueryId queryId = new QueryId("test_write");
-    return new InsertRowNode(
-        queryId.genPlanNodeId(),
-        new PartialPath(record.deviceId),
-        false,
-        measurementSchemas,
-        dataTypes,
-        record.time,
-        values);
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            queryId.genPlanNodeId(),
+            new PartialPath(record.deviceId),
+            false,
+            measurements,
+            dataTypes,
+            record.time,
+            values,
+            false);
+    insertRowNode.setMeasurementSchemas(measurementSchemas);
+    return insertRowNode;
   }
 
   @Test
@@ -276,12 +280,13 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurementSchemas,
+            measurements,
             dataTypes,
             times,
             null,
             columns,
             times.length);
+    insertTabletNode1.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -297,12 +302,13 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurementSchemas,
+            measurements,
             dataTypes,
             times,
             null,
             columns,
             times.length);
+    insertTabletNode2.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -444,12 +450,13 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurementSchemas,
+            measurements,
             dataTypes,
             times,
             null,
             columns,
             times.length);
+    insertTabletNode1.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -464,12 +471,13 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurementSchemas,
+            measurements,
             dataTypes,
             times,
             null,
             columns,
             times.length);
+    insertTabletNode2.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -534,12 +542,13 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurementSchemas,
+            measurements,
             dataTypes,
             times,
             null,
             columns,
             times.length);
+    insertTabletNode1.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -554,12 +563,13 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurementSchemas,
+            measurements,
             dataTypes,
             times,
             null,
             columns,
             times.length);
+    insertTabletNode2.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -624,12 +634,13 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurementSchemas,
+            measurements,
             dataTypes,
             times,
             null,
             columns,
             times.length);
+    insertTabletNode1.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode1);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();
@@ -644,12 +655,13 @@ public class DataRegionTest {
             new QueryId("test_write").genPlanNodeId(),
             new PartialPath("root.vehicle.d0"),
             false,
-            measurementSchemas,
+            measurements,
             dataTypes,
             times,
             null,
             columns,
             times.length);
+    insertTabletNode2.setMeasurementSchemas(measurementSchemas);
 
     dataRegion.insertTablet(insertTabletNode2);
     dataRegion.asyncCloseAllWorkingTsFileProcessors();

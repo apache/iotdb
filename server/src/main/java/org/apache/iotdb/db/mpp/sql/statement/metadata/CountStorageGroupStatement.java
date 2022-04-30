@@ -20,11 +20,23 @@
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
-public class CountStorageGroupStatement extends CountStatement {
-  private PartialPath partialPath;
+public class CountStorageGroupStatement extends CountStatement implements IConfigStatement {
 
   public CountStorageGroupStatement(PartialPath partialPath) {
     super(partialPath);
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitCountStorageGroup(this, context);
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 }

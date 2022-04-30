@@ -30,19 +30,23 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSch
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregateNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.GroupByTimeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.OffsetNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregateScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
@@ -56,7 +60,7 @@ import java.nio.ByteBuffer;
 
 public enum PlanNodeType {
   AGGREGATE((short) 0),
-  DEVICE_MERGE((short) 1),
+  DEVICE_VIEW((short) 1),
   FILL((short) 2),
   FILTER((short) 3),
   FILTER_NULL((short) 4),
@@ -85,7 +89,12 @@ public enum PlanNodeType {
   DEVICES_COUNT((short) 27),
   TIME_SERIES_COUNT((short) 28),
   LEVEL_TIME_SERIES_COUNT((short) 29),
-  COUNT_MERGE((short) 30);
+  COUNT_MERGE((short) 30),
+  GROUP_BY_TIME((short) 31),
+  PROJECT((short) 32),
+  ALIGNED_SERIES_SCAN((short) 33),
+  ALIGNED_SERIES_AGGREGATE_SCAN((short) 34),
+  DEVICE_MERGE((short) 35);
 
   private final short nodeType;
 
@@ -114,9 +123,9 @@ public enum PlanNodeType {
     short nodeType = buffer.getShort();
     switch (nodeType) {
       case 0:
-        return AggregateNode.deserialize(buffer);
+        return AggregationNode.deserialize(buffer);
       case 1:
-        return DeviceMergeNode.deserialize(buffer);
+        return DeviceViewNode.deserialize(buffer);
       case 2:
         return FillNode.deserialize(buffer);
       case 3:
@@ -138,7 +147,7 @@ public enum PlanNodeType {
       case 11:
         return SeriesScanNode.deserialize(buffer);
       case 12:
-        return SeriesAggregateScanNode.deserialize(buffer);
+        return SeriesAggregationScanNode.deserialize(buffer);
       case 13:
         return InsertTabletNode.deserialize(buffer);
       case 14:
@@ -173,6 +182,14 @@ public enum PlanNodeType {
         return LevelTimeSeriesCountNode.deserialize(buffer);
       case 30:
         return CountSchemaMergeNode.deserialize(buffer);
+      case 31:
+        return GroupByTimeNode.deserialize(buffer);
+      case 32:
+        return ProjectNode.deserialize(buffer);
+      case 33:
+        return AlignedSeriesScanNode.deserialize(buffer);
+      case 34:
+        return AlignedSeriesAggregationScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.operator.process;
 import org.apache.iotdb.db.mpp.operator.Operator;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.operator.process.merge.ColumnMerger;
+import org.apache.iotdb.db.mpp.operator.process.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -68,12 +69,15 @@ public class TimeJoinOperator implements ProcessOperator {
 
   private boolean finished;
 
+  private final TimeComparator comparator;
+
   public TimeJoinOperator(
       OperatorContext operatorContext,
       List<Operator> children,
       OrderBy mergeOrder,
       List<TSDataType> dataTypes,
-      List<ColumnMerger> mergers) {
+      List<ColumnMerger> mergers,
+      TimeComparator comparator) {
     checkArgument(
         children != null && children.size() > 0,
         "child size of TimeJoinOperator should be larger than 0");
@@ -89,6 +93,7 @@ public class TimeJoinOperator implements ProcessOperator {
     this.dataTypes = dataTypes;
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.mergers = mergers;
+    this.comparator = comparator;
   }
 
   @Override
@@ -112,8 +117,8 @@ public class TimeJoinOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     tsBlockBuilder.reset();
-    // end time for returned TsBlock this time, it's the min end time among all the children
-    // TsBlocks
+    // end time for returned TsBlock this time, it's the min/max end time among all the children
+    // TsBlocks order by asc/desc
     long currentEndTime = 0;
     boolean init = false;
     for (int i = 0; i < inputCount; i++) {
@@ -131,7 +136,7 @@ public class TimeJoinOperator implements ProcessOperator {
       if (!empty(i)) {
         currentEndTime =
             init
-                ? Math.min(currentEndTime, inputTsBlocks[i].getEndTime())
+                ? comparator.getSatisfiedTime(currentEndTime, inputTsBlocks[i].getEndTime())
                 : inputTsBlocks[i].getEndTime();
         init = true;
       }
@@ -144,7 +149,7 @@ public class TimeJoinOperator implements ProcessOperator {
     }
 
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    while (!timeSelector.isEmpty() && timeSelector.first() <= currentEndTime) {
+    while (!timeSelector.isEmpty() && comparator.satisfy(timeSelector.first(), currentEndTime)) {
       timeBuilder.writeLong(timeSelector.pollFirst());
       tsBlockBuilder.declarePosition();
     }
@@ -199,7 +204,7 @@ public class TimeJoinOperator implements ProcessOperator {
       return true;
     }
     finished = true;
-    for (int i = 0; i < columnCount; i++) {
+    for (int i = 0; i < inputCount; i++) {
       // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
       if (!noMoreTsBlocks[i] || !empty(i)) {
         finished = false;

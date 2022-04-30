@@ -18,28 +18,23 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 /** LimitNode is used to select top n result. It uses the default order of upstream nodes */
 public class LimitNode extends ProcessNode {
 
-  // The limit count
   private final int limit;
+
   private PlanNode child;
 
   public LimitNode(PlanNodeId id, int limit) {
@@ -49,6 +44,18 @@ public class LimitNode extends ProcessNode {
 
   public LimitNode(PlanNodeId id, PlanNode child, int limit) {
     this(id, limit);
+    this.child = child;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public PlanNode getChild() {
+    return child;
+  }
+
+  public void setChild(PlanNode child) {
     this.child = child;
   }
 
@@ -73,18 +80,8 @@ public class LimitNode extends ProcessNode {
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return child.getOutputColumnHeaders();
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
     return child.getOutputColumnNames();
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return child.getOutputColumnTypes();
   }
 
   @Override
@@ -104,28 +101,9 @@ public class LimitNode extends ProcessNode {
     return new LimitNode(planNodeId, limit);
   }
 
-  public int getLimit() {
-    return limit;
-  }
-
-  public PlanNode getChild() {
-    return child;
-  }
-
-  public void setChild(PlanNode child) {
-    this.child = child;
-  }
-
+  @Override
   public String toString() {
     return "LimitNode-" + this.getPlanNodeId();
-  }
-
-  @TestOnly
-  public Pair<String, List<String>> print() {
-    String title = String.format("[LimitNode (%s)]", this.getPlanNodeId());
-    List<String> attributes = new ArrayList<>();
-    attributes.add("RowLimit: " + this.getLimit());
-    return new Pair<>(title, attributes);
   }
 
   @Override
@@ -133,17 +111,18 @@ public class LimitNode extends ProcessNode {
     if (this == o) {
       return true;
     }
-
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-
+    if (!super.equals(o)) {
+      return false;
+    }
     LimitNode that = (LimitNode) o;
-    return limit == that.limit && Objects.equals(child, that.child);
+    return limit == that.limit && child.equals(that.child);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(limit, child);
+    return Objects.hash(super.hashCode(), limit, child);
   }
 }

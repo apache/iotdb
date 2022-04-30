@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+
+import java.util.Collections;
+import java.util.List;
 
 public class ShowStatement extends Statement {
 
@@ -32,6 +36,11 @@ public class ShowStatement extends Statement {
   public ShowStatement() {
     super();
     statementType = StatementType.SHOW;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   public int getLimit() {
