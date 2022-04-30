@@ -16,20 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.compaction.task;
 
-package org.apache.iotdb.db.query.udf.core.transformer;
+/** The summary of one {@link AbstractCompactionTask} execution */
+public class CompactionTaskSummary {
+  private final boolean success;
 
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-
-public class ArithmeticDivisionTransformer extends ArithmeticBinaryTransformer {
-
-  public ArithmeticDivisionTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
-    super(leftPointReader, rightPointReader);
+  public CompactionTaskSummary(boolean success) {
+    this.success = success;
   }
 
-  @Override
-  protected double evaluateDouble(double leftOperand, double rightOperand) {
-    return leftOperand / rightOperand;
+  public boolean isSuccess() {
+    return success;
   }
 }

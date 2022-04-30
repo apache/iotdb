@@ -37,6 +37,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 
 public class ClientManagerTest {
@@ -418,7 +419,11 @@ public class ClientManagerTest {
   }
 
   public void startServer() throws IOException {
-    metaServer = new ServerSocket(9003);
+    metaServer = new ServerSocket();
+    // reuse the port to avoid `Bind Address already in use` which is caused by TIME_WAIT state
+    // because port won't be usable immediately after we close it.
+    metaServer.setReuseAddress(true);
+    metaServer.bind(new InetSocketAddress(9003));
     metaServerListeningThread =
         new Thread(
             () -> {

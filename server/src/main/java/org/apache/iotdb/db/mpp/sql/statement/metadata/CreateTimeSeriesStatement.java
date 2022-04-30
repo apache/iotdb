@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -52,6 +54,11 @@ public class CreateTimeSeriesStatement extends Statement {
   public CreateTimeSeriesStatement() {
     super();
     statementType = StatementType.CREATE_TIMESERIES;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.singletonList(path);
   }
 
   public PartialPath getPath() {

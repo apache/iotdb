@@ -17,19 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core.transformer;
+package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
-public class CompareGreaterEqualTransformer extends CompareBinaryTransformer {
+public class CompareGreaterThanTransformer extends CompareBinaryTransformer {
 
-  public CompareGreaterEqualTransformer(
+  public CompareGreaterThanTransformer(
       LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     super(leftPointReader, rightPointReader);
   }
 
   @Override
   protected boolean evaluateBoolean(double leftOperand, double rightOperand) {
-    return Double.compare(leftOperand, rightOperand) >= 0;
+    return Double.compare(leftOperand, rightOperand) > 0;
   }
 }

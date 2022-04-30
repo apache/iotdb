@@ -294,7 +294,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     }
     DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(9, processor.getPartitionMaxFileVersions(0));
+    assertEquals(10, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {

@@ -22,12 +22,14 @@ package org.apache.iotdb.db.mpp.sql.statement.crud;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -43,6 +45,16 @@ public class InsertRowStatement extends InsertBaseStatement {
   public InsertRowStatement() {
     super();
     statementType = StatementType.INSERT;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
+    for (String m : measurements) {
+      PartialPath fullPath = devicePath.concatNode(m);
+      ret.add(fullPath);
+    }
+    return ret;
   }
 
   public long getTime() {

@@ -22,6 +22,9 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.persistence.AuthorInfo;
+
+import java.util.List;
 
 /** manager permission query and operation */
 public class PermissionManager {
@@ -54,5 +57,13 @@ public class PermissionManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  public TSStatus login(String username, String password) {
+    return AuthorInfo.getInstance().login(username, password);
+  }
+
+  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+    return AuthorInfo.getInstance().checkUserPrivileges(username, paths, permission);
   }
 }

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticDivisionTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticDivisionTransformer;
 
 import java.nio.ByteBuffer;
 

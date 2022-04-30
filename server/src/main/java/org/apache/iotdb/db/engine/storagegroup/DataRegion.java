@@ -2716,7 +2716,7 @@ public class DataRegion {
   }
 
   private long getAndSetNewVersion(long timePartitionId, TsFileResource tsFileResource) {
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, -1L) + 1;
+    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
     tsFileResource.setVersion(version);
     return version;
@@ -3348,7 +3348,7 @@ public class DataRegion {
 
   @TestOnly
   public long getPartitionMaxFileVersions(long partitionId) {
-    return partitionMaxFileVersions.getOrDefault(partitionId, -1L);
+    return partitionMaxFileVersions.getOrDefault(partitionId, 0L);
   }
 
   public void addSettleFilesToList(
