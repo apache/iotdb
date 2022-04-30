@@ -35,8 +35,8 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.BinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.BinaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
@@ -281,13 +281,14 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public final String getExpressionStringInternal() {
     StringBuilder builder = new StringBuilder();
-    if (leftExpression instanceof BinaryExpression) {
+    if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(leftExpression.getExpressionString()).append(")");
     } else {
       builder.append(leftExpression.getExpressionString());
     }
     builder.append(" ").append(operator()).append(" ");
-    if (rightExpression instanceof BinaryExpression) {
+    if (rightExpression.getExpressionType().getPriority()
+        < this.getExpressionType().getPriority()) {
       builder.append("(").append(rightExpression.getExpressionString()).append(")");
     } else {
       builder.append(rightExpression.getExpressionString());

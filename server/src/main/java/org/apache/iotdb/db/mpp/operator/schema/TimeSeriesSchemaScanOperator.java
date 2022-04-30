@@ -20,17 +20,16 @@ package org.apache.iotdb.db.mpp.operator.schema;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.execution.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -41,17 +40,6 @@ public class TimeSeriesSchemaScanOperator extends SchemaScanOperator {
 
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private boolean orderByHeat;
-
-  private static final TSDataType[] resourceTypes = {
-    TSDataType.TEXT,
-    TSDataType.TEXT,
-    TSDataType.TEXT,
-    TSDataType.TEXT,
-    TSDataType.TEXT,
-    TSDataType.TEXT,
-    TSDataType.TEXT,
-    TSDataType.TEXT
-  };
 
   public TimeSeriesSchemaScanOperator(
       PlanNodeId planNodeId,
@@ -89,7 +77,8 @@ public class TimeSeriesSchemaScanOperator extends SchemaScanOperator {
 
   @Override
   protected TsBlock createTsBlock() {
-    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(resourceTypes));
+    TsBlockBuilder builder =
+        new TsBlockBuilder(HeaderConstant.showTimeSeriesHeader.getRespDataTypes());
     try {
       ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
           .getSchemaRegion()

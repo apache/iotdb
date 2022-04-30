@@ -103,6 +103,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // redirected
     // to another host when scheduling
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
+    fragmentInstance.getFragment().setTypeProvider(analysis.getTypeProvider());
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
   }
@@ -116,13 +117,18 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
         PlanNodeId downStreamNodeId = sinkNode.getDownStreamPlanNodeId();
         FragmentInstance downStreamInstance = findDownStreamInstance(downStreamNodeId);
         sinkNode.setDownStream(
-            downStreamInstance.getHostEndpoint(), downStreamInstance.getId(), downStreamNodeId);
+            downStreamInstance.getHostDataNode().getDataBlockManagerEndPoint(),
+            downStreamInstance.getId(),
+            downStreamNodeId);
 
         // Set upstream info for corresponding ExchangeNode in downstream FragmentInstance
         PlanNode downStreamExchangeNode =
             downStreamInstance.getFragment().getPlanNodeById(downStreamNodeId);
         ((ExchangeNode) downStreamExchangeNode)
-            .setUpstream(instance.getHostEndpoint(), instance.getId(), sinkNode.getPlanNodeId());
+            .setUpstream(
+                instance.getHostDataNode().getDataBlockManagerEndPoint(),
+                instance.getId(),
+                sinkNode.getPlanNodeId());
       }
     }
   }

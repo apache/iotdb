@@ -19,20 +19,24 @@
 
 package org.apache.iotdb.db.mpp.execution.config;
 
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 public class ConfigTaskResult {
   private TSStatusCode statusCode;
   private TsBlock resultSet;
+  private DatasetHeader resultSetHeader;
 
   public ConfigTaskResult(TSStatusCode statusCode) {
     this.statusCode = statusCode;
   }
 
-  public ConfigTaskResult(TSStatusCode statusCode, TsBlock resultSet) {
+  public ConfigTaskResult(
+      TSStatusCode statusCode, TsBlock resultSet, DatasetHeader resultSetHeader) {
     this.statusCode = statusCode;
     this.resultSet = resultSet;
+    this.resultSetHeader = resultSetHeader;
   }
 
   public TSStatusCode getStatusCode() {
@@ -49,5 +53,9 @@ public class ConfigTaskResult {
 
   public void setResultSet(TsBlock resultSet) {
     this.resultSet = resultSet;
+  }
+
+  public DatasetHeader getResultSetHeader() {
+    return resultSetHeader;
   }
 }

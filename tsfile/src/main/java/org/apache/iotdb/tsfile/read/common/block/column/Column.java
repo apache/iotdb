@@ -102,4 +102,7 @@ public interface Column {
    * also be released. If the region column is released, this block may also be released.
    */
   Column getRegion(int positionOffset, int length);
+
+  /** reverse the column */
+  void reverse();
 }

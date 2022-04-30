@@ -62,9 +62,25 @@ struct TSetTTLReq {
   2: required i64 TTL
 }
 
+
+struct TSetSchemaReplicationFactorReq {
+  1: required string storageGroup
+  2: required i32 schemaReplicationFactor
+}
+
+struct TSetDataReplicationFactorReq {
+  1: required string storageGroup
+  2: required i32 dataReplicationFactor
+}
+
 struct TSetTimePartitionIntervalReq {
   1: required string storageGroup
   2: required i64 timePartitionInterval
+}
+
+struct TCountStorageGroupResp {
+  1: required common.TSStatus status
+  2: optional i32 count
 }
 
 struct TStorageGroupSchemaResp {
@@ -122,6 +138,17 @@ struct TAuthorizerResp {
     2: required map<string, list<string>> authorizerInfo
 }
 
+struct TLoginReq {
+    1: required string userrname
+    2: required string password
+}
+
+struct TCheckUserPrivilegesReq{
+    1: required string username;
+    2: required list<string> paths
+    3: required i32 permission
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -138,9 +165,15 @@ service ConfigIService {
 
   common.TSStatus setTTL(TSetTTLReq req)
 
+  common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
+
+  common.TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req)
+
   common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
-  TStorageGroupSchemaResp getStorageGroupsSchema()
+  TCountStorageGroupResp countMatchedStorageGroups(list<string> storageGroupPathPattern)
+
+  TStorageGroupSchemaResp getMatchedStorageGroupSchemas(list<string> storageGroupPathPattern)
 
   /* Schema */
 
@@ -159,4 +192,8 @@ service ConfigIService {
   common.TSStatus operatePermission(TAuthorizerReq req)
 
   TAuthorizerResp queryPermission(TAuthorizerReq req)
+
+  common.TSStatus login(TLoginReq req)
+
+  common.TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req)
 }

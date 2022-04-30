@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.schedule;
 
-import org.apache.iotdb.db.mpp.schedule.task.FragmentInstanceTask;
+import org.apache.iotdb.db.mpp.schedule.task.DriverTask;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import io.airlift.units.Duration;
 
-/** The execution context of a {@link FragmentInstanceTask} */
+/** The execution context of a {@link DriverTask} */
 public class ExecutionContext {
   private CpuTimer.CpuDuration cpuDuration;
   private Duration timeSlice;

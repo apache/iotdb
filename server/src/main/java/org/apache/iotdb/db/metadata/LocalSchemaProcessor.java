@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -719,7 +720,11 @@ public class LocalSchemaProcessor {
    * @return A HashSet instance which stores devices paths.
    */
   public Set<PartialPath> getBelongedDevices(PartialPath timeseries) throws MetadataException {
-    return getBelongedSchemaRegion(timeseries).getBelongedDevices(timeseries);
+    Set<PartialPath> result = new TreeSet<>();
+    for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(timeseries, false)) {
+      result.addAll(schemaRegion.getBelongedDevices(timeseries));
+    }
+    return result;
   }
 
   /**

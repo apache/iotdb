@@ -19,10 +19,28 @@
 
 package org.apache.iotdb.db.auth.authorizer;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.SessionTimeoutManager;
+import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
+import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,11 +48,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+
 public class AuthorizerManager implements IAuthorizer {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthorizerManager.class);
 
-  IAuthorizer iAuthorizer;
+  private ClusterAuthorizer clusterAuthorizer = new ClusterAuthorizer();
+  private SessionManager sessionManager = SessionManager.getInstance();
+  private IAuthorizer iAuthorizer;
 
   public AuthorizerManager() {
     try {
@@ -186,5 +208,94 @@ public class AuthorizerManager implements IAuthorizer {
   @Override
   public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
     iAuthorizer.replaceAllRoles(roles);
+  }
+
+  public SettableFuture<ConfigTaskResult> operatePermission(TAuthorizerReq authorizerReq) {
+    return clusterAuthorizer.operatePermission(authorizerReq);
+  }
+
+  public SettableFuture<ConfigTaskResult> queryPermission(TAuthorizerReq authorizerReq) {
+    return clusterAuthorizer.queryPermission(authorizerReq);
+  }
+
+  public BasicOpenSessionResp openSession(
+      String username,
+      String password,
+      String zoneId,
+      TSProtocolVersion tsProtocolVersion,
+      IoTDBConstant.ClientVersion clientVersion)
+      throws TException {
+    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
+    TSStatus status;
+    status = clusterAuthorizer.login(new TLoginReq(username, password));
+    long sessionId = -1;
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // check the version compatibility
+      boolean compatible = tsProtocolVersion.equals(SessionManager.CURRENT_RPC_VERSION);
+      if (!compatible) {
+        openSessionResp.setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
+        openSessionResp.setMessage(
+            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+        return openSessionResp.sessionId(sessionId);
+      }
+
+      openSessionResp.setCode(status.getCode());
+      openSessionResp.setMessage(status.getMessage());
+
+      sessionId = sessionManager.requestSessionId(username, zoneId, clientVersion);
+
+      logger.info(
+          "{}: Login status: {}. User : {}, opens Session-{}",
+          IoTDBConstant.GLOBAL_DB_NAME,
+          openSessionResp.getMessage(),
+          username,
+          sessionId);
+    } else {
+      openSessionResp.setMessage(status.getMessage());
+      openSessionResp.setCode(status.getCode());
+
+      sessionId = sessionManager.requestSessionId(username, zoneId, clientVersion);
+      SessionManager.AUDIT_LOGGER.info(
+          "User {} opens Session failed with an incorrect password", username);
+    }
+
+    SessionTimeoutManager.getInstance().register(sessionId);
+    return openSessionResp.sessionId(sessionId);
+  }
+
+  /** Check whether specific Session has the authorization to given plan. */
+  public TSStatus checkAuthority(Statement statement, long sessionId) {
+    try {
+      if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION_ERROR,
+            "No permissions for this operation " + statement.getType());
+      }
+    } catch (AuthException e) {
+      logger.warn("meet error while checking authorization.", e);
+      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  /** Check whether specific user has the authorization to given plan. */
+  public boolean checkAuthorization(Statement statement, String username) throws AuthException {
+    if (!statement.isAuthenticationRequired()) {
+      return true;
+    }
+    String targetUser = null;
+    if (statement instanceof AuthorStatement) {
+      targetUser = ((AuthorStatement) statement).getUserName();
+    }
+    return AuthorityChecker.checkPermission(
+        username, statement.getPaths(), statement.getType(), targetUser);
+  }
+
+  public TSStatus checkPath(String username, List<String> allPath, int permission) {
+    return clusterAuthorizer.checkUserPrivileges(
+        new TCheckUserPrivilegesReq(username, allPath, permission));
   }
 }

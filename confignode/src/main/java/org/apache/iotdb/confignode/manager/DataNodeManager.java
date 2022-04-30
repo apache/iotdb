@@ -20,12 +20,13 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.AsyncClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationDataSet;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsDataSet;
-import org.apache.iotdb.confignode.persistence.DataNodeInfoPersistence;
-import org.apache.iotdb.confignode.physical.sys.QueryDataNodeInfoPlan;
-import org.apache.iotdb.confignode.physical.sys.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
+import org.apache.iotdb.confignode.persistence.DataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
@@ -42,8 +43,7 @@ public class DataNodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeManager.class);
 
-  private static final DataNodeInfoPersistence dataNodeInfoPersistence =
-      DataNodeInfoPersistence.getInstance();
+  private static final DataNodeInfo dataNodeInfo = DataNodeInfo.getInstance();
 
   private final Manager configManager;
 
@@ -54,7 +54,7 @@ public class DataNodeManager {
     this.configManager = configManager;
   }
 
-  private void setGlobalConfig(DataNodeConfigurationDataSet dataSet) {
+  private void setGlobalConfig(DataNodeConfigurationResp dataSet) {
     // Set TGlobalConfig
     TGlobalConfig globalConfig = new TGlobalConfig();
     globalConfig.setDataNodeConsensusProtocolClass(
@@ -75,17 +75,19 @@ public class DataNodeManager {
    * @return DataNodeConfigurationDataSet. The TSStatus will be set to SUCCESS_STATUS when register
    *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
    */
-  public DataSet registerDataNode(RegisterDataNodePlan plan) {
-    DataNodeConfigurationDataSet dataSet = new DataNodeConfigurationDataSet();
+  public DataSet registerDataNode(RegisterDataNodeReq plan) {
+    DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
 
-    if (DataNodeInfoPersistence.getInstance().containsValue(plan.getLocation())) {
+    if (DataNodeInfo.getInstance().containsValue(plan.getLocation())) {
+      // Reset client
+      AsyncClientPool.getInstance().resetClient(plan.getLocation().getInternalEndPoint());
+
       TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
       dataSet.setStatus(status);
     } else {
       // Persist DataNodeInfo
-      plan.getLocation()
-          .setDataNodeId(DataNodeInfoPersistence.getInstance().generateNextDataNodeId());
+      plan.getLocation().setDataNodeId(DataNodeInfo.getInstance().generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(plan);
       dataSet.setStatus(resp.getStatus());
     }
@@ -102,16 +104,16 @@ public class DataNodeManager {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeLocationsDataSet getDataNodeInfo(QueryDataNodeInfoPlan plan) {
-    return (DataNodeLocationsDataSet) getConsensusManager().read(plan).getDataset();
+  public DataNodeLocationsResp getDataNodeInfo(GetDataNodeInfoReq plan) {
+    return (DataNodeLocationsResp) getConsensusManager().read(plan).getDataset();
   }
 
   public int getOnlineDataNodeCount() {
-    return dataNodeInfoPersistence.getOnlineDataNodeCount();
+    return dataNodeInfo.getOnlineDataNodeCount();
   }
 
   public List<TDataNodeLocation> getOnlineDataNodes() {
-    return dataNodeInfoPersistence.getOnlineDataNodes();
+    return dataNodeInfo.getOnlineDataNodes();
   }
 
   private ConsensusManager getConsensusManager() {

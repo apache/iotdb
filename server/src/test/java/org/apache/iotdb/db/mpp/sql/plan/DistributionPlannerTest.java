@@ -43,7 +43,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeUtil;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.LimitNode;
@@ -69,7 +69,7 @@ import static org.junit.Assert.assertEquals;
 public class DistributionPlannerTest {
 
   @Test
-  public void TestSingleSeriesScan() throws IllegalPathException {
+  public void testSingleSeriesScan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     SeriesScanNode root =
         new SeriesScanNode(
@@ -80,7 +80,8 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
@@ -89,7 +90,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestSingleSeriesScanRewriteSource() throws IllegalPathException {
+  public void testSingleSeriesScanRewriteSource() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     SeriesScanNode root =
         new SeriesScanNode(
@@ -100,7 +101,8 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
@@ -108,7 +110,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestRewriteSourceNode() throws IllegalPathException {
+  public void testRewriteSourceNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
 
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
@@ -145,7 +147,7 @@ public class DistributionPlannerTest {
   @Test
   public void testRewriteMetaSourceNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    SchemaMergeNode metaMergeNode = new SchemaMergeNode(queryId.genPlanNodeId(), false);
+    SeriesSchemaMergeNode metaMergeNode = new SeriesSchemaMergeNode(queryId.genPlanNodeId(), false);
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),
@@ -190,7 +192,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestAddExchangeNode() throws IllegalPathException {
+  public void testAddExchangeNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
@@ -230,7 +232,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestSplitFragment() throws IllegalPathException {
+  public void testSplitFragment() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
@@ -257,7 +259,8 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     PlanNode rootAfterRewrite = planner.rewriteSource();
@@ -267,7 +270,7 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestParallelPlan() throws IllegalPathException {
+  public void testParallelPlan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
     TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
 
@@ -294,7 +297,8 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, root));
     DistributedQueryPlan plan = planner.planFragments();
@@ -302,23 +306,29 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestInsertRowNodeParallelPlan() throws IllegalPathException {
+  public void testInsertRowNodeParallelPlan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_write");
     InsertRowNode insertRowNode =
         new InsertRowNode(
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1"),
             false,
-            new MeasurementSchema[] {
-              new MeasurementSchema("s1", TSDataType.INT32),
+            new String[] {
+              "s1",
             },
             new TSDataType[] {TSDataType.INT32},
             1L,
-            new Object[] {10});
+            new Object[] {10},
+            false);
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+        });
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, insertRowNode));
@@ -328,31 +338,37 @@ public class DistributionPlannerTest {
   }
 
   @Test
-  public void TestInsertRowsNodeParallelPlan() throws IllegalPathException {
+  public void testInsertRowsNodeParallelPlan() throws IllegalPathException {
     QueryId queryId = new QueryId("test_write");
     InsertRowNode insertRowNode1 =
         new InsertRowNode(
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1"),
             false,
-            new MeasurementSchema[] {
-              new MeasurementSchema("s1", TSDataType.INT32),
-            },
+            new String[] {"s1"},
             new TSDataType[] {TSDataType.INT32},
             1L,
-            new Object[] {10});
+            new Object[] {10},
+            false);
+    insertRowNode1.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+        });
 
     InsertRowNode insertRowNode2 =
         new InsertRowNode(
             queryId.genPlanNodeId(),
             new PartialPath("root.sg.d1"),
             false,
-            new MeasurementSchema[] {
-              new MeasurementSchema("s1", TSDataType.INT32),
-            },
+            new String[] {"s1"},
             new TSDataType[] {TSDataType.INT32},
             100000L,
-            new Object[] {10});
+            new Object[] {10},
+            false);
+    insertRowNode2.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.INT32),
+        });
 
     InsertRowsNode node = new InsertRowsNode(queryId.genPlanNodeId());
     node.setInsertRowNodeList(Arrays.asList(insertRowNode1, insertRowNode2));
@@ -360,7 +376,8 @@ public class DistributionPlannerTest {
 
     Analysis analysis = constructAnalysis();
 
-    MPPQueryContext context = new MPPQueryContext("", queryId, null, new TEndPoint());
+    MPPQueryContext context =
+        new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
     context.setQueryType(QueryType.WRITE);
     DistributionPlanner planner =
         new DistributionPlanner(analysis, new LogicalQueryPlan(context, node));

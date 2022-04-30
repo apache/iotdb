@@ -30,10 +30,14 @@ public class SingleColumnMerger implements ColumnMerger {
 
   private final InputLocation location;
 
-  public SingleColumnMerger(InputLocation location) {
+  private final TimeComparator comparator;
+
+  public SingleColumnMerger(InputLocation location, TimeComparator comparator) {
     this.location = location;
+    this.comparator = comparator;
   }
 
+  @Override
   public void mergeColumn(
       TsBlock[] inputTsBlocks,
       int[] inputIndex,
@@ -49,19 +53,32 @@ public class SingleColumnMerger implements ColumnMerger {
     // input column is empty or current time of input column is already larger than currentEndTime
     // just appendNull rowCount null
     if (empty(tsBlockIndex, inputTsBlocks, inputIndex)
-        || inputTsBlocks[tsBlockIndex].getTimeByIndex(index) > currentEndTime) {
+        || !comparator.satisfy(inputTsBlocks[tsBlockIndex].getTimeByIndex(index), currentEndTime)) {
       columnBuilder.appendNull(rowCount);
     } else {
       // read from input column and write it into columnBuilder
       TimeColumn timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
       Column valueColumn = inputTsBlocks[tsBlockIndex].getColumn(columnIndex);
       for (int i = 0; i < rowCount; i++) {
-        // current index is less than size of input column and current time of input column is equal
-        // to result row's time and input column's value at index is not null
-        if (timeColumn.getPositionCount() > index
-            && timeColumn.getLong(index) == timeBuilder.getTime(i)
-            && !valueColumn.isNull(index)) {
-          columnBuilder.write(valueColumn, index++);
+        // current index reaches the size of input column or current time of input column is already
+        // larger than currentEndTime, use null column to fill the remaining
+        if (timeColumn.getPositionCount() == index
+            || !comparator.satisfy(
+                inputTsBlocks[tsBlockIndex].getTimeByIndex(index), currentEndTime)) {
+          columnBuilder.appendNull(rowCount - i);
+          break;
+        }
+        // current time of input column is equal to result row's time
+        if (timeColumn.getLong(index) == timeBuilder.getTime(i)) {
+          // if input column's value at index is null, append a null value
+          if (valueColumn.isNull(index)) {
+            columnBuilder.appendNull();
+          } else {
+            // if input column's value at index is not null, append the value
+            columnBuilder.write(valueColumn, index);
+          }
+          // increase the index
+          index++;
         } else {
           // otherwise, append a null
           columnBuilder.appendNull();

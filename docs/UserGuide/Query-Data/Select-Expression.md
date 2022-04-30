@@ -176,8 +176,11 @@ IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
 |4    |`<=`         |Binary compare operator less or equal to|
 |4    |`==`         |Binary compare operator equal to|
 |4    |`!=`/`<>`    |Binary compare operator non-equal to|
-|5    |`and`/`&`/`&&`               |Binary logic operator and|
-|5    |`or`/ &#124; / &#124;&#124;  |Binary logic operator or|
+|5      |`REGEXP`   |`REGEXP` operator|
+|5      |`LIKE`    |`LIKE` operator|
+|6      |`IN`    |`IN` operator|
+|7    |`and`/`&`/`&&`               |Binary logic operator and|
+|8    |`or`/ &#124; / &#124;&#124;  |Binary logic operator or|
 
 ## Time Series Generating Functions
 
@@ -667,6 +670,80 @@ Result:
 +-----------------------------+---------+
 Total line number = 12
 It costs 0.065s
+```
+#### Equal Size Bucket Outlier Sample
+This function samples the input sequence with equal number of bucket outliers, that is, according to the downsampling ratio given by the user and the number of samples in the bucket, the input sequence is divided into several buckets according to a fixed number of points. Sampling by the given outlier sampling method within each bucket.
+
+| Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
+|----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
+| EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | The value range of `proportion` is `(0, 1]`, the default is `0.1`</br> The value of `type` is `avg` or `stendis` or `cos` or `prenextdis`, the default is `avg` </br>The value of `number` should be greater than 0, the default is `3`| INT32 / INT64 / FLOAT / DOUBLE | Returns outlier samples in equal buckets that match the sampling ratio and the number of samples in the bucket |
+
+Parameter Description
+- `proportion`: sampling ratio
+- `number`: the number of samples in each bucket, default `3`
+- `type`: outlier sampling method, the value is
+  - `avg`: Take the average of the data points in the bucket, and find the `top number` farthest from the average according to the sampling ratio
+  - `stendis`: Take the vertical distance between each data point in the bucket and the first and last data points of the bucket to form a straight line, and according to the sampling ratio, find the `top number` with the largest distance
+  - `cos`: Set a data point in the bucket as b, the data point on the left of b as a, and the data point on the right of b as c, then take the cosine value of the angle between the ab and bc vectors. The larger the angle, the more likely it is an outlier. Find the `top number` with the smallest cos value
+  - `prenextdis`: Let a data point in the bucket be b, the data point to the left of b is a, and the data point to the right of b is c, then take the sum of the lengths of ab and bc as the yardstick, the larger the sum, the more likely it is to be an outlier, and find the `top number` with the largest sum value
+
+##### Demonstrate
+Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`. Among them, in order to add outliers, we make the number modulo 5 equal to 0 increment by 100.
+```
+IoTDB> select temperature from root.ln.wf01.wt01;
++-----------------------------+-----------------------------+
+|                         Time|root.ln.wf01.wt01.temperature|
++-----------------------------+-----------------------------+
+|1970-01-01T08:00:00.000+08:00|                          0.0|
+|1970-01-01T08:00:00.001+08:00|                          1.0|
+|1970-01-01T08:00:00.002+08:00|                          2.0|
+|1970-01-01T08:00:00.003+08:00|                          3.0|
+|1970-01-01T08:00:00.004+08:00|                          4.0|
+|1970-01-01T08:00:00.005+08:00|                        105.0|
+|1970-01-01T08:00:00.006+08:00|                          6.0|
+|1970-01-01T08:00:00.007+08:00|                          7.0|
+|1970-01-01T08:00:00.008+08:00|                          8.0|
+|1970-01-01T08:00:00.009+08:00|                          9.0|
+|1970-01-01T08:00:00.010+08:00|                         10.0|
+|1970-01-01T08:00:00.011+08:00|                         11.0|
+|1970-01-01T08:00:00.012+08:00|                         12.0|
+|1970-01-01T08:00:00.013+08:00|                         13.0|
+|1970-01-01T08:00:00.014+08:00|                         14.0|
+|1970-01-01T08:00:00.015+08:00|                        115.0|
+|1970-01-01T08:00:00.016+08:00|                         16.0|
+|.............................|.............................|
+|1970-01-01T08:00:00.092+08:00|                         92.0|
+|1970-01-01T08:00:00.093+08:00|                         93.0|
+|1970-01-01T08:00:00.094+08:00|                         94.0|
+|1970-01-01T08:00:00.095+08:00|                        195.0|
+|1970-01-01T08:00:00.096+08:00|                         96.0|
+|1970-01-01T08:00:00.097+08:00|                         97.0|
+|1970-01-01T08:00:00.098+08:00|                         98.0|
+|1970-01-01T08:00:00.099+08:00|                         99.0|
++-----------------------------+-----------------------------+
+```
+Sql:
+```sql
+select equal_size_bucket_outlier_sample(temperature, 'proportion'='0.1', 'type'='avg', 'number'='2') as outlier_avg_sample, equal_size_bucket_outlier_sample(temperature, 'proportion'='0.1', 'type'='stendis', 'number'='2') as outlier_stendis_sample, equal_size_bucket_outlier_sample(temperature, 'proportion'='0.1', 'type'='cos', 'number'='2') as outlier_cos_sample, equal_size_bucket_outlier_sample(temperature, 'proportion'='0.1', 'type'='prenextdis', 'number'='2') as outlier_prenextdis_sample from root.ln.wf01.wt01;
+```
+Result:
+```
++-----------------------------+------------------+----------------------+------------------+-------------------------+
+|                         Time|outlier_avg_sample|outlier_stendis_sample|outlier_cos_sample|outlier_prenextdis_sample|
++-----------------------------+------------------+----------------------+------------------+-------------------------+
+|1970-01-01T08:00:00.005+08:00|             105.0|                 105.0|             105.0|                    105.0|
+|1970-01-01T08:00:00.015+08:00|             115.0|                 115.0|             115.0|                    115.0|
+|1970-01-01T08:00:00.025+08:00|             125.0|                 125.0|             125.0|                    125.0|
+|1970-01-01T08:00:00.035+08:00|             135.0|                 135.0|             135.0|                    135.0|
+|1970-01-01T08:00:00.045+08:00|             145.0|                 145.0|             145.0|                    145.0|
+|1970-01-01T08:00:00.055+08:00|             155.0|                 155.0|             155.0|                    155.0|
+|1970-01-01T08:00:00.065+08:00|             165.0|                 165.0|             165.0|                    165.0|
+|1970-01-01T08:00:00.075+08:00|             175.0|                 175.0|             175.0|                    175.0|
+|1970-01-01T08:00:00.085+08:00|             185.0|                 185.0|             185.0|                    185.0|
+|1970-01-01T08:00:00.095+08:00|             195.0|                 195.0|             195.0|                    195.0|
++-----------------------------+------------------+----------------------+------------------+-------------------------+
+Total line number = 10
+It costs 0.041s
 ```
 
 ### User Defined Timeseries Generating Functions
