@@ -22,8 +22,10 @@ package org.apache.iotdb.commons.utils;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class BasicStructureSerDeUtil {
   public static final int INT_LEN = 4;
@@ -238,5 +240,79 @@ public class BasicStructureSerDeUtil {
       map.put(key, valueList);
     }
     return map;
+  }
+
+  /**
+   * write int set to buffer
+   *
+   * @param set Set<Integer> set
+   * @param buffer
+   * @return length
+   */
+  public static int writeIntSet(Set<Integer> set, ByteBuffer buffer) {
+    if (set == null) {
+      return write(-1, buffer);
+    }
+    int length = 0;
+    buffer.putInt(set.size());
+    for (Integer i : set) {
+      buffer.putInt(i);
+    }
+    return length;
+  }
+
+  /**
+   * read int set from buffer
+   *
+   * @param buffer
+   * @return Set<Integer>
+   */
+  public static Set<Integer> readIntSet(ByteBuffer buffer) {
+    int length = readInt(buffer);
+    if (length == -1) {
+      return null;
+    }
+    Set<Integer> set = new HashSet<>();
+    for (int i = 0; i < length; i++) {
+      set.add(readInt(buffer));
+    }
+    return set;
+  }
+
+  /**
+   * write string list to buffer
+   *
+   * @param strings List<String> strings
+   * @param buffer
+   * @return length
+   */
+  public static int writeStringList(List<String> strings, ByteBuffer buffer) {
+    if (strings == null) {
+      return write(-1, buffer);
+    }
+    int length = 0;
+    buffer.putInt(strings.size());
+    for (String s : strings) {
+      write(s, buffer);
+    }
+    return length;
+  }
+
+  /**
+   * read string list to buffer
+   *
+   * @param buffer
+   * @return List<String>
+   */
+  public static List<String> readStringList(ByteBuffer buffer) {
+    int length = readInt(buffer);
+    if (length == -1) {
+      return null;
+    }
+    List<String> strings = new ArrayList<>();
+    for (int i = 0; i < length; i++) {
+      strings.add(readString(buffer));
+    }
+    return strings;
   }
 }

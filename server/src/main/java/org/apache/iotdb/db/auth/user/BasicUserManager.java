@@ -330,4 +330,12 @@ public abstract class BasicUserManager implements IUserManager {
       }
     }
   }
+
+  public Map<String, User> getUserMap() {
+    return userMap;
+  }
+
+  public void setUserMap(Map<String, User> userMap) {
+    this.userMap = userMap;
+  }
 }

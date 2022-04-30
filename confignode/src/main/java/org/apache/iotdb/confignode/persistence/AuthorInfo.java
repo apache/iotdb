@@ -36,6 +36,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -259,6 +260,14 @@ public class AuthorInfo {
       result.setPermissionInfo(permissionInfo);
       return result;
     }
+  }
+
+  public ByteBuffer serialize(ByteBuffer buffer) {
+    return ((BasicAuthorizer) authorizer).serialize(buffer);
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    ((BasicAuthorizer) authorizer).deserialize(buffer);
   }
 
   private static class AuthorInfoPersistenceHolder {

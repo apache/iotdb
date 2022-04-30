@@ -22,11 +22,15 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.auth.role.BasicRoleManager;
 import org.apache.iotdb.db.auth.role.IRoleManager;
+import org.apache.iotdb.db.auth.user.BasicUserManager;
 import org.apache.iotdb.db.auth.user.IUserManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.AuthUtils;
@@ -34,6 +38,8 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -403,5 +409,106 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
     roleManager.replaceAllRoles(roles);
+  }
+
+  public IUserManager getUserManager() {
+    return userManager;
+  }
+
+  public void setUserManager(IUserManager userManager) {
+    this.userManager = userManager;
+  }
+
+  public IRoleManager getRoleManager() {
+    return roleManager;
+  }
+
+  public void setRoleManager(IRoleManager roleManager) {
+    this.roleManager = roleManager;
+  }
+
+  public ByteBuffer serialize(ByteBuffer buffer) {
+    Map<String, User> userMap = ((BasicUserManager) userManager).getUserMap();
+    Map<String, Role> roleMap = ((BasicRoleManager) roleManager).getRoleMap();
+    User user;
+    Role role;
+
+    // serialize userinfo
+    BasicStructureSerDeUtil.write(userMap.size(), buffer);
+
+    for (String userName : userMap.keySet()) {
+      user = userMap.get(userName);
+      BasicStructureSerDeUtil.write(user.getName(), buffer);
+      BasicStructureSerDeUtil.write(user.getPassword(), buffer);
+      BasicStructureSerDeUtil.write(user.getPrivilegeList().size(), buffer);
+      for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
+        BasicStructureSerDeUtil.writeIntSet(pathPrivilege.getPrivileges(), buffer);
+        BasicStructureSerDeUtil.write(pathPrivilege.getPath(), buffer);
+      }
+      BasicStructureSerDeUtil.writeStringList(user.getRoleList(), buffer);
+    }
+
+    // serialize roleinfo
+    BasicStructureSerDeUtil.write(roleMap.size(), buffer);
+    for (String roleName : roleMap.keySet()) {
+      role = roleMap.get(roleName);
+      BasicStructureSerDeUtil.write(role.getName(), buffer);
+      for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+        BasicStructureSerDeUtil.writeIntSet(pathPrivilege.getPrivileges(), buffer);
+        BasicStructureSerDeUtil.write(pathPrivilege.getPath(), buffer);
+      }
+    }
+    return buffer;
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    Map<String, User> userMap = new HashMap<>();
+    Map<String, Role> roleMap = new HashMap<>();
+    String username;
+    String password;
+    List<PathPrivilege> privilegeList = null;
+    Set<Integer> privilegesId = null;
+    String path = null;
+    List<String> roleList;
+    String roleName;
+
+    // deserialize user
+    int userMapSize = BasicStructureSerDeUtil.readInt(buffer);
+    for (int i = 0; i < userMapSize; i++) {
+      username = BasicStructureSerDeUtil.readString(buffer);
+      password = BasicStructureSerDeUtil.readString(buffer);
+      int privilegesSize = BasicStructureSerDeUtil.readInt(buffer);
+      if (privilegesSize == 0) {
+        privilegeList = new ArrayList<>();
+      } else {
+        for (int m = 0; m < privilegesSize; m++) {
+          privilegesId = BasicStructureSerDeUtil.readIntSet(buffer);
+          path = BasicStructureSerDeUtil.readString(buffer);
+        }
+        privilegeList.add(new PathPrivilege(privilegesId, path));
+      }
+      roleList = BasicStructureSerDeUtil.readStringList(buffer);
+      userMap.put(username, new User(username, password, privilegeList, roleList));
+    }
+
+    // deserialize role
+    int roleMapSize = BasicStructureSerDeUtil.readInt(buffer);
+    for (int i = 0; i < roleMapSize; i++) {
+      roleName = BasicStructureSerDeUtil.readString(buffer);
+      int privilegesSize = BasicStructureSerDeUtil.readInt(buffer);
+      if (privilegesSize == 0) {
+        privilegeList = new ArrayList<>();
+      } else {
+        for (int m = 0; m < privilegesSize; m++) {
+          privilegesId = BasicStructureSerDeUtil.readIntSet(buffer);
+          path = BasicStructureSerDeUtil.readString(buffer);
+        }
+        privilegeList.add(new PathPrivilege(privilegesId, path));
+      }
+      roleMap.put(roleName, new Role(roleName, privilegeList));
+    }
+
+    ((BasicUserManager) userManager).setUserMap(userMap);
+    ((BasicRoleManager) roleManager).setRoleMap(roleMap);
   }
 }

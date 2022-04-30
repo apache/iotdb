@@ -45,6 +45,11 @@ public class Role {
     this.privilegeList = new ArrayList<>();
   }
 
+  public Role(String name, List<PathPrivilege> privilegeList) {
+    this.name = name;
+    this.privilegeList = privilegeList;
+  }
+
   public String getName() {
     return name;
   }

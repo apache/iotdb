@@ -186,4 +186,12 @@ public abstract class BasicRoleManager implements IRoleManager {
       }
     }
   }
+
+  public Map<String, Role> getRoleMap() {
+    return roleMap;
+  }
+
+  public void setRoleMap(Map<String, Role> roleMap) {
+    this.roleMap = roleMap;
+  }
 }

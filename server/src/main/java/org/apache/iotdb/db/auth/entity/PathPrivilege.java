@@ -58,6 +58,11 @@ public class PathPrivilege {
     this.privileges = new HashSet<>();
   }
 
+  public PathPrivilege(Set<Integer> privilegesId, String path) {
+    this.privileges = privilegesId;
+    this.path = path;
+  }
+
   public Set<Integer> getPrivileges() {
     return privileges;
   }

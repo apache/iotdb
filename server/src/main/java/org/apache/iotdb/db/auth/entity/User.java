@@ -63,6 +63,14 @@ public class User {
     this.roleList = new ArrayList<>();
   }
 
+  public User(
+      String name, String password, List<PathPrivilege> privilegeList, List<String> roleList) {
+    this.name = name;
+    this.password = password;
+    this.privilegeList = privilegeList;
+    this.roleList = roleList;
+  }
+
   public String getName() {
     return name;
   }
