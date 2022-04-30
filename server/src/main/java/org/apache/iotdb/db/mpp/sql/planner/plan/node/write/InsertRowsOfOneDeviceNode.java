@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
@@ -37,12 +36,15 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
-public class InsertRowsOfOneDeviceNode extends InsertNode {
+public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsertNode {
 
   /**
    * Suppose there is an InsertRowsOfOneDeviceNode, which contains 5 InsertRowNodes,
@@ -91,6 +93,25 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   public void setInsertRowNodeList(List<InsertRowNode> insertRowNodeList) {
     this.insertRowNodeList = insertRowNodeList;
+
+    if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
+      return;
+    }
+
+    devicePath = insertRowNodeList.get(0).getDevicePath();
+    isAligned = insertRowNodeList.get(0).isAligned;
+    Map<String, TSDataType> measurementsAndDataType = new HashMap<>();
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      List<String> measurements = Arrays.asList(insertRowNode.getMeasurements());
+      Map<String, TSDataType> subMap =
+          measurements.stream()
+              .collect(
+                  Collectors.toMap(
+                      key -> key, key -> insertRowNode.dataTypes[measurements.indexOf(key)]));
+      measurementsAndDataType.putAll(subMap);
+    }
+    measurements = measurementsAndDataType.keySet().toArray(new String[0]);
+    dataTypes = measurementsAndDataType.values().toArray(new TSDataType[0]);
   }
 
   @Override
@@ -112,17 +133,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return null;
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
     return null;
   }
 
@@ -137,34 +148,44 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
+  public void setMeasurementSchemas(SchemaTree schemaTree) {
+    for (InsertRowNode insertRowNode : insertRowNodeList) {
+      insertRowNode.setMeasurementSchemas(schemaTree);
+    }
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    Map<TRegionReplicaSet, InsertRowsNode> splitMap = new HashMap<>();
+    List<WritePlanNode> result = new ArrayList<>();
+
+    Map<TRegionReplicaSet, List<InsertRowNode>> splitMap = new HashMap<>();
+    Map<TRegionReplicaSet, List<Integer>> splitMapForIndex = new HashMap<>();
+
     for (int i = 0; i < insertRowNodeList.size(); i++) {
       InsertRowNode insertRowNode = insertRowNodeList.get(i);
-      // data region for insert row node
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
                   devicePath.getFullPath(),
                   StorageEngineV2.getTimePartitionSlot(insertRowNode.getTime()));
-      if (splitMap.containsKey(dataRegionReplicaSet)) {
-        InsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
-        tmpNode.addOneInsertRowNode(insertRowNode, i);
-      } else {
-        InsertRowsNode tmpNode = new InsertRowsNode(this.getPlanNodeId());
-        tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
-        tmpNode.addOneInsertRowNode(insertRowNode, i);
-        splitMap.put(dataRegionReplicaSet, tmpNode);
-      }
+      List<InsertRowNode> tmpMap =
+          splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new ArrayList<>());
+      List<Integer> tmpIndexMap =
+          splitMapForIndex.computeIfAbsent(dataRegionReplicaSet, k -> new ArrayList<>());
+
+      tmpMap.add(insertRowNode);
+      tmpIndexMap.add(insertRowNodeIndexList.get(i));
     }
 
-    return new ArrayList<>(splitMap.values());
-  }
-
-  public void addOneInsertRowNode(InsertRowNode node, int index) {
-    insertRowNodeList.add(node);
-    insertRowNodeIndexList.add(index);
+    for (Map.Entry<TRegionReplicaSet, List<InsertRowNode>> entry : splitMap.entrySet()) {
+      InsertRowsOfOneDeviceNode reducedNode = new InsertRowsOfOneDeviceNode(this.getPlanNodeId());
+      reducedNode.setInsertRowNodeList(entry.getValue());
+      reducedNode.setInsertRowNodeIndexList(splitMapForIndex.get(entry.getKey()));
+      reducedNode.setDataRegionReplicaSet(entry.getKey());
+      result.add(reducedNode);
+    }
+    return result;
   }
 
   public static InsertRowsOfOneDeviceNode deserialize(ByteBuffer byteBuffer) {
@@ -232,5 +253,37 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), insertRowNodeIndexList, insertRowNodeList);
+  }
+
+  @Override
+  public List<PartialPath> getDevicePaths() {
+    if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return Collections.singletonList(insertRowNodeList.get(0).devicePath);
+  }
+
+  @Override
+  public List<String[]> getMeasurementsList() {
+    if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return Collections.singletonList(measurements);
+  }
+
+  @Override
+  public List<TSDataType[]> getDataTypesList() {
+    if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return Collections.singletonList(dataTypes);
+  }
+
+  @Override
+  public List<Boolean> getAlignedList() {
+    if (insertRowNodeList == null || insertRowNodeList.isEmpty()) {
+      return Collections.emptyList();
+    }
+    return Collections.singletonList(insertRowNodeList.get(0).isAligned);
   }
 }

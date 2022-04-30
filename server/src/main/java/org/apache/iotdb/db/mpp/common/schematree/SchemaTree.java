@@ -228,7 +228,7 @@ public class SchemaTree {
    */
   public String getBelongedStorageGroup(PartialPath path) {
     for (String storageGroup : storageGroups) {
-      if (path.getFullPath().startsWith(storageGroup)) {
+      if (path.getFullPath().startsWith(storageGroup + ".")) {
         return storageGroup;
       }
     }

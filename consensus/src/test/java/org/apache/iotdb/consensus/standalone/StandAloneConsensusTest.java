@@ -40,6 +40,7 @@ import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.statemachine.EmptyStateMachine;
 import org.apache.iotdb.consensus.statemachine.IStateMachine;
 
+import org.apache.ratis.util.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -134,7 +135,7 @@ public class StandAloneConsensusTest {
         ConsensusFactory.getConsensusImpl(
                 STANDALONE_CONSENSUS_CLASS_NAME,
                 new TEndPoint("localhost", 6667),
-                new File("./"),
+                new File("./target/standalone"),
                 gid -> {
                   switch (gid.getType()) {
                     case SchemaRegion:
@@ -156,6 +157,7 @@ public class StandAloneConsensusTest {
   @After
   public void tearDown() throws Exception {
     consensusImpl.stop();
+    FileUtils.deleteFully(new File("./target/standalone"));
   }
 
   @Test

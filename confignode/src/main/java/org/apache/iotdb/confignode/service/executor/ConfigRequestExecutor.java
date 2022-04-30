@@ -21,13 +21,16 @@ package org.apache.iotdb.confignode.service.executor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -65,15 +68,15 @@ public class ConfigRequestExecutor {
       case GetDataNodeInfo:
         return dataNodeInfo.getDataNodeInfo((GetDataNodeInfoReq) req);
       case CountStorageGroup:
-        return clusterSchemaInfo.countMatchedStorageGroups((GetOrCountStorageGroupReq) req);
+        return clusterSchemaInfo.countMatchedStorageGroups((CountStorageGroupReq) req);
       case GetStorageGroup:
-        return clusterSchemaInfo.getMatchedStorageGroupSchemas((GetOrCountStorageGroupReq) req);
+        return clusterSchemaInfo.getMatchedStorageGroupSchemas((GetStorageGroupReq) req);
       case GetDataPartition:
       case GetOrCreateDataPartition:
-        return partitionInfo.getDataPartition((GetOrCreateDataPartitionReq) req);
+        return partitionInfo.getDataPartition((GetDataPartitionReq) req);
       case GetSchemaPartition:
       case GetOrCreateSchemaPartition:
-        return partitionInfo.getSchemaPartition((GetOrCreateSchemaPartitionReq) req);
+        return partitionInfo.getSchemaPartition((GetSchemaPartitionReq) req);
       case LIST_USER:
         return authorInfo.executeListUser();
       case LIST_ROLE:
@@ -98,6 +101,8 @@ public class ConfigRequestExecutor {
         return dataNodeInfo.registerDataNode((RegisterDataNodeReq) req);
       case SetStorageGroup:
         return clusterSchemaInfo.setStorageGroup((SetStorageGroupReq) req);
+      case DeleteStorageGroup:
+        return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
       case SetTTL:
         return clusterSchemaInfo.setTTL((SetTTLReq) req);
       case SetSchemaReplicationFactor:
@@ -108,6 +113,8 @@ public class ConfigRequestExecutor {
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
       case CreateRegions:
         return partitionInfo.createRegions((CreateRegionsReq) req);
+      case DeleteRegions:
+        return partitionInfo.deleteRegions((DeleteRegionsReq) req);
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
       case CreateDataPartition:

@@ -32,11 +32,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * AbstractCompactionTask is the base class for all compaction task, it carries out the execution of
- * compaction. AbstractCompactionTask uses a template method, it execute the abstract function
- * <i>doCompaction</i> implemented by subclass, and decrease the currentTaskNum in
- * CompactionScheduler when the <i>doCompaction</i> finish.
+ * compaction. AbstractCompactionTask uses a template method, it executes the abstract function
+ * {@link AbstractCompactionTask#doCompaction()} implemented by subclass, and decrease the
+ * currentTaskNum in CompactionScheduler when the {@link AbstractCompactionTask#doCompaction()} is
+ * finished. The future returns the {@link CompactionTaskSummary} of this task execution.
  */
-public abstract class AbstractCompactionTask implements Callable<Void> {
+public abstract class AbstractCompactionTask implements Callable<CompactionTaskSummary> {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   protected String fullStorageGroupName;
@@ -64,25 +65,25 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected abstract void doCompaction() throws Exception;
 
   @Override
-  public Void call() throws Exception {
+  public CompactionTaskSummary call() throws Exception {
     ran = true;
     long startTime = System.currentTimeMillis();
     currentTaskNum.incrementAndGet();
+    boolean isSuccess = false;
     try {
       doCompaction();
+      isSuccess = true;
     } catch (InterruptedException e) {
       LOGGER.warn("Current task is interrupted");
-      Thread.interrupted();
     } catch (Exception e) {
-      LOGGER.error(e.getMessage(), e);
+      LOGGER.error("Running compaction task failed", e);
     } finally {
       this.currentTaskNum.decrementAndGet();
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
       timeCost = System.currentTimeMillis() - startTime;
       finished = true;
     }
-
-    return null;
+    return new CompactionTaskSummary(isSuccess);
   }
 
   public String getFullStorageGroupName() {
