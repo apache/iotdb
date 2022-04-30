@@ -19,18 +19,14 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
@@ -488,11 +484,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   @Override
   public PartialPath clone() {
     return new PartialPath(this.getNodes().clone());
-  }
-
-  public List<IChunkMetadata> getVisibleMetadataListFromWriter(
-      RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
-    throw new UnsupportedOperationException("Should call exact sub class!");
   }
 
   @Override

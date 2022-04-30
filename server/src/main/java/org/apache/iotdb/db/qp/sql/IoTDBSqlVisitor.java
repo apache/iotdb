@@ -273,8 +273,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseAttributeClauses(
       IoTDBSqlParser.AttributeClausesContext ctx,
       CreateTimeSeriesOperator createTimeSeriesOperator) {
-    if (ctx.alias() != null) {
-      createTimeSeriesOperator.setAlias(parseNodeName(ctx.alias().nodeName()));
+    if (ctx.aliasNodeName() != null) {
+      createTimeSeriesOperator.setAlias(parseNodeName(ctx.aliasNodeName().nodeName()));
     }
     final String dataType = ctx.dataType.getText().toUpperCase();
     final TSDataType tsDataType = TSDataType.valueOf(dataType);
@@ -317,8 +317,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseAttributeClauses(
       IoTDBSqlParser.AttributeClausesContext ctx,
       CreateAlignedTimeSeriesOperator createAlignedTimeSeriesOperator) {
-    if (ctx.alias() != null) {
-      createAlignedTimeSeriesOperator.addAliasList(parseNodeName(ctx.alias().nodeName()));
+    if (ctx.aliasNodeName() != null) {
+      createAlignedTimeSeriesOperator.addAliasList(parseNodeName(ctx.aliasNodeName().nodeName()));
     } else {
       createAlignedTimeSeriesOperator.addAliasList(null);
     }
@@ -412,7 +412,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors) {
-    if (ctx.alias() != null) {
+    if (ctx.aliasNodeName() != null) {
       throw new SQLParserException("schema template: alias is not supported yet.");
     }
 
@@ -691,8 +691,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public void parseAliasClause(
       IoTDBSqlParser.AliasClauseContext ctx, AlterTimeSeriesOperator alterTimeSeriesOperator) {
-    if (alterTimeSeriesOperator != null && ctx.STRING_LITERAL() != null) {
-      alterTimeSeriesOperator.setAlias(parseStringLiteral(ctx.STRING_LITERAL().getText()));
+    if (alterTimeSeriesOperator != null && ctx.ALIAS() != null) {
+      alterTimeSeriesOperator.setAlias(parseAlias(ctx.alias()));
     }
   }
 
@@ -1483,7 +1483,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     // add without null columns
     List<ExpressionContext> expressionContexts = ctx.expression();
     for (ExpressionContext expressionContext : expressionContexts) {
-      specialClauseComponent.addWithoutNullColumn(parseExpression(expressionContext));
+      specialClauseComponent.addWithoutNullColumn(parseExpression(expressionContext, true));
     }
     specialClauseComponent.setWithoutAnyNull(ctx.ANY() != null);
     specialClauseComponent.setWithoutAllNull(ctx.ALL() != null);
@@ -2382,6 +2382,33 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
+  /** path of expression in withoutNull clause can start with root. */
+  private PartialPath parseFullPathInExpression(
+      IoTDBSqlParser.FullPathInExpressionContext ctx, boolean inWithoutNull)
+      throws SQLParserException {
+    List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
+    int size = nodeNames.size();
+    if (ctx.ROOT() != null) {
+      if (!inWithoutNull) {
+        throw new SQLParserException("Path can not start with root in select clause.");
+      }
+    }
+    String[] path;
+    if (ctx.ROOT() != null) {
+      path = new String[size + 1];
+      path[0] = ctx.ROOT().getText();
+      for (int i = 0; i < nodeNames.size(); i++) {
+        path[i + 1] = parseNodeName(nodeNames.get(i));
+      }
+    } else {
+      path = new String[size];
+      for (int i = 0; i < nodeNames.size(); i++) {
+        path[i] = parseNodeName(nodeNames.get(i));
+      }
+    }
+    return new PartialPath(path);
+  }
+
   private PartialPath parsePrefixPath(IoTDBSqlParser.PrefixPathContext ctx) {
     List<IoTDBSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
     String[] path = new String[nodeNames.size() + 1];
@@ -2414,6 +2441,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private String parseNodeNameWithoutWildCard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
     return parseIdentifier(ctx.getText());
+  }
+
+  // alias
+
+  /** function for parsing Alias. */
+  private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
+    String alias;
+    if (ctx.STRING_LITERAL() != null) {
+      alias = parseStringLiteral(ctx.STRING_LITERAL().getText());
+    } else {
+      alias = parseIdentifier(ctx.identifier().getText());
+    }
+    return alias;
   }
 
   /** function for parsing datetime literal. */
@@ -2500,9 +2540,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   @SuppressWarnings("squid:S3776")
-  private Expression parseExpression(IoTDBSqlParser.ExpressionContext context) {
+  private Expression parseExpression(
+      IoTDBSqlParser.ExpressionContext context, boolean inWithoutNull) {
     if (context.unaryInBracket != null) {
-      return parseExpression(context.unaryInBracket);
+      return parseExpression(context.unaryInBracket, inWithoutNull);
     }
 
     if (context.constant() != null && !context.constant().isEmpty()) {
@@ -2513,23 +2554,26 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       throw new UnsupportedOperationException();
     }
 
-    if (context.suffixPath() != null) {
-      return new TimeSeriesOperand(parseSuffixPath(context.suffixPath()));
+    if (context.fullPathInExpression() != null) {
+      return new TimeSeriesOperand(
+          parseFullPathInExpression(context.fullPathInExpression(), inWithoutNull));
     }
 
     if (context.expressionAfterUnaryOperator != null) {
       if (context.MINUS() != null) {
-        return new NegationExpression(parseExpression(context.expressionAfterUnaryOperator));
+        return new NegationExpression(
+            parseExpression(context.expressionAfterUnaryOperator, inWithoutNull));
       }
       if (context.OPERATOR_NOT() != null) {
-        return new LogicNotExpression(parseExpression(context.expressionAfterUnaryOperator));
+        return new LogicNotExpression(
+            parseExpression(context.expressionAfterUnaryOperator, inWithoutNull));
       }
-      return parseExpression(context.expressionAfterUnaryOperator);
+      return parseExpression(context.expressionAfterUnaryOperator, inWithoutNull);
     }
 
     if (context.leftExpression != null && context.rightExpression != null) {
-      Expression leftExpression = parseExpression(context.leftExpression);
-      Expression rightExpression = parseExpression(context.rightExpression);
+      Expression leftExpression = parseExpression(context.leftExpression, inWithoutNull);
+      Expression rightExpression = parseExpression(context.rightExpression, inWithoutNull);
       if (context.STAR() != null) {
         return new MultiplicationExpression(leftExpression, rightExpression);
       }
@@ -2572,7 +2616,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
 
     if (context.functionName() != null) {
-      return parseFunctionExpression(context);
+      return parseFunctionExpression(context, inWithoutNull);
     }
 
     if (context.unaryBeforeRegularExpression != null) {
@@ -2586,14 +2630,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     throw new UnsupportedOperationException();
   }
 
-  private Expression parseFunctionExpression(IoTDBSqlParser.ExpressionContext functionClause) {
+  private Expression parseFunctionExpression(
+      IoTDBSqlParser.ExpressionContext functionClause, boolean inWithoutNull) {
     FunctionExpression functionExpression =
         new FunctionExpression(parseIdentifier(functionClause.functionName().getText()));
 
     // expressions
     boolean hasNonPureConstantSubExpression = false;
     for (IoTDBSqlParser.ExpressionContext expression : functionClause.expression()) {
-      Expression subexpression = parseExpression(expression);
+      Expression subexpression = parseExpression(expression, inWithoutNull);
       if (!subexpression.isConstantOperand()) {
         hasNonPureConstantSubExpression = true;
       }
@@ -2612,8 +2657,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     for (IoTDBSqlParser.FunctionAttributeContext functionAttribute :
         functionClause.functionAttribute()) {
       functionExpression.addAttribute(
-          parseStringLiteral(functionAttribute.functionAttributeKey.getText()),
-          parseStringLiteral(functionAttribute.functionAttributeValue.getText()));
+          parseAttributeKey(functionAttribute.attributeKey()),
+          parseAttributeValue(functionAttribute.attributeValue()));
     }
 
     return functionExpression;
@@ -2890,16 +2935,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private ResultColumn parseResultColumn(IoTDBSqlParser.ResultColumnContext resultColumnContext) {
-    Expression expression = parseExpression(resultColumnContext.expression());
+    Expression expression = parseExpression(resultColumnContext.expression(), false);
     if (expression.isConstantOperand()) {
       throw new SQLParserException("Constant operand is not allowed: " + expression);
     }
     String alias = null;
     if (resultColumnContext.AS() != null) {
-      alias =
-          resultColumnContext.identifier() != null
-              ? (parseIdentifier(resultColumnContext.identifier().getText()))
-              : parseStringLiteral(resultColumnContext.STRING_LITERAL().getText());
+      alias = parseAlias(resultColumnContext.alias());
     }
     return new ResultColumn(expression, alias);
   }
@@ -3141,11 +3183,17 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private String parseAttributeKey(IoTDBSqlParser.AttributeKeyContext ctx) {
-    return parseStringLiteral(ctx.getText());
+    if (ctx.STRING_LITERAL() != null) {
+      return parseStringLiteral(ctx.getText());
+    }
+    return parseIdentifier(ctx.getText());
   }
 
   private String parseAttributeValue(IoTDBSqlParser.AttributeValueContext ctx) {
-    return parseStringLiteral(ctx.getText());
+    if (ctx.constant() != null) {
+      return parseStringLiteral(ctx.getText());
+    }
+    return parseIdentifier(ctx.getText());
   }
 
   private Pair<Long, Long> calcOperatorInterval(FilterOperator filterOperator) {

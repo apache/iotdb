@@ -476,68 +476,68 @@ public class IoTDBSyntaxConventionStringLiteralIT {
     }
   }
 
+  // attribute can be constant | identifier
   @Test
   public void testTriggerAttribute() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:127 mismatched input 'k1' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s2 FLOAT");
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s3 FLOAT");
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s4 FLOAT");
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s5 FLOAT");
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s6 FLOAT");
       // trigger attribute should be STRING_LITERAL
       statement.execute(
           "create trigger trigger_1 before insert on root.vehicle.d1.s1 "
               + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k1'='v1')");
-      boolean hasResult = statement.execute("show triggers");
-      assertTrue(hasResult);
 
       statement.execute(
           "create trigger trigger_2 before insert on root.vehicle.d1.s2 "
               + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (k1='v1')");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
-    }
-  }
 
-  @Test
-  public void testTriggerAttribute1() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:127 mismatched input '`k1`' expecting STRING_LITERAL";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
-      // trigger attribute should be STRING_LITERAL
       statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 "
-              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (`k1`='v1')");
-      fail();
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 "
+              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k1'=v1)");
+
+      statement.execute(
+          "create trigger trigger_4 before insert on root.vehicle.d1.s4 "
+              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (k1=v1)");
+
+      statement.execute(
+          "create trigger trigger_5 before insert on root.vehicle.d1.s5 "
+              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (`k1`=`v1`)");
+
+      statement.execute(
+          "create trigger trigger_6 before insert on root.vehicle.d1.s6 "
+              + "as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with (`k1`=v1)");
+
+      boolean hasResult = statement.execute("show triggers");
+      assertTrue(hasResult);
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
+      e.printStackTrace();
+      fail();
     }
   }
 
   @Test
   public void testUDFAttribute() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:21 extraneous input '=' expecting {',', ')'}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 FLOAT");
       statement.execute("INSERT INTO root.vehicle.d1(time,s1) values (1,2.0),(2,3.0)");
-      // UDF attribute should be STRING_LITERAL
+
       ResultSet resultSet =
           statement.executeQuery("select bottom_k(s1,'k' = '1') from root.vehicle.d1");
       assertTrue(resultSet.next());
       Assert.assertEquals("2.0", resultSet.getString(2));
 
-      statement.executeQuery("select bottom_k(s1,k = 1) from root.vehicle.d1");
-      fail();
+      resultSet = statement.executeQuery("select bottom_k(s1,k = 1) from root.vehicle.d1");
+      assertTrue(resultSet.next());
+      Assert.assertEquals("2.0", resultSet.getString(2));
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -545,11 +545,11 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   public void testUDFAttribute1() {
     String errorMsg =
         "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:23 extraneous input '=' expecting {',', ')'}";
+            + "line 1:22 token recognition error at: '` = 1) from root.vehicle.d1'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // UDF attribute should be STRING_LITERAL
-      statement.executeQuery("select bottom_k(s1,`k` = 1) from root.vehicle.d1");
+      statement.executeQuery("select bottom_k(s1,``k` = 1) from root.vehicle.d1");
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(errorMsg, e.getMessage());
@@ -558,9 +558,6 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
   @Test
   public void testCreateTimeSeriesAttribute() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:92 mismatched input ',' expecting {<EOF>, ';'}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // besides datatype,encoding,compression,compressor, attributes in create time series clause
@@ -570,82 +567,84 @@ public class IoTDBSyntaxConventionStringLiteralIT {
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY");
       statement.execute(
           "create timeseries root.vehicle.d1.s2 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY,'max_point_number' = '5'");
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, max_point_number = 5");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s3 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, 'max_point_number' = '5'");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s4 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, max_point_number = '5'");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s5 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, `max_point_number` = 5");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s6 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY, `max_point_number` = `5`");
       ResultSet resultSet = statement.executeQuery("show timeseries");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
       }
-      Assert.assertEquals(2, cnt);
-      statement.execute(
-          "create timeseries root.vehicle.d1.s2 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY,max_point_number = 5");
-      fail();
+      Assert.assertEquals(6, cnt);
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
-    }
-  }
-
-  @Test
-  public void testCreateTimeSeriesAttribute1() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:92 mismatched input ',' expecting {<EOF>, ';'}";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create timeseries root.vehicle.d1.s1 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY,`max_point_number` = 5");
-      ResultSet resultSet = statement.executeQuery("show timeseries");
+      e.printStackTrace();
       fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
   @Test
   public void testCreateTimeSeriesTags() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:98 mismatched input 'tag1' expecting STRING_LITERAL";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create timeseries root.vehicle.d1.s1 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "tags('tag1'='v1', 'tag2'='v2')");
-      statement.execute(
-          "create timeseries root.vehicle.d1.s2 "
-              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
               + "tags(tag1=v1)");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
-    }
-  }
-
-  @Test
-  public void testCreateTimeSeriesTags1() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:98 mismatched input '`tag1`' expecting STRING_LITERAL";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
       statement.execute(
           "create timeseries root.vehicle.d1.s2 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
               + "tags(`tag1`=v1)");
-      fail();
+      statement.execute(
+          "create timeseries root.vehicle.d1.s3 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "tags('tag1'=v1)");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s4 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "tags(\"tag1\"=v1)");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s5 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "tags(tag1=`v1`)");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s6 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "tags(tag1='v1')");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s7 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "tags(tag1=\"v1\")");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s8 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "tags(tag1=v1)");
+      boolean hasResult = statement.execute("show timeseries");
+      Assert.assertTrue(hasResult);
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(8, cnt);
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
+      e.printStackTrace();
+      fail();
     }
   }
 
   @Test
   public void testCreateTimeSeriesAttributeClause() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:104 mismatched input 'attr1' expecting STRING_LITERAL";
+
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
@@ -656,26 +655,23 @@ public class IoTDBSyntaxConventionStringLiteralIT {
           "create timeseries root.vehicle.d1.s2 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
               + "attributes(attr1=v1, attr2=v2)");
-      fail();
-    } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
-    }
-  }
-
-  @Test
-  public void testCreateTimeSeriesAttributeClause1() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:104 mismatched input '`attr1`' expecting STRING_LITERAL";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
       statement.execute(
-          "create timeseries root.vehicle.d1.s1 "
+          "create timeseries root.vehicle.d1.s3 "
               + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
-              + "attributes(`attr1`=v1)");
-      fail();
+              + "attributes(`attr1`=`v1`, `attr2`=v2)");
+      statement.execute(
+          "create timeseries root.vehicle.d1.s4 "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY "
+              + "attributes('attr1'=v1, attr2=v2)");
+      ResultSet resultSet = statement.executeQuery("show timeseries");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(4, cnt);
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -683,27 +679,86 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   public void testPipeSinkAttribute() {
     String errorMsg =
         "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:36 mismatched input 'ip' expecting STRING_LITERAL";
+            + "line 1:40 token recognition error at: '` = '127.0.0.1')'";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE PIPESINK `test.*1` AS IoTDB (ip = '127.0.0.1')");
+      statement.execute("CREATE PIPESINK `test.*1` AS IoTDB (``ip` = '127.0.0.1')");
       fail();
     } catch (SQLException e) {
       Assert.assertEquals(errorMsg, e.getMessage());
     }
   }
 
+  // alias can be identifier or STRING_LITERAL
   @Test
-  public void testPipeSinkAttribute1() {
-    String errorMsg =
-        "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:31 mismatched input '`ip`' expecting STRING_LITERAL";
+  public void testAliasInResultColumn() {
+    String[] alias = {
+      "b", "test", "`test.1`", "`1``1`", "'test'", "\"test\"", "\"\\\\test\"",
+    };
+
+    String[] res = {
+      "b", "test", "test.1", "1`1", "test", "test", "\\test",
+    };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE PIPESINK test AS IoTDB (`ip` = '127.0.0.1')");
-      fail();
+      statement.execute(
+          "create timeseries root.sg.a "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY ");
+      statement.execute("insert into root.sg(time, a) values (1,1)");
+
+      String selectSql = "select a as %s from root.sg";
+      for (int i = 0; i < alias.length; i++) {
+        boolean hasResult = statement.execute(String.format(selectSql, alias[i]));
+        assertTrue(hasResult);
+        ResultSet resultSet = statement.getResultSet();
+        Assert.assertEquals(res[i], resultSet.getMetaData().getColumnName(2));
+      }
+
+      try {
+        statement.execute("select a as test.b from root.sg");
+        fail();
+      } catch (Exception ignored) {
+      }
+
     } catch (SQLException e) {
-      Assert.assertEquals(errorMsg, e.getMessage());
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testAliasInAlterClause() {
+    String[] alias = {
+      "b", "test", "`test.1`", "`1``1`", "'test'", "\"test\"", "\"\\\\test\"",
+    };
+
+    String[] res = {
+      "b", "test", "test.1", "1`1", "test", "test", "\\test",
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.sg.a "
+              + "with datatype=INT64, encoding=PLAIN, compression=SNAPPY ");
+
+      String alterSql = "ALTER timeseries root.sg.a UPSERT alias = %s";
+      for (int i = 0; i < alias.length; i++) {
+        statement.execute(String.format(alterSql, alias[i]));
+        statement.execute("show timeseries");
+        ResultSet resultSet = statement.getResultSet();
+        resultSet.next();
+        Assert.assertEquals(res[i], resultSet.getString("alias"));
+      }
+
+      try {
+        statement.execute("ALTER timeseries root.sg.a UPSERT alias = test.a");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
     }
   }
 }

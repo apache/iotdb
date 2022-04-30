@@ -154,7 +154,7 @@ alterTimeseries
     ;
 
 alterClause
-    : RENAME beforeName=STRING_LITERAL TO currentName=STRING_LITERAL
+    : RENAME beforeName=attributeKey TO currentName=attributeKey
     | SET attributePair (COMMA attributePair)*
     | DROP STRING_LITERAL (COMMA STRING_LITERAL)*
     | ADD TAGS attributePair (COMMA attributePair)*
@@ -163,7 +163,12 @@ alterClause
     ;
 
 aliasClause
-    : ALIAS operator_eq STRING_LITERAL
+    : ALIAS operator_eq alias
+    ;
+
+alias
+    : STRING_LITERAL
+    | identifier
     ;
 
 // Delete Storage Group
@@ -751,6 +756,11 @@ fullPath
     : ROOT (DOT nodeNameWithoutWildcard)*
     ;
 
+fullPathInExpression
+    : ROOT (DOT nodeName)*
+    | nodeName (DOT nodeName)*
+    ;
+
 prefixPath
     : ROOT (DOT nodeName)*
     ;
@@ -761,8 +771,8 @@ suffixPath
 
 nodeName
     : wildcard
-    | wildcard? ID wildcard?
-    | QUOTED_ID
+    | wildcard? identifier wildcard?
+    | identifier
     ;
 
 nodeNameWithoutWildcard
@@ -824,7 +834,7 @@ expression
     : LR_BRACKET unaryInBracket=expression RR_BRACKET
     | constant
     | time=(TIME | TIMESTAMP)
-    | suffixPath
+    | fullPathInExpression
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
@@ -905,8 +915,9 @@ topClause
     ;
 
 resultColumn
-    : expression (AS (identifier | STRING_LITERAL))?
+    : expression (AS alias)?
     ;
+
 
 
 // From Clause
@@ -919,14 +930,14 @@ fromClause
 // Attribute Clause
 
 attributeClauses
-    : alias? WITH DATATYPE operator_eq dataType=DATATYPE_VALUE
+    : aliasNodeName? WITH DATATYPE operator_eq dataType=DATATYPE_VALUE
     (COMMA ENCODING operator_eq encoding=ENCODING_VALUE)?
     (COMMA (COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
     (COMMA attributePair)*
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
-    | alias? WITH? (DATATYPE operator_eq)? dataType=DATATYPE_VALUE
+    | aliasNodeName? WITH? (DATATYPE operator_eq)? dataType=DATATYPE_VALUE
     (ENCODING operator_eq encoding=ENCODING_VALUE)?
     ((COMPRESSOR | COMPRESSION) operator_eq compressor=COMPRESSOR_VALUE)?
     attributePair*
@@ -934,7 +945,7 @@ attributeClauses
     attributeClause?
     ;
 
-alias
+aliasNodeName
     : LR_BRACKET nodeName RR_BRACKET
     ;
 
@@ -950,13 +961,14 @@ attributePair
     : key=attributeKey (OPERATOR_SEQ | OPERATOR_DEQ) value=attributeValue
     ;
 
-// attribute is treated as string in html
 attributeKey
-    : STRING_LITERAL
+    :identifier
+    |STRING_LITERAL
     ;
 
 attributeValue
-    : STRING_LITERAL
+    :identifier
+    |constant
     ;
 
 // Limit & Offset Clause

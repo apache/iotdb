@@ -29,6 +29,8 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 
+import org.apache.commons.lang.StringEscapeUtils;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,6 +49,9 @@ public class MetaUtils {
    * @throws IllegalPathException if path isn't correct, the exception will throw
    */
   public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
+    // NodeName is treated as identifier. When parsing identifier, unescapeJava is called.
+    // Therefore we call unescapeJava here.
+    path = StringEscapeUtils.unescapeJava(path);
     if (path.endsWith(TsFileConstant.PATH_SEPARATOR)) {
       throw new IllegalPathException(path);
     }

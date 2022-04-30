@@ -80,6 +80,22 @@ public class MetaUtilsTest {
         Arrays.asList("root", "sg", "d1.`").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.`d1.```"));
 
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "\"d").toArray(),
+        MetaUtils.splitPathToDetachedPath("root.sg.`\\\"d`"));
+
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "\td").toArray(),
+        MetaUtils.splitPathToDetachedPath("root.sg.`\\td`"));
+
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "\\td").toArray(),
+        MetaUtils.splitPathToDetachedPath("root.sg.`\\\\td`"));
+
+    assertArrayEquals(
+        Arrays.asList("root", "laptop", "d1", "\"1.2.3\"").toArray(),
+        MetaUtils.splitPathToDetachedPath("root.laptop.d1.`\\\"1.2.3\\\"`"));
+
     try {
       MetaUtils.splitPathToDetachedPath("root.sg.d1.```");
       fail();
