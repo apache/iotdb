@@ -45,6 +45,7 @@ public abstract class BinaryTransformer extends Transformer {
     if (!leftPointReader.next() || !rightPointReader.next()) {
       return false;
     }
+
     if (!cacheTime()) {
       return false;
     }
@@ -52,7 +53,7 @@ public abstract class BinaryTransformer extends Transformer {
     if (leftPointReader.isCurrentNull() || rightPointReader.isCurrentNull()) {
       currentNull = true;
     } else {
-      binaryTransformer();
+      transformAndCache();
     }
 
     leftPointReader.readyForNext();
@@ -60,7 +61,7 @@ public abstract class BinaryTransformer extends Transformer {
     return true;
   }
 
-  protected abstract void binaryTransformer() throws QueryProcessException, IOException;
+  protected abstract void transformAndCache() throws QueryProcessException, IOException;
 
   /**
    * finds the smallest, unconsumed timestamp that exists in both {@code leftPointReader} and {@code

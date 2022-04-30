@@ -32,7 +32,7 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
-  protected void binaryTransformer() throws QueryProcessException, IOException {
+  protected void transformAndCache() throws QueryProcessException, IOException {
     // Check TSDataType
     if (leftPointReader.getDataType() != TSDataType.BOOLEAN) {
       throw new QueryProcessException(

@@ -33,7 +33,7 @@ public abstract class CompareBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
-  protected void binaryTransformer() throws QueryProcessException, IOException {
+  protected void transformAndCache() throws QueryProcessException, IOException {
     cachedBoolean =
         evaluate(
             castCurrentValueToDoubleOperand(leftPointReader),

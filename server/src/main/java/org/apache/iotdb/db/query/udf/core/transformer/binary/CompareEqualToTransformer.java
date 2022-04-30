@@ -33,7 +33,7 @@ public class CompareEqualToTransformer extends CompareBinaryTransformer {
   }
 
   @Override
-  protected void binaryTransformer() throws QueryProcessException, IOException {
+  protected void transformAndCache() throws QueryProcessException, IOException {
     if (leftPointReader.getDataType() == TSDataType.BOOLEAN
         && rightPointReader.getDataType() == TSDataType.BOOLEAN) {
       cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());

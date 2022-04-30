@@ -33,7 +33,7 @@ public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
-  protected void binaryTransformer() throws QueryProcessException, IOException {
+  protected void transformAndCache() throws QueryProcessException, IOException {
     cachedDouble =
         evaluate(
             castCurrentValueToDoubleOperand(leftPointReader),
