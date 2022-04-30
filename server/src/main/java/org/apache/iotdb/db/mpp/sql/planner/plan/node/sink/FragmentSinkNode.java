@@ -85,7 +85,7 @@ public class FragmentSinkNode extends SinkNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return child.getOutputColumnNames();
   }
 
   public static FragmentSinkNode deserialize(ByteBuffer byteBuffer) {

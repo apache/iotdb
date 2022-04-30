@@ -376,11 +376,4 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }
-
-  //  @Override
-  //  public void executeOn(SchemaRegion schemaRegion) throws MetadataException {
-  //    schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan)
-  // transferToPhysicalPlan());
-  //  }
-
 }

@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,6 +47,8 @@ public class ExchangeNode extends PlanNode {
   private TEndPoint upstreamEndpoint;
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
+
+  private List<String> outputColumnNames;
 
   public ExchangeNode(PlanNodeId id) {
     super(id);
@@ -87,7 +90,11 @@ public class ExchangeNode extends PlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return outputColumnNames;
+  }
+
+  public void setOutputColumnNames(List<String> outputColumnNames) {
+    this.outputColumnNames = outputColumnNames;
   }
 
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
@@ -102,9 +109,16 @@ public class ExchangeNode extends PlanNode {
             ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
     PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
+    int outputColumnNamesSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> outputColumnNames = new ArrayList<>(outputColumnNamesSize);
+    while (outputColumnNamesSize > 0) {
+      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      outputColumnNamesSize--;
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
+    exchangeNode.setOutputColumnNames(outputColumnNames);
     return exchangeNode;
   }
 
@@ -115,6 +129,11 @@ public class ExchangeNode extends PlanNode {
     ReadWriteIOUtils.write(upstreamEndpoint.getPort(), byteBuffer);
     upstreamInstanceId.serialize(byteBuffer);
     upstreamPlanNodeId.serialize(byteBuffer);
+    List<String> outputColumnNames = remoteSourceNode.getOutputColumnNames();
+    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
+    for (String outputColumnName : outputColumnNames) {
+      ReadWriteIOUtils.write(outputColumnName, byteBuffer);
+    }
   }
 
   public PlanNode getChild() {
@@ -185,11 +204,6 @@ public class ExchangeNode extends PlanNode {
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(),
-        child,
-        remoteSourceNode,
-        upstreamEndpoint,
-        upstreamInstanceId,
-        upstreamPlanNodeId);
+        super.hashCode(), child, upstreamEndpoint, upstreamInstanceId, upstreamPlanNodeId);
   }
 }
