@@ -68,29 +68,39 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public Connection getConnection() throws SQLException {
-    try {
-      Class.forName(Config.JDBC_DRIVER_NAME);
-      connection =
-          DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-      fail();
+    if (connection != null) {
+      try {
+        Class.forName(Config.JDBC_DRIVER_NAME);
+        connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+      } catch (ClassNotFoundException e) {
+        e.printStackTrace();
+        fail();
+      }
     }
     return connection;
   }
 
   @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
-    try {
-      Class.forName(Config.JDBC_DRIVER_NAME);
-      connection =
-          DriverManager.getConnection(
-              Config.IOTDB_URL_PREFIX + "127.0.0.1:6667" + "?" + VERSION + "=" + version.toString(),
-              "root",
-              "root");
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-      fail();
+    if (connection != null) {
+      try {
+        Class.forName(Config.JDBC_DRIVER_NAME);
+        connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX
+                    + "127.0.0.1:6667"
+                    + "?"
+                    + VERSION
+                    + "="
+                    + version.toString(),
+                "root",
+                "root");
+      } catch (ClassNotFoundException e) {
+        e.printStackTrace();
+        fail();
+      }
     }
     return connection;
   }

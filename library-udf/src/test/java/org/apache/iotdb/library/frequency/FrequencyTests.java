@@ -35,7 +35,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
@@ -66,32 +70,32 @@ public class FrequencyTests {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s1"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s2"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d1.s3"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s1"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED,
         null);
-    IoTDB.metaManager.createTimeseries(
+    IoTDB.schemaProcessor.createTimeseries(
         new PartialPath("root.vehicle.d2.s2"),
         TSDataType.DOUBLE,
         TSEncoding.PLAIN,
