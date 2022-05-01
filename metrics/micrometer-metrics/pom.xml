@@ -41,7 +41,7 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-jmx</artifactId>
-            <version>1.6.2</version>
+            <version>1.6.13</version>
         </dependency>
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
