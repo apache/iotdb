@@ -50,7 +50,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import com.google.common.collect.Sets;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -153,7 +152,6 @@ public class SeriesAggregateScanOperatorTest {
     assertEquals(1, count);
   }
 
-  @Ignore
   @Test
   public void testMultiAggregationFuncWithoutTimeFilterOrderByTimeDesc()
       throws IllegalPathException {
@@ -340,7 +338,6 @@ public class SeriesAggregateScanOperatorTest {
     assertEquals(4, count);
   }
 
-  @Ignore
   @Test
   public void testGroupByWithMultiFunctionOrderByTimeDesc() throws IllegalPathException {
     int[][] result =
