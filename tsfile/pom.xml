@@ -66,10 +66,12 @@
         <dependency>
             <groupId>org.openjdk.jol</groupId>
             <artifactId>jol-core</artifactId>
+            <version>${jol-core.version}</version>
         </dependency>
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>slice</artifactId>
+            <version>${io.airlift.slice.version}</version>
         </dependency>
         <!-- for mocked test-->
         <dependency>
