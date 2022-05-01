@@ -690,6 +690,9 @@ public class DataRegion {
     TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
+      if (tsFileSyncManager.isEnableSync()) {
+        tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
+      }
       try {
         tsFileResource.close();
       } catch (IOException e) {

@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,12 +46,13 @@ public class DataNodeInfo {
   // TODO: serialize and deserialize
   private AtomicInteger nextDataNodeId = new AtomicInteger(0);
 
-  /** online data nodes */
+  // Online data nodes
   // TODO: serialize and deserialize
   private final ConcurrentNavigableMap<Integer, TDataNodeLocation> onlineDataNodes =
       new ConcurrentSkipListMap();
 
-  /** For remove node or draining node */
+  // For remove node or draining node
+  // TODO: serialize and deserialize
   private final Set<TDataNodeLocation> drainingDataNodes = new HashSet<>();
 
   private DataNodeInfo() {
@@ -167,6 +169,14 @@ public class DataNodeInfo {
 
   public int generateNextDataNodeId() {
     return nextDataNodeId.getAndIncrement();
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    // TODO: Serialize DataNodeInfo
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    // TODO: Deserialize DataNodeInfo
   }
 
   @TestOnly
