@@ -138,16 +138,11 @@ public class DescendEncoder extends Encoder {
     if (value.length == 0) {
       return;
     }
-    // 所有数的绝对值减去最小绝对值
-    long min = Math.abs(value[value.length - 1]);
     // 8位，第一个数的位数
     int bits = getValueWidth(Math.abs(value[0]));
     constructor.add(bits, 8);
-    // 存储最小值
-    constructor.add(min, bits);
     // 存储所有数据
     for (int i = 0; i < value.length; i++) {
-      value[i] = Math.abs(value[i]) - min;
       constructor.add(value[i], bits);
       bits = getValueWidth(value[i]);
     }

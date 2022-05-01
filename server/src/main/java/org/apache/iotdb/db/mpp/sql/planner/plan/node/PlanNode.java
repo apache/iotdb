@@ -28,8 +28,7 @@ import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-/** The base class of query executable operators, which is used to compose logical query plan. */
-// TODO: consider how to restrict the children type for each type of ExecOperator
+/** The base class of query logical plan nodes, which is used to compose logical query plan. */
 public abstract class PlanNode {
   protected static final int NO_CHILD_ALLOWED = 0;
   protected static final int ONE_CHILD = 1;
@@ -54,6 +53,7 @@ public abstract class PlanNode {
 
   public abstract void addChild(PlanNode child);
 
+  @Override
   public abstract PlanNode clone();
 
   public PlanNode cloneWithChildren(List<PlanNode> children) {
@@ -76,6 +76,8 @@ public abstract class PlanNode {
   }
 
   public abstract int allowedChildCount();
+
+  public abstract List<String> getOutputColumnNames();
 
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitPlan(this, context);

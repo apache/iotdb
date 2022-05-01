@@ -4,6 +4,9 @@
   "name": "Apache IoTDB",
   "id": "iotdb",
   "metrics": true,
+  "backend": true,
+  "alerting": true,
+  "executable": "iotdb-datasource",
   "info": {
     "description": "Apache IoTDB",
     "author": {

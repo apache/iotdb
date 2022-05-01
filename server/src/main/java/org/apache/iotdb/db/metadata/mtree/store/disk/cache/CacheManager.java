@@ -427,24 +427,29 @@ public abstract class CacheManager implements ICacheManager {
     if (cacheEntry == null) {
       return false;
     }
-    cacheEntry.unPin();
-    if (!cacheEntry.isPinned()) {
-      memManager.releasePinnedMemResource(node);
-      IMNode parent = node.getParent();
-      while (!node.isStorageGroup()) {
-        node = parent;
-        parent = node.getParent();
-        cacheEntry = getCacheEntry(node);
-        cacheEntry.unPin();
-        if (cacheEntry.isPinned()) {
-          break;
-        }
+
+    return doUnPin(node);
+  }
+
+  private boolean doUnPin(IMNode node) {
+    CacheEntry cacheEntry = getCacheEntry(node);
+
+    boolean isPinStatusChanged = false;
+    synchronized (cacheEntry) {
+      cacheEntry.unPin();
+      if (!cacheEntry.isPinned()) {
+        isPinStatusChanged = true;
         memManager.releasePinnedMemResource(node);
       }
-      return true;
-    } else {
-      return false;
     }
+
+    if (isPinStatusChanged) {
+      if (!node.isStorageGroup()) {
+        doUnPin(node.getParent());
+      }
+    }
+
+    return isPinStatusChanged;
   }
 
   @Override

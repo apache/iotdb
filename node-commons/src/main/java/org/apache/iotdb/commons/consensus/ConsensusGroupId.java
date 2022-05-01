@@ -19,46 +19,56 @@
 
 package org.apache.iotdb.commons.consensus;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 
 public interface ConsensusGroupId {
-
-  // contains specific id and type
-  void serializeImpl(ByteBuffer buffer);
-
-  // only deserialize specific id
-  void deserializeImpl(ByteBuffer buffer);
 
   // return specific id
   int getId();
 
+  void setId(int id);
+
   // return specific type
-  GroupType getType();
+  TConsensusGroupType getType();
 
   class Factory {
-    public static ConsensusGroupId create(ByteBuffer buffer) throws IOException {
-      int index = buffer.get();
-      if (index >= GroupType.values().length) {
-        throw new IOException("unrecognized id type " + index);
-      }
-      GroupType type = GroupType.values()[index];
-      ConsensusGroupId id;
+    public static ConsensusGroupId createEmpty(TConsensusGroupType type) {
+      ConsensusGroupId groupId;
       switch (type) {
         case DataRegion:
-          id = new DataRegionId();
+          groupId = new DataRegionId();
           break;
         case SchemaRegion:
-          id = new SchemaRegionId();
+          groupId = new SchemaRegionId();
           break;
         case PartitionRegion:
-          id = new PartitionRegionId();
+          groupId = new PartitionRegionId();
           break;
         default:
-          throw new IOException("unrecognized id type " + type);
+          throw new IllegalArgumentException("unrecognized id type " + type);
       }
-      id.deserializeImpl(buffer);
-      return id;
+      return groupId;
+    }
+
+    public static ConsensusGroupId convertFromTConsensusGroupId(
+        TConsensusGroupId tConsensusGroupId) {
+      ConsensusGroupId groupId = createEmpty(tConsensusGroupId.getType());
+      groupId.setId(tConsensusGroupId.getId());
+      return groupId;
+    }
+
+    public static TConsensusGroupId convertToTConsensusGroupId(ConsensusGroupId consensusGroupId) {
+      TConsensusGroupId result = new TConsensusGroupId();
+      if (consensusGroupId instanceof SchemaRegionId) {
+        result.setType(TConsensusGroupType.SchemaRegion);
+      } else if (consensusGroupId instanceof DataRegionId) {
+        result.setType(TConsensusGroupType.DataRegion);
+      } else if (consensusGroupId instanceof PartitionRegionId) {
+        result.setType(TConsensusGroupType.PartitionRegion);
+      }
+      result.setId(consensusGroupId.getId());
+      return result;
     }
   }
 }

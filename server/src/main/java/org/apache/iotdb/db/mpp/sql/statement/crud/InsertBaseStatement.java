@@ -19,11 +19,10 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public abstract class InsertBaseStatement extends Statement {
@@ -39,9 +38,6 @@ public abstract class InsertBaseStatement extends Statement {
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
-
-  // record the failed measurements, their reasons, and positions in "measurements"
-  List<String> failedMeasurements;
 
   public PartialPath getDevicePath() {
     return devicePath;
@@ -75,27 +71,8 @@ public abstract class InsertBaseStatement extends Statement {
     isAligned = aligned;
   }
 
-  public List<String> getFailedMeasurements() {
-    return failedMeasurements;
-  }
-
-  public abstract boolean checkDataType(SchemaTree schemaTree);
-
-  /**
-   * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed
-   * measurements, the failed values or columns would be null as well. We'd better use
-   * "measurements[index] == null" to determine if the measurement failed.
-   *
-   * @param index failed measurement index
-   */
-  public void markFailedMeasurementInsertion(int index, Exception e) {
-    if (measurements[index] == null) {
-      return;
-    }
-    if (failedMeasurements == null) {
-      failedMeasurements = new ArrayList<>();
-    }
-    failedMeasurements.add(measurements[index]);
-    measurements[index] = null;
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 }

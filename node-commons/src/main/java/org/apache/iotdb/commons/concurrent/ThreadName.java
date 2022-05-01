@@ -34,6 +34,7 @@ public enum ThreadName {
   FLUSH_PARTIAL_POLICY("FlushPartialPolicy"),
   FORCE_FLUSH_ALL_POLICY("ForceFlushAllPolicy"),
   STAT_MONITOR("StatMonitor"),
+  DATA_REGION_RECOVER_SERVICE("Data-Region-Recover"),
   FLUSH_SERVICE("Flush"),
   FLUSH_SUB_TASK_SERVICE("Flush-SubTask"),
   COMPACTION_SERVICE("Compaction"),
@@ -46,8 +47,6 @@ public enum ThreadName {
   INDEX_SERVICE("Index"),
   SYNC_CLIENT("Sync-Client"),
   SYNC_SERVER("Sync"),
-  SYNC_MONITOR("Sync-Monitor"),
-  LOAD_TSFILE("Load-TsFile"),
   TIME_COST_STATISTIC("TIME_COST_STATISTIC"),
   QUERY_SERVICE("Query"),
   SUB_RAW_QUERY_SERVICE("Sub_RawQuery"),
@@ -57,6 +56,9 @@ public enum ThreadName {
   TIMED_FlUSH_SEQ_MEMTABLE("Timed-Flush-Seq-Memtable"),
   TIMED_FlUSH_UNSEQ_MEMTABLE("Timed-Flush-Unseq-Memtable"),
   SETTLE_SERVICE("Settle"),
+  SYNC_SENDER_PIPE("Sync-Pipe"),
+  SYNC_SENDER_HEARTBEAT("Sync-Heartbeat"),
+  SYNC_RECEIVER_COLLECTOR("Sync-Collector"),
   CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
   CLUSTER_INFO_SERVICE("ClusterInfoClient"),
   CLUSTER_RPC_SERVICE("ClusterRPC"),
@@ -72,12 +74,15 @@ public enum ThreadName {
   CLUSTER_MONITOR("ClusterMonitor"),
   CONFIG_NODE_RPC_SERVER("ConfigNodeRpcServer"),
   CONFIG_NODE_RPC_CLIENT("ConfigNodeRPC-Client"),
-  DATA_NODE_MANAGEMENT_SERVER("DataNodeManagementServer"),
-  DATA_NODE_MANAGEMENT_CLIENT("DataNodeManagementClient"),
+  DATA_NODE_MANAGEMENT_RPC_SERVER("DataNodeManagementRPC"),
+  DATA_NODE_MANAGEMENT_RPC_CLIENT("DataNodeManagementRPC-Client"),
   Cluster_Monitor("ClusterMonitor"),
-  DATA_BLOCK_MANAGER_SERVICE("DataBlockManagerService"),
-  DATA_BLOCK_MANAGER_CLIENT("DataBlockManagerService-Client"),
-  ;
+  DATA_BLOCK_MANAGER_RPC_SERVER("DataBlockManagerRPC"),
+  DATA_BLOCK_MANAGER_RPC_CLIENT("DataBlockManagerRPC-Client"),
+  INTERNAL_SERVICE_RPC_SERVER("InternalServiceRPC"),
+  INTERNAL_SERVICE_RPC_CLIENT("InternalServiceRPC-Client"),
+  PROCEDURE_NODE_SERVER("ProcedureNode-Server"),
+  PROCEDURE_NODE_CLIENT("ProcedureNode-Client");
 
   private final String name;
 

@@ -99,9 +99,14 @@ public class IoTDBConfigCheck {
   private static final String ENABLE_ID_TABLE_LOG_FILE = "enable_id_table_log_file";
   private static String enableIdTableLogFile = String.valueOf(config.isEnableIDTableLogFile());
 
+  private static final String SCHEMA_ENGINE_MODE = "schema_engine_mode";
+  private static String schemaEngineMode = String.valueOf(config.getSchemaEngineMode());
+
   private static final String TIME_ENCODER_KEY = "time_encoder";
   private static String timeEncoderValue =
       String.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+
+  private static final String DATA_NODE_ID = "data_node_id";
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
@@ -161,6 +166,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
     systemProperties.put(ENABLE_ID_TABLE, enableIDTable);
     systemProperties.put(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
+    systemProperties.put(SCHEMA_ENGINE_MODE, schemaEngineMode);
   }
 
   /**
@@ -359,10 +365,6 @@ public class IoTDBConfigCheck {
       throwException(TIME_ENCODER_KEY, timeEncoderValue);
     }
 
-    if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
-      throwException(TIME_ENCODER_KEY, timeEncoderValue);
-    }
-
     if (!(properties.getProperty(ENABLE_ID_TABLE).equals(enableIDTable))) {
       throwException(ENABLE_ID_TABLE, enableIDTable);
     }
@@ -370,10 +372,41 @@ public class IoTDBConfigCheck {
     if (!(properties.getProperty(ENABLE_ID_TABLE_LOG_FILE).equals(enableIdTableLogFile))) {
       throwException(ENABLE_ID_TABLE_LOG_FILE, enableIdTableLogFile);
     }
+
+    if (!(properties.getProperty(SCHEMA_ENGINE_MODE).equals(schemaEngineMode))) {
+      throwException(SCHEMA_ENGINE_MODE, schemaEngineMode);
+    }
+
+    // properties contain DATA_NODE_ID only when start as Data node
+    if (properties.containsKey(DATA_NODE_ID)) {
+      config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
+    }
   }
 
   private void throwException(String parameter, Object badValue) throws ConfigurationException {
     throw new ConfigurationException(
         parameter, String.valueOf(badValue), properties.getProperty(parameter));
+  }
+
+  /** call this method to serialize DataNodeId */
+  public void serializeDataNodeId(int dataNodeId) throws IOException {
+    // create an empty tmpPropertiesFile
+    if (tmpPropertiesFile.createNewFile()) {
+      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
+    } else {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      System.exit(-1);
+    }
+
+    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+      properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
+      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      // serialize finished, delete old system.properties file
+      if (propertiesFile.exists()) {
+        Files.delete(propertiesFile.toPath());
+      }
+    }
+    // rename system.properties.tmp to system.properties
+    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 }

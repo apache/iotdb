@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
@@ -67,15 +68,35 @@ public class LongColumn implements Column {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT64;
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return ColumnEncoding.INT64_ARRAY;
+  }
+
+  @Override
   public long getLong(int position) {
     checkReadablePosition(position);
     return values[position + arrayOffset];
   }
 
   @Override
+  public Object getObject(int position) {
+    return getLong(position);
+  }
+
+  @Override
   public TsPrimitiveType getTsPrimitiveType(int position) {
     checkReadablePosition(position);
     return new TsPrimitiveType.TsLong(getLong(position));
+  }
+
+  @Override
+  public boolean mayHaveNull() {
+    return valueIsNull != null;
   }
 
   @Override
@@ -98,6 +119,22 @@ public class LongColumn implements Column {
   public Column getRegion(int positionOffset, int length) {
     checkValidRegion(getPositionCount(), positionOffset, length);
     return new LongColumn(positionOffset + arrayOffset, length, valueIsNull, values);
+  }
+
+  @Override
+  public void reverse() {
+    for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+      long valueTmp = values[i];
+      values[i] = values[j];
+      values[j] = valueTmp;
+    }
+    if (valueIsNull != null) {
+      for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+        boolean isNullTmp = valueIsNull[i];
+        valueIsNull[i] = valueIsNull[j];
+        valueIsNull[j] = isNullTmp;
+      }
+    }
   }
 
   private void checkReadablePosition(int position) {

@@ -19,17 +19,28 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.metadata;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+
+import java.util.Collections;
+import java.util.List;
 
 public class ShowStatement extends Statement {
 
   int limit = 0;
   int offset = 0;
 
+  protected boolean isPrefixPath;
+
   public ShowStatement() {
     super();
     statementType = StatementType.SHOW;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   public int getLimit() {
@@ -46,5 +57,13 @@ public class ShowStatement extends Statement {
 
   public void setOffset(int offset) {
     this.offset = offset;
+  }
+
+  public boolean isPrefixPath() {
+    return isPrefixPath;
+  }
+
+  public void setPrefixPath(boolean prefixPath) {
+    this.isPrefixPath = prefixPath;
   }
 }

@@ -22,9 +22,8 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticAdditionTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticAdditionTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticBinaryTransformer;
 
 import java.nio.ByteBuffer;
 
@@ -32,6 +31,10 @@ public class AdditionExpression extends BinaryExpression {
 
   public AdditionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public AdditionExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -46,18 +49,8 @@ public class AdditionExpression extends BinaryExpression {
     return "+";
   }
 
-  public static AdditionExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    AdditionExpression additionExpression =
-        new AdditionExpression(
-            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
-    additionExpression.isConstantOperandCache = isConstantOperandCache;
-    return additionExpression;
-  }
-
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Addition.serialize(byteBuffer);
-    super.serialize(byteBuffer);
+  public ExpressionType getExpressionType() {
+    return ExpressionType.ADDITION;
   }
 }

@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.commons.partition.executor;
 
-import org.apache.iotdb.commons.partition.SeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 /** All SeriesPartitionExecutors must be subclasses of SeriesPartitionExecutor */
 public abstract class SeriesPartitionExecutor {
@@ -29,5 +32,21 @@ public abstract class SeriesPartitionExecutor {
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public abstract SeriesPartitionSlot getSeriesPartitionSlot(String device);
+  public abstract TSeriesPartitionSlot getSeriesPartitionSlot(String device);
+
+  public static SeriesPartitionExecutor getSeriesPartitionExecutor(
+      String executorName, int seriesPartitionSlotNum) {
+    try {
+      Class<?> executor = Class.forName(executorName);
+      Constructor<?> executorConstructor = executor.getConstructor(int.class);
+      return (SeriesPartitionExecutor) executorConstructor.newInstance(seriesPartitionSlotNum);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException e) {
+      throw new IllegalArgumentException(
+          String.format("Couldn't Constructor SeriesPartitionExecutor class: %s", executorName));
+    }
+  }
 }

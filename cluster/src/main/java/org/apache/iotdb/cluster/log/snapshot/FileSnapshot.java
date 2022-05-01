@@ -410,7 +410,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           new PartialPath(
               FilePathUtils.getLogicalStorageGroupName(resource.getTsFile().getAbsolutePath()));
       try {
-        StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
+        StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource, true);
         if (resource.isPlanRangeUnique()) {
           // only when a file has a unique range can we remove other files that over lap with it,
           // otherwise we may remove data that is not contained in the file

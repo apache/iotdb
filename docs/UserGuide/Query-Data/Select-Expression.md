@@ -176,8 +176,11 @@ IoTDB> select a, b, a > 10, a <= b, !(a <= b), a > 10 && a > b from root.test;
 |4    |`<=`         |Binary compare operator less or equal to|
 |4    |`==`         |Binary compare operator equal to|
 |4    |`!=`/`<>`    |Binary compare operator non-equal to|
-|5    |`and`/`&`/`&&`               |Binary logic operator and|
-|5    |`or`/ &#124; / &#124;&#124;  |Binary logic operator or|
+|5      |`REGEXP`   |`REGEXP` operator|
+|5      |`LIKE`    |`LIKE` operator|
+|6      |`IN`    |`IN` operator|
+|7    |`and`/`&`/`&&`               |Binary logic operator and|
+|8    |`or`/ &#124; / &#124;&#124;  |Binary logic operator or|
 
 ## Time Series Generating Functions
 
@@ -524,6 +527,223 @@ Result:
 |1970-01-01T08:00:00.006+08:00|            0|                     null|                         null|                        null|                            null|
 |1970-01-01T08:00:00.007+08:00|            1|                     null|                            1|                        null|                               0|
 +-----------------------------+-------------+-------------------------+-----------------------------+----------------------------+--------------------------------+
+```
+
+### Equal Size Bucket Sample Function
+This function samples the input sequence in equal size buckets, that is, according to the downsampling ratio and downsampling method given by the user, the input sequence is equally divided into several buckets according to a fixed number of points. Sampling by the given sampling method within each bucket.
+- `proportion`: sample ratio, the value range is `(0, 1]`.
+#### Equal Size Bucket Random Sample
+Random sampling is performed on the equally divided buckets.
+
+| Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
+|----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
+| EQUAL_SIZE_BUCKET_RANDOM_SAMPLE   | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns a random sample of equal buckets that matches the sampling ratio |
+
+##### Demonstrate
+Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`.
+```
+IoTDB> select temperature from root.ln.wf01.wt01;
++-----------------------------+-----------------------------+
+|                         Time|root.ln.wf01.wt01.temperature|
++-----------------------------+-----------------------------+
+|1970-01-01T08:00:00.000+08:00|                          0.0|
+|1970-01-01T08:00:00.001+08:00|                          1.0|
+|1970-01-01T08:00:00.002+08:00|                          2.0|
+|1970-01-01T08:00:00.003+08:00|                          3.0|
+|1970-01-01T08:00:00.004+08:00|                          4.0|
+|1970-01-01T08:00:00.005+08:00|                          5.0|
+|1970-01-01T08:00:00.006+08:00|                          6.0|
+|1970-01-01T08:00:00.007+08:00|                          7.0|
+|1970-01-01T08:00:00.008+08:00|                          8.0|
+|1970-01-01T08:00:00.009+08:00|                          9.0|
+|1970-01-01T08:00:00.010+08:00|                         10.0|
+|1970-01-01T08:00:00.011+08:00|                         11.0|
+|1970-01-01T08:00:00.012+08:00|                         12.0|
+|.............................|.............................|            
+|1970-01-01T08:00:00.089+08:00|                         89.0|
+|1970-01-01T08:00:00.090+08:00|                         90.0|
+|1970-01-01T08:00:00.091+08:00|                         91.0|
+|1970-01-01T08:00:00.092+08:00|                         92.0|
+|1970-01-01T08:00:00.093+08:00|                         93.0|
+|1970-01-01T08:00:00.094+08:00|                         94.0|
+|1970-01-01T08:00:00.095+08:00|                         95.0|
+|1970-01-01T08:00:00.096+08:00|                         96.0|
+|1970-01-01T08:00:00.097+08:00|                         97.0|
+|1970-01-01T08:00:00.098+08:00|                         98.0|
+|1970-01-01T08:00:00.099+08:00|                         99.0|
++-----------------------------+-----------------------------+
+```
+Sql:
+```sql
+select equal_size_bucket_random_sample(temperature,'proportion'='0.1') as random_sample from root.ln.wf01.wt01;
+```
+Result:
+```
++-----------------------------+-------------+
+|                         Time|random_sample|
++-----------------------------+-------------+
+|1970-01-01T08:00:00.007+08:00|          7.0|
+|1970-01-01T08:00:00.014+08:00|         14.0|
+|1970-01-01T08:00:00.020+08:00|         20.0|
+|1970-01-01T08:00:00.035+08:00|         35.0|
+|1970-01-01T08:00:00.047+08:00|         47.0|
+|1970-01-01T08:00:00.059+08:00|         59.0|
+|1970-01-01T08:00:00.063+08:00|         63.0|
+|1970-01-01T08:00:00.079+08:00|         79.0|
+|1970-01-01T08:00:00.086+08:00|         86.0|
+|1970-01-01T08:00:00.096+08:00|         96.0|
++-----------------------------+-------------+
+Total line number = 10
+It costs 0.024s
+```
+
+#### Equal Size Bucket Aggregation Sample
+
+The input sequence is sampled by the aggregation sampling method, and the user needs to provide an additional aggregation function parameter, namely
+- `type`: Aggregate type, which can be `avg` or `max` or `min` or `sum` or `extreme` or `variance`. By default, `avg` is used. `extreme` represents the value with the largest absolute value in the equal bucket. `variance` represents the variance in the sampling equal buckets.
+
+The timestamp of the sampling output of each bucket is the timestamp of the first point of the bucket.
+
+| Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
+|----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
+| EQUAL_SIZE_BUCKET_AGG_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1`</br>`type`: The value types are `avg`, `max`, `min`, `sum`, `extreme`, `variance`, the default is `avg` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket aggregation samples that match the sampling ratio |
+
+##### Demonstrate
+Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`, and the test data is randomly sampled in equal buckets.
+
+Sql:
+```sql
+select equal_size_bucket_agg_sample(temperature, 'type'='avg','proportion'='0.1') as agg_avg, equal_size_bucket_agg_sample(temperature, 'type'='max','proportion'='0.1') as agg_max, equal_size_bucket_agg_sample(temperature,'type'='min','proportion'='0.1') as agg_min, equal_size_bucket_agg_sample(temperature, 'type'='sum','proportion'='0.1') as agg_sum, equal_size_bucket_agg_sample(temperature, 'type'='extreme','proportion'='0.1') as agg_extreme, equal_size_bucket_agg_sample(temperature, 'type'='variance','proportion'='0.1') as agg_variance from root.ln.wf01.wt01;
+```
+Result:
+```
++-----------------------------+-----------------+-------+-------+-------+-----------+------------+
+|                         Time|          agg_avg|agg_max|agg_min|agg_sum|agg_extreme|agg_variance|
++-----------------------------+-----------------+-------+-------+-------+-----------+------------+
+|1970-01-01T08:00:00.000+08:00|              4.5|    9.0|    0.0|   45.0|        9.0|        8.25|
+|1970-01-01T08:00:00.010+08:00|             14.5|   19.0|   10.0|  145.0|       19.0|        8.25|
+|1970-01-01T08:00:00.020+08:00|             24.5|   29.0|   20.0|  245.0|       29.0|        8.25|
+|1970-01-01T08:00:00.030+08:00|             34.5|   39.0|   30.0|  345.0|       39.0|        8.25|
+|1970-01-01T08:00:00.040+08:00|             44.5|   49.0|   40.0|  445.0|       49.0|        8.25|
+|1970-01-01T08:00:00.050+08:00|             54.5|   59.0|   50.0|  545.0|       59.0|        8.25|
+|1970-01-01T08:00:00.060+08:00|             64.5|   69.0|   60.0|  645.0|       69.0|        8.25|
+|1970-01-01T08:00:00.070+08:00|74.50000000000001|   79.0|   70.0|  745.0|       79.0|        8.25|
+|1970-01-01T08:00:00.080+08:00|             84.5|   89.0|   80.0|  845.0|       89.0|        8.25|
+|1970-01-01T08:00:00.090+08:00|             94.5|   99.0|   90.0|  945.0|       99.0|        8.25|
++-----------------------------+-----------------+-------+-------+-------+-----------+------------+
+Total line number = 10
+It costs 0.044s
+```
+#### Equal Size Bucket M4 Sample
+
+The input sequence is sampled using the M4 sampling method. That is to sample the head, tail, min and max values for each bucket.
+
+| Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
+|----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
+| EQUAL_SIZE_BUCKET_M4_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | `proportion` The value range is `(0, 1]`, the default is `0.1` | INT32 / INT64 / FLOAT / DOUBLE | Returns equal bucket M4 samples that match the sampling ratio |
+
+
+##### Demonstrate
+Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`, and the test data is randomly sampled in equal buckets.
+
+Sql:
+```sql
+select equal_size_bucket_m4_sample(temperature, 'proportion'='0.1') as M4_sample from root.ln.wf01.wt01;
+```
+Result:
+```
++-----------------------------+---------+
+|                         Time|M4_sample|
++-----------------------------+---------+
+|1970-01-01T08:00:00.000+08:00|      0.0|
+|1970-01-01T08:00:00.001+08:00|      1.0|
+|1970-01-01T08:00:00.038+08:00|     38.0|
+|1970-01-01T08:00:00.039+08:00|     39.0|
+|1970-01-01T08:00:00.040+08:00|     40.0|
+|1970-01-01T08:00:00.041+08:00|     41.0|
+|1970-01-01T08:00:00.078+08:00|     78.0|
+|1970-01-01T08:00:00.079+08:00|     79.0|
+|1970-01-01T08:00:00.080+08:00|     80.0|
+|1970-01-01T08:00:00.081+08:00|     81.0|
+|1970-01-01T08:00:00.098+08:00|     98.0|
+|1970-01-01T08:00:00.099+08:00|     99.0|
++-----------------------------+---------+
+Total line number = 12
+It costs 0.065s
+```
+#### Equal Size Bucket Outlier Sample
+This function samples the input sequence with equal number of bucket outliers, that is, according to the downsampling ratio given by the user and the number of samples in the bucket, the input sequence is divided into several buckets according to a fixed number of points. Sampling by the given outlier sampling method within each bucket.
+
+| Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
+|----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
+| EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE | INT32 / INT64 / FLOAT / DOUBLE | The value range of `proportion` is `(0, 1]`, the default is `0.1`</br> The value of `type` is `avg` or `stendis` or `cos` or `prenextdis`, the default is `avg` </br>The value of `number` should be greater than 0, the default is `3`| INT32 / INT64 / FLOAT / DOUBLE | Returns outlier samples in equal buckets that match the sampling ratio and the number of samples in the bucket |
+
+Parameter Description
+- `proportion`: sampling ratio
+- `number`: the number of samples in each bucket, default `3`
+- `type`: outlier sampling method, the value is
+  - `avg`: Take the average of the data points in the bucket, and find the `top number` farthest from the average according to the sampling ratio
+  - `stendis`: Take the vertical distance between each data point in the bucket and the first and last data points of the bucket to form a straight line, and according to the sampling ratio, find the `top number` with the largest distance
+  - `cos`: Set a data point in the bucket as b, the data point on the left of b as a, and the data point on the right of b as c, then take the cosine value of the angle between the ab and bc vectors. The larger the angle, the more likely it is an outlier. Find the `top number` with the smallest cos value
+  - `prenextdis`: Let a data point in the bucket be b, the data point to the left of b is a, and the data point to the right of b is c, then take the sum of the lengths of ab and bc as the yardstick, the larger the sum, the more likely it is to be an outlier, and find the `top number` with the largest sum value
+
+##### Demonstrate
+Example data: `root.ln.wf01.wt01.temperature` has a total of `100` ordered data from `0.0-99.0`. Among them, in order to add outliers, we make the number modulo 5 equal to 0 increment by 100.
+```
+IoTDB> select temperature from root.ln.wf01.wt01;
++-----------------------------+-----------------------------+
+|                         Time|root.ln.wf01.wt01.temperature|
++-----------------------------+-----------------------------+
+|1970-01-01T08:00:00.000+08:00|                          0.0|
+|1970-01-01T08:00:00.001+08:00|                          1.0|
+|1970-01-01T08:00:00.002+08:00|                          2.0|
+|1970-01-01T08:00:00.003+08:00|                          3.0|
+|1970-01-01T08:00:00.004+08:00|                          4.0|
+|1970-01-01T08:00:00.005+08:00|                        105.0|
+|1970-01-01T08:00:00.006+08:00|                          6.0|
+|1970-01-01T08:00:00.007+08:00|                          7.0|
+|1970-01-01T08:00:00.008+08:00|                          8.0|
+|1970-01-01T08:00:00.009+08:00|                          9.0|
+|1970-01-01T08:00:00.010+08:00|                         10.0|
+|1970-01-01T08:00:00.011+08:00|                         11.0|
+|1970-01-01T08:00:00.012+08:00|                         12.0|
+|1970-01-01T08:00:00.013+08:00|                         13.0|
+|1970-01-01T08:00:00.014+08:00|                         14.0|
+|1970-01-01T08:00:00.015+08:00|                        115.0|
+|1970-01-01T08:00:00.016+08:00|                         16.0|
+|.............................|.............................|
+|1970-01-01T08:00:00.092+08:00|                         92.0|
+|1970-01-01T08:00:00.093+08:00|                         93.0|
+|1970-01-01T08:00:00.094+08:00|                         94.0|
+|1970-01-01T08:00:00.095+08:00|                        195.0|
+|1970-01-01T08:00:00.096+08:00|                         96.0|
+|1970-01-01T08:00:00.097+08:00|                         97.0|
+|1970-01-01T08:00:00.098+08:00|                         98.0|
+|1970-01-01T08:00:00.099+08:00|                         99.0|
++-----------------------------+-----------------------------+
+```
+Sql:
+```sql
+select equal_size_bucket_outlier_sample(temperature, 'proportion'='0.1', 'type'='avg', 'number'='2') as outlier_avg_sample, equal_size_bucket_outlier_sample(temperature, 'proportion'='0.1', 'type'='stendis', 'number'='2') as outlier_stendis_sample, equal_size_bucket_outlier_sample(temperature, 'proportion'='0.1', 'type'='cos', 'number'='2') as outlier_cos_sample, equal_size_bucket_outlier_sample(temperature, 'proportion'='0.1', 'type'='prenextdis', 'number'='2') as outlier_prenextdis_sample from root.ln.wf01.wt01;
+```
+Result:
+```
++-----------------------------+------------------+----------------------+------------------+-------------------------+
+|                         Time|outlier_avg_sample|outlier_stendis_sample|outlier_cos_sample|outlier_prenextdis_sample|
++-----------------------------+------------------+----------------------+------------------+-------------------------+
+|1970-01-01T08:00:00.005+08:00|             105.0|                 105.0|             105.0|                    105.0|
+|1970-01-01T08:00:00.015+08:00|             115.0|                 115.0|             115.0|                    115.0|
+|1970-01-01T08:00:00.025+08:00|             125.0|                 125.0|             125.0|                    125.0|
+|1970-01-01T08:00:00.035+08:00|             135.0|                 135.0|             135.0|                    135.0|
+|1970-01-01T08:00:00.045+08:00|             145.0|                 145.0|             145.0|                    145.0|
+|1970-01-01T08:00:00.055+08:00|             155.0|                 155.0|             155.0|                    155.0|
+|1970-01-01T08:00:00.065+08:00|             165.0|                 165.0|             165.0|                    165.0|
+|1970-01-01T08:00:00.075+08:00|             175.0|                 175.0|             175.0|                    175.0|
+|1970-01-01T08:00:00.085+08:00|             185.0|                 185.0|             185.0|                    185.0|
+|1970-01-01T08:00:00.095+08:00|             195.0|                 195.0|             195.0|                    195.0|
++-----------------------------+------------------+----------------------+------------------+-------------------------+
+Total line number = 10
+It costs 0.041s
 ```
 
 ### User Defined Timeseries Generating Functions

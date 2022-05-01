@@ -22,9 +22,8 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.CompareBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.CompareNonEqualTransformer;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareNonEqualTransformer;
 
 import java.nio.ByteBuffer;
 
@@ -32,6 +31,10 @@ public class NonEqualExpression extends BinaryExpression {
 
   public NonEqualExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public NonEqualExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -45,18 +48,8 @@ public class NonEqualExpression extends BinaryExpression {
     return "!=";
   }
 
-  public static NonEqualExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    NonEqualExpression nonEqualExpression =
-        new NonEqualExpression(
-            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
-    nonEqualExpression.isConstantOperandCache = isConstantOperandCache;
-    return nonEqualExpression;
-  }
-
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Non_Equal.serialize(byteBuffer);
-    super.serialize(byteBuffer);
+  public ExpressionType getExpressionType() {
+    return ExpressionType.NON_EQUAL;
   }
 }

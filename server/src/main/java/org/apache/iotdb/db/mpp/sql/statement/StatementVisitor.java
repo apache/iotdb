@@ -19,10 +19,32 @@
 
 package org.apache.iotdb.db.mpp.sql.statement;
 
-import org.apache.iotdb.db.mpp.sql.statement.crud.*;
+import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDAFQueryStatement;
+import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 
 /**
@@ -40,9 +62,7 @@ public abstract class StatementVisitor<R, C> {
   }
 
   /** Top Level Description */
-  public R visitNode(StatementNode node, C context) {
-    return null;
-  }
+  public abstract R visitNode(StatementNode node, C context);
 
   public R visitStatement(Statement statement, C context) {
     return visitNode(statement, context);
@@ -63,6 +83,10 @@ public abstract class StatementVisitor<R, C> {
 
   // Alter Timeseries
   public R visitAlterTimeseries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
+    return visitStatement(alterTimeSeriesStatement, context);
+  }
+
+  public R visitSetStorageGroup(SetStorageGroupStatement alterTimeSeriesStatement, C context) {
     return visitStatement(alterTimeSeriesStatement, context);
   }
 
@@ -111,100 +135,37 @@ public abstract class StatementVisitor<R, C> {
   }
 
   /** Data Control Language (DCL) */
-
-  // Create User
-  public R visitCreateUser(AuthorStatement authorStatement, C context) {
+  public R visitAuthor(AuthorStatement authorStatement, C context) {
     return visitStatement(authorStatement, context);
   }
 
-  // Create Role
-  public R visitCreateRole(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
+  public R visitShowStorageGroup(ShowStorageGroupStatement showStorageGroupStatement, C context) {
+    return visitStatement(showStorageGroupStatement, context);
   }
 
-  // Alter Password
-  public R visitAlterUser(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
+  public R visitShowTimeSeries(ShowTimeSeriesStatement showTimeSeriesStatement, C context) {
+    return visitStatement(showTimeSeriesStatement, context);
   }
 
-  // Grant User Privileges
-  public R visitGrantUser(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
+  public R visitShowDevices(ShowDevicesStatement showDevicesStatement, C context) {
+    return visitStatement(showDevicesStatement, context);
   }
 
-  // Grant Role Privileges
-  public R visitGrantRole(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
+  public R visitCountStorageGroup(
+      CountStorageGroupStatement countStorageGroupStatement, C context) {
+    return visitStatement(countStorageGroupStatement, context);
   }
 
-  // Grant User Role
-  public R visitGrantRoleToUser(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
+  public R visitCountDevices(CountDevicesStatement countStatement, C context) {
+    return visitStatement(countStatement, context);
   }
 
-  // Revoke User Privileges
-  public R visitRevokeUser(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
+  public R visitCountTimeSeries(CountTimeSeriesStatement countStatement, C context) {
+    return visitStatement(countStatement, context);
   }
 
-  // Revoke Role Privileges
-  public R visitRevokeRole(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // Revoke Role From User
-  public R visitRevokeRoleFromUser(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // Drop User
-  public R visitDropUser(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // Drop Role
-  public R visitDropRole(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // List Users
-  public R visitListUser(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // List Roles
-  public R visitListRole(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // List Privileges
-  public R visitListPrivilegesUser(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // List Privileges of Roles On Specific Path
-  public R visitListPrivilegesRole(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // List Privileges of Users
-  public R visitListUserPrivileges(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // List Privileges of Roles
-  public R visitListRolePrivileges(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // List Roles of Users
-  public R visitListAllRoleOfUser(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
-  }
-
-  // List Users of Role
-  public R visitListAllUserOfRole(AuthorStatement authorStatement, C context) {
-    return visitStatement(authorStatement, context);
+  public R visitCountLevelTimeSeries(CountLevelTimeSeriesStatement countStatement, C context) {
+    return visitStatement(countStatement, context);
   }
 
   public R visitInsertRow(InsertRowStatement insertRowStatement, C context) {
@@ -223,5 +184,9 @@ public abstract class StatementVisitor<R, C> {
   public R visitInsertRowsOfOneDevice(
       InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, C context) {
     return visitStatement(insertRowsOfOneDeviceStatement, context);
+  }
+
+  public R visitSchemaFetch(SchemaFetchStatement schemaFetchStatement, C context) {
+    return visitStatement(schemaFetchStatement, context);
   }
 }

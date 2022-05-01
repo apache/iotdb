@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -26,35 +29,27 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.DataBlockService.Processor;
 
-import org.apache.commons.lang3.Validate;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class DataBlockService extends ThriftService {
+public class DataBlockService extends ThriftService implements DataBlockServiceMBean {
 
-  private LocalMemoryManager localMemoryManager;
-  private TsBlockSerdeFactory tsBlockSerdeFactory;
   private DataBlockManager dataBlockManager;
   private ExecutorService executorService;
-  private DataBlockServiceClientFactory clientFactory;
 
   private DataBlockService() {}
 
   @Override
-  public ThriftService getImplementation() {
-    return DataBlockManagerServiceHolder.INSTANCE;
-  }
-
-  @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    initSyncedServiceImpl(null);
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     executorService =
         IoTDBThreadPoolFactory.newThreadPool(
@@ -66,19 +61,15 @@ public class DataBlockService extends ThriftService {
             new LinkedBlockingQueue<>(),
             new IoTThreadFactory("data-block-manager-task-executors"),
             "data-block-manager-task-executors");
-    clientFactory = new DataBlockServiceClientFactory();
     this.dataBlockManager =
         new DataBlockManager(
-            localMemoryManager, tsBlockSerdeFactory, executorService, clientFactory);
+            new LocalMemoryManager(),
+            new TsBlockSerdeFactory(),
+            executorService,
+            new IClientManager.Factory<TEndPoint, SyncDataNodeDataBlockServiceClient>()
+                .createClientManager(
+                    new DataNodeClientPoolFactory.SyncDataNodeDataBlockServiceClientPoolFactory()));
     processor = new Processor<>(dataBlockManager.getOrCreateDataBlockServiceImpl());
-  }
-
-  public void setLocalMemoryManager(LocalMemoryManager localMemoryManager) {
-    this.localMemoryManager = Validate.notNull(localMemoryManager);
-  }
-
-  public void setTsBlockSerdeFactory(TsBlockSerdeFactory tsBlockSerdeFactory) {
-    this.tsBlockSerdeFactory = Validate.notNull(tsBlockSerdeFactory);
   }
 
   public DataBlockManager getDataBlockManager() {
@@ -94,18 +85,18 @@ public class DataBlockService extends ThriftService {
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.DATA_BLOCK_MANAGER_CLIENT.getName(),
+              ThreadName.DATA_BLOCK_MANAGER_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new DataBlockServiceThriftHandler(),
               // TODO: hard coded compress strategy
-              true);
+              false);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.DATA_BLOCK_MANAGER_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.DATA_BLOCK_MANAGER_RPC_SERVER.getName());
   }
 
   @Override
@@ -131,6 +122,11 @@ public class DataBlockService extends ThriftService {
 
   public static DataBlockService getInstance() {
     return DataBlockManagerServiceHolder.INSTANCE;
+  }
+
+  @Override
+  public int getRPCPort() {
+    return getBindPort();
   }
 
   private static class DataBlockManagerServiceHolder {

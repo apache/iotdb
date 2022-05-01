@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.sink;
 
-import org.apache.iotdb.commons.cluster.Endpoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -35,7 +36,7 @@ import java.util.Objects;
 public class FragmentSinkNode extends SinkNode {
   private PlanNode child;
 
-  private Endpoint downStreamEndpoint;
+  private TEndPoint downStreamEndpoint;
   private FragmentInstanceId downStreamInstanceId;
   private PlanNodeId downStreamPlanNodeId;
 
@@ -67,6 +68,12 @@ public class FragmentSinkNode extends SinkNode {
     return sinkNode;
   }
 
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitFragmentSink(this, context);
+  }
+
+  @Override
   public void addChild(PlanNode child) {
     this.child = child;
   }
@@ -76,9 +83,15 @@ public class FragmentSinkNode extends SinkNode {
     return ONE_CHILD;
   }
 
+  @Override
+  public List<String> getOutputColumnNames() {
+    return child.getOutputColumnNames();
+  }
+
   public static FragmentSinkNode deserialize(ByteBuffer byteBuffer) {
-    Endpoint downStreamEndpoint =
-        new Endpoint(ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
+    TEndPoint downStreamEndpoint =
+        new TEndPoint(
+            ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     FragmentInstanceId downStreamInstanceId = FragmentInstanceId.deserialize(byteBuffer);
     PlanNodeId downStreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
@@ -127,7 +140,7 @@ public class FragmentSinkNode extends SinkNode {
         getDownStreamEndpoint().getIp(), getDownStreamInstanceId(), getDownStreamPlanNodeId());
   }
 
-  public void setDownStream(Endpoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
+  public void setDownStream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
     this.downStreamEndpoint = endPoint;
     this.downStreamInstanceId = instanceId;
     this.downStreamPlanNodeId = nodeId;
@@ -137,7 +150,7 @@ public class FragmentSinkNode extends SinkNode {
     this.downStreamPlanNodeId = downStreamPlanNodeId;
   }
 
-  public Endpoint getDownStreamEndpoint() {
+  public TEndPoint getDownStreamEndpoint() {
     return downStreamEndpoint;
   }
 

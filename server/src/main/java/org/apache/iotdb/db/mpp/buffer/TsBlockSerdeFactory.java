@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.buffer;
 
+import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
+
 import java.util.function.Supplier;
 
 public class TsBlockSerdeFactory implements Supplier<TsBlockSerde> {

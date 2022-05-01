@@ -22,8 +22,8 @@ package org.apache.iotdb.db.mpp.sql.statement.component;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.time.ZoneId;
@@ -49,7 +49,8 @@ public class SelectComponent extends StatementNode {
 
   private List<PartialPath> pathsCache;
   private List<String> aggregationFunctionsCache;
-  private Map<String, Set<PartialPath>> deviceIdToPathsCache;
+  private Map<String, List<PartialPath>> deviceNameToPathsCache;
+  private Map<String, Set<PartialPath>> deviceNameToDeduplicatedPathsCache;
 
   public SelectComponent(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -143,16 +144,32 @@ public class SelectComponent extends StatementNode {
     return aggregationFunctionsCache;
   }
 
-  public Map<String, Set<PartialPath>> getDeviceIdToPathsMap() {
-    if (deviceIdToPathsCache == null) {
-      deviceIdToPathsCache = new HashMap<>();
+  public Map<String, Set<PartialPath>> getDeviceNameToDeduplicatedPathsMap() {
+    if (deviceNameToDeduplicatedPathsCache == null) {
+      deviceNameToDeduplicatedPathsCache = new HashMap<>();
       for (ResultColumn resultColumn : resultColumns) {
         for (PartialPath path : resultColumn.collectPaths()) {
-          deviceIdToPathsCache.computeIfAbsent(path.getDevice(), k -> new HashSet<>()).add(path);
+          deviceNameToDeduplicatedPathsCache
+              .computeIfAbsent(path.getDevice(), k -> new HashSet<>())
+              .add(path);
         }
       }
     }
-    return deviceIdToPathsCache;
+    return deviceNameToDeduplicatedPathsCache;
+  }
+
+  public Map<String, List<PartialPath>> getDeviceNameToPathsMap() {
+    if (deviceNameToPathsCache == null) {
+      deviceNameToPathsCache = new HashMap<>();
+      for (ResultColumn resultColumn : resultColumns) {
+        for (PartialPath path : resultColumn.collectPaths()) {
+          deviceNameToPathsCache
+              .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
+              .add(path);
+        }
+      }
+    }
+    return deviceNameToPathsCache;
   }
 
   public List<Path> getDeduplicatedPaths() {

@@ -47,8 +47,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private IMeasurementSchema schema;
   /** last value cache */
   private volatile ILastCacheContainer lastCacheContainer = null;
-  /** registered trigger */
-  private TriggerExecutor triggerExecutor = null;
 
   /**
    * MeasurementMNode factory method. The type of returned MeasurementMNode is according to the
@@ -61,7 +59,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   /** @param alias alias of measurementName */
-  MeasurementMNode(IMNode parent, String name, IMeasurementSchema schema, String alias) {
+  public MeasurementMNode(IMNode parent, String name, IMeasurementSchema schema, String alias) {
     super(parent, name);
     this.schema = schema;
     this.alias = alias;

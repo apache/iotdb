@@ -153,11 +153,11 @@ public class GroupByFillDataSet extends GroupByTimeDataSet {
     RowRecord record;
     long curTimestamp;
     if (leftCRightO) {
-      curTimestamp = curStartTime;
-      record = new RowRecord(curStartTime);
+      curTimestamp = curAggrTimeRange.getMin();
+      record = new RowRecord(curAggrTimeRange.getMin());
     } else {
-      curTimestamp = curEndTime - 1;
-      record = new RowRecord(curEndTime - 1);
+      curTimestamp = curAggrTimeRange.getMax() - 1;
+      record = new RowRecord(curAggrTimeRange.getMax() - 1);
     }
 
     for (int i = 0; i < aggregations.size(); i++) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.io.CheckpointReader;
@@ -40,11 +41,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class CheckpointManagerTest {
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
-  private static final String logDirectory = "wal-test";
+  private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private CheckpointManager checkpointManager;
 
   @Before

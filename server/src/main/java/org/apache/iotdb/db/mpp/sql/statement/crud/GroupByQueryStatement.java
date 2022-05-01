@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class GroupByQueryStatement extends AggregationQueryStatement {
 
@@ -42,6 +47,14 @@ public class GroupByQueryStatement extends AggregationQueryStatement {
     this.groupByTimeComponent = groupByTimeComponent;
   }
 
+  @Override
+  public DatasetHeader constructDatasetHeader() {
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
+    // TODO: consider GROUP BY
+    return new DatasetHeader(columnHeaders, false);
+  }
+
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitGroupByQuery(this, context);
   }

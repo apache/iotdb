@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.common.block.column;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.openjdk.jol.info.ClassLayout;
 
 import static io.airlift.slice.SizeOf.sizeOf;
@@ -57,9 +59,28 @@ public class TimeColumn implements Column {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT64;
+  }
+
+  @Override
+  public ColumnEncoding getEncoding() {
+    return ColumnEncoding.INT64_ARRAY;
+  }
+
+  @Override
   public long getLong(int position) {
     checkReadablePosition(position);
     return values[position + arrayOffset];
+  }
+
+  @Override
+  public Object getObject(int position) {
+    return getLong(position);
+  }
+
+  public boolean mayHaveNull() {
+    return false;
   }
 
   @Override
@@ -81,6 +102,19 @@ public class TimeColumn implements Column {
   public Column getRegion(int positionOffset, int length) {
     checkValidRegion(getPositionCount(), positionOffset, length);
     return new TimeColumn(positionOffset + arrayOffset, length, values);
+  }
+
+  @Override
+  public void reverse() {
+    for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+      long time = values[i];
+      values[i] = values[j];
+      values[j] = time;
+    }
+  }
+
+  public long getStartTime() {
+    return values[arrayOffset];
   }
 
   public long getEndTime() {

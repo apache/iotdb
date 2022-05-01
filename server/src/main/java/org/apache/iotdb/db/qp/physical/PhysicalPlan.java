@@ -24,8 +24,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
@@ -63,7 +68,9 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
@@ -81,7 +88,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** This class is a abstract class for all type of PhysicalPlan. */
+/** This class is an abstract class for all type of PhysicalPlan. */
 public abstract class PhysicalPlan implements IConsensusRequest {
   private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
 
@@ -473,6 +480,12 @@ public abstract class PhysicalPlan implements IConsensusRequest {
         case SET_SYSTEM_MODE:
           plan = new SetSystemModePlan();
           break;
+        case START_PIPE_SERVER:
+          plan = new StartPipeServerPlan();
+          break;
+        case STOP_PIPE_SERVER:
+          plan = new StopPipeServerPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -542,6 +555,8 @@ public abstract class PhysicalPlan implements IConsensusRequest {
     UNSET_TEMPLATE,
     APPEND_TEMPLATE,
     PRUNE_TEMPLATE,
+    START_PIPE_SERVER,
+    STOP_PIPE_SERVER,
     DROP_TEMPLATE
   }
 

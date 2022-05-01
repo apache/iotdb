@@ -21,8 +21,12 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -41,9 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -107,9 +109,6 @@ public class IoTDBConfig {
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
 
-  /** Port which is used for node communication in MPP. */
-  private int mppPort = 7777;
-
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
 
@@ -162,7 +161,7 @@ public class IoTDBConfig {
   private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};
 
   /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private long fsyncWalDelayInMs = 10;
+  private volatile long fsyncWalDelayInMs = 10;
 
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
@@ -177,23 +176,23 @@ public class IoTDBConfig {
   private int walBufferQueueCapacity = 10_000;
 
   /** Size threshold of each wal file. Unit: byte */
-  private long walFileSizeThresholdInByte = 10 * 1024 * 1024;
+  private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
 
-  /** TTL of wal file. Unit: ms */
-  private long walFileTTLInMs = 24 * 60 * 60 * 1000;
+  /** Minimum ratio of effective information in wal files */
+  private volatile double walMinEffectiveInfoRatio = 0.1;
 
   /**
    * MemTable size threshold for triggering MemTable snapshot in wal. When a memTable's size exceeds
    * this, wal can flush this memtable to disk, otherwise wal will snapshot this memtable in wal.
    * Unit: byte
    */
-  private long walMemTableSnapshotThreshold = 128 * 1024 * 1024;
+  private volatile long walMemTableSnapshotThreshold = 8 * 1024 * 1024;
 
   /** MemTable's max snapshot number in wal file */
-  private int maxWalMemTableSnapshotNum = 1;
+  private volatile int maxWalMemTableSnapshotNum = 1;
 
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
-  private long deleteWalFilesPeriodInMs = 10 * 60 * 1000;
+  private volatile long deleteWalFilesPeriodInMs = 20 * 1000;
   // endregion
 
   /**
@@ -230,13 +229,8 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  /** Sync directory, including the lock file, uuid file, device owner map */
-  private String syncDir =
-      DEFAULT_BASE_DIR
-          + File.separator
-          + IoTDBConstant.SYSTEM_FOLDER_NAME
-          + File.separator
-          + IoTDBConstant.SYNC_FOLDER_NAME;
+  /** Sync directory, including the log and hardlink tsfiles */
+  private String syncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
@@ -307,17 +301,6 @@ public class IoTDBConfig {
   private int concurrentIndexBuildThread = Runtime.getRuntime().availableProcessors();
 
   /**
-   * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
-   * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
-   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
-   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
-   * will be flushed to the disk file. As a result, data in one series may be divided into more than
-   * one part and indexed separately. Unit: byte
-   */
-  private long indexBufferSize = 128 * 1024 * 1024L;
-
-  /**
    * the index framework adopts sliding window model to preprocess the original tv list in the
    * subsequence matching task.
    */
@@ -362,10 +345,10 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
-  /** Enable inner space copaction for sequence files */
+  /** Enable inner space compaction for sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
-  /** Enable inner space copaction for unsequence files */
+  /** Enable inner space compaction for unsequence files */
   private boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
@@ -375,15 +358,25 @@ public class IoTDBConfig {
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
    */
-  private InnerCompactionStrategy innerCompactionStrategy =
-      InnerCompactionStrategy.SIZE_TIERED_COMPACTION;
+  private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
+      InnerSequenceCompactionSelector.SIZE_TIERED;
+
+  private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
+      InnerSeqCompactionPerformer.READ_CHUNK;
+
+  private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
+      InnerUnsequenceCompactionSelector.SIZE_TIERED;
+
+  private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
+      InnerUnseqCompactionPerformer.READ_POINT;
 
   /**
    * The strategy of cross space compaction task. There are just one cross space compaction strategy
    * SIZE_TIRED_COMPACTION:
    */
-  private CrossCompactionStrategy crossCompactionStrategy =
-      CrossCompactionStrategy.REWRITE_COMPACTION;
+  private CrossCompactionSelector crossCompactionSelector = CrossCompactionSelector.REWRITE;
+
+  private CrossCompactionPerformer crossCompactionPerformer = CrossCompactionPerformer.READ_POINT;
 
   /**
    * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
@@ -474,18 +467,19 @@ public class IoTDBConfig {
    */
   private int externalSortThreshold = 1000;
 
-  /** Is this IoTDB instance a receiver of sync or not. */
-  private boolean isSyncEnable = false;
-
   /** If this IoTDB instance is a receiver of sync, set the server port. */
-  private int syncServerPort = 5555;
+  private int pipeServerPort = 6670;
+
+  /** White list for sync */
+  private String ipWhiteList = "0.0.0.0/0";
+
+  /** The maximum number of retries when the sender fails to synchronize files to the receiver. */
+  private int maxNumberOfSyncFileRetry = 5;
 
   /**
    * Set the language version when loading file including error information, default value is "EN"
    */
   private String languageVersion = "EN";
-
-  private String ipWhiteList = "0.0.0.0/0";
 
   /** Examining period of cache file reader : 100 seconds. Unit: millisecond */
   private long cacheFileReaderClearPeriod = 100000;
@@ -498,6 +492,17 @@ public class IoTDBConfig {
 
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
+
+  /** indicate whether current mode is mpp */
+  private boolean mppMode = false;
+
+  /** indicate whether current mode is cluster */
+  private boolean isClusterMode = false;
+
+  /**
+   * the data node id for cluster mode, the default value -1 should be changed after join cluster
+   */
+  private int dataNodeId = -1;
 
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
@@ -822,9 +827,6 @@ public class IoTDBConfig {
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMNodeSizeInSchemaFileMode = -1;
 
-  /** the max num of thread used for flushing metadata to schema file */
-  private int maxSchemaFlushThreadNum = 15;
-
   /** the minimum size (in bytes) of segment inside a schema file page */
   private short minimumSegmentInSchemaFile = 0;
 
@@ -834,10 +836,10 @@ public class IoTDBConfig {
   /**
    * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
    */
-  private List<String> configNodeUrls;
+  private List<String> configNodeUrls = Collections.singletonList("127.0.0.1:22277");
 
   /** Internal ip for data node */
-  private String internalIp;
+  private String internalIp = "127.0.0.1";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;
@@ -846,7 +848,7 @@ public class IoTDBConfig {
   private int consensusPort = 40010;
 
   /** The max time of data node waiting to join into the cluster */
-  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(60);
+  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
    * The consensus protocol class. The Datanode should communicate with ConfigNode on startup and
@@ -855,8 +857,19 @@ public class IoTDBConfig {
    */
   private String consensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
+  /**
+   * The series partition executor class. The Datanode should communicate with ConfigNode on startup
+   * and set this variable so that the correct class name can be obtained later when calculating the
+   * series partition
+   */
+  private String seriesPartitionExecutorClass =
+      "org.apache.iotdb.commons.partition.executor.hash.APHashExecutor";
+
+  /** The number of series partitions in a storage group */
+  private int seriesPartitionSlotNum = 10000;
+
   /** Port that data block manager thrift service listen to. */
-  private int dataBlockManagerPort = 7777;
+  private int dataBlockManagerPort = 8777;
 
   /** Core pool size of data block manager. */
   private int dataBlockManagerCorePoolSize = 1;
@@ -867,15 +880,29 @@ public class IoTDBConfig {
   /** Thread keep alive time in ms of data block manager. */
   private int dataBlockManagerKeepAliveTimeInMs = 1000;
 
-  public IoTDBConfig() {
-    try {
-      internalIp = InetAddress.getLocalHost().getHostAddress();
-    } catch (UnknownHostException e) {
-      logger.error(e.getMessage());
-      internalIp = "127.0.0.1";
-    }
-    configNodeUrls = new ArrayList<>();
-  }
+  /** Thrift socket and connection timeout between data node and config node. */
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+
+  /**
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
+
+  /**
+   * Cache size of dataNodeSchemaCache in{@link
+   * org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache}.
+   */
+  private int dataNodeSchemaCacheSize = 10000;
+
+  /**
+   * Cache size of partition cache in {@link
+   * org.apache.iotdb.db.mpp.sql.analyze.ClusterPartitionFetcher}
+   */
+  private int partitionCacheSize = 10000;
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -1306,20 +1333,20 @@ public class IoTDBConfig {
     this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
   }
 
-  public boolean isSyncEnable() {
-    return isSyncEnable;
+  public int getPipeServerPort() {
+    return pipeServerPort;
   }
 
-  public void setSyncEnable(boolean syncEnable) {
-    isSyncEnable = syncEnable;
+  public void setPipeServerPort(int pipeServerPort) {
+    this.pipeServerPort = pipeServerPort;
   }
 
-  public int getSyncServerPort() {
-    return syncServerPort;
+  public int getMaxNumberOfSyncFileRetry() {
+    return maxNumberOfSyncFileRetry;
   }
 
-  void setSyncServerPort(int syncServerPort) {
-    this.syncServerPort = syncServerPort;
+  public void setMaxNumberOfSyncFileRetry(int maxNumberOfSyncFileRetry) {
+    this.maxNumberOfSyncFileRetry = maxNumberOfSyncFileRetry;
   }
 
   String getLanguageVersion() {
@@ -1460,12 +1487,12 @@ public class IoTDBConfig {
     this.walFileSizeThresholdInByte = walFileSizeThresholdInByte;
   }
 
-  public long getWalFileTTLInMs() {
-    return walFileTTLInMs;
+  public double getWalMinEffectiveInfoRatio() {
+    return walMinEffectiveInfoRatio;
   }
 
-  void setWalFileTTLInMs(long walFileTTLInMs) {
-    this.walFileTTLInMs = walFileTTLInMs;
+  void setWalMinEffectiveInfoRatio(double walMinEffectiveInfoRatio) {
+    this.walMinEffectiveInfoRatio = walMinEffectiveInfoRatio;
   }
 
   public long getWalMemTableSnapshotThreshold() {
@@ -2318,14 +2345,6 @@ public class IoTDBConfig {
     return concurrentIndexBuildThread;
   }
 
-  public long getIndexBufferSize() {
-    return indexBufferSize;
-  }
-
-  public void setIndexBufferSize(long indexBufferSize) {
-    this.indexBufferSize = indexBufferSize;
-  }
-
   public String getIndexRootFolder() {
     return indexRootFolder;
   }
@@ -2455,20 +2474,56 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
-  public InnerCompactionStrategy getInnerCompactionStrategy() {
-    return innerCompactionStrategy;
+  public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
+    return innerSequenceCompactionSelector;
   }
 
-  public void setInnerCompactionStrategy(InnerCompactionStrategy innerCompactionStrategy) {
-    this.innerCompactionStrategy = innerCompactionStrategy;
+  public void setInnerSequenceCompactionSelector(
+      InnerSequenceCompactionSelector innerSequenceCompactionSelector) {
+    this.innerSequenceCompactionSelector = innerSequenceCompactionSelector;
   }
 
-  public CrossCompactionStrategy getCrossCompactionStrategy() {
-    return crossCompactionStrategy;
+  public InnerUnsequenceCompactionSelector getInnerUnsequenceCompactionSelector() {
+    return innerUnsequenceCompactionSelector;
   }
 
-  public void setCrossCompactionStrategy(CrossCompactionStrategy crossCompactionStrategy) {
-    this.crossCompactionStrategy = crossCompactionStrategy;
+  public void setInnerUnsequenceCompactionSelector(
+      InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector) {
+    this.innerUnsequenceCompactionSelector = innerUnsequenceCompactionSelector;
+  }
+
+  public InnerSeqCompactionPerformer getInnerSeqCompactionPerformer() {
+    return innerSeqCompactionPerformer;
+  }
+
+  public void setInnerSeqCompactionPerformer(
+      InnerSeqCompactionPerformer innerSeqCompactionPerformer) {
+    this.innerSeqCompactionPerformer = innerSeqCompactionPerformer;
+  }
+
+  public InnerUnseqCompactionPerformer getInnerUnseqCompactionPerformer() {
+    return innerUnseqCompactionPerformer;
+  }
+
+  public void setInnerUnseqCompactionPerformer(
+      InnerUnseqCompactionPerformer innerUnseqCompactionPerformer) {
+    this.innerUnseqCompactionPerformer = innerUnseqCompactionPerformer;
+  }
+
+  public CrossCompactionSelector getCrossCompactionSelector() {
+    return crossCompactionSelector;
+  }
+
+  public void setCrossCompactionSelector(CrossCompactionSelector crossCompactionSelector) {
+    this.crossCompactionSelector = crossCompactionSelector;
+  }
+
+  public CrossCompactionPerformer getCrossCompactionPerformer() {
+    return crossCompactionPerformer;
+  }
+
+  public void setCrossCompactionPerformer(CrossCompactionPerformer crossCompactionPerformer) {
+    this.crossCompactionPerformer = crossCompactionPerformer;
   }
 
   public CompactionPriority getCompactionPriority() {
@@ -2623,14 +2678,6 @@ public class IoTDBConfig {
     this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
   }
 
-  public int getMaxSchemaFlushThreadNum() {
-    return maxSchemaFlushThreadNum;
-  }
-
-  public void setMaxSchemaFlushThreadNum(int maxSchemaFlushThreadNum) {
-    this.maxSchemaFlushThreadNum = maxSchemaFlushThreadNum;
-  }
-
   public short getMinimumSegmentInSchemaFile() {
     return minimumSegmentInSchemaFile;
   }
@@ -2695,12 +2742,20 @@ public class IoTDBConfig {
     this.consensusProtocolClass = consensusProtocolClass;
   }
 
-  public int getMppPort() {
-    return mppPort;
+  public String getSeriesPartitionExecutorClass() {
+    return seriesPartitionExecutorClass;
   }
 
-  public void setMppPort(int mppPort) {
-    this.mppPort = mppPort;
+  public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
+    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public int getSeriesPartitionSlotNum() {
+    return seriesPartitionSlotNum;
+  }
+
+  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
+    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
   public int getDataBlockManagerPort() {
@@ -2733,5 +2788,61 @@ public class IoTDBConfig {
 
   public void setDataBlockManagerKeepAliveTimeInMs(int dataBlockManagerKeepAliveTimeInMs) {
     this.dataBlockManagerKeepAliveTimeInMs = dataBlockManagerKeepAliveTimeInMs;
+  }
+
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
+  }
+
+  public boolean isMppMode() {
+    return mppMode;
+  }
+
+  public void setMppMode(boolean mppMode) {
+    this.mppMode = mppMode;
+  }
+
+  public boolean isClusterMode() {
+    return isClusterMode;
+  }
+
+  public void setClusterMode(boolean isClusterMode) {
+    this.isClusterMode = isClusterMode;
+  }
+
+  public int getDataNodeId() {
+    return dataNodeId;
+  }
+
+  public void setDataNodeId(int dataNodeId) {
+    this.dataNodeId = dataNodeId;
+  }
+
+  public int getDataNodeSchemaCacheSize() {
+    return dataNodeSchemaCacheSize;
+  }
+
+  public void setDataNodeSchemaCacheSize(int dataNodeSchemaCacheSize) {
+    this.dataNodeSchemaCacheSize = dataNodeSchemaCacheSize;
+  }
+
+  public int getPartitionCacheSize() {
+    return partitionCacheSize;
+  }
+
+  public void setPartitionCacheSize(int partitionCacheSize) {
+    this.partitionCacheSize = partitionCacheSize;
   }
 }

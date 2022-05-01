@@ -85,14 +85,11 @@ public class DescendDecoder extends Decoder {
     }
     // Decode the encoded bit width of the first value with 8 bits
     int bits = (int) reader.next(8);
-    // Decode min{v}
-    long min = reader.next(bits);
     // Decode all values
     long value[] = new long[m];
     for (int i = 0; i < m; i++) {
       value[i] = reader.next(bits);
       bits = getValueWidth(value[i]);
-      value[i] += min;
     }
     return value;
   }

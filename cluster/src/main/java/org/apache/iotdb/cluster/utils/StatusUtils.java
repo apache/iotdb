@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import org.apache.iotdb.common.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -101,9 +101,6 @@ public class StatusUtils {
         break;
       case SYSTEM_CHECK_ERROR:
         status.setMessage("Meet error while system checking. ");
-        break;
-      case SYNC_DEVICE_OWNER_CONFLICT_ERROR:
-        status.setMessage("Sync device owners conflict. ");
         break;
       case SYNC_CONNECTION_EXCEPTION:
         status.setMessage("Meet error while sync connecting. ");
@@ -201,6 +198,9 @@ public class StatusUtils {
       case PARSE_LOG_ERROR:
         status.setMessage("Parse log error.");
         break;
+      case PIPESINK_ERROR:
+        status.setMessage("PipeSink error.");
+        break;
       default:
         status.setMessage("");
         break;
@@ -208,7 +208,7 @@ public class StatusUtils {
     return status;
   }
 
-  public static TSStatus getStatus(TSStatusCode statusCode, EndPoint redirectedNode) {
+  public static TSStatus getStatus(TSStatusCode statusCode, TEndPoint redirectedNode) {
     TSStatus status = getStatus(statusCode);
     status.setRedirectNode(redirectedNode);
     return status;
@@ -220,7 +220,7 @@ public class StatusUtils {
     return newStatus;
   }
 
-  public static TSStatus getStatus(TSStatus status, EndPoint redirectedNode) {
+  public static TSStatus getStatus(TSStatus status, TEndPoint redirectedNode) {
     TSStatus newStatus = status.deepCopy();
     newStatus.setRedirectNode(redirectedNode);
     return newStatus;

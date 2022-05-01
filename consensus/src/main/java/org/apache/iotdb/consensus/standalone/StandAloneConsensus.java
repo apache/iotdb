@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.consensus.standalone;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.Endpoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -37,6 +38,9 @@ import org.apache.iotdb.consensus.statemachine.IStateMachine.Registry;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,20 +57,39 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 class StandAloneConsensus implements IConsensus {
 
-  private final Endpoint thisNode;
+  private final TEndPoint thisNode;
   private final File storageDir;
   private final IStateMachine.Registry registry;
   private final Map<ConsensusGroupId, StandAloneServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
 
-  public StandAloneConsensus(Endpoint thisNode, File storageDir, Registry registry) {
+  public StandAloneConsensus(TEndPoint thisNode, File storageDir, Registry registry) {
     this.thisNode = thisNode;
     this.storageDir = storageDir;
     this.registry = registry;
   }
 
   @Override
-  public void start() throws IOException {}
+  public void start() throws IOException {
+    if (!this.storageDir.exists()) {
+      storageDir.mkdirs();
+    } else {
+      try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
+        for (Path path : stream) {
+          String filename = path.getFileName().toString();
+          String[] items = filename.split("_");
+          TConsensusGroupType type = TConsensusGroupType.valueOf(items[0]);
+          ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.createEmpty(type);
+          consensusGroupId.setId(Integer.parseInt(items[1]));
+          TEndPoint endPoint = new TEndPoint(items[2], Integer.parseInt(items[3]));
+          stateMachineMap.put(
+              consensusGroupId,
+              new StandAloneServerImpl(
+                  new Peer(consensusGroupId, endPoint), registry.apply(consensusGroupId)));
+        }
+      }
+    }
+  }
 
   @Override
   public void stop() throws IOException {}
@@ -125,6 +148,19 @@ class StandAloneConsensus implements IConsensus {
           StandAloneServerImpl impl =
               new StandAloneServerImpl(peers.get(0), registry.apply(groupId));
           impl.start();
+          String groupPath =
+              storageDir
+                  + File.separator
+                  + groupId.getType()
+                  + "_"
+                  + groupId.getId()
+                  + "_"
+                  + peers.get(0).getEndpoint().ip
+                  + "_"
+                  + peers.get(0).getEndpoint().port;
+          File file = new File(groupPath);
+          file.mkdirs();
+
           return impl;
         });
     if (exist.get()) {
@@ -141,6 +177,18 @@ class StandAloneConsensus implements IConsensus {
     stateMachineMap.computeIfPresent(
         groupId,
         (k, v) -> {
+          String groupPath =
+              storageDir
+                  + File.separator
+                  + groupId.getType()
+                  + "_"
+                  + groupId.getId()
+                  + "_"
+                  + thisNode.ip
+                  + "_"
+                  + thisNode.port;
+          File file = new File(groupPath);
+          file.delete();
           exist.set(true);
           v.stop();
           return null;
