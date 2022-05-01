@@ -19,11 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.io.IOException;
 
 public class CompareLessThanTransformer extends CompareBinaryTransformer {
 
