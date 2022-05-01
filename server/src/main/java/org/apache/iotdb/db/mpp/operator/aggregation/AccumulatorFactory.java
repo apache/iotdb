@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class AccumulatorFactory {
 
+  // TODO: Are we going to create different seriesScanOperator based on order by sequence?
   public static Accumulator createAccumulator(
       AggregationType aggregationType, TSDataType tsDataType) {
     switch (aggregationType) {
@@ -32,15 +33,23 @@ public class AccumulatorFactory {
       case AVG:
         return new AvgAccumulator(tsDataType);
       case SUM:
+        return new SumAccumulator(tsDataType);
       case EXTREME:
+        return new ExtremeAccumulator(tsDataType);
       case MAX_TIME:
+        return new MaxTimeAccumulator();
       case MIN_TIME:
+        return new MinTimeAccumulator();
       case MAX_VALUE:
+        return new MaxValueAccumulator(tsDataType);
       case MIN_VALUE:
+        return new MinValueAccumulator(tsDataType);
       case LAST_VALUE:
+        return new LastValueAccumulator(tsDataType);
       case FIRST_VALUE:
+        return new FirstValueAccumulator(tsDataType);
       default:
-        return null;
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
   }
 }
