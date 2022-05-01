@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
