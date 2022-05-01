@@ -31,7 +31,8 @@ import java.lang.reflect.Method;
 
 public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncThriftClientWithErrorHandler.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SyncThriftClientWithErrorHandler.class);
 
   public static <V extends SyncThriftClient> V newErrorHandler(
       Class<V> targetClass, Constructor<V> constructor, Object... args) {
