@@ -111,7 +111,7 @@ public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client
               endpoint.getClass(),
               clientManager.getClass());
       return new DefaultPooledObject<>(
-          SyncThriftClientErrorHandler.newErrorHandlerClient(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncDataNodeDataBlockServiceClient.class,
               constructor,
               clientFactoryProperty.getProtocolFactory(),

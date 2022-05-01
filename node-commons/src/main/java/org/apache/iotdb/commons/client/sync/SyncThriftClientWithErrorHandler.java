@@ -29,16 +29,18 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-public class SyncThriftClientErrorHandler implements MethodInterceptor {
+public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SyncThriftClientErrorHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncThriftClientWithErrorHandler.class);
 
-  public static <V extends SyncThriftClient> V newErrorHandlerClient(
+  public static <V extends SyncThriftClient> V newErrorHandler(
       Class<V> targetClass, Constructor<V> constructor, Object... args) {
     Enhancer enhancer = new Enhancer();
     enhancer.setSuperclass(targetClass);
-    enhancer.setCallback(new SyncThriftClientErrorHandler());
-    if (constructor == null) return (V) enhancer.create();
+    enhancer.setCallback(new SyncThriftClientWithErrorHandler());
+    if (constructor == null) {
+      return (V) enhancer.create();
+    }
     return (V) enhancer.create(constructor.getParameterTypes(), args);
   }
 

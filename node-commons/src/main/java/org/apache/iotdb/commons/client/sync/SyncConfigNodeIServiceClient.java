@@ -110,7 +110,7 @@ public class SyncConfigNodeIServiceClient extends ConfigIService.Client
               endpoint.getClass(),
               clientManager.getClass());
       return new DefaultPooledObject<>(
-          SyncThriftClientErrorHandler.newErrorHandlerClient(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncConfigNodeIServiceClient.class,
               constructor,
               clientFactoryProperty.getProtocolFactory(),

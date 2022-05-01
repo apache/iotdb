@@ -119,7 +119,7 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client
           SyncDataNodeInternalServiceClient.class.getConstructor(
               TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass());
       return new DefaultPooledObject<>(
-          SyncThriftClientErrorHandler.newErrorHandlerClient(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncDataNodeInternalServiceClient.class,
               constructor,
               clientFactoryProperty.getProtocolFactory(),
