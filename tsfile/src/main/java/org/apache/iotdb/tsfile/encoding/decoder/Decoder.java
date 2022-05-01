@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
@@ -123,6 +122,39 @@ public abstract class Decoder {
         }
       case FREQ:
         return new FreqDecoder();
+      case DESCEND:
+        switch (dataType) {
+          case INT32:
+          case INT64:
+            return new DescendDecoder();
+          case FLOAT:
+          case DOUBLE:
+            return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case SIMPLE8B:
+        switch (dataType) {
+          case INT32:
+          case INT64:
+            return new Simple8bDecoder();
+          case FLOAT:
+          case DOUBLE:
+            return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case SIMPLE8B_SPARSE:
+        switch (dataType) {
+          case INT32:
+          case INT64:
+            return new SparseSimple8bDecoder();
+          case FLOAT:
+          case DOUBLE:
+            return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

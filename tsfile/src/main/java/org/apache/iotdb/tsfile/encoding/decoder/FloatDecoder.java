@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.FloatEncoder;
@@ -71,6 +70,12 @@ public class FloatDecoder extends Decoder {
         throw new TsFileDecodingException(
             String.format("data type %s is not supported by FloatDecoder", dataType));
       }
+    } else if (encodingType == TSEncoding.DESCEND) {
+      decoder = new DescendDecoder();
+    } else if (encodingType == TSEncoding.SIMPLE8B) {
+      decoder = new Simple8bDecoder();
+    } else if (encodingType == TSEncoding.SIMPLE8B_SPARSE) {
+      decoder = new SparseSimple8bDecoder();
     } else {
       throw new TsFileDecodingException(
           String.format("%s encoding is not supported by FloatDecoder", encodingType));
