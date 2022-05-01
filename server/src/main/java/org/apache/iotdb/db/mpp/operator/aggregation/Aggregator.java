@@ -97,9 +97,9 @@ public class Aggregator {
 
   public TSDataType[] getOutputType() {
     if (step.isOutputPartial()) {
-      return new TSDataType[] {accumulator.getFinalType()};
-    } else {
       return accumulator.getIntermediateType();
+    } else {
+      return new TSDataType[] {accumulator.getFinalType()};
     }
   }
 

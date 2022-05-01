@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 public class MinValueAccumulator implements Accumulator {
 
   private TsPrimitiveType minResult;
-  private boolean hasCandidateResult;
+  private boolean hasCandidateResult = false;
 
   public MinValueAccumulator(TSDataType seriesDataType) {
     this.minResult = TsPrimitiveType.getByType(seriesDataType);

@@ -22,6 +22,9 @@ package org.apache.iotdb.db.mpp.operator.aggregation;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class AccumulatorFactory {
 
   // TODO: Are we going to create different seriesScanOperator based on order by sequence?
@@ -55,5 +58,14 @@ public class AccumulatorFactory {
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
+  }
+
+  public static List<Accumulator> createAccumulators(
+      List<AggregationType> aggregationTypes, TSDataType tsDataType, boolean ascending) {
+    List<Accumulator> accumulators = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypes) {
+      accumulators.add(createAccumulator(aggregationType, tsDataType, ascending));
+    }
+    return accumulators;
   }
 }

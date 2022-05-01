@@ -74,6 +74,8 @@ public class MinTimeAccumulator implements Accumulator {
 
   @Override
   public void reset() {
+
+    hasCandidateResult = false;
     this.minTime = Long.MAX_VALUE;
   }
 

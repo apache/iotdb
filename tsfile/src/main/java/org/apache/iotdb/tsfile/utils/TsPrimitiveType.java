@@ -192,6 +192,7 @@ public abstract class TsPrimitiveType implements Serializable {
     public void setObject(Object val) {
       if (val instanceof Binary) {
         setBinary((Binary) val);
+        return;
       }
       throw new UnSupportedDataTypeException("TsBoolean can only be set Binary value");
     }
@@ -263,6 +264,7 @@ public abstract class TsPrimitiveType implements Serializable {
     public void setObject(Object val) {
       if (val instanceof Integer) {
         setInt((Integer) val);
+        return;
       }
       throw new UnSupportedDataTypeException("TsInt can only be set Integer value");
     }
@@ -334,6 +336,7 @@ public abstract class TsPrimitiveType implements Serializable {
     public void setObject(Object val) {
       if (val instanceof Long) {
         setLong((Long) val);
+        return;
       }
       throw new UnSupportedDataTypeException("TsLong can only be set Long value");
     }
@@ -405,6 +408,7 @@ public abstract class TsPrimitiveType implements Serializable {
     public void setObject(Object val) {
       if (val instanceof Float) {
         setFloat((Float) val);
+        return;
       }
       throw new UnSupportedDataTypeException("TsFloat can only be set float value");
     }
@@ -476,6 +480,7 @@ public abstract class TsPrimitiveType implements Serializable {
     public void setObject(Object val) {
       if (val instanceof Double) {
         setDouble((Double) val);
+        return;
       }
       throw new UnSupportedDataTypeException("TsDouble can only be set Double value");
     }
@@ -547,6 +552,7 @@ public abstract class TsPrimitiveType implements Serializable {
     public void setObject(Object val) {
       if (val instanceof Binary) {
         setBinary((Binary) val);
+        return;
       }
       throw new UnSupportedDataTypeException("TsBinary can only be set Binary value");
     }
@@ -618,6 +624,7 @@ public abstract class TsPrimitiveType implements Serializable {
     public void setObject(Object val) {
       if (val instanceof TsPrimitiveType[]) {
         setVector((TsPrimitiveType[]) val);
+        return;
       }
       throw new UnSupportedDataTypeException("TsVector can only be set TsPrimitiveType[] value");
     }

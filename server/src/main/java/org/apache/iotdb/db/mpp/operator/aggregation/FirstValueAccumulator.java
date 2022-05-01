@@ -80,6 +80,7 @@ public class FirstValueAccumulator implements Accumulator {
 
   @Override
   public void reset() {
+    hasCandidateResult = false;
     this.minTime = Long.MAX_VALUE;
     this.firstValue.reset();
   }

@@ -35,7 +35,7 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax()) {
-        updateFirstValue(column[1].getObject(0), curTime);
+        updateFirstValue(column[1].getObject(i), curTime);
       }
     }
   }

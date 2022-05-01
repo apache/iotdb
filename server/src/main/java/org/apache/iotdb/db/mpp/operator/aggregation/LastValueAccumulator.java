@@ -41,7 +41,7 @@ public class LastValueAccumulator implements Accumulator {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax()) {
-        updateLastValue(column[1].getObject(0), curTime);
+        updateLastValue(column[1].getObject(i), curTime);
       }
     }
   }

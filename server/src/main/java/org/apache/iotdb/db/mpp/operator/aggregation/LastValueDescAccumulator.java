@@ -34,15 +34,24 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   // Column should be like: | Time | Value |
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
-    long curTime = column[0].getLong(0);
-    if (curTime < timeRange.getMax() && curTime >= timeRange.getMin()) {
-      updateLastValue(column[1].getObject(0), curTime);
+    // Data inside tsBlock is still in ascending order, we have to traverse the first tsBlock
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax()) {
+        updateLastValue(column[1].getObject(i), curTime);
+      }
     }
   }
 
   @Override
   public boolean hasFinalResult() {
     return hasCandidateResult;
+  }
+
+  @Override
+  public void reset() {
+    hasCandidateResult = false;
+    super.reset();
   }
 
   protected void updateLastValue(Object value, long curTime) {
