@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -68,7 +69,8 @@ public class CompactionTaskManager implements IService {
       new FixedPriorityBlockingQueue<>(1024, new CompactionTaskComparator());
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
   // logicalStorageGroup
-  private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  private Map<String, Set<Future<CompactionTaskSummary>>> storageGroupTasks =
+      new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
@@ -139,7 +141,7 @@ public class CompactionTaskManager implements IService {
     if (taskExecutionPool != null) {
       awaitTermination(taskExecutionPool, milliseconds);
       awaitTermination(compactionTaskSubmissionThreadPool, milliseconds);
-      logger.info("Waiting for task taskExecutionPool to shut down");
+      logger.info("Waiting for task taskExecutionPool to shut down in {} ms", milliseconds);
       waitTermination();
       storageGroupTasks.clear();
     }
@@ -168,6 +170,7 @@ public class CompactionTaskManager implements IService {
         }
       }
       storageGroupTasks.clear();
+      candidateCompactionTaskQueue.clear();
       logger.info("All compaction task finish");
     }
   }
@@ -297,25 +300,25 @@ public class CompactionTaskManager implements IService {
   /**
    * This method will directly submit a task to thread pool if there is available thread.
    *
-   * @throws RejectedExecutionException
+   * @return the future of the task.
    */
-  public synchronized void submitTask(Callable<Void> compactionMergeTask)
-      throws RejectedExecutionException {
-    if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
-      taskExecutionPool.submit(compactionMergeTask);
-      return;
+  public synchronized Future<CompactionTaskSummary> submitTask(
+      Callable<CompactionTaskSummary> compactionMergeTask) throws RejectedExecutionException {
+    if (taskExecutionPool != null && !taskExecutionPool.isShutdown()) {
+      Future<CompactionTaskSummary> future = taskExecutionPool.submit(compactionMergeTask);
+      return future;
     }
     logger.warn(
         "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
         taskExecutionPool == null
             ? "taskExecutionPool is null"
             : "taskExecutionPool is terminated");
+    return null;
   }
 
   public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask) {
-    if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isTerminated()) {
-      Future<Void> future = subCompactionTaskExecutionPool.submit(subCompactionTask);
-      return future;
+    if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isShutdown()) {
+      return subCompactionTaskExecutionPool.submit(subCompactionTask);
     }
     return null;
   }
@@ -325,12 +328,12 @@ public class CompactionTaskManager implements IService {
    * corresponding storage group.
    */
   public void abortCompaction(String fullStorageGroupName) {
-    Set<Future<Void>> subTasks =
+    Set<Future<CompactionTaskSummary>> subTasks =
         storageGroupTasks.getOrDefault(fullStorageGroupName, Collections.emptySet());
     candidateCompactionTaskQueue.clear();
-    Iterator<Future<Void>> subIterator = subTasks.iterator();
+    Iterator<Future<CompactionTaskSummary>> subIterator = subTasks.iterator();
     while (subIterator.hasNext()) {
-      Future<Void> next = subIterator.next();
+      Future<CompactionTaskSummary> next = subIterator.next();
       if (!next.isDone() && !next.isCancelled()) {
         next.cancel(true);
       }
