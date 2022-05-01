@@ -25,8 +25,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class BasicStructureSerDeUtilTest {
   protected static final int DEFAULT_BUFFER_SIZE = 4096;
@@ -84,5 +86,36 @@ public class BasicStructureSerDeUtilTest {
         BasicStructureSerDeUtil.readIntMapLists(ByteBuffer.wrap(b));
     Assert.assertNotNull(intMapListsResult);
     Assert.assertEquals(integerMapLists, intMapListsResult);
+  }
+
+  @Test
+  public void readWriteStringListFromBufferTest() throws IOException {
+    // 1. read write List<String>
+    String s = "string";
+    List<String> stringList = new ArrayList<>();
+    stringList.add(s);
+
+    ByteBuffer bf = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+    BasicStructureSerDeUtil.writeStringList(stringList, bf);
+    byte[] b = bf.array();
+    bf.clear();
+    List<String> result = BasicStructureSerDeUtil.readStringList(ByteBuffer.wrap(b));
+    Assert.assertNotNull(result);
+    Assert.assertEquals(stringList, result);
+  }
+
+  @Test
+  public void readWriteIntSetFromBufferTest() throws IOException {
+    // 1. read write set<Integer>
+    Set<Integer> integerSet = new HashSet<>();
+    integerSet.add(1);
+
+    ByteBuffer bf = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+    BasicStructureSerDeUtil.writeIntSet(integerSet, bf);
+    byte[] b = bf.array();
+    bf.clear();
+    Set<Integer> result = BasicStructureSerDeUtil.readIntSet(ByteBuffer.wrap(b));
+    Assert.assertNotNull(result);
+    Assert.assertEquals(integerSet, result);
   }
 }

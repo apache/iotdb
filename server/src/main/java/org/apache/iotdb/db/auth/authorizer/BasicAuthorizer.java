@@ -453,6 +453,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     for (String roleName : roleMap.keySet()) {
       role = roleMap.get(roleName);
       BasicStructureSerDeUtil.write(role.getName(), buffer);
+      BasicStructureSerDeUtil.write(role.getPrivilegeList().size(), buffer);
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
         BasicStructureSerDeUtil.writeIntSet(pathPrivilege.getPrivileges(), buffer);
         BasicStructureSerDeUtil.write(pathPrivilege.getPath(), buffer);
@@ -461,7 +462,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     return buffer;
   }
 
-  public void deserialize(ByteBuffer buffer) {
+  public IAuthorizer deserialize(ByteBuffer buffer) {
     Map<String, User> userMap = new HashMap<>();
     Map<String, Role> roleMap = new HashMap<>();
     String username;
@@ -510,5 +511,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
     ((BasicUserManager) userManager).setUserMap(userMap);
     ((BasicRoleManager) roleManager).setRoleMap(roleMap);
+    return this;
   }
 }
