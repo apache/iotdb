@@ -820,6 +820,33 @@ public class IoTDBConfig {
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
 
+  // Operation Sync Config
+  private boolean enableOperationSync = false;
+
+  // Secondary IoTDB
+  private String secondaryAddress = "127.0.0.1";
+  private int secondaryPort = 6668;
+  private String secondaryUser = "root";
+  private String secondaryPassword = "root";
+
+  // The transmitting concurrency size of operation sync SessionPool
+  private int OperationSyncSessionConcurrencySize = 8;
+
+  // OperationSyncLog dir
+  private String operationSyncLogDir =
+      DEFAULT_BASE_DIR + File.separator + IoTDBConstant.OPERATION_SYNC_FOLDER_NAME;
+  // The validity of each OperationSyncLog
+  private int operationSyncLogValidity = 30;
+  // The maximum id of OperationSyncLog
+  private int operationSyncLogNum = 32767;
+  // The max size of all the OperationSyncLog. Default is 100GB
+  private long operationSyncMaxLogSize = 107374182400L;
+
+  // OperationSyncProducer DML cache size
+  private int operationSyncProducerCacheSize = 1024;
+  // OperationSyncConsumer concurrency size
+  private int operationSyncConsumerConcurrencySize = 4;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -953,6 +980,7 @@ public class IoTDBConfig {
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
     triggerDir = addHomeDir(triggerDir);
+    operationSyncLogDir = addHomeDir(operationSyncLogDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -2564,5 +2592,101 @@ public class IoTDBConfig {
 
   public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
     this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
+  }
+
+  public boolean isEnableOperationSync() {
+    return enableOperationSync;
+  }
+
+  public void setEnableOperationSync(boolean enableOperationSync) {
+    this.enableOperationSync = enableOperationSync;
+  }
+
+  public String getSecondaryAddress() {
+    return secondaryAddress;
+  }
+
+  public void setSecondaryAddress(String secondaryAddress) {
+    this.secondaryAddress = secondaryAddress;
+  }
+
+  public int getSecondaryPort() {
+    return secondaryPort;
+  }
+
+  public void setSecondaryPort(int secondaryPort) {
+    this.secondaryPort = secondaryPort;
+  }
+
+  public String getSecondaryUser() {
+    return secondaryUser;
+  }
+
+  public void setSecondaryUser(String secondaryUser) {
+    this.secondaryUser = secondaryUser;
+  }
+
+  public String getSecondaryPassword() {
+    return secondaryPassword;
+  }
+
+  public void setSecondaryPassword(String secondaryPassword) {
+    this.secondaryPassword = secondaryPassword;
+  }
+
+  public int getOperationSyncSessionConcurrencySize() {
+    return OperationSyncSessionConcurrencySize;
+  }
+
+  public void setOperationSyncSessionConcurrencySize(int operationSyncSessionConcurrencySize) {
+    this.OperationSyncSessionConcurrencySize = operationSyncSessionConcurrencySize;
+  }
+
+  public String getOperationSyncLogDir() {
+    return operationSyncLogDir;
+  }
+
+  public void setOperationSyncLogDir(String operationSyncLogDir) {
+    this.operationSyncLogDir = operationSyncLogDir;
+  }
+
+  public int getOperationSyncLogValidity() {
+    return operationSyncLogValidity;
+  }
+
+  public void setOperationSyncLogValidity(int operationSyncLogValidity) {
+    this.operationSyncLogValidity = operationSyncLogValidity;
+  }
+
+  public int getOperationSyncLogNum() {
+    return operationSyncLogNum;
+  }
+
+  public void setOperationSyncLogNum(int operationSyncLogNum) {
+    this.operationSyncLogNum = operationSyncLogNum;
+  }
+
+  public long getOperationSyncMaxLogSize() {
+    return operationSyncMaxLogSize;
+  }
+
+  public void setOperationSyncMaxLogSize(long operationSyncMaxLogSize) {
+    this.operationSyncMaxLogSize = operationSyncMaxLogSize;
+  }
+
+  public int getOperationSyncProducerCacheSize() {
+    return operationSyncProducerCacheSize;
+  }
+
+  public void setOperationSyncProducerCacheSize(int operationSyncProducerCacheSize) {
+    this.operationSyncProducerCacheSize = operationSyncProducerCacheSize;
+  }
+
+  public int getOperationSyncConsumerConcurrencySize() {
+    return operationSyncConsumerConcurrencySize;
+  }
+
+  public void setOperationSyncConsumerConcurrencySize(int operationSyncConsumerConcurrencySize) {
+    this.operationSyncConsumerConcurrencySize = operationSyncConsumerConcurrencySize;
   }
 }

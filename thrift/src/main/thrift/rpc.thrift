@@ -416,6 +416,12 @@ struct TSDropSchemaTemplateReq {
   2: required string templateName
 }
 
+struct TSOperationSyncWriteReq {
+  1: required i64 sessionId
+  2: required byte operationSyncType
+  3: required binary physicalPlan
+}
+
 service TSIService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -506,4 +512,6 @@ service TSIService {
   TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
 
   TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
+
+  TSStatus executeOperationSync(1:TSOperationSyncWriteReq req);
 }
