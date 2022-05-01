@@ -33,24 +33,7 @@ public class CompareLessThanTransformer extends CompareBinaryTransformer {
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    if (leftPointReader.getDataType() == TSDataType.BOOLEAN
-        && rightPointReader.getDataType() == TSDataType.BOOLEAN) {
-      cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
-    } else {
-      cachedBoolean =
-          evaluate(
-              castCurrentValueToDoubleOperand(leftPointReader),
-              castCurrentValueToDoubleOperand(rightPointReader));
-    }
-  }
-
-  @Override
   protected boolean evaluate(double leftOperand, double rightOperand) {
     return Double.compare(leftOperand, rightOperand) < 0;
-  }
-
-  protected boolean evaluate(boolean leftOperand, boolean rightOperand) {
-    return leftOperand == rightOperand;
   }
 }
