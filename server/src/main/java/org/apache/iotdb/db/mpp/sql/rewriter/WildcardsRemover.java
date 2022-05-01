@@ -186,9 +186,10 @@ public class WildcardsRemover {
     List<PartialPath> fromPaths = queryStatement.getFromComponent().getPrefixPaths();
 
     Set<PartialPath> resultPaths = new HashSet<>();
-    whereCondition.setQueryFilter(
-        removeWildcardsInQueryFilter(whereCondition.getQueryFilter(), fromPaths, resultPaths));
-    whereCondition.getQueryFilter().setPathSet(resultPaths);
+    //    whereCondition.setQueryFilter(
+    //        removeWildcardsInQueryFilter(whereCondition.getQueryFilter(), fromPaths,
+    // resultPaths));
+    //    whereCondition.getQueryFilter().setPathSet(resultPaths);
   }
 
   private QueryFilter removeWildcardsInQueryFilter(

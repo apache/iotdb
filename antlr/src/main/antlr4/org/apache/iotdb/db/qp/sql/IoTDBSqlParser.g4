@@ -458,7 +458,7 @@ deleteStatement
     ;
 
 whereClause
-    : WHERE (orExpression | indexPredicateClause)
+    : WHERE expression
     ;
 
 /**
@@ -842,6 +842,7 @@ expression
     : LR_BRACKET unaryInBracket=expression RR_BRACKET
     | constant
     | time=(TIME | TIMESTAMP)
+    | fullPath
     | suffixPathCanInExpr
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
@@ -849,7 +850,7 @@ expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
     | unaryBeforeRegularOrLikeExpression=expression (REGEXP | LIKE) STRING_LITERAL
-    | unaryBeforeInExpression=expression OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    | unaryBeforeInExpression=expression OPERATOR_NOT? (OPERATOR_IN | OPERATOR_CONTAINS) LR_BRACKET constant (COMMA constant)* RR_BRACKET
     | leftExpression=expression OPERATOR_AND rightExpression=expression
     | leftExpression=expression OPERATOR_OR rightExpression=expression
     ;
@@ -867,59 +868,16 @@ containsExpression
     : name=identifier OPERATOR_CONTAINS value=propertyValue
     ;
 
-orExpression
-    : andExpression (OPERATOR_OR andExpression)*
-    ;
-
-andExpression
-    : predicate (OPERATOR_AND predicate)*
-    ;
-
-predicate
-    : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
-    | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
-    | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
-    | (suffixPath | fullPath) (REGEXP | LIKE) STRING_LITERAL
-    ;
-
 operator_eq
     : OPERATOR_SEQ
     | OPERATOR_DEQ
-    ;
-
-comparisonOperator
-    : type = OPERATOR_GT
-    | type = OPERATOR_GTE
-    | type = OPERATOR_LT
-    | type = OPERATOR_LTE
-    | type = OPERATOR_DEQ
-    | type = OPERATOR_SEQ
-    | type = OPERATOR_NEQ
-    ;
-
-inClause
-    : OPERATOR_NOT? OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
-    ;
-
-indexPredicateClause
-    : (suffixPath | fullPath) LIKE sequenceClause
-    | (suffixPath | fullPath) CONTAIN sequenceClause
-    WITH TOLERANCE constant (CONCAT sequenceClause WITH TOLERANCE constant)*
-    ;
-
-sequenceClause
-    : LR_BRACKET constant (COMMA constant)* RR_BRACKET
     ;
 
 
 // Select Clause
 
 selectClause
-    : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
-    ;
-
-topClause
-    : TOP INTEGER_LITERAL
+    : SELECT LAST? resultColumn (COMMA resultColumn)*
     ;
 
 resultColumn

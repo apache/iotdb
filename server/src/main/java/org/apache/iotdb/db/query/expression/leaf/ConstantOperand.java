@@ -61,6 +61,10 @@ public class ConstantOperand extends LeafOperand {
     return dataType;
   }
 
+  public String getValueString() {
+    return valueString;
+  }
+
   public boolean isNegativeNumber() {
     return !dataType.equals(TSDataType.TEXT)
         && !dataType.equals(TSDataType.BOOLEAN)

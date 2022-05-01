@@ -504,7 +504,7 @@ public class IoTDBSelectIntoIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "select s1 into fill_s1 from root.sg.d1 where time = 10 fill(float [linear, 1ms, 1ms])");
+          "select s1 into fill_s1 from root.sg.d1 where time == 10 fill(float [linear, 1ms, 1ms])");
 
       try (ResultSet resultSet = statement.executeQuery("select fill_s1 from root.sg.d1")) {
         assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());

@@ -33,7 +33,7 @@ public class InExpression extends UnaryExpression {
 
   private final LinkedHashSet<String> values;
 
-  protected InExpression(Expression expression, LinkedHashSet<String> values) {
+  public InExpression(Expression expression, LinkedHashSet<String> values) {
     super(expression);
     this.values = values;
   }
@@ -45,6 +45,10 @@ public class InExpression extends UnaryExpression {
     for (int i = 0; i < size; ++i) {
       values.add(ReadWriteIOUtils.readString(byteBuffer));
     }
+  }
+
+  public LinkedHashSet<String> getValues() {
+    return values;
   }
 
   @Override

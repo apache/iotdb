@@ -287,7 +287,7 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(Long.MIN_VALUE, ((DeleteDataOperator) op).getStartTime());
     Assert.assertEquals(0, ((DeleteDataOperator) op).getEndTime());
 
-    String sql6 = "delete from root.d1.s1 where time = 3";
+    String sql6 = "delete from root.d1.s1 where time == 3";
     op = LogicalGenerator.generate(sql6, ZoneId.systemDefault());
     Assert.assertEquals(paths, ((DeleteDataOperator) op).getPaths());
     Assert.assertEquals(3, ((DeleteDataOperator) op).getStartTime());
@@ -326,7 +326,7 @@ public class LogicalPlanSmallTest {
             + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'",
         errorMsg);
 
-    String sql7 = "delete from root.d1.s1 where time = 1 and time < -1";
+    String sql7 = "delete from root.d1.s1 where time == 1 and time < -1";
     errorMsg = null;
     try {
       LogicalGenerator.generate(sql7, ZoneId.systemDefault());

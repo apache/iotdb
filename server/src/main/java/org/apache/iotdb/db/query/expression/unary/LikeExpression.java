@@ -52,11 +52,16 @@ public class LikeExpression extends UnaryExpression {
     pattern = compile();
   }
 
+  public String getPatternString() {
+    return patternString;
+  }
+
   /**
    * The main idea of this part comes from
    * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
    */
   private Pattern compile() {
+    // TODO: consider '%%'
     String unescapeValue = unescapeString(patternString);
     String specialRegexString = ".^$*+?{}[]|()";
     StringBuilder patternBuilder = new StringBuilder();

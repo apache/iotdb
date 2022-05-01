@@ -20,13 +20,8 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-
-import java.util.Arrays;
 
 public class FillQueryStatement extends QueryStatement {
 
@@ -56,20 +51,20 @@ public class FillQueryStatement extends QueryStatement {
       throw new SemanticException("Fill functions are not supported in UDF queries.");
     }
 
-    if (whereCondition == null || whereCondition.getQueryFilter() == null) {
-      throw new SemanticException("FILL must be used with a WHERE clause");
-    }
-
-    QueryFilter queryFilter = whereCondition.getQueryFilter();
-    if (!queryFilter.isLeaf()
-        || queryFilter.getFilterType() != FilterConstant.FilterType.EQUAL
-        || !Arrays.equals(
-            SQLConstant.getSingleTimeArray(),
-            whereCondition.getQueryFilter().getSinglePath().getNodes())) {
-      throw new SemanticException("The condition of WHERE clause must be like time=constant");
-    } else if (!queryFilter.isSingle()) {
-      throw new SemanticException("Slice query must select a single time point");
-    }
+    //    if (whereCondition == null || whereCondition.getQueryFilter() == null) {
+    //      throw new SemanticException("FILL must be used with a WHERE clause");
+    //    }
+    //
+    //    QueryFilter queryFilter = whereCondition.getQueryFilter();
+    //    if (!queryFilter.isLeaf()
+    //        || queryFilter.getFilterType() != FilterConstant.FilterType.EQUAL
+    //        || !Arrays.equals(
+    //            SQLConstant.getSingleTimeArray(),
+    //            whereCondition.getQueryFilter().getSinglePath().getNodes())) {
+    //      throw new SemanticException("The condition of WHERE clause must be like time=constant");
+    //    } else if (!queryFilter.isSingle()) {
+    //      throw new SemanticException("Slice query must select a single time point");
+    //    }
   }
 
   @Override

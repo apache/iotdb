@@ -121,7 +121,7 @@ public class StatementGenerator {
             Long.toString(rawDataQueryReq.getEndTime()));
     queryFilter.addChildOperator(left);
     queryFilter.addChildOperator(right);
-    whereCondition.setQueryFilter(queryFilter);
+    //    whereCondition.setQueryFilter(queryFilter);
 
     queryStatement.setSelectComponent(selectComponent);
     queryStatement.setFromComponent(fromComponent);
@@ -151,7 +151,7 @@ public class StatementGenerator {
             FilterConstant.FilterType.GREATERTHANOREQUALTO,
             timePath,
             Long.toString(lastDataQueryReq.getTime()));
-    whereCondition.setQueryFilter(basicFunctionFilter);
+    //    whereCondition.setQueryFilter(basicFunctionFilter);
 
     lastQueryStatement.setSelectComponent(selectComponent);
     lastQueryStatement.setFromComponent(fromComponent);

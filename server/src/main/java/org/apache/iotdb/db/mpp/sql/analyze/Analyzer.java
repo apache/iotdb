@@ -28,14 +28,10 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
-import org.apache.iotdb.db.mpp.sql.rewriter.DnfFilterOptimizer;
-import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
-import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
@@ -60,11 +56,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -133,11 +125,11 @@ public class Analyzer {
                   .collect(Collectors.toList()));
         }
         if (queryStatement.getWhereCondition() != null) {
-          devicePathSet.addAll(
-              queryStatement.getWhereCondition().getQueryFilter().getPathSet().stream()
-                  .filter(SQLConstant::isNotReservedPath)
-                  .map(PartialPath::getDevicePath)
-                  .collect(Collectors.toList()));
+          //          devicePathSet.addAll(
+          //              queryStatement.getWhereCondition().getQueryFilter().getPathSet().stream()
+          //                  .filter(SQLConstant::isNotReservedPath)
+          //                  .map(PartialPath::getDevicePath)
+          //                  .collect(Collectors.toList()));
         }
         Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
         for (PartialPath devicePath : devicePathSet) {
@@ -153,35 +145,34 @@ public class Analyzer {
         // optimize expressions in whereCondition
         WhereCondition whereCondition = rewrittenStatement.getWhereCondition();
         if (whereCondition != null) {
-          QueryFilter filter = whereCondition.getQueryFilter();
-          filter = new RemoveNotOptimizer().optimize(filter);
-          filter = new DnfFilterOptimizer().optimize(filter);
-          filter = new MergeSingleFilterOptimizer().optimize(filter);
-
-          // transform QueryFilter to expression
-          List<PartialPath> filterPaths = new ArrayList<>(filter.getPathSet());
-          HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
-          for (PartialPath filterPath : filterPaths) {
-            pathTSDataTypeHashMap.put(
-                filterPath,
-                SQLConstant.isReservedPath(filterPath)
-                    ? TSDataType.INT64
-                    : filterPath.getSeriesType());
-          }
-          IExpression expression = filter.transformToExpression(pathTSDataTypeHashMap);
-          expression =
-              ExpressionOptimizer.getInstance()
-                  .optimize(expression, queryStatement.getSelectComponent().getDeduplicatedPaths());
-          analysis.setQueryFilter(expression);
+          //          QueryFilter filter = whereCondition.getQueryFilter();
+          //          filter = new RemoveNotOptimizer().optimize(filter);
+          //          filter = new DnfFilterOptimizer().optimize(filter);
+          //          filter = new MergeSingleFilterOptimizer().optimize(filter);
+          //
+          //          // transform QueryFilter to expression
+          //          List<PartialPath> filterPaths = new ArrayList<>(filter.getPathSet());
+          //          HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+          //          for (PartialPath filterPath : filterPaths) {
+          //            pathTSDataTypeHashMap.put(
+          //                filterPath,
+          //                SQLConstant.isReservedPath(filterPath)
+          //                    ? TSDataType.INT64
+          //                    : filterPath.getSeriesType());
+          //          }
+          //          IExpression expression = filter.transformToExpression(pathTSDataTypeHashMap);
+          //          expression =
+          //              ExpressionOptimizer.getInstance()
+          //                  .optimize(expression,
+          // queryStatement.getSelectComponent().getDeduplicatedPaths());
+          //          analysis.setQueryFilter(expression);
         }
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);
         analysis.setTypeProvider(typeProvider);
         analysis.setRespDatasetHeader(queryStatement.constructDatasetHeader());
         analysis.setDataPartitionInfo(dataPartition);
-      } catch (StatementAnalyzeException
-          | PathNumOverLimitException
-          | QueryFilterOptimizationException e) {
+      } catch (StatementAnalyzeException | PathNumOverLimitException e) {
         throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;

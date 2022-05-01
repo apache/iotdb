@@ -126,7 +126,7 @@ public class SessionPoolTest {
           () -> {
             try {
               SessionDataSetWrapper wrapper =
-                  pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+                  pool.executeQueryStatement("select * from root.sg1.d1 where time == " + no);
               // this is incorrect becasue wrapper is not closed.
               // so all other 7 queries will be blocked
             } catch (IoTDBConnectionException | StatementExecutionException e) {

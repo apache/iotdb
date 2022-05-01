@@ -97,7 +97,7 @@ public class IoTDBSyntaxConventionIT {
       Assert.assertEquals(8, cnt);
 
       for (int i = 0; i < insertData.length; i++) {
-        String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 = %s", insertData[i]);
+        String querySql = String.format("SELECT s1 FROM root.sg1.d1 WHERE s1 == %s", insertData[i]);
         System.out.println("QUERY STATEMENT: " + querySql);
         hasResult = statement.execute(querySql);
         Assert.assertTrue(hasResult);
@@ -331,7 +331,7 @@ public class IoTDBSyntaxConventionIT {
 
       for (int i = 0; i < selectNodeNames.length; i++) {
         String selectSql =
-            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
+            String.format("SELECT %s FROM root.sg1.d1 WHERE time == 1", selectNodeNames[i]);
         System.out.println("SELECT STATEMENT: " + selectSql);
         hasResult = statement.execute(selectSql);
         Assert.assertTrue(hasResult);

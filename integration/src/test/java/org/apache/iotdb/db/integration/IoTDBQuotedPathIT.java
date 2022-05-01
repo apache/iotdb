@@ -87,7 +87,8 @@ public class IoTDBQuotedPathIT {
         }
 
         hasResultSet =
-            statement.execute("SELECT * FROM root.ln.\"wf+01\".wt01 WHERE \"status+2+3\" = false");
+            statement.execute(
+                "SELECT * FROM root.ln.\"wf+01\".wt01 WHERE `\"status+2+3\"` == false");
         assertTrue(hasResultSet);
         exp = new String[] {"1509465600002,false", "1509465600003,false"};
         cnt = 0;
