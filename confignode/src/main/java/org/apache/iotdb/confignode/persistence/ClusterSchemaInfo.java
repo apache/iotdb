@@ -43,6 +43,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +57,7 @@ public class ClusterSchemaInfo {
   // StorageGroup read write lock
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
 
+  // TODO: serialize and deserialize
   private MTreeAboveSG mTree;
 
   private ClusterSchemaInfo() {
@@ -326,6 +328,14 @@ public class ClusterSchemaInfo {
       storageGroupReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    // TODO: Serialize ClusterSchemaInfo
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    // TODO: Deserialize ClusterSchemaInfo
   }
 
   @TestOnly

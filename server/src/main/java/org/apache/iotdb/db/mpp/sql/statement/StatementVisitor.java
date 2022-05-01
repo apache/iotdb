@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.sql.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountLevelTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
@@ -148,6 +149,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowDevices(ShowDevicesStatement showDevicesStatement, C context) {
     return visitStatement(showDevicesStatement, context);
+  }
+
+  public R visitCountStorageGroup(
+      CountStorageGroupStatement countStorageGroupStatement, C context) {
+    return visitStatement(countStorageGroupStatement, context);
   }
 
   public R visitCountDevices(CountDevicesStatement countStatement, C context) {

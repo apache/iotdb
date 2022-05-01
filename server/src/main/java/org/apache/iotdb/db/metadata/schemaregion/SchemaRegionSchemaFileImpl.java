@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
+import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
@@ -351,12 +352,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
         CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
+        recoverTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         break;
       case CREATE_ALIGNED_TIMESERIES:
         CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
             (CreateAlignedTimeSeriesPlan) plan;
-        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        recoverAlignedTimeSeries(createAlignedTimeSeriesPlan);
         break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
@@ -428,12 +429,31 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     createTimeseries(plan, -1);
   }
 
+  public void recoverTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+    boolean done = false;
+    while (!done) {
+      try {
+        createTimeseries(plan, offset);
+        done = true;
+      } catch (SeriesOverflowException e) {
+        logger.warn(
+            "Too many timeseries during recovery from MLog, waiting for SchemaFile swapping.");
+        try {
+          Thread.sleep(3000L);
+        } catch (InterruptedException e2) {
+          logger.error("Exception occurs during timeseries recovery.");
+          throw new MetadataException(e2.getMessage());
+        }
+      }
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      logger.error(
+          String.format("Series overflow when creating: [%s]", plan.getPath().getFullPath()));
+      throw new SeriesOverflowException();
     }
 
     try {
@@ -542,6 +562,25 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
             prefixPath, measurements, dataTypes, encodings, compressors, null, null, null));
   }
 
+  public void recoverAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    boolean done = false;
+    while (!done) {
+      try {
+        createAlignedTimeSeries(plan);
+        done = true;
+      } catch (SeriesOverflowException e) {
+        logger.warn(
+            "Too many timeseries during recovery from MLog, waiting for SchemaFile swapping.");
+        try {
+          Thread.sleep(3000L);
+        } catch (InterruptedException e2) {
+          logger.error("Exception occurs during timeseries recovery.");
+          throw new MetadataException(e2.getMessage());
+        }
+      }
+    }
+  }
+
   /**
    * create aligned timeseries
    *
@@ -549,9 +588,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      throw new SeriesOverflowException();
     }
 
     try {

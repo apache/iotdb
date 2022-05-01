@@ -22,6 +22,9 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.Collections;
+import java.util.List;
+
 public abstract class InsertBaseStatement extends Statement {
 
   /**
@@ -66,5 +69,10 @@ public abstract class InsertBaseStatement extends Statement {
 
   public void setAligned(boolean aligned) {
     isAligned = aligned;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 }

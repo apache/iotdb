@@ -77,20 +77,24 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new RuntimeException("cannot fetch schema, status is: " + executionResult.status);
     }
-    TsBlock tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+    SchemaTree result = new SchemaTree();
+    while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+      TsBlock tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+      if (tsBlock == null) {
+        break;
+      }
+      result.setStorageGroups(storageGroups);
+      Binary binary;
+      SchemaTree fetchedSchemaTree;
+      Column column = tsBlock.getColumn(0);
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        binary = column.getBinary(i);
+        fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
+        result.mergeSchemaTree(fetchedSchemaTree);
+      }
+    }
     // TODO: (xingtanzjr) need to release this query's resource here. This is a temporary way
     coordinator.getQueryExecution(queryId).stopAndCleanup();
-
-    SchemaTree result = new SchemaTree();
-    result.setStorageGroups(storageGroups);
-    Binary binary;
-    SchemaTree fetchedSchemaTree;
-    Column column = tsBlock.getColumn(0);
-    for (int i = 0; i < column.getPositionCount(); i++) {
-      binary = column.getBinary(i);
-      fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
-      result.mergeSchemaTree(fetchedSchemaTree);
-    }
     return result;
   }
 

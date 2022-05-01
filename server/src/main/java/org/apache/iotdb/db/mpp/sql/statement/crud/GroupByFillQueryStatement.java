@@ -42,6 +42,7 @@ public class GroupByFillQueryStatement extends GroupByQueryStatement {
     this.fillComponent = fillComponent;
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitGroupByFillQuery(this, context);
   }

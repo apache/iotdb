@@ -108,4 +108,7 @@ public interface Column {
    * but with different array offset.
    */
   Column subColumn(int fromIndex);
+
+  /** reverse the column */
+  void reverse();
 }

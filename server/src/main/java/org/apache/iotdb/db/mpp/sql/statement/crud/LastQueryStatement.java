@@ -40,6 +40,7 @@ public class LastQueryStatement extends QueryStatement {
     super(queryStatement);
   }
 
+  @Override
   public DatasetHeader constructDatasetHeader() {
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     // TODO: consider LAST
@@ -66,6 +67,7 @@ public class LastQueryStatement extends QueryStatement {
     }
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitLastQuery(this, context);
   }

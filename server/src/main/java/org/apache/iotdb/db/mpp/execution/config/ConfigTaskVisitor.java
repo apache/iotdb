@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.config;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
@@ -50,6 +51,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowStorageGroup(
       ShowStorageGroupStatement statement, TaskContext context) {
     return new ShowStorageGroupTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitCountStorageGroup(
+      CountStorageGroupStatement statement, TaskContext context) {
+    return new CountStorageGroupTask(statement);
   }
 
   @Override

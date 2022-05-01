@@ -112,6 +112,15 @@ public class TimeColumn implements Column {
     return new TimeColumn(arrayOffset + fromIndex, positionCount - fromIndex, values);
   }
 
+  @Override
+  public void reverse() {
+    for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
+      long time = values[i];
+      values[i] = values[j];
+      values[j] = time;
+    }
+  }
+
   public long getStartTime() {
     return values[arrayOffset];
   }
