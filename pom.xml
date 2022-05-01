@@ -442,7 +442,7 @@
             <dependency>
                 <groupId>org.powermock</groupId>
                 <artifactId>powermock-core</artifactId>
-                <version>2.0.2</version>
+                <version>${powermock-core.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.powermock</groupId>
