@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -576,6 +577,30 @@ public class IoTDBNestedQueryIT {
           Assert.assertEquals(2.0D - i / 2.0D, rs.getDouble(2), 0.01);
           Assert.assertEquals(1.5 - i / 2.0D, rs.getDouble(3), 0.01);
           Assert.assertEquals((1.0D / 3.0D) * (1.0D - i), rs.getDouble(4), 0.01);
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  @Ignore
+  public void testRegularLikeInExpressions() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String query =
+          "SELECT ((CAST(s1, 'type'='TEXT') LIKE '_') REGEXP '*') IN ('4', '2', '3') "
+              + "FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 2; i <= 4; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(i, rs.getLong(2));
         }
         Assert.assertFalse(rs.next());
       }

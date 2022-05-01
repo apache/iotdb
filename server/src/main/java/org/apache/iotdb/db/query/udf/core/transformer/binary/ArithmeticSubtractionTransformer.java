@@ -17,19 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core.transformer;
+package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
-public class ArithmeticMultiplicationTransformer extends ArithmeticBinaryTransformer {
+public class ArithmeticSubtractionTransformer extends ArithmeticBinaryTransformer {
 
-  public ArithmeticMultiplicationTransformer(
+  public ArithmeticSubtractionTransformer(
       LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     super(leftPointReader, rightPointReader);
   }
 
   @Override
   protected double evaluateDouble(double leftOperand, double rightOperand) {
-    return leftOperand * rightOperand;
+    return leftOperand - rightOperand;
   }
 }
