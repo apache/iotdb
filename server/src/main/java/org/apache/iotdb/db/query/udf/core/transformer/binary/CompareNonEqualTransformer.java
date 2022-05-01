@@ -46,7 +46,7 @@ public class CompareNonEqualTransformer extends CompareBinaryTransformer {
   }
 
   protected boolean evaluate(boolean leftOperand, boolean rightOperand) {
-    return leftOperand == rightOperand;
+    return leftOperand != rightOperand;
   }
 
   @Override
