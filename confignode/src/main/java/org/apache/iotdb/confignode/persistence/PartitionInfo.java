@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -49,22 +50,20 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /** manage data partition and schema partition */
 public class PartitionInfo {
 
-  // TODO: Serialize and Deserialize
-  private AtomicInteger nextRegionGroupId = new AtomicInteger(0);
-
   // Region read write lock
   private final ReentrantReadWriteLock regionReadWriteLock;
+  // TODO: Serialize and Deserialize
+  private AtomicInteger nextRegionGroupId = new AtomicInteger(0);
+  // TODO: Serialize and Deserialize
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionMap;
 
-  // schema partition read write lock
+  // SchemaPartition read write lock
   private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
-
-  // data partition read write lock
-  private final ReentrantReadWriteLock dataPartitionReadWriteLock;
-
   // TODO: Serialize and Deserialize
   private final SchemaPartition schemaPartition;
 
+  // DataPartition read write lock
+  private final ReentrantReadWriteLock dataPartitionReadWriteLock;
   // TODO: Serialize and Deserialize
   private final DataPartition dataPartition;
 
@@ -297,6 +296,14 @@ public class PartitionInfo {
       regionReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    // TODO: Serialize PartitionInfo
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    // TODO: Deserialize PartitionInfo
   }
 
   @TestOnly
