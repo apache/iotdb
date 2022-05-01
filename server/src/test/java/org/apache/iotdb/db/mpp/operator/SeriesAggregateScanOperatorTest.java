@@ -93,9 +93,9 @@ public class SeriesAggregateScanOperatorTest {
         initSeriesAggregateScanOperator(
             Collections.singletonList(
                 new Aggregator(
-                    AccumulatorFactory.createAccumulator(AggregationType.COUNT, TSDataType.INT32),
-                    AggregationStep.SINGLE,
-                    null)),
+                    AccumulatorFactory.createAccumulator(
+                        AggregationType.COUNT, TSDataType.INT32, true),
+                    AggregationStep.SINGLE)),
             null,
             true,
             null);

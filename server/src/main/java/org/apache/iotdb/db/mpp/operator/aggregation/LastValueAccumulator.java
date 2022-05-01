@@ -28,8 +28,8 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class LastValueAccumulator implements Accumulator {
 
-  private TsPrimitiveType lastValue;
-  private long maxTime = Long.MIN_VALUE;
+  protected TsPrimitiveType lastValue;
+  protected long maxTime = Long.MIN_VALUE;
 
   public LastValueAccumulator(TSDataType seriesDataType) {
     lastValue = TsPrimitiveType.getByType(seriesDataType);
@@ -100,7 +100,7 @@ public class LastValueAccumulator implements Accumulator {
     return lastValue.getDataType();
   }
 
-  private void updateLastValue(Object value, long curTime) {
+  protected void updateLastValue(Object value, long curTime) {
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setObject(value);

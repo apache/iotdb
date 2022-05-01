@@ -28,9 +28,9 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class FirstValueAccumulator implements Accumulator {
 
-  private boolean hasCandidateResult;
-  private TsPrimitiveType firstValue;
-  private long minTime = Long.MAX_VALUE;
+  protected boolean hasCandidateResult;
+  protected TsPrimitiveType firstValue;
+  protected long minTime = Long.MAX_VALUE;
 
   public FirstValueAccumulator(TSDataType seriesDataType) {
     firstValue = TsPrimitiveType.getByType(seriesDataType);
@@ -99,7 +99,7 @@ public class FirstValueAccumulator implements Accumulator {
     return firstValue.getDataType();
   }
 
-  private void updateFirstValue(Object value, long curTime) {
+  protected void updateFirstValue(Object value, long curTime) {
     hasCandidateResult = true;
     if (curTime < minTime) {
       minTime = curTime;

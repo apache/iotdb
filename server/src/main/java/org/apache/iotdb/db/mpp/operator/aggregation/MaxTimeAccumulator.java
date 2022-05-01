@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 public class MaxTimeAccumulator implements Accumulator {
 
-  private long maxTime = Long.MIN_VALUE;
+  protected long maxTime = Long.MIN_VALUE;
 
   public MaxTimeAccumulator() {}
 
@@ -93,7 +93,7 @@ public class MaxTimeAccumulator implements Accumulator {
     return TSDataType.INT64;
   }
 
-  private void updateMaxTime(long curTime) {
+  protected void updateMaxTime(long curTime) {
     maxTime = Math.max(maxTime, curTime);
   }
 }

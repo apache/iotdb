@@ -34,11 +34,18 @@ public class Aggregator {
 
   private final Accumulator accumulator;
   // In some intermediate result input, inputLocation[] should include two columns
-  private final List<InputLocation[]> inputLocationList;
+  private List<InputLocation[]> inputLocationList;
   private final AggregationStep step;
 
   private TimeRange timeRange = new TimeRange(0, Long.MAX_VALUE);
 
+  // Used for SeriesAggregateScanOperator
+  public Aggregator(Accumulator accumulator, AggregationStep step) {
+    this.accumulator = accumulator;
+    this.step = step;
+  }
+
+  // Used for aggregateOperator
   public Aggregator(
       Accumulator accumulator, AggregationStep step, List<InputLocation[]> inputLocationList) {
     this.accumulator = accumulator;

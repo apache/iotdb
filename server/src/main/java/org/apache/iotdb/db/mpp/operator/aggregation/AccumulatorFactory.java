@@ -26,7 +26,7 @@ public class AccumulatorFactory {
 
   // TODO: Are we going to create different seriesScanOperator based on order by sequence?
   public static Accumulator createAccumulator(
-      AggregationType aggregationType, TSDataType tsDataType) {
+      AggregationType aggregationType, TSDataType tsDataType, boolean ascending) {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();
@@ -37,17 +37,21 @@ public class AccumulatorFactory {
       case EXTREME:
         return new ExtremeAccumulator(tsDataType);
       case MAX_TIME:
-        return new MaxTimeAccumulator();
+        return ascending ? new MaxTimeAccumulator() : new MaxTimeDescAccumulator();
       case MIN_TIME:
-        return new MinTimeAccumulator();
+        return ascending ? new MinTimeAccumulator() : new MinTimeDescAccumulator();
       case MAX_VALUE:
         return new MaxValueAccumulator(tsDataType);
       case MIN_VALUE:
         return new MinValueAccumulator(tsDataType);
       case LAST_VALUE:
-        return new LastValueAccumulator(tsDataType);
+        return ascending
+            ? new LastValueAccumulator(tsDataType)
+            : new LastValueDescAccumulator(tsDataType);
       case FIRST_VALUE:
-        return new FirstValueAccumulator(tsDataType);
+        return ascending
+            ? new FirstValueAccumulator(tsDataType)
+            : new FirstValueDescAccumulator(tsDataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

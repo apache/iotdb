@@ -27,8 +27,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 public class MinTimeAccumulator implements Accumulator {
 
-  private boolean hasCandidateResult;
-  private long minTime = Long.MAX_VALUE;
+  protected boolean hasCandidateResult;
+  protected long minTime = Long.MAX_VALUE;
 
   public MinTimeAccumulator() {}
 
@@ -92,7 +92,7 @@ public class MinTimeAccumulator implements Accumulator {
     return TSDataType.INT64;
   }
 
-  private void updateMinTime(long curTime) {
+  protected void updateMinTime(long curTime) {
     hasCandidateResult = true;
     minTime = Math.min(minTime, curTime);
   }
