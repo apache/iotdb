@@ -28,8 +28,7 @@ import java.util.List;
 public interface IDriverScheduler {
 
   /**
-   * Submit one or more {@link IDriver} in one query for later
-   * scheduling.
+   * Submit one or more {@link IDriver} in one query for later scheduling.
    *
    * @param queryId the queryId these instances belong to.
    * @param instances the submitted instances.

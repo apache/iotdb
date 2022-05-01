@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule.task;
 
-import org.apache.iotdb.db.mpp.execution.datatransfer.ISinkHandle;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.execution.datatransfer.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverTaskThread;
 import org.apache.iotdb.db.mpp.execution.schedule.ExecutionContext;

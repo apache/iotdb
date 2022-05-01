@@ -27,7 +27,7 @@ public class SchemaDriverContext extends DriverContext {
   private final ISchemaRegion schemaRegion;
 
   public SchemaDriverContext(
-          FragmentInstanceContext fragmentInstanceContext, ISchemaRegion schemaRegion) {
+      FragmentInstanceContext fragmentInstanceContext, ISchemaRegion schemaRegion) {
     super(fragmentInstanceContext);
     this.schemaRegion = schemaRegion;
   }
