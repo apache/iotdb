@@ -203,11 +203,11 @@ public class SchemaEngine {
         | InvocationTargetException
         | InstantiationException
         | IllegalAccessException
-        | MalformedURLException e) {
+        | MalformedURLException
+        | RuntimeException e) {
       logger.error("Cannot initialize RSchemaRegion", e);
       return null;
     }
-    logger.error("{}", region.getClass());
     return region;
   }
 
@@ -215,6 +215,10 @@ public class SchemaEngine {
     logger.info("Loading jar for schema-engine-rocksdb");
     if (urlClassLoader == null) {
       File[] jars = new File(LIB_PATH).listFiles();
+      if (jars == null) {
+        throw new RuntimeException(
+            String.format("Cannot get jars from %s", new File(LIB_PATH).getAbsolutePath()));
+      }
       List<URL> dependentJars = new LinkedList<>();
       for (File jar : jars) {
         if (jar.getName().contains("rocksdb")) {
