@@ -25,24 +25,25 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
-  // Description for each series. Such as dataType, existence
-
-  // Data distribution info for each series. Series -> [DataRegion, DataRegion]
-
-  // Map<PartialPath, List<FullPath>> Used to remove asterisk
 
   // Statement
   private Statement statement;
 
-  // indicate whether this statement is write or read
+  // indicate whether this statement is `WRITE` or `READ`
   private QueryType queryType;
 
   private DataPartition dataPartition;
@@ -51,12 +52,32 @@ public class Analysis {
 
   private SchemaTree schemaTree;
 
-  private IExpression queryFilter;
+  // map from output column name (for every node) to its datatype
+  private TypeProvider typeProvider;
+
+  // map from device name to series/aggregation under this device
+  private Map<String, Set<Expression>> sourceExpressions;
+
+  // all aggregations that need to be calculated
+  private Set<Expression> aggregationExpressions;
+
+  // parameter of `GROUP BY TIME`
+  private GroupByTimeParameter groupByTimeParameter;
+
+  // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
+  private Map<String, Set<Expression>> groupByLevelExpressions;
+
+  // parameter of `WITHOUT NULL` clause
+  private List<FilterNullParameter> filterNullParameters;
+
+  // parameter of `FILL` clause
+  private List<FillDescriptor> fillDescriptorList;
+
+  // a global time filter used in `initQueryDataSource`
+  private IExpression globalTimeFilter;
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
-
-  private TypeProvider typeProvider;
 
   public Analysis() {}
 
@@ -97,12 +118,12 @@ public class Analysis {
     this.schemaTree = schemaTree;
   }
 
-  public IExpression getQueryFilter() {
-    return queryFilter;
+  public IExpression getGlobalTimeFilter() {
+    return globalTimeFilter;
   }
 
-  public void setQueryFilter(IExpression expression) {
-    this.queryFilter = expression;
+  public void setGlobalTimeFilter(IExpression expression) {
+    this.globalTimeFilter = expression;
   }
 
   public DatasetHeader getRespDatasetHeader() {
@@ -119,5 +140,53 @@ public class Analysis {
 
   public void setTypeProvider(TypeProvider typeProvider) {
     this.typeProvider = typeProvider;
+  }
+
+  public Map<String, Set<Expression>> getSourceExpressions() {
+    return sourceExpressions;
+  }
+
+  public void setSourceExpressions(Map<String, Set<Expression>> sourceExpressions) {
+    this.sourceExpressions = sourceExpressions;
+  }
+
+  public Set<Expression> getAggregationExpressions() {
+    return aggregationExpressions;
+  }
+
+  public void setAggregationExpressions(Set<Expression> aggregationExpressions) {
+    this.aggregationExpressions = aggregationExpressions;
+  }
+
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return groupByTimeParameter;
+  }
+
+  public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
+    this.groupByTimeParameter = groupByTimeParameter;
+  }
+
+  public Map<String, Set<Expression>> getGroupByLevelExpressions() {
+    return groupByLevelExpressions;
+  }
+
+  public void setGroupByLevelExpressions(Map<String, Set<Expression>> groupByLevelExpressions) {
+    this.groupByLevelExpressions = groupByLevelExpressions;
+  }
+
+  public List<FilterNullParameter> getFilterNullParameters() {
+    return filterNullParameters;
+  }
+
+  public void setFilterNullParameters(List<FilterNullParameter> filterNullParameters) {
+    this.filterNullParameters = filterNullParameters;
+  }
+
+  public List<FillDescriptor> getFillDescriptorList() {
+    return fillDescriptorList;
+  }
+
+  public void setFillDescriptorList(List<FillDescriptor> fillDescriptorList) {
+    this.fillDescriptorList = fillDescriptorList;
   }
 }

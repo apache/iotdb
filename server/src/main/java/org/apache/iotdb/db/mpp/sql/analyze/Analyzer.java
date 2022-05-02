@@ -172,7 +172,7 @@ public class Analyzer {
           expression =
               ExpressionOptimizer.getInstance()
                   .optimize(expression, queryStatement.getSelectComponent().getDeduplicatedPaths());
-          analysis.setQueryFilter(expression);
+          analysis.setGlobalTimeFilter(expression);
         }
         analysis.setStatement(rewrittenStatement);
         analysis.setSchemaTree(schemaTree);

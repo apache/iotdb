@@ -84,9 +84,9 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // one by one
     PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getRoot());
     Filter timeFilter =
-        analysis.getQueryFilter() == null
+        analysis.getGlobalTimeFilter() == null
             ? null
-            : ((GlobalTimeExpression) analysis.getQueryFilter()).getFilter();
+            : ((GlobalTimeExpression) analysis.getGlobalTimeFilter()).getFilter();
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(fragment.getId(), rootCopy),

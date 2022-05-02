@@ -49,8 +49,8 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
   public List<FragmentInstance> parallelPlan() {
     PlanFragment fragment = subPlan.getPlanFragment();
     Filter timeFilter =
-        analysis.getQueryFilter() != null
-            ? ((GlobalTimeExpression) analysis.getQueryFilter()).getFilter()
+        analysis.getGlobalTimeFilter() != null
+            ? ((GlobalTimeExpression) analysis.getGlobalTimeFilter()).getFilter()
             : null;
     PlanNode node = fragment.getRoot();
     if (!(node instanceof WritePlanNode)) {
