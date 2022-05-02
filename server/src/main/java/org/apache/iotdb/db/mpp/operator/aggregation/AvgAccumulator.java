@@ -116,13 +116,13 @@ public class AvgAccumulator implements Accumulator {
         sumValue += (int) sumVal;
         break;
       case INT64:
-        sumValue = (long) sumVal;
+        sumValue += (long) sumVal;
         break;
       case FLOAT:
-        sumValue = (float) sumVal;
+        sumValue += (float) sumVal;
         break;
       case DOUBLE:
-        sumValue = (double) sumVal;
+        sumValue += (double) sumVal;
         break;
       case TEXT:
       case BOOLEAN:
