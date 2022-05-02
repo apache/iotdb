@@ -166,7 +166,7 @@ public abstract class UnaryExpression extends Expression {
 
   @Override
   public final void removeWildcards(
-      org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover wildcardsRemover,
+      org.apache.iotdb.db.mpp.plan.rewriter.WildcardsRemover wildcardsRemover,
       List<Expression> resultExpressions)
       throws StatementAnalyzeException {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();

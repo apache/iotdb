@@ -123,7 +123,7 @@ public class Path implements Serializable, Comparable<Path> {
     return fullPath;
   }
 
-  public String getDevice() {
+  public String getDeviceIdString() {
     return device;
   }
 
