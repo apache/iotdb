@@ -29,7 +29,7 @@ public interface ColumnBuilder {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a int to the current entry; */
+  /** Write an int to the current entry; */
   default ColumnBuilder writeInt(int value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
@@ -59,7 +59,7 @@ public interface ColumnBuilder {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a int array to the current entry; */
+  /** Write an int array to the current entry; */
   default ColumnBuilder writeInts(int[] values, int length) {
     throw new UnsupportedOperationException(getClass().getName());
   }
