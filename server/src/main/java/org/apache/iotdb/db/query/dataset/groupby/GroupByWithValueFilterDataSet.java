@@ -180,7 +180,7 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
       throws StorageEngineException, QueryProcessException {
     return new SeriesReaderByTimestamp(
         path,
-        queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+        queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
         path.getSeriesType(),
         context,
         QueryResourceManager.getInstance()

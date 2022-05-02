@@ -383,12 +383,13 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
-        writer.getVisibleMetadataList(partialPath.getDevice(), "", partialPath.getSeriesType());
+        writer.getVisibleMetadataList(
+            partialPath.getDeviceIdString(), "", partialPath.getSeriesType());
     List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
     for (int i = 0; i < partialPath.getMeasurementList().size(); i++) {
       valueChunkMetadataList.add(
           writer.getVisibleMetadataList(
-              partialPath.getDevice(),
+              partialPath.getDeviceIdString(),
               partialPath.getMeasurementList().get(i),
               partialPath.getSchemaList().get(i).getType()));
     }
@@ -456,6 +457,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         ascending);
   }
 
+  @Override
   @TestOnly
   public SeriesReader createSeriesReader(
       Set<String> allSensors,
@@ -574,6 +576,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     return TimeRange.sortAndMerge(deletionList);
   }
   /** get modifications from a memtable. */
+  @Override
   protected List<Modification> getModificationsForMemtable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
     List<Modification> modifications = new ArrayList<>();
@@ -596,7 +599,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(
             writer.getVisibleMetadataList(
-                partialPath.getDevice(),
+                partialPath.getDeviceIdString(),
                 partialPath.getMeasurement(),
                 partialPath.getSeriesType()));
 

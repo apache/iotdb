@@ -94,13 +94,13 @@ specified columns can be expression
 
 ```sql
 select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null all (s2+s4, s2)
-``` 
+```
 
 2. If at least one column in `s2+s4` and `s2` of one row is null in the result set of the query, the row will be filtered out.
 
 ```sql
 select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null any (s2+s4, s2)
-``` 
+```
 
 ### With alias query
 
@@ -172,13 +172,13 @@ Assuming that the output results of the following query are listed as `root.test
 1. If both `root.test.sg1.s2` and `root.test.sg2.s3` columns of one row are null in the result set of the query, the row will be filtered out.
 
 ```sql
-select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, `root.test.sg2.s3`)
+select s2, s3 from root.test.** without null all(root.test.sg1.s2, root.test.sg2.s3)
 ```
 
 2. If `root.test.sg1.s2`, `root.test.sg1.s3` and `root.test.sg2.s3` columns of one row are null in the result set of the query, the row will be filtered out.
 
 ```sql
-select s2, s3 from root.test.** without null all(`root.test.sg1.s2`, s3)
+select s2, s3 from root.test.** without null all(root.test.sg1.s2, s3)
 ```
 
 ### Aligned Timeseries Query

@@ -69,10 +69,12 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = schema;
   }
 
+  @Override
   public IMeasurementSchema getMeasurementSchema() {
     return measurementSchema;
   }
 
+  @Override
   public TSDataType getSeriesType() {
     return getMeasurementSchema().getType();
   }
@@ -85,23 +87,26 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = measurementSchema;
   }
 
+  @Override
   public String getMeasurementAlias() {
     return measurementAlias;
   }
 
+  @Override
   public void setMeasurementAlias(String measurementAlias) {
     if (measurementAlias != null) {
       this.measurementAlias = measurementAlias;
     }
   }
 
+  @Override
   public boolean isMeasurementAliasExists() {
     return measurementAlias != null && !measurementAlias.isEmpty();
   }
 
   @Override
   public String getFullPathWithAlias() {
-    return getDevice() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
+    return getDeviceIdString() + IoTDBConstant.PATH_SEPARATOR + measurementAlias;
   }
 
   public boolean isUnderAlignedEntity() {
@@ -137,7 +142,8 @@ public class MeasurementPath extends PartialPath {
     MeasurementPath newMeasurementPath = null;
     try {
       newMeasurementPath =
-          new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
+          new MeasurementPath(
+              this.getDeviceIdString(), this.getMeasurement(), this.getMeasurementSchema());
       newMeasurementPath.setUnderAlignedEntity(this.isUnderAlignedEntity);
     } catch (IllegalPathException e) {
       logger.warn("path is illegal: {}", this.getFullPath(), e);
@@ -145,6 +151,7 @@ public class MeasurementPath extends PartialPath {
     return newMeasurementPath;
   }
 
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PathType.Measurement.serialize(byteBuffer);
     super.serializeWithoutType(byteBuffer);
@@ -178,7 +185,7 @@ public class MeasurementPath extends PartialPath {
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
     measurementPath.nodes = partialPath.nodes;
-    measurementPath.device = partialPath.getDevice();
+    measurementPath.device = partialPath.getDeviceIdString();
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;
   }
