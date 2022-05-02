@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -55,13 +54,7 @@ public class SchemaEngine {
 
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
-  private URLClassLoader urlClassLoader = null;
   private static final Logger logger = LoggerFactory.getLogger(SchemaEngine.class);
-  private static final String RSCHEMA_REGION_CLASS_NAME =
-      "org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion";
-  private static final String RSCHEMA_CONF_LOADER_CLASS_NAME =
-      "org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConfLoader";
-  private static final String LIB_PATH = ".." + File.separator + "lib" + File.separator;
 
   private static class SchemaEngineManagerHolder {
 
