@@ -213,12 +213,24 @@ public class DoubleTVList extends TVList {
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
     for (int i = 0; i < timestamps.size() - 1; i++) {
       timeBuilder.writeLongs(timestamps.get(i), ARRAY_SIZE);
+      getValuesWithGivenPrecision(values.get(i), floatPrecision, encoding);
       valueBuilder.writeDoubles(values.get(i), ARRAY_SIZE);
     }
     timeBuilder.writeLongs(timestamps.get(timestamps.size() - 1), size % ARRAY_SIZE == 0 ? ARRAY_SIZE : size % ARRAY_SIZE);
+    getValuesWithGivenPrecision(values.get(values.size() - 1), floatPrecision, encoding);
     valueBuilder.writeDoubles(values.get(values.size() - 1), size % ARRAY_SIZE == 0 ? ARRAY_SIZE : size % ARRAY_SIZE);
     builder.declarePositions(size);
     return builder.build();
+  }
+
+  private void getValuesWithGivenPrecision(double[] values, int floatPrecision, TSEncoding encoding) {
+    if (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF) {
+      for (int i = 0; i < values.length; i++) {
+        if (!Double.isNaN(values[i])) {
+          values[i] = MathUtils.roundWithGivenPrecision(values[i], floatPrecision);
+        }
+      }
+    }
   }
 
   @Override
