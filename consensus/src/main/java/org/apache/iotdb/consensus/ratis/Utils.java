@@ -162,8 +162,7 @@ public class Utils {
 
   public static ByteBuffer getMetadataFromTermIndex(TermIndex termIndex) {
     String ordinal = String.format("%d_%d", termIndex.getTerm(), termIndex.getIndex());
-    ByteBuffer metadata = ByteBuffer.wrap(ordinal.getBytes());
-    return metadata;
+    return ByteBuffer.wrap(ordinal.getBytes());
   }
 
   public static TermIndex getTermIndexFromMetadata(ByteBuffer metadata) {

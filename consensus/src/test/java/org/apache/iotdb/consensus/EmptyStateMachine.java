@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.statemachine;
+package org.apache.iotdb.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
