@@ -125,7 +125,7 @@ public class RocksDBBenchmarkEngine {
             }
             measurementPathSet.add(path.getFullPath());
 
-            innerPathSet.add(path.getDevice());
+            innerPathSet.add(path.getDeviceIdString());
             String[] subNodes = ArrayUtils.subarray(path.getNodes(), 0, path.getNodes().length - 2);
             innerPathSet.add(String.join(".", subNodes));
 

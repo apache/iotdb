@@ -57,7 +57,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
-   * = "root.sg.\"d.1\".\"s.1\"" nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
+   * = "root.sg.`d.1`.`s.1`" nodes = {"root", "sg", "d.1", "s.1"}
    *
    * @param path a full String of a time series path
    * @throws IllegalPathException
@@ -310,9 +310,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   @Override
   public String getFullPath() {
     if (fullPath == null) {
-      StringBuilder s = new StringBuilder(nodes[0]);
+      StringBuilder s = new StringBuilder(parseNodeString(nodes[0]));
       for (int i = 1; i < nodes.length; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR).append(nodes[i]);
+        s.append(TsFileConstant.PATH_SEPARATOR).append(parseNodeString(nodes[i]));
       }
       fullPath = s.toString();
     }
@@ -365,21 +365,35 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
-  public String getDevice() {
+  public String getDeviceIdString() {
     if (device != null) {
       return device;
     } else {
       if (nodes.length == 1) {
         return "";
       }
-      StringBuilder s = new StringBuilder(nodes[0]);
+      StringBuilder s = new StringBuilder(parseNodeString(nodes[0]));
       for (int i = 1; i < nodes.length - 1; i++) {
         s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
+        s.append(parseNodeString(nodes[i]));
       }
       device = s.toString();
       return device;
     }
+  }
+
+  /**
+   * wrap node that has . or ` in it with ``
+   *
+   * @param node
+   * @return
+   */
+  protected String parseNodeString(String node) {
+    node = node.replace("`", "``");
+    if (node.contains("`") || node.contains(".")) {
+      return "`" + node + "`";
+    }
+    return node;
   }
 
   // todo remove measurement related interface after invoker using MeasurementPath explicitly
@@ -434,7 +448,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @TestOnly
   public Path toTSFilePath() {
-    return new Path(getDevice(), getMeasurement());
+    return new Path(getDeviceIdString(), getMeasurement());
   }
 
   public static List<String> toStringList(List<PartialPath> pathList) {
@@ -472,11 +486,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return new PartialPath(this.getNodes().clone());
   }
 
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PathType.Partial.serialize(byteBuffer);
     serializeWithoutType(byteBuffer);
   }
 
+  @Override
   protected void serializeWithoutType(ByteBuffer byteBuffer) {
     super.serializeWithoutType(byteBuffer);
     ReadWriteIOUtils.write(nodes.length, byteBuffer);
@@ -495,7 +511,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
     partialPath.nodes = nodes;
     partialPath.setMeasurement(path.getMeasurement());
-    partialPath.device = path.getDevice();
+    partialPath.device = path.getDeviceIdString();
     partialPath.fullPath = path.getFullPath();
     return partialPath;
   }
