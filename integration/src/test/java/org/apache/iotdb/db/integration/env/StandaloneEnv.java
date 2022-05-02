@@ -23,6 +23,9 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -32,6 +35,7 @@ import static org.junit.Assert.fail;
 
 /** This class is used by org.apache.iotdb.integration.env.EnvFactory with using reflection. */
 public class StandaloneEnv implements BaseEnv {
+  Logger logger = LoggerFactory.getLogger(StandaloneEnv.class);
 
   private Connection connection;
 
@@ -42,12 +46,7 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public void cleanAfterClass() {
-    try {
-      EnvironmentUtils.cleanEnv();
-    } catch (Exception e) {
-      e.printStackTrace();
-      System.exit(-1);
-    }
+    cleanAfterTest();
   }
 
   @Override
@@ -58,6 +57,15 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public void cleanAfterTest() {
+    if (connection != null) {
+      try {
+        connection.close();
+      } catch (SQLException e) {
+        //we can do nothing for test, but it should be checked why...
+        logger.warn("close connection failed, should check if there is errors in UT/ITs");
+      }
+      connection = null;
+    }
     try {
       EnvironmentUtils.cleanEnv();
     } catch (Exception e) {
@@ -68,7 +76,7 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public Connection getConnection() throws SQLException {
-    if (connection == null) {
+    if (connection == null || connection.isClosed()) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
         connection =
@@ -84,7 +92,7 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
-    if (connection == null) {
+    if (connection == null  || connection.isClosed()) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
         connection =
