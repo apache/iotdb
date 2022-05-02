@@ -540,14 +540,25 @@ public class LocalConfigNode {
   public SchemaRegionId getBelongedSchemaRegionId(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
     SchemaRegionId schemaRegionId = schemaPartitionTable.getSchemaRegionId(storageGroup, path);
+    // Since the creation of storageGroup, schemaRegionId and schemaRegion is not atomic or locked,
+    // any access concurrent with this creation may get null.
+    // Thread A: create sg, allocate schemaRegionId, create schemaRegion
+    // Thread B: access sg, access partitionTable to get schemaRegionId, access schemaEngine to get
+    // schemaRegion
+    // When A and B are running concurrently, B may get null while getting schemaRegionId or
+    // schemaRegion.
     if (schemaRegionId == null) {
       throw new MetadataException(
-          String.format("Storage group %s has not been prepared well.", storageGroup));
+          String.format(
+              "Storage group %s has not been prepared well. Schema region for %s has not been allocated or is not initialized.",
+              storageGroup, path));
     }
     ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
     if (schemaRegion == null) {
       throw new MetadataException(
-          String.format("Storage group %s has not been prepared well.", storageGroup));
+          String.format(
+              "Storage group [%s] has not been prepared well. Schema region [%s] is not initialized.",
+              storageGroup, schemaRegionId));
     }
     return schemaRegionId;
   }
