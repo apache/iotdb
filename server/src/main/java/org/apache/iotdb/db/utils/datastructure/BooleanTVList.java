@@ -217,7 +217,7 @@ public class BooleanTVList extends TVList {
       List<TimeRange> deletionList) {
     Integer deleteCursor = 0;
     for (int i = 0; i < rowCount; i++) {
-      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)) {
+      if (pointNotDeleted(getTime(i), deletionList, deleteCursor)) {
         valueBuilder.writeBoolean(getBoolean(i));
       }
     }

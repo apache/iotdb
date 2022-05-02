@@ -97,9 +97,9 @@ public abstract class TVList implements WALEntryValue {
     // value array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
     // two array headers mem size
-    size += NUM_BYTES_ARRAY_HEADER * 2;
+    size += NUM_BYTES_ARRAY_HEADER * 2L;
     // Object references size in ArrayList
-    size += NUM_BYTES_OBJECT_REF * 2;
+    size += NUM_BYTES_OBJECT_REF * 2L;
     return size;
   }
 
@@ -210,10 +210,6 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public Object getAlignedValue(int index) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public Object getAlignedValue(int index, Integer floatPrecision, TSEncoding encoding) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -492,10 +488,6 @@ public abstract class TVList implements WALEntryValue {
     }
   }
 
-  void updateMinTimeAndSorted(long[] time) {
-    updateMinTimeAndSorted(time, 0, time.length);
-  }
-
   void updateMinTimeAndSorted(long[] time, int start, int end) {
     int length = time.length;
     long inPutMinTime = Long.MAX_VALUE;
@@ -516,14 +508,6 @@ public abstract class TVList implements WALEntryValue {
   protected abstract TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding);
 
-  public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
-      List<Integer> timeDuplicatedVectorRowIndexList,
-      long time,
-      Integer floatPrecision,
-      TSEncoding encoding) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
   public TsBlock getTsBlock(int floatPrecision, TSEncoding encoding, List<TimeRange> deletionList) {
     if (deletionList == null) {
       return this.getTsBlockWithoutDeletionList(floatPrecision, encoding);
@@ -533,7 +517,7 @@ public abstract class TVList implements WALEntryValue {
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     for (int i = 0; i < rowCount; i++) {
-      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)) {
+      if (pointNotDeleted(getTime(i), deletionList, deleteCursor)) {
         timeBuilder.writeLong(this.getTime(i));
       }
     }
@@ -572,18 +556,18 @@ public abstract class TVList implements WALEntryValue {
       TSEncoding encoding,
       List<TimeRange> deletionList);
 
-  protected boolean isPointDeleted(
+  protected boolean pointNotDeleted(
       long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
     while (deleteCursor < deletionList.size()) {
       if (deletionList.get(deleteCursor).contains(timestamp)) {
-        return true;
+        return false;
       } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
         deleteCursor++;
       } else {
-        return false;
+        return true;
       }
     }
-    return false;
+    return true;
   }
 
   public abstract TSDataType getDataType();
