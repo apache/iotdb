@@ -48,7 +48,7 @@ public class SchemaValidator {
               insertNode.isAligned());
     }
 
-    if (!insertNode.validateSchema(schemaTree)) {
+    if (!insertNode.validateAndSetSchema(schemaTree)) {
       throw new SemanticException("Data type mismatch");
     }
 

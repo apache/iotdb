@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
@@ -38,9 +37,12 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public abstract class InsertNode extends WritePlanNode {
 
@@ -56,6 +58,9 @@ public abstract class InsertNode extends WritePlanNode {
   protected TSDataType[] dataTypes;
   // TODO(INSERT) need to change it to a function handle to update last time value
   //  protected IMeasurementMNode[] measurementMNodes;
+
+  /** index of failed measurements -> info including measurement, data type and value */
+  protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
 
   /**
    * device id reference, for reuse device id in both id table and memtable <br>
@@ -192,33 +197,89 @@ public abstract class InsertNode extends WritePlanNode {
     return dataRegionReplicaSet;
   }
 
-  public abstract boolean validateSchema(SchemaTree schemaTree);
+  public abstract boolean validateAndSetSchema(SchemaTree schemaTree);
 
-  public void setMeasurementSchemas(SchemaTree schemaTree) {
-    DeviceSchemaInfo deviceSchemaInfo =
-        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    measurementSchemas =
-        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
+  // region partial insert
+  /**
+   * Mark failed measurement, measurements[index], dataTypes[index] and values/columns[index] would
+   * be null. We'd better use "measurements[index] == null" to determine if the measurement failed.
+   * <br>
+   * This method is not concurrency-safe.
+   *
+   * @param index failed measurement index
+   * @param cause cause Exception of failure
+   */
+  public void markFailedMeasurement(int index, Exception cause) {
+    throw new UnsupportedOperationException();
   }
 
   /**
-   * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed
-   * measurements, the failed values or columns would be null as well. We'd better use
-   * "measurements[index] == null" to determine if the measurement failed.
-   *
-   * @param index failed measurement index
+   * Clear failed measurements as if no failures had ever happened. <br>
+   * This method is not concurrency-safe.
    */
-  public void markFailedMeasurementInsertion(int index, Exception e) {
-    // todo partial insert
-    if (measurements[index] == null) {
-      return;
-    }
-    //    if (failedMeasurements == null) {
-    //      failedMeasurements = new ArrayList<>();
-    //    }
-    //    failedMeasurements.add(measurements[index]);
-    measurements[index] = null;
+  public abstract void clearFailedMeasurements();
+
+  /**
+   * Construct a new insert node with the failed measurements.
+   *
+   * @return null if this node doesn't have failed measurements
+   */
+  public abstract InsertNode constructFailedPlanNode();
+
+  public boolean hasFailedMeasurements() {
+    return failedMeasurementIndex2Info != null && !failedMeasurementIndex2Info.isEmpty();
   }
+
+  public int getFailedMeasurementNumber() {
+    return failedMeasurementIndex2Info == null ? 0 : failedMeasurementIndex2Info.size();
+  }
+
+  public List<String> getFailedMeasurements() {
+    return failedMeasurementIndex2Info == null
+        ? Collections.emptyList()
+        : failedMeasurementIndex2Info.values().stream()
+            .map(info -> info.measurement)
+            .collect(Collectors.toList());
+  }
+
+  public List<Exception> getFailedExceptions() {
+    return failedMeasurementIndex2Info == null
+        ? Collections.emptyList()
+        : failedMeasurementIndex2Info.values().stream()
+            .map(info -> info.cause)
+            .collect(Collectors.toList());
+  }
+
+  public List<String> getFailedMessages() {
+    return failedMeasurementIndex2Info == null
+        ? Collections.emptyList()
+        : failedMeasurementIndex2Info.values().stream()
+            .map(
+                info -> {
+                  Throwable cause = info.cause;
+                  while (cause.getCause() != null) {
+                    cause = cause.getCause();
+                  }
+                  return cause.getMessage();
+                })
+            .collect(Collectors.toList());
+  }
+
+  protected static class FailedMeasurementInfo {
+    protected String measurement;
+    protected TSDataType dataType;
+    protected Object value;
+    protected Exception cause;
+
+    public FailedMeasurementInfo(
+        String measurement, TSDataType dataType, Object value, Exception cause) {
+      this.measurement = measurement;
+      this.dataType = dataType;
+      this.value = value;
+      this.cause = cause;
+    }
+  }
+  // endregion
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {

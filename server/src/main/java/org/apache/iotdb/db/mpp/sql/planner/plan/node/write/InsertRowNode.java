@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -159,7 +160,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean validateSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(SchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
 
@@ -172,17 +173,16 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         return false;
       }
     } else {
-      // todo partial insert
       if (deviceSchemaInfo.isAligned() != isAligned) {
         return false;
       }
 
       for (int i = 0; i < measurementSchemas.size(); i++) {
         if (dataTypes[i] != measurementSchemas.get(i).getType()) {
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             return false;
           } else {
-            markFailedMeasurementInsertion(
+            markFailedMeasurement(
                 i,
                 new DataTypeMismatchException(
                     devicePath.getFullPath(),
@@ -194,22 +194,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       }
     }
 
-    // filter failed measurements
-    measurements = Arrays.stream(measurements).filter(Objects::nonNull).toArray(String[]::new);
-    dataTypes = Arrays.stream(dataTypes).filter(Objects::nonNull).toArray(TSDataType[]::new);
-    values = Arrays.stream(values).filter(Objects::nonNull).toArray(Object[]::new);
-
+    this.measurementSchemas = measurementSchemas.toArray(new MeasurementSchema[0]);
     return true;
-  }
-
-  @Override
-  public void markFailedMeasurementInsertion(int index, Exception e) {
-    if (measurements[index] == null) {
-      return;
-    }
-    super.markFailedMeasurementInsertion(index, e);
-    values[index] = null;
-    dataTypes[index] = null;
   }
 
   /**
@@ -223,7 +209,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       for (int i = 0; i < measurementSchemas.size(); i++) {
         if (measurementSchemas.get(i) == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(
+            markFailedMeasurement(
                 i,
                 new QueryProcessException(
                     new PathNotExistException(
@@ -249,7 +235,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
               values[i],
               dataTypes[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i, e);
+            markFailedMeasurement(i, e);
           } else {
             throw e;
           }
@@ -257,6 +243,69 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       }
       isNeedInferType = false;
     }
+  }
+
+  @Override
+  public void markFailedMeasurement(int index, Exception cause) {
+    if (measurements[index] == null) {
+      return;
+    }
+
+    if (failedMeasurementIndex2Info == null) {
+      failedMeasurementIndex2Info = new HashMap<>();
+    }
+
+    FailedMeasurementInfo failedMeasurementInfo =
+        new FailedMeasurementInfo(measurements[index], dataTypes[index], values[index], cause);
+    failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
+
+    measurements[index] = null;
+    dataTypes[index] = null;
+    values[index] = null;
+  }
+
+  @Override
+  public void clearFailedMeasurements() {
+    if (failedMeasurementIndex2Info == null) {
+      return;
+    }
+
+    for (int index : failedMeasurementIndex2Info.keySet()) {
+      FailedMeasurementInfo info = failedMeasurementIndex2Info.get(index);
+      measurements[index] = info.measurement;
+      dataTypes[index] = info.dataType;
+      values[index] = info.value;
+    }
+
+    failedMeasurementIndex2Info = null;
+  }
+
+  @Override
+  public InsertNode constructFailedPlanNode() {
+    if (failedMeasurementIndex2Info == null) {
+      return null;
+    }
+
+    String[] tmpMeasurements = new String[failedMeasurementIndex2Info.size()];
+    TSDataType[] tmpDataTypes = new TSDataType[failedMeasurementIndex2Info.size()];
+    Object[] tmpValues = new Object[failedMeasurementIndex2Info.size()];
+    int index = 0;
+    for (FailedMeasurementInfo info : failedMeasurementIndex2Info.values()) {
+      tmpMeasurements[index] = info.measurement;
+      tmpDataTypes[index] = info.dataType;
+      tmpValues[index] = info.value;
+      index++;
+    }
+
+    return new InsertRowNode(
+        getPlanNodeId(),
+        devicePath,
+        isAligned,
+        tmpMeasurements,
+        tmpDataTypes,
+        time,
+        tmpValues,
+        isNeedInferType);
   }
 
   @Override

@@ -103,9 +103,9 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   public void addChild(PlanNode child) {}
 
   @Override
-  public boolean validateSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(SchemaTree schemaTree) {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      if (!insertRowNode.validateSchema(schemaTree)) {
+      if (!insertRowNode.validateAndSetSchema(schemaTree)) {
         return false;
       }
     }
@@ -113,10 +113,28 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   }
 
   @Override
-  public void setMeasurementSchemas(SchemaTree schemaTree) {
+  public void clearFailedMeasurements() {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.setMeasurementSchemas(schemaTree);
+      insertRowNode.clearFailedMeasurements();
     }
+  }
+
+  @Override
+  public InsertNode constructFailedPlanNode() {
+    InsertRowsNode insertRowsNode = null;
+
+    for (int i = 0; i < insertRowNodeList.size(); i++) {
+      InsertRowNode failedInsertRowNode =
+          (InsertRowNode) insertRowNodeList.get(i).constructFailedPlanNode();
+      if (failedInsertRowNode != null) {
+        if (insertRowsNode == null) {
+          insertRowsNode = new InsertRowsNode(getPlanNodeId());
+        }
+        insertRowsNode.addOneInsertRowNode(failedInsertRowNode, insertRowNodeIndexList.get(i));
+      }
+    }
+
+    return insertRowsNode;
   }
 
   @Override

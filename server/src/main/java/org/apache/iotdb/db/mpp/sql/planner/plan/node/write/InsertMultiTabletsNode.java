@@ -117,13 +117,39 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  public boolean validateSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(SchemaTree schemaTree) {
     for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      if (!insertTabletNode.validateSchema(schemaTree)) {
+      if (!insertTabletNode.validateAndSetSchema(schemaTree)) {
         return false;
       }
     }
     return true;
+  }
+
+  @Override
+  public void clearFailedMeasurements() {
+    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
+      insertTabletNode.clearFailedMeasurements();
+    }
+  }
+
+  @Override
+  public InsertNode constructFailedPlanNode() {
+    InsertMultiTabletsNode insertMultiTabletsNode = null;
+
+    for (int i = 0; i < insertTabletNodeList.size(); i++) {
+      InsertTabletNode failedInsertTabletNode =
+          (InsertTabletNode) insertTabletNodeList.get(i).constructFailedPlanNode();
+      if (failedInsertTabletNode != null) {
+        if (insertMultiTabletsNode == null) {
+          insertMultiTabletsNode = new InsertMultiTabletsNode(getPlanNodeId());
+        }
+        insertMultiTabletsNode.addInsertTabletNode(
+            failedInsertTabletNode, parentInsertTabletNodeIndexList.get(i));
+      }
+    }
+
+    return insertMultiTabletsNode;
   }
 
   @Override
@@ -177,13 +203,6 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   @Override
   public List<String> getOutputColumnNames() {
     return null;
-  }
-
-  @Override
-  public void setMeasurementSchemas(SchemaTree schemaTree) {
-    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      insertTabletNode.setMeasurementSchemas(schemaTree);
-    }
   }
 
   @Override

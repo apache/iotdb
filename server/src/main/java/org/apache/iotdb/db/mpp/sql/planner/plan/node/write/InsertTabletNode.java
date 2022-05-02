@@ -163,11 +163,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean validateSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(SchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
 
-    // todo partial insert
     if (deviceSchemaInfo.isAligned() != isAligned) {
       return false;
     }
@@ -178,7 +177,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           return false;
         } else {
-          markFailedMeasurementInsertion(
+          markFailedMeasurement(
               i,
               new DataTypeMismatchException(
                   devicePath.getFullPath(),
@@ -189,11 +188,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       }
     }
 
-    // filter failed measurements
-    measurements = Arrays.stream(measurements).filter(Objects::nonNull).toArray(String[]::new);
-    dataTypes = Arrays.stream(dataTypes).filter(Objects::nonNull).toArray(TSDataType[]::new);
-    columns = Arrays.stream(columns).filter(Objects::nonNull).toArray(Object[]::new);
-
+    this.measurementSchemas = measurementSchemas.toArray(new MeasurementSchema[0]);
     return true;
   }
 
@@ -294,14 +289,72 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public void markFailedMeasurementInsertion(int index, Exception e) {
+  public void markFailedMeasurement(int index, Exception cause) {
     if (measurements[index] == null) {
       return;
     }
-    super.markFailedMeasurementInsertion(index, e);
+
+    if (failedMeasurementIndex2Info == null) {
+      failedMeasurementIndex2Info = new HashMap<>();
+    }
+
+    FailedMeasurementInfo failedMeasurementInfo =
+        new FailedMeasurementInfo(measurements[index], dataTypes[index], columns[index], cause);
+    failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
+
+    measurements[index] = null;
     dataTypes[index] = null;
     columns[index] = null;
-    bitMaps[index] = null;
+  }
+
+  @Override
+  public void clearFailedMeasurements() {
+    if (failedMeasurementIndex2Info == null) {
+      return;
+    }
+
+    for (int index : failedMeasurementIndex2Info.keySet()) {
+      FailedMeasurementInfo info = failedMeasurementIndex2Info.get(index);
+      measurements[index] = info.measurement;
+      dataTypes[index] = info.dataType;
+      columns[index] = info.value;
+    }
+
+    failedMeasurementIndex2Info = null;
+  }
+
+  @Override
+  public InsertNode constructFailedPlanNode() {
+    if (failedMeasurementIndex2Info == null) {
+      return null;
+    }
+
+    String[] tmpMeasurements = new String[failedMeasurementIndex2Info.size()];
+    TSDataType[] tmpDataTypes = new TSDataType[failedMeasurementIndex2Info.size()];
+    Object[] tmpColumns = new Object[failedMeasurementIndex2Info.size()];
+    BitMap[] tmpBitMaps = bitMaps == null ? null : new BitMap[failedMeasurementIndex2Info.size()];
+    int index = 0;
+    for (int failedIndex : failedMeasurementIndex2Info.keySet()) {
+      FailedMeasurementInfo info = failedMeasurementIndex2Info.get(failedIndex);
+      tmpMeasurements[index] = info.measurement;
+      tmpDataTypes[index] = info.dataType;
+      tmpColumns[index] = info.value;
+      if (bitMaps != null && tmpBitMaps != null) {
+        tmpBitMaps[index] = bitMaps[failedIndex];
+      }
+      index++;
+    }
+
+    return new InsertTabletNode(
+        getPlanNodeId(),
+        devicePath,
+        isAligned,
+        tmpMeasurements,
+        tmpDataTypes,
+        times,
+        tmpBitMaps,
+        tmpColumns,
+        rowCount);
   }
 
   @Override
