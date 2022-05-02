@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -508,12 +509,17 @@ public abstract class TVList implements WALEntryValue {
   protected abstract TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding);
 
+  @TestOnly
+  public TsBlock getTsBlock() {
+    return getTsBlock(0, TSEncoding.PLAIN, null);
+  }
+
   public TsBlock getTsBlock(int floatPrecision, TSEncoding encoding, List<TimeRange> deletionList) {
-    Integer deleteCursor = 0;
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     int validRowCount = 0;
+    Integer deleteCursor = 0;
     for (int i = 0; i < rowCount; i++) {
       if (isPointNotDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {

@@ -70,6 +70,25 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
+  public void memSeriesSortIteratorTest() throws IOException {
+    TSDataType dataType = TSDataType.INT32;
+    WritableMemChunk series =
+        new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN));
+    int count = 1000;
+    for (int i = 0; i < count; i++) {
+      series.write(i, i);
+    }
+    IPointReader it =
+        series.getSortedTvListForQuery().getTsBlock().getTsBlockSingleColumnIterator();
+    int i = 0;
+    while (it.hasNextTimeValuePair()) {
+      Assert.assertEquals(i, it.nextTimeValuePair().getTimestamp());
+      i++;
+    }
+    Assert.assertEquals(count, i);
+  }
+
+  @Test
   public void memSeriesToStringTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
