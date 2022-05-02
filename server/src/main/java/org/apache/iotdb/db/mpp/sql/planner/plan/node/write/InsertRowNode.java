@@ -265,50 +265,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public void clearFailedMeasurements() {
-    if (failedMeasurementIndex2Info == null) {
-      return;
-    }
-
-    for (int index : failedMeasurementIndex2Info.keySet()) {
-      FailedMeasurementInfo info = failedMeasurementIndex2Info.get(index);
-      measurements[index] = info.measurement;
-      dataTypes[index] = info.dataType;
-      values[index] = info.value;
-    }
-
-    failedMeasurementIndex2Info = null;
-  }
-
-  @Override
-  public InsertNode constructFailedPlanNode() {
-    if (failedMeasurementIndex2Info == null) {
-      return null;
-    }
-
-    String[] tmpMeasurements = new String[failedMeasurementIndex2Info.size()];
-    TSDataType[] tmpDataTypes = new TSDataType[failedMeasurementIndex2Info.size()];
-    Object[] tmpValues = new Object[failedMeasurementIndex2Info.size()];
-    int index = 0;
-    for (FailedMeasurementInfo info : failedMeasurementIndex2Info.values()) {
-      tmpMeasurements[index] = info.measurement;
-      tmpDataTypes[index] = info.dataType;
-      tmpValues[index] = info.value;
-      index++;
-    }
-
-    return new InsertRowNode(
-        getPlanNodeId(),
-        devicePath,
-        isAligned,
-        tmpMeasurements,
-        tmpDataTypes,
-        time,
-        tmpValues,
-        isNeedInferType);
-  }
-
-  @Override
   public int serializedSize() {
     int size = 0;
     size += Short.BYTES;

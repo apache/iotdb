@@ -148,37 +148,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
-  public void clearFailedMeasurements() {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.clearFailedMeasurements();
-    }
-  }
-
-  @Override
-  public InsertNode constructFailedPlanNode() {
-    List<InsertRowNode> insertRowNodes = new ArrayList<>();
-    List<Integer> insertRowNodeIndexes = new ArrayList<>();
-    for (int i = 0; i < insertRowNodeList.size(); i++) {
-      InsertRowNode failedInsertRowNode =
-          (InsertRowNode) insertRowNodeList.get(i).constructFailedPlanNode();
-      if (failedInsertRowNode != null) {
-        insertRowNodes.add(insertRowNodeList.get(i));
-        insertRowNodeIndexes.add(insertRowNodeIndexList.get(i));
-      }
-    }
-
-    InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode;
-    if (insertRowNodes.isEmpty()) {
-      insertRowsOfOneDeviceNode = null;
-    } else {
-      insertRowsOfOneDeviceNode = new InsertRowsOfOneDeviceNode(getPlanNodeId());
-      insertRowsOfOneDeviceNode.setInsertRowNodeList(insertRowNodes);
-      insertRowsOfOneDeviceNode.setInsertRowNodeIndexList(insertRowNodeIndexes);
-    }
-    return insertRowsOfOneDeviceNode;
-  }
-
-  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     List<WritePlanNode> result = new ArrayList<>();
 

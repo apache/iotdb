@@ -113,31 +113,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   }
 
   @Override
-  public void clearFailedMeasurements() {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.clearFailedMeasurements();
-    }
-  }
-
-  @Override
-  public InsertNode constructFailedPlanNode() {
-    InsertRowsNode insertRowsNode = null;
-
-    for (int i = 0; i < insertRowNodeList.size(); i++) {
-      InsertRowNode failedInsertRowNode =
-          (InsertRowNode) insertRowNodeList.get(i).constructFailedPlanNode();
-      if (failedInsertRowNode != null) {
-        if (insertRowsNode == null) {
-          insertRowsNode = new InsertRowsNode(getPlanNodeId());
-        }
-        insertRowsNode.addOneInsertRowNode(failedInsertRowNode, insertRowNodeIndexList.get(i));
-      }
-    }
-
-    return insertRowsNode;
-  }
-
-  @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;

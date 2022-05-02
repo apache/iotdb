@@ -127,32 +127,6 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  public void clearFailedMeasurements() {
-    for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
-      insertTabletNode.clearFailedMeasurements();
-    }
-  }
-
-  @Override
-  public InsertNode constructFailedPlanNode() {
-    InsertMultiTabletsNode insertMultiTabletsNode = null;
-
-    for (int i = 0; i < insertTabletNodeList.size(); i++) {
-      InsertTabletNode failedInsertTabletNode =
-          (InsertTabletNode) insertTabletNodeList.get(i).constructFailedPlanNode();
-      if (failedInsertTabletNode != null) {
-        if (insertMultiTabletsNode == null) {
-          insertMultiTabletsNode = new InsertMultiTabletsNode(getPlanNodeId());
-        }
-        insertMultiTabletsNode.addInsertTabletNode(
-            failedInsertTabletNode, parentInsertTabletNodeIndexList.get(i));
-      }
-    }
-
-    return insertMultiTabletsNode;
-  }
-
-  @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     Map<TRegionReplicaSet, InsertMultiTabletsNode> splitMap = new HashMap<>();
     for (int i = 0; i < insertTabletNodeList.size(); i++) {

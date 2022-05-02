@@ -213,19 +213,6 @@ public abstract class InsertNode extends WritePlanNode {
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * Clear failed measurements as if no failures had ever happened. <br>
-   * This method is not concurrency-safe.
-   */
-  public abstract void clearFailedMeasurements();
-
-  /**
-   * Construct a new insert node with the failed measurements.
-   *
-   * @return null if this node doesn't have failed measurements
-   */
-  public abstract InsertNode constructFailedPlanNode();
-
   public boolean hasFailedMeasurements() {
     return failedMeasurementIndex2Info != null && !failedMeasurementIndex2Info.isEmpty();
   }

@@ -308,56 +308,6 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public void clearFailedMeasurements() {
-    if (failedMeasurementIndex2Info == null) {
-      return;
-    }
-
-    for (int index : failedMeasurementIndex2Info.keySet()) {
-      FailedMeasurementInfo info = failedMeasurementIndex2Info.get(index);
-      measurements[index] = info.measurement;
-      dataTypes[index] = info.dataType;
-      columns[index] = info.value;
-    }
-
-    failedMeasurementIndex2Info = null;
-  }
-
-  @Override
-  public InsertNode constructFailedPlanNode() {
-    if (failedMeasurementIndex2Info == null) {
-      return null;
-    }
-
-    String[] tmpMeasurements = new String[failedMeasurementIndex2Info.size()];
-    TSDataType[] tmpDataTypes = new TSDataType[failedMeasurementIndex2Info.size()];
-    Object[] tmpColumns = new Object[failedMeasurementIndex2Info.size()];
-    BitMap[] tmpBitMaps = bitMaps == null ? null : new BitMap[failedMeasurementIndex2Info.size()];
-    int index = 0;
-    for (int failedIndex : failedMeasurementIndex2Info.keySet()) {
-      FailedMeasurementInfo info = failedMeasurementIndex2Info.get(failedIndex);
-      tmpMeasurements[index] = info.measurement;
-      tmpDataTypes[index] = info.dataType;
-      tmpColumns[index] = info.value;
-      if (bitMaps != null && tmpBitMaps != null) {
-        tmpBitMaps[index] = bitMaps[failedIndex];
-      }
-      index++;
-    }
-
-    return new InsertTabletNode(
-        getPlanNodeId(),
-        devicePath,
-        isAligned,
-        tmpMeasurements,
-        tmpDataTypes,
-        times,
-        tmpBitMaps,
-        tmpColumns,
-        rowCount);
-  }
-
-  @Override
   public int serializedSize() {
     return serializedSize(0, rowCount);
   }
