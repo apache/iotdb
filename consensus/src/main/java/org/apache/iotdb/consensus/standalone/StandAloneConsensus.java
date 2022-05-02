@@ -86,7 +86,7 @@ class StandAloneConsensus implements IConsensus {
           String[] items = path.getFileName().toString().split("_");
           ConsensusGroupId consensusGroupId =
               ConsensusGroupId.Factory.create(
-                  TConsensusGroupType.valueOf(items[0]), Integer.parseInt(items[1]));
+                  TConsensusGroupType.valueOf(items[0]).getValue(), Integer.parseInt(items[1]));
           TEndPoint endPoint = new TEndPoint(items[2], Integer.parseInt(items[3]));
           stateMachineMap.put(
               consensusGroupId,

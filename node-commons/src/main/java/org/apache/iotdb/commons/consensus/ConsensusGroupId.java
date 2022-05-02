@@ -61,27 +61,24 @@ public abstract class ConsensusGroupId {
 
   public static class Factory {
 
-    public static ConsensusGroupId create(TConsensusGroupType type, int id) {
+    public static ConsensusGroupId create(int type, int id) {
       ConsensusGroupId groupId;
-      switch (type) {
-        case DataRegion:
-          groupId = new DataRegionId(id);
-          break;
-        case SchemaRegion:
-          groupId = new SchemaRegionId(id);
-          break;
-        case PartitionRegion:
-          groupId = new PartitionRegionId(id);
-          break;
-        default:
-          throw new IllegalArgumentException("unrecognized id type " + id);
+      if (type == TConsensusGroupType.DataRegion.getValue()) {
+        groupId = new DataRegionId(id);
+      } else if (type == TConsensusGroupType.SchemaRegion.getValue()) {
+        groupId = new SchemaRegionId(id);
+      } else if (type == TConsensusGroupType.PartitionRegion.getValue()) {
+        groupId = new PartitionRegionId(id);
+      } else {
+        throw new IllegalArgumentException(
+            "Unrecognized TConsensusGroupType: " + type + " with id = " + id);
       }
       return groupId;
     }
 
     public static ConsensusGroupId createFromTConsensusGroupId(
         TConsensusGroupId tConsensusGroupId) {
-      return create(tConsensusGroupId.getType(), tConsensusGroupId.getId());
+      return create(tConsensusGroupId.getType().getValue(), tConsensusGroupId.getId());
     }
   }
 }
