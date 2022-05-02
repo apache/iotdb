@@ -19,18 +19,22 @@
 
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -38,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class CreateAlignedTimeSeriesNode extends PlanNode {
+public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   private PartialPath devicePath;
   private List<String> measurements;
   private List<TSDataType> dataTypes;
@@ -48,6 +52,7 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
   private List<Long> tagOffsets;
+  private TRegionReplicaSet regionReplicaSet;
 
   public CreateAlignedTimeSeriesNode(
       PlanNodeId id,
@@ -144,7 +149,7 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return new ArrayList<>();
   }
 
   @Override
@@ -161,17 +166,7 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return null;
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
     return null;
   }
 
@@ -365,10 +360,20 @@ public class CreateAlignedTimeSeriesNode extends PlanNode {
         attributesList);
   }
 
-  //  @Override
-  //  public void executeOn(SchemaRegion schemaRegion) throws MetadataException {
-  //    schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan)
-  // transferToPhysicalPlan());
-  //  }
+  @Override
+  public TRegionReplicaSet getRegionReplicaSet() {
+    return regionReplicaSet;
+  }
 
+  public void setRegionReplicaSet(TRegionReplicaSet regionReplicaSet) {
+    this.regionReplicaSet = regionReplicaSet;
+  }
+
+  @Override
+  public List<WritePlanNode> splitByPartition(Analysis analysis) {
+    TRegionReplicaSet regionReplicaSet =
+        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(devicePath.getFullPath());
+    setRegionReplicaSet(regionReplicaSet);
+    return ImmutableList.of(this);
+  }
 }

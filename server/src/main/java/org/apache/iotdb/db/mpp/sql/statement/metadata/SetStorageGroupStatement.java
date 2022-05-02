@@ -26,6 +26,9 @@ import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
+import java.util.Collections;
+import java.util.List;
+
 public class SetStorageGroupStatement extends Statement implements IConfigStatement {
   private PartialPath storageGroupPath;
 
@@ -50,5 +53,12 @@ public class SetStorageGroupStatement extends Statement implements IConfigStatem
   @Override
   public QueryType getQueryType() {
     return QueryType.WRITE;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return storageGroupPath != null
+        ? Collections.singletonList(storageGroupPath)
+        : Collections.emptyList();
   }
 }

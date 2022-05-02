@@ -119,10 +119,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
     }
     DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(9, processor.getPartitionMaxFileVersions(0));
+    assertEquals(10, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < loadedFiles.size(); i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
@@ -163,10 +163,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
       }
       DataRegion processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-      assertEquals(9, processor.getPartitionMaxFileVersions(0));
+      assertEquals(10, processor.getPartitionMaxFileVersions(0));
       List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(tsFileResources.size(), loadedFiles.size());
-      for (int i = 0; i < 9; i++) {
+      for (int i = 0; i < loadedFiles.size(); i++) {
         assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
       }
       assertEquals(0, processor.getUnSequenceFileList().size());
@@ -213,10 +213,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
     }
     DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(9, processor.getPartitionMaxFileVersions(0));
+    assertEquals(10, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < loadedFiles.size(); i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
       ModificationFile modFile = loadedFiles.get(i).getModFile();
       assertTrue(modFile.exists());
@@ -253,10 +253,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
     for (int j = 0; j < 10; j++) {
       DataRegion processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(j)));
-      assertEquals(9, processor.getPartitionMaxFileVersions(0));
+      assertEquals(10, processor.getPartitionMaxFileVersions(0));
       List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(10, loadedFiles.size());
-      for (int i = 0; i < 9; i++) {
+      for (int i = 0; i < loadedFiles.size(); i++) {
         assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
       }
       assertEquals(0, processor.getUnSequenceFileList().size());
@@ -299,10 +299,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
     }
     DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(10, processor.getPartitionMaxFileVersions(0));
+    assertEquals(11, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < loadedFiles.size(); i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(1, processor.getUnSequenceFileList().size());

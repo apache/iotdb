@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -69,8 +70,8 @@ public class CompactionTaskManager implements IService {
       new FixedPriorityBlockingQueue<>(1024, new DefaultCompactionTaskComparatorImpl());
   // <fullStorageGroupName,futureSet>, it is used to store all compaction tasks under each
   // virtualStorageGroup
-  private Map<String, Map<AbstractCompactionTask, Future<Void>>> storageGroupTasks =
-      new HashMap<>();
+  private Map<String, Map<AbstractCompactionTask, Future<CompactionTaskSummary>>>
+      storageGroupTasks = new HashMap<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
   // candidateCompactionTaskQueue to taskExecutionPool. The default number of threads for this pool
@@ -124,7 +125,7 @@ public class CompactionTaskManager implements IService {
   }
 
   @Override
-  public synchronized void stop() {
+  public void stop() {
     if (taskExecutionPool != null) {
       taskExecutionPool.shutdownNow();
       compactionTaskSubmissionThreadPool.shutdownNow();
@@ -136,24 +137,24 @@ public class CompactionTaskManager implements IService {
   }
 
   @Override
-  public synchronized void waitAndStop(long milliseconds) {
+  public void waitAndStop(long milliseconds) {
     if (taskExecutionPool != null) {
       awaitTermination(taskExecutionPool, milliseconds);
       awaitTermination(compactionTaskSubmissionThreadPool, milliseconds);
-      logger.info("Waiting for task taskExecutionPool to shut down");
+      logger.info("Waiting for task taskExecutionPool to shut down in {} ms", milliseconds);
       waitTermination();
       storageGroupTasks.clear();
     }
   }
 
   @TestOnly
-  public synchronized void waitAllCompactionFinish() {
+  public void waitAllCompactionFinish() {
     long sleepingStartTime = 0;
     if (taskExecutionPool != null) {
       while (taskExecutionPool.getActiveCount() > 0 || taskExecutionPool.getQueue().size() > 0) {
         // wait
         try {
-          this.wait(200);
+          Thread.sleep(200);
           sleepingStartTime += 200;
           if (sleepingStartTime % 10000 == 0) {
             logger.warn(
@@ -168,16 +169,17 @@ public class CompactionTaskManager implements IService {
         }
       }
       storageGroupTasks.clear();
+      candidateCompactionTaskQueue.clear();
       logger.info("All compaction task finish");
     }
   }
 
-  private synchronized void waitTermination() {
+  private void waitTermination() {
     long startTime = System.currentTimeMillis();
     while (!taskExecutionPool.isTerminated()) {
       int timeMillis = 0;
       try {
-        this.wait(200);
+        Thread.sleep(200);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -192,7 +194,7 @@ public class CompactionTaskManager implements IService {
     logger.info("CompactionManager stopped");
   }
 
-  private synchronized void awaitTermination(ExecutorService service, long milliseconds) {
+  private void awaitTermination(ExecutorService service, long milliseconds) {
     try {
       service.shutdown();
       service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
@@ -301,28 +303,28 @@ public class CompactionTaskManager implements IService {
   /**
    * This method will directly submit a task to thread pool if there is available thread.
    *
-   * @throws RejectedExecutionException
+   * @return the future of the task.
    */
-  public synchronized void submitTask(AbstractCompactionTask compactionTask)
-      throws RejectedExecutionException {
-    if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
-      Future<Void> future = taskExecutionPool.submit(compactionTask);
+  public synchronized Future<CompactionTaskSummary> submitTask(
+      AbstractCompactionTask compactionTask) throws RejectedExecutionException {
+    if (taskExecutionPool != null && !taskExecutionPool.isShutdown()) {
+      Future<CompactionTaskSummary> future = taskExecutionPool.submit(compactionTask);
       storageGroupTasks
           .computeIfAbsent(compactionTask.getFullStorageGroupName(), x -> new HashMap<>())
           .put(compactionTask, future);
-      return;
+      return future;
     }
     logger.warn(
         "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
         taskExecutionPool == null
             ? "taskExecutionPool is null"
             : "taskExecutionPool is terminated");
+    return null;
   }
 
   public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask) {
-    if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isTerminated()) {
-      Future<Void> future = subCompactionTaskExecutionPool.submit(subCompactionTask);
-      return future;
+    if (subCompactionTaskExecutionPool != null && !subCompactionTaskExecutionPool.isShutdown()) {
+      return subCompactionTaskExecutionPool.submit(subCompactionTask);
     }
     return null;
   }
@@ -336,7 +338,7 @@ public class CompactionTaskManager implements IService {
   public synchronized List<AbstractCompactionTask> abortCompaction(String storageGroupName) {
     List<AbstractCompactionTask> compactionTaskOfCurSG = new ArrayList<>();
     if (storageGroupTasks.containsKey(storageGroupName)) {
-      for (Map.Entry<AbstractCompactionTask, Future<Void>> taskFutureEntry :
+      for (Map.Entry<AbstractCompactionTask, Future<CompactionTaskSummary>> taskFutureEntry :
           storageGroupTasks.get(storageGroupName).entrySet()) {
         taskFutureEntry.getValue().cancel(true);
         compactionTaskOfCurSG.add(taskFutureEntry.getKey());
@@ -367,7 +369,8 @@ public class CompactionTaskManager implements IService {
 
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {
     List<AbstractCompactionTask> tasks = new ArrayList<>();
-    for (Map<AbstractCompactionTask, Future<Void>> taskFutureMap : storageGroupTasks.values()) {
+    for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskFutureMap :
+        storageGroupTasks.values()) {
       tasks.addAll(taskFutureMap.keySet());
     }
     return tasks;

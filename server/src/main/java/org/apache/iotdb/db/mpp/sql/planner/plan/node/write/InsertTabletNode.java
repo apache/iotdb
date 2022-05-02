@@ -21,12 +21,10 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.Analysis;
@@ -160,17 +158,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return null;
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
-    return null;
-  }
-
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
     return null;
   }
 
@@ -217,9 +205,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       return Collections.emptyList();
     }
     long startTime =
-        (times[0] / StorageEngine.getTimePartitionInterval())
-            * StorageEngine.getTimePartitionInterval(); // included
-    long endTime = startTime + StorageEngine.getTimePartitionInterval(); // excluded
+        (times[0] / StorageEngineV2.getTimePartitionInterval())
+            * StorageEngineV2.getTimePartitionInterval(); // included
+    long endTime = startTime + StorageEngineV2.getTimePartitionInterval(); // excluded
     TTimePartitionSlot timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[0]);
     int startLoc = 0; // included
 
@@ -236,8 +224,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
         startLoc = i;
         startTime = endTime;
         endTime =
-            (times[i] / StorageEngine.getTimePartitionInterval() + 1)
-                * StorageEngine.getTimePartitionInterval();
+            (times[i] / StorageEngineV2.getTimePartitionInterval() + 1)
+                * StorageEngineV2.getTimePartitionInterval();
         timePartitionSlot = StorageEngineV2.getTimePartitionSlot(times[i]);
       }
     }

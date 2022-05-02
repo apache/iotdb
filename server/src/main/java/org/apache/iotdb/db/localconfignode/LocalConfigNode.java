@@ -233,8 +233,11 @@ public class LocalConfigNode {
   public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
 
     DeleteTimeSeriesPlan deleteTimeSeriesPlan =
-        SchemaSyncManager.getInstance()
-            .splitDeleteTimeseriesPlanByDevice(storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+        SchemaSyncManager.getInstance().isEnableSync()
+            ? SchemaSyncManager.getInstance()
+                .splitDeleteTimeseriesPlanByDevice(
+                    storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD))
+            : null;
 
     deleteSchemaRegionsInStorageGroup(
         storageGroup, schemaPartitionTable.getSchemaRegionIdsByStorageGroup(storageGroup));

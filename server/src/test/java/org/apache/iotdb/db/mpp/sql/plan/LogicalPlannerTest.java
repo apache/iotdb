@@ -47,7 +47,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -63,7 +62,6 @@ import static org.junit.Assert.fail;
 public class LogicalPlannerTest {
 
   @Test
-  @Ignore // TODO: @zyk implement getBelongedStorageGroup() in SchemaTree
   public void testQueryPlan() {
     for (String sql : querySQLs) {
       Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
@@ -73,7 +71,8 @@ public class LogicalPlannerTest {
   @Test
   public void testCreateTimeseriesPlan() {
     String sql =
-        "CREATE TIMESERIES root.ln.wf01.wt01.status(状态) BOOLEAN ENCODING=PLAIN COMPRESSOR=SNAPPY TAGS(tag1=v1, tag2=v2) ATTRIBUTES(attr1=v1, attr2=v2)";
+        "CREATE TIMESERIES root.ln.wf01.wt01.status(状态) BOOLEAN ENCODING=PLAIN COMPRESSOR=SNAPPY "
+            + "TAGS('tag1'='v1', 'tag2'='v2') ATTRIBUTES('attr1'='v1', 'attr2'='v2')";
     try {
       CreateTimeSeriesNode createTimeSeriesNode = (CreateTimeSeriesNode) parseSQLToPlanNode(sql);
       Assert.assertNotNull(createTimeSeriesNode);
@@ -108,7 +107,7 @@ public class LogicalPlannerTest {
   @Test
   public void testCreateAlignedTimeseriesPlan() {
     String sql =
-        "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude(meter1) FLOAT encoding=PLAIN compressor=SNAPPY tags(tag1=t1) attributes(attr1=a1), longitude FLOAT encoding=PLAIN compressor=SNAPPY)";
+        "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude(meter1) FLOAT encoding=PLAIN compressor=SNAPPY tags('tag1'='t1') attributes('attr1'='a1'), longitude FLOAT encoding=PLAIN compressor=SNAPPY)";
     try {
       CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode =
           (CreateAlignedTimeSeriesNode) parseSQLToPlanNode(sql);
@@ -190,7 +189,7 @@ public class LogicalPlannerTest {
 
   @Test
   public void testAlterTimeseriesPlan() {
-    String sql = "ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1";
+    String sql = "ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'newTag1'";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
       Assert.assertNotNull(alterTimeSeriesNode);
@@ -218,7 +217,7 @@ public class LogicalPlannerTest {
       fail();
     }
 
-    sql = "ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1";
+    sql = "ALTER timeseries root.turbine.d1.s1 SET 'newTag1'='newV1', 'attr1'='newV1'";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
       Assert.assertNotNull(alterTimeSeriesNode);
@@ -247,7 +246,7 @@ public class LogicalPlannerTest {
       fail();
     }
 
-    sql = "ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2";
+    sql = "ALTER timeseries root.turbine.d1.s1 DROP 'tag1', 'tag2'";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
       Assert.assertNotNull(alterTimeSeriesNode);
@@ -276,7 +275,7 @@ public class LogicalPlannerTest {
       fail();
     }
 
-    sql = "ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4";
+    sql = "ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3'='v3', 'tag4'='v4'";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
       Assert.assertNotNull(alterTimeSeriesNode);
@@ -305,7 +304,7 @@ public class LogicalPlannerTest {
       fail();
     }
 
-    sql = "ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4";
+    sql = "ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3'='v3', 'attr4'='v4'";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
       Assert.assertNotNull(alterTimeSeriesNode);
@@ -335,7 +334,8 @@ public class LogicalPlannerTest {
     }
 
     sql =
-        "ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)";
+        "ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS='newAlias' "
+            + "TAGS('tag2'='newV2', 'tag3'='v3') ATTRIBUTES('attr3'='v3', 'attr4'='v4')";
     try {
       AlterTimeSeriesNode alterTimeSeriesNode = (AlterTimeSeriesNode) parseSQLToPlanNode(sql);
       Assert.assertNotNull(alterTimeSeriesNode);
@@ -376,7 +376,7 @@ public class LogicalPlannerTest {
   @Test
   public void testShowTimeSeries() {
     String sql =
-        "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE tagK = tagV limit 20 offset 10";
+        "SHOW LATEST TIMESERIES root.ln.wf01.wt01.status WHERE 'tagK' = 'tagV' limit 20 offset 10";
 
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
@@ -388,7 +388,7 @@ public class LogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDeviceIdString());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
       Assert.assertFalse(showTimeSeriesNode.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
@@ -406,7 +406,7 @@ public class LogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode2);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDeviceIdString());
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
       Assert.assertFalse(showTimeSeriesNode2.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());
