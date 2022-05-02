@@ -236,7 +236,9 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
         if (measurementSchema instanceof VectorMeasurementSchema) {
           for (String subMeasurement : measurementSchema.getSubMeasurementsList()) {
             cacheMeta(
-                new AlignedPath(fullPath.getDevice(), subMeasurement), measurementMNode, false);
+                new AlignedPath(fullPath.getDeviceIdString(), subMeasurement),
+                measurementMNode,
+                false);
           }
         } else {
           cacheMeta(fullPath, measurementMNode, true);
@@ -380,7 +382,7 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
         getMNodesLocally(plan.getDevicePath(), plan.getMeasurements(), measurementMNodes);
     if (nonExistSchemaIndex == -1) {
       plan.setMeasurementMNodes(measurementMNodes);
-      return new InternalMNode(null, plan.getDevicePath().getDevice());
+      return new InternalMNode(null, plan.getDevicePath().getDeviceIdString());
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this

@@ -165,7 +165,7 @@ public class AlignedSeriesScanNode extends SourceNode {
   @Override
   public List<String> getOutputColumnNames() {
     List<String> outputColumnNames = new ArrayList<>();
-    String deviceName = alignedPath.getDevice();
+    String deviceName = alignedPath.getDeviceIdString();
     for (String measurement : alignedPath.getMeasurementList()) {
       outputColumnNames.add(deviceName.concat(TsFileConstant.PATH_SEPARATOR + measurement));
     }
@@ -204,10 +204,14 @@ public class AlignedSeriesScanNode extends SourceNode {
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Filter timeFilter = null;
-    if (isNull == 1) timeFilter = FilterFactory.deserialize(byteBuffer);
+    if (isNull == 1) {
+      timeFilter = FilterFactory.deserialize(byteBuffer);
+    }
     isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Filter valueFilter = null;
-    if (isNull == 1) valueFilter = FilterFactory.deserialize(byteBuffer);
+    if (isNull == 1) {
+      valueFilter = FilterFactory.deserialize(byteBuffer);
+    }
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     TRegionReplicaSet dataRegionReplicaSet =

@@ -73,7 +73,7 @@ public class AggregationQueryStatement extends QueryStatement {
       PartialPath path = expression.getPaths().get(0);
       String functionName = expression.getFunctionName();
       deviceNameToAggregationsMap
-          .computeIfAbsent(path.getDevice(), key -> new HashMap<>())
+          .computeIfAbsent(path.getDeviceIdString(), key -> new HashMap<>())
           .computeIfAbsent(path, key -> new HashSet<>())
           .add(AggregationType.valueOf(functionName.toUpperCase()));
     }

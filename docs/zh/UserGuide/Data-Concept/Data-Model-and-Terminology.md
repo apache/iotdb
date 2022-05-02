@@ -63,38 +63,30 @@ IoTDB 模型结构涉及的基本概念在下文将做详细叙述。
 
 ```sql
 path       
-    : layer_name ('.' layer_name)*
+    : nodeName ('.' nodeName)*
     ;
-layer_name
-    : wildcard? id wildcard?
+    
+nodeName
+    : wildcard? identifier wildcard?
     | wildcard
     ;
+    
 wildcard 
     : '*' 
     | '**'
     ;
 ```
 
-其中，对 `id` 的定义可以参考[语法约定](../Reference/Syntax-Conventions.md)。
+我们称一个路径中由 `'.'` 分割的部分叫做路径结点名（`nodeName`）。例如：`root.a.b.c`为一个层级为 4 的路径。
 
-我们称一个路径中由 `'.'` 分割的部分叫做层级（`layer_name`）。例如：`root.a.b.c`为一个层级为 4 的路径。
-
-下面是对层级（`layer_name`）的约束：
+下面是对路径结点名（`nodeName`）的约束：
 
 * `root` 作为一个保留字符，它只允许出现在下文提到的时间序列的开头，若其他层级出现 `root`，则无法解析，提示报错。
-
 * 除了时间序列的开头的层级（`root`）外，其他的层级支持的字符如下：
-  * 中文字符`"\u2E80"`到`"\u9FFF"`
-  * `"_"，"@"，"#"，"$"`
-  * `"A"`到`"Z"`，`"a"`到`"z"`，`"0"`到`"9"`
-
-* 除了时间序列的开头的层级（`root`）和存储组层级外，层级还支持使用被  \`  或者 ` " ` 符号引用的特殊字符串作为其名称。需要注意的是，被引用的字符串不可带有 `.` 字符。下面是一些合法的例子：
-  * root.sg."select"."+-from="."where""where"""."\$"，6 个层级分别为 root, sg, select, +-from, where"where", \$
-  * root.sg.\`\`\`\`.\`select\`.\`+="from"\`.\`\$\`，6 个层级分别为 root, sg, \`, select, +-"from", \$
-
-* 层级 (`layer_name`) 不允许以数字开头，除非层级 (`layer_name`) 以 \` 或 `"` 引用。
-
-* 特别地，如果系统在 Windows 系统上部署，那么存储组层级名称是大小写不敏感的。例如，同时创建`root.ln` 和 `root.LN` 是不被允许的。
+  * [ 0-9 a-z A-Z _ : @ # $ { } ] （字母，数字，部分特殊字符）
+  * ['\u2E80'..'\u9FFF'] （UNICODE 中文字符）
+* 特别地，如果系统在 Windows 系统上部署，那么存储组路径结点名是大小写不敏感的。例如，同时创建`root.ln` 和 `root.LN` 是不被允许的。
+* 如果需要在路径结点名中用特殊字符，可以用反引号引用路径结点名，具体使用方法可以参考[语法约定](../Reference/Syntax-Conventions.md)。
 
 ### 路径模式（Path Pattern）
 

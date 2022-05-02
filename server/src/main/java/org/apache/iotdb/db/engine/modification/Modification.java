@@ -45,7 +45,7 @@ public abstract class Modification {
   }
 
   public String getDevice() {
-    return path.getDevice();
+    return path.getDeviceIdString();
   }
 
   public String getMeasurement() {
