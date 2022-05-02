@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
@@ -89,9 +88,13 @@ public class SchemaTree {
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores info of the devices matching the given path pattern.
    */
-  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
+  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
     SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
+    return visitor.getAllResult();
+  }
+
+  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern) {
+    SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, false);
     return visitor.getAllResult();
   }
 
@@ -235,17 +238,20 @@ public class SchemaTree {
    *
    * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
    *
-   * @param path only full path, cannot be path pattern
+   * @param pathName only full path, cannot be path pattern
    * @return storage group in the given path
    */
-  public String getBelongedStorageGroup(PartialPath path) {
+  public String getBelongedStorageGroup(String pathName) {
     for (String storageGroup : storageGroups) {
-      if (path.getFullPath().startsWith(storageGroup + ".")) {
+      if (pathName.startsWith(storageGroup + ".")) {
         return storageGroup;
       }
     }
-    throw new RuntimeException(
-        "No matched storage group. Please check the path " + path.getFullPath());
+    throw new RuntimeException("No matched storage group. Please check the path " + pathName);
+  }
+
+  public String getBelongedStorageGroup(PartialPath path) {
+    return getBelongedStorageGroup(path.getFullPath());
   }
 
   public List<String> getStorageGroups() {

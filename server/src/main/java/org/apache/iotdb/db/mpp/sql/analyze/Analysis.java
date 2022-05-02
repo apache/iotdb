@@ -59,7 +59,7 @@ public class Analysis {
   private Map<String, Set<Expression>> sourceExpressions;
 
   // all aggregations that need to be calculated
-  private Set<Expression> aggregationExpressions;
+  private Set<Expression> selectExpressions;
 
   // parameter of `GROUP BY TIME`
   private GroupByTimeParameter groupByTimeParameter;
@@ -68,7 +68,7 @@ public class Analysis {
   private Map<String, Set<Expression>> groupByLevelExpressions;
 
   // parameter of `WITHOUT NULL` clause
-  private List<FilterNullParameter> filterNullParameters;
+  private FilterNullParameter filterNullParameter;
 
   // parameter of `FILL` clause
   private List<FillDescriptor> fillDescriptorList;
@@ -150,12 +150,12 @@ public class Analysis {
     this.sourceExpressions = sourceExpressions;
   }
 
-  public Set<Expression> getAggregationExpressions() {
-    return aggregationExpressions;
+  public Set<Expression> getSelectExpressions() {
+    return selectExpressions;
   }
 
-  public void setAggregationExpressions(Set<Expression> aggregationExpressions) {
-    this.aggregationExpressions = aggregationExpressions;
+  public void setSelectExpressions(Set<Expression> selectExpressions) {
+    this.selectExpressions = selectExpressions;
   }
 
   public GroupByTimeParameter getGroupByTimeParameter() {
@@ -174,12 +174,12 @@ public class Analysis {
     this.groupByLevelExpressions = groupByLevelExpressions;
   }
 
-  public List<FilterNullParameter> getFilterNullParameters() {
-    return filterNullParameters;
+  public FilterNullParameter getFilterNullParameter() {
+    return filterNullParameter;
   }
 
-  public void setFilterNullParameters(List<FilterNullParameter> filterNullParameters) {
-    this.filterNullParameters = filterNullParameters;
+  public void setFilterNullParameter(FilterNullParameter filterNullParameter) {
+    this.filterNullParameter = filterNullParameter;
   }
 
   public List<FillDescriptor> getFillDescriptorList() {

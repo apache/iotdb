@@ -253,4 +253,8 @@ public class ExpressionAnalyzer {
       }
     }
   }
+
+  public static List<Expression> searchSourceExpressions(Expression selectExpr) {
+    return null;
+  }
 }

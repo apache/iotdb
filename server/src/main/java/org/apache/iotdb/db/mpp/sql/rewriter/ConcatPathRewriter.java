@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.sql.rewriter;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -50,7 +49,7 @@ public class ConcatPathRewriter {
   private PathPatternTree patternTree;
 
   public Statement rewrite(Statement statement, PathPatternTree patternTree)
-      throws StatementAnalyzeException, PathNumOverLimitException {
+      throws StatementAnalyzeException {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.patternTree = patternTree;
 

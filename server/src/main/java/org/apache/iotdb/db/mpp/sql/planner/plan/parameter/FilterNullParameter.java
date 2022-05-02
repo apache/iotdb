@@ -31,10 +31,12 @@ import java.util.Objects;
 public class FilterNullParameter {
 
   // The policy to discard the result from upstream npde
-  private final FilterNullPolicy filterNullPolicy;
+  private FilterNullPolicy filterNullPolicy;
 
   // indicate columns used to filter null
-  private final List<Expression> filterNullColumns;
+  private List<Expression> filterNullColumns;
+
+  public FilterNullParameter() {}
 
   public FilterNullParameter(
       FilterNullPolicy filterNullPolicy, List<Expression> filterNullColumns) {
@@ -48,6 +50,14 @@ public class FilterNullParameter {
 
   public List<Expression> getFilterNullColumns() {
     return filterNullColumns;
+  }
+
+  public void setFilterNullPolicy(FilterNullPolicy filterNullPolicy) {
+    this.filterNullPolicy = filterNullPolicy;
+  }
+
+  public void setFilterNullColumns(List<Expression> filterNullColumns) {
+    this.filterNullColumns = filterNullColumns;
   }
 
   public void serialize(ByteBuffer byteBuffer) {

@@ -23,25 +23,22 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
-import org.apache.iotdb.db.mpp.sql.rewriter.DnfFilterOptimizer;
-import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
-import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
-import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
+import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -60,13 +57,14 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.commons.lang.Validate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -118,76 +116,113 @@ public class Analyzer {
         PathPatternTree patternTree = new PathPatternTree();
         QueryStatement rewrittenStatement =
             (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
+        analysis.setStatement(rewrittenStatement);
 
         // request schema fetch API
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
-        List<Pair<Expression, String>> outputExpressions =
-            analyzeSelect(queryStatement, schemaTree);
+        List<Pair<Expression, String>> outputExpressions;
+        List<Expression> selectExpressions = new ArrayList<>();
+        if (!queryStatement.isAlignByDevice()) {
+          outputExpressions = analyzeSelect(queryStatement, schemaTree);
+          selectExpressions =
+              outputExpressions.stream().map(Pair::getLeft).distinct().collect(Collectors.toList());
+        } else {
+          outputExpressions = analyzeFrom(queryStatement, schemaTree, selectExpressions);
+        }
+
+        if (queryStatement.getFilterNullComponent() != null) {
+          FilterNullParameter filterNullParameter = analyzeWithoutNull(queryStatement, schemaTree);
+          analysis.setFilterNullParameter(filterNullParameter);
+        }
+
+        if (queryStatement.getWhereCondition() != null) {
+          IExpression globalTimeFilter =
+              analyzeWhere(queryStatement, schemaTree, selectExpressions);
+          analysis.setGlobalTimeFilter(globalTimeFilter);
+        }
+
+        Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
+        for (Expression selectExpr : selectExpressions) {
+          for (Expression sourceExpression :
+              ExpressionAnalyzer.searchSourceExpressions(selectExpr)) {
+            if (sourceExpression instanceof TimeSeriesOperand) {
+              sourceExpressions
+                  .computeIfAbsent(
+                      ((TimeSeriesOperand) sourceExpression).getPath().getDevice(),
+                      key -> new HashSet<>())
+                  .add(sourceExpression);
+            } else if (selectExpressions instanceof FunctionExpression) {
+              Validate.isTrue(sourceExpression.isBuiltInAggregationFunctionExpression());
+              Validate.isTrue(sourceExpression.getExpressions().size() == 1);
+              sourceExpressions
+                  .computeIfAbsent(
+                      ((TimeSeriesOperand) sourceExpression.getExpressions().get(0))
+                          .getPath()
+                          .getDevice(),
+                      key -> new HashSet<>())
+                  .add(sourceExpression);
+            } else {
+              throw new IllegalArgumentException(
+                  "unsupported expression type: " + sourceExpression.getExpressionType());
+            }
+          }
+        }
+        analysis.setSourceExpressions(sourceExpressions);
+
+        if (queryStatement.isGroupByLevel()) {
+          Map<String, Set<Expression>> groupByLevelExpressions =
+              analyzeGroupByLevel((AggregationQueryStatement) queryStatement, outputExpressions);
+          analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+        }
+
+        if (queryStatement.getFillComponent() != null) {
+          List<FillDescriptor> fillDescriptorList = analyzeFill(queryStatement);
+          analysis.setFillDescriptorList(fillDescriptorList);
+        }
 
         DatasetHeader datasetHeader = analyzeOutput(outputExpressions);
         analysis.setRespDatasetHeader(datasetHeader);
+        analysis.setTypeProvider(typeProvider);
 
         // fetch partition information
-        Set<PartialPath> devicePathSet = new HashSet<>();
-        for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
-          devicePathSet.addAll(
-              resultColumn.collectPaths().stream()
-                  .map(PartialPath::getDevicePath)
-                  .collect(Collectors.toList()));
-        }
-        if (queryStatement.getWhereCondition() != null) {
-          devicePathSet.addAll(
-              queryStatement.getWhereCondition().getQueryFilter().getPathSet().stream()
-                  .filter(SQLConstant::isNotReservedPath)
-                  .map(PartialPath::getDevicePath)
-                  .collect(Collectors.toList()));
-        }
         Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
-        for (PartialPath devicePath : devicePathSet) {
+        for (String devicePath : sourceExpressions.keySet()) {
           DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-          queryParam.setDevicePath(devicePath.getFullPath());
+          queryParam.setDevicePath(devicePath);
           sgNameToQueryParamsMap
               .computeIfAbsent(
                   schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
               .add(queryParam);
         }
         DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
-
-        // optimize expressions in whereCondition
-        WhereCondition whereCondition = rewrittenStatement.getWhereCondition();
-        if (whereCondition != null) {
-          QueryFilter filter = whereCondition.getQueryFilter();
-          filter = new RemoveNotOptimizer().optimize(filter);
-          filter = new DnfFilterOptimizer().optimize(filter);
-          filter = new MergeSingleFilterOptimizer().optimize(filter);
-
-          // transform QueryFilter to expression
-          List<PartialPath> filterPaths = new ArrayList<>(filter.getPathSet());
-          HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
-          for (PartialPath filterPath : filterPaths) {
-            pathTSDataTypeHashMap.put(
-                filterPath,
-                SQLConstant.isReservedPath(filterPath)
-                    ? TSDataType.INT64
-                    : filterPath.getSeriesType());
-          }
-          IExpression expression = filter.transformToExpression(pathTSDataTypeHashMap);
-          expression =
-              ExpressionOptimizer.getInstance()
-                  .optimize(expression, queryStatement.getSelectComponent().getDeduplicatedPaths());
-          analysis.setGlobalTimeFilter(expression);
-        }
-        analysis.setStatement(rewrittenStatement);
-        analysis.setTypeProvider(typeProvider);
-        analysis.setRespDatasetHeader(queryStatement.constructDatasetHeader());
         analysis.setDataPartitionInfo(dataPartition);
-      } catch (StatementAnalyzeException
-          | PathNumOverLimitException
-          | QueryFilterOptimizationException e) {
+      } catch (StatementAnalyzeException e) {
         throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
+    }
+
+    private List<FillDescriptor> analyzeFill(QueryStatement queryStatement) {
+      return null;
+    }
+
+    private FilterNullParameter analyzeWithoutNull(
+        QueryStatement queryStatement, SchemaTree schemaTree) {
+      return null;
+    }
+
+    private Map<String, Set<Expression>> analyzeGroupByLevel(
+        AggregationQueryStatement queryStatement,
+        List<Pair<Expression, String>> outputExpressions) {
+      // TODO: analyze group by level
+      return null;
+    }
+
+    private IExpression analyzeWhere(
+        QueryStatement queryStatement, SchemaTree schemaTree, List<Expression> selectExpressions) {
+      // TODO: analyze query filter
+      return null;
     }
 
     private List<Pair<Expression, String>> analyzeSelect(
@@ -196,7 +231,8 @@ public class Analyzer {
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
         boolean hasAlias = resultColumn.hasAlias();
         ExpressionAnalysis expressionAnalysis =
-            analyzeExpression(resultColumn.getExpression(), schemaTree);
+            ExpressionAnalyzer.analyzeExpression(
+                resultColumn.getExpression(), schemaTree, typeProvider);
         List<Expression> outputExpressions = expressionAnalysis.getOutputExpressions();
         if (hasAlias && outputExpressions.size() > 1) {
           throw new SemanticException(
@@ -211,8 +247,9 @@ public class Analyzer {
       return resultExpressions;
     }
 
-    private ExpressionAnalysis analyzeExpression(Expression expression, SchemaTree schemaTree) {
-      return ExpressionAnalyzer.analyzeExpression(expression, schemaTree, typeProvider);
+    private List<Pair<Expression, String>> analyzeFrom(
+        QueryStatement queryStatement, SchemaTree schemaTree, List<Expression> selectExpressions) {
+      return new ArrayList<>();
     }
 
     private DatasetHeader analyzeOutput(List<Pair<Expression, String>> outputExpressions) {
