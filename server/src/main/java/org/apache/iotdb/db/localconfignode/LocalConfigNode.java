@@ -546,7 +546,9 @@ public class LocalConfigNode {
     // Thread B: access sg, access partitionTable to get schemaRegionId, access schemaEngine to get
     // schemaRegion
     // When A and B are running concurrently, B may get null while getting schemaRegionId or
-    // schemaRegion.
+    // schemaRegion. This means B must run after A ends.
+    // To avoid this exception, please invoke getBelongedSchemaRegionIdWithAutoCreate according to
+    // the scenario.
     if (schemaRegionId == null) {
       throw new MetadataException(
           String.format(
