@@ -32,15 +32,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -164,7 +159,9 @@ public class SchemaEngine {
             new SchemaRegionSchemaFileImpl(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       case Rocksdb_based:
-        schemaRegion = loadRSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
+        schemaRegion =
+            new RSchemaRegionLoader()
+                .loadRSchemaRegion(storageGroup, schemaRegionId, storageGroupMNode);
         break;
       default:
         throw new UnsupportedOperationException(
@@ -178,55 +175,5 @@ public class SchemaEngine {
   public void deleteSchemaRegion(SchemaRegionId schemaRegionId) throws MetadataException {
     schemaRegionMap.get(schemaRegionId).deleteSchemaRegion();
     schemaRegionMap.remove(schemaRegionId);
-  }
-
-  private ISchemaRegion loadRSchemaRegion(
-      PartialPath storageGroup, SchemaRegionId schemaRegionId, IStorageGroupMNode node) {
-    ISchemaRegion region = null;
-    logger.info("Creating instance for schema-engine-rocksdb");
-    try {
-      loadRSchemaRegionJar();
-      Class<?> classForRSchemaRegion = urlClassLoader.loadClass(RSCHEMA_REGION_CLASS_NAME);
-      Class<?> classForRSchemaConfLoader = urlClassLoader.loadClass(RSCHEMA_CONF_LOADER_CLASS_NAME);
-      Constructor<?> constructor =
-          classForRSchemaRegion.getConstructor(
-              PartialPath.class,
-              SchemaRegionId.class,
-              IStorageGroupMNode.class,
-              classForRSchemaConfLoader);
-      Object rSchemaLoader = classForRSchemaConfLoader.getConstructor().newInstance();
-      region =
-          (ISchemaRegion)
-              constructor.newInstance(storageGroup, schemaRegionId, node, rSchemaLoader);
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InvocationTargetException
-        | InstantiationException
-        | IllegalAccessException
-        | MalformedURLException
-        | RuntimeException e) {
-      logger.error("Cannot initialize RSchemaRegion", e);
-      return null;
-    }
-    return region;
-  }
-
-  private void loadRSchemaRegionJar() throws MalformedURLException {
-    logger.info("Loading jar for schema-engine-rocksdb");
-    if (urlClassLoader == null) {
-      File[] jars = new File(LIB_PATH).listFiles();
-      if (jars == null) {
-        throw new RuntimeException(
-            String.format("Cannot get jars from %s", new File(LIB_PATH).getAbsolutePath()));
-      }
-      List<URL> dependentJars = new LinkedList<>();
-      for (File jar : jars) {
-        if (jar.getName().contains("rocksdbjni")
-            || jar.getName().contains("schema-engine-rocksdb")) {
-          dependentJars.add(new URL("file:" + jar.getAbsolutePath()));
-        }
-      }
-      urlClassLoader = new URLClassLoader(dependentJars.toArray(new URL[] {}));
-    }
   }
 }
