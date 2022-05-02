@@ -155,6 +155,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     cachedMetaData = vectorChunkMetadata;
   }
 
+  public boolean isEmpty() throws IOException {
+    return !chunkPointReader.hasNextTimeValuePair();
+  }
+
   @Override
   public IPointReader getPointReader() {
     chunkPointReader =
