@@ -48,7 +48,7 @@ import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_R
 public class AlignedTVList extends TVList {
   private static final int NULL_FLAG = -1;
 
-  // data types of this aligned tvlist
+  // data types of this aligned tvList
   private List<TSDataType> dataTypes;
 
   // data type list -> list of TVList, add 1 when expanded -> primitive array of basic type
@@ -79,8 +79,8 @@ public class AlignedTVList extends TVList {
     }
   }
 
-  public static AlignedTVList newAlignedList(List<TSDataType> datatypes) {
-    return new AlignedTVList(datatypes);
+  public static AlignedTVList newAlignedList(List<TSDataType> dataTypes) {
+    return new AlignedTVList(dataTypes);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -887,9 +887,9 @@ public class AlignedTVList extends TVList {
     // index array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
     // array headers mem size
-    size += NUM_BYTES_ARRAY_HEADER * (2 + types.length);
+    size += (long) NUM_BYTES_ARRAY_HEADER * (2 + types.length);
     // Object references size in ArrayList
-    size += NUM_BYTES_OBJECT_REF * (2 + types.length);
+    size += (long) NUM_BYTES_OBJECT_REF * (2 + types.length);
     return size;
   }
 
@@ -904,16 +904,9 @@ public class AlignedTVList extends TVList {
     clearSortedValue();
   }
 
-  @Override
   @TestOnly
   public IPointReader getIterator() {
     return new AlignedIte();
-  }
-
-  @Override
-  public IPointReader getIterator(
-      int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
   @Override
@@ -935,11 +928,20 @@ public class AlignedTVList extends TVList {
     return new AlignedIte(floatPrecision, encodingList, size, deletionList);
   }
 
-  private class AlignedIte extends Ite {
+  private class AlignedIte implements IPointReader {
 
+    protected TimeValuePair cachedTimeValuePair;
+    protected boolean hasCachedPair;
+    protected int cur;
+    protected Integer floatPrecision;
     private List<TSEncoding> encodingList;
     private int[] deleteCursors;
-    /** this field is effective only in the AlignedTvlist in a AlignedRealOnlyMemChunk. */
+
+    /**
+     * because TV list may be share with different query, each iterator has to record its own size
+     */
+    protected int iteSize = 0;
+    /** this field is effective only in the AlignedTvList in a AlignedRealOnlyMemChunk. */
     private List<List<TimeRange>> deletionList;
 
     public AlignedIte() {
@@ -951,9 +953,10 @@ public class AlignedTVList extends TVList {
         List<TSEncoding> encodingList,
         int size,
         List<List<TimeRange>> deletionList) {
-      super(floatPrecision, null, size, null);
+      this.floatPrecision = floatPrecision;
       this.encodingList = encodingList;
       this.deletionList = deletionList;
+      this.iteSize = size;
       if (deletionList != null) {
         deleteCursors = new int[deletionList.size()];
       }
@@ -998,6 +1001,26 @@ public class AlignedTVList extends TVList {
       }
 
       return false;
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() throws IOException {
+      if (hasCachedPair || hasNextTimeValuePair()) {
+        hasCachedPair = false;
+        return cachedTimeValuePair;
+      } else {
+        throw new IOException("no next time value pair");
+      }
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() throws IOException {
+      return cachedTimeValuePair;
+    }
+
+    @Override
+    public void close() throws IOException {
+      // Do nothing because of this is an in memory object
     }
 
     private boolean deletePointsInDeletionList(long timestamp, TimeValuePair tvPair) {
