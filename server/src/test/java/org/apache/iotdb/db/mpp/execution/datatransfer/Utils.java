@@ -46,6 +46,12 @@ public class Utils {
     return mockTsBlocks;
   }
 
+  public static TsBlock createMockTsBlock(long mockTsBlockSize) {
+    TsBlock mockTsBlock = Mockito.mock(TsBlock.class);
+    Mockito.when(mockTsBlock.getRetainedSizeInBytes()).thenReturn(mockTsBlockSize);
+    return mockTsBlock;
+  }
+
   public static MemoryPool createMockBlockedMemoryPool(
       String queryId, int numOfMockTsBlock, long mockTsBlockSize) {
     MemoryPool mockMemoryPool = Mockito.mock(MemoryPool.class);
