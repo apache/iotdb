@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
-import org.apache.iotdb.db.mpp.sql.statement.metadata.SetTTLToStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.sys.AuthorStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -61,8 +61,8 @@ public class ConfigTaskVisitor
   }
 
   @Override
-  public IConfigTask visitSetTTLToStorageGroup(SetTTLToStorageGroupStatement statement, TaskContext context) {
-    return new SetTTLToStorageGroupTask(statement);
+  public IConfigTask visitSetTTL(SetTTLStatement statement, TaskContext context) {
+    return new SetTTLTask(statement);
   }
 
   @Override

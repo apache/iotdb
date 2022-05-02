@@ -62,6 +62,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.sql.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
@@ -1661,6 +1662,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // TODO @spricoder add TTL
+  @Override
+  public Statement visitSetTTL(IoTDBSqlParser.SetTTLContext ctx) {
+    SetTTLStatement setTTLStatement = new SetTTLStatement();
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    int ttl = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
+    setTTLStatement.setStorageGroupPath(path);
+    setTTLStatement.setTTL(ttl);
+    return setTTLStatement;
+  }
 
   /** function for parsing file path used by LOAD statement. */
   public String parseFilePath(String src) {

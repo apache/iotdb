@@ -22,14 +22,18 @@ package org.apache.iotdb.db.mpp.sql.statement.metadata;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
-import org.apache.iotdb.db.mpp.sql.statement.ConfigStatement;
+import org.apache.iotdb.db.mpp.sql.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 
-public class SetTTLToStorageGroupStatement extends ConfigStatement {
+import java.util.Collections;
+import java.util.List;
+
+public class SetTTLStatement extends Statement implements IConfigStatement {
   private PartialPath storageGroupPath;
   private int ttl;
 
-  public SetTTLToStorageGroupStatement() {
+  public SetTTLStatement() {
     super();
     statementType = StatementType.TTL;
   }
@@ -38,17 +42,32 @@ public class SetTTLToStorageGroupStatement extends ConfigStatement {
     return storageGroupPath;
   }
 
+  public int getTTL() {
+    return ttl;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitSetTTLToStorageGroup(this, context);
+    return visitor.visitSetTTL(this, context);
   }
 
   public void setStorageGroupPath(PartialPath storageGroupPath) {
     this.storageGroupPath = storageGroupPath;
   }
 
+  public void setTTL(int ttl) {
+    this.ttl = ttl;
+  }
+
   @Override
   public QueryType getQueryType() {
     return QueryType.WRITE;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return storageGroupPath != null
+        ? Collections.singletonList(storageGroupPath)
+        : Collections.emptyList();
   }
 }
