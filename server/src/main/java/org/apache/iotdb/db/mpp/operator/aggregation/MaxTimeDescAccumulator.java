@@ -19,24 +19,9 @@
 
 package org.apache.iotdb.db.mpp.operator.aggregation;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-
 public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
 
   private boolean hasCandidateResult = false;
-
-  // Column should be like: | Time |
-  @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
-    // Data inside tsBlock is still in ascending order, we have to traverse the tsBlock
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax()) {
-        updateMaxTime(curTime);
-      }
-    }
-  }
 
   @Override
   public boolean hasFinalResult() {

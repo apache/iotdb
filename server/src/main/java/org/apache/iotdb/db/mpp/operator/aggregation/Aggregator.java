@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class Aggregator {
 
   private final Accumulator accumulator;
@@ -55,11 +57,10 @@ public class Aggregator {
 
   // Used for SeriesAggregateScanOperator
   public void processTsBlock(TsBlock tsBlock) {
-    if (step.isInputRaw()) {
-      accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
-    } else {
-      accumulator.addIntermediate(tsBlock.getColumns(new int[] {0}));
-    }
+    checkArgument(
+        step.isInputRaw(), "Step in SeriesAggregateScanOperator can only process raw input");
+    // TODO Aligned TimeSeries
+    accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
   }
 
   // Used for aggregateOperator

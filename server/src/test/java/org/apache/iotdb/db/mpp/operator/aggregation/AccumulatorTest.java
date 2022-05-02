@@ -329,7 +329,7 @@ public class AccumulatorTest {
 
     sumAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
     Assert.assertFalse(sumAccumulator.hasFinalResult());
-    ColumnBuilder[] intermediateResult = new ColumnBuilder[2];
+    ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
     intermediateResult[0] = new DoubleColumnBuilder(null, 1);
     sumAccumulator.outputIntermediate(intermediateResult);
     Assert.assertEquals(4950d, intermediateResult[0].build().getDouble(0), 0.001);

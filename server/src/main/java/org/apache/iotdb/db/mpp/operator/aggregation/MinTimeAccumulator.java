@@ -25,6 +25,8 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class MinTimeAccumulator implements Accumulator {
 
   protected boolean hasCandidateResult;
@@ -32,21 +34,23 @@ public class MinTimeAccumulator implements Accumulator {
 
   public MinTimeAccumulator() {}
 
-  // Column should be like: | Time |
+  // Column should be like: | Time | Value |
+  // Value is used to judge isNull()
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
-    long curTime = column[0].getLong(0);
-    if (curTime < timeRange.getMax() && curTime >= timeRange.getMin()) {
-      updateMinTime(curTime);
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+        updateMinTime(curTime);
+        break;
+      }
     }
   }
 
   // partialResult should be like: | partialMinTimeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    if (partialResult.length != 1) {
-      throw new IllegalArgumentException("partialResult of MinTime should be 1");
-    }
+    checkArgument(partialResult.length == 1, "partialResult of MinTime should be 1");
     updateMinTime(partialResult[0].getLong(0));
   }
 
@@ -64,6 +68,7 @@ public class MinTimeAccumulator implements Accumulator {
   // columnBuilder should be single in minTimeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
+    checkArgument(columnBuilders.length == 1, "partialResult of MinTime should be 1");
     columnBuilders[0].writeLong(minTime);
   }
 
@@ -74,7 +79,6 @@ public class MinTimeAccumulator implements Accumulator {
 
   @Override
   public void reset() {
-
     hasCandidateResult = false;
     this.minTime = Long.MAX_VALUE;
   }

@@ -25,18 +25,21 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class MaxTimeAccumulator implements Accumulator {
 
   protected long maxTime = Long.MIN_VALUE;
 
   public MaxTimeAccumulator() {}
 
-  // Column should be like: | Time |
+  // Column should be like: | Time | Value |
+  // Value is used to judge isNull()
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax()) {
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
         updateMaxTime(curTime);
       }
     }
@@ -45,9 +48,7 @@ public class MaxTimeAccumulator implements Accumulator {
   // partialResult should be like: | partialMaxTimeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    if (partialResult.length != 1) {
-      throw new IllegalArgumentException("partialResult of MaxTime should be 1");
-    }
+    checkArgument(partialResult.length == 1, "partialResult of MaxTime should be 1");
     updateMaxTime(partialResult[0].getLong(0));
   }
 
@@ -65,6 +66,7 @@ public class MaxTimeAccumulator implements Accumulator {
   // columnBuilder should be single in maxTimeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
+    checkArgument(columnBuilders.length == 1, "partialResult of MaxTime should be 1");
     columnBuilders[0].writeLong(maxTime);
   }
 

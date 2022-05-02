@@ -28,6 +28,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class AvgAccumulator implements Accumulator {
 
   private TSDataType seriesDataType;
@@ -40,25 +42,33 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
-    TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
-      long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+    switch (seriesDataType) {
+      case INT32:
+        addIntInput(column, timeRange);
         break;
-      }
-      countValue++;
-      updateSumValue(column[1].getObject(i));
+      case INT64:
+        addLongInput(column, timeRange);
+        break;
+      case FLOAT:
+        addFloatInput(column, timeRange);
+        break;
+      case DOUBLE:
+        addDoubleInput(column, timeRange);
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in aggregation AVG : %s", seriesDataType));
     }
   }
 
   // partialResult should be like: | countValue1 | sumValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    if (partialResult.length != 2) {
-      throw new IllegalArgumentException("partialResult of Avg should be 2");
-    }
+    checkArgument(partialResult.length == 2, "partialResult of Avg should be 2");
     countValue += partialResult[0].getLong(0);
-    updateSumValue(partialResult[1].getObject(0));
+    sumValue += partialResult[1].getDouble(0);
   }
 
   @Override
@@ -75,11 +85,13 @@ public class AvgAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
-    updateSumValue(finalResult.getObject(0));
+    countValue = 1;
+    sumValue = finalResult.getDouble(0);
   }
 
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
+    checkArgument(columnBuilders.length == 2, "partialResult of Avg should be 2");
     columnBuilders[0].writeLong(countValue);
     columnBuilders[1].writeDouble(sumValue);
   }
@@ -110,25 +122,59 @@ public class AvgAccumulator implements Accumulator {
     return TSDataType.DOUBLE;
   }
 
-  private void updateSumValue(Object sumVal) throws UnSupportedDataTypeException {
-    switch (seriesDataType) {
-      case INT32:
-        sumValue += (int) sumVal;
+  private void addIntInput(Column[] column, TimeRange timeRange) {
+    TimeColumn timeColumn = (TimeColumn) column[0];
+    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+      long curTime = timeColumn.getLong(i);
+      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
-      case INT64:
-        sumValue += (long) sumVal;
+      }
+      if (!column[1].isNull(i)) {
+        countValue++;
+        sumValue += column[1].getInt(i);
+      }
+    }
+  }
+
+  private void addLongInput(Column[] column, TimeRange timeRange) {
+    TimeColumn timeColumn = (TimeColumn) column[0];
+    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+      long curTime = timeColumn.getLong(i);
+      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
-      case FLOAT:
-        sumValue += (float) sumVal;
+      }
+      if (!column[1].isNull(i)) {
+        countValue++;
+        sumValue += column[1].getLong(i);
+      }
+    }
+  }
+
+  private void addFloatInput(Column[] column, TimeRange timeRange) {
+    TimeColumn timeColumn = (TimeColumn) column[0];
+    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+      long curTime = timeColumn.getLong(i);
+      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
-      case DOUBLE:
-        sumValue += (double) sumVal;
+      }
+      if (!column[1].isNull(i)) {
+        countValue++;
+        sumValue += column[1].getFloat(i);
+      }
+    }
+  }
+
+  private void addDoubleInput(Column[] column, TimeRange timeRange) {
+    TimeColumn timeColumn = (TimeColumn) column[0];
+    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+      long curTime = timeColumn.getLong(i);
+      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
-      case TEXT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation AVG : %s", seriesDataType));
+      }
+      if (!column[1].isNull(i)) {
+        countValue++;
+        sumValue += column[1].getDouble(i);
+      }
     }
   }
 }

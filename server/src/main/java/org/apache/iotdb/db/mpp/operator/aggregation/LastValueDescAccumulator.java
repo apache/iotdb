@@ -20,8 +20,7 @@
 package org.apache.iotdb.db.mpp.operator.aggregation;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public class LastValueDescAccumulator extends LastValueAccumulator {
 
@@ -29,18 +28,6 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
 
   public LastValueDescAccumulator(TSDataType seriesDataType) {
     super(seriesDataType);
-  }
-
-  // Column should be like: | Time | Value |
-  @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
-    // Data inside tsBlock is still in ascending order, we have to traverse the first tsBlock
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax()) {
-        updateLastValue(column[1].getObject(i), curTime);
-      }
-    }
   }
 
   @Override
@@ -54,8 +41,33 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
     super.reset();
   }
 
-  protected void updateLastValue(Object value, long curTime) {
+  protected void updateIntLastValue(int value, long curTime) {
     hasCandidateResult = true;
-    super.updateLastValue(value, curTime);
+    super.updateIntLastValue(value, curTime);
+  }
+
+  protected void updateLongLastValue(long value, long curTime) {
+    hasCandidateResult = true;
+    super.updateLongLastValue(value, curTime);
+  }
+
+  protected void updateFloatLastValue(float value, long curTime) {
+    hasCandidateResult = true;
+    super.updateFloatLastValue(value, curTime);
+  }
+
+  protected void updateDoubleLastValue(double value, long curTime) {
+    hasCandidateResult = true;
+    super.updateDoubleLastValue(value, curTime);
+  }
+
+  protected void updateBooleanLastValue(boolean value, long curTime) {
+    hasCandidateResult = true;
+    super.updateBooleanLastValue(value, curTime);
+  }
+
+  protected void updateBinaryLastValue(Binary value, long curTime) {
+    hasCandidateResult = true;
+    super.updateBinaryLastValue(value, curTime);
   }
 }

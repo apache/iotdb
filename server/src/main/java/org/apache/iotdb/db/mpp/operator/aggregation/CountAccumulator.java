@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class CountAccumulator implements Accumulator {
 
   private long countValue = 0;
@@ -41,16 +43,16 @@ public class CountAccumulator implements Accumulator {
       if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
-      countValue++;
+      if (!column[1].isNull(i)) {
+        countValue++;
+      }
     }
   }
 
   // partialResult should be like: | partialCountValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    if (partialResult.length != 1) {
-      throw new IllegalArgumentException("partialResult of Count should be 1");
-    }
+    checkArgument(partialResult.length == 1, "partialResult of Count should be 1");
     countValue += partialResult[0].getLong(0);
   }
 
@@ -68,6 +70,7 @@ public class CountAccumulator implements Accumulator {
   // columnBuilder should be single in countAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
+    checkArgument(columnBuilders.length == 1, "partialResult of Count should be 1");
     columnBuilders[0].writeLong(countValue);
   }
 

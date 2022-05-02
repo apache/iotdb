@@ -24,7 +24,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class MinTimeDescAccumulator extends MinTimeAccumulator {
 
-  // Column should be like: | Time |
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {

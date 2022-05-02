@@ -190,11 +190,11 @@ public abstract class TsPrimitiveType implements Serializable {
 
     @Override
     public void setObject(Object val) {
-      if (val instanceof Binary) {
-        setBinary((Binary) val);
+      if (val instanceof Boolean) {
+        setBoolean((Boolean) val);
         return;
       }
-      throw new UnSupportedDataTypeException("TsBoolean can only be set Binary value");
+      throw new UnSupportedDataTypeException("TsBoolean can only be set Boolean value");
     }
 
     @Override

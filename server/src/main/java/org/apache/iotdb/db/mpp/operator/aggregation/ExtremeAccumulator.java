@@ -28,45 +28,92 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class ExtremeAccumulator implements Accumulator {
 
+  private final TSDataType seriesDataType;
   private TsPrimitiveType extremeResult;
-  private boolean hasCandidateResult;
+  private boolean initResult;
 
   public ExtremeAccumulator(TSDataType seriesDataType) {
+    this.seriesDataType = seriesDataType;
     this.extremeResult = TsPrimitiveType.getByType(seriesDataType);
   }
 
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
-    TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
-      long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+    switch (seriesDataType) {
+      case INT32:
+        addIntInput(column, timeRange);
         break;
-      }
-      updateResult((Comparable<Object>) column[1].getObject(i));
+      case INT64:
+        addLongInput(column, timeRange);
+        break;
+      case FLOAT:
+        addFloatInput(column, timeRange);
+        break;
+      case DOUBLE:
+        addDoubleInput(column, timeRange);
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
     }
   }
 
+  // partialResult should be like: | PartialExtremeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    if (partialResult.length != 1) {
-      throw new IllegalArgumentException("partialResult of ExtremeValue should be 1");
+    checkArgument(partialResult.length == 1, "partialResult of ExtremeValue should be 1");
+    switch (seriesDataType) {
+      case INT32:
+        updateIntResult(partialResult[0].getInt(0));
+        break;
+      case INT64:
+        updateLongResult(partialResult[0].getLong(0));
+        break;
+      case FLOAT:
+        updateFloatResult(partialResult[0].getFloat(0));
+        break;
+      case DOUBLE:
+        updateDoubleResult(partialResult[0].getDouble(0));
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
     }
-    updateResult((Comparable<Object>) partialResult[0].getObject(0));
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
-    Comparable<Object> maxVal = (Comparable<Object>) statistics.getMaxValue();
-    Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
-
-    Comparable<Object> absMaxVal = (Comparable<Object>) getAbsValue(maxVal);
-    Comparable<Object> absMinVal = (Comparable<Object>) getAbsValue(minVal);
-
-    Comparable<Object> extVal = absMaxVal.compareTo(absMinVal) >= 0 ? maxVal : minVal;
-    updateResult(extVal);
+    switch (seriesDataType) {
+      case INT32:
+        updateIntResult((int) statistics.getMaxValue());
+        updateIntResult((int) statistics.getMinValue());
+        break;
+      case INT64:
+        updateLongResult((long) statistics.getMaxValue());
+        updateLongResult((long) statistics.getMinValue());
+        break;
+      case FLOAT:
+        updateFloatResult((float) statistics.getMaxValue());
+        updateFloatResult((float) statistics.getMinValue());
+        break;
+      case DOUBLE:
+        updateDoubleResult((double) statistics.getMaxValue());
+        updateDoubleResult((double) statistics.getMinValue());
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+    }
   }
 
   @Override
@@ -77,17 +124,54 @@ public class ExtremeAccumulator implements Accumulator {
   // columnBuilder should be single in ExtremeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    columnBuilders[0].writeObject(extremeResult.getValue());
+    checkArgument(columnBuilders.length == 1, "partialResult of ExtremeValue should be 1");
+    switch (seriesDataType) {
+      case INT32:
+        columnBuilders[0].writeInt(extremeResult.getInt());
+        break;
+      case INT64:
+        columnBuilders[0].writeLong(extremeResult.getLong());
+        break;
+      case FLOAT:
+        columnBuilders[0].writeFloat(extremeResult.getFloat());
+        break;
+      case DOUBLE:
+        columnBuilders[0].writeDouble(extremeResult.getDouble());
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+    }
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeObject(extremeResult.getValue());
+    switch (seriesDataType) {
+      case INT32:
+        columnBuilder.writeInt(extremeResult.getInt());
+        break;
+      case INT64:
+        columnBuilder.writeLong(extremeResult.getLong());
+        break;
+      case FLOAT:
+        columnBuilder.writeFloat(extremeResult.getFloat());
+        break;
+      case DOUBLE:
+        columnBuilder.writeDouble(extremeResult.getDouble());
+        break;
+      case TEXT:
+      case BOOLEAN:
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
+    }
   }
 
   @Override
   public void reset() {
-    hasCandidateResult = false;
+    initResult = false;
     extremeResult.reset();
   }
 
@@ -106,37 +190,107 @@ public class ExtremeAccumulator implements Accumulator {
     return extremeResult.getDataType();
   }
 
-  public Object getAbsValue(Object v) {
-    switch (extremeResult.getDataType()) {
-      case DOUBLE:
-        return Math.abs((Double) v);
-      case FLOAT:
-        return Math.abs((Float) v);
-      case INT32:
-        return Math.abs((Integer) v);
-      case INT64:
-        return Math.abs((Long) v);
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(extremeResult.getDataType()));
+  private void addIntInput(Column[] column, TimeRange timeRange) {
+    TimeColumn timeColumn = (TimeColumn) column[0];
+    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+      long curTime = timeColumn.getLong(i);
+      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+        break;
+      }
+      if (!column[1].isNull(i)) {
+        updateIntResult(column[1].getInt(i));
+      }
     }
   }
 
-  private void updateResult(Comparable<Object> extVal) {
-    if (extVal == null) {
-      return;
+  private void updateIntResult(int extVal) {
+    int absExtVal = Math.abs(extVal);
+    int candidateResult = extremeResult.getInt();
+    int absCandidateResult = Math.abs(extremeResult.getInt());
+
+    if (!initResult
+        || (absExtVal > absCandidateResult)
+        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+      initResult = true;
+      extremeResult.setInt(extVal);
     }
+  }
 
-    Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
-    Comparable<Object> candidateResult = (Comparable<Object>) extremeResult.getValue();
-    Comparable<Object> absCandidateResult =
-        (Comparable<Object>) getAbsValue(extremeResult.getValue());
+  private void addLongInput(Column[] column, TimeRange timeRange) {
+    TimeColumn timeColumn = (TimeColumn) column[0];
+    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+      long curTime = timeColumn.getLong(i);
+      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+        break;
+      }
+      if (!column[1].isNull(i)) {
+        updateLongResult(column[1].getLong(i));
+      }
+    }
+  }
 
-    if (!hasCandidateResult
-        || (absExtVal.compareTo(absCandidateResult) > 0
-            || (absExtVal.compareTo(absCandidateResult) == 0
-                && extVal.compareTo(candidateResult) > 0))) {
-      hasCandidateResult = true;
-      extremeResult.setObject(extVal);
+  private void updateLongResult(long extVal) {
+    long absExtVal = Math.abs(extVal);
+    long candidateResult = extremeResult.getLong();
+    long absCandidateResult = Math.abs(extremeResult.getLong());
+
+    if (!initResult
+        || (absExtVal > absCandidateResult)
+        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+      initResult = true;
+      extremeResult.setLong(extVal);
+    }
+  }
+
+  private void addFloatInput(Column[] column, TimeRange timeRange) {
+    TimeColumn timeColumn = (TimeColumn) column[0];
+    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+      long curTime = timeColumn.getLong(i);
+      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+        break;
+      }
+      if (!column[1].isNull(i)) {
+        updateFloatResult(column[1].getFloat(i));
+      }
+    }
+  }
+
+  private void updateFloatResult(float extVal) {
+    float absExtVal = Math.abs(extVal);
+    float candidateResult = extremeResult.getFloat();
+    float absCandidateResult = Math.abs(extremeResult.getFloat());
+
+    if (!initResult
+        || (absExtVal > absCandidateResult)
+        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+      initResult = true;
+      extremeResult.setFloat(extVal);
+    }
+  }
+
+  private void addDoubleInput(Column[] column, TimeRange timeRange) {
+    TimeColumn timeColumn = (TimeColumn) column[0];
+    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+      long curTime = timeColumn.getLong(i);
+      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+        break;
+      }
+      if (!column[1].isNull(i)) {
+        updateDoubleResult(column[1].getDouble(i));
+      }
+    }
+  }
+
+  private void updateDoubleResult(double extVal) {
+    double absExtVal = Math.abs(extVal);
+    double candidateResult = extremeResult.getDouble();
+    double absCandidateResult = Math.abs(extremeResult.getDouble());
+
+    if (!initResult
+        || (absExtVal > absCandidateResult)
+        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+      initResult = true;
+      extremeResult.setDouble(extVal);
     }
   }
 }
