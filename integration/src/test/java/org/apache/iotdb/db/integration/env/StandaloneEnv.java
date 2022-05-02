@@ -76,7 +76,6 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public Connection getConnection() throws SQLException {
-
     if (connection == null || connection.isClosed()) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
