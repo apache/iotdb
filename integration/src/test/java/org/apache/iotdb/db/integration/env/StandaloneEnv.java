@@ -68,7 +68,7 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public Connection getConnection() throws SQLException {
-    if (connection != null) {
+    if (connection == null) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
         connection =
@@ -84,7 +84,7 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
-    if (connection != null) {
+    if (connection == null) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
         connection =
