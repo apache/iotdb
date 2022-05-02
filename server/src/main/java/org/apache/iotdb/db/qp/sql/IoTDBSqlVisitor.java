@@ -38,6 +38,7 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.GroupByClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.GroupByFillClauseComponent;
+import org.apache.iotdb.db.qp.logical.crud.GroupByFillQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
@@ -1189,6 +1190,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitGroupByTimeStatement(IoTDBSqlParser.GroupByTimeStatementContext ctx) {
     queryOp = new GroupByQueryOperator();
     parseGroupByTimeClause(ctx.groupByTimeClause());
+    if (ctx.orderByTimeClause() != null) {
+      parseOrderByTimeClause(ctx.orderByTimeClause());
+    }
+    if (ctx.specialLimit() != null) {
+      return visit(ctx.specialLimit());
+    }
+    return queryOp;
+  }
+
+  @Override
+  public Operator visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
+    queryOp = new GroupByFillQueryOperator();
+    parseGroupByFillClause(ctx.groupByFillClause());
     if (ctx.orderByTimeClause() != null) {
       parseOrderByTimeClause(ctx.orderByTimeClause());
     }
