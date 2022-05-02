@@ -28,16 +28,18 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -48,22 +50,20 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /** manage data partition and schema partition */
 public class PartitionInfo {
 
-  // TODO: Serialize and Deserialize
-  private AtomicInteger nextRegionGroupId = new AtomicInteger(0);
-
   // Region read write lock
   private final ReentrantReadWriteLock regionReadWriteLock;
+  // TODO: Serialize and Deserialize
+  private AtomicInteger nextRegionGroupId = new AtomicInteger(0);
+  // TODO: Serialize and Deserialize
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionMap;
 
-  // schema partition read write lock
+  // SchemaPartition read write lock
   private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
-
-  // data partition read write lock
-  private final ReentrantReadWriteLock dataPartitionReadWriteLock;
-
   // TODO: Serialize and Deserialize
   private final SchemaPartition schemaPartition;
 
+  // DataPartition read write lock
+  private final ReentrantReadWriteLock dataPartitionReadWriteLock;
   // TODO: Serialize and Deserialize
   private final DataPartition dataPartition;
 
@@ -93,16 +93,16 @@ public class PartitionInfo {
   /**
    * Persistence allocation result of new Regions
    *
-   * @param plan CreateRegionsPlan
+   * @param req CreateRegionsPlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus createRegions(CreateRegionsReq plan) {
+  public TSStatus createRegions(CreateRegionsReq req) {
     TSStatus result;
     regionReadWriteLock.writeLock().lock();
     try {
       int maxRegionId = Integer.MIN_VALUE;
 
-      for (TRegionReplicaSet regionReplicaSet : plan.getRegionReplicaSets()) {
+      for (TRegionReplicaSet regionReplicaSet : req.getRegionReplicaSets()) {
         regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
         maxRegionId = Math.max(maxRegionId, regionReplicaSet.getRegionId().getId());
       }
@@ -110,7 +110,7 @@ public class PartitionInfo {
       if (nextRegionGroupId.get() < maxRegionId) {
         // In this case, at least one Region is created with the leader node,
         // so the nextRegionGroupID of the followers needs to be added
-        nextRegionGroupId.getAndAdd(plan.getRegionReplicaSets().size());
+        nextRegionGroupId.getAndAdd(req.getRegionReplicaSets().size());
       }
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -121,18 +121,38 @@ public class PartitionInfo {
   }
 
   /**
+   * Delete Regions
+   *
+   * @param req DeleteRegionsReq
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus deleteRegions(DeleteRegionsReq req) {
+    TSStatus result;
+    regionReadWriteLock.writeLock().lock();
+    try {
+      for (TConsensusGroupId consensusGroupId : req.getConsensusGroupIds()) {
+        regionMap.remove(consensusGroupId);
+      }
+      result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      regionReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  /**
    * Get SchemaPartition
    *
-   * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
+   * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionDataSet that contains only existing SchemaPartition
    */
-  public DataSet getSchemaPartition(GetOrCreateSchemaPartitionReq physicalPlan) {
+  public DataSet getSchemaPartition(GetSchemaPartitionReq req) {
     SchemaPartitionResp schemaPartitionResp = new SchemaPartitionResp();
     schemaPartitionReadWriteLock.readLock().lock();
 
     try {
       schemaPartitionResp.setSchemaPartition(
-          schemaPartition.getSchemaPartition(physicalPlan.getPartitionSlotsMap()));
+          schemaPartition.getSchemaPartition(req.getPartitionSlotsMap()));
     } finally {
       schemaPartitionReadWriteLock.readLock().unlock();
       schemaPartitionResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -144,16 +164,16 @@ public class PartitionInfo {
   /**
    * Create SchemaPartition
    *
-   * @param physicalPlan CreateSchemaPartitionPlan with SchemaPartition assigned result
+   * @param req CreateSchemaPartitionPlan with SchemaPartition assigned result
    * @return TSStatusCode.SUCCESS_STATUS when creation successful
    */
-  public TSStatus createSchemaPartition(CreateSchemaPartitionReq physicalPlan) {
+  public TSStatus createSchemaPartition(CreateSchemaPartitionReq req) {
     schemaPartitionReadWriteLock.writeLock().lock();
 
     try {
       // Allocate SchemaPartition by CreateSchemaPartitionPlan
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedResult =
-          physicalPlan.getAssignedSchemaPartition();
+          req.getAssignedSchemaPartition();
       assignedResult.forEach(
           (storageGroup, partitionSlots) ->
               partitionSlots.forEach(
@@ -189,17 +209,17 @@ public class PartitionInfo {
   /**
    * Get DataPartition
    *
-   * @param physicalPlan DataPartitionPlan with partitionSlotsMap
+   * @param req DataPartitionPlan with partitionSlotsMap
    * @return DataPartitionDataSet that contains only existing DataPartition
    */
-  public DataSet getDataPartition(GetOrCreateDataPartitionReq physicalPlan) {
+  public DataSet getDataPartition(GetDataPartitionReq req) {
     DataPartitionResp dataPartitionResp = new DataPartitionResp();
     dataPartitionReadWriteLock.readLock().lock();
 
     try {
       dataPartitionResp.setDataPartition(
           dataPartition.getDataPartition(
-              physicalPlan.getPartitionSlotsMap(),
+              req.getPartitionSlotsMap(),
               ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass(),
               ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum()));
     } finally {
@@ -213,16 +233,16 @@ public class PartitionInfo {
   /**
    * Create DataPartition
    *
-   * @param physicalPlan CreateDataPartitionPlan with DataPartition assigned result
+   * @param req CreateDataPartitionPlan with DataPartition assigned result
    * @return TSStatusCode.SUCCESS_STATUS when creation successful
    */
-  public TSStatus createDataPartition(CreateDataPartitionReq physicalPlan) {
+  public TSStatus createDataPartition(CreateDataPartitionReq req) {
     dataPartitionReadWriteLock.writeLock().lock();
 
     try {
       // Allocate DataPartition by CreateDataPartitionPlan
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-          assignedResult = physicalPlan.getAssignedDataPartition();
+          assignedResult = req.getAssignedDataPartition();
       assignedResult.forEach(
           (storageGroup, seriesPartitionTimePartitionSlots) ->
               seriesPartitionTimePartitionSlots.forEach(
@@ -276,6 +296,14 @@ public class PartitionInfo {
       regionReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    // TODO: Serialize PartitionInfo
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    // TODO: Deserialize PartitionInfo
   }
 
   @TestOnly

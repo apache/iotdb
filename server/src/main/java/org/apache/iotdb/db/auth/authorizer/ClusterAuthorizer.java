@@ -23,19 +23,29 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class ClusterAuthorizer {
 
@@ -76,7 +86,6 @@ public class ClusterAuthorizer {
   public SettableFuture<ConfigTaskResult> queryPermission(TAuthorizerReq authorizerReq) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     ConfigNodeClient configNodeClient = null;
-    TsBlock tsBlock = null;
     TAuthorizerResp authorizerResp;
     try {
       configNodeClient = new ConfigNodeClient();
@@ -92,8 +101,34 @@ public class ClusterAuthorizer {
             authorizerResp.getStatus());
         future.setException(new StatementExecutionException(authorizerResp.getStatus()));
       } else {
-        // TODO: Construct result
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock));
+        // build TSBlock
+        List<TSDataType> types = new ArrayList<>();
+        Map<String, List<String>> authorizerInfo = authorizerResp.getAuthorizerInfo();
+        for (int i = 0; i < authorizerInfo.size(); i++) {
+          types.add(TSDataType.TEXT);
+        }
+        TsBlockBuilder builder = new TsBlockBuilder(types);
+        List<ColumnHeader> headerList = new ArrayList<>();
+
+        for (String header : authorizerInfo.keySet()) {
+          headerList.add(new ColumnHeader(header, TSDataType.TEXT));
+        }
+        // The Time column will be ignored by the setting of ColumnHeader.
+        // So we can put a meaningless value here
+        for (String value : authorizerInfo.get(headerList.get(0).getColumnName())) {
+          builder.getTimeColumnBuilder().writeLong(0L);
+          builder.getColumnBuilder(0).writeBinary(new Binary(value));
+          builder.declarePosition();
+        }
+        for (int i = 1; i < headerList.size(); i++) {
+          for (String value : authorizerInfo.get(headerList.get(i).getColumnName())) {
+            builder.getColumnBuilder(i).writeBinary(new Binary(value));
+          }
+        }
+
+        DatasetHeader datasetHeader = new DatasetHeader(headerList, true);
+        future.set(
+            new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
       }
     } catch (IoTDBConnectionException | BadNodeUrlException e) {
       LOGGER.error("Failed to connect to config node.");
@@ -106,5 +141,45 @@ public class ClusterAuthorizer {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     return future;
+  }
+
+  public TSStatus login(TLoginReq req) {
+    ConfigNodeClient configNodeClient = null;
+    TSStatus status = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      status = configNodeClient.login(req);
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      throw new ConfigNodeConnectionException("Couldn't connect config node");
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+      if (status == null) {
+        status = new TSStatus();
+      }
+    }
+    return status;
+  }
+
+  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) {
+    ConfigNodeClient configNodeClient = null;
+    TSStatus status = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      status = configNodeClient.checkUserPrivileges(req);
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      throw new ConfigNodeConnectionException("Couldn't connect config node");
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+      if (status == null) {
+        status = new TSStatus();
+      }
+    }
+    return status;
   }
 }

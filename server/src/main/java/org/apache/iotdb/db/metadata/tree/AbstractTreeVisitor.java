@@ -178,10 +178,15 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           }
 
           if (!isLeafNode(node)) {
-            if (isPrefixMatch) {
-              pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
-            } else if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+            if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
               pushAllChildren(node, patternIndex, patternIndex);
+            } else if (lastMultiLevelWildcardIndex != -1) {
+              pushAllChildren(
+                  node,
+                  findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex) + 1,
+                  lastMultiLevelWildcardIndex);
+            } else if (isPrefixMatch) {
+              pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
             }
           }
 
@@ -211,35 +216,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           }
         }
 
-        if (nextMatchedNode != null) {
-          return;
-        }
-
       } else {
         if (lastMultiLevelWildcardIndex == -1) {
           continue;
         }
 
-        int lastMatchIndex = lastMultiLevelWildcardIndex;
-        for (int i = patternIndex - 1; i > lastMultiLevelWildcardIndex; i--) {
-          if (!checkIsMatch(i, node)) {
-            continue;
-          }
-
-          Iterator<N> ancestors = ancestorStack.iterator();
-          boolean allMatch = true;
-          for (int j = i - 1; j > lastMultiLevelWildcardIndex; j--) {
-            if (!checkIsMatch(j, ancestors.next())) {
-              allMatch = false;
-              break;
-            }
-          }
-
-          if (allMatch) {
-            lastMatchIndex = i;
-            break;
-          }
-        }
+        int lastMatchIndex = findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex);
 
         if (processInternalMatchedNode(node)) {
           return;
@@ -248,12 +230,34 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         if (!isLeafNode(node)) {
           pushAllChildren(node, lastMatchIndex + 1, lastMultiLevelWildcardIndex);
         }
+      }
 
-        if (nextMatchedNode != null) {
-          return;
-        }
+      if (nextMatchedNode != null) {
+        return;
       }
     }
+  }
+
+  private int findLastMatch(N node, int patternIndex, int lastMultiLevelWildcardIndex) {
+    for (int i = patternIndex - 1; i > lastMultiLevelWildcardIndex; i--) {
+      if (!checkIsMatch(i, node)) {
+        continue;
+      }
+
+      Iterator<N> ancestors = ancestorStack.iterator();
+      boolean allMatch = true;
+      for (int j = i - 1; j > lastMultiLevelWildcardIndex; j--) {
+        if (!checkIsMatch(j, ancestors.next())) {
+          allMatch = false;
+          break;
+        }
+      }
+
+      if (allMatch) {
+        return i;
+      }
+    }
+    return lastMultiLevelWildcardIndex;
   }
 
   public void reset() {

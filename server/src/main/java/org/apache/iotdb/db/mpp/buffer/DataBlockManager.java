@@ -54,7 +54,7 @@ public class DataBlockManager implements IDataBlockManager {
   public interface SourceHandleListener {
     void onFinished(ISourceHandle sourceHandle);
 
-    void onClosed(ISourceHandle sourceHandle);
+    void onAborted(ISourceHandle sourceHandle);
 
     void onFailure(ISourceHandle sourceHandle, Throwable t);
   }
@@ -62,7 +62,7 @@ public class DataBlockManager implements IDataBlockManager {
   public interface SinkHandleListener {
     void onFinish(ISinkHandle sinkHandle);
 
-    void onClosed(ISinkHandle sinkHandle);
+    void onEndOfBlocks(ISinkHandle sinkHandle);
 
     void onAborted(ISinkHandle sinkHandle);
 
@@ -130,7 +130,7 @@ public class DataBlockManager implements IDataBlockManager {
           || sourceHandles
               .get(e.getTargetFragmentInstanceId())
               .get(e.getTargetPlanNodeId())
-              .isClosed()) {
+              .isAborted()) {
         throw new TException(
             "Target fragment instance not found. Fragment instance ID: "
                 + e.getTargetFragmentInstanceId()
@@ -156,7 +156,7 @@ public class DataBlockManager implements IDataBlockManager {
           || sourceHandles
               .get(e.getTargetFragmentInstanceId())
               .get(e.getTargetPlanNodeId())
-              .isClosed()) {
+              .isAborted()) {
         throw new TException(
             "Target fragment instance not found. Fragment instance ID: "
                 + e.getTargetFragmentInstanceId()
@@ -200,7 +200,7 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onClosed(ISourceHandle sourceHandle) {
+    public void onAborted(ISourceHandle sourceHandle) {
       onFinished(sourceHandle);
     }
 
@@ -236,7 +236,7 @@ public class DataBlockManager implements IDataBlockManager {
     }
 
     @Override
-    public void onClosed(ISinkHandle sinkHandle) {
+    public void onEndOfBlocks(ISinkHandle sinkHandle) {
       context.transitionToFlushing();
     }
 
@@ -379,7 +379,7 @@ public class DataBlockManager implements IDataBlockManager {
       Map<String, SourceHandle> planNodeIdToSourceHandle = sourceHandles.get(fragmentInstanceId);
       for (Entry<String, SourceHandle> entry : planNodeIdToSourceHandle.entrySet()) {
         logger.info("Close source handle {}", sourceHandles);
-        entry.getValue().close();
+        entry.getValue().abort();
       }
       sourceHandles.remove(fragmentInstanceId);
     }

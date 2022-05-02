@@ -44,7 +44,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.buffer.DataBlockService;
-import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
+import org.apache.iotdb.db.mpp.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -79,8 +79,6 @@ public class DataNode implements DataNodeMBean {
   private static final int DEFAULT_JOIN_RETRY = 10;
 
   private TEndPoint thisNode = new TEndPoint();
-
-  private int dataNodeID;
 
   private DataNode() {
     // we do not init anything here, so that we can re-initialize the instance in IT.
@@ -149,7 +147,7 @@ public class DataNode implements DataNodeMBean {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         TDataNodeLocation location = new TDataNodeLocation();
-        location.setDataNodeId(-1);
+        location.setDataNodeId(config.getDataNodeId());
         location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
             new TEndPoint(config.getInternalIp(), config.getInternalPort()));
@@ -164,12 +162,16 @@ public class DataNode implements DataNodeMBean {
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-          dataNodeID = dataNodeRegisterResp.getDataNodeId();
+          int dataNodeID = dataNodeRegisterResp.getDataNodeId();
+          if (dataNodeID != config.getDataNodeId()) {
+            IoTDBConfigCheck.getInstance().serializeDataNodeId(dataNodeID);
+            config.setDataNodeId(dataNodeID);
+          }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
           logger.info("Joined the cluster successfully");
           return;
         }
-      } catch (IoTDBConnectionException e) {
+      } catch (IOException | IoTDBConnectionException e) {
         logger.warn("Cannot join the cluster, because: {}", e.getMessage());
       }
 
@@ -249,7 +251,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(StorageEngineV2.getInstance());
     registerManager.register(DataBlockService.getInstance());
     registerManager.register(InternalService.getInstance());
-    registerManager.register(FragmentInstanceScheduler.getInstance());
+    registerManager.register(DriverScheduler.getInstance());
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
@@ -340,6 +342,8 @@ public class DataNode implements DataNodeMBean {
   private void setUncaughtExceptionHandler() {
     Thread.setDefaultUncaughtExceptionHandler(new IoTDBDefaultThreadExceptionHandler());
   }
+
+  private void dataNodeIdChecker() {}
 
   private static class DataNodeHolder {
 

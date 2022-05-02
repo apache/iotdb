@@ -138,6 +138,17 @@ struct TAuthorizerResp {
     2: required map<string, list<string>> authorizerInfo
 }
 
+struct TLoginReq {
+    1: required string userrname
+    2: required string password
+}
+
+struct TCheckUserPrivilegesReq{
+    1: required string username;
+    2: required list<string> paths
+    3: required i32 permission
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -181,4 +192,8 @@ service ConfigIService {
   common.TSStatus operatePermission(TAuthorizerReq req)
 
   TAuthorizerResp queryPermission(TAuthorizerReq req)
+
+  common.TSStatus login(TLoginReq req)
+
+  common.TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req)
 }

@@ -42,7 +42,7 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
@@ -165,10 +165,9 @@ public class StatementGenerator {
     InsertRowStatement insertStatement = new InsertRowStatement();
     insertStatement.setDevicePath(new PartialPath(insertRecordReq.getPrefixPath()));
     insertStatement.setTime(insertRecordReq.getTimestamp());
-
-    insertStatement.fillValues(insertRecordReq.values);
     insertStatement.setMeasurements(insertRecordReq.getMeasurements().toArray(new String[0]));
     insertStatement.setAligned(insertRecordReq.isAligned);
+    insertStatement.fillValues(insertRecordReq.values);
     return insertStatement;
   }
 

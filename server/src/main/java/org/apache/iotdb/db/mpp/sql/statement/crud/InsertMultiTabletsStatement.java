@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -72,17 +71,16 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     return alignedList;
   }
 
-  @Override
-  public boolean checkDataType(SchemaTree schemaTree) {
-    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
-      if (!insertTabletStatement.checkDataType(schemaTree)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertMultiTablets(this, context);
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    List<PartialPath> result = new ArrayList<>();
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      result.addAll(insertTabletStatement.getPaths());
+    }
+    return result;
   }
 }

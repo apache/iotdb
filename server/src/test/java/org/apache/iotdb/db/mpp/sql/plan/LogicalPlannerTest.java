@@ -33,7 +33,7 @@ import org.apache.iotdb.db.mpp.sql.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.DevicesSchemaScanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SchemaMergeNode;
+import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -47,7 +47,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -63,7 +62,6 @@ import static org.junit.Assert.fail;
 public class LogicalPlannerTest {
 
   @Test
-  @Ignore // TODO: @zyk implement getBelongedStorageGroup() in SchemaTree
   public void testQueryPlan() {
     for (String sql : querySQLs) {
       Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
@@ -381,7 +379,7 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      SchemaMergeNode metaMergeNode = (SchemaMergeNode) offsetNode.getChild();
+      SeriesSchemaMergeNode metaMergeNode = (SeriesSchemaMergeNode) offsetNode.getChild();
       metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
       TimeSeriesSchemaScanNode showTimeSeriesNode =
           (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);
@@ -426,7 +424,7 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      SchemaMergeNode metaMergeNode = (SchemaMergeNode) offsetNode.getChild();
+      SeriesSchemaMergeNode metaMergeNode = (SeriesSchemaMergeNode) offsetNode.getChild();
       DevicesSchemaScanNode showDevicesNode =
           (DevicesSchemaScanNode) metaMergeNode.getChildren().get(0);
       Assert.assertNotNull(showDevicesNode);
