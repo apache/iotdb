@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -165,12 +164,8 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   @Override
   public boolean validateSchema(SchemaTree schemaTree) {
-    DeviceSchemaInfo deviceSchemaInfo;
-    try {
-      deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    } catch (PathNotExistException e) {
-      return false;
-    }
+    DeviceSchemaInfo deviceSchemaInfo =
+        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
 
     // todo partial insert
     if (deviceSchemaInfo.isAligned() != isAligned) {

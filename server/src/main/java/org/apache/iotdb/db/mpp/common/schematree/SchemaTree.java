@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
@@ -82,14 +81,14 @@ public class SchemaTree {
     return visitor.getAllResult();
   }
 
-  public DeviceSchemaInfo searchDeviceSchemaInfo(PartialPath devicePath, List<String> measurements)
-      throws PathNotExistException {
+  public DeviceSchemaInfo searchDeviceSchemaInfo(
+      PartialPath devicePath, List<String> measurements) {
 
     String[] nodes = devicePath.getNodes();
     SchemaNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
       if (cur == null) {
-        throw new PathNotExistException(devicePath.getFullPath());
+        return null;
       }
       cur = cur.getChild(nodes[i]);
     }
@@ -101,7 +100,7 @@ public class SchemaTree {
       if (node == null) {
         measurementNodeList.add(null);
       } else {
-        measurementNodeList.add(cur.getChild(measurement).getAsMeasurementNode());
+        measurementNodeList.add(node.getAsMeasurementNode());
       }
     }
 

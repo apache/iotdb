@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -195,10 +194,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       PartialPath devicePath,
       String[] measurements,
       TSDataType[] tsDataTypes) {
-    DeviceSchemaInfo deviceSchemaInfo;
-    try {
-      deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    } catch (PathNotExistException e) {
+    DeviceSchemaInfo deviceSchemaInfo =
+        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    if (deviceSchemaInfo == null) {
       return new Pair<>(Arrays.asList(measurements), Arrays.asList(tsDataTypes));
     }
 

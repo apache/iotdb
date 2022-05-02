@@ -160,12 +160,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   public boolean validateSchema(SchemaTree schemaTree) {
-    DeviceSchemaInfo deviceSchemaInfo;
-    try {
-      deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-    } catch (PathNotExistException e) {
-      return false;
-    }
+    DeviceSchemaInfo deviceSchemaInfo =
+        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
 
     List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
     this.measurementSchemas = measurementSchemas.toArray(new MeasurementSchema[0]);
