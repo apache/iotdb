@@ -70,9 +70,9 @@ public class Utils {
           break;
         }
       default:
-      {
-        return -1;
-      }
+        {
+          return -1;
+        }
     }
     long groupCode = groupType << 32;
     groupCode += (long) consensusGroupId.getId();
