@@ -269,7 +269,7 @@ public class IoTDBAsIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select count(s1) as s1_num from root.sg.d1 group by ([100,500), 80ms)");
+              "select count(s1) as 's1_num' from root.sg.d1 group by ([100,500), 80ms)");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

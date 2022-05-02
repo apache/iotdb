@@ -189,7 +189,7 @@ public class FillQueryExecutor {
               path,
               dataType,
               queryTime,
-              plan.getAllMeasurementsInDevice(path.getDevice()),
+              plan.getAllMeasurementsInDevice(path.getDeviceIdString()),
               context);
       fillExecutors[i] = fill;
 
@@ -257,7 +257,7 @@ public class FillQueryExecutor {
       ManagedSeriesReader reader =
           new SeriesRawDataBatchReader(
               path,
-              plan.getAllMeasurementsInDevice(path.getDevice()),
+              plan.getAllMeasurementsInDevice(path.getDeviceIdString()),
               dataType,
               context,
               queryDataSource,

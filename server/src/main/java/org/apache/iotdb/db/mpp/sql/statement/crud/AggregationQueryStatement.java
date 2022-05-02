@@ -73,13 +73,14 @@ public class AggregationQueryStatement extends QueryStatement {
       PartialPath path = expression.getPaths().get(0);
       String functionName = expression.getFunctionName();
       deviceNameToAggregationsMap
-          .computeIfAbsent(path.getDevice(), key -> new HashMap<>())
+          .computeIfAbsent(path.getDeviceIdString(), key -> new HashMap<>())
           .computeIfAbsent(path, key -> new HashSet<>())
           .add(AggregationType.valueOf(functionName.toUpperCase()));
     }
     return deviceNameToAggregationsMap;
   }
 
+  @Override
   public DatasetHeader constructDatasetHeader() {
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     // TODO: consider Aggregation
@@ -121,6 +122,7 @@ public class AggregationQueryStatement extends QueryStatement {
     }
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitAggregationQuery(this, context);
   }

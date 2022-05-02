@@ -103,6 +103,11 @@ public class QueryStatement extends Statement {
     this.statementType = StatementType.QUERY;
   }
 
+  @Override
+  public List<PartialPath> getPaths() {
+    return fromComponent.getPrefixPaths();
+  }
+
   public QueryStatement(QueryStatement another) {
     this.statementType = StatementType.QUERY;
     this.selectComponent = another.getSelectComponent();
@@ -257,7 +262,7 @@ public class QueryStatement extends Statement {
               .filter(SQLConstant::isNotReservedPath)
               .collect(Collectors.toList())) {
         deviceNameToDeduplicatedPathsMap
-            .computeIfAbsent(path.getDevice(), k -> new HashSet<>())
+            .computeIfAbsent(path.getDeviceIdString(), k -> new HashSet<>())
             .add(path);
       }
     }

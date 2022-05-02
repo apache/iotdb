@@ -766,11 +766,6 @@ public class IoTDBDescriptor {
                   "cached_mnode_size_in_schema_file_mode",
                   String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
 
-      conf.setMaxSchemaFlushThreadNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_schema_flush_thread", String.valueOf(conf.getMaxSchemaFlushThreadNum()))));
-
       conf.setMinimumSegmentInSchemaFile(
           Short.parseShort(
               properties.getProperty(

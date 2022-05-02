@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * TsFileSyncManager is designed for collect all history TsFiles(i.e. before the pipe start time,
@@ -43,7 +42,6 @@ public class TsFileSyncManager {
   private static final Logger logger = LoggerFactory.getLogger(TsFileSyncManager.class);
 
   private TsFilePipe syncPipe;
-  private ConcurrentHashMap<File, File> tsFilesAlreadyCollected; // used as concurrent hash set
 
   /** singleton */
   private TsFileSyncManager() {}
@@ -82,9 +80,6 @@ public class TsFileSyncManager {
 
   public void collectRealTimeTsFile(File tsFile) {
     syncPipe.collectRealTimeTsFile(tsFile);
-    if (tsFilesAlreadyCollected != null) {
-      tsFilesAlreadyCollected.put(tsFile, tsFile);
-    }
   }
 
   public void collectRealTimeResource(File tsFile) {
@@ -93,8 +88,6 @@ public class TsFileSyncManager {
 
   public List<File> registerAndCollectHistoryTsFile(TsFilePipe syncPipe, long dataStartTime) {
     registerSyncTask(syncPipe);
-    tsFilesAlreadyCollected =
-        new ConcurrentHashMap<>(); // should be locked while containing multi pipes
 
     List<File> historyTsFiles = new ArrayList<>();
     Iterator<Map.Entry<PartialPath, StorageGroupManager>> sgIterator =
@@ -104,12 +97,7 @@ public class TsFileSyncManager {
           sgIterator.next().getValue().collectHistoryTsFileForSync(dataStartTime));
     }
 
-    tsFilesAlreadyCollected = null;
     return historyTsFiles;
-  }
-
-  public boolean isTsFileAlreadyBeCollected(File tsFile) {
-    return tsFilesAlreadyCollected.containsKey(tsFile);
   }
 
   public File createHardlink(File tsFile, long modsOffset) {

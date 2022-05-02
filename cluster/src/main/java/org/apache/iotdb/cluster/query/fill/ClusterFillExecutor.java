@@ -85,7 +85,7 @@ public class ClusterFillExecutor extends FillQueryExecutor {
       IReaderByTimestamp reader =
           clusterReaderFactory.getReaderByTimestamp(
               path,
-              plan.getAllMeasurementsInDevice(path.getDevice()),
+              plan.getAllMeasurementsInDevice(path.getDeviceIdString()),
               dataTypes.get(i),
               context,
               plan.isAscending(),

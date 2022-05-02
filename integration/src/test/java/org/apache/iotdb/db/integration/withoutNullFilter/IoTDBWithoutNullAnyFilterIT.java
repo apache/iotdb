@@ -1254,7 +1254,7 @@ public class IoTDBWithoutNullAnyFilterIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select s2, s3 from root.test.** without null any(`root.test.sg1.s2`, `root.test.sg2.s3`)");
+              "select s2, s3 from root.test.** without null any(`root`.test.sg1.s2, `root`.test.sg2.s3)");
       String[] columns =
           new String[] {
             "root.test.sg1.s2", "root.test.sg1.s3", "root.test.sg2.s2", "root.test.sg2.s3"
@@ -1282,7 +1282,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       hasResultSet =
           statement.execute(
-              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(`root.test.sg1.s2`)");
+              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(`root`.test.sg1.s2)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1306,7 +1306,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       hasResultSet =
           statement.execute(
-              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(`root.test.sg1.s2`, s3)");
+              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(`root`.test.sg1.s2, s3)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1330,7 +1330,7 @@ public class IoTDBWithoutNullAnyFilterIT {
 
       hasResultSet =
           statement.execute(
-              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(`root.test.*.s2`)");
+              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(`root`.test.*.s2)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {

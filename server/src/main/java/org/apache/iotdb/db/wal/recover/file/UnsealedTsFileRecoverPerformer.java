@@ -163,7 +163,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
       List<Modification> modifications = (List<Modification>) modificationFile.getModifications();
       for (Modification modification : modifications) {
         if (modification.getType().equals(Modification.Type.DELETION)) {
-          String deviceId = modification.getPath().getDevice();
+          String deviceId = modification.getPath().getDeviceIdString();
           String measurementId = modification.getPath().getMeasurement();
           Map<String, List<Deletion>> measurementModsMap =
               modificationsForResource.computeIfAbsent(deviceId, n -> new HashMap<>());

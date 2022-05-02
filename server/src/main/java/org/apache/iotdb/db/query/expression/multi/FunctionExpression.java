@@ -42,10 +42,10 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
-import org.apache.iotdb.db.query.udf.core.transformer.TransparentTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryRowTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryRowWindowTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.unary.TransparentTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 

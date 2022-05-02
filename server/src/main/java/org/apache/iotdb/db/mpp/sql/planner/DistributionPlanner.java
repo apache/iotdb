@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -88,6 +89,11 @@ public class DistributionPlanner {
   public DistributedQueryPlan planFragments() {
     PlanNode rootAfterRewrite = rewriteSource();
     PlanNode rootWithExchange = addExchangeNode(rootAfterRewrite);
+    if (analysis.getStatement() instanceof QueryStatement) {
+      analysis
+          .getRespDatasetHeader()
+          .setColumnToTsBlockIndexMap(rootWithExchange.getOutputColumnNames());
+    }
     SubPlan subPlan = splitFragment(rootWithExchange);
     List<FragmentInstance> fragmentInstances = planFragmentInstances(subPlan);
     // Only execute this step for READ operation
@@ -350,7 +356,8 @@ public class DistributionPlanner {
                     context.getNodeDistribution(child.getPlanNodeId()).region)) {
                   ExchangeNode exchangeNode =
                       new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
-                  exchangeNode.addChild(child);
+                  exchangeNode.setChild(child);
+                  exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
                   newNode.addChild(exchangeNode);
                 } else {
                   newNode.addChild(child);
@@ -425,6 +432,7 @@ public class DistributionPlanner {
               ExchangeNode exchangeNode =
                   new ExchangeNode(context.queryContext.getQueryId().genPlanNodeId());
               exchangeNode.setChild(child);
+              exchangeNode.setOutputColumnNames(child.getOutputColumnNames());
               newNode.addChild(exchangeNode);
             } else {
               newNode.addChild(child);
