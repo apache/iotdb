@@ -46,8 +46,8 @@ public class SetTTLTask implements IConfigTask {
 
   private final SetTTLStatement setTTLStatement;
 
-  public SetTTLTask(SetTTLStatement setTTLToStorageGroupStatement) {
-    this.setTTLStatement = setTTLToStorageGroupStatement;
+  public SetTTLTask(SetTTLStatement setTTLStatement) {
+    this.setTTLStatement = setTTLStatement;
   }
 
   @Override
