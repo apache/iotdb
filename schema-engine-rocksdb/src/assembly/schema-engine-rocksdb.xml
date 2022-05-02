@@ -28,7 +28,7 @@
     <includeBaseDirectory>false</includeBaseDirectory>
     <dependencySets>
         <dependencySet>
-            <outputDirectory>lib</outputDirectory>
+            <outputDirectory>lib/rschema-region</outputDirectory>
             <includes>
                 <include>org.rocksdb:rocksdbjni</include>
                 <include>org.apache.iotdb:schema-engine-rocksdb</include>

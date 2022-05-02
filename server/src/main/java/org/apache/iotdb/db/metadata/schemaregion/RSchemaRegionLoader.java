@@ -41,13 +41,15 @@ public class RSchemaRegionLoader {
       "org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaRegion";
   private static final String RSCHEMA_CONF_LOADER_CLASS_NAME =
       "org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConfLoader";
-  private static final String LIB_PATH = ".." + File.separator + "lib" + File.separator;
+  private static final String LIB_PATH =
+      ".." + File.separator + "lib" + File.separator + "rschema-region" + File.separator;
 
   public RSchemaRegionLoader() {}
 
   /**
    * Load the jar files for RSchemaRegion and create an instance of it. The jar files should be
-   * located in "../lib". If jar files cannot be found, the function will return null.
+   * located in "../lib/rschema-region". If jar files cannot be found, the function will return
+   * null.
    *
    * @param storageGroup
    * @param schemaRegionId
@@ -87,7 +89,7 @@ public class RSchemaRegionLoader {
 
   /**
    * Load the jar files for rocksdb and RSchemaRegion. The jar files should be located in directory
-   * "../lib". If the jar files have been loaded, it will do nothing.
+   * "../lib/rschema-region". If the jar files have been loaded, it will do nothing.
    */
   private void loadRSchemaRegionJar() throws MalformedURLException {
     LOGGER.info("Loading jar for schema-engine-rocksdb");
@@ -99,8 +101,7 @@ public class RSchemaRegionLoader {
       }
       List<URL> dependentJars = new LinkedList<>();
       for (File jar : jars) {
-        if (jar.getName().contains("rocksdbjni")
-            || jar.getName().contains("schema-engine-rocksdb")) {
+        if (jar.getName().endsWith(".jar")) {
           dependentJars.add(new URL("file:" + jar.getAbsolutePath()));
         }
       }
