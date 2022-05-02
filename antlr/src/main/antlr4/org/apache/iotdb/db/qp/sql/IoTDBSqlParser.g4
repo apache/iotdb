@@ -962,13 +962,13 @@ attributePair
     ;
 
 attributeKey
-    :identifier
-    |STRING_LITERAL
+    : identifier
+    | constant
     ;
 
 attributeValue
-    :identifier
-    |constant
+    : identifier
+    | constant
     ;
 
 // Limit & Offset Clause

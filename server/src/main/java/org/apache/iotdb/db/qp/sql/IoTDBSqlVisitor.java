@@ -3197,7 +3197,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private String parseAttributeKey(IoTDBSqlParser.AttributeKeyContext ctx) {
-    if (ctx.STRING_LITERAL() != null) {
+    if (ctx.constant() != null) {
       return parseStringLiteral(ctx.getText());
     }
     return parseIdentifier(ctx.getText());
