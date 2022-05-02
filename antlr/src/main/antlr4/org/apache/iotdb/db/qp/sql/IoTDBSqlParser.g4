@@ -167,7 +167,7 @@ aliasClause
     ;
 
 alias
-    : STRING_LITERAL
+    : constant
     | identifier
     ;
 

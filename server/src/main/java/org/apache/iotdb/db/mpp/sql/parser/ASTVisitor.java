@@ -1482,8 +1482,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** function for parsing Alias. */
   private String parseAlias(IoTDBSqlParser.AliasContext ctx) {
     String alias;
-    if (ctx.STRING_LITERAL() != null) {
-      alias = parseStringLiteral(ctx.STRING_LITERAL().getText());
+    if (ctx.constant() != null) {
+      alias = parseStringLiteral(ctx.constant().getText());
     } else {
       alias = parseIdentifier(ctx.identifier().getText());
     }
