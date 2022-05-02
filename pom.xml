@@ -1147,7 +1147,9 @@
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
-                <google.java.format.version>1.15.0</google.java.format.version>
+                <!-- change to 1.15.0 will modify many codes (all are javadocs), we change it to 1.15.0
+                until: 1. spotless + jdk16 is fixed; and 2. iotdb decides to do not support jdk8-->
+                <google.java.format.version>1.7</google.java.format.version>
             </properties>
             <dependencies>
                 <!-- for jdk-11 -->
