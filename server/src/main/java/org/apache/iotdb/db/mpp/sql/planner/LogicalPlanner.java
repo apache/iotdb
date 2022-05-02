@@ -78,8 +78,6 @@ public class LogicalPlanner {
       for (PlanOptimizer optimizer : optimizers) {
         rootNode = optimizer.optimize(rootNode, context);
       }
-
-      analysis.getRespDatasetHeader().setColumnToTsBlockIndexMap(rootNode.getOutputColumnNames());
     }
 
     return new LogicalQueryPlan(context, rootNode);
