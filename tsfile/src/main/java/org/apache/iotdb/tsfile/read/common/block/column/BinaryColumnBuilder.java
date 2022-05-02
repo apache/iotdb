@@ -74,7 +74,7 @@ public class BinaryColumnBuilder implements ColumnBuilder {
 
   @Override
   public ColumnBuilder writeBinaries(Binary[] valuesToBeWritten, int length) {
-    if (values.length <= positionCount + length) {
+    while (values.length <= positionCount + length) {
       growCapacity();
     }
 
