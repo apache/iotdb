@@ -111,7 +111,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTSIServiceImpl.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 

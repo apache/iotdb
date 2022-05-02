@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.buffer;
+package org.apache.iotdb.db.mpp.execution.datatransfer;
 
-import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
-import org.apache.iotdb.db.mpp.memory.MemoryPool;
+import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;

@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.buffer;
+package org.apache.iotdb.db.mpp.execution.datatransfer;
 
-import org.apache.iotdb.db.mpp.buffer.DataBlockManager.SinkHandleListener;
-import org.apache.iotdb.db.mpp.memory.LocalMemoryManager;
-import org.apache.iotdb.db.mpp.memory.MemoryPool;
+import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SinkHandleListener;
+import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.mpp.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -46,8 +46,9 @@ public class LocalSinkHandleTest {
         Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     // Construct a mock SinkHandleListener.
-    SinkHandleListener mockSinkHandleListener = Mockito.mock(SinkHandleListener.class);
-    // Construct a shared tsblock queue.
+    SinkHandleListener mockSinkHandleListener =
+        Mockito.mock(DataBlockManager.SinkHandleListener.class);
+    // Construct a shared TsBlock queue.
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(remoteFragmentInstanceId, mockLocalMemoryManager);
 
@@ -64,7 +65,7 @@ public class LocalSinkHandleTest {
     Assert.assertFalse(localSinkHandle.isAborted());
     Assert.assertEquals(0L, localSinkHandle.getBufferRetainedSizeInBytes());
 
-    // Send tsblocks.
+    // Send TsBlocks.
     int numOfSentTsblocks = 0;
     while (localSinkHandle.isFull().isDone()) {
       localSinkHandle.send(Collections.singletonList(Utils.createMockTsBlock(mockTsBlockSize)));
@@ -76,7 +77,7 @@ public class LocalSinkHandleTest {
     Assert.assertEquals(6 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());
     Mockito.verify(spyMemoryPool, Mockito.times(6)).reserve(queryId, mockTsBlockSize);
 
-    // Receive tsblocks.
+    // Receive TsBlocks.
     int numOfReceivedTsblocks = 0;
     while (!queue.isEmpty()) {
       queue.remove();
@@ -88,7 +89,7 @@ public class LocalSinkHandleTest {
     Assert.assertEquals(0L, localSinkHandle.getBufferRetainedSizeInBytes());
     Mockito.verify(spyMemoryPool, Mockito.times(6)).free(queryId, mockTsBlockSize);
 
-    // Set no-more-tsblocks.
+    // Set no-more-TsBlocks.
     localSinkHandle.setNoMoreTsBlocks();
     Assert.assertTrue(localSinkHandle.isFull().isDone());
     Assert.assertTrue(localSinkHandle.isFinished());
@@ -110,7 +111,8 @@ public class LocalSinkHandleTest {
         Mockito.spy(new MemoryPool("test", 10 * mockTsBlockSize, 5 * mockTsBlockSize));
     Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(spyMemoryPool);
     // Construct a mock SinkHandleListener.
-    SinkHandleListener mockSinkHandleListener = Mockito.mock(SinkHandleListener.class);
+    DataBlockManager.SinkHandleListener mockSinkHandleListener =
+        Mockito.mock(DataBlockManager.SinkHandleListener.class);
     // Construct a shared tsblock queue.
     SharedTsBlockQueue queue =
         new SharedTsBlockQueue(remoteFragmentInstanceId, mockLocalMemoryManager);
@@ -128,7 +130,7 @@ public class LocalSinkHandleTest {
     Assert.assertFalse(localSinkHandle.isAborted());
     Assert.assertEquals(0L, localSinkHandle.getBufferRetainedSizeInBytes());
 
-    // Send tsblocks.
+    // Send TsBlocks.
     int numOfSentTsblocks = 0;
     while (localSinkHandle.isFull().isDone()) {
       localSinkHandle.send(Collections.singletonList(Utils.createMockTsBlock(mockTsBlockSize)));

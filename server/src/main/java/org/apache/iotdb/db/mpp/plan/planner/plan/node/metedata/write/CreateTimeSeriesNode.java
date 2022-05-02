@@ -306,10 +306,11 @@ public class CreateTimeSeriesNode extends WritePlanNode {
         && dataType == that.dataType
         && encoding == that.encoding
         && compressor == that.compressor
-        && ((alias == null && that.alias == null) || alias.equals(that.alias))
-        && ((props == null && that.props == null) || props.equals(that.props))
-        && ((tags == null && that.tags == null) || tags.equals(that.tags))
-        && ((attributes == null && that.attributes == null) || attributes.equals(that.attributes));
+        && ((alias == null && that.alias == null) || (alias != null && alias.equals(that.alias)))
+        && ((props == null && that.props == null) || (props != null && props.equals(that.props)))
+        && ((tags == null && that.tags == null) || (tags != null && tags.equals(that.tags)))
+        && ((attributes == null && that.attributes == null)
+            || (attributes != null && attributes.equals(that.attributes)));
   }
 
   @Override
