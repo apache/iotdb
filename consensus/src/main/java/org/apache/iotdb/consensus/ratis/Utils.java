@@ -69,6 +69,10 @@ public class Utils {
           groupType = PartitionRegionType;
           break;
         }
+      default:
+      {
+        return -1;
+      }
     }
     long groupCode = groupType << 32;
     groupCode += (long) consensusGroupId.getId();
