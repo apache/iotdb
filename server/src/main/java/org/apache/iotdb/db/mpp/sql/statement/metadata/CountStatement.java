@@ -22,6 +22,9 @@ package org.apache.iotdb.db.mpp.sql.statement.metadata;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * COUNT statement.
  *
@@ -43,5 +46,10 @@ public class CountStatement extends ShowStatement {
 
   public void setPartialPath(PartialPath partialPath) {
     this.partialPath = partialPath;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.singletonList(partialPath);
   }
 }

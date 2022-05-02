@@ -21,19 +21,17 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.process;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.sql.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -49,6 +47,8 @@ public class ExchangeNode extends PlanNode {
   private TEndPoint upstreamEndpoint;
   private FragmentInstanceId upstreamInstanceId;
   private PlanNodeId upstreamPlanNodeId;
+
+  private List<String> outputColumnNames;
 
   public ExchangeNode(PlanNodeId id) {
     super(id);
@@ -89,18 +89,12 @@ public class ExchangeNode extends PlanNode {
   }
 
   @Override
-  public List<ColumnHeader> getOutputColumnHeaders() {
-    return child.getOutputColumnHeaders();
-  }
-
-  @Override
   public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+    return outputColumnNames;
   }
 
-  @Override
-  public List<TSDataType> getOutputColumnTypes() {
-    return child.getOutputColumnTypes();
+  public void setOutputColumnNames(List<String> outputColumnNames) {
+    this.outputColumnNames = outputColumnNames;
   }
 
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {
@@ -110,28 +104,36 @@ public class ExchangeNode extends PlanNode {
   }
 
   public static ExchangeNode deserialize(ByteBuffer byteBuffer) {
-    FragmentSinkNode fragmentSinkNode =
-        (FragmentSinkNode) PlanFragment.deserializeHelper(byteBuffer);
     TEndPoint endPoint =
         new TEndPoint(
             ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readInt(byteBuffer));
     FragmentInstanceId fragmentInstanceId = FragmentInstanceId.deserialize(byteBuffer);
     PlanNodeId upstreamPlanNodeId = PlanNodeId.deserialize(byteBuffer);
+    int outputColumnNamesSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> outputColumnNames = new ArrayList<>(outputColumnNamesSize);
+    while (outputColumnNamesSize > 0) {
+      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      outputColumnNamesSize--;
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     ExchangeNode exchangeNode = new ExchangeNode(planNodeId);
     exchangeNode.setUpstream(endPoint, fragmentInstanceId, upstreamPlanNodeId);
-    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
+    exchangeNode.setOutputColumnNames(outputColumnNames);
     return exchangeNode;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.EXCHANGE.serialize(byteBuffer);
-    remoteSourceNode.serialize(byteBuffer);
     ReadWriteIOUtils.write(upstreamEndpoint.getIp(), byteBuffer);
     ReadWriteIOUtils.write(upstreamEndpoint.getPort(), byteBuffer);
     upstreamInstanceId.serialize(byteBuffer);
     upstreamPlanNodeId.serialize(byteBuffer);
+    List<String> outputColumnNames = remoteSourceNode.getOutputColumnNames();
+    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
+    for (String outputColumnName : outputColumnNames) {
+      ReadWriteIOUtils.write(outputColumnName, byteBuffer);
+    }
   }
 
   public PlanNode getChild() {
@@ -194,7 +196,6 @@ public class ExchangeNode extends PlanNode {
     }
     ExchangeNode that = (ExchangeNode) o;
     return Objects.equals(child, that.child)
-        && Objects.equals(remoteSourceNode, that.remoteSourceNode)
         && Objects.equals(upstreamEndpoint, that.upstreamEndpoint)
         && Objects.equals(upstreamInstanceId, that.upstreamInstanceId)
         && Objects.equals(upstreamPlanNodeId, that.upstreamPlanNodeId);
@@ -203,11 +204,6 @@ public class ExchangeNode extends PlanNode {
   @Override
   public int hashCode() {
     return Objects.hash(
-        super.hashCode(),
-        child,
-        remoteSourceNode,
-        upstreamEndpoint,
-        upstreamInstanceId,
-        upstreamPlanNodeId);
+        super.hashCode(), child, upstreamEndpoint, upstreamInstanceId, upstreamPlanNodeId);
   }
 }

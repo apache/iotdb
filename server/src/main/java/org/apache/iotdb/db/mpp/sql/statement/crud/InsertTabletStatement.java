@@ -19,16 +19,12 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class InsertTabletStatement extends InsertBaseStatement {
@@ -71,17 +67,6 @@ public class InsertTabletStatement extends InsertBaseStatement {
     this.times = times;
   }
 
-  @Override
-  public void markFailedMeasurementInsertion(int index, Exception e) {
-    if (measurements[index] == null) {
-      return;
-    }
-    super.markFailedMeasurementInsertion(index, e);
-    dataTypes[index] = null;
-    columns[index] = null;
-    bitMaps[index] = null;
-  }
-
   public List<TTimePartitionSlot> getTimePartitionSlots() {
     List<TTimePartitionSlot> result = new ArrayList<>();
     long startTime =
@@ -103,31 +88,17 @@ public class InsertTabletStatement extends InsertBaseStatement {
     return result;
   }
 
-  @Override
-  public boolean checkDataType(SchemaTree schemaTree) {
-    List<MeasurementSchema> measurementSchemas =
-        schemaTree
-            .searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements))
-            .getMeasurementSchemaList();
-    for (int i = 0; i < measurementSchemas.size(); i++) {
-      if (dataTypes[i] != measurementSchemas.get(i).getType()) {
-        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          return false;
-        } else {
-          markFailedMeasurementInsertion(
-              i,
-              new DataTypeMismatchException(
-                  devicePath.getFullPath(),
-                  measurements[i],
-                  measurementSchemas.get(i).getType(),
-                  dataTypes[i]));
-        }
-      }
-    }
-    return true;
-  }
-
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertTablet(this, context);
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
+    for (String m : measurements) {
+      PartialPath fullPath = devicePath.concatNode(m);
+      ret.add(fullPath);
+    }
+    return ret;
   }
 }

@@ -397,7 +397,7 @@ public class TsFileManager {
         isRealTimeTsFile = tsFileProcessor.isMemtableNotNull();
       }
       File tsFile = tsFileResource.getTsFile();
-      if (!isRealTimeTsFile && !syncManager.isTsFileAlreadyBeCollected(tsFile)) {
+      if (!isRealTimeTsFile) {
         File mods = new File(tsFileResource.getModFile().getFilePath());
         long modsOffset = mods.exists() ? mods.length() : 0L;
         File hardlink = syncManager.createHardlink(tsFile, modsOffset);

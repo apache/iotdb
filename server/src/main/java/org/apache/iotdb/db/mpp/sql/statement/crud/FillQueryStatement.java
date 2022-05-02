@@ -72,6 +72,7 @@ public class FillQueryStatement extends QueryStatement {
     }
   }
 
+  @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitFillQuery(this, context);
   }

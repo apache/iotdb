@@ -147,6 +147,11 @@ public class RunLengthEncodedColumn implements Column {
     return new RunLengthEncodedColumn(value, length);
   }
 
+  @Override
+  public void reverse() {
+    // do nothing because the underlying column has only one value
+  }
+
   private void checkReadablePosition(int position) {
     if (position < 0 || position >= positionCount) {
       throw new IllegalArgumentException("position is not valid");

@@ -84,6 +84,9 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
                 client.close();
               }
               throw e;
+            } catch (Exception e) {
+              LOGGER.error("unexpected exception", e);
+              throw e;
             } finally {
               if (client != null) {
                 client.returnSelf();

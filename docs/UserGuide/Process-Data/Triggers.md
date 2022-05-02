@@ -209,13 +209,14 @@ WITH (
 
 At present, the trigger can listen to all data insertion operations on the time series. The hook can be called `BEFORE`  or `AFTER` the data is inserted.
 
-`FULL-PATH` is the name of the time series that the trigger listens to. The path must be a measurement path.
+`FULL-PATH` can be a time-series (measurement) path such as root.sg1.d1.s1, a device path such as root.sg1.d1, a storage group path such as root.sg1, or even  a non-measurement path with business semantic such as root.sg1.x.
 
 `CLASSNAME` is the full class name of the trigger.
 
-Note that `CLASSNAME`,  `KEY` and `VALUE` in the attributes need to be quoted in single or double quotes.
-
-
+Note
+1. `CLASSNAME`,  `KEY` and `VALUE` in the attributes need to be quoted in single or double quotes.
+2. Only one trigger can be registered per `full-path`.
+3. When multiple prefix paths of a path are registered with triggers, for example, trigger `trigger-sg1d1s1` is registed on root.sg1.d1, trigger `trigger-sg1d1` is registed on root.sg1.d1, and trigger `trigger-sg1` is registed on root.sg1. When inserting data to root.sg1.d1.s1, triggers will be  triggered in the following order: trigger-sg1d1s1 -> trigger-sg1d1 -> trigger-sg1.
 
 ### Drop Triggers
 

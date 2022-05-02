@@ -18,81 +18,11 @@
  */
 package org.apache.iotdb.confignode.consensus.request.read;
 
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+public class GetOrCreateSchemaPartitionReq extends GetSchemaPartitionReq {
 
-/** Get or create SchemaPartition by the specific partitionSlotsMap. */
-public class GetOrCreateSchemaPartitionReq extends ConfigRequest {
-
-  // Map<StorageGroup, List<SeriesPartitionSlot>>
-  // Get all SchemaPartitions when the partitionSlotsMap is empty
-  // Get all exists SchemaPartitions in one StorageGroup when the SeriesPartitionSlot is empty
-  private Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap;
-
-  public GetOrCreateSchemaPartitionReq(ConfigRequestType configRequestType) {
-    super(configRequestType);
-  }
-
-  public void setPartitionSlotsMap(Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
-    this.partitionSlotsMap = partitionSlotsMap;
-  }
-
-  public Map<String, List<TSeriesPartitionSlot>> getPartitionSlotsMap() {
-    return partitionSlotsMap;
-  }
-
-  @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
-
-    buffer.putInt(partitionSlotsMap.size());
-    partitionSlotsMap.forEach(
-        (storageGroup, seriesPartitionSlots) -> {
-          BasicStructureSerDeUtil.write(storageGroup, buffer);
-          buffer.putInt(seriesPartitionSlots.size());
-          seriesPartitionSlots.forEach(
-              seriesPartitionSlot ->
-                  ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer));
-        });
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    partitionSlotsMap = new HashMap<>();
-    int storageGroupNum = buffer.getInt();
-    for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = BasicStructureSerDeUtil.readString(buffer);
-      partitionSlotsMap.put(storageGroup, new ArrayList<>());
-      int seriesPartitionSlotNum = buffer.getInt();
-      for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot =
-            ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
-        partitionSlotsMap.get(storageGroup).add(seriesPartitionSlot);
-      }
-    }
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    GetOrCreateSchemaPartitionReq that = (GetOrCreateSchemaPartitionReq) o;
-    return partitionSlotsMap.equals(that.partitionSlotsMap);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(partitionSlotsMap);
+  public GetOrCreateSchemaPartitionReq() {
+    super(ConfigRequestType.GetOrCreateSchemaPartition);
   }
 }

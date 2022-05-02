@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.AsyncClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -78,6 +79,9 @@ public class DataNodeManager {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
 
     if (DataNodeInfo.getInstance().containsValue(plan.getLocation())) {
+      // Reset client
+      AsyncClientPool.getInstance().resetClient(plan.getLocation().getInternalEndPoint());
+
       TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
       dataSet.setStatus(status);

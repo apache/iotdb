@@ -21,8 +21,7 @@ package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -75,23 +74,17 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
     return new ArrayList<>(timePartitionSlotSet);
   }
 
-  @Override
-  public boolean checkDataType(SchemaTree schemaTree) {
-    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      if (!insertRowStatement.checkDataType(schemaTree)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  public void transferType(SchemaTree schemaTree) throws QueryProcessException {
-    for (InsertRowStatement insertRowStatement : insertRowStatementList) {
-      insertRowStatement.transferType(schemaTree);
-    }
-  }
-
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRowsOfOneDevice(this, context);
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
+    for (String m : measurements) {
+      PartialPath fullPath = devicePath.concatNode(m);
+      ret.add(fullPath);
+    }
+    return ret;
   }
 }

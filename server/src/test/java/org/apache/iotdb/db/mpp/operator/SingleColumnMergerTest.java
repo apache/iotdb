@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.operator;
 
+import org.apache.iotdb.db.mpp.operator.process.merge.AscTimeComparator;
+import org.apache.iotdb.db.mpp.operator.process.merge.DescTimeComparator;
 import org.apache.iotdb.db.mpp.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -41,7 +42,7 @@ public class SingleColumnMergerTest {
   @Test
   public void mergeTest1() {
     SingleColumnMerger merger =
-        new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC);
+        new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator());
 
     TsBlockBuilder inputBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     inputBuilder.getTimeColumnBuilder().writeLong(2);
@@ -93,7 +94,7 @@ public class SingleColumnMergerTest {
   @Test
   public void mergeTest2() {
     SingleColumnMerger merger =
-        new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC);
+        new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator());
 
     TsBlock[] inputTsBlocks = new TsBlock[1];
     int[] inputIndex = new int[] {0};
@@ -129,7 +130,7 @@ public class SingleColumnMergerTest {
   @Test
   public void mergeTest3() {
     SingleColumnMerger merger =
-        new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_ASC);
+        new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator());
 
     TsBlockBuilder inputBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     inputBuilder.getTimeColumnBuilder().writeLong(8);
@@ -170,7 +171,7 @@ public class SingleColumnMergerTest {
   @Test
   public void mergeTest4() {
     SingleColumnMerger merger =
-        new SingleColumnMerger(new InputLocation(0, 0), OrderBy.TIMESTAMP_DESC);
+        new SingleColumnMerger(new InputLocation(0, 0), new DescTimeComparator());
 
     TsBlockBuilder inputBuilder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     inputBuilder.getTimeColumnBuilder().writeLong(2);
