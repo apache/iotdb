@@ -178,6 +178,8 @@
         <swagger.core.version>1.5.18</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
         <openapi.generator.version>5.0.0</openapi.generator.version>
+        <!-- JDK1.8 only support google java format 1.7-->
+        <google.java.format.version>1.7</google.java.format.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -714,7 +716,7 @@
                     <configuration>
                         <java>
                             <googleJavaFormat>
-                                <version>1.15.0</version>
+                                <version>${google.java.format.version}</version>
                                 <style>GOOGLE</style>
                             </googleJavaFormat>
                             <importOrder>
@@ -1145,6 +1147,7 @@
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
+                <google.java.format.version>1.15.0</google.java.format.version>
             </properties>
             <dependencies>
                 <!-- for jdk-11 -->
