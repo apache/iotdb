@@ -32,15 +32,18 @@ import java.util.LinkedHashSet;
 
 public class InExpression extends UnaryExpression {
 
+  private final boolean isNotIn;
   private final LinkedHashSet<String> values;
 
-  public InExpression(Expression expression, LinkedHashSet<String> values) {
+  public InExpression(Expression expression, boolean isNotIn, LinkedHashSet<String> values) {
     super(expression);
+    this.isNotIn = isNotIn;
     this.values = values;
   }
 
   public InExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
+    isNotIn = ReadWriteIOUtils.readBool(byteBuffer);
     final int size = ReadWriteIOUtils.readInt(byteBuffer);
     values = new LinkedHashSet<>();
     for (int i = 0; i < size; ++i) {
@@ -68,17 +71,18 @@ public class InExpression extends UnaryExpression {
 
   @Override
   protected Transformer constructTransformer(LayerPointReader pointReader) {
-    return new InTransformer(pointReader, values);
+    return new InTransformer(pointReader, isNotIn, values);
   }
 
   @Override
   protected Expression constructExpression(Expression childExpression) {
-    return new InExpression(childExpression, values);
+    return new InExpression(childExpression, isNotIn, values);
   }
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
+    ReadWriteIOUtils.write(isNotIn, byteBuffer);
     ReadWriteIOUtils.write(values.size(), byteBuffer);
     for (String value : values) {
       ReadWriteIOUtils.write(value, byteBuffer);

@@ -1858,7 +1858,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       String text = constantContext.getText();
       values.add(constantContext.STRING_LITERAL() != null ? parseStringLiteral(text) : text);
     }
-    return new InExpression(childExpression, values);
+    return new InExpression(childExpression, context.OPERATOR_NOT() != null, values);
   }
 
   private Expression parseConstantOperand(ConstantContext constantContext) {
