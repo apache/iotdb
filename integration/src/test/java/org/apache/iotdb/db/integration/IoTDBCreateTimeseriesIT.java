@@ -209,24 +209,10 @@ public class IoTDBCreateTimeseriesIT {
     }
 
     String[] timeSeriesArray = {
-      "root.sg.d.\"a.b\"",
-      "root.sg.d.\"a“（Φ）”b\"",
-      "root.sg.d.\"a>b\"",
-      "root.sg.d.'a.b'",
-      "root.sg.d.'a“（Φ）”b'",
-      "root.sg.d.'a>b'",
-      "root.sg.d.`a“（Φ）”b`",
-      "root.sg.d.`a>b`"
+      "root.sg.d.`a.b`", "root.sg.d.`a“（Φ）”b`", "root.sg.d.`a>b`",
     };
     String[] timeSeriesResArray = {
-      "root.sg.d.\"a.b\"",
-      "root.sg.d.\"a“（Φ）”b\"",
-      "root.sg.d.\"a>b\"",
-      "root.sg.d.'a.b'",
-      "root.sg.d.'a“（Φ）”b'",
-      "root.sg.d.'a>b'",
-      "root.sg.d.a“（Φ）”b",
-      "root.sg.d.a>b"
+      "root.sg.d.`a.b`", "root.sg.d.a“（Φ）”b", "root.sg.d.a>b",
     };
 
     for (String timeSeries : timeSeriesArray) {

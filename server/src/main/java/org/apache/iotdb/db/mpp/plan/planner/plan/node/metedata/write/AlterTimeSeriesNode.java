@@ -253,6 +253,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
     }
   }
 
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -290,7 +291,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     TRegionReplicaSet regionReplicaSet =
-        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDevice());
+        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDeviceIdString());
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }

@@ -163,7 +163,10 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
         getMetadataAndEndOffsetV2(
-            deviceMetadataIndexNode, path.getDevice(), MetadataIndexNodeType.INTERNAL_DEVICE, true);
+            deviceMetadataIndexNode,
+            path.getDeviceIdString(),
+            MetadataIndexNodeType.INTERNAL_DEVICE,
+            true);
     if (metadataIndexPair == null) {
       if (ignoreNotExists) {
         return null;
@@ -207,7 +210,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
-        getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
+        getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDeviceIdString(), true, true);
     if (metadataIndexPair == null) {
       return Collections.emptyList();
     }

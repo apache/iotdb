@@ -971,11 +971,7 @@ ID
     : NAME_CHAR+
     ;
 
-QUTOED_ID_IN_NODE_NAME
-    : BQUOTA_STRING_IN_NODE_NAME
-    ;
-
-QUTOED_ID
+QUOTED_ID
     : BQUOTA_STRING
     ;
 
@@ -998,20 +994,17 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | ~('"'| '\\') )* '"'
+    : '"' ( '\\'. | '""' | ~('"'| '\\') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | ~('\''| '\\') )* '\''
+    : '\'' ( '\\'. | '\'\'' |~('\''| '\\') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\'. | ~('`'| '\\') )* '`'
+    : '`' ( '\\' ~('`') | '``' | ~('`'| '\\') )* '`'
     ;
 
-fragment BQUOTA_STRING_IN_NODE_NAME
-    : '`' ( '\\' ('`'|'\\'|'\''|'"') | ~('`'|'\\'|'.'|'\''|'"'))* '`'
-    ;
 
 // Characters and write it this way for case sensitivity
 

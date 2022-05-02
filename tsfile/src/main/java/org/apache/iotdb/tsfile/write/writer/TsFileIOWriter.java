@@ -354,7 +354,7 @@ public class TsFileIOWriter implements AutoCloseable {
             seriesStatistics,
             publicBAOS);
     deviceTimeseriesMetadataMap
-        .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
+        .computeIfAbsent(path.getDeviceIdString(), k -> new ArrayList<>())
         .add(timeseriesMetadata);
   }
 
