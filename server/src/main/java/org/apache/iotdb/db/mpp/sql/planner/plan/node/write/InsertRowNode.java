@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -156,6 +157,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   public void setNeedInferType(boolean needInferType) {
     isNeedInferType = needInferType;
+  }
+
+  @TestOnly
+  public List<TTimePartitionSlot> getTimePartitionSlots() {
+    return Collections.singletonList(StorageEngineV2.getTimePartitionSlot(time));
   }
 
   @Override
