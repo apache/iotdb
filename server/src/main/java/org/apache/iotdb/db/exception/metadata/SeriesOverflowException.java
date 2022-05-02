@@ -15,21 +15,19 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.query.udf.core.transformer.binary;
+package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class CompareLessEqualTransformer extends CompareBinaryTransformer {
+public class SeriesOverflowException extends MetadataException {
 
-  public CompareLessEqualTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
-    super(leftPointReader, rightPointReader);
-  }
-
-  @Override
-  protected boolean evaluate(double leftOperand, double rightOperand) {
-    return Double.compare(leftOperand, rightOperand) <= 0;
+  public SeriesOverflowException() {
+    super(
+        "There are too many timeseries in memory, "
+            + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat, restart and create timeseries again.",
+        TSStatusCode.SERIES_OVERFLOW.getStatusCode());
   }
 }

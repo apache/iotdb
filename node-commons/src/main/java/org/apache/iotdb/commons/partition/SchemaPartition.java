@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -155,5 +156,13 @@ public class SchemaPartition extends Partition {
     schemaPartitionMap
         .computeIfAbsent(storageGroup, key -> new HashMap<>())
         .put(seriesPartitionSlot, regionReplicaSet);
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    // TODO: Serialize SchemaPartition
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    // TODO: Deserialize DataPartition
   }
 }
