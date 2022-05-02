@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.util.Collections;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,7 +29,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -39,6 +36,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -526,103 +524,67 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  @TestOnly
-  public IPointReader getIterator() {
-    return new Ite();
-  }
-
-  public IPointReader getIterator(
-      int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
-    return new Ite(floatPrecision, encoding, size, deletionList);
-  }
-
-  protected class Ite implements IPointReader {
-
-    protected TimeValuePair cachedTimeValuePair;
-    protected boolean hasCachedPair;
-    protected int cur;
-    protected Integer floatPrecision;
-    private TSEncoding encoding;
-    private int deleteCursor = 0;
-    /**
-     * because TV list may be share with different query, each iterator has to record it's own size
-     */
-    protected int iteSize = 0;
-    /** this field is effective only in the Tvlist in a RealOnlyMemChunk. */
-    private List<TimeRange> deletionList;
-
-    public Ite() {
-      this.iteSize = TVList.this.rowCount;
+  public TsBlock getTsBlock(int floatPrecision, TSEncoding encoding, List<TimeRange> deletionList) {
+    if (deletionList == null) {
+      return this.getTsBlockWithoutDeletionList(floatPrecision, encoding);
+    }
+    Integer deleteCursor = 0;
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
+    // Time column
+    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+    for (int i = 0; i < rowCount; i++) {
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)) {
+        timeBuilder.writeLong(this.getTime(i));
+      }
     }
 
-    public Ite(int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
-      this.floatPrecision = floatPrecision;
-      this.encoding = encoding;
-      this.iteSize = size;
-      this.deletionList = deletionList;
-    }
+    // value column
+    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
+    writeUnDeletedValuesIntoTsBlock(valueBuilder, floatPrecision, encoding, deletionList);
+    builder.declarePositions(rowCount);
+    return builder.build();
+  }
 
-    @Override
-    public boolean hasNextTimeValuePair() {
-      if (hasCachedPair) {
+  private TsBlock getTsBlockWithoutDeletionList(int floatPrecision, TSEncoding encoding) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
+    // Time column
+    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+    for (int i = 0; i < timestamps.size() - 1; i++) {
+      timeBuilder.writeLongs(timestamps.get(i), ARRAY_SIZE);
+    }
+    timeBuilder.writeLongs(
+        timestamps.get(timestamps.size() - 1),
+        rowCount % ARRAY_SIZE == 0 ? ARRAY_SIZE : rowCount % ARRAY_SIZE);
+
+    // value column
+    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
+    writeValuesIntoTsBlock(valueBuilder, floatPrecision, encoding);
+    builder.declarePositions(rowCount);
+    return builder.build();
+  }
+
+  protected abstract void writeValuesIntoTsBlock(
+      ColumnBuilder valueBuilder, int floatPrecision, TSEncoding encoding);
+
+  protected abstract void writeUnDeletedValuesIntoTsBlock(
+      ColumnBuilder valueBuilder,
+      int floatPrecision,
+      TSEncoding encoding,
+      List<TimeRange> deletionList);
+
+  protected boolean isPointDeleted(
+      long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
+    while (deleteCursor < deletionList.size()) {
+      if (deletionList.get(deleteCursor).contains(timestamp)) {
         return true;
-      }
-
-      while (cur < iteSize) {
-        long time = getTime(cur);
-        if (isPointDeleted(time) || (cur + 1 < rowCount() && (time == getTime(cur + 1)))) {
-          cur++;
-          continue;
-        }
-        TimeValuePair tvPair;
-        tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
-        cur++;
-        if (tvPair.getValue() != null) {
-          cachedTimeValuePair = tvPair;
-          hasCachedPair = true;
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    protected boolean isPointDeleted(long timestamp) {
-      while (deletionList != null && deleteCursor < deletionList.size()) {
-        if (deletionList.get(deleteCursor).contains(timestamp)) {
-          return true;
-        } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
-          deleteCursor++;
-        } else {
-          return false;
-        }
-      }
-      return false;
-    }
-
-    @Override
-    public TimeValuePair nextTimeValuePair() throws IOException {
-      if (hasCachedPair || hasNextTimeValuePair()) {
-        hasCachedPair = false;
-        return cachedTimeValuePair;
+      } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
+        deleteCursor++;
       } else {
-        throw new IOException("no next time value pair");
+        return false;
       }
     }
-
-    @Override
-    public TimeValuePair currentTimeValuePair() {
-      return cachedTimeValuePair;
-    }
-
-    @Override
-    public void close() throws IOException {
-      // Do nothing because of this is an in memory object
-    }
+    return false;
   }
-
-  public abstract TsBlock getTsBlock(
-      int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList);
 
   public abstract TSDataType getDataType();
 

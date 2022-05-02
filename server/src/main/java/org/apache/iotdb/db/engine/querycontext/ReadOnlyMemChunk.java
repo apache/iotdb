@@ -78,7 +78,6 @@ public class ReadOnlyMemChunk {
       TSEncoding encoding,
       TVList tvList,
       Map<String, String> props,
-      int size,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     this.measurementUid = measurementUid;
@@ -102,56 +101,11 @@ public class ReadOnlyMemChunk {
     }
 
     this.chunkData = tvList;
-    this.chunkDataSize = size;
+    this.chunkDataSize = tvList.rowCount();
     this.deletionList = deletionList;
-
-    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
-      this.tsblock = tvList.getTsBlock(floatPrecision, encoding, chunkDataSize, deletionList);
-      initChunkMetaFromTsBlock();
-      this.chunkPointReader = tsblock.getTsBlockSingleColumnIterator();
-    } else {
-      this.chunkPointReader =
-          tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-      initChunkMeta();
-    }
-  }
-
-  private void initChunkMeta() throws IOException, QueryProcessException {
-    Statistics statsByType = Statistics.getStatsByType(dataType);
-    IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
-    if (!isEmpty()) {
-      IPointReader iterator =
-          chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-      while (iterator.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-        switch (dataType) {
-          case BOOLEAN:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-            break;
-          case TEXT:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-            break;
-          case FLOAT:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-            break;
-          case INT32:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-            break;
-          case INT64:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-            break;
-          case DOUBLE:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-            break;
-          default:
-            throw new QueryProcessException("Unsupported data type:" + dataType);
-        }
-      }
-    }
-    statsByType.setEmpty(isEmpty());
-    metaData.setChunkLoader(new MemChunkLoader(this));
-    metaData.setVersion(Long.MAX_VALUE);
-    cachedMetaData = metaData;
+    this.tsblock = tvList.getTsBlock(floatPrecision, encoding, deletionList);
+    initChunkMetaFromTsBlock();
+    this.chunkPointReader = tsblock.getTsBlockSingleColumnIterator();
   }
 
   private void initChunkMetaFromTsBlock() throws IOException, QueryProcessException {
@@ -159,7 +113,9 @@ public class ReadOnlyMemChunk {
     IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
       IPointReader iterator =
-          chunkData.getTsBlock(floatPrecision, encoding, chunkDataSize, deletionList).getTsBlockSingleColumnIterator();
+          chunkData
+              .getTsBlock(floatPrecision, encoding, deletionList)
+              .getTsBlockSingleColumnIterator();
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         switch (dataType) {
@@ -209,7 +165,6 @@ public class ReadOnlyMemChunk {
   }
 
   public IPointReader getPointReader() {
-    chunkPointReader = chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
     return chunkPointReader;
   }
 

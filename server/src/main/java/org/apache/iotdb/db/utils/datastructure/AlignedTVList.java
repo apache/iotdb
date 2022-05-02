@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -917,10 +917,15 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  public TsBlock getTsBlock(int floatPrecision, TSEncoding encoding, int size,
-      List<TimeRange> deletionList) {
-    return null;
-  }
+  protected void writeValuesIntoTsBlock(
+      ColumnBuilder valueBuilder, int floatPrecision, TSEncoding encoding) {}
+
+  @Override
+  protected void writeUnDeletedValuesIntoTsBlock(
+      ColumnBuilder valueBuilder,
+      int floatPrecision,
+      TSEncoding encoding,
+      List<TimeRange> deletionList) {}
 
   public IPointReader getAlignedIterator(
       int floatPrecision,

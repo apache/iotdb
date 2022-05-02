@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.util.Collections;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -27,10 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -206,31 +202,44 @@ public class DoubleTVList extends TVList {
   }
 
   @Override
-  public TsBlock getTsBlock(int floatPrecision, TSEncoding encoding, int size,
-      List<TimeRange> deletionList) {
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
-    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
-    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
+  protected void writeValuesIntoTsBlock(
+      ColumnBuilder valueBuilder, int floatPrecision, TSEncoding encoding) {
     for (int i = 0; i < timestamps.size() - 1; i++) {
-      timeBuilder.writeLongs(timestamps.get(i), ARRAY_SIZE);
-      getValuesWithGivenPrecision(values.get(i), floatPrecision, encoding);
+      for (int j = 0; j < values.get(i).length; j++) {
+        values.get(i)[j] = roundValueWithGivenPrecision(values.get(i)[j], floatPrecision, encoding);
+      }
       valueBuilder.writeDoubles(values.get(i), ARRAY_SIZE);
     }
-    timeBuilder.writeLongs(timestamps.get(timestamps.size() - 1), size % ARRAY_SIZE == 0 ? ARRAY_SIZE : size % ARRAY_SIZE);
-    getValuesWithGivenPrecision(values.get(values.size() - 1), floatPrecision, encoding);
-    valueBuilder.writeDoubles(values.get(values.size() - 1), size % ARRAY_SIZE == 0 ? ARRAY_SIZE : size % ARRAY_SIZE);
-    builder.declarePositions(size);
-    return builder.build();
+    for (int j = 0; j < values.get(values.size() - 1).length; j++) {
+      values.get(values.size() - 1)[j] =
+          roundValueWithGivenPrecision(values.get(values.size() - 1)[j], floatPrecision, encoding);
+    }
+    valueBuilder.writeDoubles(
+        values.get(values.size() - 1),
+        rowCount % ARRAY_SIZE == 0 ? ARRAY_SIZE : rowCount % ARRAY_SIZE);
   }
 
-  private void getValuesWithGivenPrecision(double[] values, int floatPrecision, TSEncoding encoding) {
-    if (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF) {
-      for (int i = 0; i < values.length; i++) {
-        if (!Double.isNaN(values[i])) {
-          values[i] = MathUtils.roundWithGivenPrecision(values[i], floatPrecision);
-        }
+  @Override
+  protected void writeUnDeletedValuesIntoTsBlock(
+      ColumnBuilder valueBuilder,
+      int floatPrecision,
+      TSEncoding encoding,
+      List<TimeRange> deletionList) {
+    Integer deleteCursor = 0;
+    for (int i = 0; i < rowCount; i++) {
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)) {
+        valueBuilder.writeDouble(
+            roundValueWithGivenPrecision(getDouble(i), floatPrecision, encoding));
       }
     }
+  }
+
+  private double roundValueWithGivenPrecision(
+      double value, int floatPrecision, TSEncoding encoding) {
+    if (!Double.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+      return MathUtils.roundWithGivenPrecision(value, floatPrecision);
+    }
+    return value;
   }
 
   @Override

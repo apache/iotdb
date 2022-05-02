@@ -550,7 +550,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         partialPath.getMeasurementSchema().getEncodingType(),
         chunkCopy,
         partialPath.getMeasurementSchema().getProps(),
-        curSize,
         deletionList);
   }
   /**

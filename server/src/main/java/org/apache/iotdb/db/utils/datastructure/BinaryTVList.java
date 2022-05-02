@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.util.Collections;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
@@ -26,10 +25,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -203,19 +199,28 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  public TsBlock getTsBlock(int floatPrecision, TSEncoding encoding, int size,
-      List<TimeRange> deletionList) {
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
-    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
-    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
+  protected void writeValuesIntoTsBlock(
+      ColumnBuilder valueBuilder, int floatPrecision, TSEncoding encoding) {
     for (int i = 0; i < timestamps.size() - 1; i++) {
-      timeBuilder.writeLongs(timestamps.get(i), ARRAY_SIZE);
       valueBuilder.writeBinaries(values.get(i), ARRAY_SIZE);
     }
-    timeBuilder.writeLongs(timestamps.get(timestamps.size() - 1), size % ARRAY_SIZE == 0 ? ARRAY_SIZE : size % ARRAY_SIZE);
-    valueBuilder.writeBinaries(values.get(values.size() - 1), size % ARRAY_SIZE == 0 ? ARRAY_SIZE : size % ARRAY_SIZE);
-    builder.declarePositions(size);
-    return builder.build();
+    valueBuilder.writeBinaries(
+        values.get(values.size() - 1),
+        rowCount % ARRAY_SIZE == 0 ? ARRAY_SIZE : rowCount % ARRAY_SIZE);
+  }
+
+  @Override
+  protected void writeUnDeletedValuesIntoTsBlock(
+      ColumnBuilder valueBuilder,
+      int floatPrecision,
+      TSEncoding encoding,
+      List<TimeRange> deletionList) {
+    Integer deleteCursor = 0;
+    for (int i = 0; i < rowCount; i++) {
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)) {
+        valueBuilder.writeBoolean(getBoolean(i));
+      }
+    }
   }
 
   @Override
