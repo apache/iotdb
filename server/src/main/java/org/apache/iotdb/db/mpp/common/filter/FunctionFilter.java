@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.common.filter;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
-import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.mpp.plan.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
