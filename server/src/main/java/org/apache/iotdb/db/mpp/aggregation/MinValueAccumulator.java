@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.operator.aggregation;
+package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -34,7 +34,7 @@ public class MinValueAccumulator implements Accumulator {
 
   private TSDataType seriesDataType;
   private TsPrimitiveType minResult;
-  private boolean hasCandidateResult = false;
+  private boolean initResult = false;
 
   public MinValueAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
@@ -169,7 +169,7 @@ public class MinValueAccumulator implements Accumulator {
 
   @Override
   public void reset() {
-    hasCandidateResult = false;
+    initResult = false;
     this.minResult.reset();
   }
 
@@ -202,8 +202,8 @@ public class MinValueAccumulator implements Accumulator {
   }
 
   private void updateIntResult(int minVal) {
-    if (!hasCandidateResult || minVal < minResult.getInt()) {
-      hasCandidateResult = true;
+    if (!initResult || minVal < minResult.getInt()) {
+      initResult = true;
       minResult.setInt(minVal);
     }
   }
@@ -222,8 +222,8 @@ public class MinValueAccumulator implements Accumulator {
   }
 
   private void updateLongResult(long minVal) {
-    if (!hasCandidateResult || minVal < minResult.getLong()) {
-      hasCandidateResult = true;
+    if (!initResult || minVal < minResult.getLong()) {
+      initResult = true;
       minResult.setLong(minVal);
     }
   }
@@ -242,8 +242,8 @@ public class MinValueAccumulator implements Accumulator {
   }
 
   private void updateFloatResult(float minVal) {
-    if (!hasCandidateResult || minVal < minResult.getFloat()) {
-      hasCandidateResult = true;
+    if (!initResult || minVal < minResult.getFloat()) {
+      initResult = true;
       minResult.setFloat(minVal);
     }
   }
@@ -262,8 +262,8 @@ public class MinValueAccumulator implements Accumulator {
   }
 
   private void updateDoubleResult(double minVal) {
-    if (!hasCandidateResult || minVal < minResult.getDouble()) {
-      hasCandidateResult = true;
+    if (!initResult || minVal < minResult.getDouble()) {
+      initResult = true;
       minResult.setDouble(minVal);
     }
   }

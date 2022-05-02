@@ -17,25 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.operator.aggregation;
+package org.apache.iotdb.db.mpp.aggregation;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
+public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
 
-public class MinTimeDescAccumulator extends MinTimeAccumulator {
-
-  @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
-      long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax()) {
-        updateMinTime(curTime);
-      }
-    }
-  }
+  private boolean hasCandidateResult = false;
 
   @Override
   public boolean hasFinalResult() {
-    return false;
+    return hasCandidateResult;
+  }
+
+  @Override
+  public void reset() {
+    hasCandidateResult = false;
+    super.reset();
+  }
+
+  protected void updateMaxTime(long curTime) {
+    hasCandidateResult = true;
+    super.updateMaxTime(curTime);
   }
 }

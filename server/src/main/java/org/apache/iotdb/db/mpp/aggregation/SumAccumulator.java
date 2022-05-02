@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.operator.aggregation;
+package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,16 +30,16 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class AvgAccumulator implements Accumulator {
+public class SumAccumulator implements Accumulator {
 
   private TSDataType seriesDataType;
-  private long countValue;
-  private double sumValue;
+  private double sumValue = 0;
 
-  public AvgAccumulator(TSDataType seriesDataType) {
+  public SumAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
   }
 
+  // Column should be like: | Time | Value |
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
     switch (seriesDataType) {
@@ -63,17 +63,15 @@ public class AvgAccumulator implements Accumulator {
     }
   }
 
-  // partialResult should be like: | countValue1 | sumValue1 |
+  // partialResult should be like: | partialSumValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 2, "partialResult of Avg should be 2");
-    countValue += partialResult[0].getLong(0);
-    sumValue += partialResult[1].getDouble(0);
+    checkArgument(partialResult.length == 1, "partialResult of Sum should be 1");
+    sumValue += partialResult[0].getDouble(0);
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
-    countValue += statistics.getCount();
     if (statistics instanceof IntegerStatistics) {
       sumValue += statistics.getSumLongValue();
     } else {
@@ -81,30 +79,28 @@ public class AvgAccumulator implements Accumulator {
     }
   }
 
-  // Set sumValue to finalResult and keep countValue equals to 1
+  // finalResult should be single column, like: | finalSumValue |
   @Override
   public void setFinal(Column finalResult) {
     reset();
-    countValue = 1;
     sumValue = finalResult.getDouble(0);
   }
 
+  // columnBuilder should be single in countAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 2, "partialResult of Avg should be 2");
-    columnBuilders[0].writeLong(countValue);
-    columnBuilders[1].writeDouble(sumValue);
+    checkArgument(columnBuilders.length == 1, "partialResult of Sum should be 1");
+    columnBuilders[0].writeDouble(sumValue);
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeDouble(sumValue / countValue);
+    columnBuilder.writeDouble(sumValue);
   }
 
   @Override
   public void reset() {
-    this.countValue = 0;
-    this.sumValue = 0.0;
+    this.sumValue = 0;
   }
 
   @Override
@@ -114,7 +110,7 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public TSDataType[] getIntermediateType() {
-    return new TSDataType[] {TSDataType.INT64, TSDataType.DOUBLE};
+    return new TSDataType[] {TSDataType.DOUBLE};
   }
 
   @Override
@@ -130,7 +126,6 @@ public class AvgAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
-        countValue++;
         sumValue += column[1].getInt(i);
       }
     }
@@ -144,7 +139,6 @@ public class AvgAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
-        countValue++;
         sumValue += column[1].getLong(i);
       }
     }
@@ -158,7 +152,6 @@ public class AvgAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
-        countValue++;
         sumValue += column[1].getFloat(i);
       }
     }
@@ -172,7 +165,6 @@ public class AvgAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
-        countValue++;
         sumValue += column[1].getDouble(i);
       }
     }

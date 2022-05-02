@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.operator.aggregation;
+package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,18 +30,17 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class MaxValueAccumulator implements Accumulator {
+public class ExtremeAccumulator implements Accumulator {
 
-  private TSDataType seriesDataType;
-  private TsPrimitiveType maxResult;
-  private boolean hasCandidateResult;
+  private final TSDataType seriesDataType;
+  private TsPrimitiveType extremeResult;
+  private boolean initResult;
 
-  public MaxValueAccumulator(TSDataType seriesDataType) {
+  public ExtremeAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    this.maxResult = TsPrimitiveType.getByType(seriesDataType);
+    this.extremeResult = TsPrimitiveType.getByType(seriesDataType);
   }
 
-  // Column should be like: | Time | Value |
   @Override
   public void addInput(Column[] column, TimeRange timeRange) {
     switch (seriesDataType) {
@@ -61,14 +60,14 @@ public class MaxValueAccumulator implements Accumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
     }
   }
 
-  // partialResult should be like: | partialMaxValue1 |
+  // partialResult should be like: | PartialExtremeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MaxValue should be 1");
+    checkArgument(partialResult.length == 1, "partialResult of ExtremeValue should be 1");
     switch (seriesDataType) {
       case INT32:
         updateIntResult(partialResult[0].getInt(0));
@@ -86,7 +85,7 @@ public class MaxValueAccumulator implements Accumulator {
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
     }
   }
 
@@ -95,52 +94,55 @@ public class MaxValueAccumulator implements Accumulator {
     switch (seriesDataType) {
       case INT32:
         updateIntResult((int) statistics.getMaxValue());
+        updateIntResult((int) statistics.getMinValue());
         break;
       case INT64:
         updateLongResult((long) statistics.getMaxValue());
+        updateLongResult((long) statistics.getMinValue());
         break;
       case FLOAT:
         updateFloatResult((float) statistics.getMaxValue());
+        updateFloatResult((float) statistics.getMinValue());
         break;
       case DOUBLE:
         updateDoubleResult((double) statistics.getMaxValue());
+        updateDoubleResult((double) statistics.getMinValue());
         break;
       case TEXT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
     }
   }
 
-  // finalResult should be single column, like: | finalCountValue |
   @Override
   public void setFinal(Column finalResult) {
-    maxResult.setObject(finalResult.getObject(0));
+    extremeResult.setObject(finalResult.getObject(0));
   }
 
-  // columnBuilder should be single in countAccumulator
+  // columnBuilder should be single in ExtremeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MaxValue should be 1");
+    checkArgument(columnBuilders.length == 1, "partialResult of ExtremeValue should be 1");
     switch (seriesDataType) {
       case INT32:
-        columnBuilders[0].writeInt(maxResult.getInt());
+        columnBuilders[0].writeInt(extremeResult.getInt());
         break;
       case INT64:
-        columnBuilders[0].writeLong(maxResult.getLong());
+        columnBuilders[0].writeLong(extremeResult.getLong());
         break;
       case FLOAT:
-        columnBuilders[0].writeFloat(maxResult.getFloat());
+        columnBuilders[0].writeFloat(extremeResult.getFloat());
         break;
       case DOUBLE:
-        columnBuilders[0].writeDouble(maxResult.getDouble());
+        columnBuilders[0].writeDouble(extremeResult.getDouble());
         break;
       case TEXT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
     }
   }
 
@@ -148,29 +150,29 @@ public class MaxValueAccumulator implements Accumulator {
   public void outputFinal(ColumnBuilder columnBuilder) {
     switch (seriesDataType) {
       case INT32:
-        columnBuilder.writeInt(maxResult.getInt());
+        columnBuilder.writeInt(extremeResult.getInt());
         break;
       case INT64:
-        columnBuilder.writeLong(maxResult.getLong());
+        columnBuilder.writeLong(extremeResult.getLong());
         break;
       case FLOAT:
-        columnBuilder.writeFloat(maxResult.getFloat());
+        columnBuilder.writeFloat(extremeResult.getFloat());
         break;
       case DOUBLE:
-        columnBuilder.writeDouble(maxResult.getDouble());
+        columnBuilder.writeDouble(extremeResult.getDouble());
         break;
       case TEXT:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in MaxValue: %s", seriesDataType));
+            String.format("Unsupported data type in Extreme: %s", seriesDataType));
     }
   }
 
   @Override
   public void reset() {
-    hasCandidateResult = false;
-    this.maxResult.reset();
+    initResult = false;
+    extremeResult.reset();
   }
 
   @Override
@@ -180,12 +182,12 @@ public class MaxValueAccumulator implements Accumulator {
 
   @Override
   public TSDataType[] getIntermediateType() {
-    return new TSDataType[] {maxResult.getDataType()};
+    return new TSDataType[] {extremeResult.getDataType()};
   }
 
   @Override
   public TSDataType getFinalType() {
-    return maxResult.getDataType();
+    return extremeResult.getDataType();
   }
 
   private void addIntInput(Column[] column, TimeRange timeRange) {
@@ -201,10 +203,16 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private void updateIntResult(int minVal) {
-    if (!hasCandidateResult || minVal > maxResult.getInt()) {
-      hasCandidateResult = true;
-      maxResult.setInt(minVal);
+  private void updateIntResult(int extVal) {
+    int absExtVal = Math.abs(extVal);
+    int candidateResult = extremeResult.getInt();
+    int absCandidateResult = Math.abs(extremeResult.getInt());
+
+    if (!initResult
+        || (absExtVal > absCandidateResult)
+        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+      initResult = true;
+      extremeResult.setInt(extVal);
     }
   }
 
@@ -221,10 +229,16 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private void updateLongResult(long minVal) {
-    if (!hasCandidateResult || minVal > maxResult.getLong()) {
-      hasCandidateResult = true;
-      maxResult.setLong(minVal);
+  private void updateLongResult(long extVal) {
+    long absExtVal = Math.abs(extVal);
+    long candidateResult = extremeResult.getLong();
+    long absCandidateResult = Math.abs(extremeResult.getLong());
+
+    if (!initResult
+        || (absExtVal > absCandidateResult)
+        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+      initResult = true;
+      extremeResult.setLong(extVal);
     }
   }
 
@@ -241,10 +255,16 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private void updateFloatResult(float minVal) {
-    if (!hasCandidateResult || minVal > maxResult.getFloat()) {
-      hasCandidateResult = true;
-      maxResult.setFloat(minVal);
+  private void updateFloatResult(float extVal) {
+    float absExtVal = Math.abs(extVal);
+    float candidateResult = extremeResult.getFloat();
+    float absCandidateResult = Math.abs(extremeResult.getFloat());
+
+    if (!initResult
+        || (absExtVal > absCandidateResult)
+        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+      initResult = true;
+      extremeResult.setFloat(extVal);
     }
   }
 
@@ -261,10 +281,16 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private void updateDoubleResult(double minVal) {
-    if (!hasCandidateResult || minVal > maxResult.getDouble()) {
-      hasCandidateResult = true;
-      maxResult.setDouble(minVal);
+  private void updateDoubleResult(double extVal) {
+    double absExtVal = Math.abs(extVal);
+    double candidateResult = extremeResult.getDouble();
+    double absCandidateResult = Math.abs(extremeResult.getDouble());
+
+    if (!initResult
+        || (absExtVal > absCandidateResult)
+        || (absExtVal == absCandidateResult) && extVal > candidateResult) {
+      initResult = true;
+      extremeResult.setDouble(extVal);
     }
   }
 }

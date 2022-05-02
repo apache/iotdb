@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.operator.aggregation;
+package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -67,7 +67,6 @@ public class FirstValueDescAccumulator extends FirstValueAccumulator {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
         updateDoubleFirstValue(column[1].getDouble(i), curTime);
-        break;
       }
     }
   }

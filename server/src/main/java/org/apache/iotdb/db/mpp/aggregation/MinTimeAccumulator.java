@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.operator.aggregation;
+package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -27,11 +27,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class MaxTimeAccumulator implements Accumulator {
+public class MinTimeAccumulator implements Accumulator {
 
-  protected long maxTime = Long.MIN_VALUE;
+  protected boolean hasCandidateResult;
+  protected long minTime = Long.MAX_VALUE;
 
-  public MaxTimeAccumulator() {}
+  public MinTimeAccumulator() {}
 
   // Column should be like: | Time | Value |
   // Value is used to judge isNull()
@@ -40,49 +41,51 @@ public class MaxTimeAccumulator implements Accumulator {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
-        updateMaxTime(curTime);
+        updateMinTime(curTime);
+        break;
       }
     }
   }
 
-  // partialResult should be like: | partialMaxTimeValue |
+  // partialResult should be like: | partialMinTimeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 1, "partialResult of MaxTime should be 1");
-    updateMaxTime(partialResult[0].getLong(0));
+    checkArgument(partialResult.length == 1, "partialResult of MinTime should be 1");
+    updateMinTime(partialResult[0].getLong(0));
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
-    updateMaxTime(statistics.getEndTime());
+    updateMinTime(statistics.getStartTime());
   }
 
-  // finalResult should be single column, like: | finalMaxTime |
+  // finalResult should be single column, like: | finalMinTime |
   @Override
   public void setFinal(Column finalResult) {
-    maxTime = finalResult.getLong(0);
+    minTime = finalResult.getLong(0);
   }
 
-  // columnBuilder should be single in maxTimeAccumulator
+  // columnBuilder should be single in minTimeAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 1, "partialResult of MaxTime should be 1");
-    columnBuilders[0].writeLong(maxTime);
+    checkArgument(columnBuilders.length == 1, "partialResult of MinTime should be 1");
+    columnBuilders[0].writeLong(minTime);
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeLong(maxTime);
+    columnBuilder.writeLong(minTime);
   }
 
   @Override
   public void reset() {
-    this.maxTime = Long.MIN_VALUE;
+    hasCandidateResult = false;
+    this.minTime = Long.MAX_VALUE;
   }
 
   @Override
   public boolean hasFinalResult() {
-    return false;
+    return hasCandidateResult;
   }
 
   @Override
@@ -95,7 +98,8 @@ public class MaxTimeAccumulator implements Accumulator {
     return TSDataType.INT64;
   }
 
-  protected void updateMaxTime(long curTime) {
-    maxTime = Math.max(maxTime, curTime);
+  protected void updateMinTime(long curTime) {
+    hasCandidateResult = true;
+    minTime = Math.min(minTime, curTime);
   }
 }

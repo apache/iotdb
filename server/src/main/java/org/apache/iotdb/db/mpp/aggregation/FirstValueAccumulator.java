@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.operator.aggregation;
+package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,15 +30,16 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class LastValueAccumulator implements Accumulator {
+public class FirstValueAccumulator implements Accumulator {
 
   protected final TSDataType seriesDataType;
-  protected TsPrimitiveType lastValue;
-  protected long maxTime = Long.MIN_VALUE;
+  protected boolean hasCandidateResult;
+  protected TsPrimitiveType firstValue;
+  protected long minTime = Long.MAX_VALUE;
 
-  public LastValueAccumulator(TSDataType seriesDataType) {
+  public FirstValueAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
-    lastValue = TsPrimitiveType.getByType(seriesDataType);
+    firstValue = TsPrimitiveType.getByType(seriesDataType);
   }
 
   // Column should be like: | Time | Value |
@@ -64,36 +65,36 @@ public class LastValueAccumulator implements Accumulator {
         addBooleanInput(column, timeRange);
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastValue: %s", seriesDataType));
+            String.format("Unsupported data type in FirstValue: %s", seriesDataType));
     }
   }
 
-  // partialResult should be like: | LastValue | MaxTime |
+  // partialResult should be like: | FirstValue | MinTime |
   @Override
   public void addIntermediate(Column[] partialResult) {
-    checkArgument(partialResult.length == 2, "partialResult of LastValue should be 2");
+    checkArgument(partialResult.length == 2, "partialResult of FirstValue should be 2");
     switch (seriesDataType) {
       case INT32:
-        updateIntLastValue(partialResult[0].getInt(0), partialResult[1].getLong(0));
+        updateIntFirstValue(partialResult[0].getInt(0), partialResult[1].getLong(0));
         break;
       case INT64:
-        updateLongLastValue(partialResult[0].getLong(0), partialResult[1].getLong(0));
+        updateLongFirstValue(partialResult[0].getLong(0), partialResult[1].getLong(0));
         break;
       case FLOAT:
-        updateFloatLastValue(partialResult[0].getFloat(0), partialResult[1].getLong(0));
+        updateFloatFirstValue(partialResult[0].getFloat(0), partialResult[1].getLong(0));
         break;
       case DOUBLE:
-        updateDoubleLastValue(partialResult[0].getDouble(0), partialResult[1].getLong(0));
+        updateDoubleFirstValue(partialResult[0].getDouble(0), partialResult[1].getLong(0));
         break;
       case TEXT:
-        updateBinaryLastValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
+        updateBinaryFirstValue(partialResult[0].getBinary(0), partialResult[1].getLong(0));
         break;
       case BOOLEAN:
-        updateBooleanLastValue(partialResult[0].getBoolean(0), partialResult[1].getLong(0));
+        updateBooleanFirstValue(partialResult[0].getBoolean(0), partialResult[1].getLong(0));
         break;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastValue: %s", seriesDataType));
+            String.format("Unsupported data type in FirstValue: %s", seriesDataType));
     }
   }
 
@@ -101,84 +102,84 @@ public class LastValueAccumulator implements Accumulator {
   public void addStatistics(Statistics statistics) {
     switch (seriesDataType) {
       case INT32:
-        updateIntLastValue((int) statistics.getLastValue(), statistics.getStartTime());
+        updateIntFirstValue((int) statistics.getFirstValue(), statistics.getStartTime());
         break;
       case INT64:
-        updateLongLastValue((long) statistics.getLastValue(), statistics.getStartTime());
+        updateLongFirstValue((long) statistics.getFirstValue(), statistics.getStartTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics.getLastValue(), statistics.getStartTime());
+        updateFloatFirstValue((float) statistics.getFirstValue(), statistics.getStartTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics.getLastValue(), statistics.getStartTime());
+        updateDoubleFirstValue((double) statistics.getFirstValue(), statistics.getStartTime());
         break;
       case TEXT:
-        updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getStartTime());
+        updateBinaryFirstValue((Binary) statistics.getFirstValue(), statistics.getStartTime());
       case BOOLEAN:
-        updateBooleanLastValue((boolean) statistics.getLastValue(), statistics.getStartTime());
+        updateBooleanFirstValue((boolean) statistics.getFirstValue(), statistics.getStartTime());
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LastValue: %s", seriesDataType));
+            String.format("Unsupported data type in FirstValue: %s", seriesDataType));
     }
   }
 
-  // finalResult should be single column, like: | finalLastValue |
+  // finalResult should be single column, like: | finalFirstValue |
   @Override
   public void setFinal(Column finalResult) {
     reset();
-    lastValue.setObject(finalResult.getObject(0));
+    firstValue.setObject(finalResult.getObject(0));
   }
 
-  // columnBuilder should be double in LastValueAccumulator
+  // columnBuilder should be double in FirstValueAccumulator
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
-    checkArgument(columnBuilders.length == 2, "partialResult of LastValue should be 2");
+    checkArgument(columnBuilders.length == 2, "partialResult of FirstValue should be 2");
     switch (seriesDataType) {
       case INT32:
-        columnBuilders[0].writeInt(lastValue.getInt());
+        columnBuilders[0].writeInt(firstValue.getInt());
         break;
       case INT64:
-        columnBuilders[0].writeLong(lastValue.getLong());
+        columnBuilders[0].writeLong(firstValue.getLong());
         break;
       case FLOAT:
-        columnBuilders[0].writeFloat(lastValue.getFloat());
+        columnBuilders[0].writeFloat(firstValue.getFloat());
         break;
       case DOUBLE:
-        columnBuilders[0].writeDouble(lastValue.getDouble());
+        columnBuilders[0].writeDouble(firstValue.getDouble());
         break;
       case TEXT:
-        columnBuilders[0].writeBinary(lastValue.getBinary());
+        columnBuilders[0].writeBinary(firstValue.getBinary());
         break;
       case BOOLEAN:
-        columnBuilders[0].writeBoolean(lastValue.getBoolean());
+        columnBuilders[0].writeBoolean(firstValue.getBoolean());
         break;
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in Extreme: %s", seriesDataType));
     }
-    columnBuilders[1].writeLong(maxTime);
+    columnBuilders[1].writeLong(minTime);
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
     switch (seriesDataType) {
       case INT32:
-        columnBuilder.writeInt(lastValue.getInt());
+        columnBuilder.writeInt(firstValue.getInt());
         break;
       case INT64:
-        columnBuilder.writeLong(lastValue.getLong());
+        columnBuilder.writeLong(firstValue.getLong());
         break;
       case FLOAT:
-        columnBuilder.writeFloat(lastValue.getFloat());
+        columnBuilder.writeFloat(firstValue.getFloat());
         break;
       case DOUBLE:
-        columnBuilder.writeDouble(lastValue.getDouble());
+        columnBuilder.writeDouble(firstValue.getDouble());
         break;
       case TEXT:
-        columnBuilder.writeBinary(lastValue.getBinary());
+        columnBuilder.writeBinary(firstValue.getBinary());
         break;
       case BOOLEAN:
-        columnBuilder.writeBoolean(lastValue.getBoolean());
+        columnBuilder.writeBoolean(firstValue.getBoolean());
         break;
       default:
         throw new UnSupportedDataTypeException(
@@ -188,38 +189,41 @@ public class LastValueAccumulator implements Accumulator {
 
   @Override
   public void reset() {
-    this.maxTime = Long.MIN_VALUE;
-    this.lastValue.reset();
+    hasCandidateResult = false;
+    this.minTime = Long.MAX_VALUE;
+    this.firstValue.reset();
   }
 
   @Override
   public boolean hasFinalResult() {
-    return false;
+    return hasCandidateResult;
   }
 
   @Override
   public TSDataType[] getIntermediateType() {
-    return new TSDataType[] {lastValue.getDataType(), TSDataType.INT64};
+    return new TSDataType[] {firstValue.getDataType(), TSDataType.INT64};
   }
 
   @Override
   public TSDataType getFinalType() {
-    return lastValue.getDataType();
+    return firstValue.getDataType();
   }
 
   protected void addIntInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
-        updateIntLastValue(column[1].getInt(i), curTime);
+        updateIntFirstValue(column[1].getInt(i), curTime);
+        break;
       }
     }
   }
 
-  protected void updateIntLastValue(int value, long curTime) {
-    if (curTime > maxTime) {
-      maxTime = curTime;
-      lastValue.setInt(value);
+  protected void updateIntFirstValue(int value, long curTime) {
+    hasCandidateResult = true;
+    if (curTime < minTime) {
+      minTime = curTime;
+      firstValue.setInt(value);
     }
   }
 
@@ -227,15 +231,17 @@ public class LastValueAccumulator implements Accumulator {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
-        updateLongLastValue(column[1].getLong(i), curTime);
+        updateLongFirstValue(column[1].getLong(i), curTime);
+        break;
       }
     }
   }
 
-  protected void updateLongLastValue(long value, long curTime) {
-    if (curTime > maxTime) {
-      maxTime = curTime;
-      lastValue.setLong(value);
+  protected void updateLongFirstValue(long value, long curTime) {
+    hasCandidateResult = true;
+    if (curTime < minTime) {
+      minTime = curTime;
+      firstValue.setLong(value);
     }
   }
 
@@ -243,15 +249,17 @@ public class LastValueAccumulator implements Accumulator {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
-        updateFloatLastValue(column[1].getFloat(i), curTime);
+        updateFloatFirstValue(column[1].getFloat(i), curTime);
+        break;
       }
     }
   }
 
-  protected void updateFloatLastValue(float value, long curTime) {
-    if (curTime > maxTime) {
-      maxTime = curTime;
-      lastValue.setFloat(value);
+  protected void updateFloatFirstValue(float value, long curTime) {
+    hasCandidateResult = true;
+    if (curTime < minTime) {
+      minTime = curTime;
+      firstValue.setFloat(value);
     }
   }
 
@@ -259,15 +267,17 @@ public class LastValueAccumulator implements Accumulator {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
-        updateDoubleLastValue(column[1].getDouble(i), curTime);
+        updateDoubleFirstValue(column[1].getDouble(i), curTime);
+        break;
       }
     }
   }
 
-  protected void updateDoubleLastValue(double value, long curTime) {
-    if (curTime > maxTime) {
-      maxTime = curTime;
-      lastValue.setDouble(value);
+  protected void updateDoubleFirstValue(double value, long curTime) {
+    hasCandidateResult = true;
+    if (curTime < minTime) {
+      minTime = curTime;
+      firstValue.setDouble(value);
     }
   }
 
@@ -275,15 +285,17 @@ public class LastValueAccumulator implements Accumulator {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
-        updateBooleanLastValue(column[1].getBoolean(i), curTime);
+        updateBooleanFirstValue(column[1].getBoolean(i), curTime);
+        break;
       }
     }
   }
 
-  protected void updateBooleanLastValue(boolean value, long curTime) {
-    if (curTime > maxTime) {
-      maxTime = curTime;
-      lastValue.setBoolean(value);
+  protected void updateBooleanFirstValue(boolean value, long curTime) {
+    hasCandidateResult = true;
+    if (curTime < minTime) {
+      minTime = curTime;
+      firstValue.setBoolean(value);
     }
   }
 
@@ -291,16 +303,17 @@ public class LastValueAccumulator implements Accumulator {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
       if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
-        updateBinaryLastValue(column[1].getBinary(i), curTime);
+        updateBinaryFirstValue(column[1].getBinary(i), curTime);
         break;
       }
     }
   }
 
-  protected void updateBinaryLastValue(Binary value, long curTime) {
-    if (curTime > maxTime) {
-      maxTime = curTime;
-      lastValue.setBinary(value);
+  protected void updateBinaryFirstValue(Binary value, long curTime) {
+    hasCandidateResult = true;
+    if (curTime < minTime) {
+      minTime = curTime;
+      firstValue.setBinary(value);
     }
   }
 }
