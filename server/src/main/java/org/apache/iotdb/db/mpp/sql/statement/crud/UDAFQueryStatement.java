@@ -57,10 +57,6 @@ public class UDAFQueryStatement extends QueryStatement {
       throw new SemanticException(
           "UDF nesting aggregations in GROUP BY query does not support grouping by level now.");
     }
-    if (innerAggregationQueryStatement instanceof GroupByQueryStatement) {
-      throw new SemanticException(
-          "UDF nesting aggregations in GROUP BY query does not support FILL now.");
-    }
   }
 
   private void checkSelectComponent(SelectComponent selectComponent) throws SemanticException {

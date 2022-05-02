@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.sql.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.OrderBy;
@@ -57,8 +57,7 @@ import java.util.stream.Collectors;
  *
  * <ul>
  *   SELECT
- *   <li>[LAST] [TOP k]
- *   <li>resultColumn [, resultColumn] ...
+ *   <li>[LAST] resultColumn [, resultColumn] ...
  *   <li>FROM prefixPath [, prefixPath] ...
  *   <li>WHERE whereCondition
  *   <li>[GROUP BY ([startTime, endTime), interval, slidingStep)]
@@ -87,25 +86,16 @@ public class QueryStatement extends Statement {
   // series offset for result set. The default value is 0
   protected int seriesOffset = 0;
 
+  protected FillComponent fillComponent;
+
   protected FilterNullComponent filterNullComponent;
 
   protected OrderBy resultOrder = OrderBy.TIMESTAMP_ASC;
 
   protected ResultSetFormat resultSetFormat = ResultSetFormat.ALIGN_BY_TIME;
 
-  // used for TOP_N, LIKE, CONTAIN
-  protected Map<String, Object> props;
-
-  // TODO: add comments
-  protected IndexType indexType;
-
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    return fromComponent.getPrefixPaths();
   }
 
   public QueryStatement(QueryStatement another) {
@@ -117,11 +107,15 @@ public class QueryStatement extends Statement {
     this.rowOffset = another.getRowOffset();
     this.seriesLimit = another.getSeriesLimit();
     this.seriesOffset = another.getSeriesOffset();
+    this.fillComponent = another.getFillComponent();
     this.filterNullComponent = another.getFilterNullComponent();
     this.resultOrder = another.getResultOrder();
     this.resultSetFormat = another.getResultSetFormat();
-    this.props = another.getProps();
-    this.indexType = another.getIndexType();
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return fromComponent.getPrefixPaths();
   }
 
   public SelectComponent getSelectComponent() {
@@ -186,6 +180,14 @@ public class QueryStatement extends Statement {
     this.seriesOffset = 0;
   }
 
+  public FillComponent getFillComponent() {
+    return fillComponent;
+  }
+
+  public void setFillComponent(FillComponent fillComponent) {
+    this.fillComponent = fillComponent;
+  }
+
   public FilterNullComponent getFilterNullComponent() {
     return filterNullComponent;
   }
@@ -208,29 +210,6 @@ public class QueryStatement extends Statement {
 
   public void setResultSetFormat(ResultSetFormat resultSetFormat) {
     this.resultSetFormat = resultSetFormat;
-  }
-
-  public Map<String, Object> getProps() {
-    return props;
-  }
-
-  public void addProp(String prop, Object value) {
-    if (props == null) {
-      props = new HashMap<>();
-    }
-    props.put(prop, value);
-  }
-
-  public void setProps(Map<String, Object> props) {
-    this.props = props;
-  }
-
-  public IndexType getIndexType() {
-    return indexType;
-  }
-
-  public void setIndexType(IndexType indexType) {
-    this.indexType = indexType;
   }
 
   public boolean isGroupByLevel() {

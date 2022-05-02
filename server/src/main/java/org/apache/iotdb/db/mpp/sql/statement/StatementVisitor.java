@@ -20,9 +20,6 @@
 package org.apache.iotdb.db.mpp.sql.statement;
 
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -98,18 +95,6 @@ public abstract class StatementVisitor<R, C> {
   }
 
   public R visitAggregationQuery(AggregationQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitFillQuery(FillQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitGroupByQuery(GroupByQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitGroupByFillQuery(GroupByFillQueryStatement queryStatement, C context) {
     return visitQuery(queryStatement, context);
   }
 

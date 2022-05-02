@@ -38,7 +38,6 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.GroupByClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.GroupByFillClauseComponent;
-import org.apache.iotdb.db.qp.logical.crud.GroupByFillQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
@@ -176,7 +175,6 @@ import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
 import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
-import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
 
@@ -1201,19 +1199,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   @Override
-  public Operator visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
-    queryOp = new GroupByFillQueryOperator();
-    parseGroupByFillClause(ctx.groupByFillClause());
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
-    }
-    if (ctx.specialLimit() != null) {
-      return visit(ctx.specialLimit());
-    }
-    return queryOp;
-  }
-
-  @Override
   public Operator visitGroupByLevelStatement(IoTDBSqlParser.GroupByLevelStatementContext ctx) {
     queryOp = new AggregationQueryOperator();
     parseGroupByLevelClause(ctx.groupByLevelClause());
@@ -1431,7 +1416,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       levels[i] = Integer.parseInt(ctx.INTEGER_LITERAL().get(i).getText());
     }
     groupByLevelClauseComponent.setLevels(levels);
-
+    if (ctx.fillClause() != null) {
+      parseFillClause(ctx.fillClause());
+    }
     queryOp.setSpecialClauseComponent(groupByLevelClauseComponent);
   }
 
@@ -2298,9 +2285,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     // parse select
     IoTDBSqlParser.SelectClauseContext selectCtx = ctx.selectClause();
-    if (selectCtx.LAST() != null
-        || selectCtx.topClause() != null
-        || selectCtx.resultColumn().size() != 1) {
+    if (selectCtx.LAST() != null || selectCtx.resultColumn().size() != 1) {
       throw new SQLParserException("Not support for this sql in pipe.");
     }
     IoTDBSqlParser.ResultColumnContext resultColumnCtx = selectCtx.resultColumn(0);
@@ -2862,10 +2847,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public void parseSelectClause(IoTDBSqlParser.SelectClauseContext ctx) {
     SelectComponent selectComponent = new SelectComponent(zoneId);
-    if (ctx.topClause() != null) {
-      // TODO: parse info of top clause into selectOp
-      visitTopClause(ctx.topClause());
-    } else if (ctx.LAST() != null) {
+    if (ctx.LAST() != null) {
       queryOp = new LastQueryOperator(queryOp);
     }
 
@@ -2893,20 +2875,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     }
     queryOp.setAliasSet(aliasSet);
     queryOp.setSelectComponent(selectComponent);
-  }
-
-  @Override
-  public Operator visitTopClause(IoTDBSqlParser.TopClauseContext ctx) {
-    Map<String, Object> props = new HashMap<>();
-    int top = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
-    if (top <= 0 || top > 1000) {
-      throw new SQLParserException(
-          String.format(
-              "TOP <N>: N should be greater than 0 and less than 1000, current N is %d", top));
-    }
-    props.put(TOP_K, top);
-    queryOp.setProps(props);
-    return queryOp;
   }
 
   private ResultColumn parseResultColumn(IoTDBSqlParser.ResultColumnContext resultColumnContext) {

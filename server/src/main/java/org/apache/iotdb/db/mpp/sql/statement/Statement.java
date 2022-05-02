@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.sql.statement;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.sql.constant.StatementType;
-import org.apache.iotdb.db.mpp.sql.parser.ASTVisitor;
 
 import java.util.List;
 
@@ -29,7 +28,7 @@ import java.util.List;
  * This class is a superclass of all statements.
  *
  * <p>A Statement containing all semantic information of an SQL. It is obtained by traversing the
- * AST via {@link ASTVisitor}.
+ * AST via {@link org.apache.iotdb.db.mpp.sql.parser.ASTVisitor}.
  */
 public abstract class Statement extends StatementNode {
 

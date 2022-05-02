@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.mpp.sql.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -41,7 +42,10 @@ import java.util.Set;
 
 public class AggregationQueryStatement extends QueryStatement {
 
-  // GROUP BY LEVEL clause
+  // `GROUP BY TIME` clause
+  protected GroupByTimeComponent groupByTimeComponent;
+
+  // `GROUP BY LEVEL` clause
   protected GroupByLevelComponent groupByLevelComponent;
 
   public AggregationQueryStatement() {
@@ -50,6 +54,14 @@ public class AggregationQueryStatement extends QueryStatement {
 
   public AggregationQueryStatement(QueryStatement queryStatement) {
     super(queryStatement);
+  }
+
+  public GroupByTimeComponent getGroupByTimeComponent() {
+    return groupByTimeComponent;
+  }
+
+  public void setGroupByTimeComponent(GroupByTimeComponent groupByTimeComponent) {
+    this.groupByTimeComponent = groupByTimeComponent;
   }
 
   public GroupByLevelComponent getGroupByLevelComponent() {

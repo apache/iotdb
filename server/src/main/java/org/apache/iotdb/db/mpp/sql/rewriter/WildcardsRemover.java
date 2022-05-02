@@ -81,15 +81,13 @@ public class WildcardsRemover {
     this.schemaTree = schemaTree;
     this.typeProvider = typeProvider;
 
-    if (queryStatement.getIndexType() == null) {
-      // remove wildcards in SELECT clause
-      removeWildcardsInSelectPaths(queryStatement);
+    // remove wildcards in SELECT clause
+    removeWildcardsInSelectPaths(queryStatement);
 
-      // remove wildcards in WITHOUT NULL clause
-      if (queryStatement.getFilterNullComponent() != null
-          && !queryStatement.getFilterNullComponent().getWithoutNullColumns().isEmpty()) {
-        removeWildcardsWithoutNullColumns(queryStatement);
-      }
+    // remove wildcards in WITHOUT NULL clause
+    if (queryStatement.getFilterNullComponent() != null
+        && !queryStatement.getFilterNullComponent().getWithoutNullColumns().isEmpty()) {
+      removeWildcardsWithoutNullColumns(queryStatement);
     }
 
     // remove wildcards in WHERE clause

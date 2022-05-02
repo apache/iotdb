@@ -34,9 +34,6 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -118,23 +115,6 @@ public class LogicalPlanner {
     @Override
     public PlanNode visitAggregationQuery(
         AggregationQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PlanNode visitGroupByQuery(
-        GroupByQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PlanNode visitGroupByFillQuery(
-        GroupByFillQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PlanNode visitFillQuery(FillQueryStatement queryStatement, MPPQueryContext context) {
       throw new UnsupportedOperationException();
     }
 

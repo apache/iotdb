@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.InFilter;
@@ -45,9 +44,6 @@ import org.apache.iotdb.db.mpp.sql.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.FillQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByFillQueryStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.GroupByQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
@@ -121,9 +117,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
-import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
-import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 
 /** Parse AST to Statement. */
@@ -532,12 +525,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public void parseSelectClause(IoTDBSqlParser.SelectClauseContext ctx) {
     SelectComponent selectComponent = new SelectComponent(zoneId);
 
-    // parse TOP_N
-    if (ctx.topClause() != null) {
-      // TODO: parse info of top clause into selectOp
-      visitTopClause(ctx.topClause());
-    }
-
     // parse LAST
     if (ctx.LAST() != null) {
       queryStatement = new LastQueryStatement(queryStatement);
@@ -555,9 +542,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     selectComponent.setAliasSet(aliasSet);
 
     // judge query type
-    if (!(queryStatement instanceof GroupByQueryStatement)
-        && !(queryStatement instanceof FillQueryStatement)
-        && !(queryStatement instanceof LastQueryStatement)
+    if (!(queryStatement instanceof LastQueryStatement)
         && !(queryStatement instanceof AggregationQueryStatement)
         && !(queryStatement instanceof UDTFQueryStatement)
         && !(queryStatement instanceof UDAFQueryStatement)) {
@@ -574,18 +559,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // set selectComponent
     queryStatement.setSelectComponent(selectComponent);
-  }
-
-  @Override
-  public Statement visitTopClause(IoTDBSqlParser.TopClauseContext ctx) {
-    int top = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
-    if (top <= 0 || top > 1000) {
-      throw new SemanticException(
-          String.format(
-              "TOP <N>: N should be greater than 0 and less than 1000, current N is %d", top));
-    }
-    queryStatement.addProp(TOP_K, top);
-    return queryStatement;
   }
 
   private ResultColumn parseResultColumn(IoTDBSqlParser.ResultColumnContext resultColumnContext) {
@@ -615,10 +588,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Where Clause
 
   public WhereCondition parseWhereClause(IoTDBSqlParser.WhereClauseContext ctx) {
-    if (ctx.indexPredicateClause() != null) {
-      parseIndexPredicate(ctx.indexPredicateClause());
-      return null;
-    }
     QueryFilter queryFilter = new QueryFilter();
     queryFilter.addChildOperator(parseOrExpression(ctx.orExpression()));
     return new WhereCondition(queryFilter.getChildren().get(0));
@@ -628,7 +597,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitGroupByTimeStatement(IoTDBSqlParser.GroupByTimeStatementContext ctx) {
-    queryStatement = new GroupByQueryStatement();
+    queryStatement = new AggregationQueryStatement();
 
     // parse group by time clause
     parseGroupByTimeClause(ctx.groupByTimeClause());
@@ -683,8 +652,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       ((AggregationQueryStatement) queryStatement).setGroupByLevelComponent(groupByLevelComponent);
     }
 
+    // parse fill clause
+    if (ctx.fillClause() != null) {
+      parseFillClause(ctx.fillClause());
+    }
+
     // set groupByTimeComponent
-    ((GroupByQueryStatement) queryStatement).setGroupByTimeComponent(groupByTimeComponent);
+    ((AggregationQueryStatement) queryStatement).setGroupByTimeComponent(groupByTimeComponent);
   }
 
   /** parse time range (startTime and endTime) in group by query. */
@@ -745,30 +719,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       levels[i] = Integer.parseInt(ctx.INTEGER_LITERAL().get(i).getText());
     }
     groupByLevelComponent.setLevels(levels);
+
+    // parse fill clause
+    if (ctx.fillClause() != null) {
+      parseFillClause(ctx.fillClause());
+    }
+
     ((AggregationQueryStatement) queryStatement).setGroupByLevelComponent(groupByLevelComponent);
   }
 
   // Fill Clause
-
-  @Override
-  public Statement visitFillStatement(IoTDBSqlParser.FillStatementContext ctx) {
-    queryStatement = new FillQueryStatement();
-
-    // parse fill clause
-    parseFillClause(ctx.fillClause());
-
-    // parse slimit & soffset
-    if (ctx.slimitClause() != null) {
-      parseSlimitClause(ctx.slimitClause());
-    }
-
-    // parse AlignByDevice or DisableAlign
-    if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
-      parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
-    }
-
-    return queryStatement;
-  }
 
   public void parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
     FillComponent fillComponent = new FillComponent();
@@ -792,91 +752,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       // new single fill logic
       fillComponent.setSingleFill(getSingleIFill(ctx));
     }
-    ((FillQueryStatement) queryStatement).setFillComponent(fillComponent);
-  }
-
-  // Group By Time with Fill Clause
-
-  @Override
-  public Statement visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
-    queryStatement = new GroupByFillQueryStatement();
-
-    // parse GroupByTime with FIll
-    parseGroupByFillClause(ctx.groupByFillClause());
-
-    // parse OrderByTime
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
-    }
-
-    // parse limit & offset
-    if (ctx.specialLimit() != null) {
-      return visit(ctx.specialLimit());
-    }
-
-    return queryStatement;
-  }
-
-  private void parseGroupByFillClause(IoTDBSqlParser.GroupByFillClauseContext ctx) {
-    GroupByTimeComponent groupByTimeComponent = new GroupByTimeComponent();
-    FillComponent fillComponent = new FillComponent();
-
-    // parse time range (start time & end time)
-    parseTimeRange(ctx.timeRange(), groupByTimeComponent);
-    groupByTimeComponent.setLeftCRightO(ctx.timeRange().LS_BRACKET() != null);
-
-    // parse time interval
-    groupByTimeComponent.setInterval(
-        parseTimeIntervalOrSlidingStep(
-            ctx.DURATION_LITERAL(0).getText(), true, groupByTimeComponent));
-
-    // parse sliding step
-    if (ctx.DURATION_LITERAL().size() == 2) {
-      groupByTimeComponent.setSlidingStep(
-          parseTimeIntervalOrSlidingStep(
-              ctx.DURATION_LITERAL(1).getText(), false, groupByTimeComponent));
-    } else {
-      groupByTimeComponent.setSlidingStep(groupByTimeComponent.getInterval());
-      groupByTimeComponent.setSlidingStepByMonth(groupByTimeComponent.isIntervalByMonth());
-    }
-
-    if (ctx.fillClause().oldTypeClause().size() > 0) {
-      // old type fill logic
-      List<IoTDBSqlParser.OldTypeClauseContext> list = ctx.fillClause().oldTypeClause();
-      Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
-      for (IoTDBSqlParser.OldTypeClauseContext typeClause : list) {
-        if (typeClause.ALL() != null) {
-          parseAllTypeClause(typeClause, fillTypes);
-        } else {
-          parsePrimitiveTypeClause(typeClause, fillTypes);
-        }
-      }
-
-      int usePrevious = 0;
-      int useLinear = 0;
-      int useValue = 0;
-      for (IFill iFill : fillTypes.values()) {
-        if (iFill instanceof PreviousFill) {
-          usePrevious = 1;
-        }
-        if (iFill instanceof LinearFill) {
-          useLinear = 1;
-        }
-        if (iFill instanceof ValueFill) {
-          useValue = 1;
-        }
-      }
-      if (usePrevious + useLinear + useValue > 1) {
-        throw new SemanticException("The old type logic could only use one type of fill");
-      }
-
-      fillComponent.setFillTypes(fillTypes);
-    } else {
-      fillComponent.setSingleFill(getSingleIFill(ctx.fillClause()));
-    }
-
-    ((GroupByFillQueryStatement) queryStatement).setGroupByTimeComponent(groupByTimeComponent);
-    ((GroupByFillQueryStatement) queryStatement).setFillComponent(fillComponent);
+    queryStatement.setFillComponent(fillComponent);
   }
 
   private IFill getSingleIFill(IoTDBSqlParser.FillClauseContext ctx) {
@@ -1956,52 +1832,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
     return new InFilter(FilterConstant.FilterType.IN, path, not, values);
-  }
-
-  private void parseIndexPredicate(IoTDBSqlParser.IndexPredicateClauseContext ctx) {
-    Map<String, Object> props;
-    PartialPath path;
-    if (ctx.suffixPath() != null) {
-      path = parseSuffixPath(ctx.suffixPath());
-    } else {
-      path = parseFullPath(ctx.fullPath());
-    }
-    if (ctx.LIKE() != null) {
-      // whole matching case
-      if (queryStatement.getSelectComponent().getResultColumns().size() != 1) {
-        throw new SemanticException("Index query statement allows only one select path");
-      }
-      if (!path.equals(
-          queryStatement
-              .getSelectComponent()
-              .getResultColumns()
-              .get(0)
-              .getExpression()
-              .toString())) {
-        throw new SemanticException(
-            "In the index query statement, "
-                + "the path in select element and the index predicate should be same");
-      }
-      queryStatement.addProp(PATTERN, parseSequence(ctx.sequenceClause(0)));
-      queryStatement.setIndexType(IndexType.RTREE_PAA);
-    } else if (ctx.CONTAIN() != null) {
-      // subsequence matching case
-      List<double[]> compositePattern = new ArrayList<>();
-      List<Double> thresholds = new ArrayList<>();
-      for (int i = 0; i < ctx.sequenceClause().size(); i++) {
-        compositePattern.add(parseSequence(ctx.sequenceClause(i)));
-        thresholds.add(Double.parseDouble(ctx.constant(i).getText()));
-      }
-
-      List<ResultColumn> resultColumns = new ArrayList<>();
-      resultColumns.add(new ResultColumn(new TimeSeriesOperand(path)));
-      queryStatement.getSelectComponent().setResultColumns(resultColumns);
-      queryStatement.addProp(PATTERN, compositePattern);
-      queryStatement.addProp(THRESHOLD, thresholds);
-      queryStatement.setIndexType(IndexType.ELB_INDEX);
-    } else {
-      throw new SQLParserException("Unknown index predicate: " + ctx);
-    }
   }
 
   private double[] parseSequence(IoTDBSqlParser.SequenceClauseContext ctx) {
