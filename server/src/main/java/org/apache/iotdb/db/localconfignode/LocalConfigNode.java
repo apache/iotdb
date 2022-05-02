@@ -539,7 +539,17 @@ public class LocalConfigNode {
    */
   public SchemaRegionId getBelongedSchemaRegionId(PartialPath path) throws MetadataException {
     PartialPath storageGroup = storageGroupSchemaManager.getBelongedStorageGroup(path);
-    return schemaPartitionTable.getSchemaRegionId(storageGroup, path);
+    SchemaRegionId schemaRegionId = schemaPartitionTable.getSchemaRegionId(storageGroup, path);
+    if (schemaRegionId == null) {
+      throw new MetadataException(
+          String.format("Storage group %s has not been prepared well.", storageGroup));
+    }
+    ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
+    if (schemaRegion == null) {
+      throw new MetadataException(
+          String.format("Storage group %s has not been prepared well.", storageGroup));
+    }
+    return schemaRegionId;
   }
 
   // This interface involves storage group and schema region auto creation
