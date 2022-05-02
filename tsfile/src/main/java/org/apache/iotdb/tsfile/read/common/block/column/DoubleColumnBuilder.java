@@ -76,14 +76,17 @@ public class DoubleColumnBuilder implements ColumnBuilder {
 
   @Override
   public ColumnBuilder writeDoubles(double[] valuesToBeWritten, int length) {
-    while (values.length <= positionCount + length) {
-      growCapacity();
+    int previousPosition = positionCount;
+    for (int i = 0; i < length; i++) {
+      if (values.length <= positionCount) {
+        growCapacity();
+      }
+      positionCount++;
     }
 
-    System.arraycopy(valuesToBeWritten, 0, values, values.length, length);
+    System.arraycopy(valuesToBeWritten, 0, values, previousPosition, length);
 
     hasNonNullValue = true;
-    positionCount += length;
     if (columnBuilderStatus != null) {
       columnBuilderStatus.addBytes(TimeColumn.SIZE_IN_BYTES_PER_POSITION * length);
     }

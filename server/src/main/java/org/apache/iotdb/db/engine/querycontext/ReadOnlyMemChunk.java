@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.querycontext;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -153,11 +152,7 @@ public class ReadOnlyMemChunk {
   }
 
   public boolean isEmpty() throws IOException {
-    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
-      return tsblock.isEmpty();
-    } else {
-      return !chunkPointReader.hasNextTimeValuePair();
-    }
+    return tsblock.isEmpty();
   }
 
   public IChunkMetadata getChunkMetaData() {
