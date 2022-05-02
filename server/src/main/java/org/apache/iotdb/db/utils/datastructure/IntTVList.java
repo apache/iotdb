@@ -18,12 +18,18 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import java.util.Collections;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -192,6 +198,22 @@ public class IntTVList extends TVList {
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT32, getInt(index)));
+  }
+
+  @Override
+  public TsBlock getTsBlock(int floatPrecision, TSEncoding encoding, int size,
+      List<TimeRange> deletionList) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
+    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
+    for (int i = 0; i < timestamps.size() - 1; i++) {
+      timeBuilder.writeLongs(timestamps.get(i), ARRAY_SIZE);
+      valueBuilder.writeInts(values.get(i), ARRAY_SIZE);
+    }
+    timeBuilder.writeLongs(timestamps.get(timestamps.size() - 1), size % ARRAY_SIZE == 0 ? ARRAY_SIZE : size % ARRAY_SIZE);
+    valueBuilder.writeInts(values.get(values.size() - 1), size % ARRAY_SIZE == 0 ? ARRAY_SIZE : size % ARRAY_SIZE);
+    builder.declarePositions(size);
+    return builder.build();
   }
 
   @Override

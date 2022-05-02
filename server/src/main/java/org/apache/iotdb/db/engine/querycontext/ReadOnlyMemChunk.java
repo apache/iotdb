@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.querycontext;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import org.slf4j.Logger;
@@ -61,6 +63,8 @@ public class ReadOnlyMemChunk {
   private TVList chunkData;
 
   protected IPointReader chunkPointReader;
+
+  protected TsBlock tsblock;
 
   private int chunkDataSize;
 
@@ -101,9 +105,15 @@ public class ReadOnlyMemChunk {
     this.chunkDataSize = size;
     this.deletionList = deletionList;
 
-    this.chunkPointReader =
-        tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
-    initChunkMeta();
+    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
+      this.tsblock = tvList.getTsBlock(floatPrecision, encoding, chunkDataSize, deletionList);
+      initChunkMetaFromTsBlock();
+      this.chunkPointReader = tsblock.getTsBlockSingleColumnIterator();
+    } else {
+      this.chunkPointReader =
+          tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
+      initChunkMeta();
+    }
   }
 
   private void initChunkMeta() throws IOException, QueryProcessException {
@@ -144,12 +154,54 @@ public class ReadOnlyMemChunk {
     cachedMetaData = metaData;
   }
 
+  private void initChunkMetaFromTsBlock() throws IOException, QueryProcessException {
+    Statistics statsByType = Statistics.getStatsByType(dataType);
+    IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
+    if (!isEmpty()) {
+      IPointReader iterator =
+          chunkData.getTsBlock(floatPrecision, encoding, chunkDataSize, deletionList).getTsBlockSingleColumnIterator();
+      while (iterator.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+        switch (dataType) {
+          case BOOLEAN:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
+            break;
+          case TEXT:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
+            break;
+          case FLOAT:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+            break;
+          case INT32:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+            break;
+          case INT64:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+            break;
+          case DOUBLE:
+            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
+            break;
+          default:
+            throw new QueryProcessException("Unsupported data type:" + dataType);
+        }
+      }
+    }
+    statsByType.setEmpty(isEmpty());
+    metaData.setChunkLoader(new MemChunkLoader(this));
+    metaData.setVersion(Long.MAX_VALUE);
+    cachedMetaData = metaData;
+  }
+
   public TSDataType getDataType() {
     return dataType;
   }
 
   public boolean isEmpty() throws IOException {
-    return !chunkPointReader.hasNextTimeValuePair();
+    if (IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
+      return tsblock.isEmpty();
+    } else {
+      return !chunkPointReader.hasNextTimeValuePair();
+    }
   }
 
   public IChunkMetadata getChunkMetaData() {

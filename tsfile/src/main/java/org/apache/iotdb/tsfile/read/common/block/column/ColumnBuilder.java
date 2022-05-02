@@ -29,28 +29,58 @@ public interface ColumnBuilder {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a short to the current entry; */
+  /** Write a int to the current entry; */
   default ColumnBuilder writeInt(int value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a int to the current entry; */
+  /** Write a long to the current entry; */
   default ColumnBuilder writeLong(long value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a long to the current entry; */
+  /** Write a float to the current entry; */
   default ColumnBuilder writeFloat(float value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a byte sequences to the current entry; */
+  /** Write a double to the current entry; */
   default ColumnBuilder writeDouble(double value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /** Write a Binary to the current entry; */
   default ColumnBuilder writeBinary(Binary value) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Write a boolean array to the current entry; */
+  default ColumnBuilder writeBooleans(boolean[] values, int length) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Write a int array to the current entry; */
+  default ColumnBuilder writeInts(int[] values, int length) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Write a long array to the current entry; */
+  default ColumnBuilder writeLongs(long[] values, int length) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Write a float array to the current entry; */
+  default ColumnBuilder writeFloats(float[] values, int length) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Write a double array to the current entry; */
+  default ColumnBuilder writeDoubles(double[] values, int length) {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Write a Binary array to the current entry; */
+  default ColumnBuilder writeBinaries(Binary[] values, int length) {
     throw new UnsupportedOperationException(getClass().getName());
   }
 

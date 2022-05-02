@@ -66,6 +66,21 @@ public class TimeColumnBuilder implements ColumnBuilder {
     return this;
   }
 
+  @Override
+  public ColumnBuilder writeLongs(long[] valuesToBeWritten, int length) {
+    if (values.length <= positionCount + length) {
+      growCapacity();
+    }
+
+    System.arraycopy(valuesToBeWritten, 0, values, values.length, length);
+
+    positionCount += length;
+    if (columnBuilderStatus != null) {
+      columnBuilderStatus.addBytes(TimeColumn.SIZE_IN_BYTES_PER_POSITION * length);
+    }
+    return this;
+  }
+
   /** Write an Object to the current entry, which should be the Long type; */
   @Override
   public ColumnBuilder writeObject(Object value) {
