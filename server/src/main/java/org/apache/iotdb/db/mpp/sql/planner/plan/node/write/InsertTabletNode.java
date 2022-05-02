@@ -20,9 +20,7 @@ package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
@@ -166,30 +164,14 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   public boolean validateAndSetSchema(SchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-
     if (deviceSchemaInfo.isAligned() != isAligned) {
       return false;
     }
+    measurementSchemas =
+        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
 
-    List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
-    for (int i = 0; i < measurementSchemas.size(); i++) {
-      if (dataTypes[i] != measurementSchemas.get(i).getType()) {
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          return false;
-        } else {
-          markFailedMeasurement(
-              i,
-              new DataTypeMismatchException(
-                  devicePath.getFullPath(),
-                  measurements[i],
-                  measurementSchemas.get(i).getType(),
-                  dataTypes[i]));
-        }
-      }
-    }
-
-    this.measurementSchemas = measurementSchemas.toArray(new MeasurementSchema[0]);
-    return true;
+    // validate whether data types are matched
+    return selfCheckDataTypes();
   }
 
   @Override

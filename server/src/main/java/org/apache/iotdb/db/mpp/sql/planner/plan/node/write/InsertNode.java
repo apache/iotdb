@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.mpp.sql.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -198,6 +200,26 @@ public abstract class InsertNode extends WritePlanNode {
   }
 
   public abstract boolean validateAndSetSchema(SchemaTree schemaTree);
+
+  /** Check whether data types are matched with measurement schemas */
+  protected boolean selfCheckDataTypes() {
+    for (int i = 0; i < measurementSchemas.length; i++) {
+      if (dataTypes[i] != measurementSchemas[i].getType()) {
+        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          return false;
+        } else {
+          markFailedMeasurement(
+              i,
+              new DataTypeMismatchException(
+                  devicePath.getFullPath(),
+                  measurements[i],
+                  measurementSchemas[i].getType(),
+                  dataTypes[i]));
+        }
+      }
+    }
+    return true;
+  }
 
   // region partial insert
   /**

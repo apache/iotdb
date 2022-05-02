@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -163,86 +162,68 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public boolean validateAndSetSchema(SchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+    if (deviceSchemaInfo.isAligned() != isAligned) {
+      return false;
+    }
+    this.measurementSchemas =
+        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
 
-    List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
-
-    if (isNeedInferType) {
-      try {
-        transferType(measurementSchemas);
-      } catch (QueryProcessException e) {
-        return false;
-      }
-    } else {
-      if (deviceSchemaInfo.isAligned() != isAligned) {
-        return false;
-      }
-
-      for (int i = 0; i < measurementSchemas.size(); i++) {
-        if (dataTypes[i] != measurementSchemas.get(i).getType()) {
-          if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            return false;
-          } else {
-            markFailedMeasurement(
-                i,
-                new DataTypeMismatchException(
-                    devicePath.getFullPath(),
-                    measurements[i],
-                    measurementSchemas.get(i).getType(),
-                    dataTypes[i]));
-          }
-        }
-      }
+    // transfer data types from string values when necessary
+    try {
+      transferType();
+    } catch (QueryProcessException e) {
+      return false;
     }
 
-    this.measurementSchemas = measurementSchemas.toArray(new MeasurementSchema[0]);
-    return true;
+    // validate whether data types are matched
+    return selfCheckDataTypes();
   }
 
   /**
-   * if inferType is true, transfer String[] values to specific data types (Integer, Long, Float,
-   * Double, Binary)
+   * transfer String[] values to specific data types when isNeedInferType is true. <br>
+   * Notice: measurementSchemas must be initialized before calling this method
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void transferType(List<MeasurementSchema> measurementSchemas)
-      throws QueryProcessException {
-    if (isNeedInferType) {
-      for (int i = 0; i < measurementSchemas.size(); i++) {
-        if (measurementSchemas.get(i) == null) {
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurement(
-                i,
-                new QueryProcessException(
-                    new PathNotExistException(
-                        devicePath.getFullPath()
-                            + IoTDBConstant.PATH_SEPARATOR
-                            + measurements[i])));
-          } else {
-            throw new QueryProcessException(
-                new PathNotExistException(
-                    devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
-          }
-          continue;
-        }
+  private void transferType() throws QueryProcessException {
+    if (!isNeedInferType) {
+      return;
+    }
 
-        dataTypes[i] = measurementSchemas.get(i).getType();
-        try {
-          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
-        } catch (Exception e) {
-          logger.warn(
-              "{}.{} data type is not consistent, input {}, registered {}",
-              devicePath,
-              measurements[i],
-              values[i],
-              dataTypes[i]);
-          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurement(i, e);
-          } else {
-            throw e;
-          }
+    for (int i = 0; i < measurementSchemas.length; i++) {
+      // null when time series doesn't exist
+      if (measurementSchemas[i] == null) {
+        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          throw new QueryProcessException(
+              new PathNotExistException(
+                  devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+        } else {
+          markFailedMeasurement(
+              i,
+              new QueryProcessException(
+                  new PathNotExistException(
+                      devicePath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
+        }
+        continue;
+      }
+      // parse string value to specific type
+      dataTypes[i] = measurementSchemas[i].getType();
+      try {
+        values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
+      } catch (Exception e) {
+        logger.warn(
+            "{}.{} data type is not consistent, input {}, registered {}",
+            devicePath,
+            measurements[i],
+            values[i],
+            dataTypes[i]);
+        if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+          throw e;
+        } else {
+          markFailedMeasurement(i, e);
         }
       }
-      isNeedInferType = false;
     }
+    isNeedInferType = false;
   }
 
   @Override
