@@ -221,7 +221,8 @@ public class SchemaEngine {
       }
       List<URL> dependentJars = new LinkedList<>();
       for (File jar : jars) {
-        if (jar.getName().contains("rocksdb")) {
+        if (jar.getName().contains("rocksdbjni")
+            || jar.getName().contains("schema-engine-rocksdb")) {
           dependentJars.add(new URL("file:" + jar.getAbsolutePath()));
         }
       }
