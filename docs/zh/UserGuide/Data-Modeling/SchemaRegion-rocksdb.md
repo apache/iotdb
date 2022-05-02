@@ -25,7 +25,17 @@
 
 # 使用
 
-在系统配置文件`iotdb-engine.properties`中，将配置项`schema_engine_mode`修改为`Rocksdb_based`，如：
+首先使用下面的命令将 `schema-engine-rocksdb` 打包
+
+```shell
+mvn clean package -pl schema-engine-rocksdb -am -DskipTests
+```
+
+命令运行结束后，在其 target/schema-engine-rocksdb 中会有一个 lib 文件夹和 conf 文件夹。将 conf 文件夹下的文件拷贝到 server 的 conf 文件夹中，将 lib 文件夹下的文件也拷贝到
+server 的 lib 的文件夹中。
+
+在系统配置文件`iotdb-engine.properties`中，将配置项`schema_engine_mode`修改为`Rocksdb_based`，并且将 `enable_last_cache` 修改为 `false`, 如：
+
 ```
 ####################
 ### Schema Engine Configuration
@@ -33,6 +43,14 @@
 # Choose the mode of schema engine. The value could be Memory,Schema_File and Rocksdb_based. If the provided value doesn't match any pre-defined value, Memory mode will be used as default.
 # Datatype: string
 schema_engine_mode=Rocksdb_based
+
+####################
+### LAST Cache Configuration
+####################
+
+# Whether to enable LAST cache
+# Datatype: boolean
+enable_last_cache=false
 ```
 
 当指定rocksdb作为元数据的存储方式时，我们开放了rocksdb相关的配置参数，您可以通过修改配置文件`schema-rocksdb.properties`，根据自己的需求，进行合理的参数调整，例如查询的缓存等。如没有特殊需求，使用默认值即可。
