@@ -166,11 +166,17 @@ public class SchemaEngine {
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
-      throw new MetadataException(
-          String.format(
-              "SchemaRegion [%s] is duplicated between [%s] and [%s], "
-                  + "and the former one has been recovered.",
-              schemaRegionId, schemaRegion.getStorageGroupFullPath(), storageGroup.getFullPath()));
+      if (schemaRegion.getStorageGroupFullPath().equals(storageGroup.getFullPath())) {
+        return;
+      } else {
+        throw new MetadataException(
+            String.format(
+                "SchemaRegion [%s] is duplicated between [%s] and [%s], "
+                    + "and the former one has been recovered.",
+                schemaRegionId,
+                schemaRegion.getStorageGroupFullPath(),
+                storageGroup.getFullPath()));
+      }
     }
     schemaRegionMap.put(
         schemaRegionId, createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId));
