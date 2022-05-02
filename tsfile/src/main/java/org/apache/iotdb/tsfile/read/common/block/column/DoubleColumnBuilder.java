@@ -74,25 +74,6 @@ public class DoubleColumnBuilder implements ColumnBuilder {
     return this;
   }
 
-  @Override
-  public ColumnBuilder writeDoubles(double[] valuesToBeWritten, int length) {
-    int previousPosition = positionCount;
-    for (int i = 0; i < length; i++) {
-      if (values.length <= positionCount) {
-        growCapacity();
-      }
-      positionCount++;
-    }
-
-    System.arraycopy(valuesToBeWritten, 0, values, previousPosition, length);
-
-    hasNonNullValue = true;
-    if (columnBuilderStatus != null) {
-      columnBuilderStatus.addBytes(TimeColumn.SIZE_IN_BYTES_PER_POSITION * length);
-    }
-    return this;
-  }
-
   /** Write an Object to the current entry, which should be the Double type; */
   @Override
   public ColumnBuilder writeObject(Object value) {

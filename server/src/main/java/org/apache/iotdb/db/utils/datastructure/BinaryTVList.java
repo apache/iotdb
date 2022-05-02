@@ -199,26 +199,16 @@ public class BinaryTVList extends TVList {
   }
 
   @Override
-  protected void writeValuesIntoTsBlock(
-      ColumnBuilder valueBuilder, int floatPrecision, TSEncoding encoding) {
-    for (int i = 0; i < timestamps.size() - 1; i++) {
-      valueBuilder.writeBinaries(values.get(i), ARRAY_SIZE);
-    }
-    valueBuilder.writeBinaries(
-        values.get(values.size() - 1),
-        rowCount % ARRAY_SIZE == 0 ? ARRAY_SIZE : rowCount % ARRAY_SIZE);
-  }
-
-  @Override
-  protected void writeUnDeletedValuesIntoTsBlock(
+  protected void writeValidValuesIntoTsBlock(
       ColumnBuilder valueBuilder,
       int floatPrecision,
       TSEncoding encoding,
       List<TimeRange> deletionList) {
     Integer deleteCursor = 0;
     for (int i = 0; i < rowCount; i++) {
-      if (pointNotDeleted(getTime(i), deletionList, deleteCursor)) {
-        valueBuilder.writeBoolean(getBoolean(i));
+      if (isPointNotDeleted(getTime(i), deletionList, deleteCursor)
+          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
+        valueBuilder.writeBinary(getBinary(i));
       }
     }
   }

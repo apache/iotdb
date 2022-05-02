@@ -197,25 +197,15 @@ public class IntTVList extends TVList {
   }
 
   @Override
-  protected void writeValuesIntoTsBlock(
-      ColumnBuilder valueBuilder, int floatPrecision, TSEncoding encoding) {
-    for (int i = 0; i < timestamps.size() - 1; i++) {
-      valueBuilder.writeInts(values.get(i), ARRAY_SIZE);
-    }
-    valueBuilder.writeInts(
-        values.get(values.size() - 1),
-        rowCount % ARRAY_SIZE == 0 ? ARRAY_SIZE : rowCount % ARRAY_SIZE);
-  }
-
-  @Override
-  protected void writeUnDeletedValuesIntoTsBlock(
+  protected void writeValidValuesIntoTsBlock(
       ColumnBuilder valueBuilder,
       int floatPrecision,
       TSEncoding encoding,
       List<TimeRange> deletionList) {
     Integer deleteCursor = 0;
     for (int i = 0; i < rowCount; i++) {
-      if (pointNotDeleted(getTime(i), deletionList, deleteCursor)) {
+      if (isPointNotDeleted(getTime(i), deletionList, deleteCursor)
+          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         valueBuilder.writeInt(getInt(i));
       }
     }

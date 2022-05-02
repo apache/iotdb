@@ -910,11 +910,7 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  protected void writeValuesIntoTsBlock(
-      ColumnBuilder valueBuilder, int floatPrecision, TSEncoding encoding) {}
-
-  @Override
-  protected void writeUnDeletedValuesIntoTsBlock(
+  protected void writeValidValuesIntoTsBlock(
       ColumnBuilder valueBuilder,
       int floatPrecision,
       TSEncoding encoding,

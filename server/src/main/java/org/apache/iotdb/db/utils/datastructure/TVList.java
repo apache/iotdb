@@ -509,56 +509,35 @@ public abstract class TVList implements WALEntryValue {
       int index, long time, Integer floatPrecision, TSEncoding encoding);
 
   public TsBlock getTsBlock(int floatPrecision, TSEncoding encoding, List<TimeRange> deletionList) {
-    if (deletionList == null) {
-      return this.getTsBlockWithoutDeletionList(floatPrecision, encoding);
-    }
     Integer deleteCursor = 0;
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+    int validRowCount = 0;
     for (int i = 0; i < rowCount; i++) {
-      if (pointNotDeleted(getTime(i), deletionList, deleteCursor)) {
+      if (isPointNotDeleted(getTime(i), deletionList, deleteCursor)
+          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         timeBuilder.writeLong(this.getTime(i));
+        validRowCount++;
       }
     }
 
     // value column
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    writeUnDeletedValuesIntoTsBlock(valueBuilder, floatPrecision, encoding, deletionList);
-    builder.declarePositions(rowCount);
+    writeValidValuesIntoTsBlock(valueBuilder, floatPrecision, encoding, deletionList);
+    builder.declarePositions(validRowCount);
     return builder.build();
   }
 
-  private TsBlock getTsBlockWithoutDeletionList(int floatPrecision, TSEncoding encoding) {
-    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
-    // Time column
-    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
-    for (int i = 0; i < timestamps.size() - 1; i++) {
-      timeBuilder.writeLongs(timestamps.get(i), ARRAY_SIZE);
-    }
-    timeBuilder.writeLongs(
-        timestamps.get(timestamps.size() - 1),
-        rowCount % ARRAY_SIZE == 0 ? ARRAY_SIZE : rowCount % ARRAY_SIZE);
-
-    // value column
-    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    writeValuesIntoTsBlock(valueBuilder, floatPrecision, encoding);
-    builder.declarePositions(rowCount);
-    return builder.build();
-  }
-
-  protected abstract void writeValuesIntoTsBlock(
-      ColumnBuilder valueBuilder, int floatPrecision, TSEncoding encoding);
-
-  protected abstract void writeUnDeletedValuesIntoTsBlock(
+  protected abstract void writeValidValuesIntoTsBlock(
       ColumnBuilder valueBuilder,
       int floatPrecision,
       TSEncoding encoding,
       List<TimeRange> deletionList);
 
-  protected boolean pointNotDeleted(
+  protected boolean isPointNotDeleted(
       long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
-    while (deleteCursor < deletionList.size()) {
+    while (deletionList != null && deleteCursor < deletionList.size()) {
       if (deletionList.get(deleteCursor).contains(timestamp)) {
         return false;
       } else if (deletionList.get(deleteCursor).getMax() < timestamp) {

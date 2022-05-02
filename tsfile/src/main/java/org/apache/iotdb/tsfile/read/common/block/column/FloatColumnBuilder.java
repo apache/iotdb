@@ -75,25 +75,6 @@ public class FloatColumnBuilder implements ColumnBuilder {
   }
 
   @Override
-  public ColumnBuilder writeFloats(float[] valuesToBeWritten, int length) {
-    int previousPosition = positionCount;
-    for (int i = 0; i < length; i++) {
-      if (values.length <= positionCount) {
-        growCapacity();
-      }
-      positionCount++;
-    }
-
-    System.arraycopy(valuesToBeWritten, 0, values, previousPosition, length);
-
-    hasNonNullValue = true;
-    if (columnBuilderStatus != null) {
-      columnBuilderStatus.addBytes(TimeColumn.SIZE_IN_BYTES_PER_POSITION * length);
-    }
-    return this;
-  }
-
-  @Override
   public ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
     return writeFloat(value.getFloat());
   }

@@ -54,36 +54,6 @@ public interface ColumnBuilder {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  /** Write a boolean array to the current entry; */
-  default ColumnBuilder writeBooleans(boolean[] values, int length) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
-
-  /** Write an int array to the current entry; */
-  default ColumnBuilder writeInts(int[] values, int length) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
-
-  /** Write a long array to the current entry; */
-  default ColumnBuilder writeLongs(long[] values, int length) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
-
-  /** Write a float array to the current entry; */
-  default ColumnBuilder writeFloats(float[] values, int length) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
-
-  /** Write a double array to the current entry; */
-  default ColumnBuilder writeDoubles(double[] values, int length) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
-
-  /** Write a Binary array to the current entry; */
-  default ColumnBuilder writeBinaries(Binary[] values, int length) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
-
   /** Write a TsPrimitiveType sequences to the current entry; */
   default ColumnBuilder writeTsPrimitiveType(TsPrimitiveType value) {
     throw new UnsupportedOperationException(getClass().getName());

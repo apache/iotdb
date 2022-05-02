@@ -202,32 +202,15 @@ public class DoubleTVList extends TVList {
   }
 
   @Override
-  protected void writeValuesIntoTsBlock(
-      ColumnBuilder valueBuilder, int floatPrecision, TSEncoding encoding) {
-    for (int i = 0; i < timestamps.size() - 1; i++) {
-      for (int j = 0; j < values.get(i).length; j++) {
-        values.get(i)[j] = roundValueWithGivenPrecision(values.get(i)[j], floatPrecision, encoding);
-      }
-      valueBuilder.writeDoubles(values.get(i), ARRAY_SIZE);
-    }
-    for (int j = 0; j < values.get(values.size() - 1).length; j++) {
-      values.get(values.size() - 1)[j] =
-          roundValueWithGivenPrecision(values.get(values.size() - 1)[j], floatPrecision, encoding);
-    }
-    valueBuilder.writeDoubles(
-        values.get(values.size() - 1),
-        rowCount % ARRAY_SIZE == 0 ? ARRAY_SIZE : rowCount % ARRAY_SIZE);
-  }
-
-  @Override
-  protected void writeUnDeletedValuesIntoTsBlock(
+  protected void writeValidValuesIntoTsBlock(
       ColumnBuilder valueBuilder,
       int floatPrecision,
       TSEncoding encoding,
       List<TimeRange> deletionList) {
     Integer deleteCursor = 0;
     for (int i = 0; i < rowCount; i++) {
-      if (pointNotDeleted(getTime(i), deletionList, deleteCursor)) {
+      if (isPointNotDeleted(getTime(i), deletionList, deleteCursor)
+          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         valueBuilder.writeDouble(
             roundValueWithGivenPrecision(getDouble(i), floatPrecision, encoding));
       }
