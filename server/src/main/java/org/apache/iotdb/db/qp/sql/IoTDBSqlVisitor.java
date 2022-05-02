@@ -145,6 +145,8 @@ import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.InExpression;
+import org.apache.iotdb.db.query.expression.unary.LikeExpression;
 import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
@@ -166,6 +168,7 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -2547,23 +2550,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return parseExpression(context.unaryInBracket, inWithoutNull);
     }
 
-    if (context.constant() != null && !context.constant().isEmpty()) {
-      return parseConstantOperand(context.constant(0));
-    }
-
-    if (context.time != null) {
-      throw new UnsupportedOperationException();
-    }
-
-    if (context.fullPathInExpression() != null) {
-      return new TimeSeriesOperand(
-          parseFullPathInExpression(context.fullPathInExpression(), inWithoutNull));
-    }
-
-    if (context.functionName() != null) {
-      return parseFunctionExpression(context, inWithoutNull);
-    }
-
     if (context.expressionAfterUnaryOperator != null) {
       if (context.MINUS() != null) {
         return new NegationExpression(
@@ -2635,6 +2621,23 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return parseInExpression(context, inWithoutNull);
     }
 
+    if (context.functionName() != null) {
+      return parseFunctionExpression(context, inWithoutNull);
+    }
+
+    if (context.fullPathInExpression() != null) {
+      return new TimeSeriesOperand(
+          parseFullPathInExpression(context.fullPathInExpression(), inWithoutNull));
+    }
+
+    if (context.time != null) {
+      throw new UnsupportedOperationException();
+    }
+
+    if (context.constant() != null && !context.constant().isEmpty()) {
+      return parseConstantOperand(context.constant(0));
+    }
+
     throw new UnsupportedOperationException();
   }
 
@@ -2679,11 +2682,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean inWithoutNull) {
-    throw new UnsupportedOperationException();
+    return new LikeExpression(
+        parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
-    throw new UnsupportedOperationException();
+    Expression childExpression = parseExpression(context.unaryBeforeInExpression, inWithoutNull);
+    LinkedHashSet<String> values = new LinkedHashSet<>();
+    for (ConstantContext constantContext : context.constant()) {
+      String text = constantContext.getText();
+      values.add(constantContext.STRING_LITERAL() != null ? parseStringLiteral(text) : text);
+    }
+    return new InExpression(childExpression, values);
   }
 
   private Expression parseConstantOperand(ConstantContext constantContext) {

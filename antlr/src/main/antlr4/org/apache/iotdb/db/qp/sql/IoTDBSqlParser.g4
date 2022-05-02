@@ -919,7 +919,6 @@ resultColumn
     ;
 
 
-
 // From Clause
 
 fromClause

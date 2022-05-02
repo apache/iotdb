@@ -23,6 +23,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.transformer.unary.InTransformer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -33,7 +34,7 @@ public class InExpression extends UnaryExpression {
 
   private final LinkedHashSet<String> values;
 
-  protected InExpression(Expression expression, LinkedHashSet<String> values) {
+  public InExpression(Expression expression, LinkedHashSet<String> values) {
     super(expression);
     this.values = values;
   }
@@ -67,7 +68,7 @@ public class InExpression extends UnaryExpression {
 
   @Override
   protected Transformer constructTransformer(LayerPointReader pointReader) {
-    throw new UnsupportedOperationException();
+    return new InTransformer(pointReader, values);
   }
 
   @Override
