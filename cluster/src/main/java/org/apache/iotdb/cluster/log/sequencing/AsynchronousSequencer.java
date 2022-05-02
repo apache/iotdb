@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.sequencing;
 
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.VotingLog;
@@ -28,7 +29,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,7 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -59,7 +62,12 @@ public class AsynchronousSequencer implements LogSequencer {
   public AsynchronousSequencer(RaftMember member, RaftLogManager logManager) {
     this.member = member;
     this.logManager = logManager;
-    unsequencedLogQueue = new ArrayBlockingQueue<>(40960, true);
+    unsequencedLogQueue =
+        new ArrayBlockingQueue<>(
+            ClusterDescriptor.getInstance()
+                .getConfig()
+                .getUnCommittedRaftLogNumForRejectThreshold(),
+            true);
     for (int i = 0; i < SEQUENCER_PARALLELISM; i++) {
       sequencerPool.submit(this::sequenceTask);
     }
@@ -74,7 +82,12 @@ public class AsynchronousSequencer implements LogSequencer {
         new SendLogRequest(
             votingLog, leaderShipStale, newLeaderTerm, null, member.getAllNodes().size() / 2);
     try {
-      unsequencedLogQueue.put(request);
+      if (!unsequencedLogQueue.offer(
+          request,
+          IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked(),
+          TimeUnit.MILLISECONDS)) {
+        return null;
+      }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Interrupted while putting {}", log);

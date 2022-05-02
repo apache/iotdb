@@ -29,44 +29,61 @@ import java.io.OutputStream;
  * the disk schema entry of schema entry of id table. This is a po class, so every field is public
  */
 public class DiskSchemaEntry {
+  // id form device path, eg: 1#2#3#4
   public String deviceID;
 
+  // full timeseries path, eg: root.sg1.d1.s1
   public String seriesKey;
 
-  public long flushTime;
+  // measurement name of timeseries: eg: s1
+  public String measurementName;
 
+  // timeseries data type
   public byte type;
 
+  // timeseries encoding type
   public byte encoding;
 
+  // timeseries compressor type
   public byte compressor;
+
+  // whether this device is aligned
+  public boolean isAligned;
+
+  // this entry's serialized size
+  public transient long entrySize;
 
   private DiskSchemaEntry() {}
 
   public DiskSchemaEntry(
       String deviceID,
       String seriesKey,
-      long flushTime,
+      String measurementName,
       byte type,
       byte encoding,
-      byte compressor) {
+      byte compressor,
+      boolean isAligned) {
     this.deviceID = deviceID;
     this.seriesKey = seriesKey;
-    this.flushTime = flushTime;
+    this.measurementName = measurementName;
     this.type = type;
     this.encoding = encoding;
     this.compressor = compressor;
+    this.isAligned = isAligned;
   }
 
   public int serialize(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(deviceID, outputStream);
     byteLen += ReadWriteIOUtils.write(seriesKey, outputStream);
-    byteLen += ReadWriteIOUtils.write(flushTime, outputStream);
+    byteLen += ReadWriteIOUtils.write(measurementName, outputStream);
     byteLen += ReadWriteIOUtils.write(type, outputStream);
     byteLen += ReadWriteIOUtils.write(encoding, outputStream);
     byteLen += ReadWriteIOUtils.write(compressor, outputStream);
+    byteLen += ReadWriteIOUtils.write(isAligned, outputStream);
+
     byteLen += ReadWriteIOUtils.write(byteLen, outputStream);
+    entrySize = byteLen;
 
     return byteLen;
   }
@@ -75,12 +92,14 @@ public class DiskSchemaEntry {
     DiskSchemaEntry res = new DiskSchemaEntry();
     res.deviceID = ReadWriteIOUtils.readString(inputStream);
     res.seriesKey = ReadWriteIOUtils.readString(inputStream);
-    res.flushTime = ReadWriteIOUtils.readLong(inputStream);
+    res.measurementName = ReadWriteIOUtils.readString(inputStream);
     res.type = ReadWriteIOUtils.readByte(inputStream);
     res.encoding = ReadWriteIOUtils.readByte(inputStream);
     res.compressor = ReadWriteIOUtils.readByte(inputStream);
+    res.isAligned = ReadWriteIOUtils.readBool(inputStream);
     // read byte len
-    ReadWriteIOUtils.readInt(inputStream);
+    res.entrySize = ReadWriteIOUtils.readInt(inputStream);
+    res.entrySize += Integer.BYTES;
 
     return res;
   }
@@ -94,8 +113,6 @@ public class DiskSchemaEntry {
         + ", seriesKey='"
         + seriesKey
         + '\''
-        + ", flushTime="
-        + flushTime
         + ", type="
         + type
         + ", encoding="

@@ -63,7 +63,7 @@ public class DummyPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  protected void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.DUMMY.ordinal());
     buffer.putInt(workload == null ? 0 : workload.length);
     if (workload != null) {

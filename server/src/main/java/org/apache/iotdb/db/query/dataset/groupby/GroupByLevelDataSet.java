@@ -41,7 +41,7 @@ public class GroupByLevelDataSet extends QueryDataSet {
   private List<RowRecord> records = new ArrayList<>();
   private int index = 0;
 
-  public GroupByLevelDataSet(GroupByTimePlan plan, GroupByEngineDataSet dataSet)
+  public GroupByLevelDataSet(GroupByTimePlan plan, GroupByTimeEngineDataSet dataSet)
       throws IOException {
     this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
@@ -71,7 +71,8 @@ public class GroupByLevelDataSet extends QueryDataSet {
       if (paths.isEmpty()) {
         for (Map.Entry<String, AggregateResult> entry : groupPathResultMap.entrySet()) {
           try {
-            this.paths.add(new PartialPath(entry.getKey()));
+            String alias = plan.getGroupByLevelController().getAlias(entry.getKey());
+            this.paths.add(new PartialPath(alias != null ? alias : entry.getKey()));
           } catch (IllegalPathException e) {
             logger.error("Query result IllegalPathException occurred: {}.", entry.getKey());
           }

@@ -20,12 +20,15 @@
 package org.apache.iotdb.influxdb.protocol.impl;
 
 import org.apache.iotdb.influxdb.session.InfluxDBSession;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCreateDatabaseReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSWritePointsReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCreateDatabaseReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.influxdb.InfluxDBException;
+import org.influxdb.dto.Query;
+import org.influxdb.dto.QueryResult;
 
 public class IoTDBInfluxDBService {
 
@@ -48,16 +51,17 @@ public class IoTDBInfluxDBService {
       String precision,
       String consistency,
       String lineProtocol) {
-    TSWritePointsReq tsWritePointsReq = new TSWritePointsReq();
+    InfluxWritePointsReq tsWritePointsReq = new InfluxWritePointsReq();
     if (database == null) {
       tsWritePointsReq.setDatabase(currentDatabase);
     } else {
       tsWritePointsReq.setDatabase(database);
     }
-    tsWritePointsReq.setRetentionPolicy(retentionPolicy);
-    tsWritePointsReq.setPrecision(precision);
-    tsWritePointsReq.setConsistency(consistency);
-    tsWritePointsReq.setLineProtocol(lineProtocol);
+    tsWritePointsReq
+        .setRetentionPolicy(retentionPolicy)
+        .setPrecision(precision)
+        .setConsistency(consistency)
+        .setLineProtocol(lineProtocol);
     try {
       influxDBSession.writePoints(tsWritePointsReq);
     } catch (StatementExecutionException | IoTDBConnectionException e) {
@@ -70,10 +74,20 @@ public class IoTDBInfluxDBService {
   }
 
   public void createDatabase(String database) {
-    TSCreateDatabaseReq tsCreateDatabaseReq = new TSCreateDatabaseReq();
+    InfluxCreateDatabaseReq tsCreateDatabaseReq = new InfluxCreateDatabaseReq();
     tsCreateDatabaseReq.setDatabase(database);
     try {
       influxDBSession.createDatabase(tsCreateDatabaseReq);
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
+  }
+
+  public QueryResult query(Query queryReq) {
+    InfluxQueryReq tsQueryReq = new InfluxQueryReq();
+    tsQueryReq.setDatabase(queryReq.getDatabase()).setCommand(queryReq.getCommand());
+    try {
+      return influxDBSession.query(tsQueryReq);
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new InfluxDBException(e.getMessage());
     }

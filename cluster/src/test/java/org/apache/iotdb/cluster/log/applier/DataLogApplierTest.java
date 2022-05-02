@@ -31,7 +31,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -49,10 +49,12 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -113,7 +115,7 @@ public class DataLogApplierTest extends IoTDBTest {
         public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
           try {
             // for testApplyCreateMultiTimeseiresWithPulling()
-            IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg2"));
+            IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sg2"));
           } catch (StorageGroupAlreadySetException e) {
             logger.warn("[may ignore me in tests] {}", e.getMessage(), e);
           } catch (MetadataException e) {
@@ -155,10 +157,8 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Override
   @Before
-  public void setUp()
-      throws org.apache.iotdb.db.exception.StartupException, QueryProcessException,
-          IllegalPathException {
-    IoTDB.setMetaManager(CMManager.getInstance());
+  public void setUp() throws StartupException, QueryProcessException, IllegalPathException {
+    IoTDB.setSchemaProcessor(CSchemaProcessor.getInstance());
     testMetaGroupMember.setCoordinator(new Coordinator());
     MetaPuller.getInstance().init(testMetaGroupMember);
     super.setUp();
@@ -279,7 +279,7 @@ public class DataLogApplierTest extends IoTDBTest {
               public void returnSyncClient(
                   RaftService.Client client, Node node, ClientCategory category) {}
             });
-    ((CMManager) IoTDB.metaManager).setMetaGroupMember(testMetaGroupMember);
+    ((CSchemaProcessor) IoTDB.schemaProcessor).setMetaGroupMember(testMetaGroupMember);
     testDataGroupMember.setMetaGroupMember(testMetaGroupMember);
     applier = new DataLogApplier(testMetaGroupMember, testDataGroupMember);
   }
@@ -407,14 +407,14 @@ public class DataLogApplierTest extends IoTDBTest {
   }
 
   @Test
-  public void testApplyCloseFile() throws org.apache.iotdb.db.exception.IoTDBException {
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
+  public void testApplyCloseFile() throws IoTDBException {
+    DataRegion dataRegion =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    TestCase.assertFalse(virtualStorageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
+    TestCase.assertFalse(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
 
     CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
     applier.apply(closeFileLog);
-    TestCase.assertTrue(virtualStorageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
+    TestCase.assertTrue(dataRegion.getWorkSequenceTsFileProcessors().isEmpty());
   }
 
   @Test
@@ -440,7 +440,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyCreateMultiTimeseiresWithPulling() throws MetadataException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg1"));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath("root.sg1"));
     CreateMultiTimeSeriesPlan multiTimeSeriesPlan = new CreateMultiTimeSeriesPlan();
     multiTimeSeriesPlan.setIndexes(Collections.emptyList());
     multiTimeSeriesPlan.setPaths(
@@ -456,7 +456,8 @@ public class DataLogApplierTest extends IoTDBTest {
     PhysicalPlanLog log = new PhysicalPlanLog(multiTimeSeriesPlan);
     // the applier should sync meta leader to get root.sg2 and report no error
     applier.apply(log);
-    assertTrue(IoTDB.metaManager.getAllStorageGroupPaths().contains(new PartialPath("root.sg2")));
+    assertTrue(
+        IoTDB.schemaProcessor.getAllStorageGroupPaths().contains(new PartialPath("root.sg2")));
     assertNull(log.getException());
   }
 

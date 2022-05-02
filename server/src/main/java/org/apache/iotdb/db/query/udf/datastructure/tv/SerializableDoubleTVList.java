@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class SerializableDoubleTVList extends SerializableTVList {
 

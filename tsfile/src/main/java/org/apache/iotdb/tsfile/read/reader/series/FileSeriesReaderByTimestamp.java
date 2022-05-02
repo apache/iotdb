@@ -26,8 +26,8 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReaderByTimestamp;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -140,11 +140,6 @@ public class FileSeriesReaderByTimestamp {
       IChunkMetadata chunkMetaData = chunkMetadataList.get(currentChunkIndex++);
       if (chunkSatisfied(chunkMetaData)) {
         initChunkReader(chunkMetaData);
-        if (chunkReader instanceof ChunkReaderByTimestamp) {
-          ((ChunkReaderByTimestamp) chunkReader).setCurrentTimestamp(currentTimestamp);
-        } else {
-          ((AlignedChunkReaderByTimestamp) chunkReader).setCurrentTimestamp(currentTimestamp);
-        }
         return true;
       }
     }
@@ -154,7 +149,7 @@ public class FileSeriesReaderByTimestamp {
   private void initChunkReader(IChunkMetadata chunkMetaData) throws IOException {
     if (chunkMetaData instanceof ChunkMetadata) {
       Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
-      this.chunkReader = new ChunkReaderByTimestamp(chunk);
+      this.chunkReader = new ChunkReader(chunk, null, currentTimestamp);
     } else {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
       Chunk timeChunk =
@@ -163,7 +158,7 @@ public class FileSeriesReaderByTimestamp {
       for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         valueChunkList.add(chunkLoader.loadChunk((ChunkMetadata) metadata));
       }
-      this.chunkReader = new AlignedChunkReaderByTimestamp(timeChunk, valueChunkList);
+      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, null, currentTimestamp);
     }
   }
 

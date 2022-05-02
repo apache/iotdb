@@ -21,20 +21,14 @@ package org.apache.iotdb.cluster.server.raft;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.service.thrift.ThriftService;
-import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.service.ThriftServiceThread;
 
 public class MetaRaftHeartBeatService extends AbstractMetaRaftService
     implements MetaRaftHeartBeatServiceMBean {
 
   private MetaRaftHeartBeatService() {}
-
-  @Override
-  public ThriftService getImplementation() {
-    return MetaRaftHeartBeatServiceHolder.INSTANCE;
-  }
 
   @Override
   public ServiceType getID() {

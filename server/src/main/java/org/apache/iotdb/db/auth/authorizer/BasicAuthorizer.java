@@ -18,17 +18,17 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.role.IRoleManager;
 import org.apache.iotdb.db.auth.user.IUserManager;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.AuthUtils;
 
 import org.slf4j.Logger;
@@ -47,6 +47,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
   private static final String NO_SUCH_USER_EXCEPTION = "No such user : %s";
 
+  // TODO: add cache
   static {
     ADMIN_PRIVILEGES = new HashSet<>();
     for (int i = 0; i < PrivilegeType.values().length; i++) {
@@ -106,7 +107,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     User user = userManager.getUser(username);
     return user != null
         && password != null
-        && user.getPassword().equals(AuthUtils.encryptPassword(password));
+        && AuthUtils.validatePassword(password, user.getPassword());
   }
 
   @Override

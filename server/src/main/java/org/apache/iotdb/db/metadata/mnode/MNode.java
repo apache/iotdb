@@ -18,20 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public abstract class MNode implements IMNode {
-
-  private static Map<String, String> cachedPathPool =
-      CachedStringPool.getInstance().getCachedPool();
 
   /** Name of the MNode */
   protected String name;
@@ -40,6 +36,11 @@ public abstract class MNode implements IMNode {
 
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
+
+  /** registered trigger */
+  protected TriggerExecutor triggerExecutor;
+
+  protected CacheEntry cacheEntry;
 
   /** Constructor of MNode. */
   public MNode(IMNode parent, String name) {
@@ -74,13 +75,6 @@ public abstract class MNode implements IMNode {
    */
   @Override
   public PartialPath getPartialPath() {
-    if (fullPath != null) {
-      try {
-        return new PartialPath(fullPath);
-      } catch (IllegalPathException ignored) {
-
-      }
-    }
     List<String> detachedPath = new ArrayList<>();
     IMNode temp = this;
     detachedPath.add(temp.getName());
@@ -96,12 +90,6 @@ public abstract class MNode implements IMNode {
   public String getFullPath() {
     if (fullPath == null) {
       fullPath = concatFullPath();
-      String cachedFullPath = cachedPathPool.get(fullPath);
-      if (cachedFullPath == null) {
-        cachedPathPool.put(fullPath, fullPath);
-      } else {
-        fullPath = cachedFullPath;
-      }
     }
     return fullPath;
   }
@@ -122,13 +110,9 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
-  public boolean isEmptyInternal() {
-    return !IoTDBConstant.PATH_ROOT.equals(name)
-        && !isStorageGroup()
-        && !isMeasurement()
-        && getSchemaTemplate() == null
-        && !isUseTemplate()
-        && getChildren().size() == 0;
+  public void moveDataToNewMNode(IMNode newMNode) {
+    newMNode.setParent(parent);
+    newMNode.setCacheEntry(cacheEntry);
   }
 
   @Override
@@ -179,6 +163,31 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
+  public List<TriggerExecutor> getUpperTriggerExecutorList() {
+    IMNode currentNode = this;
+    List<TriggerExecutor> results = new ArrayList<>();
+    while (currentNode != null && !IoTDBConstant.PATH_ROOT.equals(currentNode.getName())) {
+      TriggerExecutor executor = currentNode.getTriggerExecutor();
+      currentNode = currentNode.getParent();
+      if (executor == null) {
+        continue;
+      }
+      results.add(executor);
+    }
+    return results;
+  }
+
+  @Override
+  public TriggerExecutor getTriggerExecutor() {
+    return triggerExecutor;
+  }
+
+  @Override
+  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
+    this.triggerExecutor = triggerExecutor;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -206,5 +215,15 @@ public abstract class MNode implements IMNode {
   @Override
   public String toString() {
     return this.getName();
+  }
+
+  @Override
+  public CacheEntry getCacheEntry() {
+    return cacheEntry;
+  }
+
+  @Override
+  public void setCacheEntry(CacheEntry cacheEntry) {
+    this.cacheEntry = cacheEntry;
   }
 }

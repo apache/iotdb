@@ -27,8 +27,8 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.thrift.TException;

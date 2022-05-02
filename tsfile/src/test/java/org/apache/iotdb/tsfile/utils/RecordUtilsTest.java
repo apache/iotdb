@@ -25,8 +25,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -44,24 +44,20 @@ public class RecordUtilsTest {
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
-            "s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
-            "s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
-            "s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
-            "s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+        new Path("d1"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
+        new Path("d1"), new MeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
     return schema;
   }
 

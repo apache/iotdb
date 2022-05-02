@@ -44,7 +44,6 @@ public class IoTDBSessionTimeoutIT {
 
   @Before
   public void setUp() throws ClassNotFoundException {
-    EnvironmentUtils.closeStatMonitor();
     IoTDBDescriptor.getInstance().getConfig().setSessionTimeoutThreshold(1000);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);

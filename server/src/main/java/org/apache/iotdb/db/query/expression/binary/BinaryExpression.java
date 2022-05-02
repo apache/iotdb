@@ -21,10 +21,13 @@ package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -32,11 +35,12 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.BinaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,6 +56,11 @@ public abstract class BinaryExpression extends Expression {
   protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
     this.leftExpression = leftExpression;
     this.rightExpression = rightExpression;
+  }
+
+  protected BinaryExpression(ByteBuffer byteBuffer) {
+    this.leftExpression = Expression.deserialize(byteBuffer);
+    this.rightExpression = Expression.deserialize(byteBuffer);
   }
 
   public Expression getLeftExpression() {
@@ -74,8 +83,8 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isUserDefinedAggregationFunctionExpression() {
-    return leftExpression.isPlainAggregationFunctionExpression()
-        || rightExpression.isPlainAggregationFunctionExpression()
+    return leftExpression.isBuiltInAggregationFunctionExpression()
+        || rightExpression.isBuiltInAggregationFunctionExpression()
         || leftExpression.isUserDefinedAggregationFunctionExpression()
         || rightExpression.isUserDefinedAggregationFunctionExpression();
   }
@@ -83,6 +92,20 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public List<Expression> getExpressions() {
     return Arrays.asList(leftExpression, rightExpression);
+  }
+
+  @Override
+  public final void concat(
+      List<PartialPath> prefixPaths,
+      List<Expression> resultExpressions,
+      PathPatternTree patternTree) {
+    List<Expression> leftExpressions = new ArrayList<>();
+    leftExpression.concat(prefixPaths, leftExpressions, patternTree);
+
+    List<Expression> rightExpressions = new ArrayList<>();
+    rightExpression.concat(prefixPaths, rightExpressions, patternTree);
+
+    reconstruct(leftExpressions, rightExpressions, resultExpressions);
   }
 
   @Override
@@ -99,6 +122,20 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public final void removeWildcards(
       WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws StatementAnalyzeException {
+    List<Expression> leftExpressions = new ArrayList<>();
+    leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
+
+    List<Expression> rightExpressions = new ArrayList<>();
+    rightExpression.removeWildcards(wildcardsRemover, rightExpressions);
+
+    reconstruct(leftExpressions, rightExpressions, resultExpressions);
+  }
+
+  @Override
+  public final void removeWildcards(
+      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
+      List<Expression> resultExpressions)
       throws LogicalOptimizeException {
     List<Expression> leftExpressions = new ArrayList<>();
     leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
@@ -131,6 +168,30 @@ public abstract class BinaryExpression extends Expression {
           case "%":
             resultExpressions.add(new ModuloExpression(le, re));
             break;
+          case "<":
+            resultExpressions.add(new LessThanExpression(le, re));
+            break;
+          case "<=":
+            resultExpressions.add(new LessEqualExpression(le, re));
+            break;
+          case ">":
+            resultExpressions.add(new GreaterThanExpression(le, re));
+            break;
+          case ">=":
+            resultExpressions.add(new GreaterEqualExpression(le, re));
+            break;
+          case "=":
+            resultExpressions.add(new EqualToExpression(le, re));
+            break;
+          case "!=":
+            resultExpressions.add(new NonEqualExpression(le, re));
+            break;
+          case "&":
+            resultExpressions.add(new LogicAndExpression(le, re));
+            break;
+          case "|":
+            resultExpressions.add(new LogicOrExpression(le, re));
+            break;
           default:
             throw new UnsupportedOperationException();
         }
@@ -152,6 +213,13 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
+  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
+    leftExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
+    rightExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
+    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
+  }
+
+  @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     leftExpression.updateStatisticsForMemoryAssigner(memoryAssigner);
     rightExpression.updateStatisticsForMemoryAssigner(memoryAssigner);
@@ -161,7 +229,7 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
-      UDTFPlan udtfPlan,
+      UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
@@ -173,7 +241,7 @@ public abstract class BinaryExpression extends Expression {
       IntermediateLayer leftParentIntermediateLayer =
           leftExpression.constructIntermediateLayer(
               queryId,
-              udtfPlan,
+              udtfContext,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
               expressionDataTypeMap,
@@ -181,7 +249,7 @@ public abstract class BinaryExpression extends Expression {
       IntermediateLayer rightParentIntermediateLayer =
           rightExpression.constructIntermediateLayer(
               queryId,
-              udtfPlan,
+              udtfContext,
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
               expressionDataTypeMap,
@@ -207,19 +275,20 @@ public abstract class BinaryExpression extends Expression {
     return expressionIntermediateLayerMap.get(this);
   }
 
-  protected abstract ArithmeticBinaryTransformer constructTransformer(
+  protected abstract BinaryTransformer constructTransformer(
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   @Override
   public final String getExpressionStringInternal() {
     StringBuilder builder = new StringBuilder();
-    if (leftExpression instanceof BinaryExpression) {
+    if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(leftExpression.getExpressionString()).append(")");
     } else {
       builder.append(leftExpression.getExpressionString());
     }
     builder.append(" ").append(operator()).append(" ");
-    if (rightExpression instanceof BinaryExpression) {
+    if (rightExpression.getExpressionType().getPriority()
+        < this.getExpressionType().getPriority()) {
       builder.append("(").append(rightExpression.getExpressionString()).append(")");
     } else {
       builder.append(rightExpression.getExpressionString());
@@ -229,4 +298,10 @@ public abstract class BinaryExpression extends Expression {
   }
 
   protected abstract String operator();
+
+  @Override
+  protected void serialize(ByteBuffer byteBuffer) {
+    Expression.serialize(leftExpression, byteBuffer);
+    Expression.serialize(rightExpression, byteBuffer);
+  }
 }

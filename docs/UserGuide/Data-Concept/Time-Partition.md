@@ -29,7 +29,7 @@ Time partition divides data according to time, and a time partition is used to s
 
 |Name| enable\_partition |
 |:---:|:---|
-|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 |
+|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 (It's not recommend to open this function. If open, please calculate appropriate concurrent_writing_time_partition and wal_buffer_size)|
 |Type|Bool|
 |Default| false |
 |Effective|Only allowed to be modified in first start up|
@@ -55,10 +55,8 @@ Enable time partition and set partition_interval to 86400 (one day), then the da
 
 ## Suggestions
 
-When enabling time partition, it is better to enable timed flush memtable and timed close tsfile, configuration params are detailed in [Config manual for timed flush and timed close](../Appendix/Config-Manual.md).
+When enabling time partition, it is better to enable timed flush memtable, configuration params are detailed in [Config manual for timed flush](../Reference/Config-Manual.md).
 
 * enable_timed_flush_unseq_memtable: Whether to enable timed flush unsequence memtable, enabled by default.
 
-* enable_timed_flush_seq_memtable: Whether to enable timed flush sequence memtable, disabled by default. It should be enabled when time partition is enabled, so inactive time partition's memtable can be flushed regularly to prepare for the timed close of TsFileProcessor.
-
-* enable_timed_close_tsfile: Whether to enable timed close tsfile, disabled by default. It should be enabled when time partition is enabled, so inactive time partition's TsFileProcessor can be closed regularly to reduce memory usage.
+* enable_timed_flush_seq_memtable: Whether to enable timed flush sequence memtable, disabled by default. It should be enabled when time partition is enabled, so inactive time partition's memtable can be flushed regularly.

@@ -26,7 +26,10 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /** this class extends {@code RootOperator} and process delete statement. */
 public class DeleteDataOperator extends Operator {
@@ -69,6 +72,15 @@ public class DeleteDataOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new DeletePlan(getStartTime(), getEndTime(), getPaths());
+    List<PartialPath> originPath = getPaths();
+    if (isPrefixMatchPath()) {
+      // adapt to prefix match of 0.12
+      List<PartialPath> addedPath = new LinkedList<>();
+      for (PartialPath path : originPath) {
+        addedPath.add(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+      }
+      originPath.addAll(addedPath);
+    }
+    return new DeletePlan(getStartTime(), getEndTime(), originPath);
   }
 }

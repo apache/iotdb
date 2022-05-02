@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_STRONG_ACCEPT;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_TOO_BUSY;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_WEAK_ACCEPT;
 
 /**
@@ -74,6 +75,14 @@ public class LogCatchUpHandler implements AsyncMethodCallback<AppendEntryResult>
       logger.debug("{}: Log mismatch occurred when sending log {}", memberName, log);
       synchronized (appendSucceed) {
         appendSucceed.set(true);
+        appendSucceed.notifyAll();
+      }
+    } else if (resp == RESPONSE_TOO_BUSY) {
+      // this may occur when the follower has too many logs unapplied, so we abort the
+      // catch-up task
+      logger.info("{}: Catchup task rejected by receiver {}", memberName, follower);
+      synchronized (appendSucceed) {
+        appendSucceed.set(false);
         appendSucceed.notifyAll();
       }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {

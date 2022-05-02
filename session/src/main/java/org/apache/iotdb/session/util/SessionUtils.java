@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.session.util;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,8 +28,7 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,19 +56,9 @@ public class SessionUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getTotalValueOccupation());
-    int indexOfValues = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema instanceof UnaryMeasurementSchema) {
-        getValueBufferOfDataType(schema.getType(), tablet, indexOfValues, valueBuffer);
-        indexOfValues++;
-      } else {
-        for (int j = 0; j < schema.getSubMeasurementsTSDataTypeList().size(); j++) {
-          getValueBufferOfDataType(
-              schema.getSubMeasurementsTSDataTypeList().get(j), tablet, indexOfValues, valueBuffer);
-          indexOfValues++;
-        }
-      }
+      MeasurementSchema schema = tablet.getSchemas().get(i);
+      getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
     }
     if (tablet.bitMaps != null) {
       for (BitMap bitMap : tablet.bitMaps) {
@@ -248,20 +237,20 @@ public class SessionUtils {
     }
   }
 
-  public static List<EndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
+  public static List<TEndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
     if (nodeUrls == null) {
       throw new NumberFormatException("nodeUrls is null");
     }
-    List<EndPoint> endPointsList = new ArrayList<>();
+    List<TEndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {
-      EndPoint endPoint = parseNodeUrl(nodeUrl);
+      TEndPoint endPoint = parseNodeUrl(nodeUrl);
       endPointsList.add(endPoint);
     }
     return endPointsList;
   }
 
-  private static EndPoint parseNodeUrl(String nodeUrl) {
-    EndPoint endPoint = new EndPoint();
+  private static TEndPoint parseNodeUrl(String nodeUrl) {
+    TEndPoint endPoint = new TEndPoint();
     String[] split = nodeUrl.split(":");
     if (split.length != 2) {
       throw new NumberFormatException("NodeUrl Incorrect format");

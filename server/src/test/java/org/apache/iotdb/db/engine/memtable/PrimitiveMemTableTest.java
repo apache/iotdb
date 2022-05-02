@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -43,18 +44,21 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+
+import static org.junit.Assert.assertEquals;
 
 public class PrimitiveMemTableTest {
 
@@ -69,7 +73,7 @@ public class PrimitiveMemTableTest {
   public void memSeriesSortIteratorTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
-        new WritableMemChunk(new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN));
+        new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -87,7 +91,7 @@ public class PrimitiveMemTableTest {
   public void memSeriesToStringTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
-        new WritableMemChunk(new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN));
+        new WritableMemChunk(new MeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 100;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -124,7 +128,7 @@ public class PrimitiveMemTableTest {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
-              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+              new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
           new Object[] {i + 10});
     }
@@ -132,7 +136,7 @@ public class PrimitiveMemTableTest {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
-              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+              new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
           new Object[] {i});
     }
@@ -140,7 +144,7 @@ public class PrimitiveMemTableTest {
         new MeasurementPath(
             deviceId,
             measurementId[0],
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 measurementId[0],
                 TSDataType.INT32,
                 TSEncoding.RLE,
@@ -166,16 +170,14 @@ public class PrimitiveMemTableTest {
       measurementId[i] = "s" + i;
     }
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN));
-    schemaList.add(
-        new UnaryMeasurementSchema(measurementId[1], TSDataType.INT32, TSEncoding.PLAIN));
+    schemaList.add(new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN));
+    schemaList.add(new MeasurementSchema(measurementId[1], TSDataType.INT32, TSEncoding.PLAIN));
     int dataSize = 10000;
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
-              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+              new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
           new Object[] {i});
     }
@@ -202,7 +204,7 @@ public class PrimitiveMemTableTest {
     memTable.writeAlignedRow(
         DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
         Collections.singletonList(
-            new UnaryMeasurementSchema(measurementId[2], TSDataType.INT32, TSEncoding.PLAIN)),
+            new MeasurementSchema(measurementId[2], TSDataType.INT32, TSEncoding.PLAIN)),
         0,
         new Object[] {0});
     Assert.assertEquals(6, memTable.getSeriesNumber());
@@ -223,7 +225,7 @@ public class PrimitiveMemTableTest {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
-              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+              new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
           new Object[] {i + 10});
     }
@@ -231,7 +233,7 @@ public class PrimitiveMemTableTest {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
-              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+              new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
           new Object[] {i});
     }
@@ -239,7 +241,7 @@ public class PrimitiveMemTableTest {
         new MeasurementPath(
             deviceId,
             measurementId[0],
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 measurementId[0],
                 TSDataType.INT32,
                 TSEncoding.RLE,
@@ -277,7 +279,7 @@ public class PrimitiveMemTableTest {
       memTable.writeAlignedRow(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
-              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+              new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
           new Object[] {i + 10});
     }
@@ -285,7 +287,7 @@ public class PrimitiveMemTableTest {
       memTable.writeAlignedRow(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
-              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+              new MeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
           new Object[] {i});
     }
@@ -294,7 +296,7 @@ public class PrimitiveMemTableTest {
             deviceId,
             Collections.singletonList(measurementId[0]),
             Collections.singletonList(
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     measurementId[0],
                     TSDataType.INT32,
                     TSEncoding.RLE,
@@ -329,7 +331,7 @@ public class PrimitiveMemTableTest {
     for (TimeValuePair aRet : ret) {
       memTable.write(
           DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
-          Collections.singletonList(new UnaryMeasurementSchema(sensorId, dataType, encoding)),
+          Collections.singletonList(new MeasurementSchema(sensorId, dataType, encoding)),
           aRet.getTimestamp(),
           new Object[] {aRet.getValue().getValue()});
     }
@@ -337,7 +339,7 @@ public class PrimitiveMemTableTest {
         new MeasurementPath(
             deviceId,
             sensorId,
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 sensorId,
                 dataType,
                 encoding,
@@ -382,7 +384,7 @@ public class PrimitiveMemTableTest {
             "root.sg.device5",
             Collections.singletonList("sensor1"),
             Collections.singletonList(
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     "sensor1",
                     TSDataType.INT64,
                     TSEncoding.GORILLA,
@@ -401,13 +403,13 @@ public class PrimitiveMemTableTest {
             "root.sg.device5",
             Arrays.asList("sensor0", "sensor1"),
             Arrays.asList(
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     "sensor0",
                     TSDataType.BOOLEAN,
                     TSEncoding.PLAIN,
                     CompressionType.UNCOMPRESSED,
                     Collections.emptyMap()),
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     "sensor1",
                     TSDataType.INT64,
                     TSEncoding.GORILLA,
@@ -512,10 +514,8 @@ public class PrimitiveMemTableTest {
     String deviceId = "root.sg.device5";
 
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
-    IMeasurementSchema schema0 =
-        new UnaryMeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
-    IMeasurementSchema schema1 =
-        new UnaryMeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
+    IMeasurementSchema schema0 = new MeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
+    IMeasurementSchema schema1 = new MeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
     mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema0, null);
     mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema1, null);
 
@@ -536,10 +536,34 @@ public class PrimitiveMemTableTest {
     insertTabletPlan.setColumns(columns);
     insertTabletPlan.setRowCount(times.length);
     insertTabletPlan.setMeasurementMNodes(mNodes);
-    insertTabletPlan.setStart(0);
-    insertTabletPlan.setEnd(100);
     insertTabletPlan.setAligned(true);
 
     return insertTabletPlan;
+  }
+
+  @Test
+  public void testSerializeSize() throws IOException, QueryProcessException, MetadataException {
+    IMemTable memTable = new PrimitiveMemTable();
+    int count = 10;
+    String deviceId = "d1";
+    String[] measurementId = new String[count];
+    for (int i = 0; i < measurementId.length; i++) {
+      measurementId[i] = "s" + i;
+    }
+    int index = 0;
+
+    int size = 10000;
+    write(memTable, deviceId, measurementId[index++], TSDataType.BOOLEAN, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.INT32, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.INT64, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.FLOAT, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.DOUBLE, TSEncoding.RLE, size);
+    write(memTable, deviceId, measurementId[index++], TSDataType.TEXT, TSEncoding.PLAIN, size);
+    writeVector(memTable);
+
+    int serializedSize = memTable.serializedSize();
+    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.allocate(serializedSize));
+    memTable.serializeToWAL(walBuffer);
+    assertEquals(0, walBuffer.getBuffer().remaining());
   }
 }

@@ -52,6 +52,7 @@ grafana/.mvn/
 grafana/logs/
 *.log
 
+
 ### STS ###
 .apt_generated
 .classpath

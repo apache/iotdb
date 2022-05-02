@@ -32,7 +32,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -42,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Created by dell on 2017/7/17. */
 @Repository
 @PropertySource("classpath:application.properties")
 public class BasicDaoImpl implements BasicDao {
@@ -75,25 +73,21 @@ public class BasicDaoImpl implements BasicDao {
 
   @Override
   public List<String> getMetaData() {
-    ConnectionCallback<Object> connectionCallback =
-        new ConnectionCallback<Object>() {
-          @Override
-          public Object doInConnection(Connection connection) throws SQLException {
-            try (Statement statement = connection.createStatement()) {
-              statement.execute("show timeseries root.*");
-              try (ResultSet resultSet = statement.getResultSet()) {
+    return jdbcTemplate.execute(
+        (ConnectionCallback<List<String>>)
+            connection -> {
+              try (Statement statement = connection.createStatement()) {
+                statement.execute("show timeseries root.**");
                 logger.info("Start to get timeseries");
-                List<String> columnsName = new ArrayList<>();
-                while (resultSet.next()) {
-                  String timeseries = resultSet.getString(1);
-                  columnsName.add(timeseries.substring(5));
+                try (ResultSet resultSet = statement.getResultSet()) {
+                  List<String> columnsName = new ArrayList<>();
+                  while (resultSet.next()) {
+                    columnsName.add(resultSet.getString(1).substring(5));
+                  }
+                  return columnsName;
                 }
-                return columnsName;
               }
-            }
-          }
-        };
-    return (List<String>) jdbcTemplate.execute(connectionCallback);
+            });
   }
 
   public static void setTimestampRadioX(String timestampPrecision) {
@@ -138,34 +132,35 @@ public class BasicDaoImpl implements BasicDao {
     long to = zonedCovertToLong(timeRange.right);
     final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
 
-    String sql =
-        String.format(
-            "SELECT %s FROM root.%s WHERE time > %d and time < %d",
-            s.substring(s.lastIndexOf('.') + 1),
-            s.substring(0, s.lastIndexOf('.')),
-            from * timestampRadioX,
-            to * timestampRadioX);
+    String sql = "SELECT ? FROM root.? WHERE time > ? and time < ?";
+    Object[] params =
+        new Object[] {
+          s.substring(s.lastIndexOf('.') + 1),
+          s.substring(0, s.lastIndexOf('.')),
+          from * timestampRadioX,
+          to * timestampRadioX,
+        };
     String columnName = "root." + s;
 
     String intervalLocal = getInterval(hours);
     if (!"".equals(intervalLocal)) {
-      sql =
-          String.format(
-              "SELECT "
-                  + function
-                  + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
-              s.substring(s.lastIndexOf('.') + 1),
-              s.substring(0, s.lastIndexOf('.')),
-              from * timestampRadioX,
-              to * timestampRadioX,
-              from * timestampRadioX,
-              to * timestampRadioX,
-              intervalLocal);
+      sql = "SELECT ?(?) FROM root.? WHERE time > ? and time < ? group by ([?, ?),?)";
+      params =
+          new Object[] {
+            function,
+            s.substring(s.lastIndexOf('.') + 1),
+            s.substring(0, s.lastIndexOf('.')),
+            from * timestampRadioX,
+            to * timestampRadioX,
+            from * timestampRadioX,
+            to * timestampRadioX,
+            intervalLocal
+          };
       columnName = function + "(root." + s + ")";
     }
 
-    logger.info(sql);
-    return jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
+    logger.info("SQL: {}, Params: {}", sql, params);
+    return jdbcTemplate.query(sql, params, new TimeValuesRowMapper(columnName));
   }
 
   public String getInterval(final long hours) {

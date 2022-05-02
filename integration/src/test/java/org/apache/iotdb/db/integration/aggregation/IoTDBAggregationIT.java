@@ -33,8 +33,10 @@ import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Locale;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
@@ -768,7 +770,9 @@ public class IoTDBAggregationIT {
       } catch (Exception e) {
         Assert.assertTrue(
             e.getMessage(),
-            e.getMessage().contains("Unsupported data type in aggregation AVG : TEXT"));
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         statement.execute(
@@ -779,7 +783,9 @@ public class IoTDBAggregationIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(
-            e.getMessage().contains("Unsupported data type in aggregation SUM : TEXT"));
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         statement.execute(
@@ -790,7 +796,9 @@ public class IoTDBAggregationIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(
-            e.getMessage().contains("Unsupported data type in aggregation AVG : BOOLEAN"));
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         statement.execute(
@@ -802,7 +810,9 @@ public class IoTDBAggregationIT {
       } catch (Exception e) {
         Assert.assertTrue(
             e.getMessage(),
-            e.getMessage().contains("Unsupported data type in aggregation SUM : BOOLEAN"));
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         statement.execute("SELECT avg(status) FROM root.ln.wf01.wt01");
@@ -812,7 +822,10 @@ public class IoTDBAggregationIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(
-            e.getMessage(), e.getMessage().contains("Boolean statistics does not support: avg"));
+            e.getMessage(),
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -1015,6 +1028,32 @@ public class IoTDBAggregationIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void timeWasNullTest() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select max_value(temperature),count(status) from root.ln.wf01.wt01 group by ([0, 600), 100ms);");
+      Assert.assertTrue(hasResultSet);
+      ResultSet resultSet = statement.getResultSet();
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      int columnCount = metaData.getColumnCount();
+      while (resultSet.next()) {
+        for (int i = 1; i <= columnCount; i++) {
+          int ct = metaData.getColumnType(i);
+          if (ct == Types.TIMESTAMP) {
+            if (resultSet.wasNull()) {
+              Assert.assertTrue(false);
+            } else {
+              Assert.assertTrue(true);
+            }
+          }
+        }
+      }
     }
   }
 }

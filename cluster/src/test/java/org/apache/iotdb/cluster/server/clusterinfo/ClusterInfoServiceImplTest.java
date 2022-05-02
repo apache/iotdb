@@ -52,7 +52,7 @@ public class ClusterInfoServiceImplTest {
 
     ClusterIoTDB.getInstance()
         .getIotdb()
-        .metaManager
+        .schemaProcessor
         .setStorageGroup(new PartialPath("root", "sg"));
     // metaClusterServer.getMember()
     impl = new ClusterInfoServiceImpl();
@@ -62,7 +62,7 @@ public class ClusterInfoServiceImplTest {
   public void tearDown() throws Exception {
     ClusterIoTDB.getInstance()
         .getIotdb()
-        .metaManager
+        .schemaProcessor
         .deleteStorageGroups(Collections.singletonList(new PartialPath("root", "sg")));
     metaGroupMemberTest.tearDown();
     ClusterIoTDB.getInstance().getMetaGroupMember().stop();

@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.utils;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.ArrayList;
@@ -59,10 +59,54 @@ public class MetaUtils {
         if (startIndex == path.length()) {
           throw new IllegalPathException(path);
         }
+      } else if (path.charAt(i) == '"') {
+        if (i > 0 && path.charAt(i - 1) == '\\') {
+          continue;
+        }
+        int endIndex = path.indexOf('"', i + 1);
+        // if a double quotes with escape character
+        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+          endIndex = path.indexOf('"', endIndex + 1);
+        }
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
+          String node = path.substring(startIndex, endIndex + 1);
+          if (node.isEmpty()) {
+            throw new IllegalPathException(path);
+          }
+          nodes.add(node);
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          throw new IllegalPathException(path);
+        }
+      } else if (path.charAt(i) == '\'') {
+        if (i > 0 && path.charAt(i - 1) == '\\') {
+          continue;
+        }
+        int endIndex = path.indexOf('\'', i + 1);
+        // if a double quotes with escape character
+        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+          endIndex = path.indexOf('\'', endIndex + 1);
+        }
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
+          String node = path.substring(startIndex, endIndex + 1);
+          if (node.isEmpty()) {
+            throw new IllegalPathException(path);
+          }
+          nodes.add(node);
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          throw new IllegalPathException(path);
+        }
       }
     }
     if (startIndex <= path.length() - 1) {
-      nodes.add(path.substring(startIndex));
+      String node = path.substring(startIndex);
+      if (node.isEmpty()) {
+        throw new IllegalPathException(path);
+      }
+      nodes.add(node);
     }
     return nodes.toArray(new String[0]);
   }
@@ -182,7 +226,7 @@ public class MetaUtils {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
         AlignedPath groupPath = temp.get(seriesPath.getFullPath());
         if (groupPath == null) {
-          groupPath = (AlignedPath) seriesPath;
+          groupPath = (AlignedPath) seriesPath.copy();
           temp.put(groupPath.getFullPath(), groupPath);
           alignedPathToAggrIndexesMap
               .computeIfAbsent(groupPath, key -> new ArrayList<>())

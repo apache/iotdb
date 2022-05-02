@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.example.Counter;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -34,8 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -67,7 +67,6 @@ public class IoTDBSessionComplexIT {
   @Before
   public void setUp() {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
 
@@ -220,10 +219,10 @@ public class IoTDBSessionComplexIT {
 
     createTimeseries();
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
 
@@ -424,9 +423,9 @@ public class IoTDBSessionComplexIT {
     session.createTimeseries(
         "root.sg1.d1.1+2+4", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1_2\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+3\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+4\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.1_2"));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`1+2+3`"));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`1+2+4`"));
 
     session.setStorageGroup("root.1");
     session.createTimeseries(
@@ -473,8 +472,8 @@ public class IoTDBSessionComplexIT {
     session.setStorageGroup("root.sg1");
     String deviceId = "root.sg1.d1";
 
-    boolean isEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
+    WALMode prevWalMode = IoTDBDescriptor.getInstance().getConfig().getWalMode();
+    IoTDBDescriptor.getInstance().getConfig().setWalMode(WALMode.DISABLE);
     createTimeseries();
 
     List<String> measurements = new ArrayList<>();
@@ -493,10 +492,10 @@ public class IoTDBSessionComplexIT {
       session.insertRecord(deviceId, time, measurements, types, values);
     }
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 200);
     long[] timestamps = tablet.timestamps;
@@ -530,7 +529,7 @@ public class IoTDBSessionComplexIT {
     }
     Assert.assertEquals(201, count);
 
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(isEnableWAL);
+    IoTDBDescriptor.getInstance().getConfig().setWalMode(prevWalMode);
     session.close();
   }
 
@@ -633,10 +632,10 @@ public class IoTDBSessionComplexIT {
   private void insertTablet(String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 

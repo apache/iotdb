@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.cluster;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -38,11 +39,10 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -291,7 +291,7 @@ public class ClientMain {
       for (int i = 0; i < MEASUREMENTS.length; i++) {
         String measurement = MEASUREMENTS[i];
         schemas.add(
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 device + IoTDBConstant.PATH_SEPARATOR + measurement, DATA_TYPES[i]));
       }
     }

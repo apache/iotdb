@@ -32,7 +32,7 @@ IoTDB 允许在创建一个时间序列的时候指定该列的压缩方式。�
 * LZ4 压缩
 * GZIP 压缩
 
-压缩方式的指定语法详见本文 [SQL 参考文档](../Appendix/SQL-Reference.md)。
+压缩方式的指定语法详见本文 [SQL 参考文档](../Reference/SQL-Reference.md)。
 
 ## 旋转门压缩
 
@@ -66,7 +66,7 @@ CompMaxTime 是测量两个存储的数据点之间的时间距离的参数。
 * FLOAT（单精度浮点数）
 * DOUBLE（双精度浮点数）
 
-SDT 的指定语法详见本文 [SQL 参考文档](../Appendix/SQL-Reference.md)。
+SDT 的指定语法详见本文 [SQL 参考文档](../Reference/SQL-Reference.md)。
 
 以下是使用 SDT 压缩的示例。
 
@@ -119,3 +119,12 @@ SDT 在刷新到磁盘时进行压缩。 SDT 算法始终存储第一个点，�
 时间范围在 [2017-11-01T00:06:00.001, 2017-11-01T00:06:00.007] 的数据在压缩偏差内，因此被压缩和丢弃。
 之所以存储时间为 2017-11-01T00:06:00.007 的数据点，是因为下一个数据点 2017-11-01T00:06:00.015 的值超过压缩偏差。
 当一个数据点超过压缩偏差时，SDT 将存储上一个读取的数据点，并重新计算上下压缩边界。作为最后一个数据点，不存储时间 2017-11-01T00:06:00.018。
+
+## 压缩比统计信息
+
+压缩比统计信息文件：data/system/storage_groups/compression_ratio/Ratio-{ratio_sum}-{memtable_flush_time}
+
+* ratio_sum: memtable压缩比的总和
+* memtable_flush_time: memtable刷盘的总次数
+
+通过 `ratio_sum / memtable_flush_time` 可以计算出平均压缩比

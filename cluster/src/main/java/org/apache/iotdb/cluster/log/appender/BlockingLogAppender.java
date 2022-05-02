@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.appender;
 
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -28,12 +29,14 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.Buffer;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * BlockingLogAppender wait for a certain amount of time when it receives out-of-order entries
@@ -66,22 +69,36 @@ public class BlockingLogAppender implements LogAppender {
       return new AppendEntryResult(resp).setHeader(member.getHeader());
     }
 
+    long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
+    long startWaitingTime = System.currentTimeMillis();
     long success;
     AppendEntryResult result = new AppendEntryResult();
-    synchronized (logManager) {
-      success =
-          logManager.maybeAppend(
-              request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
-      if (success != -1) {
-        result.setLastLogIndex(logManager.getLastLogIndex());
-        result.setLastLogTerm(logManager.getLastLogTerm());
-        if (request.isSetSubReceivers() && !request.getSubReceivers().isEmpty()) {
-          request.entry.rewind();
-          member.getLogRelay().offer(request, request.subReceivers);
+    while (true) {
+      synchronized (logManager) {
+        // TODO: Consider memory footprint to execute a precise rejection
+        if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
+            <= ClusterDescriptor.getInstance()
+                .getConfig()
+                .getUnAppliedRaftLogNumForRejectThreshold()) {
+          success =
+              logManager.maybeAppend(
+                  request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
+          break;
+        }
+        try {
+          TimeUnit.MILLISECONDS.sleep(
+              IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+          if (System.currentTimeMillis() - startWaitingTime
+              > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+            result.status = Response.RESPONSE_TOO_BUSY;
+            return result;
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
         }
       }
     }
-
+    Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
     if (success != -1) {
       logger.debug("{} append a new log {}", member.getName(), log);
       result.status = Response.RESPONSE_STRONG_ACCEPT;
@@ -159,29 +176,52 @@ public class BlockingLogAppender implements LogAppender {
     }
 
     AppendEntryResult result = new AppendEntryResult();
-    synchronized (logManager) {
-      resp =
-          logManager.maybeAppend(
-              request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
-      if (resp != -1) {
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "{} append a new log list {}, commit to {}",
-              member.getName(),
-              logs,
-              request.leaderCommit);
-        }
-        result.status = Response.RESPONSE_STRONG_ACCEPT;
-        result.setLastLogIndex(logManager.getLastLogIndex());
-        result.setLastLogTerm(logManager.getLastLogTerm());
+    long startWaitingTime = System.currentTimeMillis();
+    while (true) {
+      synchronized (logManager) {
+        // TODO: Consider memory footprint to execute a precise rejection
+        if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
+            <= ClusterDescriptor.getInstance()
+                .getConfig()
+                .getUnAppliedRaftLogNumForRejectThreshold()) {
+          long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
+          resp =
+              logManager.maybeAppend(
+                  request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
+          Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
+          if (resp != -1) {
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "{} append a new log list {}, commit to {}",
+                  member.getName(),
+                  logs,
+                  request.leaderCommit);
+            }
+            result.status = Response.RESPONSE_STRONG_ACCEPT;
+            result.setLastLogIndex(logManager.getLastLogIndex());
+            result.setLastLogTerm(logManager.getLastLogTerm());
 
-        if (request.isSetSubReceivers()) {
-          request.entries.forEach(Buffer::rewind);
-          member.getLogRelay().offer(request, request.subReceivers);
+            if (request.isSetSubReceivers()) {
+              request.entries.forEach(Buffer::rewind);
+              member.getLogRelay().offer(request, request.subReceivers);
+            }
+          } else {
+            // the incoming log points to an illegal position, reject it
+            result.status = Response.RESPONSE_LOG_MISMATCH;
+          }
+          break;
         }
-      } else {
-        // the incoming log points to an illegal position, reject it
-        result.status = Response.RESPONSE_LOG_MISMATCH;
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(
+            IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startWaitingTime
+            > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+          result.status = Response.RESPONSE_TOO_BUSY;
+          return result;
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
       }
     }
     return result;

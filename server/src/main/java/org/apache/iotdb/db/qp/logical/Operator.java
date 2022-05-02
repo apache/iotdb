@@ -34,6 +34,12 @@ public abstract class Operator {
 
   protected OperatorType operatorType = OperatorType.NULL;
 
+  /**
+   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
+   * DML use prefixMatch.
+   */
+  protected boolean isPrefixMatchPath = false;
+
   protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
     this.isDebug = false;
@@ -61,6 +67,14 @@ public abstract class Operator {
 
   public void setDebug(boolean debug) {
     isDebug = debug;
+  }
+
+  public boolean isPrefixMatchPath() {
+    return isPrefixMatchPath;
+  }
+
+  public void setPrefixMatchPath(boolean prefixMatchPath) {
+    isPrefixMatchPath = prefixMatchPath;
   }
 
   @Override
@@ -178,6 +192,21 @@ public abstract class Operator {
 
     UNSET_TEMPLATE,
     PRUNE_TEMPLATE,
-    APPEND_TEMPLATE
+    APPEND_TEMPLATE,
+    DROP_TEMPLATE,
+
+    SHOW_QUERY_RESOURCE,
+
+    CREATE_PIPESINK,
+    DROP_PIPESINK,
+    SHOW_PIPESINK,
+    SHOW_PIPESINKTYPE,
+    CREATE_PIPE,
+    SHOW_PIPE,
+    STOP_PIPE,
+    START_PIPE,
+    DROP_PIPE,
+    START_PIPE_SERVER,
+    STOP_PIPE_SERVER,
   }
 }

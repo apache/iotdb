@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.JMXService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.ServiceType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

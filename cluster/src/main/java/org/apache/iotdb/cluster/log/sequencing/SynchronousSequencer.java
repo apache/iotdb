@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.log.sequencing;
 
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.VotingLog;
@@ -28,7 +29,10 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -52,36 +56,58 @@ public class SynchronousSequencer implements LogSequencer {
 
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
-    synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
-          startTime);
+    long startWaitingTime = System.currentTimeMillis();
 
-      log.setCurrLogTerm(member.getTerm().get());
-      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+    while (true) {
+      synchronized (logManager) {
+        if (!IoTDBDescriptor.getInstance().getConfig().isEnableMemControl()
+            || (logManager.getLastLogIndex() - logManager.getCommitLogIndex()
+                <= ClusterDescriptor.getInstance()
+                    .getConfig()
+                    .getUnCommittedRaftLogNumForRejectThreshold())) {
+          Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
+              startTime);
 
-      if (log instanceof PhysicalPlanLog) {
-        PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
-        physicalPlanLog.getPlan().setIndex(log.getCurrLogIndex());
+          // if the log contains a physical plan which is not a LogPlan, assign the same index to
+          // the plan so the state machine can be bridged with the consensus
+          if (log instanceof PhysicalPlanLog
+              && !(((PhysicalPlanLog) log).getPlan() instanceof LogPlan)) {
+            ((PhysicalPlanLog) log).getPlan().setIndex(logManager.getLastLogIndex() + 1);
+          }
+          log.setCurrLogTerm(member.getTerm().get());
+          log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+          break;
+        }
+        try {
+          TimeUnit.MILLISECONDS.sleep(
+              IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+          if (System.currentTimeMillis() - startWaitingTime
+              > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+            return null;
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
       }
-
-      startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
-
-      // logDispatcher will serialize log, and set log size, and we will use the size after it
-      logManager.append(log);
-      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
-
-      startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
-      sendLogRequest = buildSendLogRequest(log);
-      Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
-
-      startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
-      log.setCreateTime(System.nanoTime());
-      if (member.getAllNodes().size() > 1) {
-        member.getVotingLogList().insert(sendLogRequest.getVotingLog());
-        member.getLogDispatcher().offer(sendLogRequest);
-      }
-      Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
     }
+
+    startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+
+    // logDispatcher will serialize log, and set log size, and we will use the size after it
+    logManager.append(log);
+    Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
+
+    startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
+    sendLogRequest = buildSendLogRequest(log);
+    Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
+
+    startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
+    log.setCreateTime(System.nanoTime());
+    if (member.getAllNodes().size() > 1) {
+      member.getVotingLogList().insert(sendLogRequest.getVotingLog());
+      member.getLogDispatcher().offer(sendLogRequest);
+    }
+    Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
     return sendLogRequest;
   }
 

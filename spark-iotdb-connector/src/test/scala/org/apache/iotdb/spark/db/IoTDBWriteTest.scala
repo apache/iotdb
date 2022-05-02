@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.spark.db
 
-import org.apache.iotdb.db.conf.IoTDBConstant
 import org.apache.iotdb.db.service.IoTDB
 import org.apache.iotdb.jdbc.Config
 import org.apache.iotdb.session.Session
 import org.apache.spark.sql.SparkSession
 import org.junit.{AfterClass, Before}
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
+import org.scalatest.{BeforeAndAfterAll, FunSuite, shortstacks}
 
 class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
   private var daemon: IoTDB = _
@@ -34,10 +33,9 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
 
   @Before
   override protected def beforeAll(): Unit = {
-    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/")
+    System.setProperty("IOTDB_CONF", "src/test/resources/")
     super.beforeAll()
 
-    EnvironmentUtils.closeStatMonitor()
     daemon = IoTDB.getInstance
     daemon.active()
     EnvironmentUtils.envSetUp()
@@ -72,12 +70,12 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
       (2L, 2, 2L, 2.0F, 2.0D, false, "world")))
 
     val dfWithColumn = df.withColumnRenamed("_1", "Time")
-      .withColumnRenamed("_2", "root.test.d0.int")
-      .withColumnRenamed("_3", "root.test.d0.long")
-      .withColumnRenamed("_4", "root.test.d0.float")
-      .withColumnRenamed("_5", "root.test.d0.double")
-      .withColumnRenamed("_6", "root.test.d0.boolean")
-      .withColumnRenamed("_7", "root.test.d0.text")
+      .withColumnRenamed("_2", "root.test.d0.s0")
+      .withColumnRenamed("_3", "root.test.d0.s1")
+      .withColumnRenamed("_4", "root.test.d0.s2")
+      .withColumnRenamed("_5", "root.test.d0.s3")
+      .withColumnRenamed("_6", "root.test.d0.s4")
+      .withColumnRenamed("_7", "root.test.d0.s5")
     dfWithColumn.write.format("org.apache.iotdb.spark.db")
       .option("url", "jdbc:iotdb://127.0.0.1:6667/")
       .save
@@ -85,6 +83,7 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
     val result = session.executeQueryStatement("select ** from root")
     var size = 0
     while (result.hasNext) {
+      result.next()
       size += 1
     }
     assertResult(2)(size)
@@ -96,13 +95,13 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
       (2L, "root.test.d0", 2, 2L, 2.0F, 2.0D, false, "world")))
 
     val dfWithColumn = df.withColumnRenamed("_1", "Time")
-      .withColumnRenamed("_2", "device_name")
-      .withColumnRenamed("_3", "int")
-      .withColumnRenamed("_4", "long")
-      .withColumnRenamed("_5", "float")
-      .withColumnRenamed("_6", "double")
-      .withColumnRenamed("_7", "boolean")
-      .withColumnRenamed("_8", "text")
+      .withColumnRenamed("_2", "Device")
+      .withColumnRenamed("_3", "s0")
+      .withColumnRenamed("_4", "s1")
+      .withColumnRenamed("_5", "s2")
+      .withColumnRenamed("_6", "s3")
+      .withColumnRenamed("_7", "s4")
+      .withColumnRenamed("_8", "s5")
     dfWithColumn.write.format("org.apache.iotdb.spark.db")
       .option("url", "jdbc:iotdb://127.0.0.1:6667/")
       .save
@@ -110,6 +109,7 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
     val result = session.executeQueryStatement("select ** from root")
     var size = 0
     while (result.hasNext) {
+      result.next()
       size += 1
     }
     assertResult(2)(size)

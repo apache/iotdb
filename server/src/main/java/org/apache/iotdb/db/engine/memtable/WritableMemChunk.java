@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -26,10 +27,14 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public class WritableMemChunk implements IWritableMemChunk {
@@ -43,6 +48,8 @@ public class WritableMemChunk implements IWritableMemChunk {
     this.schema = schema;
     this.list = TVList.newList(schema.getType());
   }
+
+  private WritableMemChunk() {}
 
   @Override
   public void write(long insertTime, Object objectValue) {
@@ -227,7 +234,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
-    return list.size();
+    return list.rowCount();
   }
 
   @Override
@@ -242,7 +249,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getFirstPoint() {
-    if (list.size() == 0) {
+    if (list.rowCount() == 0) {
       return Long.MAX_VALUE;
     }
     return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
@@ -250,11 +257,11 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long getLastPoint() {
-    if (list.size() == 0) {
+    if (list.rowCount() == 0) {
       return Long.MIN_VALUE;
     }
     return getSortedTvListForQuery()
-        .getTimeValuePair(getSortedTvListForQuery().size() - 1)
+        .getTimeValuePair(getSortedTvListForQuery().rowCount() - 1)
         .getTimestamp();
   }
 
@@ -270,7 +277,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public String toString() {
-    int size = list.size();
+    int size = list.rowCount();
     int firstIndex = 0;
     int lastIndex = size - 1;
     long minTime = Long.MAX_VALUE;
@@ -305,16 +312,16 @@ public class WritableMemChunk implements IWritableMemChunk {
 
     ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
 
-    for (int sortedRowIndex = 0; sortedRowIndex < list.size(); sortedRowIndex++) {
+    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
       // skip duplicated data
-      if ((sortedRowIndex + 1 < list.size() && (time == list.getTime(sortedRowIndex + 1)))) {
+      if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
         continue;
       }
 
       // store last point for SDT
-      if (sortedRowIndex + 1 == list.size()) {
+      if (sortedRowIndex + 1 == list.rowCount()) {
         ((ChunkWriterImpl) chunkWriterImpl).setLastPoint(true);
       }
 
@@ -349,5 +356,26 @@ public class WritableMemChunk implements IWritableMemChunk {
     if (list.getReferenceCount() == 0) {
       list.clear();
     }
+  }
+
+  @Override
+  public int serializedSize() {
+    return schema.serializedSize() + list.serializedSize();
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    byte[] bytes = new byte[schema.serializedSize()];
+    schema.serializeTo(ByteBuffer.wrap(bytes));
+    buffer.put(bytes);
+
+    list.serializeToWAL(buffer);
+  }
+
+  public static WritableMemChunk deserialize(DataInputStream stream) throws IOException {
+    WritableMemChunk memChunk = new WritableMemChunk();
+    memChunk.schema = MeasurementSchema.deserializeFrom(stream);
+    memChunk.list = TVList.deserialize(stream);
+    return memChunk;
   }
 }

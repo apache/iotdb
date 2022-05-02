@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
+import org.apache.iotdb.db.utils.writelog.SingleFileLogReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +38,7 @@ public class MLogReader implements AutoCloseable {
   public MLogReader(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!metadataDir.exists()) {
-      logger.error("no mlog.bin to init MManager.");
+      logger.error("no mlog.bin to init SchemaRegion.");
       throw new IOException("mlog.bin does not exist.");
     }
 

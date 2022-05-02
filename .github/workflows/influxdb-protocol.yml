@@ -17,16 +17,22 @@ on:
     branches:
       - master
       - 'rel/*'
+      - "new_*"
     paths-ignore:
       - 'docs/**'
   pull_request:
     branches:
       - master
       - 'rel/*'
+      - "new_*"
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
@@ -55,10 +61,10 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build . -f docker/src/main/Dockerfile-single -t "iotdb:$GITHUB_SHA"
+          docker build . -f docker/src/main/Dockerfile-single-influxdb -t "apache/iotdb:influxdb-protocol-on"
           docker images
 
       - name: IT Test
         shell: bash
         run: |
-          cd influxdb-protocol && mvn -B clean compile post-integration-test -Dtest.port.closed=true
+          cd influxdb-protocol && mvn -B clean compile post-integration-test -Dtest.port.closed=true -Dinfluxdb.test.skip=false

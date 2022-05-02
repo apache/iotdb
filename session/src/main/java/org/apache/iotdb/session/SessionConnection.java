@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
@@ -33,6 +34,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -40,6 +42,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
@@ -52,7 +55,6 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
 
@@ -82,8 +84,8 @@ public class SessionConnection {
   private long sessionId;
   private long statementId;
   private ZoneId zoneId;
-  private EndPoint endPoint;
-  private List<EndPoint> endPointList = new ArrayList<>();
+  private TEndPoint endPoint;
+  private List<TEndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
 
   private Map<String, List<UnconfirmedRequest>> groupUnconfirmedRequests = new HashMap<>();
@@ -92,7 +94,7 @@ public class SessionConnection {
   // TestOnly
   public SessionConnection() {}
 
-  public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
+  public SessionConnection(Session session, TEndPoint endPoint, ZoneId zoneId)
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
@@ -108,7 +110,7 @@ public class SessionConnection {
     initClusterConn();
   }
 
-  private void init(EndPoint endPoint) throws IoTDBConnectionException {
+  private void init(TEndPoint endPoint) throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
@@ -132,6 +134,7 @@ public class SessionConnection {
     openReq.setUsername(session.username);
     openReq.setPassword(session.password);
     openReq.setZoneId(zoneId.toString());
+    openReq.putToConfiguration("version", session.version.toString());
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
@@ -164,7 +167,7 @@ public class SessionConnection {
   }
 
   private void initClusterConn() throws IoTDBConnectionException {
-    for (EndPoint endPoint : endPointList) {
+    for (TEndPoint endPoint : endPointList) {
       try {
         session.defaultEndPoint = endPoint;
         init(endPoint);
@@ -582,6 +585,25 @@ public class SessionConnection {
     }
   }
 
+  protected void insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccessWithRedirection(client.insertStringRecordsOfOneDevice(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.insertStringRecordsOfOneDevice(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
   protected void insertTablet(TSInsertTabletReq request)
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
@@ -925,6 +947,25 @@ public class SessionConnection {
     }
   }
 
+  protected void dropSchemaTemplate(TSDropSchemaTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.dropSchemaTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.dropSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
   public boolean isEnableRedirect() {
     return enableRedirect;
   }
@@ -933,11 +974,11 @@ public class SessionConnection {
     this.enableRedirect = enableRedirect;
   }
 
-  public EndPoint getEndPoint() {
+  public TEndPoint getEndPoint() {
     return endPoint;
   }
 
-  public void setEndPoint(EndPoint endPoint) {
+  public void setEndPoint(TEndPoint endPoint) {
     this.endPoint = endPoint;
   }
 

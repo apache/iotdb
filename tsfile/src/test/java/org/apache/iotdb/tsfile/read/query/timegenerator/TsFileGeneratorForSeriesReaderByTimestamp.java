@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -195,50 +195,48 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
     schema = new Schema();
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
-            "s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s2",
             TSDataType.INT64,
             TSEncoding.valueOf(conf.getValueEncoder()),
             CompressionType.UNCOMPRESSED));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s3",
             TSDataType.INT64,
             TSEncoding.valueOf(conf.getValueEncoder()),
             CompressionType.SNAPPY));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+        new Path("d1"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+        new Path("d1"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
-    schema.registerTimeseries(
-        new Path("d2"),
-        new UnaryMeasurementSchema(
-            "s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+        new Path("d1"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
     schema.registerTimeseries(
         new Path("d2"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(
+        new Path("d2"),
+        new MeasurementSchema(
             "s2",
             TSDataType.INT64,
             TSEncoding.valueOf(conf.getValueEncoder()),
             CompressionType.UNCOMPRESSED));
     schema.registerTimeseries(
         new Path("d2"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s3",
             TSDataType.INT64,
             TSEncoding.valueOf(conf.getValueEncoder()),
             CompressionType.SNAPPY));
     schema.registerTimeseries(
-        new Path("d2"), new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+        new Path("d2"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
   }
 
   public static void writeToFile(Schema schema) throws IOException, WriteProcessException {

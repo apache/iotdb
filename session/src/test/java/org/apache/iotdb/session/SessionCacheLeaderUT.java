@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -32,8 +32,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,20 +51,20 @@ import static org.junit.Assert.fail;
 
 public class SessionCacheLeaderUT {
 
-  private static final List<EndPoint> endpoints =
-      new ArrayList<EndPoint>() {
+  private static final List<TEndPoint> endpoints =
+      new ArrayList<TEndPoint>() {
         {
-          add(new EndPoint("127.0.0.1", 55560)); // default endpoint
-          add(new EndPoint("127.0.0.1", 55561)); // meta leader endpoint
-          add(new EndPoint("127.0.0.1", 55562));
-          add(new EndPoint("127.0.0.1", 55563));
+          add(new TEndPoint("127.0.0.1", 55560)); // default endpoint
+          add(new TEndPoint("127.0.0.1", 55561)); // meta leader endpoint
+          add(new TEndPoint("127.0.0.1", 55562));
+          add(new TEndPoint("127.0.0.1", 55563));
         }
       };
 
   private Session session;
 
   // just for simulation
-  public static EndPoint getDeviceIdBelongedEndpoint(String deviceId) {
+  public static TEndPoint getDeviceIdBelongedEndpoint(String deviceId) {
     if (deviceId.startsWith("root.sg1")) {
       return endpoints.get(0);
     } else if (deviceId.startsWith("root.sg2")) {
@@ -536,10 +535,10 @@ public class SessionCacheLeaderUT {
     assertNull(session.endPointToSessionConnection);
 
     String deviceId = "root.sg2.d2";
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {
@@ -618,10 +617,10 @@ public class SessionCacheLeaderUT {
             add("root.sg4.d1");
           }
         };
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
     Tablet tablet1 = new Tablet(allDeviceIds.get(1), schemaList, 100);
     Tablet tablet2 = new Tablet(allDeviceIds.get(2), schemaList, 100);
@@ -850,7 +849,7 @@ public class SessionCacheLeaderUT {
     }
     assertEquals(session.metaSessionConnection, session.defaultSessionConnection);
     assertEquals(3, session.deviceIdToEndpoint.size());
-    for (Map.Entry<String, EndPoint> endPointMap : session.deviceIdToEndpoint.entrySet()) {
+    for (Map.Entry<String, TEndPoint> endPointMap : session.deviceIdToEndpoint.entrySet()) {
       assertEquals(getDeviceIdBelongedEndpoint(endPointMap.getKey()), endPointMap.getValue());
     }
     assertEquals(3, session.endPointToSessionConnection.size());
@@ -885,10 +884,10 @@ public class SessionCacheLeaderUT {
             add("root.sg4.d1");
           }
         };
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
     Tablet tablet1 = new Tablet(allDeviceIds.get(1), schemaList, 100);
     Tablet tablet2 = new Tablet(allDeviceIds.get(2), schemaList, 100);
@@ -1033,7 +1032,7 @@ public class SessionCacheLeaderUT {
 
     assertEquals(session.metaSessionConnection, session.defaultSessionConnection);
     assertEquals(2, session.deviceIdToEndpoint.size());
-    for (Map.Entry<String, EndPoint> endPointEntry : session.deviceIdToEndpoint.entrySet()) {
+    for (Map.Entry<String, TEndPoint> endPointEntry : session.deviceIdToEndpoint.entrySet()) {
       assertEquals(getDeviceIdBelongedEndpoint(endPointEntry.getKey()), endPointEntry.getValue());
     }
     assertEquals(3, session.endPointToSessionConnection.size());
@@ -1085,12 +1084,13 @@ public class SessionCacheLeaderUT {
           null,
           Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
           Config.DEFAULT_MAX_FRAME_SIZE,
-          enableCacheLeader);
+          enableCacheLeader,
+          Config.DEFAULT_VERSION);
     }
 
     @Override
     public SessionConnection constructSessionConnection(
-        Session session, EndPoint endpoint, ZoneId zoneId) {
+        Session session, TEndPoint endpoint, ZoneId zoneId) {
       lastConstructedSessionConnection = new MockSessionConnection(session, endpoint, zoneId);
       return lastConstructedSessionConnection;
     }
@@ -1102,11 +1102,11 @@ public class SessionCacheLeaderUT {
 
   static class MockSessionConnection extends SessionConnection {
 
-    private EndPoint endPoint;
+    private TEndPoint endPoint;
     private boolean connectionBroken;
     private IoTDBConnectionException ioTDBConnectionException;
 
-    public MockSessionConnection(Session session, EndPoint endPoint, ZoneId zoneId) {
+    public MockSessionConnection(Session session, TEndPoint endPoint, ZoneId zoneId) {
       super();
       this.endPoint = endPoint;
       ioTDBConnectionException =
@@ -1199,7 +1199,7 @@ public class SessionCacheLeaderUT {
     }
 
     private RedirectException getRedirectException(List<String> deviceIds) {
-      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
+      Map<String, TEndPoint> deviceEndPointMap = new HashMap<>();
       for (String deviceId : deviceIds) {
         deviceEndPointMap.put(deviceId, getDeviceIdBelongedEndpoint(deviceId));
       }

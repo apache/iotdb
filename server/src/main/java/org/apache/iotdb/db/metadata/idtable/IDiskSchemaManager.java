@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -34,6 +34,13 @@ public interface IDiskSchemaManager {
    * @return disk position of that entry
    */
   public long serialize(DiskSchemaEntry schemaEntry);
+
+  /**
+   * recover id table from log file
+   *
+   * @param idTable id table need to be recovered
+   */
+  public void recover(IDTable idTable);
 
   /**
    * get all disk schema entries from file

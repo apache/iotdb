@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -46,6 +46,9 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.activation.UnsupportedDataTypeException;
 
 import java.io.IOException;
@@ -55,6 +58,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class FillQueryExecutor {
+
+  private static final Logger logger = LoggerFactory.getLogger(FillQueryExecutor.class);
 
   protected FillQueryPlan plan;
   protected List<PartialPath> selectedSeries;
@@ -86,46 +91,60 @@ public class FillQueryExecutor {
 
     Filter timeFilter = initFillExecutorsAndContructTimeFilter(context);
 
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(selectedSeries);
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance().mergeLock(selectedSeries);
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
           .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
-      List<TimeValuePair> timeValuePairs = getTimeValuePairs(context);
-      for (int i = 0; i < selectedSeries.size(); i++) {
-        TSDataType dataType = dataTypes.get(i);
-
-        if (timeValuePairs.get(i) != null) {
-          // No need to fill
-          record.addField(timeValuePairs.get(i).getValue().getValue(), dataType);
-          continue;
-        }
-
-        IFill fill = fillExecutors[i];
-
-        TimeValuePair timeValuePair;
-        try {
-          timeValuePair = fill.getFillResult();
-          if (timeValuePair == null && fill instanceof ValueFill) {
-            timeValuePair = ((ValueFill) fill).getSpecifiedFillResult(dataType);
-          }
-        } catch (QueryProcessException | NumberFormatException ignored) {
-          record.addField(null);
-          continue;
-        }
-        if (timeValuePair == null || timeValuePair.getValue() == null) {
-          record.addField(null);
-        } else {
-          record.addField(timeValuePair.getValue().getValue(), dataType);
-        }
-      }
+    } catch (Exception e) {
+      logger.error("Meet error when init QueryDataSource ", e);
+      throw new QueryProcessException("Meet error when init QueryDataSource.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(lockList);
+    }
+
+    List<TimeValuePair> timeValuePairs = getTimeValuePairs(context);
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      TSDataType dataType = dataTypes.get(i);
+
+      if (timeValuePairs.get(i) != null) {
+        // No need to fill
+        record.addField(timeValuePairs.get(i).getValue().getValue(), dataType);
+        continue;
+      }
+
+      IFill fill = fillExecutors[i];
+
+      if (fill instanceof LinearFill
+          && (dataType == TSDataType.VECTOR
+              || dataType == TSDataType.BOOLEAN
+              || dataType == TSDataType.TEXT)) {
+        record.addField(null);
+        logger.info("Linear fill doesn't support the " + i + "-th column in SQL.");
+        continue;
+      }
+
+      TimeValuePair timeValuePair;
+      try {
+        timeValuePair = fill.getFillResult();
+        if (timeValuePair == null && fill instanceof ValueFill) {
+          timeValuePair = ((ValueFill) fill).getSpecifiedFillResult(dataType);
+        }
+      } catch (QueryProcessException | NumberFormatException ignored) {
+        record.addField(null);
+        logger.info("Value fill doesn't support the " + i + "-th column in SQL.");
+        continue;
+      }
+      if (timeValuePair == null || timeValuePair.getValue() == null) {
+        record.addField(null);
+      } else {
+        record.addField(timeValuePair.getValue().getValue(), dataType);
+      }
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
@@ -232,7 +251,8 @@ public class FillQueryExecutor {
       PartialPath path = selectedSeries.get(i);
       TSDataType dataType = dataTypes.get(i);
       QueryDataSource queryDataSource =
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+          QueryResourceManager.getInstance()
+              .getQueryDataSource(path, context, timeFilter, plan.isAscending());
       timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
       ManagedSeriesReader reader =
           new SeriesRawDataBatchReader(

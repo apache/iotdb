@@ -56,7 +56,6 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     // TODO When the aligned time series support compaction, we need to set compaction to true
     enableSeqSpaceCompaction =

@@ -27,8 +27,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -57,36 +57,28 @@ public class ReadPageInMemTest {
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema.registerTimeseries(
         new Path("root.car.d1"),
-        new UnaryMeasurementSchema(
-            "s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("root.car.d1"),
-        new UnaryMeasurementSchema(
-            "s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("root.car.d1"),
-        new UnaryMeasurementSchema(
-            "s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("root.car.d1"),
-        new UnaryMeasurementSchema(
-            "s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("root.car.d2"),
-        new UnaryMeasurementSchema(
-            "s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("root.car.d2"),
-        new UnaryMeasurementSchema(
-            "s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("root.car.d2"),
-        new UnaryMeasurementSchema(
-            "s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("root.car.d2"),
-        new UnaryMeasurementSchema(
-            "s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
     return schema;
   }
 

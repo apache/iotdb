@@ -81,27 +81,28 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.IoTThreadFactory;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.IoTDBException;
-import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.template.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.DummyPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
@@ -129,6 +130,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 
@@ -171,7 +174,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   private final Object waitLeaderCondition = new Object();
   /** the lock is to make sure that only one thread can apply snapshot at the same time */
-  private final Object snapshotApplyLock = new Object();
+  private final Lock snapshotApplyLock = new ReentrantLock();
 
   private final Object heartBeatWaitObject = new Object();
 
@@ -266,8 +269,11 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   private volatile LogDispatcher logDispatcher;
 
-  /** If this node can not be the leader, this parameter will be set true. */
-  private volatile boolean skipElection = false;
+  /**
+   * If this node can not be the leader, this parameter will be set true. This field must be true
+   * only after all necessary threads are ready
+   */
+  private volatile boolean skipElection = true;
 
   /**
    * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
@@ -307,6 +313,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     startBackGroundThreads();
+    setSkipElection(false);
     logger.info("{} started", name);
   }
 
@@ -478,6 +485,12 @@ public abstract class RaftMember implements RaftMemberMBean {
         response.setLastLogTerm(logManager.getLastLogTerm());
         response.setCommitIndex(logManager.getCommitLogIndex());
 
+        // if the snapshot apply lock is held, it means that a snapshot is installing now.
+        boolean isFree = snapshotApplyLock.tryLock();
+        if (isFree) {
+          snapshotApplyLock.unlock();
+        }
+        response.setInstallingSnapshot(!isFree);
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{}: log commit log index = {}, max have applied commit index = {}",
@@ -1126,7 +1139,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     // if a single log exceeds the threshold
     // we need to return error code to the client as in server mode
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
-        & log.serialize().capacity() + Integer.BYTES
+        && log.serialize().capacity() + Integer.BYTES
             >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
@@ -1134,18 +1147,35 @@ public abstract class RaftMember implements RaftMemberMBean {
       return StatusUtils.INTERNAL_ERROR;
     }
 
-    // assign term and index to the new log and append it
     VotingLog votingLog;
-    synchronized (logManager) {
-      if (!(plan instanceof LogPlan)) {
-        plan.setIndex(logManager.getLastLogIndex() + 1);
+    long startWaitingTime = System.currentTimeMillis();
+    while (true) {
+      // assign term and index to the new log and append it
+      synchronized (logManager) {
+        if (logManager.getLastLogIndex() - logManager.getCommitLogIndex()
+            <= config.getUnCommittedRaftLogNumForRejectThreshold()) {
+          if (!(plan instanceof LogPlan)) {
+            plan.setIndex(logManager.getLastLogIndex() + 1);
+          }
+          log.setCurrLogTerm(getTerm().get());
+          log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+          logManager.append(log);
+          votingLog = buildVotingLog(log);
+          if (getAllNodes().size() > 1) {
+            votingLogList.insert(votingLog);
+          }
+          break;
+        }
       }
-      log.setCurrLogTerm(getTerm().get());
-      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-      logManager.append(log);
-      votingLog = buildVotingLog(log);
-      if (getAllNodes().size() > 1) {
-        votingLogList.insert(votingLog);
+      try {
+        TimeUnit.MILLISECONDS.sleep(
+            IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startWaitingTime
+            > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+          return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
       }
     }
     log.setCreateTime(System.nanoTime());
@@ -1185,9 +1215,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     log.setReceiveTime(System.nanoTime());
 
     // just like processPlanLocally,we need to check the size of log
-    if (config.isEnableRaftLogPersistence()
-        && (log.serialize().capacity() + Integer.BYTES
-            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize())) {
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
+        && log.serialize().capacity() + Integer.BYTES
+            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "or reduce the size of requests you send.");
@@ -1196,6 +1226,9 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest = logSequencer.sequence(log);
+    if (sendLogRequest == null) {
+      return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
+    }
 
     try {
       AppendLogResult appendLogResult =
@@ -2212,7 +2245,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     this.appendLogThreadPool = appendLogThreadPool;
   }
 
-  public Object getSnapshotApplyLock() {
+  public Lock getSnapshotApplyLock() {
     return snapshotApplyLock;
   }
 

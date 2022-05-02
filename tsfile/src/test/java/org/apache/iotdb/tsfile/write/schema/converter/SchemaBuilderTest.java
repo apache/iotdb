@@ -25,8 +25,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Test;
 
@@ -47,11 +47,11 @@ public class SchemaBuilderTest {
     Schema schema = new Schema();
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
 
     List<IMeasurementSchema> timeseries = new ArrayList<>();
@@ -77,14 +77,14 @@ public class SchemaBuilderTest {
     Map<String, String> props = new HashMap<>();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     Schema schema = new Schema();
-    Map<String, UnaryMeasurementSchema> template = new HashMap<>();
+    Map<String, MeasurementSchema> template = new HashMap<>();
     template.put(
         "s4",
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     template.put(
         "s5",
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
     MeasurementGroup measurementGroup = new MeasurementGroup(false, template);
     schema.registerSchemaTemplate("template1", measurementGroup);
@@ -113,21 +113,21 @@ public class SchemaBuilderTest {
     Map<String, String> props = new HashMap<>();
     props.put(JsonFormatConstant.MAX_POINT_NUMBER, "3");
     Schema schema = new Schema();
-    Map<String, UnaryMeasurementSchema> template = new HashMap<>();
+    Map<String, MeasurementSchema> template = new HashMap<>();
     template.put(
         "s4",
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY, props));
     template.put(
         "s5",
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
     MeasurementGroup measurementGroup = new MeasurementGroup(false, template);
     schema.registerSchemaTemplate("template1", measurementGroup);
 
     schema.extendTemplate(
         "template1",
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s6", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY, props));
 
     schema.registerDevice("d1", "template1");

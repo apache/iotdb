@@ -38,9 +38,8 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -418,7 +417,7 @@ public class MetadataIndexConstructorTest {
           for (String measurement : singleMeasurement[i]) {
             tsFileWriter.registerTimeseries(
                 new Path(device),
-                new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
+                new MeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
           }
           // the number of record rows
           int rowNum = 10;
@@ -446,15 +445,15 @@ public class MetadataIndexConstructorTest {
               vectorPrefix + generateIndexString(vectorIndex, vectorMeasurement.length);
           logger.info("generating vector {}...", vectorName);
           int measurementNum = vectorMeasurement[i][vectorIndex];
-          List<UnaryMeasurementSchema> schemas = new ArrayList<>();
-          List<IMeasurementSchema> tabletSchema = new ArrayList<>();
+          List<MeasurementSchema> schemas = new ArrayList<>();
+          List<MeasurementSchema> tabletSchema = new ArrayList<>();
           for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
             String measurementName =
                 measurementPrefix + generateIndexString(measurementIndex, measurementNum);
             logger.info("generating vector measurement {}...", measurementName);
             // add measurements into file schema (all with INT64 data type)
-            UnaryMeasurementSchema schema1 =
-                new UnaryMeasurementSchema(measurementName, TSDataType.INT64, TSEncoding.RLE);
+            MeasurementSchema schema1 =
+                new MeasurementSchema(measurementName, TSDataType.INT64, TSEncoding.RLE);
             schemas.add(schema1);
             tabletSchema.add(schema1);
           }

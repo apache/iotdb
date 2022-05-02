@@ -22,6 +22,7 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -38,6 +39,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 /**
  * @Author: Architect @Date: 2021-03-30 18:36 @Description: This class is initially intend to test
  * the issue of IOTDB-924
@@ -49,7 +53,6 @@ public class IoTDBInsertMultiRowIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     initCreateSQLStatement();
     EnvironmentUtils.envSetUp();
     insertData();
@@ -124,5 +127,18 @@ public class IoTDBInsertMultiRowIT {
   public void testInsertWithTimesColumns() throws SQLException {
     Statement st1 = connection.createStatement();
     st1.execute("insert into root.t1.wf01.wt01(timestamp) values(1)");
+  }
+
+  @Test
+  public void testInsertMultiRowWithMisMatchDataType() {
+    try {
+      Statement st1 = connection.createStatement();
+      st1.execute(
+          "insert into root.t1.wf01.wt01(timestamp, s1) values(1, 1.0) (2, 'hello'), (3, true)");
+      fail();
+    } catch (SQLException e) {
+      assertTrue(
+          e.getMessage().contains(Integer.toString(TSStatusCode.MULTIPLE_ERROR.getStatusCode())));
+    }
   }
 }

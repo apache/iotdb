@@ -20,9 +20,9 @@
 package org.apache.iotdb.cluster.common;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -68,7 +68,6 @@ public abstract class IoTDBTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     prevEnableAutoSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     planExecutor = new PlanExecutor();
     prepareSchema();
@@ -165,8 +164,7 @@ public abstract class IoTDBTest {
     List<PartialPath> paths = new ArrayList<>();
     for (String pathStr : pathStrs) {
       MeasurementPath path = new MeasurementPath(pathStr);
-      path.setMeasurementSchema(
-          new UnaryMeasurementSchema(path.getMeasurement(), TSDataType.DOUBLE));
+      path.setMeasurementSchema(new MeasurementSchema(path.getMeasurement(), TSDataType.DOUBLE));
       paths.add(path);
     }
     queryPlan.setDeduplicatedPathsAndUpdate(paths);

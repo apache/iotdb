@@ -62,6 +62,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
       List<TSDataType> deduplicatedDataTypes,
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
+      List<List<Integer>> readerToIndexList,
       List<Boolean> cached)
       throws QueryProcessException, IOException {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
@@ -75,6 +76,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
             deduplicatedDataTypes,
             timestampGenerator,
             readersOfSelectedSeries,
+            readerToIndexList,
             cached);
 
     initTransformers();
@@ -100,7 +102,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     initDataSetFields();
   }
 
-  protected UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan, IUDFInputDataSet dataSet)
+  public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan, IUDFInputDataSet dataSet)
       throws QueryProcessException, IOException {
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
@@ -121,6 +123,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
                   udtfPlan,
                   rawQueryInputLayer,
                   UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB + UDF_COLLECTOR_MEMORY_BUDGET_IN_MB)
+              .bindInputLayerColumnIndexWithExpression()
               .buildLayerMemoryAssigner()
               .buildResultColumnPointReaders()
               .setDataSetResultColumnDataTypes()

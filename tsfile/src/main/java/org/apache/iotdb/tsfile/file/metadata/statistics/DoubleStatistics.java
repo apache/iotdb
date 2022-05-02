@@ -20,13 +20,13 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DoubleStatistics extends Statistics<Double> {
 
@@ -43,6 +43,10 @@ public class DoubleStatistics extends Statistics<Double> {
     return TSDataType.DOUBLE;
   }
 
+  /**
+   * The output of this method should be identical to the method "serializeStats(OutputStream
+   * outputStream)"
+   */
   @Override
   public int getStatsSize() {
     return 40;
@@ -103,12 +107,6 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    minValue = BytesUtils.bytesToDouble(minBytes);
-    maxValue = BytesUtils.bytesToDouble(maxBytes);
-  }
-
-  @Override
   void updateStats(double value) {
     if (this.isEmpty) {
       initializeStats(value, value, value, value, value);
@@ -157,7 +155,8 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException("Double statistics does not support: long sum");
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.DOUBLE, "long sum"));
   }
 
   @Override
@@ -181,56 +180,6 @@ public class DoubleStatistics extends Statistics<Double> {
           stats.getStartTime(),
           stats.getEndTime());
     }
-  }
-
-  @Override
-  public byte[] getMinValueBytes() {
-    return BytesUtils.doubleToBytes(minValue);
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    return BytesUtils.doubleToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.doubleToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.doubleToBytes(lastValue);
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    return BytesUtils.doubleToBytes(sumValue);
-  }
-
-  @Override
-  public ByteBuffer getMinValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(minValue);
-  }
-
-  @Override
-  public ByteBuffer getMaxValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(maxValue);
-  }
-
-  @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sumValue);
   }
 
   @Override
@@ -260,6 +209,25 @@ public class DoubleStatistics extends Statistics<Double> {
     this.firstValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    double e = 0.00001;
+    DoubleStatistics that = (DoubleStatistics) o;
+    return Math.abs(that.minValue - minValue) < e
+        && Math.abs(that.maxValue - maxValue) < e
+        && Math.abs(that.firstValue - firstValue) < e
+        && Math.abs(that.lastValue - lastValue) < e
+        && Math.abs(that.sumValue - sumValue) < e;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), minValue, maxValue, firstValue, lastValue, sumValue);
   }
 
   @Override

@@ -58,7 +58,7 @@ public class ValueChunkWriterTest {
       chunkWriter.writeAllPagesOfChunkToTsFile(writer);
       PublicBAOS publicBAOS = testTsFileOutput.publicBAOS;
       ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
-      assertEquals(0x40 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
+      assertEquals(MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
       assertEquals("s1", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(69, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.FLOAT.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -94,7 +94,7 @@ public class ValueChunkWriterTest {
       chunkWriter.writeAllPagesOfChunkToTsFile(writer);
       PublicBAOS publicBAOS = testTsFileOutput.publicBAOS;
       ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
-      assertEquals(0x40 | MetaMarker.CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
+      assertEquals(MetaMarker.VALUE_CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
       assertEquals("s1", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(220, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.FLOAT.serialize(), ReadWriteIOUtils.readByte(buffer));

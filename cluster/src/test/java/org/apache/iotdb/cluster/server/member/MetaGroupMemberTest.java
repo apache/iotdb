@@ -43,7 +43,7 @@ import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
-import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -79,6 +79,7 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.cluster.utils.CreateTemplatePlanUtil;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -107,7 +108,6 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -333,7 +333,8 @@ public class MetaGroupMemberTest extends BaseMember {
     try {
       for (String prefixPath : prefixPaths) {
         if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
-          IoTDB.metaManager.collectMeasurementSchema(new PartialPath(prefixPath), schemas);
+          //          IoTDB.schemaProcessor.collectMeasurementSchema(new PartialPath(prefixPath),
+          // schemas);
           dataOutputStream.writeInt(schemas.size());
           for (IMeasurementSchema schema : schemas) {
             schema.partialSerializeTo(dataOutputStream);
@@ -343,7 +344,7 @@ public class MetaGroupMemberTest extends BaseMember {
           TestUtils.getTestMeasurementSchema(0).partialSerializeTo(dataOutputStream);
         }
       }
-    } catch (IOException | IllegalPathException e) {
+    } catch (IOException e) {
       // ignore
     }
     PullSchemaResp resp = new PullSchemaResp();
@@ -743,7 +744,7 @@ public class MetaGroupMemberTest extends BaseMember {
         .sendSnapshot(request, new GenericHandler(TestUtils.getNode(0), reference));
 
     // 6. check whether the snapshot applied or not
-    Map<PartialPath, Long> localStorageGroupTTL = IoTDB.metaManager.getStorageGroupsTTL();
+    Map<PartialPath, Long> localStorageGroupTTL = IoTDB.schemaProcessor.getStorageGroupsTTL();
     assertNotNull(localStorageGroupTTL);
     assertEquals(storageGroupTTL, localStorageGroupTTL);
 
@@ -784,7 +785,7 @@ public class MetaGroupMemberTest extends BaseMember {
           new SetStorageGroupPlan(new PartialPath(TestUtils.getTestSg(i)));
       TSStatus status = coordinator.executeNonQueryPlan(setStorageGroupPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSg(i))));
+      assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(TestUtils.getTestSg(i))));
 
       // process a partitioned plan
       TimeseriesSchema schema = TestUtils.getTestTimeSeriesSchema(i, 0);
@@ -803,7 +804,7 @@ public class MetaGroupMemberTest extends BaseMember {
         status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
+      assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
     }
     testThreadPool.shutdownNow();
   }
@@ -826,7 +827,7 @@ public class MetaGroupMemberTest extends BaseMember {
           new SetStorageGroupPlan(new PartialPath(TestUtils.getTestSg(i)));
       TSStatus status = coordinator.executeNonQueryPlan(setStorageGroupPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSg(i))));
+      assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(TestUtils.getTestSg(i))));
 
       // process a partitioned plan
       TimeseriesSchema schema = TestUtils.getTestTimeSeriesSchema(i, 0);
@@ -870,7 +871,7 @@ public class MetaGroupMemberTest extends BaseMember {
         status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
+      assertTrue(IoTDB.schemaProcessor.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
     }
     testThreadPool.shutdownNow();
 
@@ -892,7 +893,7 @@ public class MetaGroupMemberTest extends BaseMember {
       insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(i)));
       IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             new PartialPath(schema.getMeasurementId()),
             schema.getType(),
             schema.getEncodingType(),
@@ -958,7 +959,7 @@ public class MetaGroupMemberTest extends BaseMember {
       insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(i)));
       IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
-        IoTDB.metaManager.createTimeseries(
+        IoTDB.schemaProcessor.createTimeseries(
             new PartialPath(schema.getMeasurementId()),
             schema.getType(),
             schema.getEncodingType(),
@@ -1014,14 +1015,14 @@ public class MetaGroupMemberTest extends BaseMember {
   public void testGetMatchedPaths() throws MetadataException {
     System.out.println("Start testGetMatchedPaths()");
     List<MeasurementPath> matchedPaths =
-        ((CMManager) IoTDB.metaManager)
+        ((CSchemaProcessor) IoTDB.schemaProcessor)
             .getMatchedPaths(new PartialPath(TestUtils.getTestSg(0) + ".*"));
     assertEquals(20, matchedPaths.size());
     for (int j = 0; j < 10; j++) {
       assertTrue(matchedPaths.contains(new PartialPath(TestUtils.getTestSeries(0, j))));
     }
     matchedPaths =
-        ((CMManager) IoTDB.metaManager)
+        ((CSchemaProcessor) IoTDB.schemaProcessor)
             .getMatchedPaths(new PartialPath(TestUtils.getTestSg(10) + ".*"));
     assertTrue(matchedPaths.isEmpty());
   }

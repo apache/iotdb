@@ -320,11 +320,8 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret2.length, count);
 
-      try {
-        statement.execute("show timeseries where tag1=v1");
-        fail();
-      } catch (Exception e) {
-        assertTrue(e.getMessage().contains("The key tag1 is not a tag"));
+      try (ResultSet rs = statement.executeQuery("show timeseries where tag1=v1")) {
+        assertFalse(rs.next());
       }
     } catch (Exception e) {
       e.printStackTrace();

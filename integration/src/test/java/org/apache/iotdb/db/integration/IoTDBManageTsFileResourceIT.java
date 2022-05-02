@@ -88,7 +88,6 @@ public class IoTDBManageTsFileResourceIT {
 
   @Before
   public void setUp() throws ClassNotFoundException {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
     prevCompactionThreadNum = CONFIG.getConcurrentCompactionThread();
@@ -121,7 +120,7 @@ public class IoTDBManageTsFileResourceIT {
           new ArrayList<>(
               StorageEngine.getInstance()
                   .getProcessor(new PartialPath("root.sg1"))
-                  .getSequenceFileTreeSet());
+                  .getSequenceFileList());
       assertEquals(5, seqResources.size());
       // five tsFileResource are degraded in total, 2 are in seqResources and 3 are in
       // unSeqResources
@@ -185,7 +184,7 @@ public class IoTDBManageTsFileResourceIT {
           new ArrayList<>(
               StorageEngine.getInstance()
                   .getProcessor(new PartialPath("root.sg1"))
-                  .getSequenceFileTreeSet());
+                  .getSequenceFileList());
       assertEquals(1, resources.size());
       for (TsFileResource resource : resources) {
         assertEquals(
@@ -214,7 +213,7 @@ public class IoTDBManageTsFileResourceIT {
           new ArrayList<>(
               StorageEngine.getInstance()
                   .getProcessor(new PartialPath("root.sg1"))
-                  .getSequenceFileTreeSet());
+                  .getSequenceFileList());
       assertEquals(5, seqResources.size());
 
       // Four tsFileResource are degraded in total, 1 are in seqResources and 3 are in
@@ -258,7 +257,7 @@ public class IoTDBManageTsFileResourceIT {
         new ArrayList<>(
             StorageEngine.getInstance()
                 .getProcessor(new PartialPath("root.sg1"))
-                .getSequenceFileTreeSet());
+                .getSequenceFileList());
     assertEquals(5, seqResources.size());
     for (int i = 0; i < seqResources.size(); i++) {
       assertTrue(seqResources.get(i).isClosed());

@@ -32,7 +32,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class SerializableRowRecordList implements SerializableList {
 

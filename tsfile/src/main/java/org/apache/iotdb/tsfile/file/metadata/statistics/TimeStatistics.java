@@ -29,65 +29,65 @@ import java.nio.ByteBuffer;
 public class TimeStatistics extends Statistics<Long> {
 
   static final int TIME_STATISTICS_FIXED_RAM_SIZE = 40;
+  private static final String TIME = "Time";
 
   @Override
   public TSDataType getType() {
     return TSDataType.VECTOR;
   }
 
+  /**
+   * The output of this method should be identical to the method "serializeStats(OutputStream
+   * outputStream)"
+   */
   @Override
   public int getStatsSize() {
     return 0;
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    throw new StatisticsClassException("Time statistics does not support: set min max from bytes");
-  }
-
-  @Override
   public Long getMinValue() {
-    throw new StatisticsClassException("Time statistics does not support: min value");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "min value"));
   }
 
   @Override
   public Long getMaxValue() {
-    throw new StatisticsClassException("Time statistics does not support: max value");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "max value"));
   }
 
   @Override
   public Long getFirstValue() {
-    throw new StatisticsClassException("Time statistics does not support: first value");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "first value"));
   }
 
   @Override
   public Long getLastValue() {
-    throw new StatisticsClassException("Time statistics does not support: last value");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "last value"));
   }
 
   @Override
   public double getSumDoubleValue() {
-    throw new StatisticsClassException("Time statistics does not support: double sum");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "double sum"));
   }
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException("Time statistics does not support: long sum");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "long sum"));
   }
 
   @Override
   void updateStats(long value) {
-    throw new StatisticsClassException("Time statistics does not support: update stats");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "update stats"));
   }
 
   @Override
   void updateStats(long[] values, int batchSize) {
-    throw new StatisticsClassException("Time statistics does not support: update stats");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "update stats"));
   }
 
   @Override
   public void updateStats(long minValue, long maxValue) {
-    throw new StatisticsClassException("Time statistics does not support: update stats");
+    throw new StatisticsClassException(String.format(STATS_UNSUPPORTED_MSG, TIME, "update stats"));
   }
 
   @Override
@@ -97,56 +97,6 @@ public class TimeStatistics extends Statistics<Long> {
 
   @Override
   protected void mergeStatisticsValue(Statistics<Long> stats) {}
-
-  @Override
-  public byte[] getMinValueBytes() {
-    throw new StatisticsClassException("Time statistics does not support: get min value bytes");
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    throw new StatisticsClassException("Time statistics does not support: get max value bytes");
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    throw new StatisticsClassException("Time statistics does not support: get first value bytes");
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    throw new StatisticsClassException("Time statistics does not support: get last value bytes");
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    throw new StatisticsClassException("Time statistics does not support: get sum value bytes");
-  }
-
-  @Override
-  public ByteBuffer getMinValueBuffer() {
-    throw new StatisticsClassException("Time statistics does not support: get min value bytes");
-  }
-
-  @Override
-  public ByteBuffer getMaxValueBuffer() {
-    throw new StatisticsClassException("Time statistics does not support: get max value buffer");
-  }
-
-  @Override
-  public ByteBuffer getFirstValueBuffer() {
-    throw new StatisticsClassException("Time statistics does not support: get first value buffer");
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    throw new StatisticsClassException("Time statistics does not support: get last value buffer");
-  }
-
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    throw new StatisticsClassException("Time statistics does not support: get sum value buffer");
-  }
 
   @Override
   public int serializeStats(OutputStream outputStream) {

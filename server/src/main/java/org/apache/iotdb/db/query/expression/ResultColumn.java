@@ -23,7 +23,9 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -85,15 +87,25 @@ public class ResultColumn {
     alias = null;
   }
 
+  public ResultColumn(ByteBuffer byteBuffer) {
+    expression = Expression.deserialize(byteBuffer);
+    alias = ReadWriteIOUtils.readString(byteBuffer);
+    dataType = TSDataType.deserializeFrom(byteBuffer);
+  }
+
   /**
    * @param prefixPaths prefix paths in the from clause
    * @param resultColumns used to collect the result columns
+   * @param needAliasCheck used to skip illegal alias judgement here. Including !isGroupByLevel
+   *     because count(*) may be * unfolded to more than one expression, but it still can be
+   *     aggregated together later.
    */
-  public void concat(List<PartialPath> prefixPaths, List<ResultColumn> resultColumns)
+  public void concat(
+      List<PartialPath> prefixPaths, List<ResultColumn> resultColumns, boolean needAliasCheck)
       throws LogicalOptimizeException {
     List<Expression> resultExpressions = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressions);
-    if (hasAlias() && 1 < resultExpressions.size()) {
+    if (needAliasCheck && 1 < resultExpressions.size()) {
       throw new LogicalOptimizeException(
           String.format("alias '%s' can only be matched with one time series", alias));
     }
@@ -106,12 +118,16 @@ public class ResultColumn {
    * @param wildcardsRemover used to remove wildcards from {@code expression} and apply slimit &
    *     soffset control
    * @param resultColumns used to collect the result columns
+   * @param needAliasCheck used to skip illegal alias judgement here. Including !isGroupByLevel
+   *     because count(*) may be * unfolded to more than one expression, but it still can be
+   *     aggregated together later.
    */
-  public void removeWildcards(WildcardsRemover wildcardsRemover, List<ResultColumn> resultColumns)
+  public void removeWildcards(
+      WildcardsRemover wildcardsRemover, List<ResultColumn> resultColumns, boolean needAliasCheck)
       throws LogicalOptimizeException {
     List<Expression> resultExpressions = new ArrayList<>();
     expression.removeWildcards(wildcardsRemover, resultExpressions);
-    if (hasAlias() && 1 < resultExpressions.size()) {
+    if (needAliasCheck && 1 < resultExpressions.size()) {
       throw new LogicalOptimizeException(
           String.format("alias '%s' can only be matched with one time series", alias));
     }
@@ -145,12 +161,21 @@ public class ResultColumn {
     return alias != null ? alias : expression.getExpressionString();
   }
 
+  public String getExpressionString() {
+    return expression.getExpressionString();
+  }
+
   public void setDataType(TSDataType dataType) {
     this.dataType = dataType;
   }
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  @Override
+  public String toString() {
+    return "ResultColumn{" + "expression=" + expression + ", alias='" + alias + '\'' + '}';
   }
 
   @Override
@@ -168,5 +193,15 @@ public class ResultColumn {
       return false;
     }
     return getResultColumnName().equals(((ResultColumn) o).getResultColumnName());
+  }
+
+  public static void serialize(ResultColumn resultColumn, ByteBuffer byteBuffer) {
+    Expression.serialize(resultColumn.expression, byteBuffer);
+    ReadWriteIOUtils.write(resultColumn.alias, byteBuffer);
+    resultColumn.dataType.serializeTo(byteBuffer);
+  }
+
+  public static ResultColumn deserialize(ByteBuffer byteBuffer) {
+    return new ResultColumn(byteBuffer);
   }
 }

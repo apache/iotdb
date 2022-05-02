@@ -39,7 +39,6 @@ public class IoTDBLastQueryWithDeletion2IT extends IoTDBLastQueryWithDeletionIT 
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
     enableSeqSpaceCompaction =

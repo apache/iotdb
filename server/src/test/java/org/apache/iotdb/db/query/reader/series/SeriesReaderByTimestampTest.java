@@ -26,7 +26,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -43,7 +43,7 @@ public class SeriesReaderByTimestampTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
-  private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
+  private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
@@ -51,7 +51,8 @@ public class SeriesReaderByTimestampTest {
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     EnvironmentUtils.envSetUp();
-    SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
+    SeriesReaderTestUtil.setUp(
+        measurementSchemas, deviceIds, seqResources, unseqResources, SERIES_READER_TEST_SG);
   }
 
   @After

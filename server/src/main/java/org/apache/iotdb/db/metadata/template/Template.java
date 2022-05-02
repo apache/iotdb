@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -35,7 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -55,6 +57,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Template {
   private String name;
@@ -62,6 +65,13 @@ public class Template {
   private boolean isDirectAligned;
   private int measurementsCount;
   private Map<String, IMeasurementSchema> schemaMap;
+
+  // accelerate template query and check
+  private Map<String, Set<SchemaRegionId>> relatedSchemaRegion;
+
+  // transient variable to be recorded in schema file
+  // since order of CreateTemplatePlan is fixed, this code shall be fixed as well
+  private int rehashCode;
 
   public Template() {}
 
@@ -76,6 +86,8 @@ public class Template {
     name = plan.getName();
     isDirectAligned = false;
     directNodes = new HashMap<>();
+    relatedSchemaRegion = new ConcurrentHashMap<>();
+    rehashCode = 0;
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       IMeasurementSchema curSchema;
@@ -115,7 +127,7 @@ public class Template {
       // normal measurement
       else {
         curSchema =
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 plan.getMeasurements().get(i).get(0),
                 plan.getDataTypes().get(i).get(0),
                 plan.getEncodings().get(i).get(0),
@@ -170,7 +182,7 @@ public class Template {
     for (String path : alignedPaths) {
       // check aligned whether legal, and records measurements name
       if (getPathNodeInTemplate(path) != null) {
-        throw new IllegalPathException("Path duplicated: " + prefix);
+        throw new IllegalPathException("Path duplicated: " + path);
       }
       pathNodes = MetaUtils.splitPathToDetachedPath(path);
 
@@ -241,18 +253,23 @@ public class Template {
 
   private IMeasurementSchema constructSchema(
       String nodeName, TSDataType dataType, TSEncoding encoding, CompressionType compressor) {
-    return new UnaryMeasurementSchema(nodeName, dataType, encoding, compressor);
+    return new MeasurementSchema(nodeName, dataType, encoding, compressor);
   }
 
   private IMeasurementSchema[] constructSchemas(
       String[] nodeNames,
       TSDataType[] dataTypes,
       TSEncoding[] encodings,
-      CompressionType[] compressors) {
-    UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[nodeNames.length];
+      CompressionType[] compressors)
+      throws IllegalPathException {
+    MeasurementSchema[] schemas = new MeasurementSchema[nodeNames.length];
     for (int i = 0; i < nodeNames.length; i++) {
       schemas[i] =
-          new UnaryMeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
+          new MeasurementSchema(
+              new PartialPath(nodeNames[i]).getMeasurement(),
+              dataTypes[i],
+              encodings[i],
+              compressors[i]);
     }
     return schemas;
   }
@@ -336,8 +353,15 @@ public class Template {
     return measurementsCount;
   }
 
+  public IMNode getPathNodeInTemplate(PartialPath path) {
+    return getPathNodeInTemplate(path.getNodes());
+  }
+
   public IMNode getPathNodeInTemplate(String path) throws IllegalPathException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    return getPathNodeInTemplate(MetaUtils.splitPathToDetachedPath(path));
+  }
+
+  private IMNode getPathNodeInTemplate(String[] pathNodes) {
     if (pathNodes.length == 0) {
       return null;
     }
@@ -397,6 +421,37 @@ public class Template {
 
   public Collection<IMNode> getDirectNodes() {
     return directNodes.values();
+  }
+
+  public Set<SchemaRegionId> getRelatedSchemaRegion() {
+    Set<SchemaRegionId> result = new HashSet<>();
+    for (Set<SchemaRegionId> schemaRegionIds : relatedSchemaRegion.values()) {
+      result.addAll(schemaRegionIds);
+    }
+    return result;
+  }
+
+  public Set<SchemaRegionId> getRelatedSchemaRegionInStorageGroup(String storageGroup) {
+    return relatedSchemaRegion.get(storageGroup);
+  }
+
+  public void markSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
+    if (!relatedSchemaRegion.containsKey(storageGroup)) {
+      relatedSchemaRegion.putIfAbsent(storageGroup, new HashSet<>());
+    }
+    relatedSchemaRegion.get(storageGroup).add(schemaRegionId);
+  }
+
+  public void unmarkSchemaRegion(String storageGroup, SchemaRegionId schemaRegionId) {
+    Set<SchemaRegionId> schemaRegionIds = relatedSchemaRegion.get(storageGroup);
+    schemaRegionIds.remove(schemaRegionId);
+    if (schemaRegionIds.isEmpty()) {
+      relatedSchemaRegion.remove(storageGroup);
+    }
+  }
+
+  public void unmarkStorageGroup(String storageGroup) {
+    relatedSchemaRegion.remove(storageGroup);
   }
 
   // endregion
@@ -480,7 +535,8 @@ public class Template {
     pathNode = MetaUtils.splitPathToDetachedPath(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
     IMNode targetNode = getPathNodeInTemplate(prefix);
-    if (targetNode != null && !targetNode.getAsEntityMNode().isAligned()) {
+    if ((targetNode != null && !targetNode.getAsEntityMNode().isAligned())
+        || (prefix.equals("") && !this.isDirectAligned())) {
       throw new IllegalPathException(prefix, "path already exists but not aligned");
     }
 
@@ -513,8 +569,9 @@ public class Template {
       // If prefix exists and aligned, it will throw exception
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
       IMNode parNode = getPathNodeInTemplate(prefix);
-      if (parNode != null && parNode.getAsEntityMNode().isAligned()) {
-        throw new IllegalPathException(prefix, "path already exists and aligned");
+      if ((parNode != null && parNode.getAsEntityMNode().isAligned())
+          || (prefix.equals("") && this.isDirectAligned())) {
+        throw new IllegalPathException(measurements[i], "path already exists and aligned");
       }
 
       IMeasurementSchema schema =
@@ -620,7 +677,7 @@ public class Template {
       byte flag = ReadWriteIOUtils.readByte(buffer);
       IMeasurementSchema measurementSchema = null;
       if (flag == (byte) 0) {
-        measurementSchema = UnaryMeasurementSchema.partialDeserializeFrom(buffer);
+        measurementSchema = MeasurementSchema.partialDeserializeFrom(buffer);
       } else if (flag == (byte) 1) {
         measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
       }
@@ -642,6 +699,18 @@ public class Template {
 
   @Override
   public int hashCode() {
-    return new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+    return rehashCode != 0
+        ? rehashCode
+        : new HashCodeBuilder(17, 37).append(name).append(schemaMap).toHashCode();
+  }
+
+  /**
+   * If the original hash code above clashes with existed template inside TemplateManager, needs to
+   * be rehashed
+   *
+   * @param code solve the hash collision by increment, and 0 to be exceptional value
+   */
+  public void setRehash(int code) {
+    rehashCode = code;
   }
 }

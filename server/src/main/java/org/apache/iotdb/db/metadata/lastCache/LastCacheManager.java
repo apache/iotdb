@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -50,7 +51,7 @@ public class LastCacheManager {
    * get the last cache value of time series of given seriesPath
    *
    * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
+   *     seriesPath, the node could be null and SchemaProcessor will search the node
    * @return the last cache value
    */
   public static TimeValuePair getLastCache(IMeasurementMNode node) {
@@ -68,7 +69,7 @@ public class LastCacheManager {
    * update the last cache value of time series of given seriesPath
    *
    * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
+   *     seriesPath, the node could be null and SchemaProcessor will search the node
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
@@ -92,7 +93,7 @@ public class LastCacheManager {
    * reset the last cache value of time series of given seriesPath
    *
    * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
+   *     seriesPath, the node could be null and SchemaProcessor will search the node
    */
   public static void resetLastCache(IMeasurementMNode node) {
     if (node == null) {
@@ -220,14 +221,17 @@ public class LastCacheManager {
       return getLastCache(node).getTimestamp();
     } else {
       try {
+        // for the parameter "ascending": true or false both ok here,
+        // because LastPointReader will do itself sort logic instead of depending on fillOrderIndex.
+        MeasurementPath measurementPath = node.getMeasurementPath();
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(node.getPartialPath(), queryContext, null);
+                .getQueryDataSource(measurementPath, queryContext, null, false);
         Set<String> measurementSet = new HashSet<>();
-        measurementSet.add(node.getPartialPath().getFullPath());
+        measurementSet.add(node.getName());
         LastPointReader lastReader =
             new LastPointReader(
-                node.getPartialPath(),
+                measurementPath,
                 node.getSchema().getType(),
                 measurementSet,
                 queryContext,

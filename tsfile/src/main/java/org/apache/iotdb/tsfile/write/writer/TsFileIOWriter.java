@@ -23,7 +23,13 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.*;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -41,12 +47,18 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * TsFileIOWriter is used to construct metadata and write data stored in memory to output stream.
  */
-public class TsFileIOWriter {
+public class TsFileIOWriter implements AutoCloseable {
 
   protected static final byte[] MAGIC_STRING_BYTES;
   public static final byte VERSION_NUMBER_BYTE;
@@ -73,7 +85,7 @@ public class TsFileIOWriter {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
 
-  // for upgrade tool
+  // for upgrade tool and split tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
   // the two longs marks the index range of operations in current MemTable
@@ -130,14 +142,14 @@ public class TsFileIOWriter {
     out.write(VERSION_NUMBER_BYTE);
   }
 
-  public void startChunkGroup(String deviceId) throws IOException {
+  public int startChunkGroup(String deviceId) throws IOException {
     this.currentChunkGroupDeviceId = deviceId;
     if (logger.isDebugEnabled()) {
       logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     }
     chunkMetadataList = new ArrayList<>();
     ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId);
-    chunkGroupHeader.serializeTo(out.wrapAsStream());
+    return chunkGroupHeader.serializeTo(out.wrapAsStream());
   }
 
   /**
@@ -446,6 +458,10 @@ public class TsFileIOWriter {
     out.flush();
   }
 
+  public void truncate(long offset) throws IOException {
+    out.truncate(offset);
+  }
+
   /**
    * this function is only for Test.
    *
@@ -456,7 +472,7 @@ public class TsFileIOWriter {
   }
 
   /**
-   * this function is only for Upgrade Tool.
+   * this function is for Upgrade Tool and Split Tool.
    *
    * @return DeviceTimeseriesMetadataMap
    */

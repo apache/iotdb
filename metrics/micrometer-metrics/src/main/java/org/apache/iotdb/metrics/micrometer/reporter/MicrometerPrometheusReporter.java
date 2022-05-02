@@ -20,13 +20,14 @@
 package org.apache.iotdb.metrics.micrometer.reporter;
 
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.Reporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import io.netty.channel.ChannelOption;
 import org.slf4j.Logger;
@@ -53,19 +54,18 @@ public class MicrometerPrometheusReporter implements Reporter {
         Metrics.globalRegistry.getRegistries().stream()
             .filter(reporter -> reporter instanceof PrometheusMeterRegistry)
             .collect(Collectors.toSet());
-    if (meterRegistrySet.size() != 1) {
-      LOGGER.error("Too less or too many prometheusReporters");
-      return false;
+    PrometheusMeterRegistry prometheusMeterRegistry;
+    if (meterRegistrySet.size() == 0) {
+      prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+      Metrics.addRegistry(prometheusMeterRegistry);
+    } else {
+      prometheusMeterRegistry = (PrometheusMeterRegistry) meterRegistrySet.toArray()[0];
     }
-    PrometheusMeterRegistry prometheusMeterRegistry =
-        (PrometheusMeterRegistry) meterRegistrySet.toArray()[0];
     httpServer =
         HttpServer.create()
             .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
-            .port(
-                Integer.parseInt(
-                    metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort()))
+            .port(Integer.parseInt(metricConfig.getPrometheusExporterPort()))
             .route(
                 routes ->
                     routes.get(
@@ -74,8 +74,7 @@ public class MicrometerPrometheusReporter implements Reporter {
                             response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
             .bindNow();
     LOGGER.info(
-        "http server for metrics stated, listen on {}",
-        metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort());
+        "http server for metrics started, listen on {}", metricConfig.getPrometheusExporterPort());
     return true;
   }
 
@@ -83,7 +82,16 @@ public class MicrometerPrometheusReporter implements Reporter {
   public boolean stop() {
     if (httpServer != null) {
       try {
+        Set<MeterRegistry> meterRegistrySet =
+            Metrics.globalRegistry.getRegistries().stream()
+                .filter(reporter -> reporter instanceof PrometheusMeterRegistry)
+                .collect(Collectors.toSet());
+        for (MeterRegistry meterRegistry : meterRegistrySet) {
+          meterRegistry.close();
+          Metrics.removeRegistry(meterRegistry);
+        }
         httpServer.disposeNow();
+        httpServer = null;
       } catch (Exception e) {
         LOGGER.error("failed to stop server", e);
         return false;
@@ -94,7 +102,7 @@ public class MicrometerPrometheusReporter implements Reporter {
 
   @Override
   public ReporterType getReporterType() {
-    return ReporterType.prometheus;
+    return ReporterType.PROMETHEUS;
   }
 
   @Override

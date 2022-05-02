@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.session.util.Version;
+
 public class Config {
 
   public static final String DEFAULT_HOST = "localhost";
@@ -42,4 +44,6 @@ public class Config {
   public static final int DEFAULT_MAX_FRAME_SIZE = 67108864;
 
   public static final int DEFAULT_SESSION_POOL_MAX_SIZE = 5;
+
+  public static final Version DEFAULT_VERSION = Version.V_0_13;
 }

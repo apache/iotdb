@@ -73,21 +73,21 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.cluster.utils.nodetool.function.Status;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.apache.thrift.TException;
@@ -1352,7 +1352,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       if (!StatusUtils.NO_LEADER.equals(result)) {
         result =
             StatusUtils.getStatus(
-                result, new EndPoint(leader.get().getInternalIp(), leader.get().getClientPort()));
+                result, new TEndPoint(leader.get().getInternalIp(), leader.get().getClientPort()));
         return result;
       }
     }
@@ -1368,7 +1368,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     TSStatus result = forwardPlan(plan, leader.get(), null);
     if (!StatusUtils.NO_LEADER.equals(result)) {
       result.setRedirectNode(
-          new EndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
+          new TEndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
     }
     return result;
   }
@@ -1400,7 +1400,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     List<PartitionGroup> partitionGroups = new ArrayList<>();
     PartialPath storageGroupName;
     try {
-      storageGroupName = IoTDB.metaManager.getBelongedStorageGroup(path);
+      storageGroupName = IoTDB.schemaProcessor.getBelongedStorageGroup(path);
     } catch (MetadataException e) {
       throw new StorageEngineException(e);
     }

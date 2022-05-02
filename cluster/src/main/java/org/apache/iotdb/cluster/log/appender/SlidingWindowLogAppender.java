@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.Buffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class SlidingWindowLogAppender implements LogAppender {
 
@@ -127,8 +129,34 @@ public class SlidingWindowLogAppender implements LogAppender {
         logs.size(),
         logs.get(0),
         logs.get(logs.size() - 1));
-    long success =
-        logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit, logs);
+
+    long startWaitingTime = System.currentTimeMillis();
+    long success;
+    while (true) {
+      synchronized (logManager) {
+
+        // TODO: Consider memory footprint to execute a precise rejection
+        if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
+            <= ClusterDescriptor.getInstance()
+                .getConfig()
+                .getUnAppliedRaftLogNumForRejectThreshold()) {
+          success =
+              logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit, logs);
+          break;
+        }
+        try {
+          TimeUnit.MILLISECONDS.sleep(
+              IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+          if (System.currentTimeMillis() - startWaitingTime
+              > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+            result.status = Response.RESPONSE_TOO_BUSY;
+            return -1;
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
     if (success != -1) {
       moveWindowRightward(flushPos);
     }

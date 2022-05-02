@@ -25,15 +25,29 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.dto.IoTDBPoint;
+import org.apache.iotdb.db.protocol.influxdb.handler.QueryHandler;
 import org.apache.iotdb.db.protocol.influxdb.input.InfluxLineParser;
-import org.apache.iotdb.db.protocol.influxdb.meta.MetaManager;
+import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
+import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
+import org.apache.iotdb.db.protocol.influxdb.sql.InfluxDBLogicalGenerator;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.DataTypeUtils;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCloseSessionReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCreateDatabaseReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxOpenSessionReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxOpenSessionResp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryResultRsp;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -48,21 +62,20 @@ import java.util.List;
 
 public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
-  private final BasicServiceProvider basicServiceProvider;
+  private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private final MetaManager metaManager;
+  private final InfluxDBMetaManager metaManager;
 
-  public InfluxDBServiceImpl() throws QueryProcessException {
-    basicServiceProvider = new BasicServiceProvider();
-    metaManager = MetaManager.getInstance();
+  public InfluxDBServiceImpl() {
+    metaManager = InfluxDBMetaManager.getInstance();
   }
 
   @Override
-  public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
+  public InfluxOpenSessionResp openSession(InfluxOpenSessionReq req) throws TException {
     BasicOpenSessionResp basicOpenSessionResp =
-        basicServiceProvider.openSession(
+        SESSION_MANAGER.openSession(
             req.username, req.password, req.zoneId, TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
-    return new TSOpenSessionResp()
+    return new InfluxOpenSessionResp()
         .setStatus(
             RpcUtils.getInfluxDBStatus(
                 basicOpenSessionResp.getCode(), basicOpenSessionResp.getMessage()))
@@ -70,27 +83,27 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   }
 
   @Override
-  public TSStatus closeSession(TSCloseSessionReq req) {
-    return new TSStatus(
-        !basicServiceProvider.closeSession(req.sessionId)
+  public InfluxTSStatus closeSession(InfluxCloseSessionReq req) {
+    return new InfluxTSStatus(
+        !SESSION_MANAGER.closeSession(req.sessionId)
             ? RpcUtils.getInfluxDBStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
   @Override
-  public TSStatus writePoints(TSWritePointsReq req) {
-    if (!basicServiceProvider.checkLogin(req.sessionId)) {
+  public InfluxTSStatus writePoints(InfluxWritePointsReq req) {
+    if (!SESSION_MANAGER.checkLogin(req.sessionId)) {
       return getNotLoggedInStatus();
     }
 
-    List<TSStatus> tsStatusList = new ArrayList<>();
+    List<InfluxTSStatus> tsStatusList = new ArrayList<>();
     int executeCode = TSStatusCode.SUCCESS_STATUS.getStatusCode();
     for (Point point :
         InfluxLineParser.parserRecordsToPointsWithPrecision(req.lineProtocol, req.precision)) {
       IoTDBPoint iotdbPoint = new IoTDBPoint(req.database, point, metaManager);
       try {
         InsertRowPlan plan = iotdbPoint.convertToInsertRowPlan();
-        TSStatus tsStatus = executeNonQueryPlan(plan, req.sessionId);
+        InfluxTSStatus tsStatus = executeNonQueryPlan(plan, req.sessionId);
         if (executeCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && tsStatus.getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
           executeCode = tsStatus.getCode();
@@ -104,12 +117,12 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
         throw new InfluxDBException(e.getMessage());
       }
     }
-    return new TSStatus().setCode(executeCode).setSubStatus(tsStatusList);
+    return new InfluxTSStatus().setCode(executeCode).setSubStatus(tsStatusList);
   }
 
   @Override
-  public TSStatus createDatabase(TSCreateDatabaseReq req) throws TException {
-    if (!basicServiceProvider.checkLogin(req.sessionId)) {
+  public InfluxTSStatus createDatabase(InfluxCreateDatabaseReq req) throws TException {
+    if (!SESSION_MANAGER.checkLogin(req.sessionId)) {
       return getNotLoggedInStatus();
     }
     try {
@@ -128,26 +141,34 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     }
   }
 
+  @Override
+  public InfluxQueryResultRsp query(InfluxQueryReq req) throws TException {
+    Operator operator = InfluxDBLogicalGenerator.generate(req.command);
+    QueryHandler.checkInfluxDBQueryOperator(operator);
+    return QueryHandler.queryInfluxDB(
+        req.database, (InfluxQueryOperator) operator, req.sessionId, IoTDB.serviceProvider);
+  }
+
   public void handleClientExit() {
-    Long sessionId = BasicServiceProvider.sessionManager.getCurrSessionId();
+    Long sessionId = ServiceProvider.SESSION_MANAGER.getCurrSessionId();
     if (sessionId != null) {
-      closeSession(new TSCloseSessionReq(sessionId));
+      closeSession(new InfluxCloseSessionReq(sessionId));
     }
   }
 
-  private TSStatus getNotLoggedInStatus() {
+  private InfluxTSStatus getNotLoggedInStatus() {
     return RpcUtils.getInfluxDBStatus(
         TSStatusCode.NOT_LOGIN_ERROR.getStatusCode(),
         "Log in failed. Either you are not authorized or the session has timed out.");
   }
 
-  private TSStatus executeNonQueryPlan(PhysicalPlan plan, long sessionId)
+  private InfluxTSStatus executeNonQueryPlan(PhysicalPlan plan, long sessionId)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    org.apache.iotdb.service.rpc.thrift.TSStatus status =
-        basicServiceProvider.checkAuthority(plan, sessionId);
+    org.apache.iotdb.common.rpc.thrift.TSStatus status =
+        SESSION_MANAGER.checkAuthority(plan, sessionId);
     if (status == null) {
       status =
-          basicServiceProvider.executeNonQuery(plan)
+          IoTDB.serviceProvider.executeNonQuery(plan)
               ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
               : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }

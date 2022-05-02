@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -30,8 +32,11 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,6 +45,7 @@ import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HE
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public class AlignedTVList extends TVList {
+  private static final int NULL_FLAG = -1;
 
   // data types of this aligned tvlist
   private List<TSDataType> dataTypes;
@@ -80,8 +86,8 @@ public class AlignedTVList extends TVList {
   @Override
   public void putAlignedValue(long timestamp, Object[] value, int[] columnIndexArray) {
     checkExpansion();
-    int arrayIndex = size / ARRAY_SIZE;
-    int elementIndex = size % ARRAY_SIZE;
+    int arrayIndex = rowCount / ARRAY_SIZE;
+    int elementIndex = rowCount % ARRAY_SIZE;
     minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     for (int i = 0; i < values.size(); i++) {
@@ -119,9 +125,9 @@ public class AlignedTVList extends TVList {
           break;
       }
     }
-    indices.get(arrayIndex)[elementIndex] = size;
-    size++;
-    if (sorted && size > 1 && timestamp < getTime(size - 2)) {
+    indices.get(arrayIndex)[elementIndex] = rowCount;
+    rowCount++;
+    if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
       sorted = false;
     }
   }
@@ -139,7 +145,7 @@ public class AlignedTVList extends TVList {
 
   private Object getAlignedValueForQuery(
       int index, Integer floatPrecision, List<TSEncoding> encodingList) {
-    if (index >= size) {
+    if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -169,7 +175,7 @@ public class AlignedTVList extends TVList {
       int[] validIndexesForTimeDuplicatedRows,
       Integer floatPrecision,
       List<TSEncoding> encodingList) {
-    if (valueIndex >= size) {
+    if (valueIndex >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
@@ -261,7 +267,7 @@ public class AlignedTVList extends TVList {
     alignedTvList.indices = this.indices;
     alignedTvList.values = values;
     alignedTvList.bitMaps = bitMaps;
-    alignedTvList.size = this.size;
+    alignedTvList.rowCount = this.rowCount;
     return alignedTvList;
   }
 
@@ -298,9 +304,17 @@ public class AlignedTVList extends TVList {
           break;
       }
       BitMap bitMap = new BitMap(ARRAY_SIZE);
-      // last bitmap should be marked to the tslist size's position
-      if (i == timestamps.size() - 1) {
-        for (int j = 0; j < size % ARRAY_SIZE; j++) {
+      // The following code is for these 2 kinds of scenarios.
+
+      // Eg1: If rowCount=5 and ARRAY_SIZE=2, we need to supply 3 bitmaps for the extending column.
+      // The first 2 bitmaps should mark all bits to represent 4 nulls and the 3rd bitmap should
+      // mark
+      // the 1st bit to represent 1 null value.
+
+      // Eg2: If rowCount=4 and ARRAY_SIZE=2, we need to supply 2 bitmaps for the extending column.
+      // These 2 bitmaps should mark all bits to represent 4 nulls.
+      if (i == timestamps.size() - 1 && rowCount % ARRAY_SIZE != 0) {
+        for (int j = 0; j < rowCount % ARRAY_SIZE; j++) {
           bitMap.mark(j);
         }
       } else {
@@ -405,7 +419,7 @@ public class AlignedTVList extends TVList {
    * @return boolean
    */
   public boolean isValueMarked(int rowIndex, int columnIndex) {
-    if (rowIndex >= size) {
+    if (rowIndex >= rowCount) {
       return false;
     }
     if (bitMaps == null
@@ -447,7 +461,7 @@ public class AlignedTVList extends TVList {
   public Pair<Integer, Boolean> delete(long lowerBound, long upperBound, int columnIndex) {
     int deletedNumber = 0;
     boolean deleteColumn = true;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < rowCount; i++) {
       long time = getTime(i);
       if (time >= lowerBound && time <= upperBound) {
         int originRowIndex = getValueIndex(i);
@@ -459,15 +473,16 @@ public class AlignedTVList extends TVList {
         deleteColumn = false;
       }
     }
-    if (deleteColumn) {
-      dataTypes.remove(columnIndex);
-      for (Object array : values.get(columnIndex)) {
-        PrimitiveArrayManager.release(array);
-      }
-      values.remove(columnIndex);
-      bitMaps.remove(columnIndex);
-    }
     return new Pair<>(deletedNumber, deleteColumn);
+  }
+
+  public void deleteColumn(int columnIndex) {
+    dataTypes.remove(columnIndex);
+    for (Object array : values.get(columnIndex)) {
+      PrimitiveArrayManager.release(array);
+    }
+    values.remove(columnIndex);
+    bitMaps.remove(columnIndex);
   }
 
   private void set(int index, long timestamp, int value) {
@@ -556,14 +571,15 @@ public class AlignedTVList extends TVList {
 
   @Override
   public void sort() {
-    if (sortedTimestamps == null || sortedTimestamps.length < size) {
+    if (sortedTimestamps == null || sortedTimestamps.length < rowCount) {
       sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
+          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    if (sortedIndices == null || sortedIndices.length < size) {
-      sortedIndices = (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, size);
+    if (sortedIndices == null || sortedIndices.length < rowCount) {
+      sortedIndices =
+          (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
     }
-    sort(0, size);
+    sort(0, rowCount);
     clearSortedValue();
     clearSortedTime();
     sorted = true;
@@ -659,7 +675,7 @@ public class AlignedTVList extends TVList {
    */
   @Override
   public int getValueIndex(int index) {
-    if (index >= size) {
+    if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -729,15 +745,15 @@ public class AlignedTVList extends TVList {
 
     while (idx < end) {
       int inputRemaining = end - idx;
-      int arrayIdx = size / ARRAY_SIZE;
-      int elementIdx = size % ARRAY_SIZE;
+      int arrayIdx = rowCount / ARRAY_SIZE;
+      int elementIdx = rowCount % ARRAY_SIZE;
       int internalRemaining = ARRAY_SIZE - elementIdx;
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, inputRemaining, columnIndexArray);
         for (int i = 0; i < inputRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx + i] = size;
+          indices.get(arrayIdx)[elementIdx + i] = rowCount;
           for (int j = 0; j < values.size(); j++) {
             if (columnIndexArray[j] < 0
                 || bitMaps != null
@@ -746,7 +762,7 @@ public class AlignedTVList extends TVList {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
-          size++;
+          rowCount++;
         }
         break;
       } else {
@@ -755,7 +771,7 @@ public class AlignedTVList extends TVList {
         System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         arrayCopy(value, idx, arrayIdx, elementIdx, internalRemaining, columnIndexArray);
         for (int i = 0; i < internalRemaining; i++) {
-          indices.get(arrayIdx)[elementIdx + i] = size;
+          indices.get(arrayIdx)[elementIdx + i] = rowCount;
           for (int j = 0; j < values.size(); j++) {
             if (columnIndexArray[j] < 0
                 || bitMaps != null
@@ -764,7 +780,7 @@ public class AlignedTVList extends TVList {
               markNullValue(j, arrayIdx, elementIdx + i);
             }
           }
-          size++;
+          rowCount++;
         }
         idx += internalRemaining;
         checkExpansion();
@@ -855,14 +871,20 @@ public class AlignedTVList extends TVList {
    */
   public static long alignedTvListArrayMemCost(TSDataType[] types) {
     long size = 0;
+    // value array mem size
+    for (TSDataType type : types) {
+      if (type != null) {
+        size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+      }
+    }
+    // size is 0 when all types are null
+    if (size == 0) {
+      return size;
+    }
     // time array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // index array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
-    // value array mem size
-    for (TSDataType type : types) {
-      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-    }
     // array headers mem size
     size += NUM_BYTES_ARRAY_HEADER * (2 + types.length);
     // Object references size in ArrayList
@@ -871,7 +893,7 @@ public class AlignedTVList extends TVList {
   }
 
   public void clear() {
-    size = 0;
+    rowCount = 0;
     sorted = true;
     minTime = Long.MAX_VALUE;
     clearTime();
@@ -934,7 +956,7 @@ public class AlignedTVList extends TVList {
       List<Integer> timeDuplicatedAlignedRowIndexList = null;
       while (cur < iteSize) {
         long time = getTime(cur);
-        if (cur + 1 < size() && (time == getTime(cur + 1))) {
+        if (cur + 1 < rowCount() && (time == getTime(cur + 1))) {
           if (timeDuplicatedAlignedRowIndexList == null) {
             timeDuplicatedAlignedRowIndexList = new ArrayList<>();
             timeDuplicatedAlignedRowIndexList.add(getValueIndex(cur));
@@ -986,5 +1008,189 @@ public class AlignedTVList extends TVList {
       }
       return deletedAll;
     }
+  }
+
+  @Override
+  public int serializedSize() {
+    int size = (1 + dataTypes.size()) * Byte.BYTES + 2 * Integer.BYTES;
+    // time
+    size += rowCount * Long.BYTES;
+    // value
+    for (int columnIndex = 0; columnIndex < values.size(); ++columnIndex) {
+      switch (dataTypes.get(columnIndex)) {
+        case TEXT:
+          for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+            size += ReadWriteIOUtils.sizeToWrite(getBinaryByValueIndex(rowIdx, columnIndex));
+          }
+          break;
+        case FLOAT:
+          size += rowCount * Float.BYTES;
+          break;
+        case INT32:
+          size += rowCount * Integer.BYTES;
+          break;
+        case INT64:
+          size += rowCount * Long.BYTES;
+          break;
+        case DOUBLE:
+          size += rowCount * Double.BYTES;
+          break;
+        case BOOLEAN:
+          size += rowCount * Byte.BYTES;
+          break;
+        default:
+          throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+      }
+    }
+    // bitmap
+    size += rowCount * dataTypes.size() * Byte.BYTES;
+    return size;
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    WALWriteUtils.write(TSDataType.VECTOR, buffer);
+    buffer.putInt(dataTypes.size());
+    for (TSDataType dataType : dataTypes) {
+      buffer.put(dataType.serialize());
+    }
+    buffer.putInt(rowCount);
+    // time
+    for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+      buffer.putLong(getTime(rowIndex));
+    }
+    // serialize value and bitmap by column
+    for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
+      List<Object> columnValues = values.get(columnIndex);
+      for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+        int arrayIndex = rowIndex / ARRAY_SIZE;
+        int elementIndex = rowIndex % ARRAY_SIZE;
+        // value
+        switch (dataTypes.get(columnIndex)) {
+          case TEXT:
+            Binary valueT = ((Binary[]) columnValues.get(arrayIndex))[elementIndex];
+            WALWriteUtils.write(valueT, buffer);
+            break;
+          case FLOAT:
+            float valueF = ((float[]) columnValues.get(arrayIndex))[elementIndex];
+            buffer.putFloat(valueF);
+            break;
+          case INT32:
+            int valueI = ((int[]) columnValues.get(arrayIndex))[elementIndex];
+            buffer.putInt(valueI);
+            break;
+          case INT64:
+            long valueL = ((long[]) columnValues.get(arrayIndex))[elementIndex];
+            buffer.putLong(valueL);
+            break;
+          case DOUBLE:
+            double valueD = ((double[]) columnValues.get(arrayIndex))[elementIndex];
+            buffer.putDouble(valueD);
+            break;
+          case BOOLEAN:
+            boolean valueB = ((boolean[]) columnValues.get(arrayIndex))[elementIndex];
+            WALWriteUtils.write(valueB, buffer);
+            break;
+          default:
+            throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+        }
+        // bitmap
+        WALWriteUtils.write(isValueMarked(rowIndex, columnIndex), buffer);
+      }
+    }
+  }
+
+  public static AlignedTVList deserialize(DataInputStream stream) throws IOException {
+    int dataTypeNum = stream.readInt();
+    List<TSDataType> dataTypes = new ArrayList<>(dataTypeNum);
+    int[] columnIndexArray = new int[dataTypeNum];
+    for (int columnIndex = 0; columnIndex < dataTypeNum; ++columnIndex) {
+      dataTypes.add(ReadWriteIOUtils.readDataType(stream));
+      columnIndexArray[columnIndex] = columnIndex;
+    }
+
+    int rowCount = stream.readInt();
+    // time
+    long[] times = new long[rowCount];
+    for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+      times[rowIndex] = stream.readLong();
+    }
+    // read value and bitmap by column
+    Object[] values = new Object[dataTypeNum];
+    BitMap[] bitMaps = new BitMap[dataTypeNum];
+    for (int columnIndex = 0; columnIndex < dataTypeNum; ++columnIndex) {
+      BitMap bitMap = new BitMap(rowCount);
+      Object valuesOfOneColumn;
+      switch (dataTypes.get(columnIndex)) {
+        case TEXT:
+          Binary[] binaryValues = new Binary[rowCount];
+          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+            binaryValues[rowIndex] = ReadWriteIOUtils.readBinary(stream);
+            if (ReadWriteIOUtils.readBool(stream)) {
+              bitMap.mark(rowIndex);
+            }
+          }
+          valuesOfOneColumn = binaryValues;
+          break;
+        case FLOAT:
+          float[] floatValues = new float[rowCount];
+          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+            floatValues[rowIndex] = stream.readFloat();
+            if (ReadWriteIOUtils.readBool(stream)) {
+              bitMap.mark(rowIndex);
+            }
+          }
+          valuesOfOneColumn = floatValues;
+          break;
+        case INT32:
+          int[] intValues = new int[rowCount];
+          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+            intValues[rowIndex] = stream.readInt();
+            if (ReadWriteIOUtils.readBool(stream)) {
+              bitMap.mark(rowIndex);
+            }
+          }
+          valuesOfOneColumn = intValues;
+          break;
+        case INT64:
+          long[] longValues = new long[rowCount];
+          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+            longValues[rowIndex] = stream.readLong();
+            if (ReadWriteIOUtils.readBool(stream)) {
+              bitMap.mark(rowIndex);
+            }
+          }
+          valuesOfOneColumn = longValues;
+          break;
+        case DOUBLE:
+          double[] doubleValues = new double[rowCount];
+          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+            doubleValues[rowIndex] = stream.readDouble();
+            if (ReadWriteIOUtils.readBool(stream)) {
+              bitMap.mark(rowIndex);
+            }
+          }
+          valuesOfOneColumn = doubleValues;
+          break;
+        case BOOLEAN:
+          boolean[] booleanValues = new boolean[rowCount];
+          for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+            booleanValues[rowIndex] = ReadWriteIOUtils.readBool(stream);
+            if (ReadWriteIOUtils.readBool(stream)) {
+              bitMap.mark(rowIndex);
+            }
+          }
+          valuesOfOneColumn = booleanValues;
+          break;
+        default:
+          throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+      }
+      values[columnIndex] = valuesOfOneColumn;
+      bitMaps[columnIndex] = bitMap;
+    }
+
+    AlignedTVList tvList = new AlignedTVList(dataTypes);
+    tvList.putAlignedValues(times, values, bitMaps, columnIndexArray, 0, rowCount);
+    return tvList;
   }
 }

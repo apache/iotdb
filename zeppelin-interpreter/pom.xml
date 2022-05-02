@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>zeppelin-iotdb</artifactId>
@@ -33,7 +33,6 @@
     <description>Zeppelin IoTDB support</description>
     <properties>
         <zeppelin.version>0.9.0-preview2</zeppelin.version>
-        <junit.version>4.11</junit.version>
     </properties>
     <dependencies>
         <dependency>

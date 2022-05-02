@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -28,7 +29,9 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,14 +41,14 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
-public abstract class TVList {
+public abstract class TVList implements WALEntryValue {
 
   protected static final int SMALL_ARRAY_LENGTH = 32;
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
-  protected int size;
+  protected int rowCount;
 
   protected long[][] sortedTimestamps;
   protected boolean sorted = true;
@@ -59,7 +62,7 @@ public abstract class TVList {
 
   public TVList() {
     timestamps = new ArrayList<>();
-    size = 0;
+    rowCount = 0;
     minTime = Long.MAX_VALUE;
     referenceCount = new AtomicInteger();
   }
@@ -109,12 +112,12 @@ public abstract class TVList {
     return referenceCount.get();
   }
 
-  public int size() {
-    return size;
+  public int rowCount() {
+    return rowCount;
   }
 
   public long getTime(int index) {
-    if (index >= size) {
+    if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -256,15 +259,15 @@ public abstract class TVList {
   public int delete(long lowerBound, long upperBound) {
     int newSize = 0;
     minTime = Long.MAX_VALUE;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < rowCount; i++) {
       long time = getTime(i);
       if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
         minTime = Math.min(time, minTime);
       }
     }
-    int deletedNumber = size - newSize;
-    size = newSize;
+    int deletedNumber = rowCount - newSize;
+    rowCount = newSize;
     // release primitive arrays that are empty
     int newArrayNum = newSize / ARRAY_SIZE;
     if (newSize % ARRAY_SIZE != 0) {
@@ -282,13 +285,13 @@ public abstract class TVList {
     for (long[] timestampArray : timestamps) {
       cloneList.timestamps.add(cloneTime(timestampArray));
     }
-    cloneList.size = size;
+    cloneList.rowCount = rowCount;
     cloneList.sorted = sorted;
     cloneList.minTime = minTime;
   }
 
   public void clear() {
-    size = 0;
+    rowCount = 0;
     sorted = true;
     minTime = Long.MAX_VALUE;
     clearTime();
@@ -322,7 +325,7 @@ public abstract class TVList {
   abstract void clearSortedValue();
 
   protected void checkExpansion() {
-    if ((size % ARRAY_SIZE) == 0) {
+    if ((rowCount % ARRAY_SIZE) == 0) {
       expandValues();
       timestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
     }
@@ -501,7 +504,7 @@ public abstract class TVList {
       }
     }
     minTime = Math.min(inPutMinTime, minTime);
-    sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
+    sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
   }
 
   /** for log */
@@ -544,7 +547,7 @@ public abstract class TVList {
     private List<TimeRange> deletionList;
 
     public Ite() {
-      this.iteSize = TVList.this.size;
+      this.iteSize = TVList.this.rowCount;
     }
 
     public Ite(int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
@@ -562,7 +565,7 @@ public abstract class TVList {
 
       while (cur < iteSize) {
         long time = getTime(cur);
-        if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+        if (isPointDeleted(time) || (cur + 1 < rowCount() && (time == getTime(cur + 1)))) {
           cur++;
           continue;
         }
@@ -615,7 +618,26 @@ public abstract class TVList {
 
   public abstract TSDataType getDataType();
 
-  public long getLastTime() {
-    return getTime(size - 1);
+  public static TVList deserialize(DataInputStream stream) throws IOException {
+    TSDataType dataType = ReadWriteIOUtils.readDataType(stream);
+    switch (dataType) {
+      case TEXT:
+        return BinaryTVList.deserialize(stream);
+      case FLOAT:
+        return FloatTVList.deserialize(stream);
+      case INT32:
+        return IntTVList.deserialize(stream);
+      case INT64:
+        return LongTVList.deserialize(stream);
+      case DOUBLE:
+        return DoubleTVList.deserialize(stream);
+      case BOOLEAN:
+        return BooleanTVList.deserialize(stream);
+      case VECTOR:
+        return AlignedTVList.deserialize(stream);
+      default:
+        break;
+    }
+    return null;
   }
 }
