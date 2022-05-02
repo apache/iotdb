@@ -21,11 +21,9 @@ package org.apache.iotdb.db.query.expression.leaf;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
@@ -84,14 +82,6 @@ public class TimeSeriesOperand extends LeafOperand {
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     for (PartialPath prefixPath : prefixPaths) {
       resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
-    }
-  }
-
-  @Override
-  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws StatementAnalyzeException {
-    for (PartialPath actualPath : wildcardsRemover.removeWildcardInPath(path)) {
-      resultExpressions.add(new TimeSeriesOperand(actualPath));
     }
   }
 

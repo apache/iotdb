@@ -22,10 +22,8 @@ package org.apache.iotdb.db.query.expression.multi;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -226,16 +224,6 @@ public class FunctionExpression extends Expression {
     ConcatPathOptimizer.cartesianProduct(
         resultExpressionsForRecursionList, functionExpressions, 0, new ArrayList<>());
     for (List<Expression> functionExpression : functionExpressions) {
-      resultExpressions.add(
-          new FunctionExpression(functionName, functionAttributes, functionExpression));
-    }
-  }
-
-  @Override
-  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws StatementAnalyzeException {
-    for (List<Expression> functionExpression :
-        wildcardsRemover.removeWildcardsInExpressions(expressions)) {
       resultExpressions.add(
           new FunctionExpression(functionName, functionAttributes, functionExpression));
     }

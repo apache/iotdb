@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -68,6 +69,17 @@ public class SchemaTree {
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     SchemaTreeMeasurementVisitor visitor =
         new SchemaTreeMeasurementVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
+    return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+  }
+
+  public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
+    SchemaTreeMeasurementVisitor visitor =
+        new SchemaTreeMeasurementVisitor(
+            root,
+            pathPattern,
+            IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1,
+            0,
+            false);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 

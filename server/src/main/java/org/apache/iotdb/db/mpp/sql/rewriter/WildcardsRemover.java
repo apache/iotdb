@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.sql.rewriter;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -35,21 +34,14 @@ import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.component.GroupByLevelController;
-import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.mpp.sql.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.sql.statement.crud.QueryStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -81,101 +73,12 @@ public class WildcardsRemover {
     this.schemaTree = schemaTree;
     this.typeProvider = typeProvider;
 
-    // remove wildcards in SELECT clause
-    removeWildcardsInSelectPaths(queryStatement);
-
-    // remove wildcards in WITHOUT NULL clause
-    if (queryStatement.getFilterNullComponent() != null
-        && !queryStatement.getFilterNullComponent().getWithoutNullColumns().isEmpty()) {
-      removeWildcardsWithoutNullColumns(queryStatement);
-    }
-
     // remove wildcards in WHERE clause
     if (queryStatement.getWhereCondition() != null) {
       removeWildcardsInQueryFilter(queryStatement);
     }
 
     return queryStatement;
-  }
-
-  private void removeWildcardsInSelectPaths(QueryStatement queryStatement)
-      throws StatementAnalyzeException, PathNumOverLimitException {
-    List<ResultColumn> resultColumns = new ArrayList<>();
-
-    // Only used for group by level
-    GroupByLevelController groupByLevelController = null;
-    if (queryStatement.isGroupByLevel()) {
-      groupByLevelController = new GroupByLevelController(queryStatement);
-      queryStatement.resetSLimitOffset();
-      resultColumns = new LinkedList<>();
-    }
-
-    for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
-      boolean needAliasCheck = resultColumn.hasAlias() && !queryStatement.isGroupByLevel();
-      resultColumn.removeWildcards(this, resultColumns, needAliasCheck);
-      if (groupByLevelController != null) {
-        groupByLevelController.control(resultColumn, resultColumns);
-      }
-      if (paginationController.checkIfPathNumberIsOverLimit(resultColumns)) {
-        break;
-      }
-    }
-    paginationController.checkIfSoffsetIsExceeded(resultColumns);
-    queryStatement.getSelectComponent().setResultColumns(resultColumns);
-    if (groupByLevelController != null) {
-      ((AggregationQueryStatement) queryStatement)
-          .getGroupByLevelComponent()
-          .setGroupByLevelController(groupByLevelController);
-    }
-  }
-
-  private void removeWildcardsWithoutNullColumns(QueryStatement queryStatement)
-      throws StatementAnalyzeException {
-
-    List<Expression> expressions = queryStatement.getFilterNullComponent().getWithoutNullColumns();
-
-    // because timeSeries path may be with "*", so need to remove it for getting some actual
-    // timeSeries paths
-    // actualExpressions store the actual timeSeries paths
-    List<Expression> actualExpressions = new ArrayList<>();
-    List<Expression> resultExpressions = new ArrayList<>();
-
-    // because expression.removeWildcards will ignore the TimeSeries path that exists in the meta
-    // so we need to recognise the alias, just simply add to the resultExpressions
-    for (Expression expression : expressions) {
-      if (queryStatement
-          .getSelectComponent()
-          .getAliasSet()
-          .contains(expression.getExpressionString())) {
-        resultExpressions.add(expression);
-        continue;
-      }
-      expression.removeWildcards(this, actualExpressions);
-    }
-
-    // group by level, use groupedPathMap
-    if (queryStatement.isGroupByLevel()) {
-      GroupByLevelController groupByLevelController =
-          ((AggregationQueryStatement) queryStatement)
-              .getGroupByLevelComponent()
-              .getGroupByLevelController();
-      for (Expression expression : actualExpressions) {
-        String groupedPath =
-            groupByLevelController.getGroupedPath(expression.getExpressionString());
-        if (groupedPath != null) {
-          try {
-            resultExpressions.add(new TimeSeriesOperand(new PartialPath(groupedPath)));
-          } catch (IllegalPathException e) {
-            throw new StatementAnalyzeException(e.getMessage());
-          }
-        } else {
-          resultExpressions.add(expression);
-        }
-      }
-    } else {
-      resultExpressions.addAll(actualExpressions);
-    }
-    queryStatement.getFilterNullComponent().setWithoutNullColumns(resultExpressions);
   }
 
   private void removeWildcardsInQueryFilter(QueryStatement queryStatement)
@@ -286,45 +189,6 @@ public class WildcardsRemover {
       throw new StatementAnalyzeException(
           "error occurred when removing wildcard: " + e.getMessage());
     }
-  }
-
-  public List<List<Expression>> removeWildcardsInExpressions(List<Expression> expressions)
-      throws StatementAnalyzeException {
-    // One by one, remove the wildcards from the input expressions. In most cases, an expression
-    // will produce multiple expressions after removing the wildcards. We use extendedExpressions to
-    // collect the produced expressions.
-    List<List<Expression>> extendedExpressions = new ArrayList<>();
-    for (Expression originExpression : expressions) {
-      List<Expression> actualExpressions = new ArrayList<>();
-      originExpression.removeWildcards(this, actualExpressions);
-      if (actualExpressions.isEmpty()) {
-        // Let's ignore the eval of the function which has at least one non-existence series as
-        // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
-        return Collections.emptyList();
-      }
-      extendedExpressions.add(actualExpressions);
-    }
-
-    // Calculate the Cartesian product of extendedExpressions to get the actual expressions after
-    // removing all wildcards. We use actualExpressions to collect them.
-    List<List<Expression>> actualExpressions = new ArrayList<>();
-    cartesianProduct(extendedExpressions, actualExpressions, 0, new ArrayList<>());
-
-    // Apply the soffset & slimit control to the actualExpressions and return the remaining
-    // expressions.
-    List<List<Expression>> remainingExpressions = new ArrayList<>();
-    for (List<Expression> actualExpression : actualExpressions) {
-      if (paginationController.hasCurOffset()) {
-        paginationController.decCurOffset();
-      } else if (paginationController.hasCurLimit()) {
-        remainingExpressions.add(actualExpression);
-        paginationController.decCurLimit();
-      } else {
-        break;
-      }
-    }
-    paginationController.incConsumed(actualExpressions.size());
-    return remainingExpressions;
   }
 
   private List<PartialPath> removeWildcardsInConcatPaths(List<PartialPath> originalPaths)

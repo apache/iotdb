@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.mpp.sql.rewriter.DnfFilterOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.mpp.sql.rewriter.RemoveNotOptimizer;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
@@ -61,10 +61,12 @@ import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.sql.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -82,12 +84,14 @@ public class Analyzer {
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
+  private final TypeProvider typeProvider;
 
   public Analyzer(
       MPPQueryContext context, IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.context = context;
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
+    this.typeProvider = new TypeProvider();
   }
 
   public Analysis analyze(Statement statement) {
@@ -118,11 +122,11 @@ public class Analyzer {
         // request schema fetch API
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
-        // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
-        TypeProvider typeProvider = new TypeProvider();
-        rewrittenStatement =
-            (QueryStatement)
-                new WildcardsRemover().rewrite(rewrittenStatement, typeProvider, schemaTree);
+        List<Pair<Expression, String>> outputExpressions =
+            analyzeSelect(queryStatement, schemaTree);
+
+        DatasetHeader datasetHeader = analyzeOutput(outputExpressions);
+        analysis.setRespDatasetHeader(datasetHeader);
 
         // fetch partition information
         Set<PartialPath> devicePathSet = new HashSet<>();
@@ -175,7 +179,6 @@ public class Analyzer {
           analysis.setGlobalTimeFilter(expression);
         }
         analysis.setStatement(rewrittenStatement);
-        analysis.setSchemaTree(schemaTree);
         analysis.setTypeProvider(typeProvider);
         analysis.setRespDatasetHeader(queryStatement.constructDatasetHeader());
         analysis.setDataPartitionInfo(dataPartition);
@@ -185,6 +188,35 @@ public class Analyzer {
         throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
+    }
+
+    private List<Pair<Expression, String>> analyzeSelect(
+        QueryStatement queryStatement, SchemaTree schemaTree) {
+      List<Pair<Expression, String>> resultExpressions = new ArrayList<>();
+      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+        boolean hasAlias = resultColumn.hasAlias();
+        ExpressionAnalysis expressionAnalysis =
+            analyzeExpression(resultColumn.getExpression(), schemaTree);
+        List<Expression> outputExpressions = expressionAnalysis.getOutputExpressions();
+        if (hasAlias && outputExpressions.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
+        }
+        for (Expression outputExpression : outputExpressions) {
+          resultExpressions.add(
+              new Pair<>(outputExpression, hasAlias ? resultColumn.getAlias() : null));
+        }
+      }
+      return resultExpressions;
+    }
+
+    private ExpressionAnalysis analyzeExpression(Expression expression, SchemaTree schemaTree) {
+      return ExpressionAnalyzer.analyzeExpression(expression, schemaTree, typeProvider);
+    }
+
+    private DatasetHeader analyzeOutput(List<Pair<Expression, String>> outputExpressions) {
+      return null;
     }
 
     @Override
