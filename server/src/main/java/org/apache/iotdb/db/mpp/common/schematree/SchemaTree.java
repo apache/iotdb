@@ -255,4 +255,8 @@ public class SchemaTree {
   SchemaNode getRoot() {
     return root;
   }
+
+  public boolean isEmpty() {
+    return root.getChildren() == null || root.getChildren().size() == 0;
+  }
 }

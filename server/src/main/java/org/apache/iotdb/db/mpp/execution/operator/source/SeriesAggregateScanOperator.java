@@ -19,18 +19,15 @@
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
-import org.apache.iotdb.db.query.factory.AggregateResultFactory;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.utils.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -44,9 +41,9 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * This operator is responsible to do the aggregation calculation for one series based on global
@@ -62,15 +59,15 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   private final PlanNodeId sourceId;
   private final SeriesScanUtil seriesScanUtil;
   private final boolean ascending;
-  private List<AggregateResult> aggregateResultList;
+  // We still think aggregator in SeriesAggregateScanOperator is a inputRaw step.
+  // But in facing of statistics, it will invoke another method processStatistics()
+  private List<Aggregator> aggregators;
 
   private ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
-  private TsBlockSingleColumnIterator preCachedData;
-  // used for resetting the preCachedData to the last read index
-  private int lastReadIndex;
+  private TsBlock preCachedData;
 
   private TsBlockBuilder tsBlockBuilder;
   private TsBlock resultTsBlock;
@@ -82,7 +79,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       PartialPath seriesPath,
       Set<String> allSensors,
       OperatorContext context,
-      List<AggregationType> aggregateFuncList,
+      List<Aggregator> aggregators,
       Filter timeFilter,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
@@ -98,21 +95,12 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
             timeFilter,
             null,
             ascending);
-    aggregateResultList = new ArrayList<>(aggregateFuncList.size());
-    for (AggregationType aggregationType : aggregateFuncList) {
-      aggregateResultList.add(
-          AggregateResultFactory.getAggrResultByType(
-              aggregationType,
-              seriesPath.getSeriesType(),
-              seriesScanUtil.getOrderUtils().getAscending()));
+    this.aggregators = aggregators;
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (Aggregator aggregator : aggregators) {
+      dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
-    tsBlockBuilder =
-        new TsBlockBuilder(
-            aggregateFuncList.stream()
-                .map(
-                    functionType ->
-                        SchemaUtils.getSeriesTypeByPath(seriesPath, functionType.name()))
-                .collect(Collectors.toList()));
+    tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter);
   }
 
@@ -169,8 +157,9 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       curTimeRange = timeRangeIterator.nextTimeRange();
 
       // 1. Clear previous aggregation result
-      for (AggregateResult result : aggregateResultList) {
-        result.reset();
+      for (Aggregator aggregator : aggregators) {
+        aggregator.reset();
+        aggregator.setTimeRange(curTimeRange);
       }
 
       // 2. Calculate aggregation result based on current time window
@@ -226,14 +215,19 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   }
 
   private void updateResultTsBlockUsingAggregateResult() {
-    // TODO AVG
     tsBlockBuilder.reset();
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     // Use start time of current time range as time column
     timeColumnBuilder.writeLong(curTimeRange.getMin());
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    for (int i = 0; i < aggregateResultList.size(); i++) {
-      columnBuilders[i].writeObject(aggregateResultList.get(i).getResult());
+    int columnIndex = 0;
+    for (Aggregator aggregator : aggregators) {
+      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
+      columnBuilder[0] = columnBuilders[columnIndex++];
+      if (columnBuilder.length > 1) {
+        columnBuilder[1] = columnBuilders[columnIndex++];
+      }
+      aggregator.outputResult(columnBuilder);
     }
     tsBlockBuilder.declarePosition();
     resultTsBlock = tsBlockBuilder.build();
@@ -273,41 +267,33 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   }
 
   @SuppressWarnings("squid:S3776")
-  private void calcFromBatch(TsBlockSingleColumnIterator blockIterator, TimeRange curTimeRange)
-      throws IOException {
+  private void calcFromBatch(TsBlock tsBlock, TimeRange curTimeRange) {
     // check if the batchData does not contain points in current interval
-    if (!satisfied(blockIterator, curTimeRange)) {
+    if (tsBlock == null || !satisfied(tsBlock, curTimeRange)) {
       return;
     }
 
-    for (AggregateResult result : aggregateResultList) {
+    // skip points that cannot be calculated
+    tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange);
+
+    for (Aggregator aggregator : aggregators) {
       // current agg method has been calculated
-      if (result.hasFinalResult()) {
+      if (aggregator.hasFinalResult()) {
         continue;
       }
-      // lazy reset batch data for calculation
-      blockIterator.setRowIndex(lastReadIndex);
-      // skip points that cannot be calculated
-      skipOutOfTimeRangePoints(blockIterator, curTimeRange);
 
-      if (blockIterator.hasNext()) {
-        result.updateResultFromPageData(
-            blockIterator, curTimeRange.getMin(), curTimeRange.getMax());
-      }
+      aggregator.processTsBlock(tsBlock);
     }
 
-    // reset the last position to current Index
-    lastReadIndex = blockIterator.getRowIndex();
-
     // can calc for next interval
-    if (blockIterator.hasNext()) {
-      preCachedData = blockIterator;
+    if (tsBlock.getTsBlockSingleColumnIterator().hasNext()) {
+      preCachedData = tsBlock;
     }
   }
 
   // skip points that cannot be calculated
-  private void skipOutOfTimeRangePoints(
-      TsBlockSingleColumnIterator tsBlockIterator, TimeRange curTimeRange) {
+  private TsBlock skipOutOfTimeRangePoints(TsBlock tsBlock, TimeRange curTimeRange) {
+    TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
     if (ascending) {
       while (tsBlockIterator.hasNext() && tsBlockIterator.currentTime() < curTimeRange.getMin()) {
         tsBlockIterator.next();
@@ -317,9 +303,11 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
         tsBlockIterator.next();
       }
     }
+    return tsBlock.subTsBlock(tsBlockIterator.getRowIndex());
   }
 
-  private boolean satisfied(TsBlockSingleColumnIterator tsBlockIterator, TimeRange timeRange) {
+  private boolean satisfied(TsBlock tsBlock, TimeRange timeRange) {
+    TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
     if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
       return false;
     }
@@ -332,15 +320,15 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
     if (!ascending
         && (tsBlockIterator.getStartTime() >= timeRange.getMax()
             || tsBlockIterator.currentTime() < timeRange.getMin())) {
-      preCachedData = tsBlockIterator;
+      preCachedData = tsBlock;
       return false;
     }
     return true;
   }
 
   private boolean isEndCalc() {
-    for (AggregateResult result : aggregateResultList) {
-      if (!result.hasFinalResult()) {
+    for (Aggregator aggregator : aggregators) {
+      if (!aggregator.hasFinalResult()) {
         return false;
       }
     }
@@ -375,23 +363,23 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       }
 
       // calc from page data
-      TsBlockSingleColumnIterator tsBlockIterator =
-          seriesScanUtil.nextPage().getTsBlockSingleColumnIterator();
+      TsBlock tsBlock = seriesScanUtil.nextPage();
+      TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
       if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
         continue;
       }
 
       // reset the last position to current Index
-      lastReadIndex = tsBlockIterator.getRowIndex();
+      // lastReadIndex = tsBlockIterator.getRowIndex();
 
       // stop calc and cached current batchData
       if (ascending && tsBlockIterator.currentTime() >= curTimeRange.getMax()) {
-        preCachedData = tsBlockIterator;
+        preCachedData = tsBlock;
         return true;
       }
 
       // calc from batch data
-      calcFromBatch(tsBlockIterator, curTimeRange);
+      calcFromBatch(tsBlock, curTimeRange);
 
       // judge whether the calculation finished
       if (isEndCalc()
@@ -432,15 +420,12 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   }
 
   private void calcFromStatistics(Statistics statistics) {
-    try {
-      for (AggregateResult result : aggregateResultList) {
-        if (result.hasFinalResult()) {
-          continue;
-        }
-        result.updateResultFromStatistics(statistics);
+    for (int i = 0; i < aggregators.size(); i++) {
+      Aggregator aggregator = aggregators.get(i);
+      if (aggregator.hasFinalResult()) {
+        continue;
       }
-    } catch (QueryProcessException e) {
-      throw new RuntimeException("Error while updating result using statistics", e);
+      aggregator.processStatistics(statistics);
     }
   }
 
