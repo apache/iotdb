@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -117,7 +118,12 @@ public class Analyzer {
 
         // request schema fetch API
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
-
+        // (xingtanzjr) If there is no leaf node in the schema tree, the query should be completed
+        // immediately
+        if (schemaTree.isEmpty()) {
+          analysis.setRespDatasetHeader(new DatasetHeader(new ArrayList<>(), false));
+          return analysis;
+        }
         // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
         TypeProvider typeProvider = new TypeProvider();
         rewrittenStatement =

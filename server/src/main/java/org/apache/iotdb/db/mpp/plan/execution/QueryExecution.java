@@ -255,7 +255,7 @@ public class QueryExecution implements IQueryExecution {
   /** @return true if there is more tsblocks, otherwise false */
   @Override
   public boolean hasNextResult() {
-    return !resultHandle.isFinished();
+    return resultHandle != null && !resultHandle.isFinished();
   }
 
   /** return the result column count without the time column */
