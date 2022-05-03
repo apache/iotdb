@@ -969,11 +969,8 @@ public class AlignedTVList extends TVList {
 
   // TODO: This method can be removed
   public IPointReader getAlignedIterator(
-      int floatPrecision,
-      List<TSEncoding> encodingList,
-      int size,
-      List<List<TimeRange>> deletionList) {
-    return new AlignedIte(floatPrecision, encodingList, size, deletionList);
+      int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
+    return new AlignedIte(floatPrecision, encodingList, deletionList);
   }
 
   // TODO: This class can be removed
@@ -998,14 +995,11 @@ public class AlignedTVList extends TVList {
     }
 
     public AlignedIte(
-        int floatPrecision,
-        List<TSEncoding> encodingList,
-        int size,
-        List<List<TimeRange>> deletionList) {
+        int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
       this.floatPrecision = floatPrecision;
       this.encodingList = encodingList;
       this.deletionList = deletionList;
-      this.iteSize = size;
+      this.iteSize = rowCount;
       if (deletionList != null) {
         deleteCursors = new int[deletionList.size()];
       }

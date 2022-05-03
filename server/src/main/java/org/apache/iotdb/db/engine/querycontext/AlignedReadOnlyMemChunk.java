@@ -31,10 +31,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,108 +43,82 @@ import java.util.List;
 
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
-  // deletion list for this chunk
-  private final List<List<TimeRange>> deletionList;
+  private final String timeChunkName;
 
-  private String measurementUid;
-  private List<TSEncoding> encodingList;
+  private final List<String> valueChunkNames;
 
   private static final Logger logger = LoggerFactory.getLogger(AlignedReadOnlyMemChunk.class);
 
-  private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
-
   private AlignedTVList chunkData;
-
-  private int chunkDataSize;
-
-  private TsBlock tsBlock;
 
   /**
    * The constructor for Aligned type.
    *
    * @param schema VectorMeasurementSchema
    * @param tvList VectorTvList
-   * @param size The Number of Chunk data points
    * @param deletionList The timeRange of deletionList
    */
   public AlignedReadOnlyMemChunk(
-      IMeasurementSchema schema, TVList tvList, int size, List<List<TimeRange>> deletionList)
-      throws IOException, QueryProcessException {
+      IMeasurementSchema schema, TVList tvList, List<List<TimeRange>> deletionList)
+      throws QueryProcessException {
     super();
-    this.measurementUid = schema.getMeasurementId();
-
-
-    this.encodingList = ((VectorMeasurementSchema) schema).getSubMeasurementsTSEncodingList();
+    this.timeChunkName = schema.getMeasurementId();
+    this.valueChunkNames = schema.getSubMeasurementsList();
+    int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
+    List<TSEncoding> encodingList = schema.getSubMeasurementsTSEncodingList();
     this.chunkData = (AlignedTVList) tvList;
-    this.chunkDataSize = size;
-    this.deletionList = deletionList;
-
     this.chunkPointReader =
-        (chunkData).getAlignedIterator(floatPrecision, encodingList, chunkDataSize, deletionList);
-    initAlignedChunkMeta((VectorMeasurementSchema) schema);
+        (chunkData).getAlignedIterator(floatPrecision, encodingList, deletionList);
     this.tsBlock = chunkData.getTsBlock(floatPrecision, encodingList, deletionList);
+    initAlignedChunkMetaFromTsBlock();
   }
 
-  private void initAlignedChunkMeta(VectorMeasurementSchema schema)
-      throws IOException, QueryProcessException {
-    AlignedTVList alignedChunkData = (AlignedTVList) chunkData;
-    List<String> measurementList = schema.getSubMeasurementsList();
-    List<TSDataType> dataTypeList = schema.getSubMeasurementsTSDataTypeList();
+  private void initAlignedChunkMetaFromTsBlock() throws QueryProcessException {
     // time chunk
     Statistics timeStatistics = Statistics.getStatsByType(TSDataType.VECTOR);
     IChunkMetadata timeChunkMetadata =
-        new ChunkMetadata(measurementUid, TSDataType.VECTOR, 0, timeStatistics);
+        new ChunkMetadata(timeChunkName, TSDataType.VECTOR, 0, timeStatistics);
     List<IChunkMetadata> valueChunkMetadataList = new ArrayList<>();
     // update time chunk
-    for (int row = 0; row < alignedChunkData.rowCount(); row++) {
-      timeStatistics.update(alignedChunkData.getTime(row));
+    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+      timeStatistics.update(tsBlock.getTimeColumn().getLong(row));
     }
     timeStatistics.setEmpty(false);
     // update value chunk
-    for (int column = 0; column < measurementList.size(); column++) {
-      Statistics valueStatistics = Statistics.getStatsByType(dataTypeList.get(column));
+    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+      Statistics valueStatistics =
+          Statistics.getStatsByType(tsBlock.getColumn(column).getDataType());
       IChunkMetadata valueChunkMetadata =
           new ChunkMetadata(
-              measurementList.get(column), dataTypeList.get(column), 0, valueStatistics);
+              valueChunkNames.get(column),
+              tsBlock.getColumn(column).getDataType(),
+              0,
+              valueStatistics);
       valueChunkMetadataList.add(valueChunkMetadata);
-      if (alignedChunkData.getValues().get(column) == null) {
-        valueStatistics.setEmpty(true);
-        continue;
-      }
-      for (int row = 0; row < alignedChunkData.rowCount(); row++) {
-        long time = alignedChunkData.getTime(row);
-        int originRowIndex = alignedChunkData.getValueIndex(row);
-        boolean isNull = alignedChunkData.isValueMarked(originRowIndex, column);
-        if (isNull) {
-          continue;
-        }
-        switch (dataTypeList.get(column)) {
+      for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+        long time = tsBlock.getTimeColumn().getLong(row);
+        switch (tsBlock.getColumn(column).getDataType()) {
           case BOOLEAN:
-            valueStatistics.update(
-                time, alignedChunkData.getBooleanByValueIndex(originRowIndex, column));
+            valueStatistics.update(time, tsBlock.getColumn(column).getBoolean(row));
             break;
           case TEXT:
-            valueStatistics.update(
-                time, alignedChunkData.getBinaryByValueIndex(originRowIndex, column));
+            valueStatistics.update(time, tsBlock.getColumn(column).getBinary(row));
             break;
           case FLOAT:
-            valueStatistics.update(
-                time, alignedChunkData.getFloatByValueIndex(originRowIndex, column));
+            valueStatistics.update(time, tsBlock.getColumn(column).getFloat(row));
             break;
           case INT32:
-            valueStatistics.update(
-                time, alignedChunkData.getIntByValueIndex(originRowIndex, column));
+            valueStatistics.update(time, tsBlock.getColumn(column).getInt(row));
             break;
           case INT64:
-            valueStatistics.update(
-                time, alignedChunkData.getLongByValueIndex(originRowIndex, column));
+            valueStatistics.update(time, tsBlock.getColumn(column).getLong(row));
             break;
           case DOUBLE:
-            valueStatistics.update(
-                time, alignedChunkData.getDoubleByValueIndex(originRowIndex, column));
+            valueStatistics.update(time, tsBlock.getColumn(column).getDouble(row));
             break;
           default:
-            throw new QueryProcessException("Unsupported data type:" + dataTypeList.get(column));
+            throw new QueryProcessException(
+                "Unsupported data type:" + tsBlock.getColumn(column).getDataType());
         }
       }
       valueStatistics.setEmpty(false);
@@ -160,17 +132,11 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   @Override
   public boolean isEmpty() throws IOException {
-    return !chunkPointReader.hasNextTimeValuePair();
+    return tsBlock.isEmpty();
   }
 
   @Override
   public IPointReader getPointReader() {
-    chunkPointReader =
-        chunkData.getAlignedIterator(floatPrecision, encodingList, chunkDataSize, deletionList);
     return chunkPointReader;
-  }
-
-  public TsBlock getTsBlock() {
-    return tsBlock;
   }
 }

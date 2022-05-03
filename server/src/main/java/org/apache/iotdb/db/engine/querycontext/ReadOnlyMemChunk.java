@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -47,7 +46,6 @@ import java.util.Map;
 public class ReadOnlyMemChunk {
 
   private String measurementUid;
-  private TSDataType dataType;
 
   private static final Logger logger = LoggerFactory.getLogger(ReadOnlyMemChunk.class);
 
@@ -68,7 +66,6 @@ public class ReadOnlyMemChunk {
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     this.measurementUid = measurementUid;
-    this.dataType = dataType;
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       try {
@@ -91,33 +88,33 @@ public class ReadOnlyMemChunk {
   }
 
   private void initChunkMetaFromTsBlock() throws IOException, QueryProcessException {
-    Statistics statsByType = Statistics.getStatsByType(dataType);
-    IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
+    Statistics statsByType = Statistics.getStatsByType(tsBlock.getColumn(0).getDataType());
+    IChunkMetadata metaData =
+        new ChunkMetadata(measurementUid, tsBlock.getColumn(0).getDataType(), 0, statsByType);
     if (!isEmpty()) {
-      IPointReader iterator = tsBlock.getTsBlockSingleColumnIterator();
-      while (iterator.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-        switch (dataType) {
+      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+        switch (tsBlock.getColumn(0).getDataType()) {
           case BOOLEAN:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBoolean(i));
             break;
           case TEXT:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
             break;
           case FLOAT:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getFloat(i));
             break;
           case INT32:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getInt(i));
             break;
           case INT64:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getLong(i));
             break;
           case DOUBLE:
-            statsByType.update(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
+            statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getDouble(i));
             break;
           default:
-            throw new QueryProcessException("Unsupported data type:" + dataType);
+            throw new QueryProcessException(
+                "Unsupported data type:" + tsBlock.getColumn(0).getDataType());
         }
       }
     }
@@ -128,7 +125,7 @@ public class ReadOnlyMemChunk {
   }
 
   public TSDataType getDataType() {
-    return dataType;
+    return tsBlock.getColumn(0).getDataType();
   }
 
   public boolean isEmpty() throws IOException {
@@ -141,5 +138,9 @@ public class ReadOnlyMemChunk {
 
   public IPointReader getPointReader() {
     return tsBlock.getTsBlockSingleColumnIterator();
+  }
+
+  public TsBlock getTsBlock() {
+    return tsBlock;
   }
 }

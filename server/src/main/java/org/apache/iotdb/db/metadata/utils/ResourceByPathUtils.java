@@ -322,13 +322,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(partialPath.getSchemaList());
-    int curSize = alignedTvListCopy.rowCount();
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
     }
-    return new AlignedReadOnlyMemChunk(
-        getMeasurementSchema(), alignedTvListCopy, curSize, deletionList);
+    return new AlignedReadOnlyMemChunk(getMeasurementSchema(), alignedTvListCopy, deletionList);
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
