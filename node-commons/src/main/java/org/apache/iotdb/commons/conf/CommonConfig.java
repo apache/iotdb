@@ -26,8 +26,7 @@ public class CommonConfig {
   private String openIdProviderUrl = "";
 
   // the authorizer provider class which extends BasicAuthorizer
-  private String authorizerProvider =
-      "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
+  private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
   /** Encryption provider class */
   private String encryptDecryptProvider =

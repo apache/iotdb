@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.security.encrypt;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
@@ -26,6 +25,8 @@ import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.user.LocalFileUserManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

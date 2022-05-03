@@ -788,13 +788,6 @@ public class IoTDBDescriptor {
       // mqtt
       loadMqttProps(properties);
 
-      commonConfig.setAuthorizerProvider(
-          properties.getProperty(
-              "authorizer_provider_class", commonConfig.getAuthorizerProvider()));
-      // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-      commonConfig.setOpenIdProviderUrl(
-          properties.getProperty("openID_url", commonConfig.getOpenIdProviderUrl()));
-
       conf.setEnablePartition(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -804,11 +797,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "partition_interval", String.valueOf(conf.getPartitionInterval()))));
-
-      commonConfig.setAdminName(properties.getProperty("admin_name", commonConfig.getAdminName()));
-
-      commonConfig.setAdminPassword(
-          properties.getProperty("admin_password", commonConfig.getAdminPassword()));
 
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
@@ -821,15 +809,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
-
-      commonConfig.setEncryptDecryptProvider(
-          properties.getProperty(
-              "iotdb_server_encrypt_decrypt_provider", commonConfig.getEncryptDecryptProvider()));
-
-      commonConfig.setEncryptDecryptProviderParameter(
-          properties.getProperty(
-              "iotdb_server_encrypt_decrypt_provider_parameter",
-              commonConfig.getEncryptDecryptProviderParameter()));
 
       conf.setDataNodeSchemaCacheSize(
           Integer.parseInt(
@@ -891,6 +870,27 @@ public class IoTDBDescriptor {
           .setKerberosPrincipal(
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
+
+      commonConfig.setAuthorizerProvider(
+          properties.getProperty(
+              "authorizer_provider_class", commonConfig.getAuthorizerProvider()));
+      // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
+      commonConfig.setOpenIdProviderUrl(
+          properties.getProperty("openID_url", commonConfig.getOpenIdProviderUrl()));
+      commonConfig.setAdminName(properties.getProperty("admin_name", commonConfig.getAdminName()));
+
+      commonConfig.setAdminPassword(
+          properties.getProperty("admin_password", commonConfig.getAdminPassword()));
+      commonConfig.setEncryptDecryptProvider(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider", commonConfig.getEncryptDecryptProvider()));
+
+      commonConfig.setEncryptDecryptProviderParameter(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider_parameter",
+              commonConfig.getEncryptDecryptProviderParameter()));
+      commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
+      commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
 
       // timed flush memtable
       loadTimedService(properties);
