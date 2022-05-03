@@ -106,10 +106,7 @@ public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client
         throws Exception {
       Constructor<SyncDataNodeDataBlockServiceClient> constructor =
           SyncDataNodeDataBlockServiceClient.class.getConstructor(
-              clientFactoryProperty.getProtocolFactory().getClass(),
-              int.class,
-              endpoint.getClass(),
-              clientManager.getClass());
+              TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncDataNodeDataBlockServiceClient.class,
