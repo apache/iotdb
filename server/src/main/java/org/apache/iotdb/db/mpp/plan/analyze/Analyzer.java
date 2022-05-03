@@ -59,6 +59,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -429,6 +430,14 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showStorageGroupStatement);
       analysis.setRespDatasetHeader(HeaderConstant.showStorageGroupHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowTTL(ShowTTLStatement showTTLStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showTTLStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showTTLHeader);
       return analysis;
     }
 
