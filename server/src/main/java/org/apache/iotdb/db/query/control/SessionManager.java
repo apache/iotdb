@@ -130,7 +130,6 @@ public class SessionManager {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
 
-      sessionId = requestSessionId(username, zoneId, clientVersion);
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
     }
 
