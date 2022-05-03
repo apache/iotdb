@@ -45,6 +45,8 @@ import java.util.Set;
 
 public class TimestampOperand extends LeafOperand {
 
+  public static final PartialPath TIMESTAMP_PARTIAL_PATH = new PartialPath("Time", false);
+
   public TimestampOperand() {
     // do nothing
   }
@@ -54,22 +56,27 @@ public class TimestampOperand extends LeafOperand {
   }
 
   @Override
+  public boolean isTimeSeriesGeneratingFunctionExpression() {
+    return true;
+  }
+
+  @Override
   public void concat(
       List<PartialPath> prefixPaths,
       List<Expression> resultExpressions,
       PathPatternTree patternTree) {
-    // do nothing
+    resultExpressions.add(this);
   }
 
   @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    // do nothing
+    resultExpressions.add(this);
   }
 
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws StatementAnalyzeException {
-    // do nothing
+    resultExpressions.add(this);
   }
 
   @Override
@@ -77,12 +84,12 @@ public class TimestampOperand extends LeafOperand {
       org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
       List<Expression> resultExpressions)
       throws LogicalOptimizeException {
-    // do nothing
+    resultExpressions.add(this);
   }
 
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
-    // do nothing
+    pathSet.add(TIMESTAMP_PARTIAL_PATH);
   }
 
   @Override
