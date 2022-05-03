@@ -105,10 +105,7 @@ public class SyncConfigNodeIServiceClient extends ConfigIService.Client
         throws Exception {
       Constructor<SyncConfigNodeIServiceClient> constructor =
           SyncConfigNodeIServiceClient.class.getConstructor(
-              clientFactoryProperty.getProtocolFactory().getClass(),
-              int.class,
-              endpoint.getClass(),
-              clientManager.getClass());
+              TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass());
       return new DefaultPooledObject<>(
           SyncThriftClientWithErrorHandler.newErrorHandler(
               SyncConfigNodeIServiceClient.class,

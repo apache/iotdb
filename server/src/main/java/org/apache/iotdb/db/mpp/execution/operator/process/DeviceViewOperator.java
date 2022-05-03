@@ -114,7 +114,7 @@ public class DeviceViewOperator implements ProcessOperator {
     }
     // construct device column
     ColumnBuilder deviceColumnBuilder = new BinaryColumnBuilder(null, 1);
-    deviceColumnBuilder.writeObject(new Binary(getCurDeviceName()));
+    deviceColumnBuilder.writeBinary(new Binary(getCurDeviceName()));
     newValueColumns[0] =
         new RunLengthEncodedColumn(deviceColumnBuilder.build(), tsBlock.getPositionCount());
     // construct other null columns

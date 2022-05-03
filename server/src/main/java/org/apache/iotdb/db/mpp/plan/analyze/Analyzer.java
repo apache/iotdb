@@ -23,11 +23,14 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
@@ -59,6 +62,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -122,6 +126,11 @@ public class Analyzer {
 
         // request schema fetch API
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+        // If there is no leaf node in the schema tree, the query should be completed immediately
+        if (schemaTree.isEmpty()) {
+          analysis.setRespDatasetHeader(new DatasetHeader(new ArrayList<>(), false));
+          return analysis;
+        }
 
         List<Pair<Expression, String>> outputExpressions;
         Set<Expression> selectExpressions = new HashSet<>();
@@ -642,6 +651,14 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showStorageGroupStatement);
       analysis.setRespDatasetHeader(HeaderConstant.showStorageGroupHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowTTL(ShowTTLStatement showTTLStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showTTLStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showTTLHeader);
       return analysis;
     }
 

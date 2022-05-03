@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 

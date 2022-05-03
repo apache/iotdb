@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager;
@@ -34,6 +34,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.ColumnMerger;
@@ -321,7 +322,7 @@ public class LocalExecutionPlanner {
               seriesPath,
               node.getAllSensors(),
               operatorContext,
-              node.getAggregateFuncList(),
+              null,
               node.getTimeFilter(),
               ascending,
               node.getGroupByTimeParameter());
@@ -371,7 +372,14 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitOffset(OffsetNode node, LocalExecutionPlanContext context) {
-      return super.visitOffset(node, context);
+      Operator child = node.getChild().accept(this, context);
+      return new OffsetOperator(
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              OffsetOperator.class.getSimpleName()),
+          node.getOffset(),
+          child);
     }
 
     @Override

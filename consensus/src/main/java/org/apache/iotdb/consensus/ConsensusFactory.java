@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
