@@ -34,7 +34,7 @@ public class DeleteDataRegionNodeSerdeTest {
   @Test
   public void testSerializeAndDeserialize() throws IllegalPathException {
     DeleteRegionNode dataRegionNode = new DeleteRegionNode(new PlanNodeId("plan node 1"));
-    DataRegionId dataRegionId = new DataRegionId();
+    DataRegionId dataRegionId = new DataRegionId(1);
     dataRegionNode.setConsensusGroupId(dataRegionId);
     ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
     dataRegionNode.serialize(byteBuffer);
