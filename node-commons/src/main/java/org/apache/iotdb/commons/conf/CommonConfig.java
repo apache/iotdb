@@ -27,11 +27,11 @@ public class CommonConfig {
 
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
-      "org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer";
+      "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
   /** Encryption provider class */
   private String encryptDecryptProvider =
-      "org.apache.iotdb.commons.auth.encrypt.MessageDigestEncrypt";
+      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
 
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
