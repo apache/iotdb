@@ -19,46 +19,19 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-import java.util.Collections;
-import java.util.List;
-
-public class UnSetTTLStatement extends Statement implements IConfigStatement {
-  private PartialPath storageGroupPath;
+public class UnSetTTLStatement extends SetTTLStatement {
 
   public UnSetTTLStatement() {
     super();
+    ttl = Long.MAX_VALUE;
     statementType = StatementType.TTL;
-  }
-
-  public PartialPath getStorageGroupPath() {
-    return storageGroupPath;
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitUnSetTTL(this, context);
-  }
-
-  public void setStorageGroupPath(PartialPath storageGroupPath) {
-    this.storageGroupPath = storageGroupPath;
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.WRITE;
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    return storageGroupPath != null
-        ? Collections.singletonList(storageGroupPath)
-        : Collections.emptyList();
   }
 }

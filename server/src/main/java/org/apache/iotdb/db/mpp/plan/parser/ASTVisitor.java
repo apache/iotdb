@@ -1708,7 +1708,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public Statement visitSetTTL(IoTDBSqlParser.SetTTLContext ctx) {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
-    int ttl = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
+    long ttl = Long.parseLong(ctx.INTEGER_LITERAL().getText());
     setTTLStatement.setStorageGroupPath(path);
     setTTLStatement.setTTL(ttl);
     return setTTLStatement;

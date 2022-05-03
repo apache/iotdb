@@ -48,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ShowTTLTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ShowStorageGroupTask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ShowTTLTask.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 

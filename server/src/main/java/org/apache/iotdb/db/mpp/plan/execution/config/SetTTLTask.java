@@ -40,14 +40,16 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 public class SetTTLTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SetStorageGroupTask.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLTask.class);
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final SetTTLStatement setTTLStatement;
+  protected final SetTTLStatement statement;
+  protected String taskName;
 
-  public SetTTLTask(SetTTLStatement setTTLStatement) {
-    this.setTTLStatement = setTTLStatement;
+  public SetTTLTask(SetTTLStatement statement) {
+    this.statement = statement;
+    this.taskName = "set ttl";
   }
 
   @Override
@@ -55,8 +57,7 @@ public class SetTTLTask implements IConfigTask {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     if (config.isClusterMode()) {
       TSetTTLReq setTTLReq =
-          new TSetTTLReq(
-              setTTLStatement.getStorageGroupPath().getFullPath(), setTTLStatement.getTTL());
+          new TSetTTLReq(statement.getStorageGroupPath().getFullPath(), statement.getTTL());
       ConfigNodeClient configNodeClient = null;
       try {
         configNodeClient = new ConfigNodeClient();
@@ -65,8 +66,9 @@ public class SetTTLTask implements IConfigTask {
         // Get response or throw exception
         if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
           LOGGER.error(
-              "Failed to execute set ttl {} in config node, status is {}.",
-              setTTLStatement.getStorageGroupPath(),
+              "Failed to execute {} {} in config node, status is {}.",
+              taskName,
+              statement.getStorageGroupPath(),
               tsStatus);
           future.setException(new StatementExecutionException(tsStatus));
         } else {
@@ -82,8 +84,7 @@ public class SetTTLTask implements IConfigTask {
       }
     } else {
       try {
-        LocalConfigNode.getInstance()
-            .setTTL(setTTLStatement.getStorageGroupPath(), setTTLStatement.getTTL());
+        LocalConfigNode.getInstance().setTTL(statement.getStorageGroupPath(), statement.getTTL());
       } catch (MetadataException | IOException e) {
         future.setException(e);
       }

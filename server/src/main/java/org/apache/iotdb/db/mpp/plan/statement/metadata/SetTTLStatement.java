@@ -30,8 +30,8 @@ import java.util.Collections;
 import java.util.List;
 
 public class SetTTLStatement extends Statement implements IConfigStatement {
-  private PartialPath storageGroupPath;
-  private int ttl;
+  protected PartialPath storageGroupPath;
+  protected long ttl;
 
   public SetTTLStatement() {
     super();
@@ -42,7 +42,7 @@ public class SetTTLStatement extends Statement implements IConfigStatement {
     return storageGroupPath;
   }
 
-  public int getTTL() {
+  public long getTTL() {
     return ttl;
   }
 
@@ -55,7 +55,7 @@ public class SetTTLStatement extends Statement implements IConfigStatement {
     this.storageGroupPath = storageGroupPath;
   }
 
-  public void setTTL(int ttl) {
+  public void setTTL(long ttl) {
     this.ttl = ttl;
   }
 
