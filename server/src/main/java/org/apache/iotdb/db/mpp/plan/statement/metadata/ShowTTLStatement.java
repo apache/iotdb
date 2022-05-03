@@ -24,17 +24,12 @@ import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ShowTTLStatement extends ShowStatement implements IConfigStatement {
-  private final List<PartialPath> pathPatterns;
-  private final boolean isAll;
-
-  public ShowTTLStatement(List<PartialPath> pathPatterns, boolean isAll) {
-    super();
-    this.pathPatterns = pathPatterns;
-    this.isAll = isAll;
-  }
+  private List<PartialPath> pathPatterns = new ArrayList<>();
+  private boolean isAll = false;
 
   public boolean isAll() {
     return isAll;
@@ -53,5 +48,13 @@ public class ShowTTLStatement extends ShowStatement implements IConfigStatement 
   @Override
   public List<PartialPath> getPaths() {
     return pathPatterns;
+  }
+
+  public void addPathPatterns(PartialPath pathPattern) {
+    pathPatterns.add(pathPattern);
+  }
+
+  public void setAll(boolean all) {
+    isAll = all;
   }
 }

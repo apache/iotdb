@@ -66,6 +66,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -1719,6 +1720,23 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     PartialPath partialPath = parsePrefixPath(ctx.prefixPath());
     unSetTTLStatement.setStorageGroupPath(partialPath);
     return unSetTTLStatement;
+  }
+
+  @Override
+  public Statement visitShowTTL(IoTDBSqlParser.ShowTTLContext ctx) {
+    ShowTTLStatement showTTLStatement = new ShowTTLStatement();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+      PartialPath partialPath = parsePrefixPath(prefixPathContext);
+      showTTLStatement.addPathPatterns(partialPath);
+    }
+    return showTTLStatement;
+  }
+
+  @Override
+  public Statement visitShowAllTTL(IoTDBSqlParser.ShowAllTTLContext ctx) {
+    ShowTTLStatement showTTLStatement = new ShowTTLStatement();
+    showTTLStatement.setAll(true);
+    return showTTLStatement;
   }
 
   /** function for parsing file path used by LOAD statement. */
