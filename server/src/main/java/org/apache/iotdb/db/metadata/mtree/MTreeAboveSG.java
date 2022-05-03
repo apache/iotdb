@@ -44,9 +44,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -64,8 +61,6 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 // Since the MTreeAboveSG is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.
 public class MTreeAboveSG {
-
-  private final Logger logger = LoggerFactory.getLogger(MTreeAboveSG.class);
 
   private IMNode root;
   private IMTreeStore store;
