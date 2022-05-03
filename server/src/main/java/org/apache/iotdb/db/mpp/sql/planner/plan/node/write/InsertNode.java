@@ -29,10 +29,7 @@ import org.apache.iotdb.db.mpp.sql.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -40,7 +37,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -142,55 +138,37 @@ public abstract class InsertNode extends WritePlanNode {
     this.deviceID = deviceID;
   }
 
-  protected void serializeMeasurementSchemaToWAL(IWALByteBufferView buffer) {
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      WALWriteUtils.write(measurementSchema, buffer);
-    }
-  }
-
-  protected int serializeMeasurementSchemaSize() {
+  /** Serialized size of measurement schemas, ignoring failed time series */
+  protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementId());
-      byteLen += 3 * Byte.BYTES;
-      Map<String, String> props = measurementSchema.getProps();
-      if (props == null) {
-        byteLen += Integer.BYTES;
-      } else {
-        byteLen += Integer.BYTES;
-        for (Map.Entry<String, String> entry : props.entrySet()) {
-          byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
-          byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
-        }
+    for (int i = 0; i < measurements.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
       }
+      byteLen = WALWriteUtils.sizeToWrite(measurementSchemas[i]);
     }
     return byteLen;
   }
 
-  /** Make sure the measurement schema is already inited before calling this */
-  protected void deserializeMeasurementSchema(DataInputStream stream) throws IOException {
-    for (int i = 0; i < measurementSchemas.length; i++) {
-
-      measurementSchemas[i] =
-          new MeasurementSchema(
-              ReadWriteIOUtils.readString(stream),
-              TSDataType.deserialize(ReadWriteIOUtils.readByte(stream)),
-              TSEncoding.deserialize(ReadWriteIOUtils.readByte(stream)),
-              CompressionType.deserialize(ReadWriteIOUtils.readByte(stream)));
-
-      int size = ReadWriteIOUtils.readInt(stream);
-      if (size > 0) {
-        Map<String, String> props = new HashMap<>();
-        String key;
-        String value;
-        for (int j = 0; j < size; j++) {
-          key = ReadWriteIOUtils.readString(stream);
-          value = ReadWriteIOUtils.readString(stream);
-          props.put(key, value);
-        }
-        measurementSchemas[i].setProps(props);
+  /** Serialize measurement schemas, ignoring failed time series */
+  protected void serializeMeasurementSchemasToWAL(IWALByteBufferView buffer) {
+    for (int i = 0; i < measurements.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
       }
+      WALWriteUtils.write(measurementSchemas[i], buffer);
+    }
+  }
 
+  /**
+   * Deserialize measurement schemas , Make sure the measurement schemas and measurements have been
+   * created before calling this
+   */
+  protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {
+    for (int i = 0; i < measurementSchemas.length; i++) {
+      measurementSchemas[i] = MeasurementSchema.deserializeFrom(stream);
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }

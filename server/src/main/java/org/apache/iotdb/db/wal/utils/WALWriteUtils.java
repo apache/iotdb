@@ -173,4 +173,22 @@ public class WALWriteUtils {
     }
     return len;
   }
+
+  public static int sizeToWrite(MeasurementSchema measurementSchema) {
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.sizeToWrite(measurementSchema.getMeasurementId());
+    byteLen += 3 * Byte.BYTES;
+
+    Map<String, String> props = measurementSchema.getProps();
+    byteLen += Integer.BYTES;
+    if (props != null) {
+      byteLen += Integer.BYTES;
+      for (Map.Entry<String, String> entry : props.entrySet()) {
+        byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+        byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
+      }
+    }
+
+    return byteLen;
+  }
 }
