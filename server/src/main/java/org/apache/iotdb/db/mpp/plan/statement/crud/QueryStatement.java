@@ -21,9 +21,6 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -35,11 +32,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
-import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -258,46 +250,6 @@ public class QueryStatement extends Statement {
     return new ArrayList<>(pathSet);
   }
 
-  public DatasetHeader constructDatasetHeader() {
-    List<ColumnHeader> columnHeaders = new ArrayList<>();
-    if (this.isAlignByDevice()) {
-      // add DEVICE column
-      columnHeaders.add(new ColumnHeader(HeaderConstant.COLUMN_DEVICE, TSDataType.TEXT, null));
-
-      // TODO: consider ALIGN BY DEVICE
-    } else {
-      columnHeaders.addAll(
-          this.getSelectComponent().getResultColumns().stream()
-              .map(ResultColumn::constructColumnHeader)
-              .collect(Collectors.toList()));
-    }
-    return new DatasetHeader(columnHeaders, false);
-  }
-
-  /**
-   * If path is a vectorPartialPath, we return its measurementId + subMeasurement as the final
-   * measurement. e.g. path: root.sg.d1.vector1[s1], return "vector1.s1".
-   */
-  private String getMeasurementName(PartialPath path, String aggregation) {
-    String initialMeasurement = path.getMeasurement();
-    if (aggregation != null) {
-      initialMeasurement = aggregation + "(" + initialMeasurement + ")";
-    }
-    return initialMeasurement;
-  }
-
-  private PartialPath getPathFromExpression(Expression expression) {
-    return expression instanceof TimeSeriesOperand
-        ? ((TimeSeriesOperand) expression).getPath()
-        : (((FunctionExpression) expression).getPaths().get(0));
-  }
-
-  private String getAggregationFromExpression(Expression expression) {
-    return expression.isBuiltInAggregationFunctionExpression()
-        ? ((FunctionExpression) expression).getFunctionName()
-        : null;
-  }
-
   /** semantic check */
   public void selfCheck() {
     if (isAlignByDevice()) {
@@ -312,17 +264,6 @@ public class QueryStatement extends Statement {
         }
       }
     }
-  }
-
-  /**
-   * Check datatype consistency in ALIGN BY DEVICE.
-   *
-   * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
-   * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
-   */
-  private boolean checkDataTypeConsistency(
-      TSDataType checkedDataType, MeasurementInfo measurementInfo) {
-    return measurementInfo == null || checkedDataType.equals(measurementInfo.getColumnDataType());
   }
 
   @Override

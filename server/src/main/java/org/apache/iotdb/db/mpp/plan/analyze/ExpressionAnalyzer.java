@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
@@ -46,6 +49,9 @@ import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.db.query.expression.unary.UnaryExpression;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.commons.lang.Validate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,14 +59,7 @@ import java.util.List;
 
 public class ExpressionAnalyzer {
 
-  public static ExpressionAnalysis analyzeExpression(
-      Expression expression, SchemaTree schemaTree, TypeProvider typeProvider) {
-    List<Expression> outputExpressions =
-        removeWildcardInExpression(expression, schemaTree, typeProvider);
-    return new ExpressionAnalysis(outputExpressions);
-  }
-
-  private static List<Expression> removeWildcardInExpression(
+  public static List<Expression> removeWildcardInExpression(
       Expression expression, SchemaTree schemaTree, TypeProvider typeProvider) {
     if (expression instanceof BinaryExpression) {
       List<Expression> leftExpressions =
@@ -259,5 +258,81 @@ public class ExpressionAnalyzer {
 
   public static List<Expression> searchSourceExpressions(Expression selectExpr) {
     return null;
+  }
+
+  public static Pair<Expression, String> getMeasurementWithAliasInExpression(
+      Expression expression, String alias) {
+    if (expression instanceof TimeSeriesOperand) {
+      String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+      if (measurement.equals("**")) {
+        throw new SemanticException(
+            "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
+      }
+      if (alias != null && measurement.equals("*")) {
+        throw new SemanticException(
+            String.format(
+                "ALIGN BY DEVICE: alias '%s' can only be matched with one measurement", alias));
+      }
+      Expression measurementExpression;
+      try {
+        measurementExpression = new TimeSeriesOperand(new PartialPath(measurement));
+        return new Pair<>(measurementExpression, alias);
+      } catch (IllegalPathException e) {
+        throw new SemanticException("ALIGN BY DEVICE: illegal measurement name: " + measurement);
+      }
+    } else if (expression instanceof FunctionExpression) {
+      if (expression.getExpressions().size() > 1) {
+        throw new SemanticException(
+            "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
+      }
+      Expression measurementFunctionExpression =
+          new FunctionExpression(
+              ((FunctionExpression) expression).getFunctionName(),
+              ((FunctionExpression) expression).getFunctionAttributes(),
+              Collections.singletonList(
+                  getMeasurementWithAliasInExpression(expression.getExpressions().get(0), alias)
+                      .left));
+      return new Pair<>(measurementFunctionExpression, alias);
+    } else {
+      throw new SemanticException(
+          "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
+    }
+  }
+
+  public static PartialPath getPathInLeafExpression(Expression expression) {
+    if (expression instanceof TimeSeriesOperand) {
+      return ((TimeSeriesOperand) expression).getPath();
+    } else if (expression instanceof FunctionExpression) {
+      Validate.isTrue(expression.getExpressions().size() == 1);
+      Validate.isTrue(expression.getExpressions().get(0) instanceof TimeSeriesOperand);
+      return ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static Expression replacePathInExpression(Expression expression, PartialPath path) {
+    if (expression instanceof TimeSeriesOperand) {
+      return new TimeSeriesOperand(path);
+    } else if (expression instanceof FunctionExpression) {
+      return new FunctionExpression(
+          ((FunctionExpression) expression).getFunctionName(),
+          ((FunctionExpression) expression).getFunctionAttributes(),
+          Collections.singletonList(new TimeSeriesOperand(path)));
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static Expression replacePathInExpression(Expression expression, String path) {
+    PartialPath newPath;
+    try {
+      newPath = new PartialPath(path);
+    } catch (IllegalPathException e) {
+      throw new SemanticException("illegal path: " + path);
+    }
+    return replacePathInExpression(expression, newPath);
   }
 }

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
@@ -74,7 +73,7 @@ public class Analysis {
   private List<FillDescriptor> fillDescriptorList;
 
   // a global time filter used in `initQueryDataSource`
-  private IExpression globalTimeFilter;
+  private Filter globalTimeFilter;
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
@@ -118,12 +117,12 @@ public class Analysis {
     this.schemaTree = schemaTree;
   }
 
-  public IExpression getGlobalTimeFilter() {
+  public Filter getGlobalTimeFilter() {
     return globalTimeFilter;
   }
 
-  public void setGlobalTimeFilter(IExpression expression) {
-    this.globalTimeFilter = expression;
+  public void setGlobalTimeFilter(Filter timeFilter) {
+    this.globalTimeFilter = timeFilter;
   }
 
   public DatasetHeader getRespDatasetHeader() {

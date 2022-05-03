@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -46,6 +47,13 @@ public class AnalyzerTest {
         "Measurement under an aligned device is not allowed to have the same measurement name");
   }
 
+  @Test
+  public void test() {
+    Analysis analysis =
+        analyzeSQL(
+            "SELECT sum(s1), sum(s1) as t, count(s2), max_value(*) FROM root.sg.* ALIGN BY DEVICE");
+  }
+
   private void assertAnalyzeSemanticException(String sql, String message) {
     try {
       Analyzer analyzer =
@@ -58,5 +66,21 @@ public class AnalyzerTest {
     } catch (RuntimeException e) {
       Assert.assertTrue(e.getMessage().contains(message));
     }
+  }
+
+  private Analysis analyzeSQL(String sql) {
+    try {
+      Statement statement =
+          StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+      MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+      Analyzer analyzer =
+          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+      return analyzer.analyze(statement);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+    fail();
+    return null;
   }
 }

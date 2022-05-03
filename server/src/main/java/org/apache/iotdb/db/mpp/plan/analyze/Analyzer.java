@@ -25,14 +25,18 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
+import org.apache.iotdb.db.mpp.plan.rewriter.ColumnPaginationController;
 import org.apache.iotdb.db.mpp.plan.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
@@ -45,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatemen
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
@@ -61,7 +66,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang.Validate;
@@ -122,11 +127,11 @@ public class Analyzer {
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
 
         List<Pair<Expression, String>> outputExpressions;
-        List<Expression> selectExpressions = new ArrayList<>();
+        Set<Expression> selectExpressions = new HashSet<>();
         if (!queryStatement.isAlignByDevice()) {
           outputExpressions = analyzeSelect(queryStatement, schemaTree);
           selectExpressions =
-              outputExpressions.stream().map(Pair::getLeft).distinct().collect(Collectors.toList());
+              outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet());
         } else {
           outputExpressions = analyzeFrom(queryStatement, schemaTree, selectExpressions);
         }
@@ -137,8 +142,7 @@ public class Analyzer {
         }
 
         if (queryStatement.getWhereCondition() != null) {
-          IExpression globalTimeFilter =
-              analyzeWhere(queryStatement, schemaTree, selectExpressions);
+          Filter globalTimeFilter = analyzeWhere(queryStatement, schemaTree, selectExpressions);
           analysis.setGlobalTimeFilter(globalTimeFilter);
         }
 
@@ -181,7 +185,7 @@ public class Analyzer {
           analysis.setFillDescriptorList(fillDescriptorList);
         }
 
-        DatasetHeader datasetHeader = analyzeOutput(outputExpressions);
+        DatasetHeader datasetHeader = analyzeOutput(outputExpressions, false);
         analysis.setRespDatasetHeader(datasetHeader);
         analysis.setTypeProvider(typeProvider);
 
@@ -203,12 +207,110 @@ public class Analyzer {
       return analysis;
     }
 
-    private List<FillDescriptor> analyzeFill(QueryStatement queryStatement) {
-      return null;
+    private List<Pair<Expression, String>> analyzeSelect(
+        QueryStatement queryStatement, SchemaTree schemaTree) {
+      List<Pair<Expression, String>> resultExpressions = new ArrayList<>();
+      ColumnPaginationController paginationController =
+          new ColumnPaginationController(
+              queryStatement.getSeriesLimit(),
+              queryStatement.getSeriesOffset(),
+              queryStatement instanceof LastQueryStatement || queryStatement.isGroupByLevel());
+
+      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
+        boolean hasAlias = resultColumn.hasAlias();
+        List<Expression> outputExpressions =
+            ExpressionAnalyzer.removeWildcardInExpression(
+                resultColumn.getExpression(), schemaTree, typeProvider);
+        if (hasAlias && outputExpressions.size() > 1) {
+          throw new SemanticException(
+              String.format(
+                  "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
+        }
+        for (Expression outputExpression : outputExpressions) {
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            continue;
+          }
+          if (paginationController.hasCurLimit()) {
+            resultExpressions.add(
+                new Pair<>(outputExpression, hasAlias ? resultColumn.getAlias() : null));
+            paginationController.consumeLimit();
+          } else {
+            break;
+          }
+        }
+      }
+      return resultExpressions;
     }
 
-    private FilterNullParameter analyzeWithoutNull(
-        QueryStatement queryStatement, SchemaTree schemaTree) {
+    private List<Pair<Expression, String>> analyzeFrom(
+        QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> selectExpressions) {
+      List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
+      List<MeasurementPath> allSelectedPaths = new ArrayList<>();
+      for (PartialPath devicePattern : devicePatternList) {
+        List<DeviceSchemaInfo> deviceSchemaInfos = schemaTree.getMatchedDevices(devicePattern);
+        for (DeviceSchemaInfo deviceSchema : deviceSchemaInfos) {
+          allSelectedPaths.addAll(deviceSchema.getMeasurements());
+        }
+      }
+      Map<String, List<MeasurementPath>> measurementNameToPathsMap = new HashMap<>();
+      for (MeasurementPath measurementPath : allSelectedPaths) {
+        measurementNameToPathsMap
+            .computeIfAbsent(measurementPath.getMeasurement(), key -> new ArrayList<>())
+            .add(measurementPath);
+      }
+      measurementNameToPathsMap.values().forEach(Analyzer::checkDataTypeConsistency);
+
+      List<Pair<Expression, String>> measurementWithAliasList = analyzeMeasurements(queryStatement);
+      List<Pair<Expression, String>> resultExpressions = new ArrayList<>();
+      for (Pair<Expression, String> measurementWithAlias : measurementWithAliasList) {
+        String measurement =
+            ExpressionAnalyzer.getPathInLeafExpression(measurementWithAlias.left).toString();
+        if (measurementNameToPathsMap.containsKey(measurement)) {
+          List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurement);
+          selectExpressions.addAll(
+              measurementPaths.stream()
+                  .map(
+                      measurementPath ->
+                          ExpressionAnalyzer.replacePathInExpression(
+                              measurementWithAlias.left, measurementPath))
+                  .collect(Collectors.toList()));
+          resultExpressions.add(measurementWithAlias);
+        } else if (measurement.equals("*")) {
+          for (String measurementName : measurementNameToPathsMap.keySet()) {
+            List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurementName);
+            selectExpressions.addAll(
+                measurementPaths.stream()
+                    .map(
+                        measurementPath ->
+                            ExpressionAnalyzer.replacePathInExpression(
+                                measurementWithAlias.left, measurementPath))
+                    .collect(Collectors.toList()));
+            resultExpressions.add(
+                new Pair<>(
+                    ExpressionAnalyzer.replacePathInExpression(
+                        measurementWithAlias.left, measurementName),
+                    measurementWithAlias.right));
+          }
+        } else {
+          // do nothing or warning
+        }
+      }
+      return resultExpressions;
+    }
+
+    private List<Pair<Expression, String>> analyzeMeasurements(QueryStatement queryStatement) {
+      return queryStatement.getSelectComponent().getResultColumns().stream()
+          .map(
+              resultColumn ->
+                  ExpressionAnalyzer.getMeasurementWithAliasInExpression(
+                      resultColumn.getExpression(), resultColumn.getAlias()))
+          .collect(Collectors.toList());
+    }
+
+    private Filter analyzeWhere(
+        QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> selectExpressions) {
+      // TODO: analyze query filter
       return null;
     }
 
@@ -219,41 +321,27 @@ public class Analyzer {
       return null;
     }
 
-    private IExpression analyzeWhere(
-        QueryStatement queryStatement, SchemaTree schemaTree, List<Expression> selectExpressions) {
-      // TODO: analyze query filter
-      return null;
-    }
-
-    private List<Pair<Expression, String>> analyzeSelect(
+    private FilterNullParameter analyzeWithoutNull(
         QueryStatement queryStatement, SchemaTree schemaTree) {
-      List<Pair<Expression, String>> resultExpressions = new ArrayList<>();
-      for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
-        boolean hasAlias = resultColumn.hasAlias();
-        ExpressionAnalysis expressionAnalysis =
-            ExpressionAnalyzer.analyzeExpression(
-                resultColumn.getExpression(), schemaTree, typeProvider);
-        List<Expression> outputExpressions = expressionAnalysis.getOutputExpressions();
-        if (hasAlias && outputExpressions.size() > 1) {
-          throw new SemanticException(
-              String.format(
-                  "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
-        }
-        for (Expression outputExpression : outputExpressions) {
-          resultExpressions.add(
-              new Pair<>(outputExpression, hasAlias ? resultColumn.getAlias() : null));
-        }
-      }
-      return resultExpressions;
-    }
-
-    private List<Pair<Expression, String>> analyzeFrom(
-        QueryStatement queryStatement, SchemaTree schemaTree, List<Expression> selectExpressions) {
-      return new ArrayList<>();
-    }
-
-    private DatasetHeader analyzeOutput(List<Pair<Expression, String>> outputExpressions) {
       return null;
+    }
+
+    private List<FillDescriptor> analyzeFill(QueryStatement queryStatement) {
+      return null;
+    }
+
+    private DatasetHeader analyzeOutput(
+        List<Pair<Expression, String>> outputExpressions, boolean isIgnoreTimestamp) {
+      List<ColumnHeader> columnHeaders =
+          outputExpressions.stream()
+              .map(
+                  expressionWithAlias -> {
+                    String columnName = expressionWithAlias.left.getExpressionString();
+                    String alias = expressionWithAlias.right;
+                    return new ColumnHeader(columnName, typeProvider.getType(columnName), alias);
+                  })
+              .collect(Collectors.toList());
+      return new DatasetHeader(columnHeaders, isIgnoreTimestamp);
     }
 
     @Override
@@ -586,6 +674,23 @@ public class Analyzer {
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(HeaderConstant.countLevelTimeSeriesHeader);
       return analysis;
+    }
+  }
+
+  /**
+   * Check datatype consistency in ALIGN BY DEVICE.
+   *
+   * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
+   * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
+   */
+  private static void checkDataTypeConsistency(List<MeasurementPath> measurementPaths) {
+    Validate.isTrue(measurementPaths.size() > 0);
+    TSDataType checkedDataType = measurementPaths.get(0).getSeriesType();
+    for (MeasurementPath path : measurementPaths) {
+      if (path.getSeriesType() != checkedDataType) {
+        throw new SemanticException(
+            "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
+      }
     }
   }
 }

@@ -38,7 +38,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -172,24 +171,6 @@ public class WildcardsRemover {
       }
     }
     return filterBinaryTree;
-  }
-
-  public List<MeasurementPath> removeWildcardInPath(PartialPath path)
-      throws StatementAnalyzeException {
-    try {
-      Pair<List<MeasurementPath>, Integer> pair =
-          schemaTree.searchMeasurementPaths(
-              path, paginationController.getCurLimit(), paginationController.getCurOffset(), false);
-      paginationController.consume(pair.left.size(), pair.right);
-      pair.left.forEach(
-          measurementPath ->
-              typeProvider.setType(measurementPath.getFullPath(), measurementPath.getSeriesType()));
-      return pair.left;
-    } catch (Exception e) {
-      e.printStackTrace();
-      throw new StatementAnalyzeException(
-          "error occurred when removing wildcard: " + e.getMessage());
-    }
   }
 
   private List<PartialPath> removeWildcardsInConcatPaths(List<PartialPath> originalPaths)
