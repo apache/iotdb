@@ -1177,8 +1177,7 @@
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
-                <!-- the following command does not work for fix spotless problem. can be deleted once the spotless problem is finally fixed.-->
-<!--                <argLine>&#45;&#45;illegal-access=permit &#45;&#45;add-opens=java.base/java.util.concurrent=ALL-UNNAMED &#45;&#45;add-opens=java.base/java.lang=ALL-UNNAMED &#45;&#45;add-opens=java.base/java.util=ALL-UNNAMED &#45;&#45;add-opens=java.base/java.nio=ALL-UNNAMED &#45;&#45;add-opens=java.base/java.io=ALL-UNNAMED &#45;&#45;add-opens=java.base/java.net=ALL-UNNAMED &#45;&#45;add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED &#45;&#45;add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED &#45;&#45;add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED &#45;&#45;add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED &#45;&#45;add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>-->
+                <argLine>--illegal-access=permit --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
             </properties>
         </profile>
         <!--
@@ -1498,7 +1497,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>@{surefire.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m</argLine>
                         </configuration>
                     </plugin>
                     <!-- for IT-->
@@ -1506,7 +1505,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
-                            <argLine>@{failsafe.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{failsafe.jacoco.args} -Xmx1024m</argLine>
                         </configuration>
                         <executions>
                             <execution>
