@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+import org.apache.iotdb.db.mpp.execution.config.SetTTLTask;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;

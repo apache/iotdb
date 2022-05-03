@@ -1702,7 +1702,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return setStorageGroupStatement;
   }
 
-  // TODO @spricoder add TTL
   @Override
   public Statement visitSetTTL(IoTDBSqlParser.SetTTLContext ctx) {
     SetTTLStatement setTTLStatement = new SetTTLStatement();
