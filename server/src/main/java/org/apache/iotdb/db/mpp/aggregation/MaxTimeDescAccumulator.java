@@ -19,9 +19,25 @@
 
 package org.apache.iotdb.db.mpp.aggregation;
 
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+
 public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
 
   private boolean hasCandidateResult = false;
+
+  // Column should be like: | Time | Value |
+  // Value is used to judge isNull()
+  @Override
+  public void addInput(Column[] column, TimeRange timeRange) {
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+        updateMaxTime(curTime);
+        break;
+      }
+    }
+  }
 
   @Override
   public boolean hasFinalResult() {

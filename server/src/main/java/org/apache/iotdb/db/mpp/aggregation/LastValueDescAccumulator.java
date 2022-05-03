@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.mpp.aggregation;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class LastValueDescAccumulator extends LastValueAccumulator {
@@ -39,6 +41,66 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
   public void reset() {
     hasCandidateResult = false;
     super.reset();
+  }
+
+  protected void addIntInput(Column[] column, TimeRange timeRange) {
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+        updateIntLastValue(column[1].getInt(i), curTime);
+        break;
+      }
+    }
+  }
+
+  protected void addLongInput(Column[] column, TimeRange timeRange) {
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+        updateLongLastValue(column[1].getLong(i), curTime);
+        break;
+      }
+    }
+  }
+
+  protected void addFloatInput(Column[] column, TimeRange timeRange) {
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+        updateFloatLastValue(column[1].getFloat(i), curTime);
+        break;
+      }
+    }
+  }
+
+  protected void addDoubleInput(Column[] column, TimeRange timeRange) {
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+        updateDoubleLastValue(column[1].getDouble(i), curTime);
+        break;
+      }
+    }
+  }
+
+  protected void addBooleanInput(Column[] column, TimeRange timeRange) {
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+        updateBooleanLastValue(column[1].getBoolean(i), curTime);
+        break;
+      }
+    }
+  }
+
+  protected void addBinaryInput(Column[] column, TimeRange timeRange) {
+    for (int i = 0; i < column[0].getPositionCount(); i++) {
+      long curTime = column[0].getLong(i);
+      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+        updateBinaryLastValue(column[1].getBinary(i), curTime);
+        break;
+      }
+    }
   }
 
   protected void updateIntLastValue(int value, long curTime) {
