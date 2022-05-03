@@ -28,9 +28,9 @@ public enum WALEntryType {
   DELETE_PLAN((byte) 2),
   /** snapshot of {@link org.apache.iotdb.db.engine.memtable.IMemTable} */
   MEMORY_TABLE_SNAPSHOT((byte) 3),
-  /** {@link org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode} */
+  /** {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode} */
   INSERT_ROW_NODE((byte) 4),
-  /** {@link org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode} */
+  /** {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode} */
   INSERT_TABLET_NODE((byte) 5),
   ;
 

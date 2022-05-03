@@ -35,9 +35,11 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
+import java.lang.reflect.Constructor;
 import java.net.SocketException;
 
-public class SyncDataNodeInternalServiceClient extends InternalService.Client {
+public class SyncDataNodeInternalServiceClient extends InternalService.Client
+    implements SyncThriftClient, AutoCloseable {
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
@@ -71,7 +73,7 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
     return clientManager;
   }
 
-  public void returnSelf() {
+  public void close() {
     if (clientManager != null) {
       clientManager.returnClient(endpoint, this);
     }
@@ -82,7 +84,7 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
-  public void close() {
+  public void invalidate() {
     getInputProtocol().getTransport().close();
   }
 
@@ -107,14 +109,19 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client {
     @Override
     public void destroyObject(
         TEndPoint endpoint, PooledObject<SyncDataNodeInternalServiceClient> pooledObject) {
-      pooledObject.getObject().close();
+      pooledObject.getObject().invalidate();
     }
 
     @Override
     public PooledObject<SyncDataNodeInternalServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
+      Constructor<SyncDataNodeInternalServiceClient> constructor =
+          SyncDataNodeInternalServiceClient.class.getConstructor(
+              TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass());
       return new DefaultPooledObject<>(
-          new SyncDataNodeInternalServiceClient(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
+              SyncDataNodeInternalServiceClient.class,
+              constructor,
               clientFactoryProperty.getProtocolFactory(),
               clientFactoryProperty.getConnectionTimeoutMs(),
               endpoint,

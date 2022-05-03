@@ -54,10 +54,6 @@ public class AsyncClientPool {
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
-      if (client == null) {
-        LOGGER.error("Can't get client for DataNode {}", endPoint);
-        return;
-      }
       client.createSchemaRegion(req, handler);
     } catch (IOException e) {
       LOGGER.error("Can't connect to DataNode {}", endPoint, e);
@@ -76,10 +72,6 @@ public class AsyncClientPool {
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
-      if (client == null) {
-        LOGGER.error("Can't get client for DataNode {}", endPoint);
-        return;
-      }
       client.createDataRegion(req, handler);
     } catch (IOException e) {
       LOGGER.error("Can't connect to DataNode {}", endPoint, e);

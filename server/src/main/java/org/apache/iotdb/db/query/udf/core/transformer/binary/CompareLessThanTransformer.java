@@ -29,7 +29,7 @@ public class CompareLessThanTransformer extends CompareBinaryTransformer {
   }
 
   @Override
-  protected boolean evaluateBoolean(double leftOperand, double rightOperand) {
+  protected boolean evaluate(double leftOperand, double rightOperand) {
     return Double.compare(leftOperand, rightOperand) < 0;
   }
 }
