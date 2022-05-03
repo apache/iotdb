@@ -37,19 +37,26 @@ public class IoTDBKeywordQueryIT {
       try (PreparedStatement stmt =
           conn.prepareStatement("INSERT INTO root.sg.d1(time, ?) values (?, ?)")) {
         for (String sensor : sensorNames) {
-          stmt.setString(1, sensor);
+          stmt.setString(1, columnWrapper(sensor));
           stmt.setLong(2, 1L);
           stmt.setInt(3, 1);
+          stmt.execute();
         }
       }
       try (Statement stmt = conn.createStatement()) {
         for (String sensor : sensorNames) {
           try (ResultSet rs =
               stmt.executeQuery("SELECT " + columnWrapper(sensor) + " FROM root.sg.d1")) {
-            Assert.assertTrue(rs.next());
+            System.out.println("Query sensor: " + sensor);
+            Assert.assertTrue(sensor, rs.next());
             long timestamp = rs.getLong("Time");
             Assert.assertEquals(1L, timestamp);
-            int value = rs.getInt("root.sg.d1." + columnWrapper(sensor));
+            // Here is the confusion
+            // Query root.sg.d1.select OK, but root.sg.d1.www.baidu.com is wrong
+            int value = rs.getInt("root.sg.d1." + sensor);
+            // Query root.sg.d1.`www.baidu.com` is OK, but root.sg.d1.`select` is wrong.
+            // int value = rs.getInt("root.sg.d1." + columnWrapper(sensor));
+            // So the user can't know when to use `` to wrap their business domain words.
             Assert.assertEquals(1, value);
             Assert.assertFalse(rs.next());
           }
@@ -63,6 +70,9 @@ public class IoTDBKeywordQueryIT {
    * keywords
    */
   private String columnWrapper(String column) {
+    if (column.contains("`")) {
+      column = column.replace("`", "``");
+    }
     return String.format("`%s`", column);
   }
 }
