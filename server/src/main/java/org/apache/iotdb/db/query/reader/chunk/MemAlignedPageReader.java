@@ -59,7 +59,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       // save the first not null value of each row
       Object firstNotNullObject = null;
       for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-        if (!tsBlock.getColumn(column).isNull(row)) {
+        if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(row)) {
           firstNotNullObject = tsBlock.getColumn(column).getObject(row);
           break;
         }
@@ -73,7 +73,9 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
               || valueFilter.satisfy(tsBlock.getTimeByIndex(row), firstNotNullObject))) {
         TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
         for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-          values[column] = tsBlock.getColumn(column).getTsPrimitiveType(row);
+          if (tsBlock.getColumn(column) != null) {
+            values[column] = tsBlock.getColumn(column).getTsPrimitiveType(row);
+          }
         }
         batchData.putVector(tsBlock.getTimeByIndex(row), values);
       }

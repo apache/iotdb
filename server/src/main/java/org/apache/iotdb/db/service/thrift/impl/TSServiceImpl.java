@@ -633,6 +633,7 @@ public class TSServiceImpl implements TSIEventHandler {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } catch (Exception e) {
+      e.printStackTrace();
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     }

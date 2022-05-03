@@ -47,6 +47,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   private final List<String> valueChunkNames;
 
+  private final List<TSDataType> dataTypes;
+
   private static final Logger logger = LoggerFactory.getLogger(AlignedReadOnlyMemChunk.class);
 
   private AlignedTVList chunkData;
@@ -66,6 +68,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     super();
     this.timeChunkName = schema.getMeasurementId();
     this.valueChunkNames = schema.getSubMeasurementsList();
+    this.dataTypes = schema.getSubMeasurementsTSDataTypeList();
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     List<TSEncoding> encodingList = schema.getSubMeasurementsTSEncodingList();
     this.chunkData = (AlignedTVList) tvList;
@@ -89,6 +92,16 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     timeStatistics.setEmpty(false);
     // update value chunk
     for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+      // empty value chunk for non-exist value column
+      if (tsBlock.getColumn(column) == null) {
+        Statistics valueStatistics = Statistics.getStatsByType(dataTypes.get(column));
+        valueStatistics.setEmpty(true);
+        IChunkMetadata valueChunkMetadata =
+            new ChunkMetadata(
+                valueChunkNames.get(column), dataTypes.get(column), 0, valueStatistics);
+        valueChunkMetadataList.add(valueChunkMetadata);
+        continue;
+      }
       Statistics valueStatistics =
           Statistics.getStatsByType(tsBlock.getColumn(column).getDataType());
       IChunkMetadata valueChunkMetadata =

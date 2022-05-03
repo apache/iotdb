@@ -911,6 +911,11 @@ public class AlignedTVList extends TVList {
 
     // value columns
     for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+      // skip non-exist column
+      // when there is a non-exist column, the Column in TsBlock is null
+      if (dataTypes.get(columnIndex) == null) {
+        continue;
+      }
       int deleteCursor = 0;
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
@@ -995,13 +1000,9 @@ public class AlignedTVList extends TVList {
     /**
      * because TV list may be share with different query, each iterator has to record its own size
      */
-    protected int iteSize = 0;
+    protected int iteSize;
     /** this field is effective only in the AlignedTvList in a AlignedRealOnlyMemChunk. */
     private List<List<TimeRange>> deletionList;
-
-    public AlignedIte() {
-      super();
-    }
 
     public AlignedIte(
         int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {

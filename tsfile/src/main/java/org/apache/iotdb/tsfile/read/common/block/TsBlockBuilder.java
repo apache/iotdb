@@ -95,6 +95,9 @@ public class TsBlockBuilder {
     for (int i = 0; i < valueColumnBuilders.length; i++) {
       // TODO use Type interface to encapsulate createColumnBuilder to each concrete type class
       // instead of switch-case
+      if (types.get(i) == null) {
+        continue;
+      }
       switch (types.get(i)) {
         case BOOLEAN:
           valueColumnBuilders[i] =
@@ -293,6 +296,9 @@ public class TsBlockBuilder {
 
     Column[] columns = new Column[valueColumnBuilders.length];
     for (int i = 0; i < columns.length; i++) {
+      if (valueColumnBuilders[i] == null) {
+        continue;
+      }
       columns[i] = valueColumnBuilders[i].build();
       if (columns[i].getPositionCount() != declaredPositions) {
         throw new IllegalStateException(
