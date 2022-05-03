@@ -177,8 +177,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
-import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
 

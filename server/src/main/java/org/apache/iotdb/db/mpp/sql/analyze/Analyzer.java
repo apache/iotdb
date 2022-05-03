@@ -34,7 +34,6 @@ import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.sql.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.sql.rewriter.ConcatPathRewriter;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.StatementNode;
 import org.apache.iotdb.db.mpp.sql.statement.StatementVisitor;
