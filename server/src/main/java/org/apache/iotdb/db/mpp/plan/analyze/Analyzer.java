@@ -149,7 +149,7 @@ public class Analyzer {
         }
 
         if (queryStatement.getFilterNullComponent() != null) {
-          FilterNullParameter filterNullParameter = analyzeWithoutNull(queryStatement, schemaTree);
+          FilterNullParameter filterNullParameter = analyzeWithoutNull(queryStatement, schemaTree, selectExpressions);
           analysis.setFilterNullParameter(filterNullParameter);
         }
 
@@ -367,8 +367,18 @@ public class Analyzer {
     }
 
     private FilterNullParameter analyzeWithoutNull(
-        QueryStatement queryStatement, SchemaTree schemaTree) {
-      return null;
+        QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> selectExpressions) {
+      FilterNullParameter filterNullParameter = new FilterNullParameter();
+      filterNullParameter.setFilterNullPolicy(queryStatement.getFilterNullComponent().getWithoutPolicyType());
+      List<Expression> resultFilterNullColumns = new ArrayList<>();
+      List<Expression> rawFilterNullColumns = queryStatement.getFilterNullComponent().getWithoutNullColumns();
+      for(Expression filterNullColumn : rawFilterNullColumns) {
+        List<Expression> resultExpressions =
+                ExpressionAnalyzer.removeWildcardInExpression(
+                        filterNullColumn, schemaTree, typeProvider);
+      }
+      filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
+      return filterNullParameter;
     }
 
     private List<FillDescriptor> analyzeFill(QueryStatement queryStatement) {
