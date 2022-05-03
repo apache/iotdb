@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.commons.lang3.Validate;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -313,16 +312,8 @@ public class SourceHandle implements ISourceHandle {
       int attempt = 0;
       while (attempt < MAX_ATTEMPT_TIMES) {
         attempt += 1;
-        SyncDataNodeDataBlockServiceClient client = null;
-        try {
-          client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
-          if (client == null) {
-            logger.warn("can't get client for node {}", remoteEndpoint);
-            if (attempt == MAX_ATTEMPT_TIMES) {
-              throw new TException("Can't get client for node " + remoteEndpoint);
-            }
-            continue;
-          }
+        try (SyncDataNodeDataBlockServiceClient client =
+            dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
           TGetDataBlockResponse resp = client.getDataBlock(req);
           List<TsBlock> tsBlocks = new ArrayList<>(resp.getTsBlocks().size());
           for (ByteBuffer byteBuffer : resp.getTsBlocks()) {
@@ -344,9 +335,6 @@ public class SourceHandle implements ISourceHandle {
               new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
           break;
         } catch (Throwable e) {
-          if (e instanceof TException && client != null) {
-            client.close();
-          }
           logger.error(
               "Failed to get data block from {} due to {}, attempt times: {}",
               remoteFragmentInstanceId,
@@ -360,10 +348,6 @@ public class SourceHandle implements ISourceHandle {
                   .free(localFragmentInstanceId.getQueryId(), reservedBytes);
               sourceHandleListener.onFailure(SourceHandle.this, e);
             }
-          }
-        } finally {
-          if (client != null) {
-            client.returnSelf();
           }
         }
       }
@@ -392,22 +376,11 @@ public class SourceHandle implements ISourceHandle {
           new TAcknowledgeDataBlockEvent(remoteFragmentInstanceId, startSequenceId, endSequenceId);
       while (attempt < MAX_ATTEMPT_TIMES) {
         attempt += 1;
-        SyncDataNodeDataBlockServiceClient client = null;
-        try {
-          client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
-          if (client == null) {
-            logger.warn("can't get client for node {}", remoteEndpoint);
-            if (attempt == MAX_ATTEMPT_TIMES) {
-              throw new TException("Can't get client for node " + remoteEndpoint);
-            }
-          } else {
-            client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
-            break;
-          }
+        try (SyncDataNodeDataBlockServiceClient client =
+            dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
+          client.onAcknowledgeDataBlockEvent(acknowledgeDataBlockEvent);
+          break;
         } catch (Throwable e) {
-          if (e instanceof TException && client != null) {
-            client.close();
-          }
           logger.error(
               "Failed to send ack data block event [{}, {}) to {} due to {}, attempt times: {}",
               startSequenceId,
@@ -419,10 +392,6 @@ public class SourceHandle implements ISourceHandle {
             synchronized (this) {
               sourceHandleListener.onFailure(SourceHandle.this, e);
             }
-          }
-        } finally {
-          if (client != null) {
-            client.returnSelf();
           }
         }
       }

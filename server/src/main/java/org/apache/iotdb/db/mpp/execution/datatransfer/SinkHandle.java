@@ -169,17 +169,9 @@ public class SinkHandle implements ISinkHandle {
             nextSequenceId - 1);
     while (attempt < MAX_ATTEMPT_TIMES) {
       attempt += 1;
-      SyncDataNodeDataBlockServiceClient client = null;
-      try {
-        client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
-        if (client == null) {
-          logger.warn("can't get client for node {}", remoteEndpoint);
-          if (attempt == MAX_ATTEMPT_TIMES) {
-            throw new TException("Can't get client for node " + remoteEndpoint);
-          }
-        } else {
-          client.onEndOfDataBlockEvent(endOfDataBlockEvent);
-        }
+      try (SyncDataNodeDataBlockServiceClient client =
+          dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
+        client.onEndOfDataBlockEvent(endOfDataBlockEvent);
         break;
       } catch (TException e) {
         logger.error(
@@ -189,9 +181,6 @@ public class SinkHandle implements ISinkHandle {
             e.getMessage(),
             attempt,
             e);
-        if (client != null) {
-          client.close();
-        }
         if (attempt == MAX_ATTEMPT_TIMES) {
           throw e;
         }
@@ -199,10 +188,6 @@ public class SinkHandle implements ISinkHandle {
         logger.error("can't connect to node {}", remoteEndpoint, e);
         if (attempt == MAX_ATTEMPT_TIMES) {
           throw e;
-        }
-      } finally {
-        if (client != null) {
-          client.returnSelf();
         }
       }
     }
@@ -364,22 +349,11 @@ public class SinkHandle implements ISinkHandle {
               blockSizes);
       while (attempt < MAX_ATTEMPT_TIMES) {
         attempt += 1;
-        SyncDataNodeDataBlockServiceClient client = null;
-        try {
-          client = dataBlockServiceClientManager.borrowClient(remoteEndpoint);
-          if (client == null) {
-            logger.warn("can't get client for node {}", remoteEndpoint);
-            if (attempt == MAX_ATTEMPT_TIMES) {
-              throw new TException("Can't get client for node " + remoteEndpoint);
-            }
-          } else {
-            client.onNewDataBlockEvent(newDataBlockEvent);
-          }
+        try (SyncDataNodeDataBlockServiceClient client =
+            dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
+          client.onNewDataBlockEvent(newDataBlockEvent);
           break;
         } catch (Throwable e) {
-          if (e instanceof TException && client != null) {
-            client.close();
-          }
           logger.error(
               "Failed to send new data block event to plan node {} of {} due to {}, attempt times: {}",
               remotePlanNodeId,
@@ -389,10 +363,6 @@ public class SinkHandle implements ISinkHandle {
               e);
           if (attempt == MAX_ATTEMPT_TIMES) {
             sinkHandleListener.onFailure(SinkHandle.this, e);
-          }
-        } finally {
-          if (client != null) {
-            client.returnSelf();
           }
         }
       }
