@@ -93,48 +93,49 @@ public class SessionManager {
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion)
       throws TException {
-    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
-    boolean status;
+    boolean loginStatus = false;
     String loginMessage = null;
+
     try {
-      status = AuthorizerManager.getInstance().login(username, password);
+      loginStatus = AuthorizerManager.getInstance().login(username, password);
     } catch (AuthException e) {
-      LOGGER.info("meet error while logging in.", e);
-      status = false;
       loginMessage = e.getMessage();
+      LOGGER.info("meet error while logging in.", e);
     }
 
-    long sessionId = -1;
-    if (status) {
+    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
+    if (loginStatus) {
       // check the version compatibility
-      boolean compatible = tsProtocolVersion.equals(CURRENT_RPC_VERSION);
-      if (!compatible) {
-        openSessionResp.setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
-        openSessionResp.setMessage(
-            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-        return openSessionResp.sessionId(sessionId);
+      if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
+        openSessionResp
+            .sessionId(-1)
+            .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
+            .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+      } else {
+        long sessionId = requestSessionId(username, zoneId, clientVersion);
+
+        LOGGER.info(
+            "{}: Login status: {}. User : {}, opens Session-{}",
+            IoTDBConstant.GLOBAL_DB_NAME,
+            openSessionResp.getMessage(),
+            username,
+            sessionId);
+        SessionTimeoutManager.getInstance().register(sessionId);
+
+        openSessionResp
+            .sessionId(sessionId)
+            .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .setMessage("Login successfully");
       }
-
-      openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      openSessionResp.setMessage("Login successfully");
-
-      sessionId = requestSessionId(username, zoneId, clientVersion);
-
-      LOGGER.info(
-          "{}: Login status: {}. User : {}, opens Session-{}",
-          IoTDBConstant.GLOBAL_DB_NAME,
-          openSessionResp.getMessage(),
-          username,
-          sessionId);
     } else {
-      openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
-      openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
-
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
-    }
 
-    SessionTimeoutManager.getInstance().register(sessionId);
-    return openSessionResp.sessionId(sessionId);
+      openSessionResp
+          .sessionId(-1)
+          .setMessage(loginMessage != null ? loginMessage : "Authentication failed.")
+          .setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
+    }
+    return openSessionResp;
   }
 
   public BasicOpenSessionResp openSession(
