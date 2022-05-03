@@ -2671,13 +2671,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        context.STRING_LITERAL().getText());
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean inWithoutNull) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        parseStringLiteral(context.STRING_LITERAL().getText()));
+        context.STRING_LITERAL().getText());
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
@@ -2788,14 +2788,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     } else if (predicate instanceof LogicNotExpression) {
       FilterOperator childFilter =
           convertExpressionToFilter(((LogicNotExpression) predicate).getExpression());
-      if (childFilter instanceof InOperator) {
-        filter = childFilter;
-        ((InOperator) filter).setNot(!((InOperator) filter).getNot());
-      } else {
-        filter = new FilterOperator(FilterType.KW_NOT);
-        filter.addChildOperator(
-            convertExpressionToFilter(((LogicNotExpression) predicate).getExpression()));
-      }
+      filter = new FilterOperator(FilterType.KW_NOT);
+      filter.addChildOperator(
+          convertExpressionToFilter(((LogicNotExpression) predicate).getExpression()));
     } else if (predicate instanceof LikeExpression) {
       filter =
           new LikeOperator(
@@ -2813,7 +2808,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           new InOperator(
               FilterType.IN,
               parsePathFromExpression(((InExpression) predicate).getExpression()),
-              false,
+              ((InExpression) predicate).isNotIn(),
               ((InExpression) predicate).getValues());
     } else if (FilterConstant.ExpressionToFilterType.containsKey(predicate.getExpressionType())) {
       filter =
