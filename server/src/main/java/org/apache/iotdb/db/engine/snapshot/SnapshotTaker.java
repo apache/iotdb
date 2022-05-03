@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.snapshot;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 
@@ -25,26 +27,53 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
- * SnapshotTaker takes data snapshot for a DataRegion in one time. It does so by creating
- * hard link for files or copying them. SnapshotTaker supports two different ways of
- * snapshot: Full Snapshot and Incremental Snapshot. The former takes a snapshot for all
- * files in an empty directory, and the latter takes a snapshot based on the snapshot that took before.
+ * SnapshotTaker takes data snapshot for a DataRegion in one time. It does so by creating hard link
+ * for files or copying them. SnapshotTaker supports two different ways of snapshot: Full Snapshot
+ * and Incremental Snapshot. The former takes a snapshot for all files in an empty directory, and
+ * the latter takes a snapshot based on the snapshot that took before.
  */
 public class SnapshotTaker {
-  private final static Logger LOGGER = LoggerFactory.getLogger(SnapshotTaker.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotTaker.class);
   private final DataRegion dataRegion;
 
   public SnapshotTaker(DataRegion dataRegion) {
     this.dataRegion = dataRegion;
   }
 
-  public boolean takeFullSnapshot(long maxWalSizeBeforeSnapshot, String snapshotDirPath) throws DirectoryNotLegalException {
+  public boolean takeFullSnapshot(String snapshotDirPath, boolean flushBeforeSnapshot)
+      throws DirectoryNotLegalException {
     File snapshotDir = new File(snapshotDirPath);
     if (snapshotDir.exists() && snapshotDir.listFiles() != null) {
       // the directory should be empty or not exists
-      throw new DirectoryNotLegalException(String.format("%s already exists and is not empty", snapshotDirPath));
+      throw new DirectoryNotLegalException(
+          String.format("%s already exists and is not empty", snapshotDirPath));
+    }
+
+    if (flushBeforeSnapshot) {
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
+    }
+
+    List<Long> timePartitions = dataRegion.getTimePartitions();
+    for (Long timePartition : timePartitions) {
+      List<String> seqDataDirs = getAllDataDirOfOnePartition(true, timePartition);
+      File seqTargetDir =
+          new File(
+              snapshotDirPath
+                  + File.separator
+                  + IoTDBConstant.SEQUENCE_FLODER_NAME
+                  + File.separator
+                  + dataRegion.getLogicalStorageGroupName()
+                  + File.separator
+                  + dataRegion.getDataRegionId()
+                  + File.separator
+                  + timePartition);
+      if (!seqTargetDir.mkdirs()) {
+        LOGGER.error("Failed to create target directory {}", seqTargetDir);
+      }
     }
 
     return false;
@@ -52,5 +81,27 @@ public class SnapshotTaker {
 
   public boolean takeIncrementalSnapshot(long maxWalSizeBeforeSnapshot, String snapshotDirPath) {
     return false;
+  }
+
+  private List<String> getAllDataDirOfOnePartition(boolean sequence, long timePartition) {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    List<String> resultDirs = new LinkedList<>();
+
+    for (String dataDir : dataDirs) {
+      resultDirs.add(
+          dataDir
+              + File.separator
+              + (sequence
+                  ? IoTDBConstant.SEQUENCE_FLODER_NAME
+                  : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+              + File.separator
+              + dataRegion.getLogicalStorageGroupName()
+              + File.separator
+              + dataRegion.getDataRegionId()
+              + File.separator
+              + timePartition
+              + File.separator);
+    }
+    return resultDirs;
   }
 }
