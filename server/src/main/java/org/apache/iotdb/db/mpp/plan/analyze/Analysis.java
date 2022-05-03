@@ -120,4 +120,9 @@ public class Analysis {
   public void setTypeProvider(TypeProvider typeProvider) {
     this.typeProvider = typeProvider;
   }
+
+  public boolean hasDataSource() {
+    return (dataPartition != null && !dataPartition.isEmpty())
+        || (schemaPartition != null && !schemaPartition.isEmpty());
+  }
 }

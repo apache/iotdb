@@ -59,6 +59,7 @@ public class TsBlock {
 
   private final Column[] valueColumns;
 
+  /** How many rows in current TsBlock */
   private final int positionCount;
 
   private volatile long retainedSizeInBytes = -1;
