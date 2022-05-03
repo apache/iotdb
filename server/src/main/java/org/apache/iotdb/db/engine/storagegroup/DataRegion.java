@@ -1398,6 +1398,12 @@ public class DataRegion {
     return res;
   }
 
+  public List<TsFileProcessor> getAllWorkingTsFileProcessors() {
+    List<TsFileProcessor> processors = new LinkedList<>(workSequenceTsFileProcessors.values());
+    processors.addAll(workUnsequenceTsFileProcessors.values());
+    return processors;
+  }
+
   private TsFileProcessor newTsFileProcessor(boolean sequence, long timePartitionId)
       throws IOException, DiskSpaceInsufficientException {
 
