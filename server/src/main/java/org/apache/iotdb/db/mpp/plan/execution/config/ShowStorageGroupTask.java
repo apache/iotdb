@@ -51,7 +51,6 @@ public class ShowStorageGroupTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShowStorageGroupTask.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final TSDataType[] RESOURCE_TYPES = {TSDataType.TEXT};
 
   private ShowStorageGroupStatement showStorageGroupStatement;
 
