@@ -900,7 +900,7 @@ public class IoTDBConfig {
 
   /**
    * Cache size of partition cache in {@link
-   * org.apache.iotdb.db.mpp.sql.analyze.ClusterPartitionFetcher}
+   * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
   private int partitionCacheSize = 10000;
 
