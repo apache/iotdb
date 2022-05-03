@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.path;
+package org.apache.iotdb.db.metadata.path;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.nio.ByteBuffer;

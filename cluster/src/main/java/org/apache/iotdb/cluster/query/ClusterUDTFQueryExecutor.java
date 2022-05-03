@@ -20,9 +20,9 @@
 package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.UDTFAlignByTimeDataSet;
