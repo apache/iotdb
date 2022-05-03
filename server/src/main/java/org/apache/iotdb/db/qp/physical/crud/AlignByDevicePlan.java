@@ -124,7 +124,7 @@ public class AlignByDevicePlan extends QueryPlan {
           deduplicatedAggregations.add(this.aggregations.get(i));
         }
         deviceToPathIndex
-            .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
+            .computeIfAbsent(path.getDeviceIdString(), k -> new ArrayList<>())
             .add(deduplicatePaths.size() - 1);
       }
     }

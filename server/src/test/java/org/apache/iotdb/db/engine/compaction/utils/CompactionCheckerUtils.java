@@ -312,7 +312,7 @@ public class CompactionCheckerUtils {
     Map<String, long[]> devicePointNumMap = new HashMap<>();
     for (Entry<String, List<TimeValuePair>> dataEntry : sourceData.entrySet()) {
       PartialPath partialPath = new PartialPath(dataEntry.getKey());
-      String device = partialPath.getDevice();
+      String device = partialPath.getDeviceIdString();
       long[] statistics =
           devicePointNumMap.computeIfAbsent(
               device, k -> new long[] {Long.MAX_VALUE, Long.MIN_VALUE});

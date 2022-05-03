@@ -152,7 +152,7 @@ public abstract class SchemaBasicTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
       schemaProcessor.createTimeseries(
-          new PartialPath("root.laptop.d1.\"1.2.3\""),
+          new PartialPath("root.laptop.d1.`\"1.2.3\"`"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
@@ -166,7 +166,7 @@ public abstract class SchemaBasicTest {
 
       assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.s1")));
       assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.1_2")));
-      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.\"1.2.3\"")));
+      assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.`\"1.2.3\"`")));
       assertTrue(schemaProcessor.isPathExist(new PartialPath("root.1.2")));
       assertTrue(schemaProcessor.isPathExist(new PartialPath("root.1.2.3")));
     } catch (MetadataException e1) {
@@ -245,14 +245,14 @@ public abstract class SchemaBasicTest {
 
     try {
       schemaProcessor.deleteTimeseries(new PartialPath("root.laptop.d1.1_2"));
-      schemaProcessor.deleteTimeseries(new PartialPath("root.laptop.d1.\"1.2.3\""));
+      schemaProcessor.deleteTimeseries(new PartialPath("root.laptop.d1.`\"1.2.3\"`"));
       schemaProcessor.deleteTimeseries(new PartialPath("root.1.2.3"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.1_2")));
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.\"1.2.3\"")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.`\"1.2.3\"`")));
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.1.2.3")));
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.1.2")));
     assertTrue(schemaProcessor.isPathExist(new PartialPath("root.1")));
@@ -2240,7 +2240,7 @@ public abstract class SchemaBasicTest {
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     schemaProcessor.setStorageGroup(new PartialPath("root.laptop"));
     PartialPath deviceId = new PartialPath("root.laptop.d1");
-    String[] measurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
+    String[] measurementIds = {"time", "timestamp", "TIME", "TIMESTAMP"};
     for (String measurementId : measurementIds) {
       PartialPath path = deviceId.concatNode(measurementId);
       try {
@@ -2443,19 +2443,19 @@ public abstract class SchemaBasicTest {
     PartialPath deviceId = new PartialPath("root.sg.d");
     InsertPlan insertPlan;
 
-    insertPlan = getInsertPlan("\"a+b\"");
+    insertPlan = getInsertPlan("`\"a+b\"`");
     schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(schemaProcessor.isPathExist(deviceId.concatNode("\"a+b\"")));
+    assertTrue(schemaProcessor.isPathExist(deviceId.concatNode("`\"a+b\"`")));
 
-    insertPlan = getInsertPlan("\"a.b\"");
+    insertPlan = getInsertPlan("`\"a.b\"`");
     schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(schemaProcessor.isPathExist(deviceId.concatNode("\"a.b\"")));
+    assertTrue(schemaProcessor.isPathExist(deviceId.concatNode("`\"a.b\"`")));
 
-    insertPlan = getInsertPlan("\"a“（Φ）”b\"");
+    insertPlan = getInsertPlan("`\"a“（Φ）”b\"`");
     schemaProcessor.getSeriesSchemasAndReadLockDevice(insertPlan);
-    assertTrue(schemaProcessor.isPathExist(deviceId.concatNode("\"a“（Φ）”b\"")));
+    assertTrue(schemaProcessor.isPathExist(deviceId.concatNode("`\"a“（Φ）”b\"`")));
 
-    String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
+    String[] illegalMeasurementIds = {"time", "timestamp", "TIME", "TIMESTAMP"};
     for (String measurementId : illegalMeasurementIds) {
       insertPlan = getInsertPlan(measurementId);
       try {

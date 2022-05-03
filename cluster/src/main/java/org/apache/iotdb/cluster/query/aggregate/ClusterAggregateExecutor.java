@@ -98,7 +98,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
       throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(
         path,
-        dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
+        dataQueryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
         dataType,
         context,
         dataQueryPlan.isAscending(),

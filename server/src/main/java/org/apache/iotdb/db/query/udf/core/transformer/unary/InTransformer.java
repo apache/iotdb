@@ -32,6 +32,8 @@ public class InTransformer extends UnaryTransformer {
 
   private final TSDataType dataType;
 
+  private final Satisfy satisfy;
+
   private Set<Integer> intSet;
   private Set<Long> longSet;
   private Set<Float> floatSet;
@@ -39,9 +41,10 @@ public class InTransformer extends UnaryTransformer {
   private Set<Boolean> booleanSet;
   private Set<String> stringSet;
 
-  public InTransformer(LayerPointReader layerPointReader, Set<String> values) {
+  public InTransformer(LayerPointReader layerPointReader, boolean isNotIn, Set<String> values) {
     super(layerPointReader);
     dataType = layerPointReader.getDataType();
+    satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
     initTypedSet(values);
   }
 
@@ -96,7 +99,7 @@ public class InTransformer extends UnaryTransformer {
     switch (dataType) {
       case INT32:
         int intValue = layerPointReader.currentInt();
-        if (intSet.contains(intValue)) {
+        if (satisfy.of(intValue)) {
           cachedInt = intValue;
         } else {
           currentNull = true;
@@ -104,7 +107,7 @@ public class InTransformer extends UnaryTransformer {
         break;
       case INT64:
         long longValue = layerPointReader.currentLong();
-        if (longSet.contains(longValue)) {
+        if (satisfy.of(longValue)) {
           cachedLong = longValue;
         } else {
           currentNull = true;
@@ -112,7 +115,7 @@ public class InTransformer extends UnaryTransformer {
         break;
       case FLOAT:
         float floatValue = layerPointReader.currentFloat();
-        if (floatSet.contains(floatValue)) {
+        if (satisfy.of(floatValue)) {
           cachedFloat = floatValue;
         } else {
           currentNull = true;
@@ -120,7 +123,7 @@ public class InTransformer extends UnaryTransformer {
         break;
       case DOUBLE:
         double doubleValue = layerPointReader.currentDouble();
-        if (doubleSet.contains(doubleValue)) {
+        if (satisfy.of(doubleValue)) {
           cachedDouble = doubleValue;
         } else {
           currentNull = true;
@@ -128,7 +131,7 @@ public class InTransformer extends UnaryTransformer {
         break;
       case BOOLEAN:
         boolean booleanValue = layerPointReader.currentBoolean();
-        if (booleanSet.contains(booleanValue)) {
+        if (satisfy.of(booleanValue)) {
           cachedBoolean = booleanValue;
         } else {
           currentNull = true;
@@ -136,7 +139,7 @@ public class InTransformer extends UnaryTransformer {
         break;
       case TEXT:
         Binary binaryValue = layerPointReader.currentBinary();
-        if (stringSet.contains(binaryValue.getStringValue())) {
+        if (satisfy.of(binaryValue.getStringValue())) {
           cachedBinary = binaryValue;
         } else {
           currentNull = true;
@@ -144,6 +147,87 @@ public class InTransformer extends UnaryTransformer {
         break;
       default:
         throw new QueryProcessException("unsupported data type: " + layerPointReader.getDataType());
+    }
+  }
+
+  private interface Satisfy {
+
+    boolean of(int intValue);
+
+    boolean of(long longValue);
+
+    boolean of(float floatValue);
+
+    boolean of(double doubleValue);
+
+    boolean of(boolean booleanValue);
+
+    boolean of(String stringValue);
+  }
+
+  private class InSatisfy implements Satisfy {
+
+    @Override
+    public boolean of(int intValue) {
+      return intSet.contains(intValue);
+    }
+
+    @Override
+    public boolean of(long longValue) {
+      return longSet.contains(longValue);
+    }
+
+    @Override
+    public boolean of(float floatValue) {
+      return floatSet.contains(floatValue);
+    }
+
+    @Override
+    public boolean of(double doubleValue) {
+      return doubleSet.contains(doubleValue);
+    }
+
+    @Override
+    public boolean of(boolean booleanValue) {
+      return booleanSet.contains(booleanValue);
+    }
+
+    @Override
+    public boolean of(String stringValue) {
+      return stringSet.contains(stringValue);
+    }
+  }
+
+  private class NotInSatisfy implements Satisfy {
+
+    @Override
+    public boolean of(int intValue) {
+      return !intSet.contains(intValue);
+    }
+
+    @Override
+    public boolean of(long longValue) {
+      return !longSet.contains(longValue);
+    }
+
+    @Override
+    public boolean of(float floatValue) {
+      return !floatSet.contains(floatValue);
+    }
+
+    @Override
+    public boolean of(double doubleValue) {
+      return !doubleSet.contains(doubleValue);
+    }
+
+    @Override
+    public boolean of(boolean booleanValue) {
+      return !booleanSet.contains(booleanValue);
+    }
+
+    @Override
+    public boolean of(String stringValue) {
+      return !stringSet.contains(stringValue);
     }
   }
 }
