@@ -593,6 +593,10 @@ public class StorageEngineV2 implements IService {
     return dataRegion;
   }
 
+  public void deleteDataRegion(DataRegionId regionId) {
+    dataRegionMap.remove(regionId);
+  }
+
   public DataRegion getDataRegion(DataRegionId regionId) {
     return dataRegionMap.get(regionId);
   }

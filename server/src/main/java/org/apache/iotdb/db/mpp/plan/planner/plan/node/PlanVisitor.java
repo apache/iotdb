@@ -181,4 +181,8 @@ public abstract class PlanVisitor<R, C> {
   public R visitAlterTimeSeries(AlterTimeSeriesNode node, C context) {
     return visitPlan(node, context);
   }
+
+  public R visitDeleteSchemaRegion(DeleteRegionNode node, C context) {
+    return visitPlan(node, context);
+  }
 }

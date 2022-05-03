@@ -94,7 +94,8 @@ public enum PlanNodeType {
   PROJECT((short) 32),
   ALIGNED_SERIES_SCAN((short) 33),
   ALIGNED_SERIES_AGGREGATE_SCAN((short) 34),
-  DEVICE_MERGE((short) 35);
+  DEVICE_MERGE((short) 35),
+  DELETE_REGION((short) 36);
 
   private final short nodeType;
 
@@ -190,6 +191,8 @@ public enum PlanNodeType {
         return AlignedSeriesScanNode.deserialize(buffer);
       case 34:
         return AlignedSeriesAggregationScanNode.deserialize(buffer);
+      case 36:
+        return DeleteRegionNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

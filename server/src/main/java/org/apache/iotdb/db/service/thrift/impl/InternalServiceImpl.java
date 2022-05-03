@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -26,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
@@ -41,14 +43,20 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
+import org.apache.iotdb.db.mpp.common.PlanFragmentId;
+import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
@@ -235,6 +243,25 @@ public class InternalServiceImpl implements InternalService.Iface {
   @Override
   public TSStatus migrateDataRegion(TMigrateDataRegionReq req) throws TException {
     return null;
+  }
+
+  @Override
+  public TSStatus deleteRegion(TConsensusGroupId tconsensusGroupId) throws TException {
+    long queryIdRaw = SessionManager.getInstance().requestQueryId(false);
+    QueryId queryId = new QueryId(String.valueOf(queryIdRaw));
+    PlanNodeId planNodeId = queryId.genPlanNodeId();
+    DeleteRegionNode deleteRegionNode = new DeleteRegionNode(queryId.genPlanNodeId());
+    ConsensusGroupId consensusGroupId =
+        ConsensusGroupId.Factory.convertFromTConsensusGroupId(tconsensusGroupId);
+    deleteRegionNode.setConsensusGroupId(consensusGroupId);
+    deleteRegionNode.setPlanNodeId(planNodeId);
+    PlanFragmentId planFragmentId = queryId.genPlanFragmentId();
+    FragmentInstanceId fragmentInstanceId = planFragmentId.genFragmentInstanceId();
+    PlanFragment planFragment = new PlanFragment(planFragmentId, deleteRegionNode);
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(planFragment, fragmentInstanceId, null, QueryType.WRITE);
+    consensusImpl.write(consensusGroupId, fragmentInstance);
+    return StatusUtils.OK;
   }
 
   public void handleClientExit() {}
