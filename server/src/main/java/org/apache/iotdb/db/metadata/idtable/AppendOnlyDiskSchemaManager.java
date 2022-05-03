@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.metadata.idtable;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.metadata.idtable.entry.SchemaEntry;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;

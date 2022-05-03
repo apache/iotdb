@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.ArrayDeque;

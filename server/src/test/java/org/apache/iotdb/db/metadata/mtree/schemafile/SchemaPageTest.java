@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.RecordDuplicatedException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SegmentNotFoundException;
@@ -65,7 +66,7 @@ public class SchemaPageTest {
         cnt++;
         try {
           page.write((short) i, child.getName(), RecordUtils.node2Buffer(child));
-        } catch (org.apache.iotdb.db.exception.metadata.MetadataException e) {
+        } catch (MetadataException e) {
           e.printStackTrace();
         }
         if (cnt > i) {

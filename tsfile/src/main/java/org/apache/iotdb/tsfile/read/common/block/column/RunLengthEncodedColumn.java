@@ -148,6 +148,14 @@ public class RunLengthEncodedColumn implements Column {
   }
 
   @Override
+  public Column subColumn(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+    return new RunLengthEncodedColumn(value, positionCount - fromIndex);
+  }
+
+  @Override
   public void reverse() {
     // do nothing because the underlying column has only one value
   }

@@ -24,9 +24,9 @@ import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMemberTest;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.thrift.TException;

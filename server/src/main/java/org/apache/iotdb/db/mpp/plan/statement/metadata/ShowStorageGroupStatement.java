@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
