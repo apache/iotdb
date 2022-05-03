@@ -41,23 +41,17 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public class ConfigNodeClient {
+public class ConfigNodeClient extends ConsensusClient {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
-
-  private static final int TIMEOUT_MS = 10000;
 
   private static final int RETRY_NUM = 5;
 
@@ -66,30 +60,14 @@ public class ConfigNodeClient {
 
   private ConfigIService.Iface client;
 
-  private TTransport transport;
-
-  private TEndPoint configLeader;
-
-  private List<TEndPoint> configNodes;
-
-  private int cursor = 0;
-
   public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
     // Read config nodes from configuration
-    configNodes =
-        CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
+    super(CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls()));
     init();
   }
 
   public ConfigNodeClient(List<TEndPoint> configNodes) throws IoTDBConnectionException {
-    this.configNodes = configNodes;
-    init();
-  }
-
-  public ConfigNodeClient(List<TEndPoint> configNodes, TEndPoint configLeader)
-      throws IoTDBConnectionException {
-    this.configNodes = configNodes;
-    this.configLeader = configLeader;
+    super(configNodes);
     init();
   }
 
@@ -97,17 +75,9 @@ public class ConfigNodeClient {
     reconnect();
   }
 
-  public void connect(TEndPoint endpoint) throws IoTDBConnectionException {
-    try {
-      transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              // as there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), TIMEOUT_MS);
-      transport.open();
-    } catch (TTransportException e) {
-      throw new IoTDBConnectionException(e);
-    }
-
+  @Override
+  protected void reconnect() throws IoTDBConnectionException {
+    super.reconnect();
     if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
       client = new ConfigIService.Client(new TCompactProtocol(transport));
     } else {
@@ -115,64 +85,18 @@ public class ConfigNodeClient {
     }
   }
 
-  private void reconnect() throws IoTDBConnectionException {
-    if (configLeader != null) {
-      try {
-        connect(configLeader);
-        return;
-      } catch (IoTDBConnectionException e) {
-        logger.warn("The current node may have been down {},try next node", configLeader);
-        configLeader = null;
-      }
-    }
-
-    if (transport != null) {
-      transport.close();
-    }
-
-    for (int tryHostNum = 0; tryHostNum < configNodes.size(); tryHostNum++) {
-      cursor = (cursor + 1) % configNodes.size();
-      TEndPoint tryEndpoint = configNodes.get(cursor);
-
-      try {
-        connect(tryEndpoint);
-        return;
-      } catch (IoTDBConnectionException e) {
-        logger.warn("The current node may have been down {},try next node", tryEndpoint);
-      }
-    }
-
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
-  }
-
-  public void close() {
-    transport.close();
-  }
-
-  private boolean updateConfigNodeLeader(TSStatus status) {
-    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-      if (status.isSetRedirectNode()) {
-        configLeader =
-            new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
-      } else {
-        configLeader = null;
-      }
-      return true;
-    }
-    return false;
-  }
-
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
       throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!processResponse(resp.status)) {
           return resp;
         }
         logger.info("Register current node using request {} with response {}", req, resp);
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -184,11 +108,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeLocationResp resp = client.getDataNodeLocations(dataNodeID);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!processResponse(resp.status)) {
           return resp;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -199,11 +124,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.setStorageGroup(req);
-        if (!updateConfigNodeLeader(status)) {
+        if (!processResponse(status)) {
           return status;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -214,11 +140,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.deleteStorageGroup(req);
-        if (!updateConfigNodeLeader(status)) {
+        if (!processResponse(status)) {
           return status;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -230,11 +157,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!processResponse(resp.status)) {
           return resp;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -247,11 +175,12 @@ public class ConfigNodeClient {
       try {
         TStorageGroupSchemaResp resp =
             client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!processResponse(resp.status)) {
           return resp;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -263,11 +192,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getSchemaPartition(req);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!processResponse(resp.status)) {
           return resp;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -279,11 +209,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getOrCreateSchemaPartition(req);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!processResponse(resp.status)) {
           return resp;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -295,11 +226,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getDataPartition(req);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!processResponse(resp.status)) {
           return resp;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -311,11 +243,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getOrCreateDataPartition(req);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!processResponse(resp.status)) {
           return resp;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -326,11 +259,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.operatePermission(req);
-        if (!updateConfigNodeLeader(status)) {
+        if (!processResponse(status)) {
           return status;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -341,11 +275,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TAuthorizerResp resp = client.queryPermission(req);
-        if (!updateConfigNodeLeader(resp.status)) {
+        if (!processResponse(resp.status)) {
           return resp;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -356,11 +291,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.login(req);
-        if (!updateConfigNodeLeader(status)) {
+        if (!processResponse(status)) {
           return status;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
@@ -371,11 +307,12 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.checkUserPrivileges(req);
-        if (!updateConfigNodeLeader(status)) {
+        if (!processResponse(status)) {
           return status;
         }
       } catch (TException e) {
-        configLeader = null;
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
       }
       reconnect();
     }
