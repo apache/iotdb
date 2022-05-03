@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -84,12 +83,11 @@ public class DeleteRegionNode extends WritePlanNode implements IConsensusRequest
   }
 
   public static DeleteRegionNode deserialize(ByteBuffer byteBuffer) {
-    TConsensusGroupType type =
-        TConsensusGroupType.findByValue(ReadWriteIOUtils.readInt(byteBuffer));
-    ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.createEmpty(type);
-    consensusGroupId.setId(ReadWriteIOUtils.readInt(byteBuffer));
-    String id = ReadWriteIOUtils.readString(byteBuffer);
-    return new DeleteRegionNode(new PlanNodeId(id), consensusGroupId);
+    int type = ReadWriteIOUtils.readInt(byteBuffer);
+    int id = ReadWriteIOUtils.readInt(byteBuffer);
+    ConsensusGroupId consensusGroupId = ConsensusGroupId.Factory.create(type, id);
+    String planNodeId = ReadWriteIOUtils.readString(byteBuffer);
+    return new DeleteRegionNode(new PlanNodeId(planNodeId), consensusGroupId);
   }
 
   @Override

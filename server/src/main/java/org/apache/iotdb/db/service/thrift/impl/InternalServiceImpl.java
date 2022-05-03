@@ -252,7 +252,7 @@ public class InternalServiceImpl implements InternalService.Iface {
     PlanNodeId planNodeId = queryId.genPlanNodeId();
     DeleteRegionNode deleteRegionNode = new DeleteRegionNode(queryId.genPlanNodeId());
     ConsensusGroupId consensusGroupId =
-        ConsensusGroupId.Factory.convertFromTConsensusGroupId(tconsensusGroupId);
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(tconsensusGroupId);
     deleteRegionNode.setConsensusGroupId(consensusGroupId);
     deleteRegionNode.setPlanNodeId(planNodeId);
     PlanFragmentId planFragmentId = queryId.genPlanFragmentId();
