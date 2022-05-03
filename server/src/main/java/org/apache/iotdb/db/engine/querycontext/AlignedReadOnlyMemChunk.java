@@ -51,6 +51,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   private AlignedTVList chunkData;
 
+  private IPointReader chunkPointReader;
+
   /**
    * The constructor for Aligned type.
    *
@@ -67,6 +69,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     List<TSEncoding> encodingList = schema.getSubMeasurementsTSEncodingList();
     this.chunkData = (AlignedTVList) tvList;
+    // TODO: remove row-based chunkPointReader
     this.chunkPointReader =
         (chunkData).getAlignedIterator(floatPrecision, encodingList, deletionList);
     this.tsBlock = chunkData.getTsBlock(floatPrecision, encodingList, deletionList);

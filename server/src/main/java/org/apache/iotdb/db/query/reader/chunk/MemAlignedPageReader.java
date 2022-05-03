@@ -82,34 +82,39 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
-  public TsBlock getAllSatisfiedData() throws IOException {
-    // TODO change from the row-based style to column-based style
+  public TsBlock getAllSatisfiedData() {
     TsBlockBuilder builder =
         new TsBlockBuilder(
             chunkMetadata.getValueChunkMetadataList().stream()
                 .map(IChunkMetadata::getDataType)
                 .collect(Collectors.toList()));
-    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-      // save the first not null value of each row
-      Object firstNotNullObject = null;
-      for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-        if (!tsBlock.getColumn(column).isNull(row)) {
-          firstNotNullObject = tsBlock.getColumn(column).getObject(row);
-          break;
-        }
-      }
+
+    boolean[] valueSatisfyInfo = new boolean[tsBlock.getPositionCount()];
+    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+
       // if all the sub sensors' value are null in current time
       // or current row is not satisfied with the filter, just discard it
-      // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will only
+      // currently, if it's a value filter, it will only
       // accept AlignedPath with only one sub sensor
-      if (firstNotNullObject != null
-          && (valueFilter == null
-              || valueFilter.satisfy(tsBlock.getTimeByIndex(row), firstNotNullObject))) {
-        builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(row));
-        for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-          builder.getColumnBuilder(column).writeObject(tsBlock.getColumn(column).getObject(row));
+      for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+        if (column == 0) {
+          Object value = tsBlock.getColumn(column).getObject(row);
+          if (value != null && (valueFilter == null || valueFilter.satisfy(0, value))) {
+            builder.getColumnBuilder(column).writeObject(tsBlock.getColumn(column).getObject(row));
+            valueSatisfyInfo[row] = true;
+            builder.declarePosition();
+          }
+        } else {
+          if (valueSatisfyInfo[row]) {
+            builder.getColumnBuilder(column).writeObject(tsBlock.getColumn(column).getObject(row));
+          }
         }
-        builder.declarePosition();
+      }
+    }
+    // Time column
+    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+      if (valueSatisfyInfo[row]) {
+        builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(row));
       }
     }
     return builder.build();

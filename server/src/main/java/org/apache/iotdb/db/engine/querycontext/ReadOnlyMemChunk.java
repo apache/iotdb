@@ -51,8 +51,6 @@ public class ReadOnlyMemChunk {
 
   protected IChunkMetadata cachedMetaData;
 
-  protected IPointReader chunkPointReader;
-
   protected TsBlock tsBlock;
 
   protected ReadOnlyMemChunk() {}

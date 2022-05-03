@@ -885,6 +885,7 @@ public class AlignedTVList extends TVList {
     clearSortedValue();
   }
 
+  /** Build TsBlock by column. */
   public TsBlock getTsBlock(
       int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
     TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
@@ -892,16 +893,19 @@ public class AlignedTVList extends TVList {
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     int validRowCount = 0;
     List<Integer> timeDuplicateAlignedRowIndexList = null;
-    for (int i = 0; i < rowCount; i++) {
-      if (i == rowCount - 1 || getTime(i) != getTime(i + 1)) {
-        timeBuilder.writeLong(this.getTime(i));
+    boolean[] timeDuplicateInfo = new boolean[rowCount];
+    for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
+      if (sortedRowIndex == rowCount - 1
+          || getTime(sortedRowIndex) != getTime(sortedRowIndex + 1)) {
+        timeBuilder.writeLong(getTime(sortedRowIndex));
         validRowCount++;
       } else {
         if (timeDuplicateAlignedRowIndexList == null) {
           timeDuplicateAlignedRowIndexList = new ArrayList<>();
-          timeDuplicateAlignedRowIndexList.add(getValueIndex(i));
+          timeDuplicateAlignedRowIndexList.add(getValueIndex(sortedRowIndex));
         }
-        timeDuplicateAlignedRowIndexList.add(getValueIndex(i + 1));
+        timeDuplicateAlignedRowIndexList.add(getValueIndex(sortedRowIndex + 1));
+        timeDuplicateInfo[sortedRowIndex] = true;
       }
     }
 
@@ -910,8 +914,11 @@ public class AlignedTVList extends TVList {
       int deleteCursor = 0;
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
+        // skip time duplicated rows
+        if (timeDuplicateInfo[sortedRowIndex]) {
+          continue;
+        }
         int originRowIndex;
-        // write the time duplicated rows
         if (timeDuplicateAlignedRowIndexList != null
             && !timeDuplicateAlignedRowIndexList.isEmpty()) {
           originRowIndex =
@@ -921,7 +928,9 @@ public class AlignedTVList extends TVList {
         }
         if (isValueMarked(originRowIndex, columnIndex)
             || !isPointNotDeleted(
-                getTime(sortedRowIndex), deletionList.get(columnIndex), deleteCursor)) {
+                getTime(sortedRowIndex),
+                deletionList == null ? null : deletionList.get(columnIndex),
+                deleteCursor)) {
           valueBuilder.appendNull();
           continue;
         }
