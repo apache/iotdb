@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.mtree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
@@ -43,6 +44,10 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -53,14 +58,19 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 import java.util.TreeSet;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.metadata.MetadataConstant.INTERNAL_MNODE_TYPE;
+import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_MNODE_TYPE;
 
 // Since the MTreeAboveSG is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.
 public class MTreeAboveSG {
+
+  private final Logger logger = LoggerFactory.getLogger(MTreeAboveSG.class);
 
   private IMNode root;
   private IMTreeStore store;
@@ -506,12 +516,82 @@ public class MTreeAboveSG {
   }
 
   public void serialize(ByteBuffer buffer) {
-    store.serialize(buffer);
+    serializeInternalNode((InternalMNode) this.root, buffer);
+  }
+
+  private void serializeInternalNode(InternalMNode node, ByteBuffer buffer) {
+    for (IMNode child : node.getChildren().values()) {
+      if (child.isStorageGroup()) {
+        serializeStorageGroupNode((StorageGroupMNode) child, buffer);
+      } else {
+        serializeInternalNode((InternalMNode) child, buffer);
+      }
+    }
+
+    buffer.put(INTERNAL_MNODE_TYPE);
+    ReadWriteIOUtils.write(node.getName(), buffer);
+    ReadWriteIOUtils.write(node.getChildren().size(), buffer);
+  }
+
+  private void serializeStorageGroupNode(StorageGroupMNode storageGroupNode, ByteBuffer buffer) {
+    buffer.put(STORAGE_GROUP_MNODE_TYPE);
+    ReadWriteIOUtils.write(storageGroupNode.getName(), buffer);
+    ThriftConfigNodeSerDeUtils.writeTStorageGroupSchema(
+        storageGroupNode.getStorageGroupSchema(), buffer);
   }
 
   public void deserialize(ByteBuffer buffer) {
-    store = new MemMTreeStore(new PartialPath(new String[] {PATH_ROOT}), false);
-    store.deserialize(buffer);
-    this.root = store.getRoot();
+    byte type = buffer.get();
+    if (type != STORAGE_GROUP_MNODE_TYPE) {
+      logger.error("Wrong node type. Cannot deserialize MTreeAboveSG from given buffer");
+      return;
+    }
+
+    StorageGroupMNode storageGroupMNode = deserializeStorageGroupMNode(buffer);
+    InternalMNode internalMNode;
+
+    Stack<InternalMNode> stack = new Stack<>();
+    stack.push(storageGroupMNode);
+
+    String name = storageGroupMNode.getName();
+    int childNum = 0;
+
+    while (!PATH_ROOT.equals(name)) {
+      type = buffer.get();
+      switch (type) {
+        case INTERNAL_MNODE_TYPE:
+          internalMNode = deserializeInternalMNode(buffer);
+          childNum = ReadWriteIOUtils.readInt(buffer);
+          while (childNum > 0) {
+            internalMNode.addChild(stack.pop());
+            childNum--;
+          }
+          stack.push(internalMNode);
+          name = internalMNode.getName();
+          break;
+        case STORAGE_GROUP_MNODE_TYPE:
+          storageGroupMNode = deserializeStorageGroupMNode(buffer);
+          childNum = 0;
+          stack.push(storageGroupMNode);
+          name = storageGroupMNode.getName();
+          break;
+        default:
+          logger.error("Unrecognized node type. Cannot deserialize MTreeAboveSG from given buffer");
+          return;
+      }
+    }
+    this.root = stack.peek();
+  }
+
+  private InternalMNode deserializeInternalMNode(ByteBuffer buffer) {
+    return new InternalMNode(null, ReadWriteIOUtils.readString(buffer));
+  }
+
+  private StorageGroupMNode deserializeStorageGroupMNode(ByteBuffer buffer) {
+    StorageGroupMNode storageGroupMNode =
+        new StorageGroupMNode(null, ReadWriteIOUtils.readString(buffer));
+    storageGroupMNode.setStorageGroupSchema(
+        ThriftConfigNodeSerDeUtils.readTStorageGroupSchema(buffer));
+    return storageGroupMNode;
   }
 }
