@@ -731,12 +731,6 @@ public class IoTDBConfig {
   // if enable partial insert, one measurement failure will not impact other measurements
   private boolean enablePartialInsert = true;
 
-  // Open ID Secret
-  private String openIdProviderUrl = "";
-
-  // the authorizer provider class which extends BasicAuthorizer
-  private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
-
   /**
    * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
    * value to be slightly larger than the average length of all text records.
@@ -799,10 +793,6 @@ public class IoTDBConfig {
 
   private boolean enableDiscardOutOfOrderData = false;
 
-  private String adminName = "root";
-
-  private String adminPassword = "root";
-
   /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
   private String deviceIDTransformationMethod = "Plain";
 
@@ -813,13 +803,6 @@ public class IoTDBConfig {
    * whether create mapping file of id table. This file can map device id in tsfile to device path
    */
   private boolean enableIDTableLogFile = false;
-
-  /** Encryption provider class */
-  private String encryptDecryptProvider =
-      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
-
-  /** Encryption provided class parameter */
-  private String encryptDecryptProviderParameter;
 
   /** whether to use persistent schema mode */
   private String schemaEngineMode = "Memory";
@@ -2251,22 +2234,6 @@ public class IoTDBConfig {
     this.primitiveArraySize = primitiveArraySize;
   }
 
-  public String getOpenIdProviderUrl() {
-    return openIdProviderUrl;
-  }
-
-  public void setOpenIdProviderUrl(String openIdProviderUrl) {
-    this.openIdProviderUrl = openIdProviderUrl;
-  }
-
-  public String getAuthorizerProvider() {
-    return authorizerProvider;
-  }
-
-  public void setAuthorizerProvider(String authorizerProvider) {
-    this.authorizerProvider = authorizerProvider;
-  }
-
   public long getStartUpNanosecond() {
     return startUpNanosecond;
   }
@@ -2432,22 +2399,6 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
-  }
-
-  public String getAdminName() {
-    return adminName;
-  }
-
-  public void setAdminName(String adminName) {
-    this.adminName = adminName;
-  }
-
-  public String getAdminPassword() {
-    return adminPassword;
-  }
-
-  public void setAdminPassword(String adminPassword) {
-    this.adminPassword = adminPassword;
   }
 
   public boolean isEnableSeqSpaceCompaction() {
@@ -2644,22 +2595,6 @@ public class IoTDBConfig {
 
   public void setEnableIDTableLogFile(boolean enableIDTableLogFile) {
     this.enableIDTableLogFile = enableIDTableLogFile;
-  }
-
-  public String getEncryptDecryptProvider() {
-    return encryptDecryptProvider;
-  }
-
-  public void setEncryptDecryptProvider(String encryptDecryptProvider) {
-    this.encryptDecryptProvider = encryptDecryptProvider;
-  }
-
-  public String getEncryptDecryptProviderParameter() {
-    return encryptDecryptProviderParameter;
-  }
-
-  public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
-    this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
   }
 
   public String getSchemaEngineMode() {

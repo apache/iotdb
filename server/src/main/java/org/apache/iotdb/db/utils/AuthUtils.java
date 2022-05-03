@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.security.encrypt.AsymmetricEncryptFactory;
 
 import org.slf4j.Logger;
@@ -171,15 +171,15 @@ public class AuthUtils {
    */
   public static String encryptPassword(String password) {
     return AsymmetricEncryptFactory.getEncryptProvider(
-            IoTDBDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
-            IoTDBDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
+            CommonConfig.getInstance().getEncryptDecryptProvider(),
+            CommonConfig.getInstance().getEncryptDecryptProviderParameter())
         .encrypt(password);
   }
 
   public static boolean validatePassword(String originPassword, String encryptPassword) {
     return AsymmetricEncryptFactory.getEncryptProvider(
-            IoTDBDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
-            IoTDBDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
+            CommonConfig.getInstance().getEncryptDecryptProvider(),
+            CommonConfig.getInstance().getEncryptDecryptProviderParameter())
         .validate(originPassword, encryptPassword);
   }
 

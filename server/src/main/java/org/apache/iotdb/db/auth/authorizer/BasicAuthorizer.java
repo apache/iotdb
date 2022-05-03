@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
@@ -28,7 +29,6 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.role.IRoleManager;
 import org.apache.iotdb.db.auth.user.IUserManager;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.AuthUtils;
 
 import org.slf4j.Logger;
@@ -86,10 +86,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         c =
             (Class<BasicAuthorizer>)
-                Class.forName(IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+                Class.forName(CommonConfig.getInstance().getAuthorizerProvider());
         logger.info(
-            "Authorizer provider class: {}",
-            IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+            "Authorizer provider class: {}", CommonConfig.getInstance().getAuthorizerProvider());
         instance = c.getDeclaredConstructor().newInstance();
       } catch (Exception e) {
         instance = null;

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.executor;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -1277,7 +1278,7 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_PIPESINK_ATTRIBUTES, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
     boolean showAll = "".equals(plan.getPipeSinkName());
-    for (PipeSink pipeSink : SenderService.getInstance().getAllPipeSink())
+    for (PipeSink pipeSink : SenderService.getInstance().getAllPipeSink()) {
       if (showAll || plan.getPipeSinkName().equals(pipeSink.getName())) {
         RowRecord record = new RowRecord(0);
         record.addField(Binary.valueOf(pipeSink.getName()), TSDataType.TEXT);
@@ -1285,6 +1286,7 @@ public class PlanExecutor implements IPlanExecutor {
         record.addField(Binary.valueOf(pipeSink.showAllAttributes()), TSDataType.TEXT);
         listDataSet.putRecord(record);
       }
+    }
     return listDataSet;
   }
 
@@ -1319,7 +1321,7 @@ public class PlanExecutor implements IPlanExecutor {
                 TSDataType.TEXT,
                 TSDataType.TEXT));
     boolean showAll = "".equals(plan.getPipeName());
-    for (Pipe pipe : SenderService.getInstance().getAllPipes())
+    for (Pipe pipe : SenderService.getInstance().getAllPipes()) {
       if (showAll || plan.getPipeName().equals(pipe.getName())) {
         RowRecord record = new RowRecord(0);
         record.addField(
@@ -1332,6 +1334,7 @@ public class PlanExecutor implements IPlanExecutor {
             Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
         listDataSet.putRecord(record);
       }
+    }
     ReceiverService.getInstance().showPipe(plan, listDataSet);
     return listDataSet;
   }
@@ -2326,7 +2329,7 @@ public class PlanExecutor implements IPlanExecutor {
     List<PartialPath> headerList = new ArrayList<>();
     List<TSDataType> typeList = new ArrayList<>();
     int index = 0;
-    if (IoTDBDescriptor.getInstance().getConfig().getAdminName().equals(userName)) {
+    if (CommonConfig.getInstance().equals(userName)) {
       headerList.add(new PartialPath(COLUMN_PRIVILEGE, false));
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);

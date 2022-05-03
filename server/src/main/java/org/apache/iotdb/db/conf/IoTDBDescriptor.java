@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -66,6 +67,8 @@ public class IoTDBDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
   private final IoTDBConfig conf = new IoTDBConfig();
+
+  private final CommonConfig commonConfig = CommonConfig.getInstance();
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -785,10 +788,12 @@ public class IoTDBDescriptor {
       // mqtt
       loadMqttProps(properties);
 
-      conf.setAuthorizerProvider(
-          properties.getProperty("authorizer_provider_class", conf.getAuthorizerProvider()));
+      commonConfig.setAuthorizerProvider(
+          properties.getProperty(
+              "authorizer_provider_class", commonConfig.getAuthorizerProvider()));
       // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-      conf.setOpenIdProviderUrl(properties.getProperty("openID_url", conf.getOpenIdProviderUrl()));
+      commonConfig.setOpenIdProviderUrl(
+          properties.getProperty("openID_url", commonConfig.getOpenIdProviderUrl()));
 
       conf.setEnablePartition(
           Boolean.parseBoolean(
@@ -800,9 +805,10 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "partition_interval", String.valueOf(conf.getPartitionInterval()))));
 
-      conf.setAdminName(properties.getProperty("admin_name", conf.getAdminName()));
+      commonConfig.setAdminName(properties.getProperty("admin_name", commonConfig.getAdminName()));
 
-      conf.setAdminPassword(properties.getProperty("admin_password", conf.getAdminPassword()));
+      commonConfig.setAdminPassword(
+          properties.getProperty("admin_password", commonConfig.getAdminPassword()));
 
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
@@ -816,14 +822,14 @@ public class IoTDBDescriptor {
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
-      conf.setEncryptDecryptProvider(
+      commonConfig.setEncryptDecryptProvider(
           properties.getProperty(
-              "iotdb_server_encrypt_decrypt_provider", conf.getEncryptDecryptProvider()));
+              "iotdb_server_encrypt_decrypt_provider", commonConfig.getEncryptDecryptProvider()));
 
-      conf.setEncryptDecryptProviderParameter(
+      commonConfig.setEncryptDecryptProviderParameter(
           properties.getProperty(
               "iotdb_server_encrypt_decrypt_provider_parameter",
-              conf.getEncryptDecryptProviderParameter()));
+              commonConfig.getEncryptDecryptProviderParameter()));
 
       conf.setDataNodeSchemaCacheSize(
           Integer.parseInt(

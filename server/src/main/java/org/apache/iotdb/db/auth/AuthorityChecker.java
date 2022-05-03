@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -36,7 +36,7 @@ import java.util.List;
 
 public class AuthorityChecker {
 
-  private static final String SUPER_USER = IoTDBDescriptor.getInstance().getConfig().getAdminName();
+  private static final String SUPER_USER = CommonConfig.getInstance().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
   private AuthorityChecker() {}

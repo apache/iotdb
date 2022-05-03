@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.db.auth.user.LocalFileUserManager;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -39,7 +38,6 @@ import net.minidev.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -59,7 +57,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   public static final String IOTDB_ADMIN_ROLE_NAME = "iotdb_admin";
   public static final String OPENID_USER_PREFIX = "openid-";
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonConfig.getInstance();
 
   private final RSAPublicKey providerKey;
 
@@ -72,8 +70,8 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
   OpenIdAuthorizer(JSONObject jwk) throws AuthException {
     super(
-        new LocalFileUserManager(config.getSystemDir() + File.separator + "users"),
-        new LocalFileRoleManager(config.getSystemDir() + File.separator + "roles"));
+        new LocalFileUserManager(config.getUserFolder()),
+        new LocalFileRoleManager(config.getRoleFolder()));
     try {
       providerKey = RSAKey.parse(jwk).toRSAPublicKey();
     } catch (java.text.ParseException | JOSEException e) {

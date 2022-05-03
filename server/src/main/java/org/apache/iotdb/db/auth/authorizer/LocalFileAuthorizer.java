@@ -18,22 +18,19 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.db.auth.user.LocalFileUserManager;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
-import java.io.File;
 
 public class LocalFileAuthorizer extends BasicAuthorizer {
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final CommonConfig config = CommonConfig.getInstance();
 
   public LocalFileAuthorizer() throws AuthException {
     super(
-        new LocalFileUserManager(config.getSystemDir() + File.separator + "users"),
-        new LocalFileRoleManager(config.getSystemDir() + File.separator + "roles"));
+        new LocalFileUserManager(config.getUserFolder()),
+        new LocalFileRoleManager(config.getRoleFolder()));
   }
 
   @Override
