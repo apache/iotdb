@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadBearableException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,32 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.path;
-
-import org.apache.iotdb.tsfile.read.common.Path;
+package org.apache.iotdb.commons.path;
 
 import java.nio.ByteBuffer;
 
-public class PathDeserializeUtil {
-
-  public static Path deserialize(ByteBuffer buffer) {
-    byte pathType = buffer.get();
-    switch (pathType) {
-      case 0:
-        return MeasurementPath.deserialize(buffer);
-      case 1:
-        return AlignedPath.deserialize(buffer);
-      case 2:
-        return PartialPath.deserialize(buffer);
-      case 3:
-        return Path.deserialize(buffer);
-      default:
-        throw new IllegalArgumentException("Invalid path type: " + pathType);
-    }
-  }
-}
-
-enum PathType {
+public enum PathType {
   Measurement((byte) 0),
   Aligned((byte) 1),
   Partial((byte) 2),
