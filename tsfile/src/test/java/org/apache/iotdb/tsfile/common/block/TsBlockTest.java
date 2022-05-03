@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.common.block;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -320,6 +322,53 @@ public class TsBlockTest {
       if (!binaryIsNull[i]) {
         assertEquals(binaryValueArray[i], tsBlock.getColumn(5).getBinary(i));
       }
+    }
+  }
+
+  @Test
+  public void testSubTsBlock() {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
+    for (int i = 0; i < 10; i++) {
+      builder.getTimeColumnBuilder().writeLong(i);
+      builder.getColumnBuilder(0).writeInt(i);
+      builder.declarePosition();
+    }
+    TsBlock tsBlock = builder.build();
+    TsBlockSingleColumnIterator iterator = tsBlock.getTsBlockSingleColumnIterator();
+    int index = 0;
+    while (iterator.hasNext()) {
+      Assert.assertEquals(index, iterator.currentTime());
+      Assert.assertEquals(index, iterator.currentValue());
+      iterator.next();
+      index++;
+    }
+    // get subTsBlock from TsBlock, offset = 3
+    int offset = 3;
+    TsBlock subTsBlock = tsBlock.subTsBlock(offset);
+    iterator = subTsBlock.getTsBlockSingleColumnIterator();
+    index = offset;
+    while (iterator.hasNext()) {
+      Assert.assertEquals(index, iterator.currentTime());
+      Assert.assertEquals(index, iterator.currentValue());
+      iterator.next();
+      index++;
+    }
+    // get subSubTsBlock from subTsBlock, offset = 2
+    int nextOffset = 2;
+    TsBlock subSubTsBlock = subTsBlock.subTsBlock(nextOffset);
+    iterator = subSubTsBlock.getTsBlockSingleColumnIterator();
+    index = offset + nextOffset;
+    while (iterator.hasNext()) {
+      Assert.assertEquals(index, iterator.currentTime());
+      Assert.assertEquals(index, iterator.currentValue());
+      iterator.next();
+      index++;
+    }
+    try {
+      subSubTsBlock.subTsBlock(3);
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(
+          e.getMessage().contains("FromIndex of subTsBlock cannot over positionCount."));
     }
   }
 }
