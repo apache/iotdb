@@ -1725,8 +1725,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     Expression childExpression = parseExpression(context.unaryBeforeInExpression, inWithoutNull);
     LinkedHashSet<String> values = new LinkedHashSet<>();
     for (ConstantContext constantContext : context.constant()) {
-      String text = constantContext.getText();
-      values.add(constantContext.STRING_LITERAL() != null ? parseStringLiteral(text) : text);
+      values.add(parseConstant(constantContext));
     }
     return new InExpression(childExpression, context.OPERATOR_NOT() != null, values);
   }
