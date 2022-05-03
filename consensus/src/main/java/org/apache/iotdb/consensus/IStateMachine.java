@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.statemachine;
+package org.apache.iotdb.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -25,10 +25,13 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
+import javax.annotation.concurrent.ThreadSafe;
+
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.function.Function;
 
+@ThreadSafe
 public interface IStateMachine {
 
   interface Registry extends Function<ConsensusGroupId, IStateMachine> {}

@@ -22,11 +22,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.EmptyStateMachine;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
-import org.apache.iotdb.consensus.statemachine.EmptyStateMachine;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -48,7 +48,7 @@ public class RecoveryTest {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
                 STANDALONE_CONSENSUS_CLASS_NAME,
-                new TEndPoint("localhost", 9000),
+                new TEndPoint("0.0.0.0", 9000),
                 new File("./target/recovery"),
                 gid -> new EmptyStateMachine())
             .orElseThrow(

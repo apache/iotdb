@@ -17,18 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.consensus;
+package org.apache.iotdb.consensus.exception;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-public class DataRegionId extends ConsensusGroupId {
+public class IllegalPeerEndpointException extends ConsensusException {
 
-  public DataRegionId(int id) {
-    this.id = id;
-  }
-
-  @Override
-  public TConsensusGroupType getType() {
-    return TConsensusGroupType.DataRegion;
+  public IllegalPeerEndpointException(TEndPoint currentNode, TEndPoint newNode) {
+    super(
+        String.format(
+            "Illegal creation for node %s in node %s in StandAloneConsensus Mode",
+            newNode, currentNode));
   }
 }
