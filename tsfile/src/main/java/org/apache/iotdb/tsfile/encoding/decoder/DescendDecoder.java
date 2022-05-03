@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 /** @author Wang Haoyu */
 public class DescendDecoder extends Decoder {
 
-  private long data[];
+  private double data[];
 
   private int readTotalCount = 0;
 
@@ -47,11 +47,21 @@ public class DescendDecoder extends Decoder {
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    return (int) readLong(buffer);
+    return (int) readDouble(buffer);
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
+    return (long) readDouble(buffer);
+  }
+
+  @Override
+  public float readFloat(ByteBuffer buffer) {
+    return (float) readDouble(buffer);
+  }
+
+  @Override
+  public double readDouble(ByteBuffer buffer) {
     if (nextReadIndex == readTotalCount) {
       loadBlock(buffer);
       nextReadIndex = 0;
@@ -67,15 +77,17 @@ public class DescendDecoder extends Decoder {
     // Number of nonzero values with 32 bits
     int m = (int) reader.next(32);
     //        System.out.println("Decoder M:"+ m);
+    int beta = (int) reader.next(32);
     // Decode index sequence
     int[] index = decodeIndex(m, reader);
     // Decode value sequence
     long[] value = decodeValue(m, reader);
     reader.skip();
     // Sparse to dense
-    this.data = new long[readTotalCount];
+    this.data = new double[readTotalCount];
+    double eps = Math.pow(2, beta);
     for (int i = 0; i < m; i++) {
-      data[index[i]] = value[i];
+      data[index[i]] = value[i] * eps;
     }
   }
 

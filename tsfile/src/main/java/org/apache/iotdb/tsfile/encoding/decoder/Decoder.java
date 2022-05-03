@@ -123,16 +123,7 @@ public abstract class Decoder {
       case FREQ:
         return new FreqDecoder();
       case DESCEND:
-        switch (dataType) {
-          case INT32:
-          case INT64:
-            return new DescendDecoder();
-          case FLOAT:
-          case DOUBLE:
-            return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
-          default:
-            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
-        }
+        return new DescendDecoder();
       case SIMPLE8B:
         switch (dataType) {
           case INT32:

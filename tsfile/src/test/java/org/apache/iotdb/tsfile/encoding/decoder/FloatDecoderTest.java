@@ -111,48 +111,48 @@ public class FloatDecoderTest {
       testDoubleLength(TSEncoding.TS_2DIFF, doubleList, doubleMaxPointNumber, false, i);
     }
   }
-
+  //
+  //  //  @Test
+  //  public void testDescendFloat() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testFloatLength(TSEncoding.DESCEND, floatList, floatMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
+  //  //  @Test
+  //  public void testDescendDouble() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testDoubleLength(TSEncoding.DESCEND, doubleList, doubleMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
   //  @Test
-  public void testDescendFloat() throws Exception {
-    for (int i = 1; i <= 10; i++) {
-      testFloatLength(TSEncoding.DESCEND, floatList, floatMaxPointNumber, false, i);
-    }
-  }
-
+  //  public void testSimple8bFloat() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testFloatLength(TSEncoding.SIMPLE8B, floatList, floatMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
   //  @Test
-  public void testDescendDouble() throws Exception {
-    for (int i = 1; i <= 10; i++) {
-      testDoubleLength(TSEncoding.DESCEND, doubleList, doubleMaxPointNumber, false, i);
-    }
-  }
-
-  @Test
-  public void testSimple8bFloat() throws Exception {
-    for (int i = 1; i <= 10; i++) {
-      testFloatLength(TSEncoding.SIMPLE8B, floatList, floatMaxPointNumber, false, i);
-    }
-  }
-
-  @Test
-  public void testSimple8bDouble() throws Exception {
-    for (int i = 1; i <= 10; i++) {
-      testDoubleLength(TSEncoding.SIMPLE8B, doubleList, doubleMaxPointNumber, false, i);
-    }
-  }
-
-  //  @Test
-  public void testSparseSimple8bFloat() throws Exception {
-    for (int i = 1; i <= 10; i++) {
-      testFloatLength(TSEncoding.SIMPLE8B_SPARSE, floatList, floatMaxPointNumber, false, i);
-    }
-  }
-
-  //  @Test
-  public void testSparseSimple8bDouble() throws Exception {
-    for (int i = 1; i <= 10; i++) {
-      testDoubleLength(TSEncoding.SIMPLE8B_SPARSE, doubleList, doubleMaxPointNumber, false, i);
-    }
-  }
+  //  public void testSimple8bDouble() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testDoubleLength(TSEncoding.SIMPLE8B, doubleList, doubleMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
+  //  //  @Test
+  //  public void testSparseSimple8bFloat() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testFloatLength(TSEncoding.SIMPLE8B_SPARSE, floatList, floatMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
+  //  //  @Test
+  //  public void testSparseSimple8bDouble() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testDoubleLength(TSEncoding.SIMPLE8B_SPARSE, doubleList, doubleMaxPointNumber, false, i);
+  //    }
+  //  }
 
   // @Test
   // public void testBigDecimal() throws Exception {

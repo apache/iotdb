@@ -416,10 +416,9 @@ public abstract class TSEncodingBuilder {
       switch (type) {
         case INT32:
         case INT64:
-          return new DescendEncoder();
         case FLOAT:
         case DOUBLE:
-          return new FloatEncoder(TSEncoding.DESCEND, type, maxPointNumber);
+          return new DescendEncoder();
         default:
           throw new UnSupportedDataTypeException("Descend doesn't support data type: " + type);
       }

@@ -34,7 +34,7 @@ public class DescendEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(DescendEncoder.class);
   private int blockSize;
   protected int writeIndex = 0;
-  private long[] dataBuffer;
+  private double[] dataBuffer;
 
   public DescendEncoder() {
     this(BLOCK_DEFAULT_SIZE);
@@ -43,21 +43,31 @@ public class DescendEncoder extends Encoder {
   public DescendEncoder(int size) {
     super(TSEncoding.DESCEND);
     this.blockSize = size;
-    this.dataBuffer = new long[blockSize];
+    this.dataBuffer = new double[blockSize];
   }
 
   @Override
   public void encode(long value, ByteArrayOutputStream out) {
+    encode((double) value, out);
+  }
+
+  @Override
+  public void encode(int value, ByteArrayOutputStream out) {
+    encode((double) value, out);
+  }
+
+  @Override
+  public void encode(float value, ByteArrayOutputStream out) {
+    encode((double) value, out);
+  }
+
+  @Override
+  public void encode(double value, ByteArrayOutputStream out) {
     dataBuffer[writeIndex] = value;
     writeIndex++;
     if (writeIndex == blockSize) {
       flush(out);
     }
-  }
-
-  @Override
-  public void encode(int value, ByteArrayOutputStream out) {
-    encode((long) value, out);
   }
 
   @Override
@@ -89,10 +99,12 @@ public class DescendEncoder extends Encoder {
 
   public byte[] encodeBlock() {
     ArrayList<Point> list = new ArrayList();
+    int beta = Integer.MAX_VALUE;
     for (int i = 0; i < writeIndex; i++) {
       if (dataBuffer[i] > 0) {
         Point point = new Point(i, dataBuffer[i]);
         list.add(point);
+        beta = Math.min(beta, point.getExp());
       }
     }
     Point[] array = list.toArray(new Point[0]);
@@ -102,7 +114,7 @@ public class DescendEncoder extends Encoder {
     long[] value = new long[m];
     for (int i = 0; i < m; i++) {
       index[i] = array[i].index;
-      value[i] = array[i].value;
+      value[i] = array[i].quantize(beta);
     }
     BitConstructor constructor = new BitConstructor();
     // 32位数据点个数
@@ -111,6 +123,7 @@ public class DescendEncoder extends Encoder {
     // 32位有效数据点个数
     constructor.add(m, 32);
     System.out.println("M:" + m);
+    constructor.add(beta, 32);
     // 分组位压缩编码index序列
     encodeIndex(index, constructor);
     // 降序位压缩编码value序列
@@ -161,16 +174,16 @@ public class DescendEncoder extends Encoder {
   protected class Point implements Comparable<Point> {
 
     private final int index;
-    private final long value;
+    private final double value;
 
-    public Point(int index, long value) {
+    public Point(int index, double value) {
       this.index = index;
       this.value = value;
     }
 
     @Override
     public int compareTo(Point o) {
-      return Long.compare(o.value, this.value);
+      return Double.compare(o.value, this.value);
     }
 
     /** @return the index */
@@ -179,8 +192,19 @@ public class DescendEncoder extends Encoder {
     }
 
     /** @return the value */
-    public long getValue() {
+    public double getValue() {
       return value;
+    }
+
+    public long quantize(int beta) {
+      double eps = Math.pow(2, beta);
+      return Math.round(this.value / eps);
+    }
+
+    public int getExp() {
+      long y = Double.doubleToRawLongBits(this.value);
+      long exp = (y >>> 52) - 1023 + Long.numberOfTrailingZeros(y) - 52;
+      return (int) exp;
     }
   }
 }
