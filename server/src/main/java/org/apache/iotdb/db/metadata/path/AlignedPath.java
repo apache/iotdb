@@ -287,7 +287,7 @@ public class AlignedPath extends PartialPath {
 
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
-    alignedPath.nodes = partialPath.nodes;
+    alignedPath.nodes = partialPath.getNodes();
     alignedPath.device = partialPath.getDeviceIdString();
     alignedPath.fullPath = partialPath.getFullPath();
     return alignedPath;
