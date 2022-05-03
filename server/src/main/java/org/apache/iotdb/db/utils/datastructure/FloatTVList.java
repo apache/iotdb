@@ -217,13 +217,6 @@ public class FloatTVList extends TVList {
     }
   }
 
-  private float roundValueWithGivenPrecision(float value, int floatPrecision, TSEncoding encoding) {
-    if (!Float.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
-      return MathUtils.roundWithGivenPrecision(value, floatPrecision);
-    }
-    return value;
-  }
-
   @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayManager.release(values.remove(values.size() - 1));

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -28,7 +27,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -153,22 +155,6 @@ public class AlignedTVList extends TVList {
     int elementIndex = index % ARRAY_SIZE;
     int valueIndex = indices.get(arrayIndex)[elementIndex];
     return getAlignedValueByValueIndex(valueIndex, null, floatPrecision, encodingList);
-  }
-
-  public TsPrimitiveType getAlignedValue(
-      List<Integer> timeDuplicatedIndexList,
-      Integer floatPrecision,
-      List<TSEncoding> encodingList) {
-    int[] validIndexesForTimeDuplicatedRows = new int[values.size()];
-    for (int i = 0; i < values.size(); i++) {
-      validIndexesForTimeDuplicatedRows[i] =
-          getValidRowIndexForTimeDuplicatedRows(timeDuplicatedIndexList, i);
-    }
-    return getAlignedValueByValueIndex(
-        timeDuplicatedIndexList.get(timeDuplicatedIndexList.size() - 1),
-        validIndexesForTimeDuplicatedRows,
-        floatPrecision,
-        encodingList);
   }
 
   private TsPrimitiveType getAlignedValueByValueIndex(
@@ -722,11 +708,6 @@ public class AlignedTVList extends TVList {
         time, (TsPrimitiveType) getAlignedValueForQuery(index, floatPrecision, encodingList));
   }
 
-  public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
-      List<Integer> indexList, long time, Integer floatPrecision, List<TSEncoding> encodingList) {
-    return new TimeValuePair(time, getAlignedValue(indexList, floatPrecision, encodingList));
-  }
-
   @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayManager.release(indices.remove(indices.size() - 1));
@@ -904,18 +885,89 @@ public class AlignedTVList extends TVList {
     clearSortedValue();
   }
 
-  @TestOnly
-  public IPointReader getIterator() {
-    return new AlignedIte();
+  public TsBlock getTsBlock(
+      int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
+    TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
+    // Time column
+    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+    int validRowCount = 0;
+    List<Integer> timeDuplicateAlignedRowIndexList = null;
+    for (int i = 0; i < rowCount; i++) {
+      if (i == rowCount - 1 || getTime(i) != getTime(i + 1)) {
+        timeBuilder.writeLong(this.getTime(i));
+        validRowCount++;
+      } else {
+        if (timeDuplicateAlignedRowIndexList == null) {
+          timeDuplicateAlignedRowIndexList = new ArrayList<>();
+          timeDuplicateAlignedRowIndexList.add(getValueIndex(i));
+        }
+        timeDuplicateAlignedRowIndexList.add(getValueIndex(i + 1));
+      }
+    }
+
+    // value columns
+    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+      int deleteCursor = 0;
+      ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
+      for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
+        int originRowIndex;
+        // write the time duplicated rows
+        if (timeDuplicateAlignedRowIndexList != null
+            && !timeDuplicateAlignedRowIndexList.isEmpty()) {
+          originRowIndex =
+              getValidRowIndexForTimeDuplicatedRows(timeDuplicateAlignedRowIndexList, columnIndex);
+        } else {
+          originRowIndex = getValueIndex(sortedRowIndex);
+        }
+        if (isValueMarked(originRowIndex, columnIndex)
+            || !isPointNotDeleted(
+                getTime(sortedRowIndex), deletionList.get(columnIndex), deleteCursor)) {
+          valueBuilder.appendNull();
+          continue;
+        }
+        switch (dataTypes.get(columnIndex)) {
+          case BOOLEAN:
+            valueBuilder.writeBoolean(getBooleanByValueIndex(originRowIndex, columnIndex));
+            break;
+          case INT32:
+            valueBuilder.writeInt(getIntByValueIndex(originRowIndex, columnIndex));
+            break;
+          case INT64:
+            valueBuilder.writeLong(getLongByValueIndex(originRowIndex, columnIndex));
+            break;
+          case FLOAT:
+            valueBuilder.writeFloat(
+                roundValueWithGivenPrecision(
+                    getFloatByValueIndex(originRowIndex, columnIndex),
+                    floatPrecision,
+                    encodingList.get(columnIndex)));
+            break;
+          case DOUBLE:
+            valueBuilder.writeDouble(
+                roundValueWithGivenPrecision(
+                    getDoubleByValueIndex(originRowIndex, columnIndex),
+                    floatPrecision,
+                    encodingList.get(columnIndex)));
+            break;
+          case TEXT:
+            valueBuilder.writeBinary(getBinaryByValueIndex(originRowIndex, columnIndex));
+            break;
+          default:
+            break;
+        }
+      }
+    }
+    builder.declarePositions(validRowCount);
+    return builder.build();
   }
 
-  @Override
   protected void writeValidValuesIntoTsBlock(
       ColumnBuilder valueBuilder,
       int floatPrecision,
       TSEncoding encoding,
       List<TimeRange> deletionList) {}
 
+  // TODO: This method can be removed
   public IPointReader getAlignedIterator(
       int floatPrecision,
       List<TSEncoding> encodingList,
@@ -924,6 +976,7 @@ public class AlignedTVList extends TVList {
     return new AlignedIte(floatPrecision, encodingList, size, deletionList);
   }
 
+  // TODO: This class can be removed
   private class AlignedIte implements IPointReader {
 
     protected TimeValuePair cachedTimeValuePair;
@@ -1076,6 +1129,29 @@ public class AlignedTVList extends TVList {
     // bitmap
     size += rowCount * dataTypes.size() * Byte.BYTES;
     return size;
+  }
+
+  // TODO: should be removed
+  private TimeValuePair getTimeValuePairForTimeDuplicatedRows(
+      List<Integer> indexList, long time, Integer floatPrecision, List<TSEncoding> encodingList) {
+    return new TimeValuePair(time, getAlignedValue(indexList, floatPrecision, encodingList));
+  }
+
+  // TODO: should be removed
+  private TsPrimitiveType getAlignedValue(
+      List<Integer> timeDuplicatedIndexList,
+      Integer floatPrecision,
+      List<TSEncoding> encodingList) {
+    int[] validIndexesForTimeDuplicatedRows = new int[values.size()];
+    for (int i = 0; i < values.size(); i++) {
+      validIndexesForTimeDuplicatedRows[i] =
+          getValidRowIndexForTimeDuplicatedRows(timeDuplicatedIndexList, i);
+    }
+    return getAlignedValueByValueIndex(
+        timeDuplicatedIndexList.get(timeDuplicatedIndexList.size() - 1),
+        validIndexesForTimeDuplicatedRows,
+        floatPrecision,
+        encodingList);
   }
 
   @Override

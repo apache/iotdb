@@ -217,14 +217,6 @@ public class DoubleTVList extends TVList {
     }
   }
 
-  private double roundValueWithGivenPrecision(
-      double value, int floatPrecision, TSEncoding encoding) {
-    if (!Double.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
-      return MathUtils.roundWithGivenPrecision(value, floatPrecision);
-    }
-    return value;
-  }
-
   @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayManager.release(values.remove(values.size() - 1));

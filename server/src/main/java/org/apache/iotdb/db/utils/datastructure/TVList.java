@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -553,6 +554,22 @@ public abstract class TVList implements WALEntryValue {
       }
     }
     return true;
+  }
+
+  protected float roundValueWithGivenPrecision(
+      float value, int floatPrecision, TSEncoding encoding) {
+    if (!Float.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+      return MathUtils.roundWithGivenPrecision(value, floatPrecision);
+    }
+    return value;
+  }
+
+  protected double roundValueWithGivenPrecision(
+      double value, int floatPrecision, TSEncoding encoding) {
+    if (!Double.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+      return MathUtils.roundWithGivenPrecision(value, floatPrecision);
+    }
+    return value;
   }
 
   public abstract TSDataType getDataType();

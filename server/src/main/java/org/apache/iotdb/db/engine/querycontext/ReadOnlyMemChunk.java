@@ -55,7 +55,7 @@ public class ReadOnlyMemChunk {
 
   protected IPointReader chunkPointReader;
 
-  protected TsBlock tsblock;
+  protected TsBlock tsBlock;
 
   protected ReadOnlyMemChunk() {}
 
@@ -86,16 +86,15 @@ public class ReadOnlyMemChunk {
         floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       }
     }
-    this.tsblock = tvList.getTsBlock(floatPrecision, encoding, deletionList);
+    this.tsBlock = tvList.getTsBlock(floatPrecision, encoding, deletionList);
     initChunkMetaFromTsBlock();
-    this.chunkPointReader = tsblock.getTsBlockSingleColumnIterator();
   }
 
   private void initChunkMetaFromTsBlock() throws IOException, QueryProcessException {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      IPointReader iterator = tsblock.getTsBlockSingleColumnIterator();
+      IPointReader iterator = tsBlock.getTsBlockSingleColumnIterator();
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         switch (dataType) {
@@ -133,7 +132,7 @@ public class ReadOnlyMemChunk {
   }
 
   public boolean isEmpty() throws IOException {
-    return tsblock.isEmpty();
+    return tsBlock.isEmpty();
   }
 
   public IChunkMetadata getChunkMetaData() {
@@ -141,6 +140,6 @@ public class ReadOnlyMemChunk {
   }
 
   public IPointReader getPointReader() {
-    return tsblock.getTsBlockSingleColumnIterator();
+    return tsBlock.getTsBlockSingleColumnIterator();
   }
 }

@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -48,7 +49,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   private final List<List<TimeRange>> deletionList;
 
   private String measurementUid;
-  private TSDataType dataType;
   private List<TSEncoding> encodingList;
 
   private static final Logger logger = LoggerFactory.getLogger(AlignedReadOnlyMemChunk.class);
@@ -58,6 +58,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   private AlignedTVList chunkData;
 
   private int chunkDataSize;
+
+  private TsBlock tsBlock;
 
   /**
    * The constructor for Aligned type.
@@ -72,7 +74,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       throws IOException, QueryProcessException {
     super();
     this.measurementUid = schema.getMeasurementId();
-    this.dataType = schema.getType();
+
 
     this.encodingList = ((VectorMeasurementSchema) schema).getSubMeasurementsTSEncodingList();
     this.chunkData = (AlignedTVList) tvList;
@@ -82,6 +84,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.chunkPointReader =
         (chunkData).getAlignedIterator(floatPrecision, encodingList, chunkDataSize, deletionList);
     initAlignedChunkMeta((VectorMeasurementSchema) schema);
+    this.tsBlock = chunkData.getTsBlock(floatPrecision, encodingList, deletionList);
   }
 
   private void initAlignedChunkMeta(VectorMeasurementSchema schema)
@@ -143,16 +146,16 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
                 time, alignedChunkData.getDoubleByValueIndex(originRowIndex, column));
             break;
           default:
-            throw new QueryProcessException("Unsupported data type:" + dataType);
+            throw new QueryProcessException("Unsupported data type:" + dataTypeList.get(column));
         }
       }
       valueStatistics.setEmpty(false);
     }
-    IChunkMetadata vectorChunkMetadata =
+    IChunkMetadata alignedChunkMetadata =
         new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
-    vectorChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(this));
-    vectorChunkMetadata.setVersion(Long.MAX_VALUE);
-    cachedMetaData = vectorChunkMetadata;
+    alignedChunkMetadata.setChunkLoader(new MemAlignedChunkLoader(this));
+    alignedChunkMetadata.setVersion(Long.MAX_VALUE);
+    cachedMetaData = alignedChunkMetadata;
   }
 
   @Override
@@ -165,5 +168,9 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     chunkPointReader =
         chunkData.getAlignedIterator(floatPrecision, encodingList, chunkDataSize, deletionList);
     return chunkPointReader;
+  }
+
+  public TsBlock getTsBlock() {
+    return tsBlock;
   }
 }
