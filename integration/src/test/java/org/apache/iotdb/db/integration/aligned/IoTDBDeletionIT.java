@@ -109,7 +109,7 @@ public class IoTDBDeletionIT {
       }
 
       try {
-        statement.execute("DELETE FROM root.vehicle.d0.s3  WHERE s3 = 'text'");
+        statement.execute("DELETE FROM root.vehicle.d0.s3  WHERE s3 == 'text'");
         fail("should not reach here!");
       } catch (SQLException e) {
         assertEquals(errorMsg, e.getMessage());

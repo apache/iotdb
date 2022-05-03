@@ -112,14 +112,14 @@ public class IoTDBResultSetIT {
       Assert.assertTrue(countStatus == 2L);
 
       ResultSet rs2 =
-          st1.executeQuery("select type from root.t1.wf01.wt01 where time = 1000 limit 1");
+          st1.executeQuery("select type from root.t1.wf01.wt01 where time == 1000 limit 1");
       rs2.next();
       // type of r2 is INT32(int), test int convert to long
       long type = rs2.getLong(2);
       Assert.assertTrue(type == 1);
 
       ResultSet rs3 =
-          st1.executeQuery("select grade from root.t1.wf01.wt01 where time = 1000 limit 1");
+          st1.executeQuery("select grade from root.t1.wf01.wt01 where time == 1000 limit 1");
       rs3.next();
       // type of r3 is INT64(long), test long convert to int
       int grade = rs3.getInt(2);

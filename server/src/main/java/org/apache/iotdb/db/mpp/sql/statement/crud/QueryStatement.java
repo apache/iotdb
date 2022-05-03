@@ -35,7 +35,6 @@ import org.apache.iotdb.db.mpp.sql.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.sql.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.sql.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.WhereCondition;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
@@ -235,16 +234,16 @@ public class QueryStatement extends Statement {
   public Map<String, Set<PartialPath>> getDeviceNameToDeduplicatedPathsMap() {
     Map<String, Set<PartialPath>> deviceNameToDeduplicatedPathsMap =
         new HashMap<>(getSelectComponent().getDeviceNameToDeduplicatedPathsMap());
-    if (getWhereCondition() != null) {
-      for (PartialPath path :
-          getWhereCondition().getQueryFilter().getPathSet().stream()
-              .filter(SQLConstant::isNotReservedPath)
-              .collect(Collectors.toList())) {
-        deviceNameToDeduplicatedPathsMap
-            .computeIfAbsent(path.getDevice(), k -> new HashSet<>())
-            .add(path);
-      }
-    }
+    //    if (getWhereCondition() != null) {
+    //      for (PartialPath path :
+    //          getWhereCondition().getQueryFilter().getPathSet().stream()
+    //              .filter(SQLConstant::isNotReservedPath)
+    //              .collect(Collectors.toList())) {
+    //        deviceNameToDeduplicatedPathsMap
+    //            .computeIfAbsent(path.getDevice(), k -> new HashSet<>())
+    //            .add(path);
+    //      }
+    //    }
     return deviceNameToDeduplicatedPathsMap;
   }
 

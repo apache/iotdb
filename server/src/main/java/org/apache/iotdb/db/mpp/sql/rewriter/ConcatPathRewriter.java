@@ -158,9 +158,9 @@ public class ConcatPathRewriter {
    * path pattern. And construct pattern tree.
    */
   private void constructPatternTreeFromWhereWithFrom(QueryStatement queryStatement) {
-    constructPatternTreeFromWhereWithFrom(
-        queryStatement.getFromComponent().getPrefixPaths(),
-        queryStatement.getWhereCondition().getQueryFilter());
+    //    constructPatternTreeFromWhereWithFrom(
+    //        queryStatement.getFromComponent().getPrefixPaths(),
+    //        queryStatement.getWhereCondition().getQueryFilter());
   }
 
   private void constructPatternTreeFromWhereWithFrom(

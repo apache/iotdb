@@ -518,13 +518,13 @@ public class IoTDBAlignedTimeSeriesCompactionIT {
       for (int i = 0; i < 10; i++) {
         long deleteTime = random.nextLong() % (30 * 100);
         statement.execute(
-            "delete from root.compactionTestForAligned.d1.s1 where time = " + deleteTime);
+            "delete from root.compactionTestForAligned.d1.s1 where time == " + deleteTime);
         valueMap.get("d1s1").put(deleteTime, 0L);
       }
       for (int i = 0; i < 10; i++) {
         long deleteTime = random.nextLong() % (30 * 100);
         statement.execute(
-            "delete from root.compactionTestForAligned.d2.s1 where time = " + deleteTime);
+            "delete from root.compactionTestForAligned.d2.s1 where time == " + deleteTime);
         valueMap.get("d2s1").put(deleteTime, 0L);
       }
 

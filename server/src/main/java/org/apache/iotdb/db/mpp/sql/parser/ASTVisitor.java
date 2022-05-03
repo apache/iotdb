@@ -26,11 +26,7 @@ import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
-import org.apache.iotdb.db.mpp.common.filter.InFilter;
-import org.apache.iotdb.db.mpp.common.filter.LikeFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.mpp.common.filter.RegexpFilter;
-import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.sql.statement.Statement;
 import org.apache.iotdb.db.mpp.sql.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.sql.statement.component.FilterNullComponent;
@@ -95,6 +91,8 @@ import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.InExpression;
+import org.apache.iotdb.db.query.expression.unary.LikeExpression;
 import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
@@ -111,6 +109,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -513,9 +512,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     parseFromClause(ctx.fromClause());
     if (ctx.whereClause() != null) {
       WhereCondition whereCondition = parseWhereClause(ctx.whereClause());
-      if (whereCondition != null) {
-        queryStatement.setWhereCondition(whereCondition);
-      }
+      queryStatement.setWhereCondition(whereCondition);
     }
     return queryStatement;
   }
@@ -588,9 +585,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Where Clause
 
   public WhereCondition parseWhereClause(IoTDBSqlParser.WhereClauseContext ctx) {
-    QueryFilter queryFilter = new QueryFilter();
-    queryFilter.addChildOperator(parseOrExpression(ctx.orExpression()));
-    return new WhereCondition(queryFilter.getChildren().get(0));
+    Expression predicate = parseExpression(ctx.expression());
+    return new WhereCondition(predicate);
   }
 
   // Group By Time Clause
@@ -1548,12 +1544,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return parseExpression(context.unaryInBracket);
     }
 
-    if (context.constant() != null && !context.constant().isEmpty()) {
-      return parseConstantOperand(context.constant(0));
-    }
-
     if (context.time != null) {
-      throw new UnsupportedOperationException();
+      return new TimeSeriesOperand(TIME_PATH);
     }
 
     if (context.suffixPathCanInExpr() != null) {
@@ -1630,7 +1622,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (context.unaryBeforeInExpression != null) {
-      return parseInExpression(context);
+      Expression inExpression = parseInExpression(context);
+      if (context.OPERATOR_NOT() != null) {
+        return new LogicNotExpression(inExpression);
+      }
+      return inExpression;
+    }
+
+    if (context.constant() != null && !context.constant().isEmpty()) {
+      return parseConstantOperand(context.constant(0));
     }
 
     throw new UnsupportedOperationException();
@@ -1676,11 +1676,32 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private Expression parseLikeExpression(ExpressionContext context) {
-    throw new UnsupportedOperationException();
+    return new LikeExpression(
+        parseExpression(context.unaryBeforeRegularOrLikeExpression),
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context) {
-    throw new UnsupportedOperationException();
+    LinkedHashSet<String> values = new LinkedHashSet<>();
+    for (ConstantContext constantContext : context.constant()) {
+      values.add(parseConstant(constantContext));
+    }
+    return new InExpression(parseExpression(context.unaryBeforeInExpression), values);
+  }
+
+  private String parseConstant(ConstantContext constantContext) {
+    String text = constantContext.getText();
+    if (constantContext.BOOLEAN_LITERAL() != null
+        || constantContext.INTEGER_LITERAL() != null
+        || constantContext.realLiteral() != null) {
+      return text;
+    } else if (constantContext.STRING_LITERAL() != null) {
+      return parseStringLiteral(text);
+    } else if (constantContext.dateExpression() != null) {
+      return String.valueOf(parseDateExpression(constantContext.dateExpression()));
+    } else {
+      throw new IllegalArgumentException("Unsupported constant operand: " + text);
+    }
   }
 
   private Expression parseConstantOperand(ConstantContext constantContext) {
@@ -1695,6 +1716,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           return new ConstantOperand(TSDataType.INT64, text);
         } else if (constantContext.realLiteral() != null) {
           return new ConstantOperand(TSDataType.DOUBLE, text);
+        } else if (constantContext.dateExpression() != null) {
+          return new ConstantOperand(
+              TSDataType.INT64,
+              String.valueOf(parseDateExpression(constantContext.dateExpression())));
         } else {
           throw new SQLParserException("Unsupported constant operand: " + text);
         }
