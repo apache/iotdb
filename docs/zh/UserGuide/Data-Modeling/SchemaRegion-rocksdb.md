@@ -25,7 +25,17 @@
 
 # 使用
 
-在系统配置文件`iotdb-engine.properties`中，将配置项`schema_engine_mode`修改为`Rocksdb_based`，如：
+首先使用下面的命令将 `schema-engine-rocksdb` 打包
+
+```shell
+mvn clean package -pl schema-engine-rocksdb -am -DskipTests
+```
+
+命令运行结束后，在其 target/schema-engine-rocksdb 中会有一个 lib 文件夹和 conf 文件夹。将 conf 文件夹下的文件拷贝到 server 的 conf 文件夹中，将 lib 文件夹下的文件也拷贝到
+server 的 lib 的文件夹中。
+
+在系统配置文件`iotdb-engine.properties`中，将配置项`schema_engine_mode`修改为`Rocksdb_based`， 如：
+
 ```
 ####################
 ### Schema Engine Configuration

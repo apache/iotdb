@@ -68,6 +68,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.EncodingInferenceUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -113,9 +114,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_NODE_VALUE;
@@ -125,7 +123,6 @@ import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.NODE_TYPE_MEASUREMENT;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ROOT_STRING;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.TABLE_NAME_TAGS;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class RSchemaRegion implements ISchemaRegion {
 
@@ -763,8 +760,8 @@ public class RSchemaRegion implements ISchemaRegion {
   private int indexOfFirstWildcard(String[] nodes, int start) {
     int index = start;
     for (; index < nodes.length; index++) {
-      if (ONE_LEVEL_PATH_WILDCARD.equals(nodes[index])
-          || MULTI_LEVEL_PATH_WILDCARD.equals(nodes[index])) {
+      if (IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(nodes[index])
+          || IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(nodes[index])) {
         break;
       }
     }
@@ -774,8 +771,8 @@ public class RSchemaRegion implements ISchemaRegion {
   private int indexOfFirstNonWildcard(String[] nodes, int start) {
     int index = start;
     for (; index < nodes.length; index++) {
-      if (!ONE_LEVEL_PATH_WILDCARD.equals(nodes[index])
-          && !MULTI_LEVEL_PATH_WILDCARD.equals(nodes[index])) {
+      if (!IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(nodes[index])
+          && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(nodes[index])) {
         break;
       }
     }
@@ -818,7 +815,7 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public boolean isPathExist(PartialPath path) throws MetadataException {
-    if (PATH_ROOT.equals(path.getFullPath())) {
+    if (IoTDBConstant.PATH_ROOT.equals(path.getFullPath())) {
       return true;
     }
 
@@ -867,7 +864,7 @@ public class RSchemaRegion implements ISchemaRegion {
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
       throws MetadataException {
     // todo support wildcard
-    if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
+    if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       throw new UnsupportedOperationException(
           "Wildcards are not currently supported for this operation"
               + " [COUNT NODES pathPattern].");
@@ -946,7 +943,7 @@ public class RSchemaRegion implements ISchemaRegion {
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, boolean isPrefixMatch, StorageGroupFilter filter)
       throws MetadataException {
-    if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
+    if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       throw new UnsupportedOperationException(
           formatNotSupportInfo(Thread.currentThread().getStackTrace()[1].getMethodName()));
     }
@@ -986,7 +983,7 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
     // todo support wildcard
-    if (pathPattern.getFullPath().contains(ONE_LEVEL_PATH_WILDCARD)) {
+    if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       throw new MetadataException(
           "Wildcards are not currently supported for this operation"
               + " [SHOW CHILD PATHS pathPattern].");
@@ -1766,7 +1763,7 @@ public class RSchemaRegion implements ISchemaRegion {
           measurements.add(measurementList[index]);
           TSDataType type = plan.getDataTypes()[index];
           dataTypes.add(type);
-          encodings.add(getDefaultEncoding(type));
+          encodings.add(EncodingInferenceUtils.getDefaultEncoding(type));
         }
         createAlignedTimeSeries(devicePath, measurements, dataTypes, encodings);
       } else {
