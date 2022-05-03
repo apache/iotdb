@@ -201,10 +201,10 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private void updateIntResult(int minVal) {
-    if (!initResult || minVal > maxResult.getInt()) {
+  private void updateIntResult(int maxVal) {
+    if (!initResult || maxVal > maxResult.getInt()) {
       initResult = true;
-      maxResult.setInt(minVal);
+      maxResult.setInt(maxVal);
     }
   }
 
@@ -221,10 +221,10 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private void updateLongResult(long minVal) {
-    if (!initResult || minVal > maxResult.getLong()) {
+  private void updateLongResult(long maxVal) {
+    if (!initResult || maxVal > maxResult.getLong()) {
       initResult = true;
-      maxResult.setLong(minVal);
+      maxResult.setLong(maxVal);
     }
   }
 
@@ -241,10 +241,10 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private void updateFloatResult(float minVal) {
-    if (!initResult || minVal > maxResult.getFloat()) {
+  private void updateFloatResult(float maxVal) {
+    if (!initResult || maxVal > maxResult.getFloat()) {
       initResult = true;
-      maxResult.setFloat(minVal);
+      maxResult.setFloat(maxVal);
     }
   }
 
@@ -261,10 +261,10 @@ public class MaxValueAccumulator implements Accumulator {
     }
   }
 
-  private void updateDoubleResult(double minVal) {
-    if (!initResult || minVal > maxResult.getDouble()) {
+  private void updateDoubleResult(double maxVal) {
+    if (!initResult || maxVal > maxResult.getDouble()) {
       initResult = true;
-      maxResult.setDouble(minVal);
+      maxResult.setDouble(maxVal);
     }
   }
 }

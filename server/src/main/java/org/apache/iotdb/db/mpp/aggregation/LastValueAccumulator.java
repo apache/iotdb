@@ -101,21 +101,21 @@ public class LastValueAccumulator implements Accumulator {
   public void addStatistics(Statistics statistics) {
     switch (seriesDataType) {
       case INT32:
-        updateIntLastValue((int) statistics.getLastValue(), statistics.getStartTime());
+        updateIntLastValue((int) statistics.getLastValue(), statistics.getEndTime());
         break;
       case INT64:
-        updateLongLastValue((long) statistics.getLastValue(), statistics.getStartTime());
+        updateLongLastValue((long) statistics.getLastValue(), statistics.getEndTime());
         break;
       case FLOAT:
-        updateFloatLastValue((float) statistics.getLastValue(), statistics.getStartTime());
+        updateFloatLastValue((float) statistics.getLastValue(), statistics.getEndTime());
         break;
       case DOUBLE:
-        updateDoubleLastValue((double) statistics.getLastValue(), statistics.getStartTime());
+        updateDoubleLastValue((double) statistics.getLastValue(), statistics.getEndTime());
         break;
       case TEXT:
-        updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getStartTime());
+        updateBinaryLastValue((Binary) statistics.getLastValue(), statistics.getEndTime());
       case BOOLEAN:
-        updateBooleanLastValue((boolean) statistics.getLastValue(), statistics.getStartTime());
+        updateBooleanLastValue((boolean) statistics.getLastValue(), statistics.getEndTime());
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in LastValue: %s", seriesDataType));
