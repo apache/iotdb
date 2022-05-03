@@ -46,30 +46,18 @@ import java.util.Map;
  */
 public class ReadOnlyMemChunk {
 
-  // deletion list for this chunk
-  private final List<TimeRange> deletionList;
-
   private String measurementUid;
   private TSDataType dataType;
-  private TSEncoding encoding;
 
   private static final Logger logger = LoggerFactory.getLogger(ReadOnlyMemChunk.class);
 
-  private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
-
   protected IChunkMetadata cachedMetaData;
-
-  private TVList chunkData;
 
   protected IPointReader chunkPointReader;
 
   protected TsBlock tsblock;
 
-  private int chunkDataSize;
-
-  public ReadOnlyMemChunk() {
-    this.deletionList = null;
-  }
+  protected ReadOnlyMemChunk() {}
 
   public ReadOnlyMemChunk(
       String measurementUid,
@@ -81,10 +69,10 @@ public class ReadOnlyMemChunk {
       throws IOException, QueryProcessException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
-    this.encoding = encoding;
+    int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       try {
-        this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+        floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
       } catch (NumberFormatException e) {
         logger.warn(
             "The format of MAX_POINT_NUMBER {}  is not correct."
@@ -98,10 +86,6 @@ public class ReadOnlyMemChunk {
         floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       }
     }
-
-    this.chunkData = tvList;
-    this.chunkDataSize = tvList.rowCount();
-    this.deletionList = deletionList;
     this.tsblock = tvList.getTsBlock(floatPrecision, encoding, deletionList);
     initChunkMetaFromTsBlock();
     this.chunkPointReader = tsblock.getTsBlockSingleColumnIterator();
@@ -111,10 +95,7 @@ public class ReadOnlyMemChunk {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      IPointReader iterator =
-          chunkData
-              .getTsBlock(floatPrecision, encoding, deletionList)
-              .getTsBlockSingleColumnIterator();
+      IPointReader iterator = tsblock.getTsBlockSingleColumnIterator();
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         switch (dataType) {
@@ -160,10 +141,6 @@ public class ReadOnlyMemChunk {
   }
 
   public IPointReader getPointReader() {
-    return chunkPointReader;
-  }
-
-  public String getMeasurementUid() {
-    return measurementUid;
+    return tsblock.getTsBlockSingleColumnIterator();
   }
 }
