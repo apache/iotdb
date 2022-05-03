@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -45,9 +46,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ALIAS;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ATTRIBUTES;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DATA_BLOCK_TYPE_ORIGIN_KEY;
@@ -166,7 +164,7 @@ public class RSchemaUtils {
   public static PartialPath getPartialPathFromInnerPath(String path, char level) {
     String pathWithoutLevel = path.replace(PATH_SEPARATOR + level, PATH_SEPARATOR);
     String[] nodes = pathWithoutLevel.split(ESCAPE_PATH_SEPARATOR);
-    nodes[0] = PATH_ROOT;
+    nodes[0] = IoTDBConstant.PATH_ROOT;
     return new PartialPath(nodes);
   }
 
@@ -508,7 +506,9 @@ public class RSchemaUtils {
   public static String replaceWildcard(int num) {
     StringBuilder stringBuilder = new StringBuilder();
     for (int i = 0; i < num; i++) {
-      stringBuilder.append(RSchemaConstants.PATH_SEPARATOR).append(ONE_LEVEL_PATH_WILDCARD);
+      stringBuilder
+          .append(RSchemaConstants.PATH_SEPARATOR)
+          .append(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
     }
     return stringBuilder.substring(1);
   }
@@ -540,7 +540,7 @@ public class RSchemaUtils {
     List<String[]> allNodesArray = new ArrayList<>();
     List<Integer> multiWildcardPosition = new ArrayList<>();
     for (int i = 0; i < nodes.length; i++) {
-      if (MULTI_LEVEL_PATH_WILDCARD.equals(nodes[i])) {
+      if (IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(nodes[i])) {
         multiWildcardPosition.add(i);
       }
     }
