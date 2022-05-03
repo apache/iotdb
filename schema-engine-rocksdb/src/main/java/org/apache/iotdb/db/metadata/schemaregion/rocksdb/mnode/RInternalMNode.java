@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;

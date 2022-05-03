@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.tree;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

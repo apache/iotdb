@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 
 import java.util.ArrayList;

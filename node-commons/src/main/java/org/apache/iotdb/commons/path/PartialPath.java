@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.path;
+package org.apache.iotdb.commons.path;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -63,13 +63,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @throws IllegalPathException
    */
   public PartialPath(String path) throws IllegalPathException {
-    this.nodes = MetaUtils.splitPathToDetachedPath(path);
+    this.nodes = PathUtils.splitPathToDetachedPath(path);
     this.fullPath = path;
   }
 
   public PartialPath(String device, String measurement) throws IllegalPathException {
     this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
-    this.nodes = MetaUtils.splitPathToDetachedPath(fullPath);
+    this.nodes = PathUtils.splitPathToDetachedPath(fullPath);
   }
 
   /** @param partialNodes nodes of a time series path */
