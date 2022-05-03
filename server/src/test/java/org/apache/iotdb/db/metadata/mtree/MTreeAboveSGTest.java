@@ -316,14 +316,13 @@ public class MTreeAboveSGTest {
     root.serialize(byteBuffer);
     byteBuffer.flip();
 
-    root.clear();
-
-    root.deserialize(byteBuffer);
+    MTreeAboveSG newTree = new MTreeAboveSG();
+    newTree.deserialize(byteBuffer);
 
     for (int i = 0; i < pathList.length; i++) {
-      root.isStorageGroup(pathList[i]);
+      newTree.isStorageGroup(pathList[i]);
       TStorageGroupSchema storageGroupSchema =
-          root.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
+          newTree.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
       Assert.assertEquals(i, storageGroupSchema.getTTL());
       Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
@@ -331,10 +330,10 @@ public class MTreeAboveSGTest {
     }
 
     Assert.assertEquals(
-        3, root.getMatchedStorageGroups(new PartialPath("root.**.sg"), false).size());
+        3, newTree.getMatchedStorageGroups(new PartialPath("root.**.sg"), false).size());
     Assert.assertEquals(
-        2, root.getMatchedStorageGroups(new PartialPath("root.**.b.sg"), false).size());
+        2, newTree.getMatchedStorageGroups(new PartialPath("root.**.b.sg"), false).size());
     Assert.assertEquals(
-        1, root.getMatchedStorageGroups(new PartialPath("root.*.*.sg"), false).size());
+        1, newTree.getMatchedStorageGroups(new PartialPath("root.*.*.sg"), false).size());
   }
 }
