@@ -102,7 +102,7 @@ public class InsertTabletPlansIterator {
 
     Map<String, InsertTabletPlanGenerator> deviceToPlanGeneratorMap = new HashMap<>();
     for (int i = 0, intoPathsSize = intoPaths.size(); i < intoPathsSize; i++) {
-      String device = intoPaths.get(i).getDevice();
+      String device = intoPaths.get(i).getDeviceIdString();
       if (!deviceToPlanGeneratorMap.containsKey(device)) {
         deviceToPlanGeneratorMap.put(
             device, new InsertTabletPlanGenerator(device, tabletRowLimit, isIntoPathsAligned));

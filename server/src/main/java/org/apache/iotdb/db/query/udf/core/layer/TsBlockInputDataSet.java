@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.layer;
 
-import org.apache.iotdb.db.mpp.operator.Operator;
+import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockRowIterator;

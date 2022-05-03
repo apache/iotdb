@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session

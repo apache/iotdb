@@ -166,7 +166,7 @@ public class ServerTimeGenerator extends TimeGenerator {
 
     return new SeriesRawDataBatchReader(
         path,
-        queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+        queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
         dataType,
         context,
         queryDataSource,
