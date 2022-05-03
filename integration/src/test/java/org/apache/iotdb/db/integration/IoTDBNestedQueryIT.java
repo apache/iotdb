@@ -615,18 +615,19 @@ public class IoTDBNestedQueryIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String query = "SELECT s1, time, time + 1 - 1, time + s1 - s1 FROM root.vehicle.d1";
+      String query =
+          "SELECT s1, time, time, -(-time), time + 1 - 1, time + s1 - s1, time + 1 - 1 FROM root.vehicle.d1";
       try (ResultSet rs = statement.executeQuery(query)) {
         for (int i = 1; i <= ITERATION_TIMES; ++i) {
           assertTrue(rs.next());
-          for (int j = 1; j <= 5; ++j) {
+          for (int j = 1; j <= 8; ++j) {
             assertEquals(i, Double.parseDouble(rs.getString(j)), 0.001);
           }
         }
         assertFalse(rs.next());
       }
 
-      query = "SELECT time FROM root.vehicle.d1";
+      query = "SELECT time, 2 * time FROM root.vehicle.d1";
       try (ResultSet rs = statement.executeQuery(query)) {
         assertFalse(rs.next());
       }
