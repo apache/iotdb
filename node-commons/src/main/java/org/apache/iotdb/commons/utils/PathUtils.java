@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
-import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang.StringEscapeUtils;
 
 import java.util.ArrayList;
 import java.util.List;
