@@ -63,6 +63,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   private static final byte TYPE_RAW_STRING = -1;
 
+  private static final byte TYPE_NULL = -2;
+
   private long time;
   private Object[] values;
 
@@ -294,6 +296,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       if (measurements[i] == null) {
         continue;
       }
+      // serialize null value
+      if (values[i] == null) {
+        ReadWriteIOUtils.write(TYPE_NULL, buffer);
+        continue;
+      }
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       if (isNeedInferType) {
@@ -376,8 +383,8 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       // types are not determined, the situation mainly occurs when the node uses string values
       // and is forwarded to other nodes
       byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
-      if (typeNum == TYPE_RAW_STRING) {
-        values[i] = ReadWriteIOUtils.readString(buffer);
+      if (typeNum == TYPE_RAW_STRING || typeNum == TYPE_NULL) {
+        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(buffer) : null;
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
@@ -432,6 +439,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       if (measurements[i] == null) {
         continue;
       }
+      // serialize null value
+      if (values[i] == null) {
+        size += Byte.BYTES;
+        continue;
+      }
+      size += Byte.BYTES;
       switch (dataTypes[i]) {
         case BOOLEAN:
           size += Byte.BYTES;
@@ -473,19 +486,24 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   /** Serialize measurements and values, ignoring failed time series */
   private void serializeMeasurementsAndValues(IWALByteBufferView buffer) {
     buffer.putInt(measurementSchemas.length - getFailedMeasurementNumber());
-    // data types are serialized in measurement schemas
     serializeMeasurementSchemasToWAL(buffer);
-    putValues(buffer);
+    putDataTypesAndValues(buffer);
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
-  /** Serialize values, ignoring failed time series */
-  private void putValues(IWALByteBufferView buffer) {
+  /** Serialize data types and values, ignoring failed time series */
+  private void putDataTypesAndValues(IWALByteBufferView buffer) {
     for (int i = 0; i < values.length; i++) {
       // ignore failed partial insert
       if (measurements[i] == null) {
         continue;
       }
+      // serialize null value
+      if (values[i] == null) {
+        WALWriteUtils.write(TYPE_NULL, buffer);
+        continue;
+      }
+      WALWriteUtils.write(dataTypes[i], buffer);
       switch (dataTypes[i]) {
         case BOOLEAN:
           WALWriteUtils.write((Boolean) values[i], buffer);
@@ -530,21 +548,21 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     measurementSchemas = new MeasurementSchema[measurementSize];
     deserializeMeasurementSchemas(stream);
 
-    // data types are serialized in measurement schemas
     dataTypes = new TSDataType[measurementSize];
-    for (int i = 0; i < measurementSize; ++i) {
-      dataTypes[i] = measurementSchemas[i].getType();
-    }
-
-    this.values = new Object[measurementSize];
-    fillValues(stream);
+    values = new Object[measurementSize];
+    fillDataTypesAndValues(stream);
 
     isAligned = stream.readByte() == 1;
   }
 
-  /** Make sure the values has been created before calling this */
-  public void fillValues(DataInputStream stream) throws IOException {
+  /** Make sure the dataTypes and values have been created before calling this */
+  public void fillDataTypesAndValues(DataInputStream stream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
+      byte typeNum = stream.readByte();
+      if (typeNum == TYPE_NULL) {
+        continue;
+      }
+      dataTypes[i] = TSDataType.values()[typeNum];
       switch (dataTypes[i]) {
         case BOOLEAN:
           values[i] = ReadWriteIOUtils.readBool(stream);
