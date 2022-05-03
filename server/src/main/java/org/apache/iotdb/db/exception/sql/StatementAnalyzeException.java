@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.exception.sql;
 
-import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
+import org.apache.iotdb.db.mpp.plan.constant.FilterConstant;
 
 public class StatementAnalyzeException extends RuntimeException {
 
