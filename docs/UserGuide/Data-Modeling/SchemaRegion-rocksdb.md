@@ -38,8 +38,7 @@ schema-engine-rocksdb/target/schema-engine-rocksdb. Copy the file in the conf di
 and copy the files in the lib directory to the lib directory of server.
 
 Then, open the **iotdb-engine.properties** in the conf directory of server, and set the `schema_engine_mode` to
-Rocksdb_based, set the `enable_last_cache` to false. Restart the IoTDB, the system will use `RSchemaRegion` to manage
-the metadata.
+Rocksdb_based. Restart the IoTDB, the system will use `RSchemaRegion` to manage the metadata.
 
 ```
 ####################
@@ -48,14 +47,6 @@ the metadata.
 # Choose the mode of schema engine. The value could be Memory,Schema_File and Rocksdb_based. If the provided value doesn't match any pre-defined value, Memory mode will be used as default.
 # Datatype: string
 schema_engine_mode=Rocksdb_based
-
-####################
-### LAST Cache Configuration
-####################
-
-# Whether to enable LAST cache
-# Datatype: boolean
-enable_last_cache=false
 
 ```
 
