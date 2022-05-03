@@ -48,7 +48,7 @@ public class InsertRowNodeSerdeTest {
 
     Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
 
-    Assert.assertEquals(InsertRowNode.deserialize(byteBuffer), insertRowNode);
+    Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));
 
     insertRowNode = getInsertRowNodeWithMeasurementSchemas();
     byteBuffer = ByteBuffer.allocate(10000);
@@ -57,7 +57,7 @@ public class InsertRowNodeSerdeTest {
 
     Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
 
-    Assert.assertEquals(InsertRowNode.deserialize(byteBuffer), insertRowNode);
+    Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));
 
     insertRowNode = getInsertRowNodeWithStringValue();
     byteBuffer = ByteBuffer.allocate(10000);
@@ -66,7 +66,7 @@ public class InsertRowNodeSerdeTest {
 
     Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
 
-    Assert.assertEquals(InsertRowNode.deserialize(byteBuffer), insertRowNode);
+    Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));
   }
 
   @Test
@@ -75,25 +75,20 @@ public class InsertRowNodeSerdeTest {
 
     int serializedSize = insertRowNode.serializedSize();
 
-    Assert.assertEquals(serializedSize, 125);
-
     byte[] bytes = new byte[serializedSize];
     WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
 
     insertRowNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
 
     DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
 
     Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), dataInputStream.readShort());
 
     InsertRowNode tmpNode = InsertRowNode.deserialize(dataInputStream);
+    tmpNode.setPlanNodeId(insertRowNode.getPlanNodeId());
 
-    Assert.assertEquals(tmpNode.getTime(), insertRowNode.getTime());
-    Assert.assertEquals(tmpNode.getDevicePath(), insertRowNode.getDevicePath());
-    Assert.assertEquals(tmpNode.isAligned(), insertRowNode.isAligned());
-    Assert.assertArrayEquals(tmpNode.getValues(), insertRowNode.getValues());
-    Assert.assertArrayEquals(
-        tmpNode.getMeasurementSchemas(), insertRowNode.getMeasurementSchemas());
+    Assert.assertEquals(insertRowNode, tmpNode);
   }
 
   private InsertRowNode getInsertRowNode() throws IllegalPathException {

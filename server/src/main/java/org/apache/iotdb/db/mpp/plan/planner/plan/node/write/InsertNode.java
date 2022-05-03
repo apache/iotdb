@@ -146,7 +146,7 @@ public abstract class InsertNode extends WritePlanNode {
       if (measurements[i] == null) {
         continue;
       }
-      byteLen = WALWriteUtils.sizeToWrite(measurementSchemas[i]);
+      byteLen += WALWriteUtils.sizeToWrite(measurementSchemas[i]);
     }
     return byteLen;
   }
@@ -163,7 +163,7 @@ public abstract class InsertNode extends WritePlanNode {
   }
 
   /**
-   * Deserialize measurement schemas , Make sure the measurement schemas and measurements have been
+   * Deserialize measurement schemas. Make sure the measurement schemas and measurements have been
    * created before calling this
    */
   protected void deserializeMeasurementSchemas(DataInputStream stream) throws IOException {

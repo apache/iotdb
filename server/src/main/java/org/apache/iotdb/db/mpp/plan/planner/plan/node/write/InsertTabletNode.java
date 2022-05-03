@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -521,11 +520,13 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   // region serialize & deserialize methods for WAL
+  /** Serialized size for wal */
   @Override
   public int serializedSize() {
     return serializedSize(0, rowCount);
   }
 
+  /** Serialized size for wal */
   public int serializedSize(int start, int end) {
     return Short.BYTES + subSerializeSize(start, end);
   }

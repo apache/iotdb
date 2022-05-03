@@ -21,6 +21,9 @@ package org.apache.iotdb.db.wal.io;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -30,6 +33,7 @@ import org.apache.iotdb.db.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -66,6 +70,8 @@ public class WALFileTest {
   public void testReadNormalFile() throws IOException, IllegalPathException {
     int fakeMemTableId = 1;
     List<WALEntry> expectedWALEntries = new ArrayList<>();
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowNode(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletNode(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getDeletePlan(devicePath)));
@@ -111,6 +117,8 @@ public class WALFileTest {
   public void testReadBrokenFile() throws IOException, IllegalPathException {
     int fakeMemTableId = 1;
     List<WALEntry> expectedWALEntries = new ArrayList<>();
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowNode(devicePath)));
+    expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletNode(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertRowPlan(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getInsertTabletPlan(devicePath)));
     expectedWALEntries.add(new WALEntry(fakeMemTableId, getDeletePlan(devicePath)));
@@ -215,6 +223,112 @@ public class WALFileTest {
     insertTabletPlan.setRowCount(times.length);
     insertTabletPlan.setBitMaps(bitMaps);
     return insertTabletPlan;
+  }
+
+  public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {
+    long time = 110L;
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+          TSDataType.TEXT
+        };
+
+    Object[] columns = new Object[6];
+    columns[0] = 1.0;
+    columns[1] = 2.0f;
+    columns[2] = 10000L;
+    columns[3] = 100;
+    columns[4] = false;
+    columns[5] = new Binary("hh" + 0);
+
+    InsertRowNode insertRowNode =
+        new InsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            time,
+            columns,
+            false);
+
+    insertRowNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN),
+          new MeasurementSchema("s6", TSDataType.TEXT)
+        });
+    return insertRowNode;
+  }
+
+  public static InsertTabletNode getInsertTabletNode(String devicePath)
+      throws IllegalPathException {
+    long[] times = new long[] {110L, 111L, 112L, 113L};
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+          TSDataType.TEXT
+        };
+
+    Object[] columns = new Object[6];
+    columns[0] = new double[4];
+    columns[1] = new float[4];
+    columns[2] = new long[4];
+    columns[3] = new int[4];
+    columns[4] = new boolean[4];
+    columns[5] = new Binary[4];
+
+    for (int r = 0; r < 4; r++) {
+      ((double[]) columns[0])[r] = 1.0 + r;
+      ((float[]) columns[1])[r] = 2 + r;
+      ((long[]) columns[2])[r] = 10000 + r;
+      ((int[]) columns[3])[r] = 100 + r;
+      ((boolean[]) columns[4])[r] = (r % 2 == 0);
+      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+    }
+
+    BitMap[] bitMaps = new BitMap[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(times.length);
+      }
+      bitMaps[i].mark(i % times.length);
+    }
+
+    InsertTabletNode insertTabletNode =
+        new InsertTabletNode(
+            new PlanNodeId(""),
+            new PartialPath(devicePath),
+            false,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            times,
+            bitMaps,
+            columns,
+            times.length);
+
+    insertTabletNode.setMeasurementSchemas(
+        new MeasurementSchema[] {
+          new MeasurementSchema("s1", TSDataType.DOUBLE),
+          new MeasurementSchema("s2", TSDataType.FLOAT),
+          new MeasurementSchema("s3", TSDataType.INT64),
+          new MeasurementSchema("s4", TSDataType.INT32),
+          new MeasurementSchema("s5", TSDataType.BOOLEAN),
+          new MeasurementSchema("s6", TSDataType.TEXT)
+        });
+
+    return insertTabletNode;
   }
 
   public static DeletePlan getDeletePlan(String devicePath) throws IllegalPathException {

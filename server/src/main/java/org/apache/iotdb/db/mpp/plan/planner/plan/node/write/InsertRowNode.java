@@ -407,6 +407,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   // region serialize & deserialize methods for WAL
+  /** Serialized size for wal */
   @Override
   public int serializedSize() {
     return Short.BYTES + subSerializeSize();

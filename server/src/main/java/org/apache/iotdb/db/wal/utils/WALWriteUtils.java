@@ -182,7 +182,6 @@ public class WALWriteUtils {
     Map<String, String> props = measurementSchema.getProps();
     byteLen += Integer.BYTES;
     if (props != null) {
-      byteLen += Integer.BYTES;
       for (Map.Entry<String, String> entry : props.entrySet()) {
         byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
         byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
