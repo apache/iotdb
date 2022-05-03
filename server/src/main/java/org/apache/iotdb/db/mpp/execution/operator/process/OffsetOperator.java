@@ -35,7 +35,7 @@ public class OffsetOperator implements ProcessOperator {
 
   public OffsetOperator(OperatorContext operatorContext, long offset, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    checkArgument(offset >= 0, "limit must be at least zero");
+    checkArgument(offset >= 0, "offset must be at least zero");
     this.remainingOffset = offset;
     this.child = requireNonNull(child, "child operator is null");
   }
