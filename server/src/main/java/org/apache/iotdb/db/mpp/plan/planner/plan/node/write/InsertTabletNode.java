@@ -363,6 +363,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
+  /** Serialize measurements or measurement schemas, ignoring failed time series */
   private void writeMeasurementsOrSchemas(ByteBuffer buffer) {
     buffer.putInt(measurements.length - getFailedMeasurementNumber());
 
@@ -381,6 +382,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  /** Serialize data types, ignoring failed time series */
   private void writeDataTypes(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       // ignore failed partial insert
@@ -398,6 +400,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  /** Serialize bitmaps, ignoring failed time series */
   private void writeBitMaps(ByteBuffer buffer) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
@@ -417,6 +420,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  /** Serialize values, ignoring failed time series */
   private void writeValues(ByteBuffer buffer) {
     for (int i = 0; i < columns.length; i++) {
       // ignore failed partial insert
@@ -617,6 +621,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
+  /** Serialize measurement schemas, ignoring failed time series */
   private void writeMeasurementSchemas(IWALByteBufferView buffer) {
     buffer.putInt(measurements.length - getFailedMeasurementNumber());
     serializeMeasurementSchemasToWAL(buffer);
@@ -629,6 +634,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  /** Serialize bitmaps, ignoring failed time series */
   private void writeBitMaps(IWALByteBufferView buffer, int start, int end) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
@@ -651,6 +657,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  /** Serialize values, ignoring failed time series */
   private void writeValues(IWALByteBufferView buffer, int start, int end) {
     for (int i = 0; i < columns.length; i++) {
       // ignore failed partial insert
