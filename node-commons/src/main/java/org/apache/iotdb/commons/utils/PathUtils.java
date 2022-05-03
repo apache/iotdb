@@ -28,10 +28,15 @@ import java.util.List;
 
 public class PathUtils {
 
+  /**
+   * @param path the path will split. ex, root.ln.
+   * @return string array. ex, [root, ln]
+   * @throws IllegalPathException if path isn't correct, the exception will throw
+   */
   public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
     // NodeName is treated as identifier. When parsing identifier, unescapeJava is called.
     // Therefore we call unescapeJava here.
-    path = StringEscapeUtils.escapeJava(path);
+    path = StringEscapeUtils.unescapeJava(path);
     if (path.endsWith(TsFileConstant.PATH_SEPARATOR)) {
       throw new IllegalPathException(path);
     }

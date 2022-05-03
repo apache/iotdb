@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
@@ -43,89 +44,89 @@ public class MetaUtilsTest {
   public void testSplitPathToNodes() throws IllegalPathException {
     assertArrayEquals(
         Arrays.asList("root", "sg", "d1", "s1").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.d1.s1"));
+        PathUtils.splitPathToDetachedPath("root.sg.d1.s1"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "d1", "s+1").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.d1.`s+1`"));
+        PathUtils.splitPathToDetachedPath("root.sg.d1.`s+1`"));
 
     assertArrayEquals(
         Arrays.asList("root", "\"s g\"", "d1", "\"s+1\"").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.`\"s g\"`.d1.`\"s+1\"`"));
+        PathUtils.splitPathToDetachedPath("root.`\"s g\"`.d1.`\"s+1\"`"));
 
     assertArrayEquals(
-        Arrays.asList("root", "1").toArray(), MetaUtils.splitPathToDetachedPath("root.1"));
+        Arrays.asList("root", "1").toArray(), PathUtils.splitPathToDetachedPath("root.1"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "d1", "s", "1").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.d1.s.1"));
+        PathUtils.splitPathToDetachedPath("root.sg.d1.s.1"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "d1", "`a.b`").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.d1.```a.b```"));
+        PathUtils.splitPathToDetachedPath("root.sg.d1.```a.b```"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "d1", "`").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.d1.````"));
+        PathUtils.splitPathToDetachedPath("root.sg.d1.````"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "d1", "`").toArray(),
-        MetaUtils.splitPathToDetachedPath("`root`.`sg`.`d1`.````"));
+        PathUtils.splitPathToDetachedPath("`root`.`sg`.`d1`.````"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "d1", "`").toArray(),
-        MetaUtils.splitPathToDetachedPath("`root`.sg.`d1`.````"));
+        PathUtils.splitPathToDetachedPath("`root`.sg.`d1`.````"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "d1.`").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.`d1.```"));
+        PathUtils.splitPathToDetachedPath("root.sg.`d1.```"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "\"d").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.`\\\"d`"));
+        PathUtils.splitPathToDetachedPath("root.sg.`\\\"d`"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "\td").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.`\\td`"));
+        PathUtils.splitPathToDetachedPath("root.sg.`\\td`"));
 
     assertArrayEquals(
         Arrays.asList("root", "sg", "\\td").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.sg.`\\\\td`"));
+        PathUtils.splitPathToDetachedPath("root.sg.`\\\\td`"));
 
     assertArrayEquals(
         Arrays.asList("root", "laptop", "d1", "\"1.2.3\"").toArray(),
-        MetaUtils.splitPathToDetachedPath("root.laptop.d1.`\\\"1.2.3\\\"`"));
+        PathUtils.splitPathToDetachedPath("root.laptop.d1.`\\\"1.2.3\\\"`"));
 
     try {
-      MetaUtils.splitPathToDetachedPath("root.sg.d1.```");
+      PathUtils.splitPathToDetachedPath("root.sg.d1.```");
       fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root.sg.d1.``` is not a legal path", e.getMessage());
     }
 
     try {
-      MetaUtils.splitPathToDetachedPath("root.sg.`d1`..`aa``b`");
+      PathUtils.splitPathToDetachedPath("root.sg.`d1`..`aa``b`");
       fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root.sg.`d1`..`aa``b` is not a legal path", e.getMessage());
     }
 
     try {
-      MetaUtils.splitPathToDetachedPath("root.sg.d1.`s+`-1\"`");
+      PathUtils.splitPathToDetachedPath("root.sg.d1.`s+`-1\"`");
       fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root.sg.d1.`s+`-1\"` is not a legal path", e.getMessage());
     }
 
     try {
-      MetaUtils.splitPathToDetachedPath("root..a");
+      PathUtils.splitPathToDetachedPath("root..a");
       fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root..a is not a legal path", e.getMessage());
     }
 
     try {
-      MetaUtils.splitPathToDetachedPath("root.sg.d1.");
+      PathUtils.splitPathToDetachedPath("root.sg.d1.");
       fail();
     } catch (IllegalPathException e) {
       Assert.assertEquals("root.sg.d1. is not a legal path", e.getMessage());

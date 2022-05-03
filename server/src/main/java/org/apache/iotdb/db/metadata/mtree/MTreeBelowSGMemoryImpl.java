@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
@@ -51,7 +52,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -1048,7 +1048,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   public void checkIsTemplateCompatibleWithChild(IMNode node, Template template)
       throws MetadataException {
     for (String measurementPath : template.getSchemaMap().keySet()) {
-      String directNodeName = MetaUtils.splitPathToDetachedPath(measurementPath)[0];
+      String directNodeName = PathUtils.splitPathToDetachedPath(measurementPath)[0];
       if (node.hasChild(directNodeName)) {
         throw new MetadataException(
             "Node name "
@@ -1099,7 +1099,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     // node
     Set<String> overlapSet = new HashSet<>();
     for (String path : appendMeasurements) {
-      overlapSet.add(MetaUtils.splitPathToDetachedPath(path)[0]);
+      overlapSet.add(PathUtils.splitPathToDetachedPath(path)[0]);
     }
 
     while (setNodes.size() != 0) {

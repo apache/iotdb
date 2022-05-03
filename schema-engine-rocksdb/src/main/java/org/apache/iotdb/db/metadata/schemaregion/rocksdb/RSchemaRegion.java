@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -52,7 +53,6 @@ import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMNodeValueType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode.RMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -584,7 +584,7 @@ public class RSchemaRegion implements ISchemaRegion {
               RMeasurementMNode deletedNode;
               try {
                 path = RSchemaUtils.getPathByInnerName(new String(key));
-                String[] nodes = MetaUtils.splitPathToDetachedPath(path);
+                String[] nodes = PathUtils.splitPathToDetachedPath(path);
                 deletedNode = new RMeasurementMNode(path, value, readWriteHandler);
                 atomicInteger.incrementAndGet();
                 try (WriteBatch batch = new WriteBatch()) {
