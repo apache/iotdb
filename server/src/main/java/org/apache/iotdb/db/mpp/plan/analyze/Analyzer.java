@@ -24,13 +24,10 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
-import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
@@ -158,7 +155,8 @@ public class Analyzer {
         }
 
         if (queryStatement.getFilterNullComponent() != null) {
-          FilterNullParameter filterNullParameter = analyzeWithoutNull(queryStatement, schemaTree, selectExpressions);
+          FilterNullParameter filterNullParameter =
+              analyzeWithoutNull(queryStatement, schemaTree, selectExpressions);
           analysis.setFilterNullParameter(filterNullParameter);
         }
 
@@ -378,13 +376,15 @@ public class Analyzer {
     private FilterNullParameter analyzeWithoutNull(
         QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> selectExpressions) {
       FilterNullParameter filterNullParameter = new FilterNullParameter();
-      filterNullParameter.setFilterNullPolicy(queryStatement.getFilterNullComponent().getWithoutPolicyType());
+      filterNullParameter.setFilterNullPolicy(
+          queryStatement.getFilterNullComponent().getWithoutPolicyType());
       List<Expression> resultFilterNullColumns = new ArrayList<>();
-      List<Expression> rawFilterNullColumns = queryStatement.getFilterNullComponent().getWithoutNullColumns();
-      for(Expression filterNullColumn : rawFilterNullColumns) {
+      List<Expression> rawFilterNullColumns =
+          queryStatement.getFilterNullComponent().getWithoutNullColumns();
+      for (Expression filterNullColumn : rawFilterNullColumns) {
         List<Expression> resultExpressions =
-                ExpressionAnalyzer.removeWildcardInExpression(
-                        filterNullColumn, schemaTree, typeProvider);
+            ExpressionAnalyzer.removeWildcardInExpression(
+                filterNullColumn, schemaTree, typeProvider);
       }
       filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
       return filterNullParameter;

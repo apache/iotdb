@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.rewriter;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;

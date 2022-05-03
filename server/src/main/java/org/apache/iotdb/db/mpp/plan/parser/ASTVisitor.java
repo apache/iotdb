@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;

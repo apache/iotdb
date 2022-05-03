@@ -145,7 +145,7 @@ public class Analysis {
 
   public boolean hasDataSource() {
     return (dataPartition != null && !dataPartition.isEmpty())
-            || (schemaPartition != null && !schemaPartition.isEmpty());
+        || (schemaPartition != null && !schemaPartition.isEmpty());
   }
 
   public Map<String, Set<Expression>> getSourceExpressions() {
