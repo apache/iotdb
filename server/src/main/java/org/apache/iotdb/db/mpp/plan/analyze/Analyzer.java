@@ -36,8 +36,6 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
-import org.apache.iotdb.db.mpp.plan.rewriter.ColumnPaginationController;
-import org.apache.iotdb.db.mpp.plan.rewriter.ConcatPathRewriter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -63,8 +61,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -75,6 +71,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -136,54 +133,37 @@ public class Analyzer {
           outputExpressions = analyzeFrom(queryStatement, schemaTree, selectExpressions);
         }
 
+        if (queryStatement.isGroupByLevel()) {
+          Validate.isTrue(!queryStatement.isAlignByDevice());
+          Map<Expression, Set<Expression>> groupByLevelExpressions =
+              analyzeGroupByLevel(
+                  (AggregationQueryStatement) queryStatement, outputExpressions, selectExpressions);
+          analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+        }
+
+        if (queryStatement.getWhereCondition() != null) {
+          Expression queryFilter = analyzeWhere(queryStatement, schemaTree, selectExpressions);
+          Filter globalTimeFilter = ExpressionAnalyzer.transformToGlobalTimeFilter(queryFilter);
+          analysis.setQueryFilter(queryFilter);
+          analysis.setGlobalTimeFilter(globalTimeFilter);
+        }
+
         if (queryStatement.getFilterNullComponent() != null) {
           FilterNullParameter filterNullParameter = analyzeWithoutNull(queryStatement, schemaTree);
           analysis.setFilterNullParameter(filterNullParameter);
         }
 
-        if (queryStatement.getWhereCondition() != null) {
-          Filter globalTimeFilter = analyzeWhere(queryStatement, schemaTree, selectExpressions);
-          analysis.setGlobalTimeFilter(globalTimeFilter);
+        if (queryStatement.getFillComponent() != null) {
+          Validate.isTrue(!queryStatement.isAlignByDevice());
+          List<FillDescriptor> fillDescriptorList = analyzeFill(queryStatement);
+          analysis.setFillDescriptorList(fillDescriptorList);
         }
 
         Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
         for (Expression selectExpr : selectExpressions) {
-          for (Expression sourceExpression :
-              ExpressionAnalyzer.searchSourceExpressions(selectExpr)) {
-            if (sourceExpression instanceof TimeSeriesOperand) {
-              sourceExpressions
-                  .computeIfAbsent(
-                      ((TimeSeriesOperand) sourceExpression).getPath().getDeviceIdString(),
-                      key -> new HashSet<>())
-                  .add(sourceExpression);
-            } else if (selectExpressions instanceof FunctionExpression) {
-              Validate.isTrue(sourceExpression.isBuiltInAggregationFunctionExpression());
-              Validate.isTrue(sourceExpression.getExpressions().size() == 1);
-              sourceExpressions
-                  .computeIfAbsent(
-                      ((TimeSeriesOperand) sourceExpression.getExpressions().get(0))
-                          .getPath()
-                          .getDeviceIdString(),
-                      key -> new HashSet<>())
-                  .add(sourceExpression);
-            } else {
-              throw new IllegalArgumentException(
-                  "unsupported expression type: " + sourceExpression.getExpressionType());
-            }
-          }
+          // TODO
         }
         analysis.setSourceExpressions(sourceExpressions);
-
-        if (queryStatement.isGroupByLevel()) {
-          Map<String, Set<Expression>> groupByLevelExpressions =
-              analyzeGroupByLevel((AggregationQueryStatement) queryStatement, outputExpressions);
-          analysis.setGroupByLevelExpressions(groupByLevelExpressions);
-        }
-
-        if (queryStatement.getFillComponent() != null) {
-          List<FillDescriptor> fillDescriptorList = analyzeFill(queryStatement);
-          analysis.setFillDescriptorList(fillDescriptorList);
-        }
 
         DatasetHeader datasetHeader = analyzeOutput(outputExpressions, false);
         analysis.setRespDatasetHeader(datasetHeader);
@@ -209,7 +189,7 @@ public class Analyzer {
 
     private List<Pair<Expression, String>> analyzeSelect(
         QueryStatement queryStatement, SchemaTree schemaTree) {
-      List<Pair<Expression, String>> resultExpressions = new ArrayList<>();
+      List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       ColumnPaginationController paginationController =
           new ColumnPaginationController(
               queryStatement.getSeriesLimit(),
@@ -218,29 +198,29 @@ public class Analyzer {
 
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
         boolean hasAlias = resultColumn.hasAlias();
-        List<Expression> outputExpressions =
+        List<Expression> resultExpressions =
             ExpressionAnalyzer.removeWildcardInExpression(
                 resultColumn.getExpression(), schemaTree, typeProvider);
-        if (hasAlias && outputExpressions.size() > 1) {
+        if (hasAlias && resultExpressions.size() > 1) {
           throw new SemanticException(
               String.format(
                   "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
         }
-        for (Expression outputExpression : outputExpressions) {
+        for (Expression expression : resultExpressions) {
           if (paginationController.hasCurOffset()) {
             paginationController.consumeOffset();
             continue;
           }
           if (paginationController.hasCurLimit()) {
-            resultExpressions.add(
-                new Pair<>(outputExpression, hasAlias ? resultColumn.getAlias() : null));
+            outputExpressions.add(
+                new Pair<>(expression, hasAlias ? resultColumn.getAlias() : null));
             paginationController.consumeLimit();
           } else {
             break;
           }
         }
       }
-      return resultExpressions;
+      return outputExpressions;
     }
 
     private List<Pair<Expression, String>> analyzeFrom(
@@ -262,23 +242,22 @@ public class Analyzer {
       measurementNameToPathsMap.values().forEach(Analyzer::checkDataTypeConsistency);
 
       List<Pair<Expression, String>> measurementWithAliasList = analyzeMeasurements(queryStatement);
-      List<Pair<Expression, String>> resultExpressions = new ArrayList<>();
+      List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+      ColumnPaginationController paginationController =
+          new ColumnPaginationController(
+              queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
+
       for (Pair<Expression, String> measurementWithAlias : measurementWithAliasList) {
         String measurement =
             ExpressionAnalyzer.getPathInLeafExpression(measurementWithAlias.left).toString();
         if (measurementNameToPathsMap.containsKey(measurement)) {
           List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurement);
-          selectExpressions.addAll(
-              measurementPaths.stream()
-                  .map(
-                      measurementPath ->
-                          ExpressionAnalyzer.replacePathInExpression(
-                              measurementWithAlias.left, measurementPath))
-                  .collect(Collectors.toList()));
-          resultExpressions.add(measurementWithAlias);
-        } else if (measurement.equals("*")) {
-          for (String measurementName : measurementNameToPathsMap.keySet()) {
-            List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurementName);
+          if (paginationController.hasCurOffset()) {
+            paginationController.consumeOffset();
+            continue;
+          }
+          if (paginationController.hasCurLimit()) {
+            outputExpressions.add(measurementWithAlias);
             selectExpressions.addAll(
                 measurementPaths.stream()
                     .map(
@@ -286,17 +265,43 @@ public class Analyzer {
                             ExpressionAnalyzer.replacePathInExpression(
                                 measurementWithAlias.left, measurementPath))
                     .collect(Collectors.toList()));
-            resultExpressions.add(
-                new Pair<>(
-                    ExpressionAnalyzer.replacePathInExpression(
-                        measurementWithAlias.left, measurementName),
-                    measurementWithAlias.right));
+            paginationController.consumeLimit();
+          } else {
+            break;
+          }
+        } else if (measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+          for (String measurementName : measurementNameToPathsMap.keySet()) {
+            List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurementName);
+            if (paginationController.hasCurOffset()) {
+              paginationController.consumeOffset();
+              continue;
+            }
+            if (paginationController.hasCurLimit()) {
+              outputExpressions.add(
+                  new Pair<>(
+                      ExpressionAnalyzer.replacePathInExpression(
+                          measurementWithAlias.left, measurementName),
+                      measurementWithAlias.right));
+              selectExpressions.addAll(
+                  measurementPaths.stream()
+                      .map(
+                          measurementPath ->
+                              ExpressionAnalyzer.replacePathInExpression(
+                                  measurementWithAlias.left, measurementPath))
+                      .collect(Collectors.toList()));
+              paginationController.consumeLimit();
+            } else {
+              break;
+            }
+          }
+          if (!paginationController.hasCurLimit()) {
+            break;
           }
         } else {
           // do nothing or warning
         }
       }
-      return resultExpressions;
+      return outputExpressions;
     }
 
     private List<Pair<Expression, String>> analyzeMeasurements(QueryStatement queryStatement) {
@@ -308,17 +313,57 @@ public class Analyzer {
           .collect(Collectors.toList());
     }
 
-    private Filter analyzeWhere(
+    private Expression analyzeWhere(
         QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> selectExpressions) {
-      // TODO: analyze query filter
-      return null;
+      Expression rewrittenPredicate =
+          ExpressionAnalyzer.removeWildcardInQueryFilter(
+              queryStatement.getWhereCondition().getPredicate(), schemaTree, typeProvider);
+      selectExpressions.add(rewrittenPredicate);
+      return rewrittenPredicate;
     }
 
-    private Map<String, Set<Expression>> analyzeGroupByLevel(
+    private Map<Expression, Set<Expression>> analyzeGroupByLevel(
         AggregationQueryStatement queryStatement,
-        List<Pair<Expression, String>> outputExpressions) {
-      // TODO: analyze group by level
-      return null;
+        List<Pair<Expression, String>> outputExpressions,
+        Set<Expression> selectExpressions) {
+      GroupByLevelController groupByLevelController =
+          new GroupByLevelController(queryStatement.getGroupByLevelComponent().getLevels());
+      for (Pair<Expression, String> measurementWithAlias : outputExpressions) {
+        groupByLevelController.control(measurementWithAlias.left, measurementWithAlias.right);
+      }
+
+      Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
+      Map<Expression, Set<Expression>> rawGroupByLevelExpressions =
+          groupByLevelController.getGroupedPathMap();
+      ColumnPaginationController paginationController =
+          new ColumnPaginationController(
+              queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
+      for (Expression groupedExpression : rawGroupByLevelExpressions.keySet()) {
+        if (paginationController.hasCurOffset()) {
+          paginationController.consumeOffset();
+          continue;
+        }
+        if (paginationController.hasCurLimit()) {
+          groupByLevelExpressions.put(
+              groupedExpression, rawGroupByLevelExpressions.get(groupedExpression));
+          paginationController.consumeLimit();
+        } else {
+          break;
+        }
+      }
+      outputExpressions.clear();
+      for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
+        outputExpressions.add(
+            new Pair<>(
+                groupedExpression,
+                groupByLevelController.getAlias(groupedExpression.getExpressionString())));
+      }
+      selectExpressions.clear();
+      selectExpressions.addAll(
+          groupByLevelExpressions.values().stream()
+              .flatMap(Set::stream)
+              .collect(Collectors.toSet()));
+      return groupByLevelExpressions;
     }
 
     private FilterNullParameter analyzeWithoutNull(
@@ -327,6 +372,7 @@ public class Analyzer {
     }
 
     private List<FillDescriptor> analyzeFill(QueryStatement queryStatement) {
+
       return null;
     }
 

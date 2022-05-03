@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.rewriter;
+package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.mpp.common.filter.FunctionFilter;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -31,6 +29,8 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+
+import org.apache.commons.lang.Validate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -158,32 +158,12 @@ public class ConcatPathRewriter {
    * path pattern. And construct pattern tree.
    */
   private void constructPatternTreeFromWhereWithFrom(QueryStatement queryStatement) {
-    //    constructPatternTreeFromWhereWithFrom(
-    //        queryStatement.getFromComponent().getPrefixPaths(),
-    //        queryStatement.getWhereCondition().getQueryFilter());
-  }
-
-  private void constructPatternTreeFromWhereWithFrom(
-      List<PartialPath> fromPaths, QueryFilter filter) {
-    if (!filter.isLeaf()) {
-      for (QueryFilter child : filter.getChildren()) {
-        constructPatternTreeFromWhereWithFrom(fromPaths, child);
-      }
-      return;
-    }
-
-    FunctionFilter functionOperator = (FunctionFilter) filter;
-    PartialPath filterPath = functionOperator.getSinglePath();
-    List<PartialPath> concatPaths = new ArrayList<>();
-    if (SQLConstant.isReservedPath(filterPath)) {
-      // do nothing in the case of "where time > 5"
-      return;
-    } else if (filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
-      // do nothing in the case of "where root.d1.s1 > 5"
-      concatPaths.add(filterPath);
-    } else {
-      fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
-    }
-    concatPaths.forEach(concatPath -> patternTree.appendPath(concatPath));
+    // prefix paths in the FROM clause
+    List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
+    Expression predicate = queryStatement.getWhereCondition().getPredicate();
+    List<Expression> resultExpressions = new ArrayList<>();
+    predicate.concat(prefixPaths, resultExpressions, patternTree);
+    Validate.isTrue(resultExpressions.size() == 1);
+    queryStatement.getWhereCondition().setPredicate(resultExpressions.get(0));
   }
 }

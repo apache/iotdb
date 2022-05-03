@@ -64,13 +64,15 @@ public class Analysis {
   private GroupByTimeParameter groupByTimeParameter;
 
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
-  private Map<String, Set<Expression>> groupByLevelExpressions;
+  private Map<Expression, Set<Expression>> groupByLevelExpressions;
 
   // parameter of `WITHOUT NULL` clause
   private FilterNullParameter filterNullParameter;
 
   // parameter of `FILL` clause
   private List<FillDescriptor> fillDescriptorList;
+
+  private Expression queryFilter;
 
   // a global time filter used in `initQueryDataSource`
   private Filter globalTimeFilter;
@@ -165,11 +167,11 @@ public class Analysis {
     this.groupByTimeParameter = groupByTimeParameter;
   }
 
-  public Map<String, Set<Expression>> getGroupByLevelExpressions() {
+  public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
     return groupByLevelExpressions;
   }
 
-  public void setGroupByLevelExpressions(Map<String, Set<Expression>> groupByLevelExpressions) {
+  public void setGroupByLevelExpressions(Map<Expression, Set<Expression>> groupByLevelExpressions) {
     this.groupByLevelExpressions = groupByLevelExpressions;
   }
 
@@ -187,5 +189,13 @@ public class Analysis {
 
   public void setFillDescriptorList(List<FillDescriptor> fillDescriptorList) {
     this.fillDescriptorList = fillDescriptorList;
+  }
+
+  public Expression getQueryFilter() {
+    return queryFilter;
+  }
+
+  public void setQueryFilter(Expression queryFilter) {
+    this.queryFilter = queryFilter;
   }
 }

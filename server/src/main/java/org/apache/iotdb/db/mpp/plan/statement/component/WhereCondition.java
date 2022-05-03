@@ -36,4 +36,8 @@ public class WhereCondition extends StatementNode {
   public Expression getPredicate() {
     return predicate;
   }
+
+  public void setPredicate(Expression predicate) {
+    this.predicate = predicate;
+  }
 }

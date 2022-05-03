@@ -21,11 +21,9 @@ package org.apache.iotdb.db.mpp.plan.statement.component;
 
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -148,13 +146,6 @@ public class ResultColumn extends StatementNode {
     for (Expression resultExpression : resultExpressions) {
       resultColumns.add(new ResultColumn(resultExpression, alias));
     }
-  }
-
-  public ColumnHeader constructColumnHeader() {
-    return new ColumnHeader(
-        this.getExpressionString(),
-        ((TimeSeriesOperand) this.getExpression()).getPath().getSeriesType(),
-        this.getAlias());
   }
 
   @Override

@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.db.query.expression.unary.UnaryExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang.Validate;
@@ -80,8 +83,12 @@ public class ExpressionAnalyzer {
           removeWildcardInFunctionExpression(expression.getExpressions(), schemaTree, typeProvider);
       return constructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
     } else if (expression instanceof TimeSeriesOperand) {
-      List<MeasurementPath> actualPaths =
-          schemaTree.searchMeasurementPaths(((TimeSeriesOperand) expression).getPath()).left;
+      PartialPath path = ((TimeSeriesOperand) expression).getPath();
+      if (SQLConstant.isReservedPath(path)) {
+        return Collections.singletonList(expression);
+      }
+
+      List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
       return constructTimeSeriesOperands(actualPaths);
     } else if (expression instanceof ConstantOperand) {
       return Collections.singletonList(expression);
@@ -264,11 +271,11 @@ public class ExpressionAnalyzer {
       Expression expression, String alias) {
     if (expression instanceof TimeSeriesOperand) {
       String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-      if (measurement.equals("**")) {
+      if (measurement.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
         throw new SemanticException(
             "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
       }
-      if (alias != null && measurement.equals("*")) {
+      if (alias != null && measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
         throw new SemanticException(
             String.format(
                 "ALIGN BY DEVICE: alias '%s' can only be matched with one measurement", alias));
@@ -334,5 +341,14 @@ public class ExpressionAnalyzer {
       throw new SemanticException("illegal path: " + path);
     }
     return replacePathInExpression(expression, newPath);
+  }
+
+  public static Filter transformToGlobalTimeFilter(Expression queryFilter) {
+    return null;
+  }
+
+  public static Expression removeWildcardInQueryFilter(
+      Expression predicate, SchemaTree schemaTree, TypeProvider typeProvider) {
+    return null;
   }
 }

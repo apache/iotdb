@@ -51,7 +51,7 @@ public class AnalyzerTest {
   public void test() {
     Analysis analysis =
         analyzeSQL(
-            "SELECT sum(s1), sum(s1) as t, count(s2), max_value(*) FROM root.sg.* ALIGN BY DEVICE");
+            "SELECT sum(s1), avg(s2), max_value(*) FROM root.sg.* group by level = 1 SLIMIT 2 SOFFSET 1");
   }
 
   private void assertAnalyzeSemanticException(String sql, String message) {

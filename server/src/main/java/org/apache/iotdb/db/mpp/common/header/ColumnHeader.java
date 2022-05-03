@@ -37,6 +37,12 @@ public class ColumnHeader {
     this.alias = alias;
   }
 
+  public ColumnHeader(String columnName, TSDataType dataType) {
+    this.columnName = columnName;
+    this.dataType = dataType;
+    this.alias = null;
+  }
+
   public String getColumnName() {
     if (alias != null) {
       return alias;

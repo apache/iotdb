@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.rewriter;
+package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
