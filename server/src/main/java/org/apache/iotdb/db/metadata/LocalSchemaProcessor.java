@@ -1259,16 +1259,14 @@ public class LocalSchemaProcessor {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
-    try {
-      return getBelongedSchemaRegion(plan.getDevicePath()).getSeriesSchemasAndReadLockDevice(plan);
-    } catch (StorageGroupNotSetException e) {
-      if (config.isAutoCreateSchemaEnabled()) {
-        return getBelongedSchemaRegionWithAutoCreate(plan.getDevicePath())
-            .getSeriesSchemasAndReadLockDevice(plan);
-      } else {
-        throw e;
-      }
+    ISchemaRegion schemaRegion;
+    if (config.isAutoCreateSchemaEnabled()) {
+      schemaRegion = getBelongedSchemaRegionWithAutoCreate(plan.getDevicePath());
+    } else {
+      schemaRegion = getBelongedSchemaRegion(plan.getDevicePath());
     }
+
+    return schemaRegion.getSeriesSchemasAndReadLockDevice(plan);
   }
 
   // endregion

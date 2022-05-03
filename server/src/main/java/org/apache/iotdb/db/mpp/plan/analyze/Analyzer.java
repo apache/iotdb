@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -59,6 +60,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -117,7 +119,12 @@ public class Analyzer {
 
         // request schema fetch API
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
-
+        // (xingtanzjr) If there is no leaf node in the schema tree, the query should be completed
+        // immediately
+        if (schemaTree.isEmpty()) {
+          analysis.setRespDatasetHeader(new DatasetHeader(new ArrayList<>(), false));
+          return analysis;
+        }
         // bind metadata, remove wildcards, and apply SLIMIT & SOFFSET
         TypeProvider typeProvider = new TypeProvider();
         rewrittenStatement =
@@ -429,6 +436,14 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       analysis.setStatement(showStorageGroupStatement);
       analysis.setRespDatasetHeader(HeaderConstant.showStorageGroupHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowTTL(ShowTTLStatement showTTLStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showTTLStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showTTLHeader);
       return analysis;
     }
 
