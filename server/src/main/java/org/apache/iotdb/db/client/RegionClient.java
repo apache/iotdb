@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.sync.SyncThriftClient;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -33,30 +36,69 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public abstract class ConsensusClient {
-  private static final Logger logger = LoggerFactory.getLogger(ConsensusClient.class);
+public abstract class RegionClient implements SyncThriftClient, AutoCloseable {
+  private static final Logger logger = LoggerFactory.getLogger(RegionClient.class);
 
   private static final int TIMEOUT_MS = 10000;
 
-  private static final int RETRY_NUM = 5;
+  protected static final int RETRY_NUM = 5;
 
-  private static final String MSG_RECONNECTION_FAIL =
+  protected static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check server it";
 
   protected TTransport transport;
 
   TEndPoint consensusLeader;
 
-  protected int regionId;
+  protected TRegionReplicaSet regionReplicaSet;
+  protected ConsensusGroupId regionId;
 
   protected List<TEndPoint> regionMemberList;
 
-  private ClientManager clientManager;
+  protected ClientManager<TRegionReplicaSet, ? extends RegionClient> clientManager;
 
   private int cursor = 0;
 
-  protected ConsensusClient(List<TEndPoint> nodes) {
+  protected RegionClient(
+      List<TEndPoint> nodes,
+      ConsensusGroupId regionId,
+      ClientManager<TRegionReplicaSet, ? extends RegionClient> clientManager) {
     this.regionMemberList = nodes;
+    this.regionId = regionId;
+    this.clientManager = clientManager;
+  }
+
+  public TTransport getTransport() {
+    return transport;
+  }
+
+  public void setTransport(TTransport transport) {
+    this.transport = transport;
+  }
+
+  public ConsensusGroupId getRegionId() {
+    return regionId;
+  }
+
+  public void setRegionId(ConsensusGroupId regionId) {
+    this.regionId = regionId;
+  }
+
+  public List<TEndPoint> getRegionMemberList() {
+    return regionMemberList;
+  }
+
+  public void setRegionMemberList(List<TEndPoint> regionMemberList) {
+    this.regionMemberList = regionMemberList;
+  }
+
+  public ClientManager<TRegionReplicaSet, ? extends RegionClient> getClientManager() {
+    return clientManager;
+  }
+
+  public void setClientManager(
+      ClientManager<TRegionReplicaSet, ? extends RegionClient> clientManager) {
+    this.clientManager = clientManager;
   }
 
   public void connect(TEndPoint endpoint) throws IoTDBConnectionException {
@@ -101,7 +143,8 @@ public abstract class ConsensusClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public void close() {
+  @Override
+  public void invalidate() {
     transport.close();
   }
 
@@ -115,6 +158,7 @@ public abstract class ConsensusClient {
       }
       return true;
     }
+    // else if (status.getCode() == TSStatusCode.re)
     return false;
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
@@ -143,6 +144,23 @@ public class DataNodeClientPoolFactory {
           new ClientPoolProperty.Builder<AsyncDataNodeDataBlockServiceClient>()
               .build()
               .getConfig());
+    }
+  }
+
+  public static class SyncConfigNodeClientPoolFactory
+      implements IClientPoolFactory<TRegionReplicaSet, ConfigNodeClient> {
+    @Override
+    public KeyedObjectPool<TRegionReplicaSet, ConfigNodeClient> createClientPool(
+        ClientManager<TRegionReplicaSet, ConfigNodeClient> manager) {
+      return new GenericKeyedObjectPool<>(
+          new ConfigNodeClient.Factory(
+              manager,
+              new ClientFactoryProperty.Builder()
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .build()),
+          new ClientPoolProperty.Builder<ConfigNodeClient>().build().getConfig());
     }
   }
 }

@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.client;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.BaseClientFactory;
+import org.apache.iotdb.commons.client.ClientFactoryProperty;
+import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
@@ -42,32 +46,44 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
 import java.util.List;
 
-public class ConfigNodeClient extends ConsensusClient {
+public class ConfigNodeClient extends RegionClient {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
-
-  private static final int RETRY_NUM = 5;
-
-  public static final String MSG_RECONNECTION_FAIL =
-      "Fail to connect to any config node. Please check server it";
 
   private ConfigIService.Iface client;
 
+  private TProtocolFactory protocolFactory;
+
   public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
     // Read config nodes from configuration
-    super(CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls()));
+    super(
+        CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls()),
+        null,
+        null);
+
     init();
   }
 
-  public ConfigNodeClient(List<TEndPoint> configNodes) throws IoTDBConnectionException {
-    super(configNodes);
+  public ConfigNodeClient(
+      TProtocolFactory protocolFactory,
+      int connectionTimeout,
+      ClientManager<TRegionReplicaSet, ConfigNodeClient> clientManager)
+      throws BadNodeUrlException, IoTDBConnectionException {
+    // Read config nodes from configuration
+    super(
+        CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls()),
+        null,
+        clientManager);
+    this.protocolFactory = protocolFactory;
     init();
   }
 
@@ -78,10 +94,14 @@ public class ConfigNodeClient extends ConsensusClient {
   @Override
   protected void reconnect() throws IoTDBConnectionException {
     super.reconnect();
-    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
-      client = new ConfigIService.Client(new TCompactProtocol(transport));
-    } else {
-      client = new ConfigIService.Client(new TBinaryProtocol(transport));
+    client = new ConfigIService.Client(protocolFactory.getProtocol(transport));
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (clientManager != null) {
+      ((ClientManager<TRegionReplicaSet, ConfigNodeClient>) clientManager)
+          .returnClient(regionReplicaSet, this);
     }
   }
 
@@ -317,5 +337,48 @@ public class ConfigNodeClient extends ConsensusClient {
       reconnect();
     }
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public void invalidate() {
+    transport.close();
+  }
+
+  public static class Factory extends BaseClientFactory<TRegionReplicaSet, ConfigNodeClient> {
+
+    public Factory(
+        ClientManager<TRegionReplicaSet, ConfigNodeClient> clientManager,
+        ClientFactoryProperty clientFactoryProperty) {
+      super(clientManager, clientFactoryProperty);
+    }
+
+    @Override
+    public void destroyObject(
+        TRegionReplicaSet regionReplicaSet, PooledObject<ConfigNodeClient> pooledObject) {
+      pooledObject.getObject().invalidate();
+    }
+
+    @Override
+    public PooledObject<ConfigNodeClient> makeObject(TRegionReplicaSet regionReplicaSet)
+        throws Exception {
+      Constructor<ConfigNodeClient> constructor =
+          ConfigNodeClient.class.getConstructor(
+              clientFactoryProperty.getProtocolFactory().getClass(),
+              int.class,
+              clientManager.getClass());
+      return new DefaultPooledObject<>(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
+              ConfigNodeClient.class,
+              constructor,
+              clientFactoryProperty.getProtocolFactory(),
+              clientFactoryProperty.getConnectionTimeoutMs(),
+              clientManager));
+    }
+
+    @Override
+    public boolean validateObject(
+        TRegionReplicaSet regionReplicaSet, PooledObject<ConfigNodeClient> pooledObject) {
+      return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
+    }
   }
 }
