@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -38,34 +37,20 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReference
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TimeSeriesOperand extends LeafOperand {
+public class TimestampOperand extends LeafOperand {
 
-  private PartialPath path;
-
-  public TimeSeriesOperand(PartialPath path) {
-    this.path = path;
+  public TimestampOperand() {
+    // do nothing
   }
 
-  public TimeSeriesOperand(ByteBuffer byteBuffer) {
-    path = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
-  }
-
-  public PartialPath getPath() {
-    return path;
-  }
-
-  public void setPath(PartialPath path) {
-    this.path = path;
-  }
-
-  @Override
-  public boolean isConstantOperandInternal() {
-    return false;
+  public TimestampOperand(ByteBuffer byteBuffer) {
+    // do nothing
   }
 
   @Override
@@ -73,26 +58,18 @@ public class TimeSeriesOperand extends LeafOperand {
       List<PartialPath> prefixPaths,
       List<Expression> resultExpressions,
       PathPatternTree patternTree) {
-    for (PartialPath prefixPath : prefixPaths) {
-      TimeSeriesOperand resultExpression = new TimeSeriesOperand(prefixPath.concatPath(path));
-      patternTree.appendPath(resultExpression.getPath());
-      resultExpressions.add(resultExpression);
-    }
+    // do nothing
   }
 
   @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    for (PartialPath prefixPath : prefixPaths) {
-      resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
-    }
+    // do nothing
   }
 
   @Override
   public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws StatementAnalyzeException {
-    for (PartialPath actualPath : wildcardsRemover.removeWildcardInPath(path)) {
-      resultExpressions.add(new TimeSeriesOperand(actualPath));
-    }
+    // do nothing
   }
 
   @Override
@@ -100,19 +77,17 @@ public class TimeSeriesOperand extends LeafOperand {
       org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
       List<Expression> resultExpressions)
       throws LogicalOptimizeException {
-    for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
-      resultExpressions.add(new TimeSeriesOperand(actualPath));
-    }
+    // do nothing
   }
 
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
-    pathSet.add(path);
+    // do nothing
   }
 
   @Override
   public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
-    inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
+    // do nothing
   }
 
   @Override
@@ -128,12 +103,11 @@ public class TimeSeriesOperand extends LeafOperand {
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException {
+      throws QueryProcessException, IOException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       float memoryBudgetInMB = memoryAssigner.assign();
 
-      LayerPointReader parentLayerPointReader =
-          rawTimeSeriesInputLayer.constructValuePointReader(inputColumnIndex);
+      LayerPointReader parentLayerPointReader = rawTimeSeriesInputLayer.constructTimePointReader();
       expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
 
       expressionIntermediateLayerMap.put(
@@ -148,17 +122,23 @@ public class TimeSeriesOperand extends LeafOperand {
     return expressionIntermediateLayerMap.get(this);
   }
 
-  public String getExpressionStringInternal() {
-    return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
+  @Override
+  protected boolean isConstantOperandInternal() {
+    return false;
+  }
+
+  @Override
+  protected String getExpressionStringInternal() {
+    return "Time";
   }
 
   @Override
   public ExpressionType getExpressionType() {
-    return ExpressionType.TIMESERIES;
+    return ExpressionType.TIMESTAMP;
   }
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
-    path.serialize(byteBuffer);
+    // do nothing
   }
 }
