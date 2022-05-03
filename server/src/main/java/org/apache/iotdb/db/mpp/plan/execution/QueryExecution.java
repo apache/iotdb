@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -221,18 +222,18 @@ public class QueryExecution implements IQueryExecution {
    * implemented with DataStreamManager)
    */
   @Override
-  public TsBlock getBatchResult() {
+  public Optional<TsBlock> getBatchResult() {
     try {
       if (resultHandle.isAborted() || resultHandle.isFinished()) {
-        return null;
+        return Optional.empty();
       }
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
       if (resultHandle.isFinished()) {
         releaseResource();
-        return null;
+        return Optional.empty();
       }
-      return resultHandle.receive();
+      return Optional.of(resultHandle.receive());
     } catch (ExecutionException | CancellationException e) {
       stateMachine.transitionToFailed(e);
       throwIfUnchecked(e.getCause());

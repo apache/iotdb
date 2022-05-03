@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
 
@@ -79,14 +80,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
     SchemaTree result = new SchemaTree();
     while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-      TsBlock tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-      if (tsBlock == null) {
+      Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+      if (!tsBlock.isPresent()) {
         break;
       }
       result.setStorageGroups(storageGroups);
       Binary binary;
       SchemaTree fetchedSchemaTree;
-      Column column = tsBlock.getColumn(0);
+      Column column = tsBlock.get().getColumn(0);
       for (int i = 0; i < column.getPositionCount(); i++) {
         binary = column.getBinary(i);
         fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
