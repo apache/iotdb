@@ -226,11 +226,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))));
 
-      conf.setEnableLastCache(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
-
       initMemoryAllocate(properties);
 
       loadWALProps(properties);
@@ -760,16 +755,20 @@ public class IoTDBDescriptor {
       conf.setSchemaEngineMode(
           properties.getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode())));
 
+      conf.setEnableLastCache(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
+
+      if (conf.getSchemaEngineMode().equals("Rocksdb_based")) {
+        conf.setEnableLastCache(false);
+      }
+
       conf.setCachedMNodeSizeInSchemaFileMode(
           Integer.parseInt(
               properties.getProperty(
                   "cached_mnode_size_in_schema_file_mode",
                   String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
-
-      conf.setMaxSchemaFlushThreadNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_schema_flush_thread", String.valueOf(conf.getMaxSchemaFlushThreadNum()))));
 
       conf.setMinimumSegmentInSchemaFile(
           Short.parseShort(

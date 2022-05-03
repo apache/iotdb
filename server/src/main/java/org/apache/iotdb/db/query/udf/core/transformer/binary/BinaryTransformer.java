@@ -22,23 +22,13 @@ package org.apache.iotdb.db.query.udf.core.transformer.binary;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
 public abstract class BinaryTransformer extends Transformer {
 
-  private final LayerPointReader leftPointReader;
-  private final LayerPointReader rightPointReader;
-
-  protected enum TransformerType {
-    Arithmetic,
-    Comparative,
-    Logic,
-    EqNeq
-  }
-
-  protected abstract TransformerType getTransformerType();
+  protected final LayerPointReader leftPointReader;
+  protected final LayerPointReader rightPointReader;
 
   protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     this.leftPointReader = leftPointReader;
@@ -55,59 +45,23 @@ public abstract class BinaryTransformer extends Transformer {
     if (!leftPointReader.next() || !rightPointReader.next()) {
       return false;
     }
+
     if (!cacheTime()) {
       return false;
     }
+
     if (leftPointReader.isCurrentNull() || rightPointReader.isCurrentNull()) {
       currentNull = true;
     } else {
-      switch (getTransformerType()) {
-        case Arithmetic:
-          cachedDouble =
-              evaluateDouble(
-                  castCurrentValueToDoubleOperand(leftPointReader),
-                  castCurrentValueToDoubleOperand(rightPointReader));
-          break;
-        case EqNeq:
-          // Although == and != belongs to compare operations,
-          // they can take two boolean as parameters
-          if (leftPointReader.getDataType() == TSDataType.BOOLEAN
-              && rightPointReader.getDataType() == TSDataType.BOOLEAN) {
-            cachedBoolean =
-                evaluateBoolean(
-                    leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
-          } else {
-            cachedBoolean =
-                evaluateBoolean(
-                    castCurrentValueToDoubleOperand(leftPointReader),
-                    castCurrentValueToDoubleOperand(rightPointReader));
-          }
-          break;
-        case Comparative:
-          cachedBoolean =
-              evaluateBoolean(
-                  castCurrentValueToDoubleOperand(leftPointReader),
-                  castCurrentValueToDoubleOperand(rightPointReader));
-          break;
-        case Logic:
-          // Check TSDataType
-          if (leftPointReader.getDataType() != TSDataType.BOOLEAN) {
-            throw new QueryProcessException(
-                "Unsupported data type: " + leftPointReader.getDataType().toString());
-          }
-          if (rightPointReader.getDataType() != TSDataType.BOOLEAN) {
-            throw new QueryProcessException(
-                "Unsupported data type: " + rightPointReader.getDataType().toString());
-          }
-          cachedBoolean =
-              evaluateBoolean(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
-          break;
-      }
+      transformAndCache();
     }
+
     leftPointReader.readyForNext();
     rightPointReader.readyForNext();
     return true;
   }
+
+  protected abstract void transformAndCache() throws QueryProcessException, IOException;
 
   /**
    * finds the smallest, unconsumed timestamp that exists in both {@code leftPointReader} and {@code
@@ -152,19 +106,7 @@ public abstract class BinaryTransformer extends Transformer {
     return true;
   }
 
-  protected double evaluateDouble(double leftOperand, double rightOperand) {
-    return 0.0;
-  }
-
-  protected boolean evaluateBoolean(double leftOperand, double rightOperand) {
-    return false;
-  }
-
-  protected boolean evaluateBoolean(boolean leftOperand, boolean rightOperand) {
-    return false;
-  }
-
-  private static double castCurrentValueToDoubleOperand(LayerPointReader layerPointReader)
+  protected static double castCurrentValueToDoubleOperand(LayerPointReader layerPointReader)
       throws IOException, QueryProcessException {
     switch (layerPointReader.getDataType()) {
       case INT32:

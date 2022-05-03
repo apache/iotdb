@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,10 +45,7 @@ public class MTreeFlushTaskManager {
   }
 
   public void init() {
-    flushTaskExecutor =
-        IoTDBThreadPoolFactory.newCachedThreadPool(
-            MTREE_FLUSH_THREAD_POOL_NAME,
-            IoTDBDescriptor.getInstance().getConfig().getMaxSchemaFlushThreadNum());
+    flushTaskExecutor = IoTDBThreadPoolFactory.newCachedThreadPool(MTREE_FLUSH_THREAD_POOL_NAME);
   }
 
   public void clear() {

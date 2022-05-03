@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaFileNotExists;
 import org.apache.iotdb.db.exception.metadata.schemafile.SchemaPageOverflowException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -104,6 +104,7 @@ public class SchemaFile implements ISchemaFile {
 
   private ByteBuffer headerContent;
   private int lastPageIndex; // last page index of the file, boundary to grow
+  private long lastSGAddr; // last segment of storage group node
 
   // work as a naive (read-only) cache for page instance
   private final Map<Integer, ISchemaPage> pageInstCache;
@@ -205,7 +206,7 @@ public class SchemaFile implements ISchemaFile {
   @Override
   public IMNode init() throws MetadataException {
     IMNode resNode;
-    String[] sgPathNodes = MetaUtils.splitPathToDetachedPath(storageGroupName);
+    String[] sgPathNodes = PathUtils.splitPathToDetachedPath(storageGroupName);
     if (isEntity) {
       resNode =
           setNodeAddress(
@@ -242,12 +243,11 @@ public class SchemaFile implements ISchemaFile {
     long curSegAddr = getNodeAddress(node);
 
     if (node.isStorageGroup()) {
-      // Notice that it implies StorageGroupNode is always of 0L segmentAddress
-      curSegAddr = 0L;
-      pageIndex = 0;
-      curSegIdx = 0;
+      curSegAddr = lastSGAddr;
+      pageIndex = getPageIndex(lastSGAddr);
+      curSegIdx = getSegIndex(lastSGAddr);
       isEntity = node.isEntity();
-      setNodeAddress(node, 0L);
+      setNodeAddress(node, lastSGAddr);
     } else {
       if ((curSegAddr & 0x80000000_00000000L) != 0) {
         throw new MetadataException(
@@ -326,11 +326,10 @@ public class SchemaFile implements ISchemaFile {
           curPage.deleteSegment(curSegIdx);
 
           curSegIdx = SchemaFile.getSegIndex(curSegAddr);
-          setNodeAddress(node, curSegAddr);
-          updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
         }
+        setNodeAddress(node, curSegAddr);
+        updateParentalRecord(node.getParent(), node.getName(), curSegAddr);
 
-        dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
         dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
 
         curPage = newPage;
@@ -378,7 +377,6 @@ public class SchemaFile implements ISchemaFile {
           curPage.deleteSegment(curSegIdx);
           setNodeAddress(node, newSegAddr);
           updateParentalRecord(node.getParent(), node.getName(), newSegAddr);
-          dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
           dirtyPages.putIfAbsent(curPage.getPageIndex(), curPage);
         } else {
           // already full page segment, write updated record to another applicable segment or a
@@ -402,7 +400,6 @@ public class SchemaFile implements ISchemaFile {
             newPage.setPrevSegAddress(getSegIndex(existedSegAddr), actualSegAddr);
 
             curPage.setNextSegAddress(getSegIndex(actualSegAddr), existedSegAddr);
-            dirtyPages.putIfAbsent(newPage.getPageIndex(), newPage);
           }
 
           ISchemaPage existedPage = getPageInstance(getPageIndex(existedSegAddr));
@@ -421,12 +418,18 @@ public class SchemaFile implements ISchemaFile {
   public void delete(IMNode node) throws IOException, MetadataException {
     long recSegAddr = node.getParent() == null ? ROOT_INDEX : getNodeAddress(node.getParent());
     recSegAddr = getTargetSegmentAddress(recSegAddr, node.getName());
-    getPageInstance(getPageIndex(recSegAddr)).removeRecord(getSegIndex(recSegAddr), node.getName());
+    ISchemaPage tarPage = getPageInstance(getPageIndex(recSegAddr));
+    dirtyPages.putIfAbsent(tarPage.getPageIndex(), tarPage);
+    tarPage.removeRecord(getSegIndex(recSegAddr), node.getName());
 
     if (!node.isMeasurement()) {
       long delSegAddr = getNodeAddress(node);
-      getPageInstance(getPageIndex(delSegAddr)).deleteSegment(getSegIndex(delSegAddr));
+      tarPage = getPageInstance(getPageIndex(delSegAddr));
+      dirtyPages.putIfAbsent(tarPage.getPageIndex(), tarPage);
+      tarPage.deleteSegment(getSegIndex(delSegAddr));
     }
+
+    flushAllDirtyPages();
   }
 
   @Override
@@ -554,8 +557,10 @@ public class SchemaFile implements ISchemaFile {
                     + "==  Internal/Entity presents as (name, is_aligned, child_segment_address)\n"
                     + "==  Measurement presents as (name, data_type, encoding, compressor, alias_if_exist)\n"
                     + "=============================\n"
-                    + "Belong to StorageGroup: [%s], total pages:%d\n",
-                storageGroupName == null ? "NOT SPECIFIED" : storageGroupName, lastPageIndex + 1));
+                    + "Belong to StorageGroup: [%s], segment of SG:%s, total pages:%d\n",
+                storageGroupName == null ? "NOT SPECIFIED" : storageGroupName,
+                Long.toHexString(lastSGAddr),
+                lastPageIndex + 1));
     int cnt = 0;
     while (cnt <= lastPageIndex) {
       ISchemaPage page = getPageInstance(cnt);
@@ -574,15 +579,14 @@ public class SchemaFile implements ISchemaFile {
    * <p><b>File Header Structure:</b>
    *
    * <ul>
-   *   <li>1 int (4 bytes): last page index
+   *   <li>1 int (4 bytes): last page index {@link #lastPageIndex}
    *   <li>var length: root(SG) node info
    *       <ul>
    *         <li><s>a. var length string (less than 200 bytes): path to root(SG) node</s>
-   *         <li>a. 1 long (8 bytes): dataTTL
-   *         <li>b. 1 bool (1 byte): isEntityStorageGroup
-   *         <li>c. 1 int (4 bytes): hash code of template name
-   *         <li>d. fixed length buffer (9 bytes): internal or entity node buffer [not implemented
-   *             yet]
+   *         <li>a. 1 long (8 bytes): dataTTL {@link #dataTTL}
+   *         <li>b. 1 bool (1 byte): isEntityStorageGroup {@link #isEntity}
+   *         <li>c. 1 int (4 bytes): hash code of template name {@link #templateHash}
+   *         <li>d. 1 long (8 bytes): last segment address of storage group {@link #lastSGAddr}
    *       </ul>
    * </ul>
    *
@@ -596,6 +600,7 @@ public class SchemaFile implements ISchemaFile {
       ReadWriteIOUtils.write(dataTTL, headerContent);
       ReadWriteIOUtils.write(isEntity, headerContent);
       ReadWriteIOUtils.write(templateHash, headerContent);
+      lastSGAddr = 0L;
       initRootPage();
     } else {
       channel.read(headerContent);
@@ -604,6 +609,7 @@ public class SchemaFile implements ISchemaFile {
       dataTTL = ReadWriteIOUtils.readLong(headerContent);
       isEntity = ReadWriteIOUtils.readBool(headerContent);
       templateHash = ReadWriteIOUtils.readInt(headerContent);
+      lastSGAddr = ReadWriteIOUtils.readLong(headerContent);
       rootPage = getPageInstance(0);
     }
   }
@@ -615,6 +621,7 @@ public class SchemaFile implements ISchemaFile {
     ReadWriteIOUtils.write(dataTTL, headerContent);
     ReadWriteIOUtils.write(isEntity, headerContent);
     ReadWriteIOUtils.write(templateHash, headerContent);
+    ReadWriteIOUtils.write(lastSGAddr, headerContent);
 
     headerContent.clear();
     channel.write(headerContent, 0);
@@ -731,15 +738,25 @@ public class SchemaFile implements ISchemaFile {
   // region Schema Page Operations
 
   /**
-   * This method checks with cached page container, LOCK and return a minimum applicable page for
+   * This method checks with cached page containers and returns a minimum applicable page for
    * allocation.
+   *
+   * <p><b>Since it will only be called during write procedure, any {@link SchemaPage} returned will
+   * be added to {@link #dirtyPages}.</b>
    *
    * @param size size of segment
    * @return
    */
   private ISchemaPage getMinApplicablePageInMem(short size) throws IOException {
+    for (Map.Entry<Integer, ISchemaPage> entry : dirtyPages.entrySet()) {
+      if (entry.getValue().isCapableForSize(size)) {
+        return dirtyPages.get(entry.getKey());
+      }
+    }
+
     for (Map.Entry<Integer, ISchemaPage> entry : pageInstCache.entrySet()) {
       if (entry.getValue().isCapableForSize(size)) {
+        dirtyPages.putIfAbsent(entry.getKey(), entry.getValue());
         return pageInstCache.get(entry.getKey());
       }
     }
@@ -755,8 +772,6 @@ public class SchemaFile implements ISchemaFile {
    * @return an existed page
    */
   private ISchemaPage getPageInstance(int pageIdx) throws IOException, MetadataException {
-    // TODO: improve concurrent control
-    //  since now one page may be evicted after returned but before updated
     if (pageIdx > lastPageIndex) {
       throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
     }
@@ -765,10 +780,8 @@ public class SchemaFile implements ISchemaFile {
       return rootPage;
     }
 
-    // TODO: improve concurrent control
+    pageLocks.readLock(pageIdx);
     try {
-      pageLocks.readLock(pageIdx);
-
       if (dirtyPages.containsKey(pageIdx)) {
         return dirtyPages.get(pageIdx);
       }
@@ -809,7 +822,7 @@ public class SchemaFile implements ISchemaFile {
     // only one thread evicts and flushes pages
     if (evictLock.tryLock()) {
       try {
-        if (pageInstCache.size() >= PAGE_CACHE_SIZE) {
+        if (pageInstCache.size() > PAGE_CACHE_SIZE) {
           int removeCnt =
               (int) (0.2 * pageInstCache.size()) > 0 ? (int) (0.2 * pageInstCache.size()) : 1;
           List<Integer> rmvIds = new ArrayList<>(pageInstCache.keySet()).subList(0, removeCnt);
@@ -849,9 +862,13 @@ public class SchemaFile implements ISchemaFile {
     return (short) (globalIndex & SchemaFile.SEG_INDEX_MASK);
   }
 
-  // estimate for segment re-allocation
   private void updateParentalRecord(IMNode parent, String key, long newSegAddr)
       throws IOException, MetadataException {
+    if (parent == null || parent.getChild(key).isStorageGroup()) {
+      lastSGAddr = newSegAddr;
+      updateHeader();
+      return;
+    }
     long parSegAddr = parent.getParent() == null ? ROOT_INDEX : getNodeAddress(parent);
     parSegAddr = getTargetSegmentAddress(parSegAddr, key);
     ISchemaPage page = getPageInstance(getPageIndex(parSegAddr));
