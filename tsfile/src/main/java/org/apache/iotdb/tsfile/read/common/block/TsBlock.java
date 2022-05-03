@@ -93,12 +93,6 @@ public class TsBlock {
     }
   }
 
-  public boolean hasNext() {
-    return false;
-  }
-
-  public void next() {}
-
   public int getPositionCount() {
     return positionCount;
   }
@@ -171,6 +165,23 @@ public class TsBlock {
     return wrapBlocksWithoutCopy(positionCount, timeColumn, newBlocks);
   }
 
+  /**
+   * This method will create a temporary view of origin tsBlock, which will reuse the arrays of
+   * columns but with different offset. It can be used where you want to skip some points when
+   * getting iterator.
+   */
+  public TsBlock subTsBlock(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("FromIndex of subTsBlock cannot over positionCount.");
+    }
+    TimeColumn subTimeColumn = (TimeColumn) timeColumn.subColumn(fromIndex);
+    Column[] subValueColumns = new Column[valueColumns.length];
+    for (int i = 0; i < subValueColumns.length; i++) {
+      subValueColumns[i] = valueColumns[i].subColumn(fromIndex);
+    }
+    return new TsBlock(subTimeColumn, subValueColumns);
+  }
+
   public long getTimeByIndex(int index) {
     return timeColumn.getLong(index);
   }
@@ -187,12 +198,34 @@ public class TsBlock {
     return valueColumns[columnIndex];
   }
 
+  public Column[] getTimeAndValueColumn(int columnIndex) {
+    Column[] columns = new Column[2];
+    columns[0] = getTimeColumn();
+    columns[1] = getColumn(columnIndex);
+    return columns;
+  }
+
+  public Column[] getColumns(int[] columnIndexes) {
+    Column[] columns = new Column[columnIndexes.length];
+    for (int i = 0; i < columnIndexes.length; i++) {
+      columns[i] = valueColumns[columnIndexes[i]];
+    }
+    return columns;
+  }
+
   public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator() {
     return new TsBlockSingleColumnIterator(0);
   }
 
   public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator(int columnIndex) {
     return new TsBlockSingleColumnIterator(0, columnIndex);
+  }
+
+  public void reverse() {
+    timeColumn.reverse();
+    for (Column valueColumn : valueColumns) {
+      valueColumn.reverse();
+    }
   }
 
   public TsBlockRowIterator getTsBlockRowIterator() {

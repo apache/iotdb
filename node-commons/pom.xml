@@ -34,8 +34,14 @@
         <commons.test.skip>false</commons.test.skip>
         <commons.it.skip>${commons.test.skip}</commons.it.skip>
         <commons.ut.skip>${commons.test.skip}</commons.ut.skip>
+        <cglib.version>3.1</cglib.version>
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>cglib</groupId>
+            <artifactId>cglib-nodep</artifactId>
+            <version>${cglib.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>

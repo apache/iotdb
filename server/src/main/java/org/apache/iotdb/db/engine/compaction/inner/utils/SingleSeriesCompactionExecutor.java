@@ -79,7 +79,7 @@ public class SingleSeriesCompactionExecutor {
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       TsFileIOWriter fileWriter,
       TsFileResource targetResource) {
-    this.device = series.getDevice();
+    this.device = series.getDeviceIdString();
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = measurementSchema;

@@ -88,7 +88,8 @@ public class IoTDBSimpleQueryIT {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
+          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
+              + "'LOSS'='SDT','COMPDEV'='2'");
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -109,7 +110,7 @@ public class IoTDBSimpleQueryIT {
       // test set sdt property
       statement.execute(
           "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
-              + "LOSS=SDT,COMPDEV=2,COMPMINTIME=2,COMPMAXTIME=10");
+              + "'LOSS'='SDT','COMPDEV'='2','COMPMINTIME'='2','COMPMAXTIME'='10'");
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -130,7 +131,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       try {
         statement.execute(
-            "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=-2");
+            "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'='-2'");
       } catch (Exception e) {
         assertEquals(
             "318: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
@@ -284,8 +285,10 @@ public class IoTDBSimpleQueryIT {
       double compDev = 2;
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV="
-              + compDev);
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'="
+              + "'"
+              + compDev
+              + "'");
 
       int[] originalValues = new int[1000];
 
@@ -1117,16 +1120,16 @@ public class IoTDBSimpleQueryIT {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute(
           "CREATE TIMESERIES root.sg1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
-              + "max_point_number=4");
+              + "'max_point_number'='4'");
       statement.execute(
           "CREATE TIMESERIES root.sg1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
-              + "max_point_number=2.5");
+              + "'max_point_number'='2.5'");
       statement.execute(
           "CREATE TIMESERIES root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, "
-              + "max_point_number=q");
+              + "'max_point_number'='q'");
       statement.execute(
           "CREATE TIMESERIES root.sg1.d1.s4 with datatype=FLOAT, encoding=RLE, "
-              + "max_point_number=-1");
+              + "'max_point_number'='-1'");
       statement.execute(
           "insert into root.sg1.d1(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
 
@@ -1227,16 +1230,16 @@ public class IoTDBSimpleQueryIT {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute(
           "CREATE TIMESERIES root.sg1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
-              + "max_point_number=4");
+              + "'max_point_number'='4'");
       statement.execute(
           "CREATE TIMESERIES root.sg1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
-              + "max_point_number=2.5");
+              + "'max_point_number'='2.5'");
       statement.execute(
           "CREATE TIMESERIES root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, "
-              + "max_point_number=q");
+              + "'max_point_number'='q'");
       statement.execute(
           "CREATE TIMESERIES root.sg1.d1.s4 with datatype=FLOAT, encoding=RLE, "
-              + "max_point_number=-1");
+              + "'max_point_number'='-1'");
       statement.execute(
           "insert into root.sg1.da1cb(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
       statement.execute(

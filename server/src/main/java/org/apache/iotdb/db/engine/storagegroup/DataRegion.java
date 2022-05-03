@@ -60,11 +60,11 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertMultiTabletsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertRowsOfOneDeviceNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -690,6 +690,9 @@ public class DataRegion {
     TsFileResource tsFileResource = recoverPerformer.getTsFileResource();
     if (!recoverPerformer.canWrite()) {
       // cannot write, just close it
+      if (tsFileSyncManager.isEnableSync()) {
+        tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
+      }
       try {
         tsFileResource.close();
       } catch (IOException e) {
@@ -2716,7 +2719,7 @@ public class DataRegion {
   }
 
   private long getAndSetNewVersion(long timePartitionId, TsFileResource tsFileResource) {
-    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, -1L) + 1;
+    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
     tsFileResource.setVersion(version);
     return version;
@@ -3348,7 +3351,7 @@ public class DataRegion {
 
   @TestOnly
   public long getPartitionMaxFileVersions(long partitionId) {
-    return partitionMaxFileVersions.getOrDefault(partitionId, -1L);
+    return partitionMaxFileVersions.getOrDefault(partitionId, 0L);
   }
 
   public void addSettleFilesToList(

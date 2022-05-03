@@ -192,8 +192,7 @@ public class ReadPointCompactionPerformer
       AbstractCompactionWriter compactionWriter,
       QueryContext queryContext,
       QueryDataSource queryDataSource)
-      throws MetadataException, IOException, InterruptedException {
-    boolean hasStartChunkGroup = false;
+      throws IOException, InterruptedException {
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
@@ -204,7 +203,7 @@ public class ReadPointCompactionPerformer
     int idx = 0;
     for (String measurement : allMeasurements) {
       if (measurementsForEachSubTask[idx % subTaskNums] == null) {
-        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<String>();
+        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<>();
       }
       measurementsForEachSubTask[idx++ % subTaskNums].add(measurement);
     }

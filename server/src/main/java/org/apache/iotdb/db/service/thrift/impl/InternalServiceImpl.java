@@ -42,13 +42,13 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.db.mpp.execution.FragmentInstanceInfo;
-import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.sql.analyze.QueryType;
-import org.apache.iotdb.db.mpp.sql.analyze.SchemaValidator;
-import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
+import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
@@ -89,7 +89,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     QueryType type = QueryType.valueOf(req.queryType);
     ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.convertFromTConsensusGroupId(req.getConsensusGroupId());
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     switch (type) {
       case READ:
         ConsensusReadResponse readResp =
@@ -137,7 +137,7 @@ public class InternalServiceImpl implements InternalService.Iface {
 
     // TODO need to be implemented and currently in order not to print NotImplementedException log,
     // we simply return null
-    return null;
+    return new TCancelResp(true);
     //    throw new NotImplementedException();
   }
 
