@@ -134,7 +134,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         || path.endsWith(".**")
         || path.contains(".*.")
         || path.contains(".**.")) {
-      throw new AuthException("Invalid path, the wildcard is not allowed in granting privileges");
+      throw new AuthException(
+          "Invalid path, the path wildcard is not allowed in granting privileges");
     }
     String newPath = path;
     if (isAdmin(username)) {
@@ -204,7 +205,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         || path.endsWith(".**")
         || path.contains(".*.")
         || path.contains(".**.")) {
-      throw new AuthException("Invalid path, the wildcard is not allowed in granting privileges");
+      throw new AuthException(
+          "Invalid path, the path wildcard is not allowed in granting privileges");
     }
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
