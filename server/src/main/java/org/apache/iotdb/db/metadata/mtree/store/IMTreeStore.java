@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 
+import java.nio.ByteBuffer;
+
 /**
  * This interface defines the basic access methods of an MTreeStore.
  *
@@ -58,4 +60,8 @@ public interface IMTreeStore {
   void unPinPath(IMNode node);
 
   void clear();
+
+  void serialize(ByteBuffer buffer);
+
+  void deserialize(ByteBuffer buffer);
 }

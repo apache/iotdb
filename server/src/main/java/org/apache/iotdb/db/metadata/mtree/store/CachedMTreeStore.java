@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -378,6 +379,18 @@ public class CachedMTreeStore implements IMTreeStore {
     } finally {
       writeLock.unlock();
     }
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    throw new UnsupportedOperationException(
+        "CachedMTreeStore currently doesn't support serialize.");
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    throw new UnsupportedOperationException(
+        "CachedMTreeStore currently doesn't support deserialize.");
   }
 
   private void ensureMemoryStatus() {
