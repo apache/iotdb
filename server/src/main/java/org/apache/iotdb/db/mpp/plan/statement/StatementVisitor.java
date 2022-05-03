@@ -46,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 
 /**
@@ -93,6 +94,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitSetTTL(SetTTLStatement setTTLStatement, C context) {
     return visitStatement(setTTLStatement, context);
+  }
+
+  public R visitUnSetTTL(UnSetTTLStatement unSetTTLStatement, C context) {
+    return visitStatement(unSetTTLStatement, context);
   }
 
   /** Data Manipulation Language (DML) */

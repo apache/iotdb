@@ -67,6 +67,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -1710,6 +1711,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     setTTLStatement.setStorageGroupPath(path);
     setTTLStatement.setTTL(ttl);
     return setTTLStatement;
+  }
+
+  @Override
+  public Statement visitUnsetTTL(IoTDBSqlParser.UnsetTTLContext ctx) {
+    UnSetTTLStatement unSetTTLStatement = new UnSetTTLStatement();
+    PartialPath partialPath = parsePrefixPath(ctx.prefixPath());
+    unSetTTLStatement.setStorageGroupPath(partialPath);
+    return unSetTTLStatement;
   }
 
   /** function for parsing file path used by LOAD statement. */
