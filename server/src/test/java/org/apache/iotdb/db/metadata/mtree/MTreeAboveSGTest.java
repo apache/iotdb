@@ -329,5 +329,12 @@ public class MTreeAboveSGTest {
       Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
       Assert.assertEquals(i, storageGroupSchema.getTimePartitionInterval());
     }
+
+    Assert.assertEquals(
+        3, root.getMatchedStorageGroups(new PartialPath("root.**.sg"), false).size());
+    Assert.assertEquals(
+        2, root.getMatchedStorageGroups(new PartialPath("root.**.b.sg"), false).size());
+    Assert.assertEquals(
+        1, root.getMatchedStorageGroups(new PartialPath("root.*.*.sg"), false).size());
   }
 }
