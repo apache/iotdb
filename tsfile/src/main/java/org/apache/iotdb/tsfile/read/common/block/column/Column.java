@@ -103,6 +103,12 @@ public interface Column {
    */
   Column getRegion(int positionOffset, int length);
 
+  /**
+   * This method will create a temporary view of origin column, which will reuse the array of column
+   * but with different array offset.
+   */
+  Column subColumn(int fromIndex);
+
   /** reverse the column */
   void reverse();
 }

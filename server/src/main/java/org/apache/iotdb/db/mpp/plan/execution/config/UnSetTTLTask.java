@@ -17,22 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 
-public class IllegalPathException extends MetadataException {
-  private static final long serialVersionUID = 2693272249167539978L;
-
-  public IllegalPathException(String path) {
-    super(String.format("%s is not a legal path", path));
-    errorCode = TSStatusCode.PATH_ILLEGAL.getStatusCode();
-    this.isUserException = true;
-  }
-
-  public IllegalPathException(String path, String reason) {
-    super(String.format("%s is not a legal path, because %s", path, reason));
-    errorCode = TSStatusCode.PATH_ILLEGAL.getStatusCode();
-    this.isUserException = true;
+public class UnSetTTLTask extends SetTTLTask {
+  public UnSetTTLTask(UnSetTTLStatement unSetTTLStatement) {
+    super(unSetTTLStatement);
+    this.taskName = "unset ttl";
   }
 }

@@ -24,7 +24,10 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -57,6 +60,21 @@ public class ConfigTaskVisitor
   public IConfigTask visitCountStorageGroup(
       CountStorageGroupStatement statement, TaskContext context) {
     return new CountStorageGroupTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitSetTTL(SetTTLStatement statement, TaskContext context) {
+    return new SetTTLTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitUnSetTTL(UnSetTTLStatement statement, TaskContext context) {
+    return new UnSetTTLTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitShowTTL(ShowTTLStatement showTTLStatement, TaskContext context) {
+    return new ShowTTLTask(showTTLStatement);
   }
 
   @Override

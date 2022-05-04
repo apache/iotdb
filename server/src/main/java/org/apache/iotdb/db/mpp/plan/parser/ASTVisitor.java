@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.index.common.IndexType;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.InFilter;
 import org.apache.iotdb.db.mpp.common.filter.LikeFilter;
@@ -62,10 +62,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -98,6 +101,7 @@ import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.InExpression;
 import org.apache.iotdb.db.query.expression.unary.LikeExpression;
@@ -1701,6 +1705,41 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return setStorageGroupStatement;
   }
 
+  @Override
+  public Statement visitSetTTL(IoTDBSqlParser.SetTTLContext ctx) {
+    SetTTLStatement setTTLStatement = new SetTTLStatement();
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    long ttl = Long.parseLong(ctx.INTEGER_LITERAL().getText());
+    setTTLStatement.setStorageGroupPath(path);
+    setTTLStatement.setTTL(ttl);
+    return setTTLStatement;
+  }
+
+  @Override
+  public Statement visitUnsetTTL(IoTDBSqlParser.UnsetTTLContext ctx) {
+    UnSetTTLStatement unSetTTLStatement = new UnSetTTLStatement();
+    PartialPath partialPath = parsePrefixPath(ctx.prefixPath());
+    unSetTTLStatement.setStorageGroupPath(partialPath);
+    return unSetTTLStatement;
+  }
+
+  @Override
+  public Statement visitShowTTL(IoTDBSqlParser.ShowTTLContext ctx) {
+    ShowTTLStatement showTTLStatement = new ShowTTLStatement();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+      PartialPath partialPath = parsePrefixPath(prefixPathContext);
+      showTTLStatement.addPathPatterns(partialPath);
+    }
+    return showTTLStatement;
+  }
+
+  @Override
+  public Statement visitShowAllTTL(IoTDBSqlParser.ShowAllTTLContext ctx) {
+    ShowTTLStatement showTTLStatement = new ShowTTLStatement();
+    showTTLStatement.setAll(true);
+    return showTTLStatement;
+  }
+
   /** function for parsing file path used by LOAD statement. */
   public String parseFilePath(String src) {
     return src.substring(1, src.length() - 1);
@@ -1795,7 +1834,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (context.time != null) {
-      throw new UnsupportedOperationException();
+      return new TimestampOperand();
     }
 
     if (context.constant() != null && !context.constant().isEmpty()) {

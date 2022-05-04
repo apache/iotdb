@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.query.expression.leaf;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.rewriter.WildcardsRemover;
@@ -133,7 +133,7 @@ public class TimeSeriesOperand extends LeafOperand {
       float memoryBudgetInMB = memoryAssigner.assign();
 
       LayerPointReader parentLayerPointReader =
-          rawTimeSeriesInputLayer.constructPointReader(inputColumnIndex);
+          rawTimeSeriesInputLayer.constructValuePointReader(inputColumnIndex);
       expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
 
       expressionIntermediateLayerMap.put(
@@ -154,7 +154,7 @@ public class TimeSeriesOperand extends LeafOperand {
 
   @Override
   public ExpressionType getExpressionType() {
-    return ExpressionType.TIME_SERIES;
+    return ExpressionType.TIMESERIES;
   }
 
   @Override
