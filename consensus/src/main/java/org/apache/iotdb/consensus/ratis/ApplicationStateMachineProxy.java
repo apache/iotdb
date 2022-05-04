@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.ratis;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
@@ -41,7 +40,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 
 public class ApplicationStateMachineProxy extends BaseStateMachine {
@@ -66,14 +64,14 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             () -> {
               snapshotStorage.init(storage);
               this.statemachineDir = snapshotStorage.getStateMachineDir();
-              loadSnapshot(applicationStateMachine.getLatestSnapshot(statemachineDir));
+              loadSnapshot(snapshotStorage.findLatestSnapshotDir());
             });
   }
 
   @Override
   public void reinitialize() throws IOException {
     setLastAppliedTermIndex(null);
-    loadSnapshot(applicationStateMachine.getLatestSnapshot(statemachineDir));
+    loadSnapshot(snapshotStorage.findLatestSnapshotDir());
     if (getLifeCycleState() == LifeCycle.State.PAUSED) {
       getLifeCycle().transition(LifeCycle.State.STARTING);
       getLifeCycle().transition(LifeCycle.State.RUNNING);
@@ -136,8 +134,9 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     }
 
     // require the application statemachine to take the latest snapshot
-    ByteBuffer metadata = Utils.getMetadataFromTermIndex(lastApplied);
-    boolean success = applicationStateMachine.takeSnapshot(metadata, statemachineDir);
+    String metadata = Utils.getMetadataFromTermIndex(lastApplied);
+    File snapshotDir = snapshotStorage.getSnapshotDir(metadata);
+    boolean success = applicationStateMachine.takeSnapshot(snapshotDir);
     if (!success) {
       return RaftLog.INVALID_LOG_INDEX;
     }
@@ -145,15 +144,14 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     return lastApplied.getIndex();
   }
 
-  private void loadSnapshot(SnapshotMeta snapshot) {
-    if (snapshot == null) {
+  private void loadSnapshot(File latestSnapshotDir) {
+    if (latestSnapshotDir == null) {
       return;
     }
 
     // require the application statemachine to load the latest snapshot
-    applicationStateMachine.loadSnapshot(snapshot);
-    ByteBuffer metadata = snapshot.getMetadata();
-    TermIndex snapshotTermIndex = Utils.getTermIndexFromMetadata(metadata);
+    applicationStateMachine.loadSnapshot(latestSnapshotDir);
+    TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
     updateLastAppliedTermIndex(snapshotTermIndex.getTerm(), snapshotTermIndex.getIndex());
   }
 
