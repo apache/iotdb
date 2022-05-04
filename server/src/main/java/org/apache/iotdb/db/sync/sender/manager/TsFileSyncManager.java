@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.sync.sender.manager;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.dataregion.StorageGroupManager;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 
 import org.slf4j.Logger;
