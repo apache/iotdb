@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,6 +50,7 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
   // Aggregate result buffer
   private final List<List<AggregateResult>> results = new ArrayList<>();
+  private int resultsSize;
 
   private final TimeRange timeRange;
 
@@ -58,8 +60,6 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
   private final boolean ascending;
 
-  private final QueryDataSource queryDataSource;
-
   public LocalAlignedGroupByExecutor(
       PartialPath path,
       QueryContext context,
@@ -67,7 +67,7 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
       TsFileFilter fileFilter,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    queryDataSource =
+    QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter, ascending);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
@@ -93,6 +93,7 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
   @Override
   public void addAggregateResult(List<AggregateResult> aggregateResults) {
     results.add(aggregateResults);
+    resultsSize += aggregateResults.size();
   }
 
   @Override
@@ -245,9 +246,7 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
       // set initial Index
       lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
-      ;
       lastReadCurListIndex = batchData.getReadCurListIndex();
-      ;
 
       // stop calc and cached current batchData
       if (ascending && batchData.currentTime() >= curEndTime) {
@@ -288,18 +287,19 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     }
 
     boolean hasCached = false;
-    int curReadCurArrayIndex = lastReadCurArrayIndex;
+    int[] curReadCurArrayIndexes = new int[resultsSize];
+    int[] curReadCurListIndexes = new int[resultsSize];
+    int index = 0;
     while (reader.hasNextSubSeries()) {
       int subIndex = reader.getCurIndex();
-      batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
       List<AggregateResult> aggregateResultList = results.get(subIndex);
       for (AggregateResult result : aggregateResultList) {
+        // reset batch data for calculation
+        batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
         // current agg method has been calculated
         if (result.hasFinalResult()) {
           continue;
         }
-        // lazy reset batch data for calculation
-        batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
         IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator(subIndex);
         if (ascending) {
           // skip points that cannot be calculated
@@ -316,10 +316,9 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
         if (batchDataIterator.hasNext(curStartTime, curEndTime)) {
           result.updateResultFromPageData(batchDataIterator, curStartTime, curEndTime);
         }
-        curReadCurArrayIndex =
-            ascending
-                ? Math.max(curReadCurArrayIndex, batchData.getReadCurArrayIndex())
-                : Math.min(curReadCurArrayIndex, batchData.getReadCurArrayIndex());
+        curReadCurArrayIndexes[index] = batchData.getReadCurArrayIndex();
+        curReadCurListIndexes[index] = batchData.getReadCurListIndex();
+        index++;
       }
       // can calc for next interval
       if (!hasCached && batchData.hasCurrent()) {
@@ -330,9 +329,35 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     }
 
     // reset the last position to current Index
-    lastReadCurArrayIndex = curReadCurArrayIndex;
-    lastReadCurListIndex = batchData.getReadCurListIndex();
+    Pair<Integer, Integer> lastIndexPair =
+        calcLastIndex(curReadCurArrayIndexes, curReadCurListIndexes);
+    lastReadCurArrayIndex = lastIndexPair.left;
+    lastReadCurListIndex = lastIndexPair.right;
     batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
+  }
+
+  private Pair<Integer, Integer> calcLastIndex(
+      int[] curReadCurArrayIndexes, int[] curReadCurListIndexes) {
+    int lastReadCurArrayIndex = curReadCurArrayIndexes[0];
+    int lastReadCurListIndex = curReadCurListIndexes[0];
+    for (int i = 1; i < curReadCurArrayIndexes.length; i++) {
+      if (ascending) {
+        if (curReadCurListIndexes[i] > lastReadCurListIndex) {
+          lastReadCurListIndex = curReadCurListIndexes[i];
+          lastReadCurArrayIndex = curReadCurArrayIndexes[i];
+        } else if (curReadCurListIndexes[i] == lastReadCurListIndex) {
+          lastReadCurArrayIndex = Math.max(curReadCurArrayIndexes[i], lastReadCurArrayIndex);
+        }
+      } else {
+        if (curReadCurListIndexes[i] < lastReadCurListIndex) {
+          lastReadCurListIndex = curReadCurListIndexes[i];
+          lastReadCurArrayIndex = curReadCurArrayIndexes[i];
+        } else if (curReadCurListIndexes[i] == lastReadCurListIndex) {
+          lastReadCurArrayIndex = Math.min(curReadCurArrayIndexes[i], lastReadCurArrayIndex);
+        }
+      }
+    }
+    return new Pair<>(lastReadCurArrayIndex, lastReadCurListIndex);
   }
 
   private boolean isEndCalc() {
