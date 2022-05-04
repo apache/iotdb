@@ -362,6 +362,7 @@ public class LocalExecutionPlanner {
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
               .collect(Collectors.toList());
+      List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
       TimeSelector selector = null;
       TimeComparator timeComparator = null;
       for (OrderBy orderBy : node.getMergeOrders()) {
@@ -377,7 +378,7 @@ public class LocalExecutionPlanner {
         }
       }
       return new DeviceMergeOperator(
-          operatorContext, node.getDevices(), children, selector, timeComparator);
+          operatorContext, node.getDevices(), children, dataTypes, selector, timeComparator);
     }
 
     @Override

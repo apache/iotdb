@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.common.block;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -212,14 +211,6 @@ public class TsBlock {
       columns[i] = valueColumns[columnIndexes[i]];
     }
     return columns;
-  }
-
-  public TSDataType[] getValueDataTypes() {
-    TSDataType[] dataTypes = new TSDataType[valueColumns.length];
-    for (int i = 0; i < valueColumns.length; i++) {
-      dataTypes[i] = valueColumns[i].getDataType();
-    }
-    return dataTypes;
   }
 
   public TsBlockSingleColumnIterator getTsBlockSingleColumnIterator() {

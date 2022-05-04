@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -49,11 +48,10 @@ import java.util.List;
 public class DeviceMergeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  // The size devices and deviceOperators should be the same.
   private final List<String> devices;
   private final List<Operator> deviceOperators;
-  private TSDataType[] dataTypes;
-  private TsBlockBuilder tsBlockBuilder;
+  private final List<TSDataType> dataTypes;
+  private final TsBlockBuilder tsBlockBuilder;
 
   private final int inputOperatorsCount;
   private final TsBlock[] inputTsBlocks;
@@ -74,6 +72,7 @@ public class DeviceMergeOperator implements ProcessOperator {
       OperatorContext operatorContext,
       List<String> devices,
       List<Operator> deviceOperators,
+      List<TSDataType> dataTypes,
       TimeSelector selector,
       TimeComparator comparator) {
     this.operatorContext = operatorContext;
@@ -83,6 +82,8 @@ public class DeviceMergeOperator implements ProcessOperator {
     this.inputTsBlocks = new TsBlock[inputOperatorsCount];
     this.deviceOfInputTsBlocks = new String[inputOperatorsCount];
     this.noMoreTsBlocks = new boolean[inputOperatorsCount];
+    this.dataTypes = dataTypes;
+    this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.timeSelector = selector;
     this.comparator = comparator;
   }
@@ -126,11 +127,7 @@ public class DeviceMergeOperator implements ProcessOperator {
       curDeviceTsBlockIndexList.clear();
       return resultTsBlock;
     } else {
-      if (tsBlockBuilder == null) {
-        initTsBlockBuilderFromTsBlock(inputTsBlocks[curDeviceTsBlockIndexList.get(0)]);
-      } else {
-        tsBlockBuilder.reset();
-      }
+      tsBlockBuilder.reset();
       int tsBlockSizeOfCurDevice = curDeviceTsBlockIndexList.size();
       TsBlock[] deviceTsBlocks = new TsBlock[tsBlockSizeOfCurDevice];
       TsBlockSingleColumnIterator[] tsBlockIterators =
@@ -165,31 +162,7 @@ public class DeviceMergeOperator implements ProcessOperator {
                 valueColumnBuilders[j].appendNull();
                 continue;
               }
-              switch (dataTypes[j]) {
-                case BOOLEAN:
-                  valueColumnBuilders[j].writeBoolean(
-                      deviceTsBlocks[i].getColumn(j).getBoolean(rowIndex));
-                  break;
-                case INT32:
-                  valueColumnBuilders[j].writeInt(deviceTsBlocks[i].getColumn(j).getInt(rowIndex));
-                  break;
-                case INT64:
-                  valueColumnBuilders[j].writeLong(
-                      deviceTsBlocks[i].getColumn(j).getLong(rowIndex));
-                  break;
-                case FLOAT:
-                  valueColumnBuilders[j].writeFloat(
-                      deviceTsBlocks[i].getColumn(j).getFloat(rowIndex));
-                  break;
-                case DOUBLE:
-                  valueColumnBuilders[j].writeDouble(
-                      deviceTsBlocks[i].getColumn(j).getDouble(rowIndex));
-                  break;
-                case TEXT:
-                  valueColumnBuilders[j].writeBinary(
-                      deviceTsBlocks[i].getColumn(j).getBinary(rowIndex));
-                  break;
-              }
+              valueColumnBuilders[j].write(deviceTsBlocks[i].getColumn(j), rowIndex);
             }
             tsBlockIterators[i].next();
             break;
@@ -258,14 +231,9 @@ public class DeviceMergeOperator implements ProcessOperator {
     return finished;
   }
 
-  private void initTsBlockBuilderFromTsBlock(TsBlock tsBlock) {
-    dataTypes = tsBlock.getValueDataTypes();
-    tsBlockBuilder = new TsBlockBuilder(Arrays.asList(dataTypes));
-  }
-
   /** DeviceColumn must be the first value column of tsBlock transferred by DeviceViewOperator. */
   private String getDeviceNameFromTsBlock(TsBlock tsBlock) {
-    if (tsBlock.getColumn(0).isNull(0)) {
+    if (tsBlock == null || tsBlock.getPositionCount() == 0 || tsBlock.getColumn(0).isNull(0)) {
       return null;
     }
     return tsBlock.getColumn(0).getBinary(0).toString();
