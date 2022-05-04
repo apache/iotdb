@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -29,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -124,50 +123,25 @@ public class ResultColumn extends StatementNode {
     return dataType;
   }
 
-  /**
-   * @param prefixPaths prefix paths in the from clause
-   * @param resultColumns used to collect the result columns
-   * @param needAliasCheck used to skip illegal alias judgement here. Including !isGroupByLevel
-   *     because count(*) may be * unfolded to more than one expression, but it still can be
-   *     aggregated together later.
-   */
-  public void concat(
-      List<PartialPath> prefixPaths,
-      List<ResultColumn> resultColumns,
-      boolean needAliasCheck,
-      PathPatternTree patternTree)
-      throws StatementAnalyzeException {
-    List<Expression> resultExpressions = new ArrayList<>();
-    expression.concat(prefixPaths, resultExpressions, patternTree);
-    if (needAliasCheck && 1 < resultExpressions.size()) {
-      throw new StatementAnalyzeException(
-          String.format("alias '%s' can only be matched with one time series", alias));
-    }
-    for (Expression resultExpression : resultExpressions) {
-      resultColumns.add(new ResultColumn(resultExpression, alias));
-    }
-  }
-
   @Override
   public String toString() {
     return "ResultColumn{" + "expression=" + expression + ", alias='" + alias + '\'' + '}';
   }
 
   @Override
-  public final int hashCode() {
-    return alias == null ? getResultColumnName().hashCode() : alias.hashCode();
-  }
-
-  @Override
-  public final boolean equals(Object o) {
+  public boolean equals(Object o) {
     if (this == o) {
       return true;
     }
-
-    if (!(o instanceof org.apache.iotdb.db.query.expression.ResultColumn)) {
+    if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    return getResultColumnName()
-        .equals(((org.apache.iotdb.db.query.expression.ResultColumn) o).getResultColumnName());
+    ResultColumn that = (ResultColumn) o;
+    return Objects.equals(expression, that.expression) && Objects.equals(alias, that.alias);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(expression, alias);
   }
 }

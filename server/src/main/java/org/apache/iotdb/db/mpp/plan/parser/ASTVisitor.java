@@ -111,12 +111,10 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
@@ -531,15 +529,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     // parse resultColumn
-    Set<String> aliasSet = new HashSet<>();
+    Map<String, Expression> aliasToColumnMap = new HashMap<>();
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       ResultColumn resultColumn = parseResultColumn(resultColumnContext);
       if (resultColumn.hasAlias()) {
-        aliasSet.add(resultColumn.getAlias());
+        String alias = resultColumn.getAlias();
+        if (aliasToColumnMap.containsKey(alias)) {
+          throw new SemanticException("duplicate alias in select clause");
+        }
+        aliasToColumnMap.put(alias, resultColumn.getExpression());
       }
       selectComponent.addResultColumn(resultColumn);
     }
-    selectComponent.setAliasSet(aliasSet);
+    selectComponent.setAliasToColumnMap(aliasToColumnMap);
 
     // judge query type
     if (!(queryStatement instanceof LastQueryStatement)

@@ -49,9 +49,7 @@ public class AnalyzerTest {
 
   @Test
   public void test() {
-    Analysis analysis =
-        analyzeSQL(
-            "SELECT sum(s1), avg(s2), max_value(*) FROM root.sg.* group by level = 1 SLIMIT 2 SOFFSET 1");
+    Analysis analysis = analyzeSQL("SELECT s1 as t, s2, * FROM root.sg.d1 WITHOUT NULL ANY(t, s2)");
   }
 
   private void assertAnalyzeSemanticException(String sql, String message) {

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.expression.leaf;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
@@ -73,14 +72,6 @@ public class ConstantOperand extends LeafOperand {
   @Override
   public boolean isConstantOperandInternal() {
     return true;
-  }
-
-  @Override
-  public void concat(
-      List<PartialPath> prefixPaths,
-      List<Expression> resultExpressions,
-      PathPatternTree patternTree) {
-    resultExpressions.add(this);
   }
 
   @Override

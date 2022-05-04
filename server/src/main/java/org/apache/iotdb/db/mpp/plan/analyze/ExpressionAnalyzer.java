@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.db.query.expression.unary.UnaryExpression;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -62,6 +64,90 @@ import java.util.List;
 
 public class ExpressionAnalyzer {
 
+  public static List<Expression> concatExpressionWithSuffixPaths(
+      Expression expression, List<PartialPath> prefixPaths, PathPatternTree patternTree) {
+    if (expression instanceof BinaryExpression) {
+      List<Expression> leftExpressions =
+          concatExpressionWithSuffixPaths(
+              ((BinaryExpression) expression).getLeftExpression(), prefixPaths, patternTree);
+      List<Expression> rightExpressions =
+          concatExpressionWithSuffixPaths(
+              ((BinaryExpression) expression).getRightExpression(), prefixPaths, patternTree);
+      return reconstructBinaryExpressions(
+          expression.getExpressionType(), leftExpressions, rightExpressions);
+    } else if (expression instanceof UnaryExpression) {
+      List<Expression> childExpressions =
+          concatExpressionWithSuffixPaths(
+              ((UnaryExpression) expression).getExpression(), prefixPaths, patternTree);
+      return reconstructUnaryExpressions((UnaryExpression) expression, childExpressions);
+    } else if (expression instanceof FunctionExpression) {
+      List<List<Expression>> extendedExpressions = new ArrayList<>();
+      for (Expression suffixExpression : expression.getExpressions()) {
+        extendedExpressions.add(
+            concatExpressionWithSuffixPaths(suffixExpression, prefixPaths, patternTree));
+      }
+      List<List<Expression>> childExpressionsList = new ArrayList<>();
+      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+      return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
+    } else if (expression instanceof TimeSeriesOperand) {
+      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
+      List<PartialPath> actualPaths = new ArrayList<>();
+      for (PartialPath prefixPath : prefixPaths) {
+        if (!SQLConstant.isReservedPath(rawPath)
+            && !rawPath
+                .getFullPath()
+                .startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+          PartialPath concatPath = prefixPath.concatPath(rawPath);
+          patternTree.appendPath(concatPath);
+          actualPaths.add(concatPath);
+        } else {
+          actualPaths.add(rawPath);
+        }
+      }
+      return reconstructTimeSeriesOperands(actualPaths);
+    } else if (expression instanceof ConstantOperand) {
+      return Collections.singletonList(expression);
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static void constructPatternTreeFromQueryFilter(
+      Expression predicate, List<PartialPath> prefixPaths, PathPatternTree patternTree) {
+    if (predicate instanceof BinaryExpression) {
+      constructPatternTreeFromQueryFilter(
+          ((BinaryExpression) predicate).getLeftExpression(), prefixPaths, patternTree);
+      constructPatternTreeFromQueryFilter(
+          ((BinaryExpression) predicate).getRightExpression(), prefixPaths, patternTree);
+    } else if (predicate instanceof UnaryExpression) {
+      constructPatternTreeFromQueryFilter(
+          ((UnaryExpression) predicate).getExpression(), prefixPaths, patternTree);
+    } else if (predicate instanceof FunctionExpression) {
+      for (Expression suffixExpression : predicate.getExpressions()) {
+        constructPatternTreeFromQueryFilter(suffixExpression, prefixPaths, patternTree);
+      }
+    } else if (predicate instanceof TimeSeriesOperand) {
+      PartialPath rawPath = ((TimeSeriesOperand) predicate).getPath();
+      if (SQLConstant.isReservedPath(rawPath)) {
+        return;
+      }
+      for (PartialPath prefixPath : prefixPaths) {
+        if (!rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+          PartialPath concatPath = prefixPath.concatPath(rawPath);
+          patternTree.appendPath(concatPath);
+        } else {
+          patternTree.appendPath(rawPath);
+        }
+      }
+    } else if (predicate instanceof ConstantOperand) {
+      return;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
+    }
+  }
+
   public static List<Expression> removeWildcardInExpression(
       Expression expression, SchemaTree schemaTree, TypeProvider typeProvider) {
     if (expression instanceof BinaryExpression) {
@@ -71,25 +157,42 @@ public class ExpressionAnalyzer {
       List<Expression> rightExpressions =
           removeWildcardInExpression(
               ((BinaryExpression) expression).getRightExpression(), schemaTree, typeProvider);
-      return constructBinaryExpressions(
+      return reconstructBinaryExpressions(
           expression.getExpressionType(), leftExpressions, rightExpressions);
     } else if (expression instanceof UnaryExpression) {
       List<Expression> childExpressions =
           removeWildcardInExpression(
               ((UnaryExpression) expression).getExpression(), schemaTree, typeProvider);
-      return constructUnaryExpressions((UnaryExpression) expression, childExpressions);
+      return reconstructUnaryExpressions((UnaryExpression) expression, childExpressions);
     } else if (expression instanceof FunctionExpression) {
-      List<List<Expression>> childExpressionsList =
-          removeWildcardInFunctionExpression(expression.getExpressions(), schemaTree, typeProvider);
-      return constructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
+      // One by one, remove the wildcards from the input expressions. In most cases, an expression
+      // will produce multiple expressions after removing the wildcards. We use extendedExpressions
+      // to
+      // collect the produced expressions.
+      List<List<Expression>> extendedExpressions = new ArrayList<>();
+      for (Expression originExpression : expression.getExpressions()) {
+        List<Expression> actualExpressions =
+            removeWildcardInExpression(originExpression, schemaTree, typeProvider);
+        if (actualExpressions.isEmpty()) {
+          // Let's ignore the eval of the function which has at least one non-existence series as
+          // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
+          return Collections.emptyList();
+        }
+        extendedExpressions.add(actualExpressions);
+      }
+
+      // Calculate the Cartesian product of extendedExpressions to get the actual expressions after
+      // removing all wildcards. We use actualExpressions to collect them.
+      List<List<Expression>> childExpressionsList = new ArrayList<>();
+      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+      return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath path = ((TimeSeriesOperand) expression).getPath();
       if (SQLConstant.isReservedPath(path)) {
         return Collections.singletonList(expression);
       }
-
       List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
-      return constructTimeSeriesOperands(actualPaths);
+      return reconstructTimeSeriesOperands(actualPaths);
     } else if (expression instanceof ConstantOperand) {
       return Collections.singletonList(expression);
     } else {
@@ -98,39 +201,21 @@ public class ExpressionAnalyzer {
     }
   }
 
-  private static List<Expression> constructTimeSeriesOperands(List<MeasurementPath> actualPaths) {
+  public static Expression removeWildcardInQueryFilter(
+      Expression predicate, SchemaTree schemaTree, TypeProvider typeProvider) {
+    return null;
+  }
+
+  private static List<Expression> reconstructTimeSeriesOperands(
+      List<? extends PartialPath> actualPaths) {
     List<Expression> resultExpressions = new ArrayList<>();
-    for (MeasurementPath actualPath : actualPaths) {
+    for (PartialPath actualPath : actualPaths) {
       resultExpressions.add(new TimeSeriesOperand(actualPath));
     }
     return resultExpressions;
   }
 
-  private static List<List<Expression>> removeWildcardInFunctionExpression(
-      List<Expression> expressions, SchemaTree schemaTree, TypeProvider typeProvider) {
-    // One by one, remove the wildcards from the input expressions. In most cases, an expression
-    // will produce multiple expressions after removing the wildcards. We use extendedExpressions to
-    // collect the produced expressions.
-    List<List<Expression>> extendedExpressions = new ArrayList<>();
-    for (Expression originExpression : expressions) {
-      List<Expression> actualExpressions =
-          removeWildcardInExpression(originExpression, schemaTree, typeProvider);
-      if (actualExpressions.isEmpty()) {
-        // Let's ignore the eval of the function which has at least one non-existence series as
-        // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
-        return Collections.emptyList();
-      }
-      extendedExpressions.add(actualExpressions);
-    }
-
-    // Calculate the Cartesian product of extendedExpressions to get the actual expressions after
-    // removing all wildcards. We use actualExpressions to collect them.
-    List<List<Expression>> actualExpressions = new ArrayList<>();
-    cartesianProduct(extendedExpressions, actualExpressions, 0, new ArrayList<>());
-    return actualExpressions;
-  }
-
-  private static List<Expression> constructFunctionExpressions(
+  private static List<Expression> reconstructFunctionExpressions(
       FunctionExpression expression, List<List<Expression>> childExpressionsList) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (List<Expression> functionExpressions : childExpressionsList) {
@@ -143,7 +228,7 @@ public class ExpressionAnalyzer {
     return resultExpressions;
   }
 
-  private static List<Expression> constructUnaryExpressions(
+  private static List<Expression> reconstructUnaryExpressions(
       UnaryExpression expression, List<Expression> childExpressions) {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression childExpression : childExpressions) {
@@ -183,7 +268,7 @@ public class ExpressionAnalyzer {
     return resultExpressions;
   }
 
-  private static List<Expression> constructBinaryExpressions(
+  private static List<Expression> reconstructBinaryExpressions(
       ExpressionType expressionType,
       List<Expression> leftExpressions,
       List<Expression> rightExpressions) {
@@ -238,7 +323,7 @@ public class ExpressionAnalyzer {
     return resultExpressions;
   }
 
-  public static <T> void cartesianProduct(
+  private static <T> void cartesianProduct(
       List<List<T>> dimensionValue, List<List<T>> resultList, int layer, List<T> currentList) {
     if (layer < dimensionValue.size() - 1) {
       if (dimensionValue.get(layer).isEmpty()) {
@@ -344,11 +429,6 @@ public class ExpressionAnalyzer {
   }
 
   public static Filter transformToGlobalTimeFilter(Expression queryFilter) {
-    return null;
-  }
-
-  public static Expression removeWildcardInQueryFilter(
-      Expression predicate, SchemaTree schemaTree, TypeProvider typeProvider) {
     return null;
   }
 }

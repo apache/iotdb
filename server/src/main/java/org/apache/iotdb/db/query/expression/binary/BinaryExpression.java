@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
@@ -90,20 +89,6 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public List<Expression> getExpressions() {
     return Arrays.asList(leftExpression, rightExpression);
-  }
-
-  @Override
-  public final void concat(
-      List<PartialPath> prefixPaths,
-      List<Expression> resultExpressions,
-      PathPatternTree patternTree) {
-    List<Expression> leftExpressions = new ArrayList<>();
-    leftExpression.concat(prefixPaths, leftExpressions, patternTree);
-
-    List<Expression> rightExpressions = new ArrayList<>();
-    rightExpression.concat(prefixPaths, rightExpressions, patternTree);
-
-    reconstruct(leftExpressions, rightExpressions, resultExpressions);
   }
 
   @Override

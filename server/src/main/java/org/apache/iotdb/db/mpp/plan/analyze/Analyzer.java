@@ -325,7 +325,6 @@ public class Analyzer {
       Expression rewrittenPredicate =
           ExpressionAnalyzer.removeWildcardInQueryFilter(
               queryStatement.getWhereCondition().getPredicate(), schemaTree, typeProvider);
-      selectExpressions.add(rewrittenPredicate);
       return rewrittenPredicate;
     }
 

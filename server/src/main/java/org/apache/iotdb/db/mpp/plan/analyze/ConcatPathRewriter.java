@@ -18,23 +18,21 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-
-import org.apache.commons.lang.Validate;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This rewriter:
@@ -53,18 +51,30 @@ public class ConcatPathRewriter {
     QueryStatement queryStatement = (QueryStatement) statement;
     this.patternTree = patternTree;
 
+    // prefix paths in the FROM clause
+    List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
+
     // concat SELECT with FROM
-    concatSelectWithFrom(queryStatement);
+    List<ResultColumn> resultColumns =
+        concatSelectWithFrom(
+            queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
+    queryStatement.getSelectComponent().setResultColumns(resultColumns);
 
     // concat WITHOUT NULL with FROM
     if (queryStatement.getFilterNullComponent() != null
         && !queryStatement.getFilterNullComponent().getWithoutNullColumns().isEmpty()) {
-      concatWithoutNullColumnsWithFrom(queryStatement);
+      List<Expression> withoutNullColumns =
+          concatWithoutNullColumnsWithFrom(
+              queryStatement.getFilterNullComponent(),
+              prefixPaths,
+              queryStatement.getSelectComponent().getAliasToColumnMap());
+      queryStatement.getFilterNullComponent().setWithoutNullColumns(withoutNullColumns);
     }
 
     // concat WHERE with FROM
     if (queryStatement.getWhereCondition() != null) {
-      constructPatternTreeFromWhereWithFrom(queryStatement);
+      ExpressionAnalyzer.constructPatternTreeFromQueryFilter(
+          queryStatement.getWhereCondition().getPredicate(), prefixPaths, patternTree);
     }
     return queryStatement;
   }
@@ -73,97 +83,53 @@ public class ConcatPathRewriter {
    * Concat the prefix path in the SELECT clause and the suffix path in the FROM clause into a full
    * path pattern. And construct pattern tree.
    */
-  private void concatSelectWithFrom(QueryStatement queryStatement)
+  private List<ResultColumn> concatSelectWithFrom(
+      SelectComponent selectComponent, List<PartialPath> prefixPaths, boolean isGroupByLevel)
       throws StatementAnalyzeException {
-    // prefix paths in the FROM clause
-    List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
-
     // resultColumns after concat
     List<ResultColumn> resultColumns = new ArrayList<>();
-    for (ResultColumn suffixPath : queryStatement.getSelectComponent().getResultColumns()) {
-      boolean needAliasCheck = suffixPath.hasAlias() && !queryStatement.isGroupByLevel();
-      suffixPath.concat(prefixPaths, resultColumns, needAliasCheck, patternTree);
+    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+      boolean needAliasCheck = resultColumn.hasAlias() && !isGroupByLevel;
+      List<Expression> resultExpressions =
+          ExpressionAnalyzer.concatExpressionWithSuffixPaths(
+              resultColumn.getExpression(), prefixPaths, patternTree);
+      if (needAliasCheck && resultExpressions.size() > 1) {
+        throw new SemanticException(
+            String.format(
+                "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
+      }
+      resultColumns.addAll(
+          resultExpressions.stream()
+              .map(expression -> new ResultColumn(expression, resultColumn.getAlias()))
+              .collect(Collectors.toList()));
     }
-    queryStatement.getSelectComponent().setResultColumns(resultColumns);
+    return resultColumns;
   }
 
   /**
    * Concat the prefix path in the WITHOUT NULL clause and the suffix path in the FROM clause into a
    * full path pattern. And construct pattern tree.
    */
-  private void concatWithoutNullColumnsWithFrom(QueryStatement queryStatement)
+  private List<Expression> concatWithoutNullColumnsWithFrom(
+      FilterNullComponent filterNullComponent,
+      List<PartialPath> prefixPaths,
+      Map<String, Expression> aliasToColumnMap)
       throws StatementAnalyzeException {
-    // prefix paths in the FROM clause
-    List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
+    // raw expression after replace alias
+    List<Expression> rawWithoutNullColumns =
+        filterNullComponent.getWithoutNullColumns().stream()
+            .map(
+                expression ->
+                    aliasToColumnMap.getOrDefault(expression.getExpressionString(), expression))
+            .collect(Collectors.toList());
 
     // result after concat
-    List<Expression> withoutNullColumns = new ArrayList<>();
-    for (Expression expression : queryStatement.getFilterNullComponent().getWithoutNullColumns()) {
-      concatWithoutNullColumnsWithFrom(
-          prefixPaths,
-          expression,
-          withoutNullColumns,
-          queryStatement.getSelectComponent().getAliasSet());
-    }
-    queryStatement.getFilterNullComponent().setWithoutNullColumns(withoutNullColumns);
-  }
-
-  private void concatWithoutNullColumnsWithFrom(
-      List<PartialPath> prefixPaths,
-      Expression expression,
-      List<Expression> withoutNullColumns,
-      Set<String> aliasSet)
-      throws StatementAnalyzeException {
-    if (expression instanceof TimeSeriesOperand) {
-      TimeSeriesOperand timeSeriesOperand = (TimeSeriesOperand) expression;
-      if (timeSeriesOperand
-          .getPath()
-          .getFullPath()
-          .startsWith(SQLConstant.ROOT + ".")) { // start with "root." don't concat
-        // because the full path that starts with 'root.' won't be split
-        // so we need to split it.
-        if (((TimeSeriesOperand) expression).getPath().getNodeLength() == 1) { // no split
-          try {
-            ((TimeSeriesOperand) expression)
-                .setPath(
-                    new PartialPath(
-                        PathUtils.splitPathToDetachedPath(
-                            ((TimeSeriesOperand) expression)
-                                .getPath()
-                                .getFirstNode()))); // split path To nodes
-          } catch (IllegalPathException e) {
-            throw new StatementAnalyzeException(e.getMessage());
-          }
-        }
-        patternTree.appendPath(((TimeSeriesOperand) expression).getPath());
-        withoutNullColumns.add(expression);
-      } else {
-        if (!aliasSet.contains(expression.getExpressionString())) { // not alias, concat
-          List<Expression> resultExpressions = new ArrayList<>();
-          expression.concat(prefixPaths, resultExpressions, patternTree);
-          withoutNullColumns.addAll(resultExpressions);
-        } else { // alias, don't concat
-          withoutNullColumns.add(expression);
-        }
-      }
-    } else {
-      List<Expression> resultExpressions = new ArrayList<>();
-      expression.concat(prefixPaths, resultExpressions, patternTree);
-      withoutNullColumns.addAll(resultExpressions);
-    }
-  }
-
-  /**
-   * Concat the prefix path in the WHERE clause and the suffix path in the FROM clause into a full
-   * path pattern. And construct pattern tree.
-   */
-  private void constructPatternTreeFromWhereWithFrom(QueryStatement queryStatement) {
-    // prefix paths in the FROM clause
-    List<PartialPath> prefixPaths = queryStatement.getFromComponent().getPrefixPaths();
-    Expression predicate = queryStatement.getWhereCondition().getPredicate();
-    List<Expression> resultExpressions = new ArrayList<>();
-    predicate.concat(prefixPaths, resultExpressions, patternTree);
-    Validate.isTrue(resultExpressions.size() == 1);
-    queryStatement.getWhereCondition().setPredicate(resultExpressions.get(0));
+    return rawWithoutNullColumns.stream()
+        .map(
+            expression ->
+                ExpressionAnalyzer.concatExpressionWithSuffixPaths(
+                    expression, prefixPaths, patternTree))
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
   }
 }

@@ -45,7 +45,7 @@ public class SelectComponent extends StatementNode {
 
   protected List<ResultColumn> resultColumns = new ArrayList<>();
 
-  Set<String> aliasSet;
+  Map<String, Expression> aliasToColumnMap;
 
   private List<PartialPath> pathsCache;
   private List<String> aggregationFunctionsCache;
@@ -64,7 +64,7 @@ public class SelectComponent extends StatementNode {
     hasUserDefinedAggregationFunction = another.isHasUserDefinedAggregationFunction();
 
     resultColumns.addAll(another.getResultColumns());
-    aliasSet.addAll(another.getAliasSet());
+    aliasToColumnMap = another.getAliasToColumnMap();
   }
 
   public ZoneId getZoneId() {
@@ -104,12 +104,12 @@ public class SelectComponent extends StatementNode {
     return resultColumns;
   }
 
-  public void setAliasSet(Set<String> aliasSet) {
-    this.aliasSet = aliasSet;
+  public Map<String, Expression> getAliasToColumnMap() {
+    return aliasToColumnMap;
   }
 
-  public Set<String> getAliasSet() {
-    return aliasSet;
+  public void setAliasToColumnMap(Map<String, Expression> aliasToColumnMap) {
+    this.aliasToColumnMap = aliasToColumnMap;
   }
 
   public List<PartialPath> getPaths() {
