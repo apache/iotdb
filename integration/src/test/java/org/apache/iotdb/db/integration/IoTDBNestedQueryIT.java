@@ -584,4 +584,27 @@ public class IoTDBNestedQueryIT {
       Assert.fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testRegularLikeInExpressions() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String query =
+          "SELECT ((CAST(s1, 'type'='TEXT') LIKE '_') REGEXP '[0-9]') IN ('4', '2', '3') "
+              + "FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 2; i <= 4; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(String.valueOf(i), rs.getString(2));
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
 }

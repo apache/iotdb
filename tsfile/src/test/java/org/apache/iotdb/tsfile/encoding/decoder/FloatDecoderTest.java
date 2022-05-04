@@ -67,50 +67,92 @@ public class FloatDecoderTest {
     doubleList = new ArrayList<Double>();
     int hybridCountDouble = 11;
     int hybridNumDouble = 5;
-    long hybridStartDouble = 20;
+    long hybridStartDouble = -20;
 
     for (int i = 0; i < hybridNumDouble; i++) {
       for (int j = 0; j < hybridCountDouble; j++) {
         doubleList.add((double) hybridStartDouble / doubleMaxPointValue);
-        hybridStart += 3;
+        hybridStartDouble -= 3;
       }
       for (int j = 0; j < hybridCountDouble; j++) {
         doubleList.add((double) hybridStartDouble / doubleMaxPointValue);
       }
-      hybridCountDouble += 2;
+      hybridCountDouble -= 2;
     }
   }
 
   @After
   public void tearDown() {}
 
-  @Test
+  //  @Test
   public void testRLEFloat() throws Exception {
     for (int i = 1; i <= 10; i++) {
       testFloatLength(TSEncoding.RLE, floatList, floatMaxPointNumber, false, i);
     }
   }
 
-  @Test
+  //  @Test
   public void testRLEDouble() throws Exception {
     for (int i = 1; i <= 10; i++) {
       testDoubleLength(TSEncoding.RLE, doubleList, doubleMaxPointNumber, false, i);
     }
   }
 
-  @Test
+  //  @Test
   public void testDIFFFloat() throws Exception {
     for (int i = 1; i <= 10; i++) {
       testFloatLength(TSEncoding.TS_2DIFF, floatList, floatMaxPointNumber, false, i);
     }
   }
 
-  @Test
+  //  @Test
   public void testDIFFDouble() throws Exception {
     for (int i = 1; i <= 10; i++) {
       testDoubleLength(TSEncoding.TS_2DIFF, doubleList, doubleMaxPointNumber, false, i);
     }
   }
+  //
+  //  //  @Test
+  //  public void testDescendFloat() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testFloatLength(TSEncoding.DESCEND, floatList, floatMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
+  //  //  @Test
+  //  public void testDescendDouble() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testDoubleLength(TSEncoding.DESCEND, doubleList, doubleMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
+  //  @Test
+  //  public void testSimple8bFloat() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testFloatLength(TSEncoding.SIMPLE8B, floatList, floatMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
+  //  @Test
+  //  public void testSimple8bDouble() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testDoubleLength(TSEncoding.SIMPLE8B, doubleList, doubleMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
+  //  //  @Test
+  //  public void testSparseSimple8bFloat() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testFloatLength(TSEncoding.SIMPLE8B_SPARSE, floatList, floatMaxPointNumber, false, i);
+  //    }
+  //  }
+  //
+  //  //  @Test
+  //  public void testSparseSimple8bDouble() throws Exception {
+  //    for (int i = 1; i <= 10; i++) {
+  //      testDoubleLength(TSEncoding.SIMPLE8B_SPARSE, doubleList, doubleMaxPointNumber, false, i);
+  //    }
+  //  }
 
   // @Test
   // public void testBigDecimal() throws Exception {
@@ -188,8 +230,9 @@ public class FloatDecoderTest {
       }
       encoder.flush(baos);
     }
-
-    ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
+    byte[] bytes = baos.toByteArray();
+    System.out.println(bytes.length);
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
 
     for (int i = 0; i < repeatCount; i++) {
       Decoder decoder = new FloatDecoder(encoding, TSDataType.DOUBLE);
@@ -200,6 +243,7 @@ public class FloatDecoderTest {
         }
         assertEquals(value, value_, delta);
       }
+      //        System.out.println("op");
     }
   }
 

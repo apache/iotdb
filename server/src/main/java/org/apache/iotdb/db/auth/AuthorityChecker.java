@@ -18,17 +18,20 @@
  */
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class AuthorityChecker {
@@ -79,21 +82,148 @@ public class AuthorityChecker {
     return true;
   }
 
+  /**
+   * check permission(datanode to confignode).
+   *
+   * @param username username
+   * @param paths paths in List structure
+   * @param type Statement Type
+   * @param targetUser target user
+   * @return if permission-check is passed
+   */
+  public static boolean checkPermission(
+      String username, List<? extends PartialPath> paths, StatementType type, String targetUser) {
+    if (SUPER_USER.equals(username)) {
+      return true;
+    }
+
+    int permission = translateToPermissionId(type);
+    if (permission == -1) {
+      return false;
+    } else if (permission == PrivilegeType.MODIFY_PASSWORD.ordinal()
+        && username.equals(targetUser)) {
+      // a user can modify his own password
+      return true;
+    }
+
+    List<String> allPath = new ArrayList<>();
+    if (paths != null && !paths.isEmpty()) {
+      for (PartialPath path : paths) {
+        allPath.add(path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath());
+      }
+    } else {
+      allPath.add(IoTDBConstant.PATH_ROOT);
+    }
+
+    TSStatus status = AuthorizerManager.getInstance().checkPath(username, allPath, permission);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
-    IAuthorizer authorizer = BasicAuthorizer.getInstance();
+    AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
     try {
       String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
-      if (authorizer.checkUserPrivileges(username, fullPath, permission)) {
+      if (authorizerManager.checkUserPrivileges(username, fullPath, permission)) {
         return true;
       }
     } catch (AuthException e) {
       logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
+      throw new AuthException(e);
     }
     return false;
   }
 
   private static int translateToPermissionId(Operator.OperatorType type) {
+    switch (type) {
+      case GRANT_ROLE_PRIVILEGE:
+        return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
+      case CREATE_ROLE:
+        return PrivilegeType.CREATE_ROLE.ordinal();
+      case CREATE_USER:
+        return PrivilegeType.CREATE_USER.ordinal();
+      case MODIFY_PASSWORD:
+        return PrivilegeType.MODIFY_PASSWORD.ordinal();
+      case GRANT_USER_PRIVILEGE:
+        return PrivilegeType.GRANT_USER_PRIVILEGE.ordinal();
+      case REVOKE_ROLE_PRIVILEGE:
+        return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
+      case REVOKE_USER_PRIVILEGE:
+        return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
+      case GRANT_USER_ROLE:
+        return PrivilegeType.GRANT_USER_ROLE.ordinal();
+      case DELETE_USER:
+        return PrivilegeType.DELETE_USER.ordinal();
+      case DELETE_ROLE:
+        return PrivilegeType.DELETE_ROLE.ordinal();
+      case REVOKE_USER_ROLE:
+        return PrivilegeType.REVOKE_USER_ROLE.ordinal();
+      case SET_STORAGE_GROUP:
+        return PrivilegeType.SET_STORAGE_GROUP.ordinal();
+      case DELETE_STORAGE_GROUP:
+        return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
+      case CREATE_TIMESERIES:
+      case CREATE_ALIGNED_TIMESERIES:
+        return PrivilegeType.CREATE_TIMESERIES.ordinal();
+      case DELETE_TIMESERIES:
+      case DELETE:
+      case DROP_INDEX:
+        return PrivilegeType.DELETE_TIMESERIES.ordinal();
+      case SHOW:
+      case QUERY:
+      case GROUP_BY_TIME:
+      case QUERY_INDEX:
+      case AGGREGATION:
+      case UDAF:
+      case UDTF:
+      case LAST:
+      case FILL:
+      case GROUP_BY_FILL:
+      case SELECT_INTO:
+        return PrivilegeType.READ_TIMESERIES.ordinal();
+      case INSERT:
+      case LOAD_DATA:
+      case CREATE_INDEX:
+      case BATCH_INSERT:
+      case BATCH_INSERT_ONE_DEVICE:
+      case BATCH_INSERT_ROWS:
+      case MULTI_BATCH_INSERT:
+        return PrivilegeType.INSERT_TIMESERIES.ordinal();
+      case LIST_ROLE:
+      case LIST_ROLE_USERS:
+      case LIST_ROLE_PRIVILEGE:
+        return PrivilegeType.LIST_ROLE.ordinal();
+      case LIST_USER:
+      case LIST_USER_ROLES:
+      case LIST_USER_PRIVILEGE:
+        return PrivilegeType.LIST_USER.ordinal();
+      case CREATE_FUNCTION:
+        return PrivilegeType.CREATE_FUNCTION.ordinal();
+      case DROP_FUNCTION:
+        return PrivilegeType.DROP_FUNCTION.ordinal();
+      case CREATE_TRIGGER:
+        return PrivilegeType.CREATE_TRIGGER.ordinal();
+      case DROP_TRIGGER:
+        return PrivilegeType.DROP_TRIGGER.ordinal();
+      case START_TRIGGER:
+        return PrivilegeType.START_TRIGGER.ordinal();
+      case STOP_TRIGGER:
+        return PrivilegeType.STOP_TRIGGER.ordinal();
+      case CREATE_CONTINUOUS_QUERY:
+        return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
+      case DROP_CONTINUOUS_QUERY:
+        return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
+      default:
+        logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
+        return -1;
+    }
+  }
+
+  private static int translateToPermissionId(StatementType type) {
     switch (type) {
       case GRANT_ROLE_PRIVILEGE:
         return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();

@@ -189,11 +189,14 @@ WITH (
 
 目前触发器可以侦听序列上的所有的数据插入操作，触发器可以选择在数据插入前（`BEFORE INSERT`）或者数据插入后（`AFTER INSERT`）触发钩子调用。
 
-`FULL-PATH`是触发器侦听的目标序列名称，这个序列必须是一个测点。
+`FULL-PATH` 一个目标序列路径如root.sg1.d1.s1，或者是一个设备路径如root.sg1.d1，或者是一个存储组路径如root.sg1，抑或是一个业务语义节点路径如root.sg1.x。
 
 `CLASSNAME`是触发器类的全类名。
 
-请注意，`CLASSNAME`以及属性值中的`KEY`和`VALUE`都需要被单引号或者双引号引用起来。
+请注意：
+1. `CLASSNAME`以及属性值中的`KEY`和`VALUE`都需要被单引号或者双引号引用起来。
+2. 每个`FULL-PATH`只支持注册一个触发器。
+3. 当存在多层路径同时注册触发器时，如root.sg1.d1.s1 注册一个触发器trigger-sg1d1s1，root.sg1.d1注册一个触发器trigger-sg1d1，root.sg1注册一个触发器trigger-sg1，在向root.sg1.d1.s1写入数据时，其触发顺序为trigger-sg1d1s1 -》trigger-sg1d1-》trigger-sg1。
 
 ### 卸载触发器
 

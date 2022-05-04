@@ -22,14 +22,20 @@ package org.apache.iotdb.db.auth.authorizer;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.mpp.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 
@@ -41,6 +47,8 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
 public class AuthorizerManager implements IAuthorizer {
 
@@ -253,5 +261,41 @@ public class AuthorizerManager implements IAuthorizer {
 
     SessionTimeoutManager.getInstance().register(sessionId);
     return openSessionResp.sessionId(sessionId);
+  }
+
+  /** Check whether specific Session has the authorization to given plan. */
+  public TSStatus checkAuthority(Statement statement, long sessionId) {
+    try {
+      if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION_ERROR,
+            "No permissions for this operation " + statement.getType());
+      }
+    } catch (AuthException e) {
+      logger.warn("meet error while checking authorization.", e);
+      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  /** Check whether specific user has the authorization to given plan. */
+  public boolean checkAuthorization(Statement statement, String username) throws AuthException {
+    if (!statement.isAuthenticationRequired()) {
+      return true;
+    }
+    String targetUser = null;
+    if (statement instanceof AuthorStatement) {
+      targetUser = ((AuthorStatement) statement).getUserName();
+    }
+    return AuthorityChecker.checkPermission(
+        username, statement.getPaths(), statement.getType(), targetUser);
+  }
+
+  public TSStatus checkPath(String username, List<String> allPath, int permission) {
+    return clusterAuthorizer.checkUserPrivileges(
+        new TCheckUserPrivilegesReq(username, allPath, permission));
   }
 }

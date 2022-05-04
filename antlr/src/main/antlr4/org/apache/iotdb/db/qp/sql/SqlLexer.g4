@@ -653,7 +653,7 @@ TEXT
 // Encoding Type Keywords
 
 ENCODING_VALUE
-    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | ZIGZAG | FREQ
+    : DICTIONARY | DIFF | GORILLA | PLAIN | REGULAR | RLE | TS_2DIFF | ZIGZAG | FREQ | DESCEND | SIMPLE8B | SIMPLE8B_SPARSE
     ;
 
 DICTIONARY
@@ -691,6 +691,18 @@ ZIGZAG
 FREQ
     : F R E Q
     ;
+
+DESCEND
+	: D E S C E N D
+	;
+	
+SIMPLE8B
+	: S I M P L E '8' B
+	;
+
+SIMPLE8B_SPARSE
+	: S I M P L E '8' B '_' S P A R S E
+	;
 
 
 // Compressor Type Keywords
@@ -971,11 +983,7 @@ ID
     : NAME_CHAR+
     ;
 
-QUTOED_ID_IN_NODE_NAME
-    : BQUOTA_STRING_IN_NODE_NAME
-    ;
-
-QUTOED_ID
+QUOTED_ID
     : BQUOTA_STRING
     ;
 
@@ -998,20 +1006,17 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | ~('"'| '\\') )* '"'
+    : '"' ( '\\'. | '""' | ~('"'| '\\') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | ~('\''| '\\') )* '\''
+    : '\'' ( '\\'. | '\'\'' |~('\''| '\\') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\'. | ~('`'| '\\') )* '`'
+    : '`' ( '\\' ~('`') | '``' | ~('`'| '\\') )* '`'
     ;
 
-fragment BQUOTA_STRING_IN_NODE_NAME
-    : '`' ( '\\' ('`'|'\\'|'\''|'"') | ~('`'|'\\'|'.'|'\''|'"'))* '`'
-    ;
 
 // Characters and write it this way for case sensitivity
 

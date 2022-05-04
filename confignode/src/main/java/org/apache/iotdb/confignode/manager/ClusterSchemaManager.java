@@ -136,7 +136,8 @@ public class ClusterSchemaManager {
       TConsensusGroupId consensusGroupId =
           new TConsensusGroupId(type, partitionInfo.generateNextRegionGroupId());
       regionReplicaSet.setRegionId(consensusGroupId);
-      regionReplicaSet.setDataNodeLocations(onlineDataNodes.subList(0, replicaCount));
+      regionReplicaSet.setDataNodeLocations(
+          new ArrayList<>(onlineDataNodes.subList(0, replicaCount)));
       createRegionsReq.addRegion(regionReplicaSet);
 
       switch (type) {
