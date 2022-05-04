@@ -192,7 +192,7 @@ public enum PlanNodeType {
         return AlignedSeriesScanNode.deserialize(buffer);
       case 34:
         return AlignedSeriesAggregationScanNode.deserialize(buffer);
-      case 35:
+      case 36:
         return SchemaFetchMergeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);

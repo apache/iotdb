@@ -39,7 +39,7 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SCHEMA_MERGE.serialize(byteBuffer);
+    PlanNodeType.SCHEMA_FETCH_MERGE.serialize(byteBuffer);
   }
 
   public static PlanNode deserialize(ByteBuffer byteBuffer) {
