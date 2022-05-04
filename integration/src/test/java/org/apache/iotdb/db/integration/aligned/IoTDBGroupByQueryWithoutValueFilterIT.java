@@ -1089,6 +1089,35 @@ public class IoTDBGroupByQueryWithoutValueFilterIT {
   }
 
   @Test
+  public void groupByBigDataTest() throws SQLException {
+    String[] retArray = new String[] {"0,256", "256,256", "512,256", "768,256", "1024,256"};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < 1281; i++) {
+        statement.execute(
+            String.format("insert into root.sg2.d1(time, s1) aligned values(%s, %s)", i, i));
+      }
+      statement.execute("flush");
+
+      boolean hasResultSet =
+          statement.execute("select count(s1) from root.sg2.d1 GROUP BY ([0, 1280), 256ms)");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.sg2.d1.s1"));
+          Assert.assertEquals(retArray[cnt++], ans);
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    }
+  }
+
+  @Test
   public void groupByWithoutAggregationFuncTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
