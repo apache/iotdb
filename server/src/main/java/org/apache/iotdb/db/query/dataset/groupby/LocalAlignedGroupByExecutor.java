@@ -50,7 +50,6 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
   // Aggregate result buffer
   private final List<List<AggregateResult>> results = new ArrayList<>();
-  private int resultsSize;
 
   private final TimeRange timeRange;
 
@@ -93,7 +92,6 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
   @Override
   public void addAggregateResult(List<AggregateResult> aggregateResults) {
     results.add(aggregateResults);
-    resultsSize += aggregateResults.size();
   }
 
   @Override
@@ -287,19 +285,18 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     }
 
     boolean hasCached = false;
-    int[] curReadCurArrayIndexes = new int[resultsSize];
-    int[] curReadCurListIndexes = new int[resultsSize];
-    int index = 0;
+    int curReadCurArrayIndex = lastReadCurArrayIndex;
+    int curReadCurListIndex = lastReadCurListIndex;
     while (reader.hasNextSubSeries()) {
       int subIndex = reader.getCurIndex();
       List<AggregateResult> aggregateResultList = results.get(subIndex);
       for (AggregateResult result : aggregateResultList) {
-        // reset batch data for calculation
-        batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
         // current agg method has been calculated
         if (result.hasFinalResult()) {
           continue;
         }
+        // reset batch data for calculation
+        batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
         IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator(subIndex);
         if (ascending) {
           // skip points that cannot be calculated
@@ -316,9 +313,21 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
         if (batchDataIterator.hasNext(curStartTime, curEndTime)) {
           result.updateResultFromPageData(batchDataIterator, curStartTime, curEndTime);
         }
-        curReadCurArrayIndexes[index] = batchData.getReadCurArrayIndex();
-        curReadCurListIndexes[index] = batchData.getReadCurListIndex();
-        index++;
+        if (ascending) {
+          if (batchData.getReadCurListIndex() > curReadCurListIndex) {
+            curReadCurListIndex = batchData.getReadCurListIndex();
+            curReadCurArrayIndex = batchData.getReadCurArrayIndex();
+          } else if (batchData.getReadCurListIndex() == curReadCurListIndex) {
+            curReadCurArrayIndex = Math.max(batchData.getReadCurArrayIndex(), curReadCurArrayIndex);
+          }
+        } else {
+          if (batchData.getReadCurListIndex() < curReadCurListIndex) {
+            curReadCurListIndex = batchData.getReadCurListIndex();
+            curReadCurArrayIndex = batchData.getReadCurArrayIndex();
+          } else if (batchData.getReadCurListIndex() == curReadCurListIndex) {
+            curReadCurArrayIndex = Math.min(batchData.getReadCurArrayIndex(), curReadCurArrayIndex);
+          }
+        }
       }
       // can calc for next interval
       if (!hasCached && batchData.hasCurrent()) {
@@ -329,10 +338,8 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     }
 
     // reset the last position to current Index
-    Pair<Integer, Integer> lastIndexPair =
-        calcLastIndex(curReadCurArrayIndexes, curReadCurListIndexes);
-    lastReadCurArrayIndex = lastIndexPair.left;
-    lastReadCurListIndex = lastIndexPair.right;
+    lastReadCurArrayIndex = curReadCurArrayIndex;
+    lastReadCurListIndex = curReadCurListIndex;
     batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
   }
 
