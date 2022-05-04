@@ -86,10 +86,10 @@ public class SchemaFetchNode extends SourceNode {
   }
 
   public static SchemaFetchNode deserialize(ByteBuffer byteBuffer) {
-    return new SchemaFetchNode(
-        PlanNodeId.deserialize(byteBuffer),
-        PartialPath.deserialize(byteBuffer),
-        PathPatternTree.deserialize(byteBuffer));
+    PartialPath storageGroup = PartialPath.deserialize(byteBuffer);
+    PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new SchemaFetchNode(planNodeId, storageGroup, patternTree);
   }
 
   @Override
