@@ -41,8 +41,9 @@ public class TimeJoinOperator implements ProcessOperator {
 
   private final List<Operator> children;
 
-  private final int inputCount;
+  private final int inputOperatorsCount;
 
+  /** TsBlock from child operator. Only one cache now. */
   private final TsBlock[] inputTsBlocks;
 
   /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
@@ -51,15 +52,20 @@ public class TimeJoinOperator implements ProcessOperator {
   /** used to record current index for input TsBlocks after merging */
   private final int[] shadowInputIndex;
 
+  /**
+   * Represent whether there are more tsBlocks from ith child operator. If all elements in
+   * noMoreTsBlocks[] are true and inputTsBlocks[] are consumed completely, this operator is
+   * finished.
+   */
   private final boolean[] noMoreTsBlocks;
 
   private final TimeSelector timeSelector;
 
-  private final int columnCount;
+  private final int outputColumnCount;
 
   /**
    * this field indicates each data type for output columns(not including time column) of
-   * TimeJoinOperator its size should be equal to columnCount
+   * TimeJoinOperator its size should be equal to outputColumnCount
    */
   private final List<TSDataType> dataTypes;
 
@@ -83,13 +89,14 @@ public class TimeJoinOperator implements ProcessOperator {
         "child size of TimeJoinOperator should be larger than 0");
     this.operatorContext = operatorContext;
     this.children = children;
-    this.inputCount = children.size();
-    this.inputTsBlocks = new TsBlock[this.inputCount];
-    this.inputIndex = new int[this.inputCount];
-    this.shadowInputIndex = new int[this.inputCount];
-    this.noMoreTsBlocks = new boolean[this.inputCount];
-    this.timeSelector = new TimeSelector(this.inputCount << 1, OrderBy.TIMESTAMP_ASC == mergeOrder);
-    this.columnCount = dataTypes.size();
+    this.inputOperatorsCount = children.size();
+    this.inputTsBlocks = new TsBlock[this.inputOperatorsCount];
+    this.inputIndex = new int[this.inputOperatorsCount];
+    this.shadowInputIndex = new int[this.inputOperatorsCount];
+    this.noMoreTsBlocks = new boolean[this.inputOperatorsCount];
+    this.timeSelector =
+        new TimeSelector(this.inputOperatorsCount << 1, OrderBy.TIMESTAMP_ASC == mergeOrder);
+    this.outputColumnCount = dataTypes.size();
     this.dataTypes = dataTypes;
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.mergers = mergers;
@@ -103,7 +110,7 @@ public class TimeJoinOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    for (int i = 0; i < inputCount; i++) {
+    for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && empty(i)) {
         ListenableFuture<Void> blocked = children.get(i).isBlocked();
         if (!blocked.isDone()) {
@@ -121,7 +128,7 @@ public class TimeJoinOperator implements ProcessOperator {
     // TsBlocks order by asc/desc
     long currentEndTime = 0;
     boolean init = false;
-    for (int i = 0; i < inputCount; i++) {
+    for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && empty(i) && children.get(i).hasNext()) {
         inputIndex[i] = 0;
         inputTsBlocks[i] = children.get(i).next();
@@ -154,7 +161,7 @@ public class TimeJoinOperator implements ProcessOperator {
       tsBlockBuilder.declarePosition();
     }
 
-    for (int i = 0; i < columnCount; i++) {
+    for (int i = 0; i < outputColumnCount; i++) {
       ColumnMerger merger = mergers.get(i);
       merger.mergeColumn(
           inputTsBlocks,
@@ -166,7 +173,7 @@ public class TimeJoinOperator implements ProcessOperator {
     }
 
     // update inputIndex using shadowInputIndex
-    System.arraycopy(shadowInputIndex, 0, inputIndex, 0, inputCount);
+    System.arraycopy(shadowInputIndex, 0, inputIndex, 0, inputOperatorsCount);
 
     return tsBlockBuilder.build();
   }
@@ -176,7 +183,7 @@ public class TimeJoinOperator implements ProcessOperator {
     if (finished) {
       return false;
     }
-    for (int i = 0; i < inputCount; i++) {
+    for (int i = 0; i < inputOperatorsCount; i++) {
       if (!empty(i)) {
         return true;
       } else if (!noMoreTsBlocks[i]) {
@@ -204,7 +211,8 @@ public class TimeJoinOperator implements ProcessOperator {
       return true;
     }
     finished = true;
-    for (int i = 0; i < inputCount; i++) {
+
+    for (int i = 0; i < inputOperatorsCount; i++) {
       // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
       if (!noMoreTsBlocks[i] || !empty(i)) {
         finished = false;
@@ -214,6 +222,10 @@ public class TimeJoinOperator implements ProcessOperator {
     return finished;
   }
 
+  /**
+   * If the tsBlock of columnIndex is null or has no more data in the tsBlock, return true; else
+   * return false;
+   */
   private boolean empty(int columnIndex) {
     return inputTsBlocks[columnIndex] == null
         || inputTsBlocks[columnIndex].getPositionCount() == inputIndex[columnIndex];
