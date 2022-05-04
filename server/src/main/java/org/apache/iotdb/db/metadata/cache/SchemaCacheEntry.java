@@ -19,96 +19,40 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class SchemaCacheEntry {
-  private final String schemaEntryId;
 
-  private TSDataType tsDataType;
+  private final MeasurementSchema measurementSchema;
 
-  private TSEncoding tsEncoding;
+  private final String alias;
 
-  private CompressionType compressionType;
+  private final boolean isAligned;
 
-  private String alias;
-
-  private boolean isAligned;
-
-  @TestOnly
-  public SchemaCacheEntry() {
-    this.schemaEntryId = "1";
-  }
-
-  public SchemaCacheEntry(String schemaEntryId, TSDataType tsDataType, boolean isAligned) {
-    this.schemaEntryId = schemaEntryId;
-    this.tsDataType = tsDataType;
-    this.isAligned = isAligned;
-    this.tsEncoding =
-        TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder());
-    this.compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
-    this.alias = "";
-  }
-
-  public SchemaCacheEntry(
-      String schemaEntryId,
-      TSDataType tsDataType,
-      TSEncoding tsEncoding,
-      CompressionType compressionType,
-      String alias,
-      boolean isAligned) {
-    this.schemaEntryId = schemaEntryId;
-    this.tsDataType = tsDataType;
-    this.tsEncoding = tsEncoding;
-    this.compressionType = compressionType;
+  SchemaCacheEntry(MeasurementSchema measurementSchema, String alias, boolean isAligned) {
+    this.measurementSchema = measurementSchema;
     this.alias = alias;
     this.isAligned = isAligned;
   }
 
   public String getSchemaEntryId() {
-    return schemaEntryId;
+    return measurementSchema.getMeasurementId();
+  }
+
+  public MeasurementSchema getMeasurementSchema() {
+    return measurementSchema;
   }
 
   public TSDataType getTsDataType() {
-    return tsDataType;
-  }
-
-  public void setTsDataType(TSDataType tsDataType) {
-    this.tsDataType = tsDataType;
-  }
-
-  public TSEncoding getTsEncoding() {
-    return tsEncoding;
-  }
-
-  public void setTsEncoding(TSEncoding tsEncoding) {
-    this.tsEncoding = tsEncoding;
-  }
-
-  public CompressionType getCompressionType() {
-    return compressionType;
-  }
-
-  public void setCompressionType(CompressionType compressionType) {
-    this.compressionType = compressionType;
+    return measurementSchema.getType();
   }
 
   public String getAlias() {
     return alias;
   }
 
-  public void setAlias(String alias) {
-    this.alias = alias;
-  }
-
   public boolean isAligned() {
     return isAligned;
-  }
-
-  public void setAligned(boolean aligned) {
-    isAligned = aligned;
   }
 }

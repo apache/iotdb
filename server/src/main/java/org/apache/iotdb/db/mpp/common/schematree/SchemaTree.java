@@ -39,6 +39,7 @@ import java.util.Deque;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
@@ -68,6 +69,10 @@ public class SchemaTree {
     SchemaTreeMeasurementVisitor visitor =
         new SchemaTreeMeasurementVisitor(root, pathPattern, slimit, soffset, isPrefixMatch);
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+  }
+
+  public List<MeasurementPath> getAllMeasurement() {
+    return searchMeasurementPaths(ALL_MATCH_PATTERN, 0, 0, false).left;
   }
 
   /**
@@ -114,25 +119,31 @@ public class SchemaTree {
   }
 
   private void appendSingleMeasurementPath(MeasurementPath measurementPath) {
-    String[] nodes = measurementPath.getNodes();
+    appendSingleMeasurement(
+        measurementPath,
+        (MeasurementSchema) measurementPath.getMeasurementSchema(),
+        measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
+        measurementPath.isUnderAlignedEntity());
+  }
+
+  public void appendSingleMeasurement(
+      PartialPath path, MeasurementSchema schema, String alias, boolean isAligned) {
+    String[] nodes = path.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
     for (int i = 1; i < nodes.length; i++) {
       child = cur.getChild(nodes[i]);
       if (child == null) {
         if (i == nodes.length - 1) {
-          SchemaMeasurementNode measurementNode =
-              new SchemaMeasurementNode(
-                  nodes[i], (MeasurementSchema) measurementPath.getMeasurementSchema());
-          if (measurementPath.isMeasurementAliasExists()) {
-            measurementNode.setAlias(measurementPath.getMeasurementAlias());
-            cur.getAsEntityNode()
-                .addAliasChild(measurementPath.getMeasurementAlias(), measurementNode);
+          SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(nodes[i], schema);
+          if (alias != null) {
+            measurementNode.setAlias(alias);
+            cur.getAsEntityNode().addAliasChild(alias, measurementNode);
           }
           child = measurementNode;
         } else if (i == nodes.length - 2) {
           SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
-          entityNode.setAligned(measurementPath.isUnderAlignedEntity());
+          entityNode.setAligned(isAligned);
           child = entityNode;
         } else {
           child = new SchemaInternalNode(nodes[i]);
