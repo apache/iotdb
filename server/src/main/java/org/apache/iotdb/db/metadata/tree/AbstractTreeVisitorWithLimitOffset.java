@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.metadata.tree;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 
 /**
  * This class defines a dfs-based traversing algorithm with limit and offset based on
