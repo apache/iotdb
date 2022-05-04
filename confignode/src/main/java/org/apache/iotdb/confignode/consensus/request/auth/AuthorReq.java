@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.confignode.consensus.request.auth;
 
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.commons.auth.AuthException;
 
 import java.nio.ByteBuffer;
 import java.util.HashSet;
