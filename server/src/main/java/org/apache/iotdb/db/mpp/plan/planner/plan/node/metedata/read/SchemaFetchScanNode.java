@@ -35,14 +35,14 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-public class SchemaFetchNode extends SourceNode {
+public class SchemaFetchScanNode extends SourceNode {
 
   private final PartialPath storageGroup;
   private final PathPatternTree patternTree;
 
   private TRegionReplicaSet schemaRegionReplicaSet;
 
-  public SchemaFetchNode(PlanNodeId id, PartialPath storageGroup, PathPatternTree patternTree) {
+  public SchemaFetchScanNode(PlanNodeId id, PartialPath storageGroup, PathPatternTree patternTree) {
     super(id);
     this.storageGroup = storageGroup;
     this.patternTree = patternTree;
@@ -66,7 +66,7 @@ public class SchemaFetchNode extends SourceNode {
 
   @Override
   public PlanNode clone() {
-    return new SchemaFetchNode(getPlanNodeId(), storageGroup, patternTree);
+    return new SchemaFetchScanNode(getPlanNodeId(), storageGroup, patternTree);
   }
 
   @Override
@@ -86,11 +86,11 @@ public class SchemaFetchNode extends SourceNode {
     patternTree.serialize(byteBuffer);
   }
 
-  public static SchemaFetchNode deserialize(ByteBuffer byteBuffer) {
+  public static SchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {
     PartialPath storageGroup = (PartialPath) PathDeserializeUtil.deserialize(byteBuffer);
     PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchNode(planNodeId, storageGroup, patternTree);
+    return new SchemaFetchScanNode(planNodeId, storageGroup, patternTree);
   }
 
   @Override
@@ -111,6 +111,6 @@ public class SchemaFetchNode extends SourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaFetch(this, context);
+    return visitor.visitSchemaFetchScan(this, context);
   }
 }

@@ -36,7 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.AbstractSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
@@ -248,11 +248,11 @@ public class DistributionPlanner {
       for (PlanNode child : node.getChildren()) {
         for (TRegionReplicaSet schemaRegion :
             storageGroupSchemaRegionMap.get(
-                ((SchemaFetchNode) child).getStorageGroup().getFullPath())) {
-          SchemaFetchNode schemaFetchNode = (SchemaFetchNode) child.clone();
-          schemaFetchNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
-          schemaFetchNode.setRegionReplicaSet(schemaRegion);
-          root.addChild(schemaFetchNode);
+                ((SchemaFetchScanNode) child).getStorageGroup().getFullPath())) {
+          SchemaFetchScanNode schemaFetchScanNode = (SchemaFetchScanNode) child.clone();
+          schemaFetchScanNode.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+          schemaFetchScanNode.setRegionReplicaSet(schemaRegion);
+          root.addChild(schemaFetchScanNode);
         }
       }
       return root;
@@ -415,7 +415,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSchemaFetch(SchemaFetchNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaFetchScan(SchemaFetchScanNode node, NodeGroupContext context) {
       NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
       nodeDistribution.region = node.getRegionReplicaSet();
       context.putNodeDistribution(node.getPlanNodeId(), nodeDistribution);

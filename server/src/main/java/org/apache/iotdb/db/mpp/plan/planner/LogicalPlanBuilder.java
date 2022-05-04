@@ -30,7 +30,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCount
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
@@ -206,7 +206,7 @@ public class LogicalPlanBuilder {
       try {
         storageGroupPath = new PartialPath(storageGroup);
         this.root.addChild(
-            new SchemaFetchNode(
+            new SchemaFetchScanNode(
                 context.getQueryId().genPlanNodeId(),
                 storageGroupPath,
                 patternTree.extractInvolvedPartByPrefix(storageGroupPath)));
