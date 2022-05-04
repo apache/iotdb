@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.query.expression;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
+import org.apache.iotdb.db.mpp.plan.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
@@ -41,6 +41,7 @@ import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.InExpression;
 import org.apache.iotdb.db.query.expression.unary.LikeExpression;
@@ -242,7 +243,8 @@ public abstract class Expression {
         expression = new ConstantOperand(byteBuffer);
         break;
       case -3:
-        throw new UnsupportedOperationException();
+        expression = new TimestampOperand(byteBuffer);
+        break;
       case -2:
         expression = new TimeSeriesOperand(byteBuffer);
         break;

@@ -117,6 +117,7 @@
         <module>integration</module>
         <module>consensus</module>
         <module>procedure</module>
+        <module>schema-engine-rocksdb</module>
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->

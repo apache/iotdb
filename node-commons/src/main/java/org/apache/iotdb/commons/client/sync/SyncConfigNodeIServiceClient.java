@@ -34,9 +34,11 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
+import java.lang.reflect.Constructor;
 import java.net.SocketException;
 
-public class SyncConfigNodeIServiceClient extends ConfigIService.Client {
+public class SyncConfigNodeIServiceClient extends ConfigIService.Client
+    implements SyncThriftClient, AutoCloseable {
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
@@ -60,7 +62,7 @@ public class SyncConfigNodeIServiceClient extends ConfigIService.Client {
     getInputProtocol().getTransport().open();
   }
 
-  public void returnSelf() {
+  public void close() {
     if (clientManager != null) {
       clientManager.returnClient(endpoint, this);
     }
@@ -71,7 +73,7 @@ public class SyncConfigNodeIServiceClient extends ConfigIService.Client {
     ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
   }
 
-  public void close() {
+  public void invalidate() {
     getInputProtocol().getTransport().close();
   }
 
@@ -95,14 +97,19 @@ public class SyncConfigNodeIServiceClient extends ConfigIService.Client {
     @Override
     public void destroyObject(
         TEndPoint endpoint, PooledObject<SyncConfigNodeIServiceClient> pooledObject) {
-      pooledObject.getObject().close();
+      pooledObject.getObject().invalidate();
     }
 
     @Override
     public PooledObject<SyncConfigNodeIServiceClient> makeObject(TEndPoint endpoint)
         throws Exception {
+      Constructor<SyncConfigNodeIServiceClient> constructor =
+          SyncConfigNodeIServiceClient.class.getConstructor(
+              TProtocolFactory.class, int.class, endpoint.getClass(), clientManager.getClass());
       return new DefaultPooledObject<>(
-          new SyncConfigNodeIServiceClient(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
+              SyncConfigNodeIServiceClient.class,
+              constructor,
               clientFactoryProperty.getProtocolFactory(),
               clientFactoryProperty.getConnectionTimeoutMs(),
               endpoint,

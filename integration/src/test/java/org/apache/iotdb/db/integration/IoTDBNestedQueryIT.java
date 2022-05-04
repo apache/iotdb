@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.udf.example.ExampleUDFConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -46,6 +45,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class})
@@ -587,22 +587,49 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
-  @Ignore
   public void testRegularLikeInExpressions() {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       String query =
-          "SELECT ((CAST(s1, 'type'='TEXT') LIKE '_') REGEXP '*') IN ('4', '2', '3') "
+          "SELECT ((CAST(s1, 'type'='TEXT') LIKE '_') REGEXP '[0-9]') IN ('4', '2', '3') "
               + "FROM root.vehicle.d1";
       try (ResultSet rs = statement.executeQuery(query)) {
         for (int i = 2; i <= 4; i++) {
           Assert.assertTrue(rs.next());
           Assert.assertEquals(i, rs.getLong(1));
-          Assert.assertEquals(i, rs.getLong(2));
+          Assert.assertEquals(String.valueOf(i), rs.getString(2));
         }
         Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTimeExpressions() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String query =
+          "SELECT s1, time, time, -(-time), time + 1 - 1, time + s1 - s1, time + 1 - 1 FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 1; i <= ITERATION_TIMES; ++i) {
+          assertTrue(rs.next());
+          for (int j = 1; j <= 8; ++j) {
+            assertEquals(i, Double.parseDouble(rs.getString(j)), 0.001);
+          }
+        }
+        assertFalse(rs.next());
+      }
+
+      query = "SELECT time, 2 * time FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        assertFalse(rs.next());
       }
     } catch (SQLException e) {
       e.printStackTrace();
