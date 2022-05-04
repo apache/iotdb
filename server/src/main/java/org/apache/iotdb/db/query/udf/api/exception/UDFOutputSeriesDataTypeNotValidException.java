@@ -31,4 +31,11 @@ public class UDFOutputSeriesDataTypeNotValidException extends UDFParameterNotVal
             "the data type of the output series (index: %d) is not valid. expected: %s.",
             index, Arrays.toString(expected)));
   }
+
+  public UDFOutputSeriesDataTypeNotValidException(int index, String types) {
+    super(
+        String.format(
+            "the data type of the output series (index: %d) is not valid. expected: %s.",
+            index, types));
+  }
 }

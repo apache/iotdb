@@ -915,6 +915,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       statement.execute("CREATE TIMESERIES root.sg.d7.s3 with datatype=DOUBLE,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d7.s4 with datatype=TEXT,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d7.s5 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s6 with datatype=INT64,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -923,6 +924,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
     String[] SQL_FOR_SAMPLE_3 = new String[5];
     String[] SQL_FOR_SAMPLE_4 = new String[5];
     String[] SQL_FOR_SAMPLE_5 = new String[5];
+    String[] SQL_FOR_SAMPLE_6 = new String[5];
     for (int i = 0; i < 5; i++) {
       SQL_FOR_SAMPLE_1[i] =
           String.format("insert into root.sg.d7(time, s1) values (%d, %d)", i, i + 1);
@@ -933,8 +935,10 @@ public class IoTDBUDTFBuiltinFunctionIT {
       SQL_FOR_SAMPLE_4[i] =
           String.format("insert into root.sg.d7(time, s4) values (%d, '%s')", i, "string");
       SQL_FOR_SAMPLE_5[i] = String.format("insert into root.sg.d7(time, s5) values (%d, true)", i);
+      SQL_FOR_SAMPLE_6[i] =
+          String.format("insert into root.sg.d7(time, s6) values (%d, %d)", i, i + 8);
     }
-    int[] ANSWER1 = new int[] {2, 4, 6, 8, 10};
+    double[] ANSWER1 = new double[] {2, 4, 6, 8, 10};
     double[] ANSWER2 = new double[] {2, 4, 6, 8, 10};
     double[] ANSWER3 = new double[] {4, 7, 10, 13, 16};
     String[] ANSWER4 = new String[] {"string2", "string2", "string2", "string2", "string2"};
@@ -946,6 +950,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
         statement.execute(SQL_FOR_SAMPLE_3[i]);
         statement.execute(SQL_FOR_SAMPLE_4[i]);
         statement.execute(SQL_FOR_SAMPLE_5[i]);
+        statement.execute(SQL_FOR_SAMPLE_6[i]);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -959,6 +964,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       String expr3 = "x -> {x * 3 + 1}";
       String expr4 = "x -> {x + 2}";
       String expr5 = "x -> {x == true}";
+      String expr6 = "x -> {x == x}";
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
@@ -966,7 +972,8 @@ public class IoTDBUDTFBuiltinFunctionIT {
                       + "%s(s2, 'expr'='%s'), "
                       + "%s(s3, 'expr'='%s'), "
                       + "%s(s4, 'expr'='%s'), "
-                      + "%s(s5, 'expr'='%s') "
+                      + "%s(s5, 'expr'='%s'), "
+                      + "%s(s6, 'expr'='%s') "
                       + "from root.sg.d7",
                   functionName,
                   expr1,
@@ -977,16 +984,19 @@ public class IoTDBUDTFBuiltinFunctionIT {
                   functionName,
                   expr4,
                   functionName,
-                  expr5));
+                  expr5,
+                  functionName,
+                  expr6));
       int columnCount = resultSet.getMetaData().getColumnCount();
-      assertEquals(1 + 5, columnCount);
+      assertEquals(1 + 6, columnCount);
       for (int i = 0; i < 5; i++) {
         resultSet.next();
-        assertEquals(ANSWER1[i], resultSet.getInt(2));
+        assertEquals(ANSWER1[i], resultSet.getDouble(2), 0.01);
         assertEquals(ANSWER2[i], resultSet.getDouble(3), 0.01);
         assertEquals(ANSWER3[i], resultSet.getDouble(4), 0.01);
         assertEquals(ANSWER4[i], resultSet.getString(5));
         assertTrue(resultSet.getBoolean(6));
+        assertTrue(resultSet.getBoolean(7));
       }
     } catch (Exception e) {
       e.printStackTrace();

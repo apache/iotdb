@@ -45,6 +45,129 @@ public class UDTFJexl implements UDTF {
   private TSDataType outputDataType;
   private String expr;
   private JexlScript script;
+  private ValuePutter valuePutter;
+
+  private interface ValuePutter {
+    void putValueDouble(Row row, PointCollector collector) throws IOException;
+
+    void putValueText(Row row, PointCollector collector) throws IOException, QueryProcessException;
+
+    void putValueBoolean(Row row, PointCollector collector) throws IOException;
+  }
+
+  private class valuePutterFromInt implements ValuePutter {
+    @Override
+    public void putValueDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getInt(0))).doubleValue());
+    }
+
+    @Override
+    public void putValueText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getInt(0)));
+    }
+
+    @Override
+    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getInt(0)));
+    }
+  }
+
+  private class valuePutterFromLong implements ValuePutter {
+    @Override
+    public void putValueDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getLong(0))).doubleValue());
+    }
+
+    @Override
+    public void putValueText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getLong(0)));
+    }
+
+    @Override
+    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getLong(0)));
+    }
+  }
+
+  private class valuePutterFromFloat implements ValuePutter {
+    @Override
+    public void putValueDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getFloat(0))).doubleValue());
+    }
+
+    @Override
+    public void putValueText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getFloat(0)));
+    }
+
+    @Override
+    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getFloat(0)));
+    }
+  }
+
+  private class valuePutterFromDouble implements ValuePutter {
+    @Override
+    public void putValueDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getDouble(0))).doubleValue());
+    }
+
+    @Override
+    public void putValueText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getDouble(0)));
+    }
+
+    @Override
+    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getDouble(0)));
+    }
+  }
+
+  private class valuePutterFromString implements ValuePutter {
+    @Override
+    public void putValueDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getString(0))).doubleValue());
+    }
+
+    @Override
+    public void putValueText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getString(0)));
+    }
+
+    @Override
+    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getString(0)));
+    }
+  }
+
+  private class valuePutterFromBoolean implements ValuePutter {
+    @Override
+    public void putValueDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getBoolean(0))).doubleValue());
+    }
+
+    @Override
+    public void putValueText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getBoolean(0)));
+    }
+
+    @Override
+    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getBoolean(0)));
+    }
+  }
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -72,6 +195,37 @@ public class UDTFJexl implements UDTF {
     inputDataType = parameters.getDataType(0);
     outputDataType = getOutputDataType(inputDataType);
 
+    switch (inputDataType) {
+      case INT32:
+        valuePutter = new valuePutterFromInt();
+        break;
+      case INT64:
+        valuePutter = new valuePutterFromLong();
+        break;
+      case FLOAT:
+        valuePutter = new valuePutterFromFloat();
+        break;
+      case DOUBLE:
+        valuePutter = new valuePutterFromDouble();
+        break;
+      case TEXT:
+        valuePutter = new valuePutterFromString();
+        break;
+      case BOOLEAN:
+        valuePutter = new valuePutterFromBoolean();
+        break;
+      default:
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0,
+            inputDataType,
+            TSDataType.INT32,
+            TSDataType.INT64,
+            TSDataType.FLOAT,
+            TSDataType.DOUBLE,
+            TSDataType.TEXT,
+            TSDataType.BOOLEAN);
+    }
+
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(outputDataType);
@@ -81,39 +235,18 @@ public class UDTFJexl implements UDTF {
   public void transform(Row row, PointCollector collector)
       throws IOException, UDFOutputSeriesDataTypeNotValidException, QueryProcessException {
     switch (outputDataType) {
-      case INT32:
-        collector.putInt(row.getTime(), (Integer) script.execute(null, row.getInt(0)));
-        break;
-      case INT64:
-        collector.putLong(row.getTime(), (Long) script.execute(null, row.getLong(0)));
-        break;
-      case FLOAT:
-        collector.putFloat(row.getTime(), (Float) script.execute(null, row.getFloat(0)));
-        break;
       case DOUBLE:
-        {
-          if (inputDataType == TSDataType.FLOAT) {
-            collector.putDouble(row.getTime(), (Double) script.execute(null, row.getFloat(0)));
-          } else {
-            collector.putDouble(row.getTime(), (Double) script.execute(null, row.getDouble(0)));
-          }
-          break;
-        }
+        valuePutter.putValueDouble(row, collector);
+        break;
       case TEXT:
-        collector.putString(row.getTime(), (String) script.execute(null, row.getString(0)));
+        valuePutter.putValueText(row, collector);
         break;
       case BOOLEAN:
-        collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getBoolean(0)));
+        valuePutter.putValueBoolean(row, collector);
         break;
       default:
         // This will not happen.
-        throw new UDFOutputSeriesDataTypeNotValidException(
-            0,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT,
-            TSDataType.BOOLEAN);
+        throw new UDFOutputSeriesDataTypeNotValidException(0, "[NUMBER, TEXT, BOOLEAN]");
     }
   }
 
@@ -129,7 +262,6 @@ public class UDTFJexl implements UDTF {
         break;
       case FLOAT:
         o = script.execute(null, 23f);
-        assert o instanceof Double;
         break;
       case DOUBLE:
         o = script.execute(null, (double) 23);
@@ -152,27 +284,15 @@ public class UDTFJexl implements UDTF {
             TSDataType.TEXT,
             TSDataType.BOOLEAN);
     }
-    if (o instanceof Integer) {
-      return TSDataType.INT32;
-    } else if (o instanceof Long) {
-      return TSDataType.INT64;
-    } else if (o instanceof Float) {
-      return TSDataType.FLOAT;
-    } else if (o instanceof Double) {
+
+    if (o instanceof Number) {
       return TSDataType.DOUBLE;
     } else if (o instanceof String) {
       return TSDataType.TEXT;
     } else if (o instanceof Boolean) {
       return TSDataType.BOOLEAN;
     } else {
-      throw new UDFOutputSeriesDataTypeNotValidException(
-          0,
-          TSDataType.INT32,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.DOUBLE,
-          TSDataType.TEXT,
-          TSDataType.BOOLEAN);
+      throw new UDFOutputSeriesDataTypeNotValidException(0, "[NUMBER, TEXT, BOOLEAN]");
     }
   }
 }
