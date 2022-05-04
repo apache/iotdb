@@ -50,7 +50,7 @@ public class DataNodeSchemaCache {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private Cache<PartialPath, SchemaCacheEntity> schemaEntityCache;
+  private Cache<PartialPath, SchemaCacheEntry> schemaEntityCache;
 
   // TODO use fakeSchemaFetcherImpl for test temporarily
   private static final ISchemaFetcher schemaFetcher = new FakeSchemaFetcherImpl();
@@ -76,10 +76,10 @@ public class DataNodeSchemaCache {
    * @param measurements
    * @return timeseries partialPath and its SchemaEntity
    */
-  public Map<PartialPath, SchemaCacheEntity> getSchemaEntity(
+  public Map<PartialPath, SchemaCacheEntry> getSchemaEntity(
       PartialPath devicePath, String[] measurements) {
-    Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap = new HashMap<>();
-    SchemaCacheEntity schemaCacheEntity;
+    Map<PartialPath, SchemaCacheEntry> schemaCacheEntityMap = new HashMap<>();
+    SchemaCacheEntry schemaCacheEntry;
     List<String> fetchMeasurements = new ArrayList<>();
     for (String measurement : measurements) {
       PartialPath path = null;
@@ -90,9 +90,9 @@ public class DataNodeSchemaCache {
             "Create PartialPath:{} failed.",
             devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurement);
       }
-      schemaCacheEntity = schemaEntityCache.getIfPresent(path);
-      if (schemaCacheEntity != null) {
-        schemaCacheEntityMap.put(path, schemaCacheEntity);
+      schemaCacheEntry = schemaEntityCache.getIfPresent(path);
+      if (schemaCacheEntry != null) {
+        schemaCacheEntityMap.put(path, schemaCacheEntry);
       } else {
         fetchMeasurements.add(measurement);
       }
@@ -115,10 +115,10 @@ public class DataNodeSchemaCache {
    * @param isAligned
    * @return timeseries partialPath and its SchemaEntity
    */
-  public Map<PartialPath, SchemaCacheEntity> getSchemaEntityWithAutoCreate(
+  public Map<PartialPath, SchemaCacheEntry> getSchemaEntityWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean isAligned) {
-    Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap = new HashMap<>();
-    SchemaCacheEntity schemaCacheEntity;
+    Map<PartialPath, SchemaCacheEntry> schemaCacheEntityMap = new HashMap<>();
+    SchemaCacheEntry schemaCacheEntry;
     List<String> fetchMeasurements = new ArrayList<>();
     List<TSDataType> fetchTsDataTypes = new ArrayList<>();
     for (int i = 0; i < measurements.length; i++) {
@@ -130,9 +130,9 @@ public class DataNodeSchemaCache {
             "Create PartialPath:{} failed.",
             devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurements[i]);
       }
-      schemaCacheEntity = schemaEntityCache.getIfPresent(path);
-      if (schemaCacheEntity != null) {
-        schemaCacheEntityMap.put(path, schemaCacheEntity);
+      schemaCacheEntry = schemaEntityCache.getIfPresent(path);
+      if (schemaCacheEntry != null) {
+        schemaCacheEntityMap.put(path, schemaCacheEntry);
       } else {
         fetchMeasurements.add(measurements[i]);
         fetchTsDataTypes.add(tsDataTypes[i]);
@@ -151,8 +151,8 @@ public class DataNodeSchemaCache {
       for (int i = 0; i < fetchMeasurements.size(); i++) {
         try {
           PartialPath path = new PartialPath(devicePath.getFullPath(), fetchMeasurements.get(i));
-          SchemaCacheEntity entity =
-              new SchemaCacheEntity(fetchMeasurements.get(i), fetchTsDataTypes.get(i), isAligned);
+          SchemaCacheEntry entity =
+              new SchemaCacheEntry(fetchMeasurements.get(i), fetchTsDataTypes.get(i), isAligned);
           schemaEntityCache.put(path, entity);
           schemaCacheEntityMap.put(path, entity);
         } catch (IllegalPathException e) {
@@ -180,7 +180,7 @@ public class DataNodeSchemaCache {
   }
 
   @TestOnly
-  protected Cache<PartialPath, SchemaCacheEntity> getSchemaEntityCache() {
+  protected Cache<PartialPath, SchemaCacheEntry> getSchemaEntityCache() {
     return schemaEntityCache;
   }
 }

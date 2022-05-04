@@ -55,7 +55,7 @@ public class DataNodeSchemaCacheTest {
     tsDataTypes[1] = TSDataType.FLOAT;
     tsDataTypes[2] = TSDataType.BOOLEAN;
 
-    Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap1 =
+    Map<PartialPath, SchemaCacheEntry> schemaCacheEntityMap1 =
         dataNodeSchemaCache.getSchemaEntityWithAutoCreate(
             device1, measurements, tsDataTypes, false);
     Assert.assertEquals(
@@ -78,7 +78,7 @@ public class DataNodeSchemaCacheTest {
     otherTsDataTypes[1] = TSDataType.TEXT;
     otherTsDataTypes[2] = TSDataType.INT64;
 
-    Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap2 =
+    Map<PartialPath, SchemaCacheEntry> schemaCacheEntityMap2 =
         dataNodeSchemaCache.getSchemaEntityWithAutoCreate(
             device1, otherMeasurements, otherTsDataTypes, false);
     Assert.assertEquals(
