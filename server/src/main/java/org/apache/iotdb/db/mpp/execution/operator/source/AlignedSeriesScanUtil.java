@@ -30,7 +30,9 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
@@ -45,12 +47,11 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   public AlignedSeriesScanUtil(
       PartialPath seriesPath,
       Set<String> allSensors,
-      TSDataType dataType,
       FragmentInstanceContext context,
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
-    super(seriesPath, allSensors, dataType, context, timeFilter, valueFilter, ascending);
+    super(seriesPath, allSensors, TSDataType.VECTOR, context, timeFilter, valueFilter, ascending);
     dataTypes =
         ((AlignedPath) seriesPath)
             .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
@@ -81,5 +82,10 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   @Override
   protected List<TSDataType> getTsDataTypeList() {
     return dataTypes;
+  }
+
+  @Override
+  protected IPointReader getPointReader(TsBlock tsBlock) {
+    return tsBlock.getTsBlockAlignedRowIterator();
   }
 }
