@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -61,6 +62,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private final Coordinator coordinator = Coordinator.getInstance();
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
+  private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
 
   private static final class ClusterSchemaFetcherHolder {
     private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();
@@ -126,19 +128,89 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean isAligned) {
-    PathPatternTree patternTree = new PathPatternTree(devicePath, measurements);
+
+    SchemaTree schemaTree = schemaCache.get(devicePath, measurements);
+    Pair<List<String>, List<TSDataType>> missingMeasurements =
+        checkMissingMeasurements(schemaTree, devicePath, measurements, tsDataTypes);
+
+    PathPatternTree patternTree =
+        new PathPatternTree(devicePath, missingMeasurements.left.toArray(new String[0]));
+
+    SchemaTree remoteSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
-      return fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
+      remoteSchemaTree = fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
+      schemaTree.mergeSchemaTree(remoteSchemaTree);
+      schemaCache.put(remoteSchemaTree);
+      return schemaTree;
     }
 
-    SchemaTree schemaTree =
+    remoteSchemaTree =
         fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
+    schemaTree.mergeSchemaTree(remoteSchemaTree);
+    schemaCache.put(remoteSchemaTree);
 
-    schemaTree.mergeSchemaTree(
+    SchemaTree missingSchemaTree =
         checkAndAutoCreateMissingMeasurements(
-            schemaTree, devicePath, measurements, tsDataTypes, isAligned));
+            remoteSchemaTree,
+            devicePath,
+            missingMeasurements.left.toArray(new String[0]),
+            missingMeasurements.right.toArray(new TSDataType[0]),
+            isAligned);
 
+    schemaTree.mergeSchemaTree(missingSchemaTree);
+    schemaCache.put(missingSchemaTree);
+
+    return schemaTree;
+  }
+
+  @Override
+  public SchemaTree fetchSchemaListWithAutoCreate(
+      List<PartialPath> devicePathList,
+      List<String[]> measurementsList,
+      List<TSDataType[]> tsDataTypesList,
+      List<Boolean> isAlignedList) {
+
+    SchemaTree schemaTree = new SchemaTree();
+    PathPatternTree patternTree = new PathPatternTree();
+    for (int i = 0; i < devicePathList.size(); i++) {
+      schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
+      patternTree.appendPaths(
+          devicePathList.get(i),
+          checkMissingMeasurements(
+                  schemaTree,
+                  devicePathList.get(i),
+                  measurementsList.get(i),
+                  tsDataTypesList.get(i))
+              .left);
+    }
+
+    SchemaTree remoteSchemaTree;
+
+    if (!config.isAutoCreateSchemaEnabled()) {
+      remoteSchemaTree = fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
+      schemaTree.mergeSchemaTree(remoteSchemaTree);
+      schemaCache.put(remoteSchemaTree);
+      return schemaTree;
+    }
+
+    remoteSchemaTree =
+        fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
+    schemaTree.mergeSchemaTree(remoteSchemaTree);
+    schemaCache.put(remoteSchemaTree);
+
+    SchemaTree missingSchemaTree;
+    for (int i = 0; i < devicePathList.size(); i++) {
+      missingSchemaTree =
+          checkAndAutoCreateMissingMeasurements(
+              schemaTree,
+              devicePathList.get(i),
+              measurementsList.get(i),
+              tsDataTypesList.get(i),
+              isAlignedList.get(i));
+      schemaTree.mergeSchemaTree(missingSchemaTree);
+      schemaCache.put(missingSchemaTree);
+    }
     return schemaTree;
   }
 
@@ -267,36 +339,5 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     } finally {
       coordinator.getQueryExecution(queryId).stopAndCleanup();
     }
-  }
-
-  @Override
-  public SchemaTree fetchSchemaListWithAutoCreate(
-      List<PartialPath> devicePathList,
-      List<String[]> measurementsList,
-      List<TSDataType[]> tsDataTypesList,
-      List<Boolean> isAlignedList) {
-
-    PathPatternTree patternTree = new PathPatternTree();
-    for (int i = 0; i < devicePathList.size(); i++) {
-      patternTree.appendPaths(devicePathList.get(i), Arrays.asList(measurementsList.get(i)));
-    }
-
-    if (!config.isAutoCreateSchemaEnabled()) {
-      return fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
-    }
-
-    SchemaTree schemaTree =
-        fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
-
-    for (int i = 0; i < devicePathList.size(); i++) {
-      schemaTree.mergeSchemaTree(
-          checkAndAutoCreateMissingMeasurements(
-              schemaTree,
-              devicePathList.get(i),
-              measurementsList.get(i),
-              tsDataTypesList.get(i),
-              isAlignedList.get(i)));
-    }
-    return schemaTree;
   }
 }
