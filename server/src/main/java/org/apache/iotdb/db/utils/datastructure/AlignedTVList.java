@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import java.util.Objects;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -892,19 +893,17 @@ public class AlignedTVList extends TVList {
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
     int validRowCount = 0;
-    List<Integer> timeDuplicateAlignedRowIndexList = null;
-    boolean[] timeDuplicateInfo = new boolean[rowCount];
+    boolean[] timeDuplicateInfo = null;
+    // time column
     for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
       if (sortedRowIndex == rowCount - 1
           || getTime(sortedRowIndex) != getTime(sortedRowIndex + 1)) {
         timeBuilder.writeLong(getTime(sortedRowIndex));
         validRowCount++;
       } else {
-        if (timeDuplicateAlignedRowIndexList == null) {
-          timeDuplicateAlignedRowIndexList = new ArrayList<>();
-          timeDuplicateAlignedRowIndexList.add(getValueIndex(sortedRowIndex));
+        if (Objects.isNull(timeDuplicateInfo)) {
+          timeDuplicateInfo = new boolean[rowCount];
         }
-        timeDuplicateAlignedRowIndexList.add(getValueIndex(sortedRowIndex + 1));
         timeDuplicateInfo[sortedRowIndex] = true;
       }
     }
@@ -913,29 +912,42 @@ public class AlignedTVList extends TVList {
     for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
       // skip non-exist column
       // when there is a non-exist column, the Column in TsBlock is null
-      if (dataTypes.get(columnIndex) == null) {
+      if (Objects.isNull(dataTypes.get(columnIndex))) {
         continue;
       }
       int deleteCursor = 0;
+      Pair<Long, Integer> lastValidPointIndexForTimeDepCheck = null;
+      if (Objects.nonNull(timeDuplicateInfo)) {
+        lastValidPointIndexForTimeDepCheck = new Pair<>(Long.MIN_VALUE, null);
+      }
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
         // skip time duplicated rows
-        if (timeDuplicateInfo[sortedRowIndex]) {
+        if (Objects.nonNull(timeDuplicateInfo) && timeDuplicateInfo[sortedRowIndex]) {
+          if (!isValueMarked(getValueIndex(sortedRowIndex), columnIndex)) {
+            lastValidPointIndexForTimeDepCheck.left = getTime(sortedRowIndex);
+            lastValidPointIndexForTimeDepCheck.right = getValueIndex(sortedRowIndex);
+          }
           continue;
         }
+        // The part of code solves the following problem:
+        // Time: 1,2,2,3
+        // Value: 1,2,null,null
+        // When rowIndex:1, pair(min,null), timeDuplicateInfo:false, write(T:1,V:1)
+        // When rowIndex:2, pair(2,2), timeDuplicateInfo:true, skip writing value
+        // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
+        // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2, write(T:3,V:null)
         int originRowIndex;
-        if (timeDuplicateAlignedRowIndexList != null
-            && !timeDuplicateAlignedRowIndexList.isEmpty()) {
-          originRowIndex =
-              getValidRowIndexForTimeDuplicatedRows(timeDuplicateAlignedRowIndexList, columnIndex);
+        if (Objects.nonNull(lastValidPointIndexForTimeDepCheck) && (getTime(sortedRowIndex) == lastValidPointIndexForTimeDepCheck.left)) {
+          originRowIndex = lastValidPointIndexForTimeDepCheck.right;
         } else {
           originRowIndex = getValueIndex(sortedRowIndex);
         }
         if (isValueMarked(originRowIndex, columnIndex)
-            || !isPointNotDeleted(
-                getTime(sortedRowIndex),
-                deletionList == null ? null : deletionList.get(columnIndex),
-                deleteCursor)) {
+            || isPointDeleted(
+            getTime(sortedRowIndex),
+            Objects.isNull(deletionList) ? null : deletionList.get(columnIndex),
+            deleteCursor)) {
           valueBuilder.appendNull();
           continue;
         }

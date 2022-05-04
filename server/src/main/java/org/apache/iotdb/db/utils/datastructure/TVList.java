@@ -522,7 +522,7 @@ public abstract class TVList implements WALEntryValue {
     int validRowCount = 0;
     Integer deleteCursor = 0;
     for (int i = 0; i < rowCount; i++) {
-      if (isPointNotDeleted(getTime(i), deletionList, deleteCursor)
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         timeBuilder.writeLong(this.getTime(i));
         validRowCount++;
@@ -542,18 +542,18 @@ public abstract class TVList implements WALEntryValue {
       TSEncoding encoding,
       List<TimeRange> deletionList);
 
-  protected boolean isPointNotDeleted(
+  protected boolean isPointDeleted(
       long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
     while (deletionList != null && deleteCursor < deletionList.size()) {
       if (deletionList.get(deleteCursor).contains(timestamp)) {
-        return false;
+        return true;
       } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
         deleteCursor++;
       } else {
-        return true;
+        return false;
       }
     }
-    return true;
+    return false;
   }
 
   protected float roundValueWithGivenPrecision(

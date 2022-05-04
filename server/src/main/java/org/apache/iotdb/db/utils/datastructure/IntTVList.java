@@ -204,7 +204,7 @@ public class IntTVList extends TVList {
       List<TimeRange> deletionList) {
     Integer deleteCursor = 0;
     for (int i = 0; i < rowCount; i++) {
-      if (isPointNotDeleted(getTime(i), deletionList, deleteCursor)
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
         valueBuilder.writeInt(getInt(i));
       }

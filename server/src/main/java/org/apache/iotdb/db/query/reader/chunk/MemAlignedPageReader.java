@@ -73,7 +73,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
               || valueFilter.satisfy(tsBlock.getTimeByIndex(row), firstNotNullObject))) {
         TsPrimitiveType[] values = new TsPrimitiveType[tsBlock.getValueColumnCount()];
         for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-          if (tsBlock.getColumn(column) != null) {
+          if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(row)) {
             values[column] = tsBlock.getColumn(column).getTsPrimitiveType(row);
           }
         }
@@ -108,7 +108,12 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
           }
         } else {
           if (valueSatisfyInfo[row]) {
-            builder.getColumnBuilder(column).writeObject(tsBlock.getColumn(column).getObject(row));
+            if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(row)) {
+              builder.getColumnBuilder(column)
+                  .writeObject(tsBlock.getColumn(column).getObject(row));
+            } else {
+              builder.getColumnBuilder(column).appendNull();
+            }
           }
         }
       }
