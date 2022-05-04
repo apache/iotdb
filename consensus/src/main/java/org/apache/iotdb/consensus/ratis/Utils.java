@@ -31,9 +31,8 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TByteBuffer;
 
+import java.io.File;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 
 public class Utils {
   private static final int tempBufferSize = 1024;
@@ -120,15 +119,12 @@ public class Utils {
     return status;
   }
 
-  public static ByteBuffer getMetadataFromTermIndex(TermIndex termIndex) {
-    String ordinal = String.format("%d_%d", termIndex.getTerm(), termIndex.getIndex());
-    return ByteBuffer.wrap(ordinal.getBytes());
+  public static String getMetadataFromTermIndex(TermIndex termIndex) {
+    return String.format("%d_%d", termIndex.getTerm(), termIndex.getIndex());
   }
 
-  public static TermIndex getTermIndexFromMetadata(ByteBuffer metadata) {
-    Charset charset = Charset.defaultCharset();
-    CharBuffer charBuffer = charset.decode(metadata);
-    String ordinal = charBuffer.toString();
+  public static TermIndex getTermIndexFromDir(File snapshotDir) {
+    String ordinal = snapshotDir.getName();
     String[] items = ordinal.split("_");
     return TermIndex.valueOf(Long.parseLong(items[0]), Long.parseLong(items[1]));
   }

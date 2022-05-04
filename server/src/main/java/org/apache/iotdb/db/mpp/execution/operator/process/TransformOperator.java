@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.layer.EvaluationDAGBuilder;
@@ -64,7 +63,7 @@ public class TransformOperator implements ProcessOperator {
   protected final UDTFContext udtfContext;
   protected final boolean keepNull;
 
-  protected IUDFInputDataSet inputDataset;
+  protected RawQueryInputLayer inputLayer;
   protected LayerPointReader[] transformers;
   protected TimeSelector timeHeap;
   protected List<TSDataType> outputDataTypes;
@@ -84,13 +83,17 @@ public class TransformOperator implements ProcessOperator {
     this.udtfContext = udtfContext;
     this.keepNull = keepNull;
 
-    initInputDataset(inputDataTypes);
+    initInputLayer(inputDataTypes);
     initTransformers();
-    initLayerPointReaders();
+    readyForFirstIteration();
   }
 
-  private void initInputDataset(List<TSDataType> inputDataTypes) {
-    inputDataset = new TsBlockInputDataSet(inputOperator, inputDataTypes);
+  private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
+    inputLayer =
+        new RawQueryInputLayer(
+            operatorContext.getOperatorId(),
+            udfReaderMemoryBudgetInMB,
+            new TsBlockInputDataSet(inputOperator, inputDataTypes));
   }
 
   protected void initTransformers() throws QueryProcessException, IOException {
@@ -102,8 +105,7 @@ public class TransformOperator implements ProcessOperator {
       transformers =
           new EvaluationDAGBuilder(
                   operatorContext.getOperatorId(),
-                  new RawQueryInputLayer(
-                      operatorContext.getOperatorId(), udfReaderMemoryBudgetInMB, inputDataset),
+                  inputLayer,
                   outputExpressions,
                   udtfContext,
                   udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
@@ -115,7 +117,7 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
-  protected void initLayerPointReaders() throws QueryProcessException, IOException {
+  protected void readyForFirstIteration() throws QueryProcessException, IOException {
     timeHeap = new TimeSelector(transformers.length << 1, true);
     for (LayerPointReader reader : transformers) {
       iterateReaderToNextValid(reader);
@@ -174,6 +176,8 @@ public class TransformOperator implements ProcessOperator {
         }
 
         ++rowCount;
+
+        inputLayer.updateRowRecordListEvictionUpperBound();
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

@@ -59,7 +59,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private boolean ascending = true;
 
-  private Map<String, Integer> pathToIndex = new HashMap<>();
+  private final Map<String, Integer> pathToIndex = new HashMap<>();
 
   protected Set<Integer>
       withoutNullColumnsIndex; // index set that withoutNullColumns for output data columns

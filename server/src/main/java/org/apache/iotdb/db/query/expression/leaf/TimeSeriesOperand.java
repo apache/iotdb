@@ -133,7 +133,7 @@ public class TimeSeriesOperand extends LeafOperand {
       float memoryBudgetInMB = memoryAssigner.assign();
 
       LayerPointReader parentLayerPointReader =
-          rawTimeSeriesInputLayer.constructPointReader(inputColumnIndex);
+          rawTimeSeriesInputLayer.constructValuePointReader(inputColumnIndex);
       expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
 
       expressionIntermediateLayerMap.put(
@@ -154,7 +154,7 @@ public class TimeSeriesOperand extends LeafOperand {
 
   @Override
   public ExpressionType getExpressionType() {
-    return ExpressionType.TIME_SERIES;
+    return ExpressionType.TIMESERIES;
   }
 
   @Override
