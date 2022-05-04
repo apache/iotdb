@@ -1090,17 +1090,27 @@ public class IoTDBGroupByQueryWithoutValueFilterIT {
 
   @Test
   public void groupByBigDataTest() throws SQLException {
-    String[] retArray = new String[] {"0,256", "256,256", "512,256", "768,256", "1024,256"};
+    String[] retArray =
+        new String[] {
+          "0,256,256,0.0,0.0,255.0,255.0",
+          "256,256,256,256.0,256.0,511.0,511.0",
+          "512,256,256,512.0,512.0,767.0,767.0",
+          "768,256,256,768.0,768.0,1023.0,1023.0",
+          "1024,256,256,1024.0,1024.0,1279.0,1279.0"
+        };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < 1281; i++) {
         statement.execute(
-            String.format("insert into root.sg2.d1(time, s1) aligned values(%s, %s)", i, i));
+            String.format(
+                "insert into root.sg2.d1(time, s1, s2) aligned values(%s, %s,  %s)", i, i, i));
       }
       statement.execute("flush");
 
       boolean hasResultSet =
-          statement.execute("select count(s1) from root.sg2.d1 GROUP BY ([0, 1280), 256ms)");
+          statement.execute(
+              "select count(*), first_value(*), last_value(*) from root.sg2.d1 "
+                  + "GROUP BY ([0, 1280), 256ms)");
       Assert.assertTrue(hasResultSet);
 
       int cnt = 0;
@@ -1109,10 +1119,48 @@ public class IoTDBGroupByQueryWithoutValueFilterIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(count("root.sg2.d1.s1"));
+                  + resultSet.getString(count("root.sg2.d1.s1"))
+                  + ","
+                  + resultSet.getString(count("root.sg2.d1.s2"))
+                  + ","
+                  + resultSet.getString(firstValue("root.sg2.d1.s1"))
+                  + ","
+                  + resultSet.getString(firstValue("root.sg2.d1.s2"))
+                  + ","
+                  + resultSet.getString(lastValue("root.sg2.d1.s1"))
+                  + ","
+                  + resultSet.getString(lastValue("root.sg2.d1.s2"));
           Assert.assertEquals(retArray[cnt++], ans);
         }
         Assert.assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select count(*), first_value(*), last_value(*) from root.sg2.d1 "
+                  + "GROUP BY ([0, 1280), 256ms) order by time desc");
+      Assert.assertTrue(hasResultSet);
+
+      cnt = retArray.length - 1;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.sg2.d1.s1"))
+                  + ","
+                  + resultSet.getString(count("root.sg2.d1.s2"))
+                  + ","
+                  + resultSet.getString(firstValue("root.sg2.d1.s1"))
+                  + ","
+                  + resultSet.getString(firstValue("root.sg2.d1.s2"))
+                  + ","
+                  + resultSet.getString(lastValue("root.sg2.d1.s1"))
+                  + ","
+                  + resultSet.getString(lastValue("root.sg2.d1.s2"));
+          Assert.assertEquals(retArray[cnt--], ans);
+        }
+        Assert.assertEquals(0, cnt + 1);
       }
     }
   }
