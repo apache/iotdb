@@ -67,7 +67,7 @@ public class DataNodeSchemaCacheTest {
     Assert.assertEquals(
         TSDataType.BOOLEAN,
         schemaCacheEntityMap1.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
-    Assert.assertEquals(3, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
+    Assert.assertEquals(3, dataNodeSchemaCache.estimatedSize());
 
     String[] otherMeasurements = new String[3];
     otherMeasurements[0] = "s3";
@@ -90,6 +90,6 @@ public class DataNodeSchemaCacheTest {
     Assert.assertEquals(
         TSDataType.INT64,
         schemaCacheEntityMap2.get(new PartialPath("root.sg1.d1.s5")).getTsDataType());
-    Assert.assertEquals(5, dataNodeSchemaCache.getSchemaEntityCache().estimatedSize());
+    Assert.assertEquals(5, dataNodeSchemaCache.estimatedSize());
   }
 }

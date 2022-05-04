@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -48,16 +47,15 @@ import java.util.Map;
 public class DataNodeSchemaCache {
   private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private Cache<PartialPath, SchemaCacheEntry> schemaEntityCache;
+  private Cache<PartialPath, SchemaCacheEntry> cache;
 
   // TODO use fakeSchemaFetcherImpl for test temporarily
   private static final ISchemaFetcher schemaFetcher = new FakeSchemaFetcherImpl();
 
   private DataNodeSchemaCache() {
-    schemaEntityCache =
-        Caffeine.newBuilder().maximumSize(config.getDataNodeSchemaCacheSize()).build();
+    cache = Caffeine.newBuilder().maximumSize(config.getDataNodeSchemaCacheSize()).build();
   }
 
   public static DataNodeSchemaCache getInstance() {
@@ -90,7 +88,7 @@ public class DataNodeSchemaCache {
             "Create PartialPath:{} failed.",
             devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurement);
       }
-      schemaCacheEntry = schemaEntityCache.getIfPresent(path);
+      schemaCacheEntry = cache.getIfPresent(path);
       if (schemaCacheEntry != null) {
         schemaCacheEntityMap.put(path, schemaCacheEntry);
       } else {
@@ -130,7 +128,7 @@ public class DataNodeSchemaCache {
             "Create PartialPath:{} failed.",
             devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurements[i]);
       }
-      schemaCacheEntry = schemaEntityCache.getIfPresent(path);
+      schemaCacheEntry = cache.getIfPresent(path);
       if (schemaCacheEntry != null) {
         schemaCacheEntityMap.put(path, schemaCacheEntry);
       } else {
@@ -153,7 +151,7 @@ public class DataNodeSchemaCache {
           PartialPath path = new PartialPath(devicePath.getFullPath(), fetchMeasurements.get(i));
           SchemaCacheEntry entity =
               new SchemaCacheEntry(fetchMeasurements.get(i), fetchTsDataTypes.get(i), isAligned);
-          schemaEntityCache.put(path, entity);
+          cache.put(path, entity);
           schemaCacheEntityMap.put(path, entity);
         } catch (IllegalPathException e) {
           logger.error("Create PartialPath:{} failed.", devicePath.getFullPath());
@@ -170,17 +168,15 @@ public class DataNodeSchemaCache {
    * @return
    */
   public void invalidate(PartialPath partialPath) {
-    schemaEntityCache.invalidate(partialPath);
+    cache.invalidate(partialPath);
   }
 
-  @TestOnly
+  public long estimatedSize() {
+    return cache.estimatedSize();
+  }
+
   public void cleanUp() {
-    schemaEntityCache.invalidateAll();
-    schemaEntityCache.cleanUp();
-  }
-
-  @TestOnly
-  protected Cache<PartialPath, SchemaCacheEntry> getSchemaEntityCache() {
-    return schemaEntityCache;
+    cache.invalidateAll();
+    cache.cleanUp();
   }
 }
