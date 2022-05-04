@@ -41,10 +41,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
@@ -56,14 +59,14 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
-public class ConfigNodeClient extends RegionClient {
+public class ConfigNodeClient extends RegionClient implements ConfigIService.Iface {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
   private ConfigIService.Iface client;
 
   private TProtocolFactory protocolFactory;
 
-  public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
+  public ConfigNodeClient() throws BadNodeUrlException, TException {
     // Read config nodes from configuration
     super(
         CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls()),
@@ -77,7 +80,7 @@ public class ConfigNodeClient extends RegionClient {
       TProtocolFactory protocolFactory,
       int connectionTimeout,
       ClientManager<TRegionReplicaSet, ConfigNodeClient> clientManager)
-      throws BadNodeUrlException, IoTDBConnectionException {
+      throws BadNodeUrlException, TException {
     // Read config nodes from configuration
     super(
         CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls()),
@@ -87,12 +90,12 @@ public class ConfigNodeClient extends RegionClient {
     init();
   }
 
-  public void init() throws IoTDBConnectionException {
+  public void init() throws TException {
     reconnect();
   }
 
   @Override
-  protected void reconnect() throws IoTDBConnectionException {
+  protected void reconnect() throws TException {
     super.reconnect();
     client = new ConfigIService.Client(protocolFactory.getProtocol(transport));
   }
@@ -105,8 +108,8 @@ public class ConfigNodeClient extends RegionClient {
     }
   }
 
-  public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
-      throws IoTDBConnectionException {
+  @Override
+  public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
@@ -120,11 +123,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TDataNodeLocationResp getDataNodeLocations(int dataNodeID)
-      throws IoTDBConnectionException {
+  @Override
+  public TDataNodeLocationResp getDataNodeLocations(int dataNodeID) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeLocationResp resp = client.getDataNodeLocations(dataNodeID);
@@ -137,10 +140,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws IoTDBConnectionException {
+  @Override
+  public TSStatus setStorageGroup(TSetStorageGroupReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.setStorageGroup(req);
@@ -153,10 +157,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws IoTDBConnectionException {
+  @Override
+  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.deleteStorageGroup(req);
@@ -169,11 +174,80 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
+  @Override
+  public TSStatus setTTL(TSetTTLReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setTTL(req);
+        if (!processResponse(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setSchemaReplicationFactor(req);
+        if (!processResponse(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setDataReplicationFactor(req);
+        if (!processResponse(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setTimePartitionInterval(req);
+        if (!processResponse(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        logger.warn("Can not connect to leader {}", consensusLeader);
+        consensusLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern)
-      throws IoTDBConnectionException {
+      throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
@@ -186,11 +260,12 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
+  @Override
   public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
-      throws IoTDBConnectionException {
+      throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TStorageGroupSchemaResp resp =
@@ -204,11 +279,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
-      throws IoTDBConnectionException {
+  @Override
+  public TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getSchemaPartition(req);
@@ -221,11 +296,12 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
+  @Override
   public TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
-      throws IoTDBConnectionException {
+      throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSchemaPartitionResp resp = client.getOrCreateSchemaPartition(req);
@@ -238,11 +314,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TDataPartitionResp getDataPartition(TDataPartitionReq req)
-      throws IoTDBConnectionException {
+  @Override
+  public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getDataPartition(req);
@@ -255,11 +331,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
-      throws IoTDBConnectionException {
+  @Override
+  public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataPartitionResp resp = client.getOrCreateDataPartition(req);
@@ -272,10 +348,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus operatePermission(TAuthorizerReq req) throws IoTDBConnectionException {
+  @Override
+  public TSStatus operatePermission(TAuthorizerReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.operatePermission(req);
@@ -288,10 +365,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TAuthorizerResp queryPermission(TAuthorizerReq req) throws IoTDBConnectionException {
+  @Override
+  public TAuthorizerResp queryPermission(TAuthorizerReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TAuthorizerResp resp = client.queryPermission(req);
@@ -304,10 +382,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus login(TLoginReq req) throws IoTDBConnectionException {
+  @Override
+  public TSStatus login(TLoginReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.login(req);
@@ -320,10 +399,11 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws IoTDBConnectionException {
+  @Override
+  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.checkUserPrivileges(req);
@@ -336,7 +416,7 @@ public class ConfigNodeClient extends RegionClient {
       }
       reconnect();
     }
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override

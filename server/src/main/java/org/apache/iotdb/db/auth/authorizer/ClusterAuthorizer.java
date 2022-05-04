@@ -31,7 +31,6 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,6 +38,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,13 +70,9 @@ public class ClusterAuthorizer {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (TException | BadNodeUrlException e) {
       LOGGER.error("Failed to connect to config node.");
       future.setException(e);
-    } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
@@ -130,13 +126,9 @@ public class ClusterAuthorizer {
         future.set(
             new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
       }
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (TException | BadNodeUrlException e) {
       LOGGER.error("Failed to connect to config node.");
       future.setException(e);
-    } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
@@ -150,12 +142,9 @@ public class ClusterAuthorizer {
       configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       status = configNodeClient.login(req);
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (TException | BadNodeUrlException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
       if (status == null) {
         status = new TSStatus();
       }
@@ -170,12 +159,9 @@ public class ClusterAuthorizer {
       configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       status = configNodeClient.checkUserPrivileges(req);
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (TException | BadNodeUrlException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
       if (status == null) {
         status = new TSStatus();
       }

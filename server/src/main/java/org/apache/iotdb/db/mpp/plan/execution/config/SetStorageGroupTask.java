@@ -29,12 +29,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,13 +73,9 @@ public class SetStorageGroupTask implements IConfigTask {
         } else {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         }
-      } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      } catch (TException | BadNodeUrlException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
-      } finally {
-        if (configNodeClient != null) {
-          configNodeClient.close();
-        }
       }
     } else {
       try {

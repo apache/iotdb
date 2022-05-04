@@ -29,6 +29,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -113,7 +114,7 @@ public abstract class RegionClient implements SyncThriftClient, AutoCloseable {
     }
   }
 
-  protected void reconnect() throws IoTDBConnectionException {
+  protected void reconnect() throws TException {
     if (consensusLeader != null) {
       try {
         connect(consensusLeader);
@@ -140,7 +141,7 @@ public abstract class RegionClient implements SyncThriftClient, AutoCloseable {
       }
     }
 
-    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override

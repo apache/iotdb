@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +45,7 @@ public class DataNodeClient extends RegionClient {
   //    }
 
   @Override
-  protected void reconnect() throws IoTDBConnectionException {
+  protected void reconnect() throws TException {
     super.reconnect();
   }
 
