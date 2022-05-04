@@ -130,6 +130,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
+    if (path.endsWith(".*")
+        || path.endsWith(".**")
+        || path.contains(".*.")
+        || path.contains(".**.")) {
+      throw new AuthException(
+          "Invalid path, the path wildcard is not allowed in granting privileges");
+    }
     String newPath = path;
     if (isAdmin(username)) {
       throw new AuthException("Invalid operation, administrator already has all privileges");
@@ -194,6 +201,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void grantPrivilegeToRole(String roleName, String path, int privilegeId)
       throws AuthException {
+    if (path.endsWith(".*")
+        || path.endsWith(".**")
+        || path.contains(".*.")
+        || path.contains(".**.")) {
+      throw new AuthException(
+          "Invalid path, the path wildcard is not allowed in granting privileges");
+    }
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
       p = IoTDBConstant.PATH_ROOT;
