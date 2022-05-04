@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
@@ -151,7 +153,7 @@ public class LogicalPlanBuilder {
   }
 
   /** Meta Query* */
-  public LogicalPlanBuilder planTimeSeriesMetaSource(
+  public LogicalPlanBuilder planTimeSeriesSchemaSource(
       PartialPath pathPattern,
       String key,
       String value,
@@ -192,8 +194,23 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planSchemaFetchSource(PathPatternTree patternTree) {
-    this.root = new SchemaFetchNode(context.getQueryId().genPlanNodeId(), patternTree);
+  public LogicalPlanBuilder planSchemaFetchMerge() {
+    this.root = new SchemaFetchMergeNode(context.getQueryId().genPlanNodeId());
+    return this;
+  }
+
+  public LogicalPlanBuilder planSchemaFetchSource(
+      List<String> storageGroupList, PathPatternTree patternTree) {
+    for (String storageGroup : storageGroupList) {
+      try {
+        this.root.addChild(
+            new SchemaFetchNode(
+                context.getQueryId().genPlanNodeId(),
+                patternTree.extractInvolvedPartByPrefix(new PartialPath(storageGroup))));
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+    }
     return this;
   }
 

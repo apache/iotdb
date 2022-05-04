@@ -38,6 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+
 public class PathPatternTree {
 
   private PathPatternNode root;
@@ -65,6 +67,14 @@ public class PathPatternTree {
     this.pathList = new ArrayList<>();
     for (Map.Entry<PartialPath, List<String>> entry : deviceToMeasurementsMap.entrySet()) {
       appendPaths(entry.getKey(), entry.getValue());
+    }
+  }
+
+  public PathPatternTree(List<PartialPath> pathList) {
+    this.root = new PathPatternNode(SQLConstant.ROOT);
+    this.pathList = new ArrayList<>();
+    for (PartialPath path : pathList) {
+      appendPath(path);
     }
   }
 
@@ -162,7 +172,7 @@ public class PathPatternTree {
     pathList.clear();
   }
 
-  public void searchAndConstruct(PathPatternNode curNode, String[] pathNodes, int pos) {
+  private void searchAndConstruct(PathPatternNode curNode, String[] pathNodes, int pos) {
     if (pos == pathNodes.length - 1) {
       return;
     }
@@ -239,6 +249,20 @@ public class PathPatternTree {
     }
     nodeList.add(node.getName());
     return new PartialPath(nodeList.toArray(new String[0]));
+  }
+
+  public PathPatternTree extractInvolvedPartByPrefix(PartialPath prefixPath) {
+    if (pathList.isEmpty()) {
+      pathList = splitToPathList();
+    }
+    PartialPath pattern = prefixPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
+    List<PartialPath> involvedPath = new ArrayList<>();
+    for (PartialPath path : pathList) {
+      if (pattern.matchFullPath(path) || path.matchFullPath(pattern)) {
+        involvedPath.add(path);
+      }
+    }
+    return new PathPatternTree(involvedPath);
   }
 
   @TestOnly

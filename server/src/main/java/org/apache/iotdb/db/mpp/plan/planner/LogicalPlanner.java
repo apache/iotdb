@@ -230,7 +230,7 @@ public class LogicalPlanner {
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planTimeSeriesMetaSource(
+          .planTimeSeriesSchemaSource(
               showTimeSeriesStatement.getPathPattern(),
               showTimeSeriesStatement.getKey(),
               showTimeSeriesStatement.getValue(),
@@ -380,8 +380,11 @@ public class LogicalPlanner {
         SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planSchemaFetchSource(schemaFetchStatement.getPatternTree())
-          .planSchemaMerge(false)
+          .planSchemaFetchMerge()
+          .planSchemaFetchSource(
+              new ArrayList<>(
+                  schemaFetchStatement.getSchemaPartition().getSchemaPartitionMap().keySet()),
+              schemaFetchStatement.getPatternTree())
           .getRoot();
     }
   }

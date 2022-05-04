@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
@@ -94,7 +95,8 @@ public enum PlanNodeType {
   PROJECT((short) 32),
   ALIGNED_SERIES_SCAN((short) 33),
   ALIGNED_SERIES_AGGREGATE_SCAN((short) 34),
-  DEVICE_MERGE((short) 35);
+  DEVICE_MERGE((short) 35),
+  SCHEMA_FETCH_MERGE((short) 36);
 
   private final short nodeType;
 
@@ -190,6 +192,8 @@ public enum PlanNodeType {
         return AlignedSeriesScanNode.deserialize(buffer);
       case 34:
         return AlignedSeriesAggregationScanNode.deserialize(buffer);
+      case 35:
+        return SchemaFetchMergeNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
