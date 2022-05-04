@@ -109,7 +109,8 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
         } else {
           if (valueSatisfyInfo[row]) {
             if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(row)) {
-              builder.getColumnBuilder(column)
+              builder
+                  .getColumnBuilder(column)
                   .writeObject(tsBlock.getColumn(column).getObject(row));
             } else {
               builder.getColumnBuilder(column).appendNull();

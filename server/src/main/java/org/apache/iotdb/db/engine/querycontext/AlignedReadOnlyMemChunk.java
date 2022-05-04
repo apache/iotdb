@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
@@ -53,8 +52,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   private AlignedTVList chunkData;
 
-  private IPointReader chunkPointReader;
-
   /**
    * The constructor for Aligned type.
    *
@@ -72,9 +69,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     List<TSEncoding> encodingList = schema.getSubMeasurementsTSEncodingList();
     this.chunkData = (AlignedTVList) tvList;
-    // TODO: remove row-based chunkPointReader
-    this.chunkPointReader =
-        (chunkData).getAlignedIterator(floatPrecision, encodingList, deletionList);
     this.tsBlock = chunkData.getTsBlock(floatPrecision, encodingList, deletionList);
     initAlignedChunkMetaFromTsBlock();
   }
@@ -113,6 +107,9 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       valueChunkMetadataList.add(valueChunkMetadata);
       for (int row = 0; row < tsBlock.getPositionCount(); row++) {
         long time = tsBlock.getTimeColumn().getLong(row);
+        if (tsBlock.getColumn(column).isNull(row)) {
+          continue;
+        }
         switch (tsBlock.getColumn(column).getDataType()) {
           case BOOLEAN:
             valueStatistics.update(time, tsBlock.getColumn(column).getBoolean(row));
@@ -149,10 +146,5 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   @Override
   public boolean isEmpty() throws IOException {
     return tsBlock.isEmpty();
-  }
-
-  @Override
-  public IPointReader getPointReader() {
-    return chunkPointReader;
   }
 }

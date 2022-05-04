@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.util.Objects;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -43,6 +42,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
@@ -938,16 +938,17 @@ public class AlignedTVList extends TVList {
         // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
         // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2, write(T:3,V:null)
         int originRowIndex;
-        if (Objects.nonNull(lastValidPointIndexForTimeDepCheck) && (getTime(sortedRowIndex) == lastValidPointIndexForTimeDepCheck.left)) {
+        if (Objects.nonNull(lastValidPointIndexForTimeDepCheck)
+            && (getTime(sortedRowIndex) == lastValidPointIndexForTimeDepCheck.left)) {
           originRowIndex = lastValidPointIndexForTimeDepCheck.right;
         } else {
           originRowIndex = getValueIndex(sortedRowIndex);
         }
         if (isValueMarked(originRowIndex, columnIndex)
             || isPointDeleted(
-            getTime(sortedRowIndex),
-            Objects.isNull(deletionList) ? null : deletionList.get(columnIndex),
-            deleteCursor)) {
+                getTime(sortedRowIndex),
+                Objects.isNull(deletionList) ? null : deletionList.get(columnIndex),
+                deleteCursor)) {
           valueBuilder.appendNull();
           continue;
         }
