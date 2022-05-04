@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -341,30 +340,6 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     lastReadCurArrayIndex = curReadCurArrayIndex;
     lastReadCurListIndex = curReadCurListIndex;
     batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
-  }
-
-  private Pair<Integer, Integer> calcLastIndex(
-      int[] curReadCurArrayIndexes, int[] curReadCurListIndexes) {
-    int lastReadCurArrayIndex = curReadCurArrayIndexes[0];
-    int lastReadCurListIndex = curReadCurListIndexes[0];
-    for (int i = 1; i < curReadCurArrayIndexes.length; i++) {
-      if (ascending) {
-        if (curReadCurListIndexes[i] > lastReadCurListIndex) {
-          lastReadCurListIndex = curReadCurListIndexes[i];
-          lastReadCurArrayIndex = curReadCurArrayIndexes[i];
-        } else if (curReadCurListIndexes[i] == lastReadCurListIndex) {
-          lastReadCurArrayIndex = Math.max(curReadCurArrayIndexes[i], lastReadCurArrayIndex);
-        }
-      } else {
-        if (curReadCurListIndexes[i] < lastReadCurListIndex) {
-          lastReadCurListIndex = curReadCurListIndexes[i];
-          lastReadCurArrayIndex = curReadCurArrayIndexes[i];
-        } else if (curReadCurListIndexes[i] == lastReadCurListIndex) {
-          lastReadCurArrayIndex = Math.min(curReadCurArrayIndexes[i], lastReadCurArrayIndex);
-        }
-      }
-    }
-    return new Pair<>(lastReadCurArrayIndex, lastReadCurListIndex);
   }
 
   private boolean isEndCalc() {
