@@ -45,7 +45,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
   private ConfigManager configManager;
 
-  public ConfigNode() {
+  private ConfigNode() {
     this.configNodeRPCService = new ConfigNodeRPCService();
 
     try {
@@ -57,7 +57,7 @@ public class ConfigNode implements ConfigNodeMBean {
       } catch (IOException e2) {
         LOGGER.error("Meet error when stop ConfigNode!", e);
       }
-      System.exit(0);
+      System.exit(-1);
     }
   }
 
@@ -102,5 +102,18 @@ public class ConfigNode implements ConfigNodeMBean {
 
   public void stop() throws IOException {
     deactivate();
+  }
+
+  private static class ConfigNodeHolder {
+
+    private static final ConfigNode INSTANCE = new ConfigNode();
+
+    private ConfigNodeHolder() {
+      // Empty constructor
+    }
+  }
+
+  public static ConfigNode getInstance() {
+    return ConfigNodeHolder.INSTANCE;
   }
 }

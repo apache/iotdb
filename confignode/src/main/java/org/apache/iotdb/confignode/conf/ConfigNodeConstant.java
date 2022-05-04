@@ -32,8 +32,8 @@ public class ConfigNodeConstant {
   public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
 
   public static final String ENV_FILE_NAME = "confignode-env";
-  public static final String CONF_NAME = "iotdb-confignode.properties";
-  public static final String SPECIAL_CONF_NAME = "iotdb-confignode-special.properties";
+  public static final String CONF_FILE_NAME = "iotdb-confignode.properties";
+  public static final String SYSTEM_FILE_NAME = "confignode-system.properties";
 
   public static final String CONFIGNODE_PACKAGE = "org.apache.iotdb.confignode.service";
   public static final String JMX_TYPE = "type";

@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.AsyncClientPool;
+import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.InitRegionHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -174,7 +174,7 @@ public class ClusterSchemaManager {
               if (retry == 0) {
                 schemaRegionEndPoints.add(endPoint);
               }
-              AsyncClientPool.getInstance()
+              AsyncDataNodeClientPool.getInstance()
                   .initSchemaRegion(
                       endPoint, genCreateSchemaRegionReq(storageGroup, regionReplicaSet), handler);
               break;
@@ -182,7 +182,7 @@ public class ClusterSchemaManager {
               if (retry == 0) {
                 dataRegionEndPoints.add(endPoint);
               }
-              AsyncClientPool.getInstance()
+              AsyncDataNodeClientPool.getInstance()
                   .initDataRegion(
                       endPoint,
                       genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL),

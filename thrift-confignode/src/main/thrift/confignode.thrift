@@ -38,8 +38,9 @@ struct TGlobalConfig {
 
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
-  2: optional i32 dataNodeId
-  3: optional TGlobalConfig globalConfig
+  2: required list<TConfigNodeLocation> configNodeList
+  3: optional i32 dataNodeId
+  4: optional TGlobalConfig globalConfig
 }
 
 struct TDataNodeLocationResp {
@@ -134,19 +135,39 @@ struct TAuthorizerReq {
 }
 
 struct TAuthorizerResp {
-    1: required common.TSStatus status
-    2: required map<string, list<string>> authorizerInfo
+  1: required common.TSStatus status
+  2: required map<string, list<string>> authorizerInfo
 }
 
 struct TLoginReq {
-    1: required string userrname
-    2: required string password
+  1: required string userrname
+  2: required string password
 }
 
 struct TCheckUserPrivilegesReq{
-    1: required string username;
-    2: required list<string> paths
-    3: required i32 permission
+  1: required string username;
+  2: required list<string> paths
+  3: required i32 permission
+}
+
+// ConfigNode
+struct TConfigNodeLocation {
+  1: required common.TEndPoint internalEndPoint
+  2: required common.TEndPoint consensusEndPoint
+}
+
+struct TConfigNodeRegisterReq {
+  1: required TConfigNodeLocation configNodeLocation
+  2: required string configNodeConsensusProtocolClass
+  3: required string dataNodeConsensusProtocolClass
+  4: required i32 seriesPartitionSlotNum
+  5: required string seriesPartitionExecutorClass
+}
+
+struct TConfigNodeRegisterResp {
+  1: required common.TSStatus status
+  2: optional common.TConsensusGroupId partitionRegionId
+  3: optional list<TConfigNodeLocation> configNodeList
 }
 
 service ConfigIService {
@@ -196,4 +217,10 @@ service ConfigIService {
   common.TSStatus login(TLoginReq req)
 
   common.TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req)
+
+  /* ConfigNode */
+
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
+
+  common.TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation)
 }

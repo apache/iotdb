@@ -21,6 +21,8 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
@@ -43,6 +45,9 @@ import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -98,6 +103,7 @@ public class ConfigManager implements Manager {
     } else {
       DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
       dataSet.setStatus(status);
+      dataSet.setConfigNodeList(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
       return dataSet;
     }
   }
@@ -374,5 +380,49 @@ public class ConfigManager implements Manager {
     } else {
       return status;
     }
+  }
+
+  @Override
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
+    // Check global configuration
+    ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+    TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
+    errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
+    if (!req.getConfigNodeConsensusProtocolClass()
+        .equals(conf.getConfigNodeConsensusProtocolClass())) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the data_node_consensus_protocol_class are consistent.");
+      return errorResp;
+    }
+    if (!req.getDataNodeConsensusProtocolClass().equals(conf.getDataNodeConsensusProtocolClass())) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the data_node_consensus_protocol_class are consistent.");
+      return errorResp;
+    }
+    if (req.getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the series_partition_slot_num are consistent.");
+      return errorResp;
+    }
+    if (!req.getSeriesPartitionExecutorClass().equals(conf.getSeriesPartitionExecutorClass())) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the series_partition_executor_class are consistent.");
+      return errorResp;
+    }
+
+    return consensusManager.registerConfigNode();
+  }
+
+  @Override
+  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) {
+    return consensusManager.applyConfigNode(configNodeLocation);
   }
 }

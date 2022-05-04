@@ -113,6 +113,7 @@ public enum TSStatusCode {
   NO_CONNECTION(706),
   NEED_REDIRECTION(707),
   PARSE_LOG_ERROR(708),
+  ALL_RETRY_FAILED(709),
 
   // configuration
   CONFIG_ERROR(800),
@@ -120,7 +121,8 @@ public enum TSStatusCode {
   // ConfigNode response
   DATANODE_ALREADY_REGISTERED(901),
   STORAGE_GROUP_ALREADY_EXISTS(902),
-  NOT_ENOUGH_DATA_NODE(903);
+  NOT_ENOUGH_DATA_NODE(903),
+  ERROR_GLOBAL_CONFIG(904);
 
   private int statusCode;
 
