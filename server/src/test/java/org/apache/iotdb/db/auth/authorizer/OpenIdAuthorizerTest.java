@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.auth.authorizer;
+package org.apache.iotdb.db.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.commons.conf.CommonConfig;
 
 import com.nimbusds.oauth2.sdk.ParseException;

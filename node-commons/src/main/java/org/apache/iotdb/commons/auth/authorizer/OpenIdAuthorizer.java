@@ -68,7 +68,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     this(config.getOpenIdProviderUrl());
   }
 
-  OpenIdAuthorizer(JSONObject jwk) throws AuthException {
+  public OpenIdAuthorizer(JSONObject jwk) throws AuthException {
     super(
         new LocalFileUserManager(config.getUserFolder()),
         new LocalFileRoleManager(config.getRoleFolder()));
@@ -80,7 +80,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     logger.info("Initialized with providerKey: {}", providerKey);
   }
 
-  OpenIdAuthorizer(String providerUrl)
+  public OpenIdAuthorizer(String providerUrl)
       throws AuthException, URISyntaxException, ParseException, IOException {
     this(getJWKFromProvider(providerUrl));
   }
@@ -221,7 +221,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
    * @return true if the user is an admin
    */
   @Override
-  boolean isAdmin(String token) {
+  public boolean isAdmin(String token) {
     Claims claims;
     if (this.loggedClaims.containsKey(token)) {
       // This is a username!
