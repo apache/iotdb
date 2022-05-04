@@ -16,25 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.authorizer;
+package org.apache.iotdb.commons.auth.entity;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
-import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
+import org.junit.Assert;
+import org.junit.Test;
 
-public class LocalFileAuthorizer extends BasicAuthorizer {
+import java.util.Collections;
 
-  private static final CommonConfig config = CommonConfig.getInstance();
+public class RoleTest {
 
-  public LocalFileAuthorizer() throws AuthException {
-    super(
-        new LocalFileUserManager(config.getUserFolder()),
-        new LocalFileRoleManager(config.getRoleFolder()));
-  }
-
-  @Override
-  boolean isAdmin(String username) {
-    return config.getAdminName().equals(username);
+  @Test
+  public void testRole() {
+    Role role = new Role("role");
+    PathPrivilege pathPrivilege = new PathPrivilege("root.ln");
+    role.setPrivilegeList(Collections.singletonList(pathPrivilege));
+    role.setPrivileges("root.ln", Collections.singleton(1));
+    Assert.assertEquals(
+        "Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}", role.toString());
+    Role role1 = new Role("role1");
+    role1.deserialize(role.serialize());
+    Assert.assertEquals(
+        "Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}", role1.toString());
   }
 }

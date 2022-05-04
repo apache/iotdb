@@ -16,28 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.entity;
+package org.apache.iotdb.commons.auth.entity;
 
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
-import org.apache.iotdb.commons.auth.entity.Role;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Collections;
 
-public class RoleTest {
+public class PathPrivilegeTest {
 
   @Test
-  public void testRole() {
-    Role role = new Role("role");
-    PathPrivilege pathPrivilege = new PathPrivilege("root.ln");
-    role.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    role.setPrivileges("root.ln", Collections.singleton(1));
-    Assert.assertEquals(
-        "Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}", role.toString());
-    Role role1 = new Role("role1");
-    role1.deserialize(role.serialize());
-    Assert.assertEquals(
-        "Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}", role1.toString());
+  public void testPathPrivilege() {
+    PathPrivilege pathPrivilege = new PathPrivilege();
+    pathPrivilege.setPath("root.ln");
+    pathPrivilege.setPrivileges(Collections.singleton(1));
+    Assert.assertEquals("root.ln : INSERT_TIMESERIES", pathPrivilege.toString());
+    PathPrivilege pathPrivilege1 = new PathPrivilege();
+    pathPrivilege1.setPath("root.sg");
+    pathPrivilege1.setPrivileges(Collections.singleton(1));
+    Assert.assertNotEquals(pathPrivilege, pathPrivilege1);
+    pathPrivilege.deserialize(pathPrivilege1.serialize());
+    Assert.assertEquals("root.sg : INSERT_TIMESERIES", pathPrivilege.toString());
   }
 }

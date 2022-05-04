@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.auth.user;
 
-import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.commons.io.FileUtils;

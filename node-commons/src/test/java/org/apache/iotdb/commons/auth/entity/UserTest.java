@@ -16,10 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.entity;
+package org.apache.iotdb.commons.auth.entity;
 
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
-import org.apache.iotdb.commons.auth.entity.User;
 import org.junit.Assert;
 import org.junit.Test;
 

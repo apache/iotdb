@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;

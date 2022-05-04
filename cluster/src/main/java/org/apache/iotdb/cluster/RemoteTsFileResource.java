@@ -21,10 +21,10 @@ package org.apache.iotdb.cluster;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.commons.utils.SerializeUtils;
 
 import java.io.DataOutputStream;
 import java.io.File;
