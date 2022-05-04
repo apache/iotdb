@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;

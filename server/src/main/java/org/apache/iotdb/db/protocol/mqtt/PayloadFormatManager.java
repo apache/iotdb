@@ -17,8 +17,8 @@
  */
 package org.apache.iotdb.db.protocol.mqtt;
 
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.FileUtils;

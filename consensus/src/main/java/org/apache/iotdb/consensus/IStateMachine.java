@@ -22,13 +22,11 @@ package org.apache.iotdb.consensus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.util.function.Function;
 
 @ThreadSafe
@@ -55,40 +53,18 @@ public interface IStateMachine {
   DataSet read(IConsensusRequest IConsensusRequest);
 
   /**
-   * IConsensus will periodically take the snapshot on both log and statemachine Data
+   * Take a snapshot of current statemachine. All files are required to be stored under snapshotDir,
+   * which is a sub-directory of the StorageDir in Consensus
    *
-   * @param metadata the metadata IConsensus want IStateMachine to preserve. NOTICE: the more
-   *     updated snapshot will have lexicographically larger metadata. This property should be
-   *     guaranteed by every IConsensus implementation. IStateMachine can use the metadata to sort
-   *     or label snapshot. e.g, metadata is byteBuffer("123_456"), the statemachine can create a
-   *     directory ${snapshotDir}/123_456/ and store all files under this directory
-   * @param snapshotDir the root dir of snapshot files
-   * @return true if snapshot successfully taken
+   * @param snapshotDir required storage dir
+   * @return true if snapshot is successfully taken
    */
-  boolean takeSnapshot(ByteBuffer metadata, File snapshotDir);
+  boolean takeSnapshot(File snapshotDir);
 
   /**
-   * When recover from crash / leader installSnapshot to follower, this method is called.
-   * IStateMachine is required to find the latest snapshot in snapshotDir.
+   * Load the latest snapshot from given dir
    *
-   * @param snapshotDir the root dir of snapshot files
-   * @return latest snapshot info (metadata + snapshot files)
+   * @param latestSnapshotRootDir dir where the latest snapshot sits
    */
-  SnapshotMeta getLatestSnapshot(File snapshotDir);
-
-  /**
-   * When recover from crash / follower installSnapshot from leader, this method is called.
-   * IStateMachine is required to load the given snapshot.
-   *
-   * @param latest is the latest snapshot given
-   */
-  void loadSnapshot(SnapshotMeta latest);
-
-  /**
-   * IConsensus will periodically clean up old snapshots. This method is called to inform
-   * IStateMachine to remove out-dated snapshot.
-   *
-   * @param snapshotDir the root dir of snapshot files
-   */
-  void cleanUpOldSnapshots(File snapshotDir);
+  void loadSnapshot(File latestSnapshotRootDir);
 }

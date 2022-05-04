@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.exception.metadata;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 public class StorageGroupAlreadySetException extends MetadataException {

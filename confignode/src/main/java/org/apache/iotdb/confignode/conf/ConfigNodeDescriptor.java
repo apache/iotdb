@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonUtils;
 
@@ -36,6 +37,7 @@ public class ConfigNodeDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
 
   private final ConfigNodeConf conf = new ConfigNodeConf();
+  private final CommonConfig commonConfig = CommonConfig.getInstance();
 
   private ConfigNodeDescriptor() {
     loadProps();
@@ -205,6 +207,8 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
+      commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
+      commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
 
       String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
 

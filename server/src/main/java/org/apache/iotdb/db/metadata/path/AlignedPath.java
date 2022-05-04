@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.metadata.path;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -285,7 +287,7 @@ public class AlignedPath extends PartialPath {
 
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
-    alignedPath.nodes = partialPath.nodes;
+    alignedPath.nodes = partialPath.getNodes();
     alignedPath.device = partialPath.getDeviceIdString();
     alignedPath.fullPath = partialPath.getFullPath();
     return alignedPath;
