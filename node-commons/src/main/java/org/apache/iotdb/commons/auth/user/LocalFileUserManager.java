@@ -16,16 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.auth.user;
 
-package org.apache.iotdb.db.security.encrypt;
+import org.apache.iotdb.commons.auth.AuthException;
 
-public class EncryptDecryptException extends RuntimeException {
+public class LocalFileUserManager extends BasicUserManager {
 
-  public EncryptDecryptException(Throwable e) {
-    super("Encrypt or decrypt failed.", e);
-  }
-
-  public EncryptDecryptException(String message) {
-    super(message);
+  public LocalFileUserManager(String userDirPath) throws AuthException {
+    super(new LocalFileUserAccessor(userDirPath));
   }
 }

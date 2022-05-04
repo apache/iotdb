@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.user;
 
-import org.apache.iotdb.db.auth.AuthException;
+package org.apache.iotdb.commons.auth.role;
 
-public class LocalFileUserManager extends BasicUserManager {
+public class LocalFileRoleManager extends BasicRoleManager {
 
-  public LocalFileUserManager(String userDirPath) throws AuthException {
-    super(new LocalFileUserAccessor(userDirPath));
+  public LocalFileRoleManager(String roleDirPath) {
+    super(new LocalFileRoleAccessor(roleDirPath));
   }
 }

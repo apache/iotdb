@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.entity;
+package org.apache.iotdb.commons.auth.entity;
 
-import org.apache.iotdb.db.utils.AuthUtils;
-import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

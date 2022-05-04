@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.role;
+package org.apache.iotdb.commons.auth.role;
 
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.concurrent.HashLock;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.AuthUtils;
 
 import java.io.IOException;
 import java.util.HashMap;

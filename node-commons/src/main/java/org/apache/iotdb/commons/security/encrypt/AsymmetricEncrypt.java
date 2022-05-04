@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.security.encrypt;
+package org.apache.iotdb.commons.security.encrypt;
 
 public interface AsymmetricEncrypt {
 

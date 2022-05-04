@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

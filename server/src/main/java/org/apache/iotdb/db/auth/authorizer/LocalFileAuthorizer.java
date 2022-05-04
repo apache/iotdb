@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.auth.authorizer;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.role.LocalFileRoleManager;
-import org.apache.iotdb.db.auth.user.LocalFileUserManager;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
+import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 
 public class LocalFileAuthorizer extends BasicAuthorizer {
 

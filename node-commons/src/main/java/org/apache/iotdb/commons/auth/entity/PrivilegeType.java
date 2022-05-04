@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.entity;
+
+package org.apache.iotdb.commons.auth.entity;
 
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {

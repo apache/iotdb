@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.fileSystem;
+package org.apache.iotdb.commons.file;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import java.io.File;
@@ -28,7 +28,7 @@ import java.net.URI;
 public enum SystemFileFactory {
   INSTANCE;
 
-  private static FSType fsType = IoTDBDescriptor.getInstance().getConfig().getSystemFileStorageFs();
+  private static FSType fsType = CommonConfig.getInstance().getSystemFileStorageFs();
   private static final String UNSUPPORT_FILE_SYSTEM = "Unsupported file system: ";
 
   public File getFile(String pathname) {

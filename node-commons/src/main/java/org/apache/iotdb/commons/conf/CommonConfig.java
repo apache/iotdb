@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.tsfile.fileSystem.FSType;
+
 import java.io.File;
 
 public class CommonConfig {
@@ -30,7 +32,7 @@ public class CommonConfig {
 
   /** Encryption provider class */
   private String encryptDecryptProvider =
-      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
+      "org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt";
 
   /** Encryption provided class parameter */
   private String encryptDecryptProviderParameter;
@@ -42,6 +44,9 @@ public class CommonConfig {
   private String userFolder = "system" + File.separator + "users";
 
   private String roleFolder = "system" + File.separator + "roles";
+
+  /** Default system file storage is in local file system (unsupported) */
+  private FSType systemFileStorageFs = FSType.LOCAL;
 
   private CommonConfig() {}
 
@@ -120,5 +125,13 @@ public class CommonConfig {
 
   public void setRoleFolder(String roleFolder) {
     this.roleFolder = roleFolder;
+  }
+
+  public FSType getSystemFileStorageFs() {
+    return systemFileStorageFs;
+  }
+
+  public void setSystemFileStorageFs(FSType systemFileStorageFs) {
+    this.systemFileStorageFs = systemFileStorageFs;
   }
 }

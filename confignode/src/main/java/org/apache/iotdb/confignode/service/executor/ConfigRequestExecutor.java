@@ -43,7 +43,7 @@ import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.DataNodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.commons.auth.AuthException;
 
 public class ConfigRequestExecutor {
 

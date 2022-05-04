@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.user;
+package org.apache.iotdb.commons.auth.user;
 
-import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.commons.auth.entity.User;
 
 import java.io.IOException;
 import java.util.List;

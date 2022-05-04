@@ -19,10 +19,11 @@
 package org.apache.iotdb.db.security.encrypt;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.auth.user.LocalFileUserManager;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 

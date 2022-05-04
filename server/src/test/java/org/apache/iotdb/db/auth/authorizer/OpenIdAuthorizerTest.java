@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.auth.authorizer;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.commons.auth.AuthException;
 
 import com.nimbusds.oauth2.sdk.ParseException;
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;

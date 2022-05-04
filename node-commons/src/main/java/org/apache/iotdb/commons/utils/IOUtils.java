@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 
 import java.io.DataInputStream;
 import java.io.File;

@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.user;
+package org.apache.iotdb.commons.auth.user;
 
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
 import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.AuthUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -16,11 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.role;
 
-public class LocalFileRoleManager extends BasicRoleManager {
+package org.apache.iotdb.commons.auth;
 
-  public LocalFileRoleManager(String roleDirPath) {
-    super(new LocalFileRoleAccessor(roleDirPath));
+/** The exception for authority model. */
+public class AuthException extends Exception {
+
+  private static final long serialVersionUID = 5091102941209301301L;
+
+  public AuthException(String message) {
+    super(message);
+  }
+
+  public AuthException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public AuthException(Throwable cause) {
+    super(cause);
   }
 }

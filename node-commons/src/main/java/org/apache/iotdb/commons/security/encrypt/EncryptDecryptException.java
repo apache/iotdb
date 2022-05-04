@@ -16,22 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth;
 
-/** The exception for authority model. */
-public class AuthException extends Exception {
+package org.apache.iotdb.commons.security.encrypt;
 
-  private static final long serialVersionUID = 5091102941209301301L;
+public class EncryptDecryptException extends RuntimeException {
 
-  public AuthException(String message) {
+  public EncryptDecryptException(Throwable e) {
+    super("Encrypt or decrypt failed.", e);
+  }
+
+  public EncryptDecryptException(String message) {
     super(message);
-  }
-
-  public AuthException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public AuthException(Throwable cause) {
-    super(cause);
   }
 }

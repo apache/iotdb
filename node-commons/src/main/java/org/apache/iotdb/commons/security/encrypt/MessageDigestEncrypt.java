@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.security.encrypt;
+package org.apache.iotdb.commons.security.encrypt;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
