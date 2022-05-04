@@ -75,4 +75,8 @@ public class SchemaFetchNode extends SchemaScanNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSchemaFetch(this, context);
   }
+
+  public String toString() {
+    return String.format("SchemaFetchNode-%s", getPlanNodeId());
+  }
 }

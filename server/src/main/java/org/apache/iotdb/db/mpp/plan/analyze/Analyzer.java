@@ -68,6 +68,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -79,6 +82,8 @@ import java.util.stream.Collectors;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
+
+  private static final Logger logger = LoggerFactory.getLogger(Analyzer.class);
 
   private final MPPQueryContext context;
 
@@ -94,6 +99,10 @@ public class Analyzer {
 
   public Analysis analyze(Statement statement) {
     return new AnalyzeVisitor().process(statement, context);
+  }
+
+  private String getLogHeader() {
+    return String.format("Query[%s]:", context.getQueryId());
   }
 
   /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
@@ -118,7 +127,9 @@ public class Analyzer {
             (QueryStatement) new ConcatPathRewriter().rewrite(queryStatement, patternTree);
 
         // request schema fetch API
+        logger.info("{} fetch query schema...", getLogHeader());
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+        logger.info("{} fetch schema done", getLogHeader());
         // (xingtanzjr) If there is no leaf node in the schema tree, the query should be completed
         // immediately
         if (schemaTree.isEmpty()) {

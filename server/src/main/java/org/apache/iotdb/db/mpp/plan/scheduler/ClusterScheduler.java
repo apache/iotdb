@@ -48,7 +48,7 @@ import java.util.concurrent.ScheduledExecutorService;
  * this scheduler.
  */
 public class ClusterScheduler implements IScheduler {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ClusterScheduler.class);
+  private static final Logger logger = LoggerFactory.getLogger(ClusterScheduler.class);
 
   private MPPQueryContext queryContext;
   // The stateMachine of the QueryExecution owned by this QueryScheduler
@@ -90,6 +90,7 @@ public class ClusterScheduler implements IScheduler {
   @Override
   public void start() {
     stateMachine.transitionToDispatching();
+    logger.info("{} transit to DISPATCHING", getLogHeader());
     Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(instances);
 
     // NOTICE: the FragmentInstance may be dispatched to another Host due to consensus redirect.
@@ -102,7 +103,9 @@ public class ClusterScheduler implements IScheduler {
       }
     } catch (InterruptedException | ExecutionException e) {
       // If the dispatch failed, we make the QueryState as failed, and return.
-      Thread.currentThread().interrupt();
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       stateMachine.transitionToFailed(e);
       return;
     }
@@ -156,4 +159,8 @@ public class ClusterScheduler implements IScheduler {
 
   // After sending, start to collect the states of these fragment instances
   private void startMonitorInstances() {}
+
+  private String getLogHeader() {
+    return String.format("Query[%s]", queryContext.getQueryId());
+  }
 }

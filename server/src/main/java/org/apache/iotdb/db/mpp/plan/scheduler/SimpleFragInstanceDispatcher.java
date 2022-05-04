@@ -19,20 +19,14 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
-import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
-import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -55,31 +49,33 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
     return executor.submit(
         () -> {
-          TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
-          for (FragmentInstance instance : instances) {
-            TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
-            // TODO: (jackie tien) change the port
-            try (SyncDataNodeInternalServiceClient client =
-                internalServiceClientManager.borrowClient(endPoint)) {
-              // TODO: (xingtanzjr) consider how to handle the buffer here
-              ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-              instance.serializeRequest(buffer);
-              buffer.flip();
-              TConsensusGroupId groupId = instance.getRegionReplicaSet().getRegionId();
-              TSendFragmentInstanceReq req =
-                  new TSendFragmentInstanceReq(
-                      new TFragmentInstance(buffer), groupId, instance.getType().toString());
-              resp = client.sendFragmentInstance(req);
-            } catch (IOException e) {
-              LOGGER.error("can't connect to node {}", endPoint, e);
-              throw e;
-            }
-
-            if (!resp.accepted) {
-              break;
-            }
-          }
-          return new FragInstanceDispatchResult(resp.accepted);
+          throw new RuntimeException("Dispatch Error");
+          //          TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+          //          for (FragmentInstance instance : instances) {
+          //            TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
+          //            // TODO: (jackie tien) change the port
+          //            try (SyncDataNodeInternalServiceClient client =
+          //                internalServiceClientManager.borrowClient(endPoint)) {
+          //              // TODO: (xingtanzjr) consider how to handle the buffer here
+          //              ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+          //              instance.serializeRequest(buffer);
+          //              buffer.flip();
+          //              TConsensusGroupId groupId = instance.getRegionReplicaSet().getRegionId();
+          //              TSendFragmentInstanceReq req =
+          //                  new TSendFragmentInstanceReq(
+          //                      new TFragmentInstance(buffer), groupId,
+          // instance.getType().toString());
+          //              resp = client.sendFragmentInstance(req);
+          //            } catch (IOException e) {
+          //              LOGGER.error("can't connect to node {}", endPoint, e);
+          //              throw e;
+          //            }
+          //
+          //            if (!resp.accepted) {
+          //              break;
+          //            }
+          //          }
+          //          return new FragInstanceDispatchResult(resp.accepted);
         });
   }
 

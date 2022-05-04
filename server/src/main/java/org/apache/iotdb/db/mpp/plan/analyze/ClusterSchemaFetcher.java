@@ -75,7 +75,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
     // TODO: (xingtanzjr) throw exception
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException("cannot fetch schema, status is: " + executionResult.status);
+      throw new RuntimeException(
+          String.format(
+              "cannot fetch schema, status is: %s, msg is: %s",
+              executionResult.status.getCode(), executionResult.status.getMessage()));
     }
     SchemaTree result = new SchemaTree();
     while (coordinator.getQueryExecution(queryId).hasNextResult()) {
