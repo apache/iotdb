@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -887,7 +888,7 @@ public class AlignedTVList extends TVList {
   }
 
   /** Build TsBlock by column. */
-  public TsBlock getTsBlock(
+  public TsBlock buildTsBlock(
       int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
     TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
     // Time column
@@ -994,13 +995,12 @@ public class AlignedTVList extends TVList {
       TSEncoding encoding,
       List<TimeRange> deletionList) {}
 
-  // TODO: This method can be removed
+  @TestOnly
   public IPointReader getAlignedIterator(
-      int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
+      Integer floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
     return new AlignedIte(floatPrecision, encodingList, deletionList);
   }
 
-  // TODO: This class can be removed
   private class AlignedIte implements IPointReader {
 
     protected TimeValuePair cachedTimeValuePair;
@@ -1018,7 +1018,7 @@ public class AlignedTVList extends TVList {
     private List<List<TimeRange>> deletionList;
 
     public AlignedIte(
-        int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
+        Integer floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
       this.floatPrecision = floatPrecision;
       this.encodingList = encodingList;
       this.deletionList = deletionList;
@@ -1148,13 +1148,13 @@ public class AlignedTVList extends TVList {
     return size;
   }
 
-  // TODO: should be removed
+  @TestOnly
   private TimeValuePair getTimeValuePairForTimeDuplicatedRows(
       List<Integer> indexList, long time, Integer floatPrecision, List<TSEncoding> encodingList) {
     return new TimeValuePair(time, getAlignedValue(indexList, floatPrecision, encodingList));
   }
 
-  // TODO: should be removed
+  @TestOnly
   private TsPrimitiveType getAlignedValue(
       List<Integer> timeDuplicatedIndexList,
       Integer floatPrecision,

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.querycontext;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.chunk.MemAlignedChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
@@ -47,6 +49,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   private final List<String> valueChunkNames;
 
   private final List<TSDataType> dataTypes;
+
+  private final List<List<TimeRange>> deletionList;
 
   private static final Logger logger = LoggerFactory.getLogger(AlignedReadOnlyMemChunk.class);
 
@@ -69,7 +73,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     List<TSEncoding> encodingList = schema.getSubMeasurementsTSEncodingList();
     this.chunkData = (AlignedTVList) tvList;
-    this.tsBlock = chunkData.getTsBlock(floatPrecision, encodingList, deletionList);
+    this.deletionList = deletionList;
+    this.tsBlock = chunkData.buildTsBlock(floatPrecision, encodingList, deletionList);
     initAlignedChunkMetaFromTsBlock();
   }
 
@@ -146,5 +151,11 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
   @Override
   public boolean isEmpty() throws IOException {
     return tsBlock.isEmpty();
+  }
+
+  @TestOnly
+  @Override
+  public IPointReader getPointReader() {
+    return chunkData.getAlignedIterator(null, null, deletionList);
   }
 }
