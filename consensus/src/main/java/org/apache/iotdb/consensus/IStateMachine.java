@@ -52,7 +52,19 @@ public interface IStateMachine {
    */
   DataSet read(IConsensusRequest IConsensusRequest);
 
+  /**
+   * Take a snapshot of current statemachine. All files are required to be stored under snapshotDir,
+   * which is a sub-directory of the StorageDir in Consensus
+   *
+   * @param snapshotDir required storage dir
+   * @return true if snapshot is successfully taken
+   */
   boolean takeSnapshot(File snapshotDir);
 
+  /**
+   * Load the latest snapshot from given dir
+   *
+   * @param latestSnapshotRootDir dir where the latest snapshot sits
+   */
   void loadSnapshot(File latestSnapshotRootDir);
 }
