@@ -251,4 +251,9 @@ public class PathPatternTree {
     }
     return this.getRoot().equalWith(that.getRoot());
   }
+
+  public boolean isEmpty() {
+    return (root.getChildren() == null || root.getChildren().isEmpty())
+        && (pathList == null || pathList.isEmpty());
+  }
 }

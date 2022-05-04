@@ -136,6 +136,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     PathPatternTree patternTree =
         new PathPatternTree(devicePath, missingMeasurements.left.toArray(new String[0]));
 
+    if (patternTree.isEmpty()) {
+      return schemaTree;
+    }
+
     SchemaTree remoteSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
@@ -183,6 +187,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
                   measurementsList.get(i),
                   tsDataTypesList.get(i))
               .left);
+    }
+
+    if (patternTree.isEmpty()) {
+      return schemaTree;
     }
 
     SchemaTree remoteSchemaTree;
