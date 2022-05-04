@@ -144,7 +144,7 @@ public class DeviceMergeOperator implements ProcessOperator {
       long currentEndTime = deviceTsBlocks[0].getEndTime();
       for (int i = 1; i < tsBlockSizeOfCurDevice; i++) {
         currentEndTime =
-            comparator.getCurrentEndTime(currentEndTime, inputTsBlocks[i].getEndTime());
+            comparator.getCurrentEndTime(currentEndTime, deviceTsBlocks[i].getEndTime());
       }
 
       TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
@@ -156,6 +156,7 @@ public class DeviceMergeOperator implements ProcessOperator {
         // TODO process by column
         // Try to find the tsBlock that timestamp belongs to
         for (int i = 0; i < tsBlockSizeOfCurDevice; i++) {
+          // TODO the same timestamp in different data region
           if (tsBlockIterators[i].hasNext() && tsBlockIterators[i].currentTime() == timestamp) {
             int rowIndex = tsBlockIterators[i].getRowIndex();
             for (int j = 0; j < valueColumnBuilders.length; j++) {
@@ -197,6 +198,7 @@ public class DeviceMergeOperator implements ProcessOperator {
         tsBlockBuilder.declarePosition();
       }
       // update tsBlock after consuming
+      int consumedTsBlockIndex = 0;
       for (int i = 0; i < tsBlockSizeOfCurDevice; i++) {
         if (tsBlockIterators[i].hasNext()) {
           int rowIndex = tsBlockIterators[i].getRowIndex();
@@ -204,9 +206,10 @@ public class DeviceMergeOperator implements ProcessOperator {
               inputTsBlocks[curDeviceTsBlockIndexList.get(i)].subTsBlock(rowIndex);
         } else {
           inputTsBlocks[curDeviceTsBlockIndexList.get(i)] = null;
-          curDeviceTsBlockIndexList.remove(i);
+          consumedTsBlockIndex = i;
         }
       }
+      curDeviceTsBlockIndexList.remove(consumedTsBlockIndex);
       return tsBlockBuilder.build();
     }
   }
