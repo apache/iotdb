@@ -143,7 +143,7 @@ public class TimeJoinOperator implements ProcessOperator {
       if (!empty(i)) {
         currentEndTime =
             init
-                ? comparator.getSatisfiedTime(currentEndTime, inputTsBlocks[i].getEndTime())
+                ? comparator.getCurrentEndTime(currentEndTime, inputTsBlocks[i].getEndTime())
                 : inputTsBlocks[i].getEndTime();
         init = true;
       }
@@ -156,7 +156,8 @@ public class TimeJoinOperator implements ProcessOperator {
     }
 
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    while (!timeSelector.isEmpty() && comparator.satisfy(timeSelector.first(), currentEndTime)) {
+    while (!timeSelector.isEmpty()
+        && comparator.satisfyCurEndTime(timeSelector.first(), currentEndTime)) {
       timeBuilder.writeLong(timeSelector.pollFirst());
       tsBlockBuilder.declarePosition();
     }

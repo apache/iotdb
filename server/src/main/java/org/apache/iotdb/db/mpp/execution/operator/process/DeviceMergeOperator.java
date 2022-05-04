@@ -21,10 +21,19 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
+import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -43,15 +52,39 @@ public class DeviceMergeOperator implements ProcessOperator {
   // The size devices and deviceOperators should be the same.
   private final List<String> devices;
   private final List<Operator> deviceOperators;
+  private TSDataType[] dataTypes;
+  private TsBlockBuilder tsBlockBuilder;
 
+  private final int inputOperatorsCount;
   private final TsBlock[] inputTsBlocks;
+  // device name of inputTsBlocks[], e.g. d1 in tsBlock1, d2 in tsBlock2
+  private final String[] deviceOfInputTsBlocks;
   private final boolean[] noMoreTsBlocks;
 
+  private int curDeviceIndex;
+  // the index of curDevice in inputTsBlocks
+  private LinkedList<Integer> curDeviceTsBlockIndexList = new LinkedList<>();
+
+  private boolean finished;
+
+  private final TimeSelector timeSelector;
+  private final TimeComparator comparator;
+
   public DeviceMergeOperator(
-      OperatorContext operatorContext, List<String> devices, List<Operator> deviceOperators) {
+      OperatorContext operatorContext,
+      List<String> devices,
+      List<Operator> deviceOperators,
+      TimeSelector selector,
+      TimeComparator comparator) {
     this.operatorContext = operatorContext;
     this.devices = devices;
     this.deviceOperators = deviceOperators;
+    this.inputOperatorsCount = deviceOperators.size();
+    this.inputTsBlocks = new TsBlock[inputOperatorsCount];
+    this.deviceOfInputTsBlocks = new String[inputOperatorsCount];
+    this.noMoreTsBlocks = new boolean[inputOperatorsCount];
+    this.timeSelector = selector;
+    this.comparator = comparator;
   }
 
   @Override
@@ -61,9 +94,9 @@ public class DeviceMergeOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    for (int i = 0; i < inputCount; i++) {
-      if (!noMoreTsBlocks[i] && empty(i)) {
-        ListenableFuture<Void> blocked = children.get(i).isBlocked();
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i)) {
+        ListenableFuture<Void> blocked = deviceOperators.get(i).isBlocked();
         if (!blocked.isDone()) {
           return blocked;
         }
@@ -74,21 +107,197 @@ public class DeviceMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    return null;
+    // get new input TsBlock
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && deviceOperators.get(i).hasNext()) {
+        inputTsBlocks[i] = deviceOperators.get(i).next();
+        deviceOfInputTsBlocks[i] = getDeviceNameFromTsBlock(inputTsBlocks[i]);
+        tryToAddCurDeviceTsBlockList(i);
+      }
+    }
+    // move to next device
+    while (curDeviceTsBlockIndexList.isEmpty() && curDeviceIndex + 1 < devices.size()) {
+      getNextDeviceTsBlocks();
+    }
+    // process the curDeviceTsBlocks
+    if (curDeviceTsBlockIndexList.size() == 1) {
+      TsBlock resultTsBlock = inputTsBlocks[curDeviceTsBlockIndexList.get(0)];
+      inputTsBlocks[curDeviceTsBlockIndexList.get(0)] = null;
+      curDeviceTsBlockIndexList.clear();
+      return resultTsBlock;
+    } else {
+      if (tsBlockBuilder == null) {
+        initTsBlockBuilderFromTsBlock(inputTsBlocks[curDeviceTsBlockIndexList.get(0)]);
+      } else {
+        tsBlockBuilder.reset();
+      }
+      int tsBlockSizeOfCurDevice = curDeviceTsBlockIndexList.size();
+      TsBlock[] deviceTsBlocks = new TsBlock[tsBlockSizeOfCurDevice];
+      TsBlockSingleColumnIterator[] tsBlockIterators =
+          new TsBlockSingleColumnIterator[tsBlockSizeOfCurDevice];
+      for (int i = 0; i < tsBlockSizeOfCurDevice; i++) {
+        deviceTsBlocks[i] = inputTsBlocks[curDeviceTsBlockIndexList.get(i)];
+        tsBlockIterators[i] = deviceTsBlocks[i].getTsBlockSingleColumnIterator();
+      }
+      // Use the min end time of all tsBlocks as the end time of result tsBlock
+      // i.e. only one tsBlock will be consumed totally
+      long currentEndTime = deviceTsBlocks[0].getEndTime();
+      for (int i = 1; i < tsBlockSizeOfCurDevice; i++) {
+        currentEndTime =
+            comparator.getCurrentEndTime(currentEndTime, inputTsBlocks[i].getEndTime());
+      }
+
+      TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
+      ColumnBuilder[] valueColumnBuilders = tsBlockBuilder.getValueColumnBuilders();
+      while (!timeSelector.isEmpty()
+          && comparator.satisfyCurEndTime(timeSelector.first(), currentEndTime)) {
+        long timestamp = timeSelector.pollFirst();
+        timeBuilder.writeLong(timestamp);
+        // TODO process by column
+        // Try to find the tsBlock that timestamp belongs to
+        for (int i = 0; i < tsBlockSizeOfCurDevice; i++) {
+          if (tsBlockIterators[i].hasNext() && tsBlockIterators[i].currentTime() == timestamp) {
+            int rowIndex = tsBlockIterators[i].getRowIndex();
+            for (int j = 0; j < valueColumnBuilders.length; j++) {
+              // the jth column of rowIndex of ith tsBlock
+              if (deviceTsBlocks[i].getColumn(j).isNull(rowIndex)) {
+                valueColumnBuilders[j].appendNull();
+                continue;
+              }
+              switch (dataTypes[j]) {
+                case BOOLEAN:
+                  valueColumnBuilders[j].writeBoolean(
+                      deviceTsBlocks[i].getColumn(j).getBoolean(rowIndex));
+                  break;
+                case INT32:
+                  valueColumnBuilders[j].writeInt(deviceTsBlocks[i].getColumn(j).getInt(rowIndex));
+                  break;
+                case INT64:
+                  valueColumnBuilders[j].writeLong(
+                      deviceTsBlocks[i].getColumn(j).getLong(rowIndex));
+                  break;
+                case FLOAT:
+                  valueColumnBuilders[j].writeFloat(
+                      deviceTsBlocks[i].getColumn(j).getFloat(rowIndex));
+                  break;
+                case DOUBLE:
+                  valueColumnBuilders[j].writeDouble(
+                      deviceTsBlocks[i].getColumn(j).getDouble(rowIndex));
+                  break;
+                case TEXT:
+                  valueColumnBuilders[j].writeBinary(
+                      deviceTsBlocks[i].getColumn(j).getBinary(rowIndex));
+                  break;
+              }
+            }
+            tsBlockIterators[i].next();
+            break;
+          }
+        }
+        tsBlockBuilder.declarePosition();
+      }
+      // update tsBlock after consuming
+      for (int i = 0; i < tsBlockSizeOfCurDevice; i++) {
+        if (tsBlockIterators[i].hasNext()) {
+          int rowIndex = tsBlockIterators[i].getRowIndex();
+          inputTsBlocks[curDeviceTsBlockIndexList.get(i)] =
+              inputTsBlocks[curDeviceTsBlockIndexList.get(i)].subTsBlock(rowIndex);
+        } else {
+          inputTsBlocks[curDeviceTsBlockIndexList.get(i)] = null;
+          curDeviceTsBlockIndexList.remove(i);
+        }
+      }
+      return tsBlockBuilder.build();
+    }
   }
 
   @Override
   public boolean hasNext() {
+    if (finished) {
+      return false;
+    }
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (!isTsBlockEmpty(i)) {
+        return true;
+      } else if (!noMoreTsBlocks[i]) {
+        if (deviceOperators.get(i).hasNext()) {
+          return true;
+        } else {
+          noMoreTsBlocks[i] = true;
+          inputTsBlocks[i] = null;
+        }
+      }
+    }
     return false;
   }
 
   @Override
   public void close() throws Exception {
-    ProcessOperator.super.close();
+    for (Operator deviceOperator : deviceOperators) {
+      deviceOperator.close();
+    }
   }
 
   @Override
   public boolean isFinished() {
-    return false;
+    if (finished) {
+      return true;
+    }
+    finished = true;
+
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      // has more tsBlock output from children[i] or has cached tsBlock in inputTsBlocks[i]
+      if (!noMoreTsBlocks[i] || !isTsBlockEmpty(i)) {
+        finished = false;
+        break;
+      }
+    }
+    return finished;
+  }
+
+  private void initTsBlockBuilderFromTsBlock(TsBlock tsBlock) {
+    dataTypes = tsBlock.getValueDataTypes();
+    tsBlockBuilder = new TsBlockBuilder(Arrays.asList(dataTypes));
+  }
+
+  /** DeviceColumn must be the first value column of tsBlock transferred by DeviceViewOperator. */
+  private String getDeviceNameFromTsBlock(TsBlock tsBlock) {
+    if (tsBlock.getColumn(0).isNull(0)) {
+      return null;
+    }
+    return tsBlock.getColumn(0).getBinary(0).toString();
+  }
+
+  private String getCurDeviceName() {
+    return devices.get(curDeviceIndex);
+  }
+
+  private void getNextDeviceTsBlocks() {
+    curDeviceIndex++;
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      tryToAddCurDeviceTsBlockList(i);
+    }
+  }
+
+  private void tryToAddCurDeviceTsBlockList(int tsBlockIndex) {
+    if (deviceOfInputTsBlocks[tsBlockIndex] != null
+        && deviceOfInputTsBlocks[tsBlockIndex].equals(getCurDeviceName())) {
+      // add tsBlock of curDevice to a list
+      curDeviceTsBlockIndexList.add(tsBlockIndex);
+      // add all timestamp of curDevice to timeSelector
+      int rowSize = inputTsBlocks[tsBlockIndex].getPositionCount();
+      for (int row = 0; row < rowSize; row++) {
+        timeSelector.add(inputTsBlocks[tsBlockIndex].getTimeByIndex(row));
+      }
+    }
+  }
+
+  /**
+   * If the tsBlock of tsBlockIndex is null or has no more data in the tsBlock, return true; else
+   * return false;
+   */
+  private boolean isTsBlockEmpty(int tsBlockIndex) {
+    return inputTsBlocks[tsBlockIndex] == null
+        || inputTsBlocks[tsBlockIndex].getPositionCount() == 0;
   }
 }

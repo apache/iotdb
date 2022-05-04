@@ -33,6 +33,8 @@ import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
@@ -66,6 +68,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchema
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
@@ -82,6 +85,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -335,7 +339,45 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitDeviceView(DeviceViewNode node, LocalExecutionPlanContext context) {
-      return super.visitDeviceView(node, context);
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              DeviceViewNode.class.getSimpleName());
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(child -> child.accept(this, context))
+              .collect(Collectors.toList());
+      return new DeviceViewOperator(operatorContext, node.getDevices(), children, null, null);
+    }
+
+    @Override
+    public Operator visitDeviceMerge(DeviceMergeNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              DeviceViewNode.class.getSimpleName());
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(child -> child.accept(this, context))
+              .collect(Collectors.toList());
+      TimeSelector selector = null;
+      TimeComparator timeComparator = null;
+      for (OrderBy orderBy : node.getMergeOrders()) {
+        switch (orderBy) {
+          case TIMESTAMP_ASC:
+            selector = new TimeSelector(node.getChildren().size() << 1, true);
+            timeComparator = ASC_TIME_COMPARATOR;
+            break;
+          case TIMESTAMP_DESC:
+            selector = new TimeSelector(node.getChildren().size() << 1, false);
+            timeComparator = DESC_TIME_COMPARATOR;
+            break;
+        }
+      }
+      return new DeviceMergeOperator(
+          operatorContext, node.getDevices(), children, selector, timeComparator);
     }
 
     @Override

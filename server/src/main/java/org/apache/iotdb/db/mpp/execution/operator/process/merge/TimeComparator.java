@@ -21,8 +21,8 @@ package org.apache.iotdb.db.mpp.execution.operator.process.merge;
 public interface TimeComparator {
 
   /** @return true if time is satisfied with endTime, otherwise false */
-  boolean satisfy(long time, long endTime);
+  boolean satisfyCurEndTime(long time, long endTime);
 
   /** @return min(time1, time2) if order by time asc, max(time1, time2) if order by desc */
-  long getSatisfiedTime(long time1, long time2);
+  long getCurrentEndTime(long time1, long time2);
 }
