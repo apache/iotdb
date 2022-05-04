@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.exception.metadata.cache;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
 
 public class MNodeNotPinnedException extends MetadataException {
 

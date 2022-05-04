@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.dto.IoTDBPoint;
 import org.apache.iotdb.db.protocol.influxdb.handler.QueryHandler;
 import org.apache.iotdb.db.protocol.influxdb.input.InfluxLineParser;

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -119,5 +119,10 @@ public class Analysis {
 
   public void setTypeProvider(TypeProvider typeProvider) {
     this.typeProvider = typeProvider;
+  }
+
+  public boolean hasDataSource() {
+    return (dataPartition != null && !dataPartition.isEmpty())
+        || (schemaPartition != null && !schemaPartition.isEmpty());
   }
 }

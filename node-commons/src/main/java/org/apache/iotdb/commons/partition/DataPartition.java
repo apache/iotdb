@@ -41,6 +41,11 @@ public class DataPartition extends Partition {
     super(seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
+  @Override
+  public boolean isEmpty() {
+    return dataPartitionMap == null || dataPartitionMap.isEmpty();
+  }
+
   public DataPartition(
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           dataPartitionMap,

@@ -135,12 +135,20 @@ public class QueryExecution implements IQueryExecution {
   }
 
   public void start() {
+    if (skipExecute()) {
+      stateMachine.transitionToFinished();
+      return;
+    }
     doLogicalPlan();
     doDistributedPlan();
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();
     }
     schedule();
+  }
+
+  private boolean skipExecute() {
+    return context.getQueryType() == QueryType.READ && !analysis.hasDataSource();
   }
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
@@ -223,7 +231,7 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public TsBlock getBatchResult() {
     try {
-      if (resultHandle.isAborted() || resultHandle.isFinished()) {
+      if (resultHandle == null || resultHandle.isAborted() || resultHandle.isFinished()) {
         return null;
       }
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
@@ -247,7 +255,7 @@ public class QueryExecution implements IQueryExecution {
   /** @return true if there is more tsblocks, otherwise false */
   @Override
   public boolean hasNextResult() {
-    return !resultHandle.isFinished();
+    return resultHandle != null && !resultHandle.isFinished();
   }
 
   /** return the result column count without the time column */
