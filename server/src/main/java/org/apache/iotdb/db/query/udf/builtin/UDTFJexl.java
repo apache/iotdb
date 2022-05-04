@@ -41,133 +41,9 @@ import java.io.IOException;
 
 public class UDTFJexl implements UDTF {
 
-  private TSDataType inputDataType;
   private TSDataType outputDataType;
-  private String expr;
   private JexlScript script;
-  private ValuePutter valuePutter;
-
-  private interface ValuePutter {
-    void putValueDouble(Row row, PointCollector collector) throws IOException;
-
-    void putValueText(Row row, PointCollector collector) throws IOException, QueryProcessException;
-
-    void putValueBoolean(Row row, PointCollector collector) throws IOException;
-  }
-
-  private class valuePutterFromInt implements ValuePutter {
-    @Override
-    public void putValueDouble(Row row, PointCollector collector) throws IOException {
-      collector.putDouble(
-          row.getTime(), ((Number) script.execute(null, row.getInt(0))).doubleValue());
-    }
-
-    @Override
-    public void putValueText(Row row, PointCollector collector)
-        throws IOException, QueryProcessException {
-      collector.putString(row.getTime(), (String) script.execute(null, row.getInt(0)));
-    }
-
-    @Override
-    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
-      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getInt(0)));
-    }
-  }
-
-  private class valuePutterFromLong implements ValuePutter {
-    @Override
-    public void putValueDouble(Row row, PointCollector collector) throws IOException {
-      collector.putDouble(
-          row.getTime(), ((Number) script.execute(null, row.getLong(0))).doubleValue());
-    }
-
-    @Override
-    public void putValueText(Row row, PointCollector collector)
-        throws IOException, QueryProcessException {
-      collector.putString(row.getTime(), (String) script.execute(null, row.getLong(0)));
-    }
-
-    @Override
-    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
-      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getLong(0)));
-    }
-  }
-
-  private class valuePutterFromFloat implements ValuePutter {
-    @Override
-    public void putValueDouble(Row row, PointCollector collector) throws IOException {
-      collector.putDouble(
-          row.getTime(), ((Number) script.execute(null, row.getFloat(0))).doubleValue());
-    }
-
-    @Override
-    public void putValueText(Row row, PointCollector collector)
-        throws IOException, QueryProcessException {
-      collector.putString(row.getTime(), (String) script.execute(null, row.getFloat(0)));
-    }
-
-    @Override
-    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
-      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getFloat(0)));
-    }
-  }
-
-  private class valuePutterFromDouble implements ValuePutter {
-    @Override
-    public void putValueDouble(Row row, PointCollector collector) throws IOException {
-      collector.putDouble(
-          row.getTime(), ((Number) script.execute(null, row.getDouble(0))).doubleValue());
-    }
-
-    @Override
-    public void putValueText(Row row, PointCollector collector)
-        throws IOException, QueryProcessException {
-      collector.putString(row.getTime(), (String) script.execute(null, row.getDouble(0)));
-    }
-
-    @Override
-    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
-      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getDouble(0)));
-    }
-  }
-
-  private class valuePutterFromString implements ValuePutter {
-    @Override
-    public void putValueDouble(Row row, PointCollector collector) throws IOException {
-      collector.putDouble(
-          row.getTime(), ((Number) script.execute(null, row.getString(0))).doubleValue());
-    }
-
-    @Override
-    public void putValueText(Row row, PointCollector collector)
-        throws IOException, QueryProcessException {
-      collector.putString(row.getTime(), (String) script.execute(null, row.getString(0)));
-    }
-
-    @Override
-    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
-      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getString(0)));
-    }
-  }
-
-  private class valuePutterFromBoolean implements ValuePutter {
-    @Override
-    public void putValueDouble(Row row, PointCollector collector) throws IOException {
-      collector.putDouble(
-          row.getTime(), ((Number) script.execute(null, row.getBoolean(0))).doubleValue());
-    }
-
-    @Override
-    public void putValueText(Row row, PointCollector collector)
-        throws IOException, QueryProcessException {
-      collector.putString(row.getTime(), (String) script.execute(null, row.getBoolean(0)));
-    }
-
-    @Override
-    public void putValueBoolean(Row row, PointCollector collector) throws IOException {
-      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getBoolean(0)));
-    }
-  }
+  private Evaluator evaluator;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -188,31 +64,31 @@ public class UDTFJexl implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws UDFInputSeriesDataTypeNotValidException, UDFOutputSeriesDataTypeNotValidException,
           MetadataException {
-    expr = parameters.getString("expr");
+    String expr = parameters.getString("expr");
     JexlEngine jexl = new JexlBuilder().create();
     script = jexl.createScript(expr);
 
-    inputDataType = parameters.getDataType(0);
-    outputDataType = getOutputDataType(inputDataType);
+    TSDataType inputDataType = parameters.getDataType(0);
+    outputDataType = probeOutputDataType(inputDataType);
 
     switch (inputDataType) {
       case INT32:
-        valuePutter = new valuePutterFromInt();
+        evaluator = new EvaluatorIntInput();
         break;
       case INT64:
-        valuePutter = new valuePutterFromLong();
+        evaluator = new EvaluatorLongInput();
         break;
       case FLOAT:
-        valuePutter = new valuePutterFromFloat();
+        evaluator = new EvaluatorFloatInput();
         break;
       case DOUBLE:
-        valuePutter = new valuePutterFromDouble();
+        evaluator = new EvaluatorDoubleInput();
         break;
       case TEXT:
-        valuePutter = new valuePutterFromString();
+        evaluator = new EvaluatorStringInput();
         break;
       case BOOLEAN:
-        valuePutter = new valuePutterFromBoolean();
+        evaluator = new EvaluatorBooleanInput();
         break;
       default:
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -231,40 +107,22 @@ public class UDTFJexl implements UDTF {
         .setOutputDataType(outputDataType);
   }
 
-  @Override
-  public void transform(Row row, PointCollector collector)
-      throws IOException, UDFOutputSeriesDataTypeNotValidException, QueryProcessException {
-    switch (outputDataType) {
-      case DOUBLE:
-        valuePutter.putValueDouble(row, collector);
-        break;
-      case TEXT:
-        valuePutter.putValueText(row, collector);
-        break;
-      case BOOLEAN:
-        valuePutter.putValueBoolean(row, collector);
-        break;
-      default:
-        // This will not happen.
-        throw new UDFOutputSeriesDataTypeNotValidException(0, "[NUMBER, TEXT, BOOLEAN]");
-    }
-  }
-
-  public TSDataType getOutputDataType(TSDataType inputDataType)
+  private TSDataType probeOutputDataType(TSDataType inputDataType)
       throws UDFInputSeriesDataTypeNotValidException, UDFOutputSeriesDataTypeNotValidException {
     Object o;
+    // 23, 23L, 23f, 23d, "string", true are hard codes for probing
     switch (inputDataType) {
       case INT32:
-        o = script.execute(null, (int) 23);
+        o = script.execute(null, 23);
         break;
       case INT64:
-        o = script.execute(null, (long) 23);
+        o = script.execute(null, 23L);
         break;
       case FLOAT:
         o = script.execute(null, 23f);
         break;
       case DOUBLE:
-        o = script.execute(null, (double) 23);
+        o = script.execute(null, 23d);
         break;
       case TEXT:
         o = script.execute(null, "string");
@@ -292,7 +150,148 @@ public class UDTFJexl implements UDTF {
     } else if (o instanceof Boolean) {
       return TSDataType.BOOLEAN;
     } else {
-      throw new UDFOutputSeriesDataTypeNotValidException(0, "[NUMBER, TEXT, BOOLEAN]");
+      throw new UDFOutputSeriesDataTypeNotValidException(0, "[Number, String, Boolean]");
+    }
+  }
+
+  @Override
+  public void transform(Row row, PointCollector collector)
+      throws IOException, UDFOutputSeriesDataTypeNotValidException, QueryProcessException {
+    switch (outputDataType) {
+      case DOUBLE:
+        evaluator.evaluateDouble(row, collector);
+        break;
+      case TEXT:
+        evaluator.evaluateText(row, collector);
+        break;
+      case BOOLEAN:
+        evaluator.evaluateBoolean(row, collector);
+        break;
+      default:
+        // This will not happen.
+        throw new UDFOutputSeriesDataTypeNotValidException(0, "[Number, String, Boolean]");
+    }
+  }
+
+  private interface Evaluator {
+    void evaluateDouble(Row row, PointCollector collector) throws IOException;
+
+    void evaluateText(Row row, PointCollector collector) throws IOException, QueryProcessException;
+
+    void evaluateBoolean(Row row, PointCollector collector) throws IOException;
+  }
+
+  private class EvaluatorIntInput implements Evaluator {
+    @Override
+    public void evaluateDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getInt(0))).doubleValue());
+    }
+
+    @Override
+    public void evaluateText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getInt(0)));
+    }
+
+    @Override
+    public void evaluateBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getInt(0)));
+    }
+  }
+
+  private class EvaluatorLongInput implements Evaluator {
+    @Override
+    public void evaluateDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getLong(0))).doubleValue());
+    }
+
+    @Override
+    public void evaluateText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getLong(0)));
+    }
+
+    @Override
+    public void evaluateBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getLong(0)));
+    }
+  }
+
+  private class EvaluatorFloatInput implements Evaluator {
+    @Override
+    public void evaluateDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getFloat(0))).doubleValue());
+    }
+
+    @Override
+    public void evaluateText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getFloat(0)));
+    }
+
+    @Override
+    public void evaluateBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getFloat(0)));
+    }
+  }
+
+  private class EvaluatorDoubleInput implements Evaluator {
+    @Override
+    public void evaluateDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getDouble(0))).doubleValue());
+    }
+
+    @Override
+    public void evaluateText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getDouble(0)));
+    }
+
+    @Override
+    public void evaluateBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getDouble(0)));
+    }
+  }
+
+  private class EvaluatorStringInput implements Evaluator {
+    @Override
+    public void evaluateDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getString(0))).doubleValue());
+    }
+
+    @Override
+    public void evaluateText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getString(0)));
+    }
+
+    @Override
+    public void evaluateBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getString(0)));
+    }
+  }
+
+  private class EvaluatorBooleanInput implements Evaluator {
+    @Override
+    public void evaluateDouble(Row row, PointCollector collector) throws IOException {
+      collector.putDouble(
+          row.getTime(), ((Number) script.execute(null, row.getBoolean(0))).doubleValue());
+    }
+
+    @Override
+    public void evaluateText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException {
+      collector.putString(row.getTime(), (String) script.execute(null, row.getBoolean(0)));
+    }
+
+    @Override
+    public void evaluateBoolean(Row row, PointCollector collector) throws IOException {
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getBoolean(0)));
     }
   }
 }
