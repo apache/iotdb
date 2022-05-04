@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.io.IOException;
 
 public abstract class CompareBinaryTransformer extends BinaryTransformer {
 
@@ -30,9 +33,14 @@ public abstract class CompareBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
-  protected TransformerType getTransformerType() {
-    return TransformerType.Comparative;
+  protected void transformAndCache() throws QueryProcessException, IOException {
+    cachedBoolean =
+        evaluate(
+            castCurrentValueToDoubleOperand(leftPointReader),
+            castCurrentValueToDoubleOperand(rightPointReader));
   }
+
+  abstract boolean evaluate(double leftOperand, double rightOperand);
 
   @Override
   public TSDataType getDataType() {

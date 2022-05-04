@@ -50,7 +50,7 @@ import static org.junit.Assert.fail;
 public class IoTDBFloatPrecisionIT {
 
   private static final String CREATE_TEMPLATE_SQL =
-      "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, MAX_POINT_NUMBER=%d";
+      "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, 'MAX_POINT_NUMBER'='%d'";
   private static final String INSERT_TEMPLATE_SQL =
       "insert into root.vehicle.%s(timestamp,%s) values(%d,%s)";
   private static List<String> sqls = new ArrayList<>();

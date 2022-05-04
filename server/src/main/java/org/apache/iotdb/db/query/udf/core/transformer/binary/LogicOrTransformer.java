@@ -28,7 +28,7 @@ public class LogicOrTransformer extends LogicBinaryTransformer {
   }
 
   @Override
-  protected boolean evaluateBoolean(boolean leftOperand, boolean rightOperand) {
+  protected boolean evaluate(boolean leftOperand, boolean rightOperand) {
     return leftOperand || rightOperand;
   }
 }

@@ -66,7 +66,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
       throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(
         path,
-        dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
+        dataQueryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
         path.getSeriesType(),
         context,
         dataQueryPlan.isAscending(),

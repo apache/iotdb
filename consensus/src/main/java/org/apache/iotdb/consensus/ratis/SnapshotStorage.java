@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
+import org.apache.iotdb.consensus.IStateMachine;
 
 import org.apache.ratis.io.MD5Hash;
 import org.apache.ratis.server.protocol.TermIndex;
@@ -50,7 +50,7 @@ import java.util.Objects;
  * hopefully will be introduced in Ratis 2.3.0.
  */
 public class SnapshotStorage implements StateMachineStorage {
-  private IStateMachine applicationStateMachine;
+  private final IStateMachine applicationStateMachine;
 
   private File stateMachineDir;
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
