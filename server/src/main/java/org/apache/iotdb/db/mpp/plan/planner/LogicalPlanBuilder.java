@@ -201,12 +201,15 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planSchemaFetchSource(
       List<String> storageGroupList, PathPatternTree patternTree) {
+    PartialPath storageGroupPath;
     for (String storageGroup : storageGroupList) {
       try {
+        storageGroupPath = new PartialPath(storageGroup);
         this.root.addChild(
             new SchemaFetchNode(
                 context.getQueryId().genPlanNodeId(),
-                patternTree.extractInvolvedPartByPrefix(new PartialPath(storageGroup))));
+                storageGroupPath,
+                patternTree.extractInvolvedPartByPrefix(storageGroupPath)));
       } catch (IllegalPathException e) {
         throw new RuntimeException(e);
       }

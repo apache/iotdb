@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
 
@@ -44,5 +45,10 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
   public static PlanNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SchemaFetchMergeNode(planNodeId);
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitSchemaFetchMerge(this, context);
   }
 }

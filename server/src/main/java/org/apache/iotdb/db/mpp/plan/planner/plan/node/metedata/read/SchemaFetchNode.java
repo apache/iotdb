@@ -19,24 +19,36 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 
-public class SchemaFetchNode extends SchemaScanNode {
+public class SchemaFetchNode extends SourceNode {
 
+  private final PartialPath storageGroup;
   private final PathPatternTree patternTree;
 
-  public SchemaFetchNode(PlanNodeId id, PathPatternTree patternTree) {
+  private TRegionReplicaSet schemaRegionReplicaSet;
+
+  public SchemaFetchNode(PlanNodeId id, PartialPath storageGroup, PathPatternTree patternTree) {
     super(id);
+    this.storageGroup = storageGroup;
     this.patternTree = patternTree;
+  }
+
+  public PartialPath getStorageGroup() {
+    return storageGroup;
   }
 
   public PathPatternTree getPatternTree() {
@@ -44,8 +56,21 @@ public class SchemaFetchNode extends SchemaScanNode {
   }
 
   @Override
+  public List<PlanNode> getChildren() {
+    return Collections.emptyList();
+  }
+
+  @Override
+  public void addChild(PlanNode child) {}
+
+  @Override
   public PlanNode clone() {
-    return new SchemaFetchNode(getPlanNodeId(), patternTree);
+    return new SchemaFetchNode(getPlanNodeId(), storageGroup, patternTree);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return 0;
   }
 
   @Override
@@ -56,17 +81,29 @@ public class SchemaFetchNode extends SchemaScanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SCHEMA_FETCH.serialize(byteBuffer);
+    storageGroup.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
   }
 
   public static SchemaFetchNode deserialize(ByteBuffer byteBuffer) {
-    PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
-    PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchNode(id, patternTree);
+    return new SchemaFetchNode(
+        PlanNodeId.deserialize(byteBuffer),
+        PartialPath.deserialize(byteBuffer),
+        PathPatternTree.deserialize(byteBuffer));
   }
 
   @Override
   public void open() throws Exception {}
+
+  @Override
+  public TRegionReplicaSet getRegionReplicaSet() {
+    return schemaRegionReplicaSet;
+  }
+
+  @Override
+  public void setRegionReplicaSet(TRegionReplicaSet schemaRegionReplicaSet) {
+    this.schemaRegionReplicaSet = schemaRegionReplicaSet;
+  }
 
   @Override
   public void close() throws Exception {}

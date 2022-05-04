@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
@@ -167,6 +168,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitCreateTimeSeries(CreateTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitSchemaFetchMerge(SchemaFetchMergeNode node, C context) {
     return visitPlan(node, context);
   }
 
