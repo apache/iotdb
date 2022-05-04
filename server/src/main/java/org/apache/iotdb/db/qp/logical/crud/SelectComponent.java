@@ -114,9 +114,7 @@ public class SelectComponent {
           pathsCache.add(((TimeSeriesOperand) expression).getPath());
         } else if (expression instanceof FunctionExpression
             && expression.isBuiltInAggregationFunctionExpression()) {
-          pathsCache.add(
-              ((TimeSeriesOperand) ((FunctionExpression) expression).getExpressions().get(0))
-                  .getPath());
+          pathsCache.add(((TimeSeriesOperand) expression.getExpressions().get(0)).getPath());
         } else {
           pathsCache.add(null);
         }
