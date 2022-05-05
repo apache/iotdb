@@ -215,7 +215,8 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public TVList getTvListByColumnIndex(List<Integer> columnIndexList) {
+  public TVList getTvListByColumnIndex(
+      List<Integer> columnIndexList, List<TSDataType> dataTypeList) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -511,11 +512,12 @@ public abstract class TVList implements WALEntryValue {
       int index, long time, Integer floatPrecision, TSEncoding encoding);
 
   @TestOnly
-  public TsBlock getTsBlock() {
-    return getTsBlock(0, TSEncoding.PLAIN, null);
+  public TsBlock buildTsBlock() {
+    return buildTsBlock(0, TSEncoding.PLAIN, null);
   }
 
-  public TsBlock getTsBlock(int floatPrecision, TSEncoding encoding, List<TimeRange> deletionList) {
+  public TsBlock buildTsBlock(
+      int floatPrecision, TSEncoding encoding, List<TimeRange> deletionList) {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();

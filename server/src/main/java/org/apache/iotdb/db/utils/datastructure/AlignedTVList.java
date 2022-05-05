@@ -178,7 +178,7 @@ public class AlignedTVList extends TVList {
       }
       int arrayIndex = validValueIndex / ARRAY_SIZE;
       int elementIndex = validValueIndex % ARRAY_SIZE;
-      if (columnValues == null || isValueMarked(validValueIndex, columnIndex)) {
+      if (columnValues == null || isNullValue(validValueIndex, columnIndex)) {
         continue;
       }
       switch (dataTypes.get(columnIndex)) {
@@ -228,17 +228,14 @@ public class AlignedTVList extends TVList {
   }
 
   @Override
-  public TVList getTvListByColumnIndex(List<Integer> columnIndex) {
-    List<TSDataType> types = new ArrayList<>();
+  public TVList getTvListByColumnIndex(List<Integer> columnIndex, List<TSDataType> dataTypeList) {
     List<List<Object>> values = new ArrayList<>();
     List<List<BitMap>> bitMaps = null;
     for (int i = 0; i < columnIndex.size(); i++) {
       // columnIndex == -1 means querying a non-exist column, add null column here
       if (columnIndex.get(i) == -1) {
-        types.add(null);
         values.add(null);
       } else {
-        types.add(this.dataTypes.get(columnIndex.get(i)));
         values.add(this.values.get(columnIndex.get(i)));
         if (this.bitMaps != null && this.bitMaps.get(columnIndex.get(i)) != null) {
           if (bitMaps == null) {
@@ -251,7 +248,7 @@ public class AlignedTVList extends TVList {
         }
       }
     }
-    AlignedTVList alignedTvList = new AlignedTVList(types);
+    AlignedTVList alignedTvList = new AlignedTVList(dataTypeList);
     alignedTvList.timestamps = this.timestamps;
     alignedTvList.indices = this.indices;
     alignedTvList.values = values;
@@ -401,15 +398,18 @@ public class AlignedTVList extends TVList {
   }
 
   /**
-   * Get whether value is marked at the given position in VectorTvList.
+   * Get whether value is null at the given position in AlignedTvList.
    *
    * @param rowIndex value index inside this column
    * @param columnIndex index of the column
    * @return boolean
    */
-  public boolean isValueMarked(int rowIndex, int columnIndex) {
+  public boolean isNullValue(int rowIndex, int columnIndex) {
     if (rowIndex >= rowCount) {
       return false;
+    }
+    if (values.get(columnIndex) == null) {
+      return true;
     }
     if (bitMaps == null
         || bitMaps.get(columnIndex) == null
@@ -686,7 +686,7 @@ public class AlignedTVList extends TVList {
       List<Integer> timeDuplicatedOriginRowIndexList, int columnIndex) {
     int validRowIndex = timeDuplicatedOriginRowIndexList.get(0);
     for (int originRowIndex : timeDuplicatedOriginRowIndexList) {
-      if (!isValueMarked(originRowIndex, columnIndex)) {
+      if (!isNullValue(originRowIndex, columnIndex)) {
         validRowIndex = originRowIndex;
       }
     }
@@ -911,11 +911,6 @@ public class AlignedTVList extends TVList {
 
     // value columns
     for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
-      // skip non-exist column
-      // when there is a non-exist column, the Column in TsBlock is null
-      if (Objects.isNull(dataTypes.get(columnIndex))) {
-        continue;
-      }
       int deleteCursor = 0;
       Pair<Long, Integer> lastValidPointIndexForTimeDepCheck = null;
       if (Objects.nonNull(timeDuplicateInfo)) {
@@ -925,7 +920,7 @@ public class AlignedTVList extends TVList {
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
         // skip time duplicated rows
         if (Objects.nonNull(timeDuplicateInfo) && timeDuplicateInfo[sortedRowIndex]) {
-          if (!isValueMarked(getValueIndex(sortedRowIndex), columnIndex)) {
+          if (!isNullValue(getValueIndex(sortedRowIndex), columnIndex)) {
             lastValidPointIndexForTimeDepCheck.left = getTime(sortedRowIndex);
             lastValidPointIndexForTimeDepCheck.right = getValueIndex(sortedRowIndex);
           }
@@ -945,7 +940,7 @@ public class AlignedTVList extends TVList {
         } else {
           originRowIndex = getValueIndex(sortedRowIndex);
         }
-        if (isValueMarked(originRowIndex, columnIndex)
+        if (isNullValue(originRowIndex, columnIndex)
             || isPointDeleted(
                 getTime(sortedRowIndex),
                 Objects.isNull(deletionList) ? null : deletionList.get(columnIndex),
@@ -1219,7 +1214,7 @@ public class AlignedTVList extends TVList {
             throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
         }
         // bitmap
-        WALWriteUtils.write(isValueMarked(rowIndex, columnIndex), buffer);
+        WALWriteUtils.write(isNullValue(rowIndex, columnIndex), buffer);
       }
     }
   }

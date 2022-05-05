@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
@@ -44,15 +45,13 @@ public class MemAlignedChunkReader implements IChunkReader {
   }
 
   @Override
-  public boolean hasNextSatisfiedPage() {
-    // mem chunk reader should not reach here
-    return false;
+  public boolean hasNextSatisfiedPage() throws IOException {
+    throw new IOException("mem chunk reader does not support this method");
   }
 
   @Override
-  public BatchData nextPageData() {
-    // mem chunk reader should not reach here
-    return null;
+  public BatchData nextPageData() throws IOException {
+    throw new IOException("mem chunk reader does not support this method");
   }
 
   @Override

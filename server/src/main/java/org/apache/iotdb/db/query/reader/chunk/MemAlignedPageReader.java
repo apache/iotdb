@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
@@ -59,7 +61,7 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       // save the first not null value of each row
       Object firstNotNullObject = null;
       for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
-        if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(row)) {
+        if (!tsBlock.getColumn(column).isNull(row)) {
           firstNotNullObject = tsBlock.getColumn(column).getObject(row);
           break;
         }
@@ -91,38 +93,38 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
                 .map(IChunkMetadata::getDataType)
                 .collect(Collectors.toList()));
 
-    boolean[] valueSatisfyInfo = new boolean[tsBlock.getPositionCount()];
-    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+    boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
 
-      // if all the sub sensors' value are null in current time
-      // or current row is not satisfied with the filter, just discard it
-      // currently, if it's a value filter, it will only
-      // accept AlignedPath with only one sub sensor
-      for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-        if (column == 0) {
-          Object value = tsBlock.getColumn(column).getObject(row);
-          if (value != null && (valueFilter == null || valueFilter.satisfy(0, value))) {
-            builder.getColumnBuilder(column).writeObject(tsBlock.getColumn(column).getObject(row));
-            valueSatisfyInfo[row] = true;
-            builder.declarePosition();
-          }
-        } else {
-          if (valueSatisfyInfo[row]) {
-            if (tsBlock.getColumn(column) != null && !tsBlock.getColumn(column).isNull(row)) {
-              builder
-                  .getColumnBuilder(column)
-                  .writeObject(tsBlock.getColumn(column).getObject(row));
-            } else {
-              builder.getColumnBuilder(column).appendNull();
-            }
-          }
-        }
+    // Time column and first value column
+    // if all the sub sensors' value are null in current time
+    // or current row is not satisfied with the filter, just discard it
+    // currently, if it's a value filter, it will only
+    // accept AlignedPath with only one sub sensor
+    TimeColumn timeColumn = tsBlock.getTimeColumn();
+    Column valueColumn = tsBlock.getColumn(0);
+    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+      long time = tsBlock.getTimeByIndex(row);
+      Object value = tsBlock.getColumn(0).getObject(row);
+      if (!tsBlock.getColumn(0).isNull(row)
+          && (valueFilter == null || valueFilter.satisfy(time, value))) {
+        builder.getTimeColumnBuilder().write(timeColumn, row);
+        builder.getColumnBuilder(0).write(valueColumn, row);
+        satisfyInfo[row] = true;
+        builder.declarePosition();
       }
     }
-    // Time column
-    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-      if (valueSatisfyInfo[row]) {
-        builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(row));
+
+    // other value column
+    for (int column = 1; column < tsBlock.getValueColumnCount(); column++) {
+      valueColumn = tsBlock.getColumn(column);
+      for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+        if (satisfyInfo[row]) {
+          if (!tsBlock.getColumn(column).isNull(row)) {
+            builder.getColumnBuilder(column).write(valueColumn, row);
+          } else {
+            builder.getColumnBuilder(column).appendNull();
+          }
+        }
       }
     }
     return builder.build();

@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -55,8 +56,32 @@ public class MemPageReader implements IPageReader {
       if (valueFilter == null
           || valueFilter.satisfy(
               tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getObject(i))) {
-        batchData.putAnObject(
-            tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getObject(i));
+        switch (dataType) {
+          case BOOLEAN:
+            batchData.putBoolean(
+                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBoolean(i));
+            break;
+          case INT32:
+            batchData.putInt(tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getInt(i));
+            break;
+          case INT64:
+            batchData.putLong(tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getLong(i));
+            break;
+          case DOUBLE:
+            batchData.putDouble(
+                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getDouble(i));
+            break;
+          case FLOAT:
+            batchData.putFloat(
+                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getFloat(i));
+            break;
+          case TEXT:
+            batchData.putBinary(
+                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBinary(i));
+            break;
+          default:
+            throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        }
       }
     }
     return batchData.flip();
@@ -67,55 +92,70 @@ public class MemPageReader implements IPageReader {
     TSDataType dataType = chunkMetadata.getDataType();
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
-    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-      timeBuilder.writeLong(tsBlock.getTimeColumn().getLong(i));
-    }
     ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
     switch (dataType) {
       case BOOLEAN:
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          if (valueFilter == null || valueFilter.satisfy(0, tsBlock.getColumn(0).getBoolean(i))) {
-            valueBuilder.writeBoolean(tsBlock.getColumn(0).getBoolean(i));
+          long time = tsBlock.getTimeColumn().getLong(i);
+          boolean value = tsBlock.getColumn(0).getBoolean(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeBoolean(value);
             builder.declarePosition();
           }
         }
         break;
       case INT32:
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          if (valueFilter == null || valueFilter.satisfy(0, tsBlock.getColumn(0).getInt(i))) {
-            valueBuilder.writeInt(tsBlock.getColumn(0).getInt(i));
+          long time = tsBlock.getTimeColumn().getLong(i);
+          int value = tsBlock.getColumn(0).getInt(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeInt(value);
             builder.declarePosition();
           }
         }
         break;
       case INT64:
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          if (valueFilter == null || valueFilter.satisfy(0, tsBlock.getColumn(0).getLong(i))) {
-            valueBuilder.writeLong(tsBlock.getColumn(0).getLong(i));
+          long time = tsBlock.getTimeColumn().getLong(i);
+          long value = tsBlock.getColumn(0).getLong(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeLong(value);
             builder.declarePosition();
           }
         }
         break;
       case FLOAT:
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          if (valueFilter == null || valueFilter.satisfy(0, tsBlock.getColumn(0).getFloat(i))) {
-            valueBuilder.writeFloat(tsBlock.getColumn(0).getFloat(i));
+          long time = tsBlock.getTimeColumn().getLong(i);
+          float value = tsBlock.getColumn(0).getFloat(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeFloat(value);
             builder.declarePosition();
           }
         }
         break;
       case DOUBLE:
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          if (valueFilter == null || valueFilter.satisfy(0, tsBlock.getColumn(0).getDouble(i))) {
-            valueBuilder.writeDouble(tsBlock.getColumn(0).getDouble(i));
+          long time = tsBlock.getTimeColumn().getLong(i);
+          double value = tsBlock.getColumn(0).getDouble(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeDouble(value);
             builder.declarePosition();
           }
         }
         break;
       case TEXT:
         for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          if (valueFilter == null || valueFilter.satisfy(0, tsBlock.getColumn(0).getBinary(i))) {
-            valueBuilder.writeBinary(tsBlock.getColumn(0).getBinary(i));
+          long time = tsBlock.getTimeColumn().getLong(i);
+          Binary value = tsBlock.getColumn(0).getBinary(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeBinary(value);
             builder.declarePosition();
           }
         }

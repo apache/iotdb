@@ -47,6 +47,8 @@ public class ReadOnlyMemChunk {
 
   private String measurementUid;
 
+  private TSDataType dataType;
+
   private static final Logger logger = LoggerFactory.getLogger(ReadOnlyMemChunk.class);
 
   protected IChunkMetadata cachedMetaData;
@@ -64,6 +66,7 @@ public class ReadOnlyMemChunk {
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     this.measurementUid = measurementUid;
+    this.dataType = dataType;
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       try {
@@ -81,39 +84,47 @@ public class ReadOnlyMemChunk {
         floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       }
     }
-    this.tsBlock = tvList.getTsBlock(floatPrecision, encoding, deletionList);
+    this.tsBlock = tvList.buildTsBlock(floatPrecision, encoding, deletionList);
     initChunkMetaFromTsBlock();
   }
 
   private void initChunkMetaFromTsBlock() throws IOException, QueryProcessException {
-    Statistics statsByType = Statistics.getStatsByType(tsBlock.getColumn(0).getDataType());
-    IChunkMetadata metaData =
-        new ChunkMetadata(measurementUid, tsBlock.getColumn(0).getDataType(), 0, statsByType);
+    Statistics statsByType = Statistics.getStatsByType(dataType);
+    IChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        switch (tsBlock.getColumn(0).getDataType()) {
-          case BOOLEAN:
+      switch (dataType) {
+        case BOOLEAN:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBoolean(i));
-            break;
-          case TEXT:
+          }
+          break;
+        case TEXT:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
-            break;
-          case FLOAT:
+          }
+          break;
+        case FLOAT:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getFloat(i));
-            break;
-          case INT32:
+          }
+          break;
+        case INT32:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getInt(i));
-            break;
-          case INT64:
+          }
+          break;
+        case INT64:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getLong(i));
-            break;
-          case DOUBLE:
+          }
+          break;
+        case DOUBLE:
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statsByType.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getDouble(i));
-            break;
-          default:
-            throw new QueryProcessException(
-                "Unsupported data type:" + tsBlock.getColumn(0).getDataType());
-        }
+          }
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + dataType);
       }
     }
     statsByType.setEmpty(isEmpty());
@@ -123,7 +134,7 @@ public class ReadOnlyMemChunk {
   }
 
   public TSDataType getDataType() {
-    return tsBlock.getColumn(0).getDataType();
+    return dataType;
   }
 
   public boolean isEmpty() throws IOException {

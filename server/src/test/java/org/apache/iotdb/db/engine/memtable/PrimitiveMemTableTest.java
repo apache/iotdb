@@ -79,7 +79,7 @@ public class PrimitiveMemTableTest {
       series.write(i, i);
     }
     IPointReader it =
-        series.getSortedTvListForQuery().getTsBlock().getTsBlockSingleColumnIterator();
+        series.getSortedTvListForQuery().buildTsBlock().getTsBlockSingleColumnIterator();
     int i = 0;
     while (it.hasNextTimeValuePair()) {
       Assert.assertEquals(i, it.nextTimeValuePair().getTimestamp());
