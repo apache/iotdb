@@ -98,6 +98,7 @@ public class ClusterScheduler implements IScheduler {
     try {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
+        logger.error("{} dispatch failed.", getLogHeader());
         stateMachine.transitionToFailed(new IllegalStateException("Fragment cannot be dispatched"));
         return;
       }
@@ -119,6 +120,7 @@ public class ClusterScheduler implements IScheduler {
     // The FragmentInstances has been dispatched successfully to corresponding host, we mark the
     // QueryState to Running
     stateMachine.transitionToRunning();
+    logger.info("{} transit to RUNNING", getLogHeader());
     instances.forEach(
         instance -> {
           stateMachine.initialFragInstanceState(instance.getId(), FragmentInstanceState.RUNNING);
@@ -126,6 +128,7 @@ public class ClusterScheduler implements IScheduler {
 
     // TODO: (xingtanzjr) start the stateFetcher/heartbeat for each fragment instance
     this.stateTracker.start();
+    logger.info("{} state tracker starts", getLogHeader());
   }
 
   @Override
