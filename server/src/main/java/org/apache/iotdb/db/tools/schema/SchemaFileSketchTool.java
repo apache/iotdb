@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.tools.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 

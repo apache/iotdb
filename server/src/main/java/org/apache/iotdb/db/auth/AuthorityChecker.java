@@ -19,13 +19,25 @@
 package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.AuthorizerManager;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -34,10 +46,15 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
+
 public class AuthorityChecker {
 
-  private static final String SUPER_USER = IoTDBDescriptor.getInstance().getConfig().getAdminName();
+  private static final String SUPER_USER = CommonConfig.getInstance().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
+
+  private static AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  private static SessionManager sessionManager = SessionManager.getInstance();
 
   private AuthorityChecker() {}
 
@@ -115,7 +132,7 @@ public class AuthorityChecker {
       allPath.add(IoTDBConstant.PATH_ROOT);
     }
 
-    TSStatus status = AuthorizerManager.getInstance().checkPath(username, allPath, permission);
+    TSStatus status = checkPath(username, allPath, permission);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return true;
     } else {
@@ -125,7 +142,6 @@ public class AuthorityChecker {
 
   private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
-    AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
     try {
       String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
       if (authorizerManager.checkUserPrivileges(username, fullPath, permission)) {
@@ -136,6 +152,81 @@ public class AuthorityChecker {
       throw new AuthException(e);
     }
     return false;
+  }
+
+  /** Check the user */
+  public static TSStatus checkUser(String username, String password) {
+    TLoginReq req = new TLoginReq(username, password);
+    TSStatus status = null;
+    ConfigNodeClient configNodeClient = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      status = configNodeClient.login(req);
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      throw new ConfigNodeConnectionException("Couldn't connect config node");
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+      if (status == null) {
+        status = new TSStatus();
+      }
+    }
+    return status;
+  }
+
+  /** Check whether specific Session has the authorization to given plan. */
+  public static TSStatus checkAuthority(Statement statement, long sessionId) {
+    try {
+      if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION_ERROR,
+            "No permissions for this operation " + statement.getType());
+      }
+    } catch (AuthException e) {
+      logger.warn("meet error while checking authorization.", e);
+      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  /** Check whether specific user has the authorization to given plan. */
+  public static boolean checkAuthorization(Statement statement, String username)
+      throws AuthException {
+    if (!statement.isAuthenticationRequired()) {
+      return true;
+    }
+    String targetUser = null;
+    if (statement instanceof AuthorStatement) {
+      targetUser = ((AuthorStatement) statement).getUserName();
+    }
+    return AuthorityChecker.checkPermission(
+        username, statement.getPaths(), statement.getType(), targetUser);
+  }
+
+  public static TSStatus checkPath(String username, List<String> allPath, int permission) {
+    TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
+    ConfigNodeClient configNodeClient = null;
+    TSStatus status = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      status = configNodeClient.checkUserPrivileges(req);
+    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      throw new ConfigNodeConnectionException("Couldn't connect config node");
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+      if (status == null) {
+        status = new TSStatus();
+      }
+    }
+    return status;
   }
 
   private static int translateToPermissionId(Operator.OperatorType type) {
