@@ -746,6 +746,61 @@ Total line number = 10
 It costs 0.041s
 ```
 
+### JEXL Function
+
+Java Expression Language (JEXL) is an expression language engine. We use JEXL to extend UDFs, which are implemented on the command line with simple lambda expressions. See the link for [operators supported in jexl lambda expressions](https://commons.apache.org/proper/commons-jexl/apidocs/org/apache/commons/jexl3/package-summary.html#customization).
+
+| Function Name | Allowed Input Series Data Types | Required Attributes                           | Output Series Data Type | Series Data Type  Description                 |
+|----------|--------------------------------|---------------------------------------|------------|--------------------------------------------------|
+| JEXL   | INT32 / INT64 / FLOAT / DOUBLE / TEXT / BOOLEAN | `expr` is a standard lambda expression with only one argument, conforming to the format `x -> {...}`, for example `x -> {x * 2}` | INT32 / INT64 / FLOAT / DOUBLE / TEXT / BOOLEAN | Returns the input time series transformed by a lambda expression |
+
+#### Demonstrate
+Example data: `root.ln.wf01.wt01.temperature` has a total of `11` ordered data from `0.0-10.0`.
+
+```
+IoTDB> select temperature from root.ln.wf01.wt01;
++-----------------------------+-----------------------------+
+|                         Time|root.ln.wf01.wt01.temperature|
++-----------------------------+-----------------------------+
+|1970-01-01T08:00:00.000+08:00|                          0.0|
+|1970-01-01T08:00:00.001+08:00|                          1.0|
+|1970-01-01T08:00:00.002+08:00|                          2.0|
+|1970-01-01T08:00:00.003+08:00|                          3.0|
+|1970-01-01T08:00:00.004+08:00|                          4.0|
+|1970-01-01T08:00:00.005+08:00|                          5.0|
+|1970-01-01T08:00:00.006+08:00|                          6.0|
+|1970-01-01T08:00:00.007+08:00|                          7.0|
+|1970-01-01T08:00:00.008+08:00|                          8.0|
+|1970-01-01T08:00:00.009+08:00|                          9.0|
+|1970-01-01T08:00:00.010+08:00|                         10.0|
++-----------------------------+-----------------------------+
+```
+Sql:
+```sql
+select jexl(temperature, 'expr'='x -> {x + x}') as jexl1, jexl(temperature, 'expr'='x -> {x * 3}') as jexl2, jexl(temperature, 'expr'='x -> {x * x}') as jexl3, jexl(temperature, 'expr'='x -> {multiply(x, 100)}') as jexl4 from root.ln.wf01.wt01;```
+```
+
+Result:
+```
++-----------------------------+-----+-----+-----+------+
+|                         Time|jexl1|jexl2|jexl3| jexl4|
++-----------------------------+-----+-----+-----+------+
+|1970-01-01T08:00:00.000+08:00|  0.0|  0.0|  0.0|   0.0|
+|1970-01-01T08:00:00.001+08:00|  2.0|  3.0|  1.0| 100.0|
+|1970-01-01T08:00:00.002+08:00|  4.0|  6.0|  4.0| 200.0|
+|1970-01-01T08:00:00.003+08:00|  6.0|  9.0|  9.0| 300.0|
+|1970-01-01T08:00:00.004+08:00|  8.0| 12.0| 16.0| 400.0|
+|1970-01-01T08:00:00.005+08:00| 10.0| 15.0| 25.0| 500.0|
+|1970-01-01T08:00:00.006+08:00| 12.0| 18.0| 36.0| 600.0|
+|1970-01-01T08:00:00.007+08:00| 14.0| 21.0| 49.0| 700.0|
+|1970-01-01T08:00:00.008+08:00| 16.0| 24.0| 64.0| 800.0|
+|1970-01-01T08:00:00.009+08:00| 18.0| 27.0| 81.0| 900.0|
+|1970-01-01T08:00:00.010+08:00| 20.0| 30.0|100.0|1000.0|
++-----------------------------+-----+-----+-----+------+
+Total line number = 11
+It costs 0.055s
+```
+
 ### User Defined Timeseries Generating Functions
 
 Please refer to [UDF (User Defined Function)](../Process-Data/UDF-User-Defined-Function.md).

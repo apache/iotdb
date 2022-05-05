@@ -172,13 +172,15 @@
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
-        <spotless.version>2.4.2</spotless.version>
+        <spotless.version>2.22.3</spotless.version>
         <httpclient.version>4.5.13</httpclient.version>
         <httpcore.version>4.4.15</httpcore.version>
         <!-- for REST service -->
         <swagger.core.version>1.5.18</swagger.core.version>
         <servlet.api.version>2.5</servlet.api.version>
         <openapi.generator.version>5.0.0</openapi.generator.version>
+        <!-- JDK1.8 only support google java format 1.7-->
+        <google.java.format.version>1.7</google.java.format.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -594,6 +596,11 @@
             <version>1.15.2</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-jexl3</artifactId>
+            <version>3.2.1</version>
+        </dependency>
     </dependencies>
     <build>
         <pluginManagement>
@@ -715,7 +722,7 @@
                     <configuration>
                         <java>
                             <googleJavaFormat>
-                                <version>1.7</version>
+                                <version>${google.java.format.version}</version>
                                 <style>GOOGLE</style>
                             </googleJavaFormat>
                             <importOrder>
@@ -1146,6 +1153,9 @@
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
+                <!-- change to 1.15.0 will modify many codes (all are javadocs), we change it to 1.15.0
+                until: 1. spotless + jdk16 is fixed; and 2. iotdb decides to do not support jdk8-->
+                <google.java.format.version>1.7</google.java.format.version>
             </properties>
             <dependencies>
                 <!-- for jdk-11 -->
@@ -1493,7 +1503,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>@{surefire.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m</argLine>
                         </configuration>
                     </plugin>
                     <!-- for IT-->
@@ -1501,7 +1511,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
-                            <argLine>@{failsafe.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{failsafe.jacoco.args} -Xmx1024m</argLine>
                         </configuration>
                         <executions>
                             <execution>
