@@ -810,7 +810,7 @@ public class BatchData {
     }
 
     @Override
-    public boolean hasNext(Predicate<Long> predicate) {
+    public boolean hasNext(Predicate<Long> boundPredicate) {
       return hasNext();
     }
 
@@ -888,9 +888,9 @@ public class BatchData {
     }
 
     @Override
-    public boolean hasNext(Predicate<Long> predicate) {
+    public boolean hasNext(Predicate<Long> boundPredicate) {
       while (BatchData.this.hasCurrent() && currentValue() == null) {
-        if (predicate.test(currentTime())) {
+        if (boundPredicate.test(currentTime())) {
           break;
         }
         super.next();
