@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public class TimeSeriesSchemaScanNode extends SchemaScanNode {
+public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
 
   private final String key;
   private final String value;

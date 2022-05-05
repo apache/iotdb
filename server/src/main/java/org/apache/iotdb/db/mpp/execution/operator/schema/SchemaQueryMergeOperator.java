@@ -28,14 +28,14 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 
-public class SchemaMergeOperator implements ProcessOperator {
+public class SchemaQueryMergeOperator implements ProcessOperator {
   private final PlanNodeId planNodeId;
   private final OperatorContext operatorContext;
   private final boolean[] noMoreTsBlocks;
 
   private final List<Operator> children;
 
-  public SchemaMergeOperator(
+  public SchemaQueryMergeOperator(
       PlanNodeId planNodeId, OperatorContext operatorContext, List<Operator> children) {
     this.planNodeId = planNodeId;
     this.operatorContext = operatorContext;

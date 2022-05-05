@@ -19,60 +19,37 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 
-import com.google.common.collect.ImmutableList;
-
 import java.nio.ByteBuffer;
-import java.util.List;
 
-public class SchemaFetchNode extends SchemaScanNode {
+/** This class defines the scanned result merge task of schema fetcher. */
+public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
 
-  private final PathPatternTree patternTree;
-
-  public SchemaFetchNode(PlanNodeId id, PathPatternTree patternTree) {
+  public SchemaFetchMergeNode(PlanNodeId id) {
     super(id);
-    this.patternTree = patternTree;
-  }
-
-  public PathPatternTree getPatternTree() {
-    return patternTree;
   }
 
   @Override
   public PlanNode clone() {
-    return new SchemaFetchNode(getPlanNodeId(), patternTree);
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return ImmutableList.of();
+    return new SchemaFetchMergeNode(getPlanNodeId());
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SCHEMA_FETCH.serialize(byteBuffer);
-    patternTree.serialize(byteBuffer);
+    PlanNodeType.SCHEMA_FETCH_MERGE.serialize(byteBuffer);
   }
 
-  public static SchemaFetchNode deserialize(ByteBuffer byteBuffer) {
-    PathPatternTree patternTree = PathPatternTree.deserialize(byteBuffer);
-    PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
-    return new SchemaFetchNode(id, patternTree);
+  public static PlanNode deserialize(ByteBuffer byteBuffer) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new SchemaFetchMergeNode(planNodeId);
   }
-
-  @Override
-  public void open() throws Exception {}
-
-  @Override
-  public void close() throws Exception {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaFetch(this, context);
+    return visitor.visitSchemaFetchMerge(this, context);
   }
 }

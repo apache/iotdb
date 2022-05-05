@@ -49,7 +49,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SchemaFetchOperatorTest {
+public class SchemaFetchScanOperatorTest {
 
   @Before
   public void setUp() {
@@ -70,14 +70,14 @@ public class SchemaFetchOperatorTest {
     patternTree.appendPath(new PartialPath("root.**.s1"));
     patternTree.constructTree();
 
-    SchemaFetchOperator schemaFetchOperator =
-        new SchemaFetchOperator(null, null, patternTree, schemaRegion);
+    SchemaFetchScanOperator schemaFetchScanOperator =
+        new SchemaFetchScanOperator(null, null, patternTree, schemaRegion);
 
-    Assert.assertTrue(schemaFetchOperator.hasNext());
+    Assert.assertTrue(schemaFetchScanOperator.hasNext());
 
-    TsBlock tsBlock = schemaFetchOperator.next();
+    TsBlock tsBlock = schemaFetchScanOperator.next();
 
-    Assert.assertFalse(schemaFetchOperator.hasNext());
+    Assert.assertFalse(schemaFetchScanOperator.hasNext());
 
     Binary binary = tsBlock.getColumn(0).getBinary(0);
     SchemaTree schemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));

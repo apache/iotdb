@@ -25,36 +25,36 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
 
-public class SeriesSchemaMergeNode extends AbstractSchemaMergeNode {
+public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
 
   private boolean orderByHeat;
 
-  public SeriesSchemaMergeNode(PlanNodeId id) {
+  public SchemaQueryMergeNode(PlanNodeId id) {
     super(id);
   }
 
-  public SeriesSchemaMergeNode(PlanNodeId id, boolean orderByHeat) {
+  public SchemaQueryMergeNode(PlanNodeId id, boolean orderByHeat) {
     this(id);
     this.orderByHeat = orderByHeat;
   }
 
   @Override
   public PlanNode clone() {
-    return new SeriesSchemaMergeNode(getPlanNodeId(), this.orderByHeat);
+    return new SchemaQueryMergeNode(getPlanNodeId(), this.orderByHeat);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SCHEMA_MERGE.serialize(byteBuffer);
+    PlanNodeType.SCHEMA_QUERY_MERGE.serialize(byteBuffer);
   }
 
-  public static SeriesSchemaMergeNode deserialize(ByteBuffer byteBuffer) {
+  public static SchemaQueryMergeNode deserialize(ByteBuffer byteBuffer) {
     PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
-    return new SeriesSchemaMergeNode(id);
+    return new SchemaQueryMergeNode(id);
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaMerge(this, context);
+    return visitor.visitSchemaQueryMerge(this, context);
   }
 }
