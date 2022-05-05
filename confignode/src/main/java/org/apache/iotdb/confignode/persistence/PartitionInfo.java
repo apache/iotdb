@@ -39,11 +39,20 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -52,19 +61,15 @@ public class PartitionInfo {
 
   // Region read write lock
   private final ReentrantReadWriteLock regionReadWriteLock;
-  // TODO: Serialize and Deserialize
   private AtomicInteger nextRegionGroupId = new AtomicInteger(0);
-  // TODO: Serialize and Deserialize
   private final Map<TConsensusGroupId, TRegionReplicaSet> regionMap;
 
   // SchemaPartition read write lock
   private final ReentrantReadWriteLock schemaPartitionReadWriteLock;
-  // TODO: Serialize and Deserialize
   private final SchemaPartition schemaPartition;
 
   // DataPartition read write lock
   private final ReentrantReadWriteLock dataPartitionReadWriteLock;
-  // TODO: Serialize and Deserialize
   private final DataPartition dataPartition;
 
   private PartitionInfo() {
@@ -191,7 +196,7 @@ public class PartitionInfo {
    * Filter no assigned SchemaPartitionSlots
    *
    * @param partitionSlotsMap Map<StorageGroupName, List<TSeriesPartitionSlot>>
-   * @return Map<StorageGroupName, List<TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
+   * @return Map<StorageGroupName, List < TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
    *     assigned in partitionSlotsMap
    */
   public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlots(
@@ -268,7 +273,7 @@ public class PartitionInfo {
    *
    * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot,
    *     List<TTimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>,
+   * @return Map<StorageGroupName, Map < TSeriesPartitionSlot, List < TTimePartitionSlot>>>,
    *     DataPartitionSlots that is not assigned in partitionSlotsMap
    */
   public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
@@ -298,12 +303,58 @@ public class PartitionInfo {
     return result;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    // TODO: Serialize PartitionInfo
+  public void serialize(ByteBuffer buffer) throws TException, IOException {
+
+    // first,put nextRegionGroupId
+    buffer.putInt(nextRegionGroupId.get());
+    // second, put regionMap
+    serializeRegionMap(buffer);
+    // third, put schemaPartition
+    schemaPartition.serialize(buffer);
+    // final, put dataPartition
+    dataPartition.serialize(buffer);
   }
 
-  public void deserialize(ByteBuffer buffer) {
-    // TODO: Deserialize PartitionInfo
+  public void deserialize(ByteBuffer buffer) throws TException, IOException {
+
+    nextRegionGroupId.set(buffer.getInt());
+
+    deserializeRegionMap(buffer);
+
+    schemaPartition.deserialize(buffer);
+
+    dataPartition.deserialize(buffer);
+  }
+
+  private void serializeRegionMap(ByteBuffer buffer) throws TException, IOException {
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(out)) {
+      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+      for (Entry<TConsensusGroupId, TRegionReplicaSet> entry : regionMap.entrySet()) {
+        entry.getKey().write(protocol);
+        entry.getValue().write(protocol);
+      }
+      byte[] toArray = out.toByteArray();
+      buffer.putInt(toArray.length);
+      buffer.put(toArray);
+    }
+  }
+
+  private void deserializeRegionMap(ByteBuffer buffer) throws TException, IOException {
+    int length = buffer.getInt();
+    byte[] regionMapBuffer = new byte[length];
+    buffer.get(regionMapBuffer);
+    try (ByteArrayInputStream in = new ByteArrayInputStream(regionMapBuffer);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(in)) {
+      while (in.available() > 0) {
+        TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+        TConsensusGroupId tConsensusGroupId = new TConsensusGroupId();
+        tConsensusGroupId.read(protocol);
+        TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+        tRegionReplicaSet.read(protocol);
+        regionMap.put(tConsensusGroupId, tRegionReplicaSet);
+      }
+    }
   }
 
   @TestOnly
