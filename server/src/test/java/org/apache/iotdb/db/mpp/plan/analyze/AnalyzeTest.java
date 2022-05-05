@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -31,39 +32,18 @@ import java.time.ZonedDateTime;
 
 import static org.junit.Assert.fail;
 
-public class AnalyzerTest {
+public class AnalyzeTest {
 
   @Test
-  public void samePropertyKeyTest() {
-    assertAnalyzeSemanticException(
-        "CREATE TIMESERIES root.sg1.d1.s1 INT32 TAGS('a'='1') ATTRIBUTES('a'='1')",
-        "Tag and attribute shouldn't have the same property key");
-  }
+  public void testRawDataQuery() {
+    Analysis analysis = analyzeSQL("SELECT s1, s2 FROM root.sg.*");
 
-  @Test
-  public void sameMeasurementsInAlignedTest() {
-    assertAnalyzeSemanticException(
-        "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN  compressor=SNAPPY, latitude FLOAT encoding=PLAIN compressor=SNAPPY)",
-        "Measurement under an aligned device is not allowed to have the same measurement name");
-  }
-
-  @Test
-  public void test() {
-    Analysis analysis = analyzeSQL("SELECT s1, s2 FROM root.sg.* where time < 100 and * + 1 > 10");
-  }
-
-  private void assertAnalyzeSemanticException(String sql, String message) {
-    try {
-      Analyzer analyzer =
-          new Analyzer(
-              new MPPQueryContext(new QueryId("test_query")),
-              new FakePartitionFetcherImpl(),
-              new FakeSchemaFetcherImpl());
-      analyzer.analyze(StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
-      fail();
-    } catch (RuntimeException e) {
-      Assert.assertTrue(e.getMessage().contains(message));
-    }
+    TypeProvider expectedTypeProvider = new TypeProvider();
+    expectedTypeProvider.setType("root.sg.d1.s1", TSDataType.INT32);
+    expectedTypeProvider.setType("root.sg.d1.s2", TSDataType.INT32);
+    expectedTypeProvider.setType("root.sg.d2.s1", TSDataType.INT32);
+    expectedTypeProvider.setType("root.sg.d2.s2", TSDataType.INT32);
+    assertQueryAnalysisEquals(analysis, expectedTypeProvider);
   }
 
   private Analysis analyzeSQL(String sql) {
@@ -75,10 +55,14 @@ public class AnalyzerTest {
           new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
       return analyzer.analyze(statement);
     } catch (Exception e) {
-      e.printStackTrace();
-      fail();
+      fail(e.getMessage());
     }
     fail();
     return null;
+  }
+
+  private void assertQueryAnalysisEquals(
+      Analysis actualAnalysis, TypeProvider expectedTypeProvider) {
+    Assert.assertEquals(actualAnalysis.getTypeProvider(), expectedTypeProvider);
   }
 }
