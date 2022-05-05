@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -574,6 +575,11 @@ class RatisConsensus implements IConsensus {
       }
     }
     return reply;
+  }
+
+  @TestOnly
+  public RaftServer getServer() {
+    return server;
   }
 
   private class RatisClientPoolFactory implements IClientPoolFactory<RaftGroup, RatisClient> {

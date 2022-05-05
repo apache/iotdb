@@ -141,11 +141,15 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     // require the application statemachine to take the latest snapshot
     String metadata = Utils.getMetadataFromTermIndex(lastApplied);
     File snapshotDir = snapshotStorage.getSnapshotDir(metadata);
+    snapshotDir.mkdir();
+    if (!snapshotDir.isDirectory()) {
+      logger.error("Unable to create snapshotDir at {}", snapshotDir);
+      return RaftLog.INVALID_LOG_INDEX;
+    }
     boolean success = applicationStateMachine.takeSnapshot(snapshotDir);
     if (!success) {
       return RaftLog.INVALID_LOG_INDEX;
     }
-
     return lastApplied.getIndex();
   }
 

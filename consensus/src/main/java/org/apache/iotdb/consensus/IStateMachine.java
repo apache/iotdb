@@ -88,10 +88,9 @@ public interface IStateMachine {
      *
      * @param term term of the current log entry
      * @param index index which is being updated
-     * @param newRaftConfiguration new configuration
+     * @param newConfiguration new configuration
      */
-    default void notifyConfigurationChanged(
-        long term, long index, List<Peer> newRaftConfiguration) {}
+    default void notifyConfigurationChanged(long term, long index, List<Peer> newConfiguration) {}
   }
 
   /**
