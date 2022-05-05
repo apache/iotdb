@@ -56,10 +56,10 @@ public class PathPatternTree {
     appendPaths(devicePath, Arrays.asList(measurements));
   }
 
-  public PathPatternTree(PartialPath deivcePath, List<String> measurements) {
+  public PathPatternTree(PartialPath devicePath, List<String> measurements) {
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
-    appendPaths(deivcePath, measurements);
+    appendPaths(devicePath, measurements);
   }
 
   public PathPatternTree(Map<PartialPath, List<String>> deviceToMeasurementsMap) {
@@ -274,5 +274,10 @@ public class PathPatternTree {
       return false;
     }
     return this.getRoot().equalWith(that.getRoot());
+  }
+
+  public boolean isEmpty() {
+    return (root.getChildren() == null || root.getChildren().isEmpty())
+        && (pathList == null || pathList.isEmpty());
   }
 }

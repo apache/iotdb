@@ -82,7 +82,7 @@ public class TimeJoinOperatorTest {
   }
 
   @Test
-  public void batchTest() {
+  public void batchTest1() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
