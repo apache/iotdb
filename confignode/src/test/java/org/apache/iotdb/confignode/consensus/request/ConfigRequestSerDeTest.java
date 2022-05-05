@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartiti
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationF
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
@@ -366,8 +368,8 @@ public class ConfigRequestSerDeTest {
   @Test
   public void AuthorReqTest() throws IOException, AuthException {
 
-    AuthorReq req0 = null;
-    AuthorReq req1 = null;
+    AuthorReq req0;
+    AuthorReq req1;
     Set<Integer> permissions = new HashSet<>();
     permissions.add(PrivilegeType.GRANT_USER_PRIVILEGE.ordinal());
     permissions.add(PrivilegeType.REVOKE_USER_ROLE.ordinal());
@@ -552,5 +554,17 @@ public class ConfigRequestSerDeTest {
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
     Assert.assertEquals(req0, req1);
     cleanBuffer();
+  }
+
+  @Test
+  public void registerConfigNodeReqTest() throws IOException {
+    ApplyConfigNodeReq req0 =
+        new ApplyConfigNodeReq(
+            new TConfigNodeLocation(
+                new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
+    req0.serialize(buffer);
+    buffer.flip();
+    ApplyConfigNodeReq req1 = (ApplyConfigNodeReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
   }
 }

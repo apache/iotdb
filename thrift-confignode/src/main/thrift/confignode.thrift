@@ -158,10 +158,9 @@ struct TConfigNodeLocation {
 
 struct TConfigNodeRegisterReq {
   1: required TConfigNodeLocation configNodeLocation
-  2: required string configNodeConsensusProtocolClass
-  3: required string dataNodeConsensusProtocolClass
-  4: required i32 seriesPartitionSlotNum
-  5: required string seriesPartitionExecutorClass
+  2: required string dataNodeConsensusProtocolClass
+  3: required i32 seriesPartitionSlotNum
+  4: required string seriesPartitionExecutorClass
 }
 
 struct TConfigNodeRegisterResp {

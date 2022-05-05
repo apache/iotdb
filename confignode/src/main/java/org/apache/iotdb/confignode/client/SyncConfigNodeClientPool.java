@@ -59,7 +59,9 @@ public class SyncConfigNodeClientPool {
     }
     LOGGER.error("Register ConfigNode failed");
     return new TConfigNodeRegisterResp()
-        .setStatus(new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode()));
+        .setStatus(
+            new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+                .setMessage("All retry failed."));
   }
 
   public TSStatus applyConfigNode(TEndPoint endPoint, TConfigNodeLocation configNodeLocation) {
@@ -71,7 +73,8 @@ public class SyncConfigNodeClientPool {
       }
     }
     LOGGER.error("Apply ConfigNode failed");
-    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode());
+    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+        .setMessage("All retry failed.");
   }
 
   // TODO: Is the ClientPool must be a singleton?

@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.utils.CommonUtils;
+import org.apache.iotdb.commons.utils.NodeUrlParseConvertUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -67,13 +67,13 @@ public class ConfigNodeStartupCheck {
       if (!isSeedConfigNode()) {
         // Register when the current ConfigNode isn't Seed-ConfigNode
         registerConfigNode();
+        // Apply after constructing PartitionRegion
         conf.setNeedApply(true);
       }
       // Persistence the unchangeable parameters
       writeSystemProperties();
     } else {
       checkSystemProperties();
-      // TODO: Get the latest ConfigNodeList
       loadConfigNodeList();
       // TODO: Notify the ConfigNodeGroup if current ConfigNode's ip or port has changed
     }
@@ -183,7 +183,6 @@ public class ConfigNodeStartupCheck {
             new TConfigNodeLocation(
                 new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())),
-            conf.getConfigNodeConsensusProtocolClass(),
             conf.getDataNodeConsensusProtocolClass(),
             conf.getSeriesPartitionSlotNum(),
             conf.getSeriesPartitionExecutorClass());
@@ -224,6 +223,11 @@ public class ConfigNodeStartupCheck {
     systemProperties.setProperty("system_dir", conf.getSystemDir());
     systemProperties.setProperty("data_dirs", String.join(",", conf.getDataDirs()));
     systemProperties.setProperty("consensus_dir", conf.getConsensusDir());
+
+    // ConfigNodeList
+    systemProperties.setProperty(
+        "confignode_list",
+        NodeUrlParseConvertUtils.convertTConfigNodeUrls(conf.getConfigNodeList()));
 
     try {
       systemProperties.store(new FileOutputStream(systemPropertiesFile), "");
@@ -309,13 +313,12 @@ public class ConfigNodeStartupCheck {
     }
   }
 
-  /** TODO: This is a temporary interface, it should be removed later. */
+  /** Only load ConfigNodeList from confignode-system.properties when restart */
   private void loadConfigNodeList() throws StartupException {
     String addresses = systemProperties.getProperty("confignode_list", null);
     if (addresses != null) {
       try {
-        conf.setConfigNodeList(
-            CommonUtils.parseConfigNodeUrls(Arrays.asList(addresses.split(","))));
+        conf.setConfigNodeList(NodeUrlParseConvertUtils.parseTConfigNodeUrls(addresses));
       } catch (BadNodeUrlException e) {
         throw new StartupException("Parse ConfigNodeList failed: {}", e.getMessage());
       }

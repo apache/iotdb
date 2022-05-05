@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.CommonUtils;
+import org.apache.iotdb.commons.utils.NodeUrlParseConvertUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,7 +113,7 @@ public class ConfigNodeDescriptor {
 
       String targetConfigNode = properties.getProperty("target_confignode", null);
       if (targetConfigNode != null) {
-        conf.setTargetConfigNode(CommonUtils.parseNodeUrl(targetConfigNode));
+        conf.setTargetConfigNode(NodeUrlParseConvertUtils.parseTEndPointUrl(targetConfigNode));
       }
 
       conf.setSeriesPartitionSlotNum(
@@ -124,10 +124,6 @@ public class ConfigNodeDescriptor {
       conf.setSeriesPartitionExecutorClass(
           properties.getProperty(
               "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
-
-      conf.setConfigNodeConsensusProtocolClass(
-          properties.getProperty(
-              "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
 
       conf.setDataNodeConsensusProtocolClass(
           properties.getProperty(

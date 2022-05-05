@@ -80,5 +80,9 @@ public abstract class ConsensusGroupId {
         TConsensusGroupId tConsensusGroupId) {
       return create(tConsensusGroupId.getType().getValue(), tConsensusGroupId.getId());
     }
+
+    public static TConsensusGroupId convertToTConsensusGroupId(ConsensusGroupId consensusGroupId) {
+      return new TConsensusGroupId(consensusGroupId.getType(), consensusGroupId.getId());
+    }
   }
 }

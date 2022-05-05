@@ -39,7 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.DataNodeInfo;
+import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -165,7 +165,7 @@ public class ClusterSchemaManager {
       for (TRegionReplicaSet regionReplicaSet : createRegionsReq.getRegionReplicaSets()) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           TEndPoint endPoint =
-              DataNodeInfo.getInstance()
+              NodeInfo.getInstance()
                   .getOnlineDataNode(dataNodeLocation.getDataNodeId())
                   .getInternalEndPoint();
           InitRegionHandler handler = new InitRegionHandler(index, bitSet, latch);
@@ -287,7 +287,7 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getStorageGroupNames();
   }
 
-  private DataNodeManager getDataNodeInfoManager() {
+  private NodeManager getDataNodeInfoManager() {
     return configManager.getDataNodeManager();
   }
 

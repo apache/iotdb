@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -28,9 +26,9 @@ import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -48,6 +46,7 @@ import java.util.List;
 
 /** ConsensusManager maintains consensus class, request will redirect to consensus layer */
 public class ConsensusManager {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -99,39 +98,46 @@ public class ConsensusManager {
                   new TConfigNodeLocation(
                       new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                       new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())));
-      if (status.getCode() == TSStatusCode.ALL_RETRY_FAILED.getStatusCode()) {
-        throw new IOException("Apply ConfigNode failed");
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(status.getMessage());
+        throw new IOException("Apply ConfigNode failed:");
       }
     }
   }
 
-  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusWriteResponse write(ConfigRequest plan) {
-    return consensusImpl.write(consensusGroupId, plan);
+  /**
+   * Apply new ConfigNode Peer into PartitionRegion
+   *
+   * @param applyConfigNodeReq ApplyConfigNodeReq
+   * @return True if successfully addPeer. False if another ConfigNode is being added to the
+   *     PartitionRegion
+   */
+  public boolean applyConfigNodePeer(ApplyConfigNodeReq applyConfigNodeReq) {
+    return consensusImpl
+        .addPeer(
+            consensusGroupId,
+            new Peer(
+                consensusGroupId,
+                applyConfigNodeReq.getConfigNodeLocation().getConsensusEndPoint()))
+        .isSuccess();
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusReadResponse read(ConfigRequest plan) {
-    return consensusImpl.read(consensusGroupId, plan);
+  public ConsensusWriteResponse write(ConfigRequest req) {
+    return consensusImpl.write(consensusGroupId, req);
   }
 
-  public TConfigNodeRegisterResp registerConfigNode() {
-    TConfigNodeRegisterResp resp = new TConfigNodeRegisterResp();
-    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    resp.setPartitionRegionId(
-        new TConsensusGroupId(TConsensusGroupType.PartitionRegion, conf.getPartitionRegionId()));
-    resp.setConfigNodeList(conf.getConfigNodeList());
-    return resp;
-  }
-
-  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) {
-    consensusImpl.addPeer(
-        consensusGroupId, new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()));
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  /** Transmit PhysicalPlan to confignode.consensus.statemachine */
+  public ConsensusReadResponse read(ConfigRequest req) {
+    return consensusImpl.read(consensusGroupId, req);
   }
 
   public boolean isLeader() {
     return consensusImpl.isLeader(consensusGroupId);
+  }
+
+  public ConsensusGroupId getConsensusGroupId() {
+    return consensusGroupId;
   }
 
   // TODO: Interfaces for LoadBalancer control

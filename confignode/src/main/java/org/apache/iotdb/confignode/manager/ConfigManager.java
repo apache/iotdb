@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartiti
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -45,7 +46,6 @@ import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -66,8 +66,8 @@ public class ConfigManager implements Manager {
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private final ConsensusManager consensusManager;
 
-  /** Manage cluster DataNode information */
-  private final DataNodeManager dataNodeManager;
+  /** Manage cluster node */
+  private final NodeManager nodeManager;
 
   /** Manage cluster schema */
   private final ClusterSchemaManager clusterSchemaManager;
@@ -79,7 +79,7 @@ public class ConfigManager implements Manager {
   private final PermissionManager permissionManager;
 
   public ConfigManager() throws IOException {
-    this.dataNodeManager = new DataNodeManager(this);
+    this.nodeManager = new NodeManager(this);
     this.partitionManager = new PartitionManager(this);
     this.clusterSchemaManager = new ClusterSchemaManager(this);
     this.consensusManager = new ConsensusManager();
@@ -99,7 +99,7 @@ public class ConfigManager implements Manager {
   public DataSet registerDataNode(RegisterDataNodeReq registerDataNodeReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return dataNodeManager.registerDataNode(registerDataNodeReq);
+      return nodeManager.registerDataNode(registerDataNodeReq);
     } else {
       DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
       dataSet.setStatus(status);
@@ -112,7 +112,7 @@ public class ConfigManager implements Manager {
   public DataSet getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return dataNodeManager.getDataNodeInfo(getDataNodeInfoReq);
+      return nodeManager.getDataNodeInfo(getDataNodeInfoReq);
     } else {
       DataNodeLocationsResp dataSet = new DataNodeLocationsResp();
       dataSet.setStatus(status);
@@ -321,8 +321,8 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataNodeManager getDataNodeManager() {
-    return dataNodeManager;
+  public NodeManager getDataNodeManager() {
+    return nodeManager;
   }
 
   @Override
@@ -388,14 +388,6 @@ public class ConfigManager implements Manager {
     ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
     TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
     errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
-    if (!req.getConfigNodeConsensusProtocolClass()
-        .equals(conf.getConfigNodeConsensusProtocolClass())) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the data_node_consensus_protocol_class are consistent.");
-      return errorResp;
-    }
     if (!req.getDataNodeConsensusProtocolClass().equals(conf.getDataNodeConsensusProtocolClass())) {
       errorResp
           .getStatus()
@@ -418,11 +410,11 @@ public class ConfigManager implements Manager {
       return errorResp;
     }
 
-    return consensusManager.registerConfigNode();
+    return nodeManager.registerConfigNode(req);
   }
 
   @Override
-  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) {
-    return consensusManager.applyConfigNode(configNodeLocation);
+  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
+    return nodeManager.applyConfigNode(applyConfigNodeReq);
   }
 }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.service.executor;
+package org.apache.iotdb.confignode.persistence.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -40,14 +41,14 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.DataNodeInfo;
+import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.auth.AuthException;
 
 public class ConfigRequestExecutor {
 
-  private final DataNodeInfo dataNodeInfo;
+  private final NodeInfo nodeInfo;
 
   private final ClusterSchemaInfo clusterSchemaInfo;
 
@@ -56,7 +57,7 @@ public class ConfigRequestExecutor {
   private final AuthorInfo authorInfo;
 
   public ConfigRequestExecutor() {
-    this.dataNodeInfo = DataNodeInfo.getInstance();
+    this.nodeInfo = NodeInfo.getInstance();
     this.clusterSchemaInfo = ClusterSchemaInfo.getInstance();
     this.partitionInfo = PartitionInfo.getInstance();
     this.authorInfo = AuthorInfo.getInstance();
@@ -66,7 +67,7 @@ public class ConfigRequestExecutor {
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
       case GetDataNodeInfo:
-        return dataNodeInfo.getDataNodeInfo((GetDataNodeInfoReq) req);
+        return nodeInfo.getDataNodeInfo((GetDataNodeInfoReq) req);
       case CountStorageGroup:
         return clusterSchemaInfo.countMatchedStorageGroups((CountStorageGroupReq) req);
       case GetStorageGroup:
@@ -98,7 +99,7 @@ public class ConfigRequestExecutor {
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
       case RegisterDataNode:
-        return dataNodeInfo.registerDataNode((RegisterDataNodeReq) req);
+        return nodeInfo.registerDataNode((RegisterDataNodeReq) req);
       case SetStorageGroup:
         return clusterSchemaInfo.setStorageGroup((SetStorageGroupReq) req);
       case DeleteStorageGroup:
@@ -131,6 +132,8 @@ public class ConfigRequestExecutor {
       case REVOKE_ROLE_FROM_USER:
       case UPDATE_USER:
         return authorInfo.authorNonQuery((AuthorReq) req);
+      case ApplyConfigNode:
+        return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }

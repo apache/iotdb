@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartiti
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -169,6 +170,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case REVOKE_ROLE_FROM_USER:
         case UPDATE_USER:
           req = new AuthorReq(type);
+          break;
+        case ApplyConfigNode:
+          req = new ApplyConfigNodeReq();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

@@ -42,12 +42,12 @@ public class ConfigNode implements ConfigNodeMBean {
   private final RegisterManager registerManager = new RegisterManager();
 
   private final ConfigNodeRPCService configNodeRPCService;
+  private final ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
   private ConfigManager configManager;
 
   private ConfigNode() {
-    this.configNodeRPCService = new ConfigNodeRPCService();
-
+    // Init ConfigManager
     try {
       this.configManager = new ConfigManager();
     } catch (IOException e) {
@@ -59,6 +59,10 @@ public class ConfigNode implements ConfigNodeMBean {
       }
       System.exit(-1);
     }
+
+    // Init RPC service
+    this.configNodeRPCService = new ConfigNodeRPCService();
+    this.configNodeRPCServiceProcessor = new ConfigNodeRPCServiceProcessor(configManager);
   }
 
   public static void main(String[] args) {
@@ -71,7 +75,7 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
 
-    configNodeRPCService.initSyncedServiceImpl(new ConfigNodeRPCServiceProcessor(configManager));
+    configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
     registerManager.register(configNodeRPCService);
     LOGGER.info("Init rpc server success");
   }
@@ -89,7 +93,8 @@ public class ConfigNode implements ConfigNodeMBean {
       return;
     }
 
-    LOGGER.info("{} has started.", ConfigNodeConstant.GLOBAL_NAME);
+    LOGGER.info(
+        "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
   public void deactivate() throws IOException {

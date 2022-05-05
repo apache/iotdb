@@ -20,6 +20,8 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import org.junit.After;
@@ -63,5 +65,17 @@ public class ThriftConfigNodeSerDeUtilsTest {
     TStorageGroupSchema storageGroupSchema1 =
         ThriftConfigNodeSerDeUtils.readTStorageGroupSchema(buffer);
     Assert.assertEquals(storageGroupSchema0, storageGroupSchema1);
+  }
+
+  @Test
+  public void readWriteTConfigNodeLocationTest() {
+    TConfigNodeLocation configNodeLocation0 =
+        new TConfigNodeLocation(new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278));
+
+    ThriftConfigNodeSerDeUtils.writeTConfigNodeLocation(configNodeLocation0, buffer);
+    buffer.flip();
+    TConfigNodeLocation configNodeLocation1 =
+        ThriftConfigNodeSerDeUtils.readTConfigNodeLocation(buffer);
+    Assert.assertEquals(configNodeLocation0, configNodeLocation1);
   }
 }

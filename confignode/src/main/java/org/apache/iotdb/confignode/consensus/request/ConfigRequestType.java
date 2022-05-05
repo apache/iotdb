@@ -54,5 +54,6 @@ public enum ConfigRequestType {
   LIST_USER_PRIVILEGE,
   LIST_ROLE_PRIVILEGE,
   LIST_USER_ROLES,
-  LIST_ROLE_USERS
+  LIST_ROLE_USERS,
+  ApplyConfigNode
 }

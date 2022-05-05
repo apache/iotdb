@@ -19,6 +19,7 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import org.apache.thrift.TException;
@@ -65,5 +66,24 @@ public class ThriftConfigNodeSerDeUtils {
       throw new ThriftSerDeException("Read TStorageGroupSchema failed: ", e);
     }
     return storageGroupSchema;
+  }
+
+  public static void writeTConfigNodeLocation(
+      TConfigNodeLocation configNodeLocation, ByteBuffer buffer) {
+    try {
+      configNodeLocation.write(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TConfigNodeLocation failed: ", e);
+    }
+  }
+
+  public static TConfigNodeLocation readTConfigNodeLocation(ByteBuffer buffer) {
+    TConfigNodeLocation configNodeLocation = new TConfigNodeLocation();
+    try {
+      configNodeLocation.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TConfigNodeLocation failed: ", e);
+    }
+    return configNodeLocation;
   }
 }

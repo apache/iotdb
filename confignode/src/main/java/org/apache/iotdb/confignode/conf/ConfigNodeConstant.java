@@ -27,7 +27,7 @@ public class ConfigNodeConstant {
           ? ConfigNodeConstant.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
 
-  public static final String GLOBAL_NAME = "IoTDB ConfigNode";
+  public static final String GLOBAL_NAME = "IoTDB-ConfigNode";
   public static final String CONFIGNODE_CONF = "CONFIGNODE_CONF";
   public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
 
