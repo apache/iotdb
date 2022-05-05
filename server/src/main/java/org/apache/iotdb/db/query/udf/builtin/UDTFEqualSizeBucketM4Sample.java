@@ -65,7 +65,7 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
   }
 
   public void transformInt(RowWindow rowWindow, PointCollector collector) throws IOException {
-    if (rowWindow.windowSize() < 4) {
+    if (rowWindow.windowSize() <= 4) {
       for (int i = 0; i < rowWindow.windowSize(); i++) {
         Row row = rowWindow.getRow(i);
         collector.putInt(row.getTime(), row.getInt(0));
@@ -108,7 +108,7 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
   }
 
   public void transformLong(RowWindow rowWindow, PointCollector collector) throws IOException {
-    if (rowWindow.windowSize() < 4) {
+    if (rowWindow.windowSize() <= 4) {
       for (int i = 0; i < rowWindow.windowSize(); i++) {
         Row row = rowWindow.getRow(i);
         collector.putLong(row.getTime(), row.getLong(0));
@@ -151,7 +151,7 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
   }
 
   public void transformFloat(RowWindow rowWindow, PointCollector collector) throws IOException {
-    if (rowWindow.windowSize() < 4) {
+    if (rowWindow.windowSize() <= 4) {
       for (int i = 0; i < rowWindow.windowSize(); i++) {
         Row row = rowWindow.getRow(i);
         collector.putFloat(row.getTime(), row.getFloat(0));
@@ -194,7 +194,7 @@ public class UDTFEqualSizeBucketM4Sample extends UDTFEqualSizeBucketSample {
   }
 
   public void transformDouble(RowWindow rowWindow, PointCollector collector) throws IOException {
-    if (rowWindow.windowSize() < 4) {
+    if (rowWindow.windowSize() <= 4) {
       for (int i = 0; i < rowWindow.windowSize(); i++) {
         Row row = rowWindow.getRow(i);
         collector.putDouble(row.getTime(), row.getDouble(0));

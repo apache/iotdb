@@ -49,6 +49,11 @@ public class TsFilePipeLogger {
     tsFileDir = SyncPathUtil.getSenderFileDataDir(tsFilePipe.getName(), tsFilePipe.getCreateTime());
   }
 
+  public boolean isHardlinkExist(File tsFile) {
+    File link = new File(tsFileDir, getRelativeFilePath(tsFile));
+    return link.exists();
+  }
+
   /** make hard link for tsfile * */
   public File createTsFileAndModsHardlink(File tsFile, long modsOffset) throws IOException {
     File mods = new File(tsFile.getPath() + ModificationFile.FILE_SUFFIX);

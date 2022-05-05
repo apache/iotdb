@@ -27,8 +27,7 @@ public class LogicAndTransformer extends LogicBinaryTransformer {
     super(leftPointReader, rightPointReader);
   }
 
-  @Override
-  protected boolean evaluateBoolean(boolean leftOperand, boolean rightOperand) {
+  protected boolean evaluate(boolean leftOperand, boolean rightOperand) {
     return leftOperand && rightOperand;
   }
 }

@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
@@ -187,7 +187,7 @@ public class SeriesReader {
     this.dataType = dataType;
     this.context = context;
     this.dataSource = new QueryDataSource(seqFileResource, unseqFileResource);
-    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), ascending);
+    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDeviceIdString(), ascending);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
     this.fileFilter = null;
@@ -1241,7 +1241,7 @@ public class SeriesReader {
 
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getEndTime(seriesPath.getDevice());
+      return fileResource.getEndTime(seriesPath.getDeviceIdString());
     }
 
     @Override
@@ -1261,7 +1261,7 @@ public class SeriesReader {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getEndTime(seriesPath.getDevice());
+      return time <= right.getEndTime(seriesPath.getDeviceIdString());
     }
 
     @Override
@@ -1304,7 +1304,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), timeFilter, fileFilter, true, context.isDebug())) {
+                seriesPath.getDeviceIdString(), timeFilter, fileFilter, true, context.isDebug())) {
           break;
         }
         curSeqFileIndex--;
@@ -1318,7 +1318,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), timeFilter, fileFilter, false, context.isDebug())) {
+                seriesPath.getDeviceIdString(), timeFilter, fileFilter, false, context.isDebug())) {
           break;
         }
         curUnseqFileIndex++;
@@ -1360,7 +1360,7 @@ public class SeriesReader {
 
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getStartTime(seriesPath.getDevice());
+      return fileResource.getStartTime(seriesPath.getDeviceIdString());
     }
 
     @Override
@@ -1380,7 +1380,7 @@ public class SeriesReader {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time >= right.getStartTime(seriesPath.getDevice());
+      return time >= right.getStartTime(seriesPath.getDeviceIdString());
     }
 
     @Override
@@ -1423,7 +1423,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), timeFilter, fileFilter, true, context.isDebug())) {
+                seriesPath.getDeviceIdString(), timeFilter, fileFilter, true, context.isDebug())) {
           break;
         }
         curSeqFileIndex++;
@@ -1437,7 +1437,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(), timeFilter, fileFilter, false, context.isDebug())) {
+                seriesPath.getDeviceIdString(), timeFilter, fileFilter, false, context.isDebug())) {
           break;
         }
         curUnseqFileIndex++;

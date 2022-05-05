@@ -61,7 +61,7 @@ public class StandaloneEnv implements BaseEnv {
       try {
         connection.close();
       } catch (SQLException e) {
-        //we can do nothing for test, but it should be checked why...
+        // we can do nothing for test, but it should be checked why...
         logger.warn("close connection failed, should check if there is errors in UT/ITs");
       }
       connection = null;
@@ -92,7 +92,7 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
-    if (connection == null  || connection.isClosed()) {
+    if (connection == null || connection.isClosed()) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
         connection =

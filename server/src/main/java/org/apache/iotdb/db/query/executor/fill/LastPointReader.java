@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.query.executor.fill;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -149,7 +149,7 @@ public class LastPointReader {
         sortUnSeqFileResourcesInDecendingOrder(dataSource.getUnseqResources());
 
     while (!unseqFileResource.isEmpty()
-        && (lBoundTime <= unseqFileResource.peek().getEndTime(seriesPath.getDevice()))) {
+        && (lBoundTime <= unseqFileResource.peek().getEndTime(seriesPath.getDeviceIdString()))) {
       ITimeSeriesMetadata timeseriesMetadata =
           loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, measurements);
@@ -219,8 +219,8 @@ public class LastPointReader {
     PriorityQueue<TsFileResource> unseqTsFilesSet =
         new PriorityQueue<>(
             (o1, o2) -> {
-              long maxTimeOfO1 = o1.getEndTime(seriesPath.getDevice());
-              long maxTimeOfO2 = o2.getEndTime(seriesPath.getDevice());
+              long maxTimeOfO1 = o1.getEndTime(seriesPath.getDeviceIdString());
+              long maxTimeOfO2 = o2.getEndTime(seriesPath.getDeviceIdString());
               return Long.compare(maxTimeOfO2, maxTimeOfO1);
             });
     unseqTsFilesSet.addAll(tsFileResources);

@@ -123,6 +123,15 @@ public class BooleanColumn implements Column {
   }
 
   @Override
+  public Column subColumn(int fromIndex) {
+    if (fromIndex > positionCount) {
+      throw new IllegalArgumentException("fromIndex is not valid");
+    }
+    return new BooleanColumn(
+        arrayOffset + fromIndex, positionCount - fromIndex, valueIsNull, values);
+  }
+
+  @Override
   public void reverse() {
     for (int i = arrayOffset, j = arrayOffset + positionCount - 1; i < j; i++, j--) {
       boolean valueTmp = values[i];

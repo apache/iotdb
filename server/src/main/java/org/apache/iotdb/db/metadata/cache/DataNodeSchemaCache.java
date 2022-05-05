@@ -19,53 +19,36 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
-import org.apache.iotdb.db.mpp.sql.analyze.FakeSchemaFetcherImpl;
-import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
  * StorageEngine
  */
 public class DataNodeSchemaCache {
-  private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private Cache<PartialPath, SchemaCacheEntity> schemaEntityCache;
-
-  // TODO use fakeSchemaFetcherImpl for test temporarily
-  private static final ISchemaFetcher schemaFetcher = new FakeSchemaFetcherImpl();
+  private final Cache<PartialPath, SchemaCacheEntry> cache;
 
   private DataNodeSchemaCache() {
-    schemaEntityCache =
-        Caffeine.newBuilder().maximumSize(config.getDataNodeSchemaCacheSize()).build();
+    cache = Caffeine.newBuilder().maximumSize(config.getDataNodeSchemaCacheSize()).build();
   }
 
   public static DataNodeSchemaCache getInstance() {
-    return DataNodeSchemaCache.DataNodeSchemaEntryCacheHolder.INSTANCE;
+    return DataNodeSchemaCacheHolder.INSTANCE;
   }
 
   /** singleton pattern. */
-  private static class DataNodeSchemaEntryCacheHolder {
+  private static class DataNodeSchemaCacheHolder {
     private static final DataNodeSchemaCache INSTANCE = new DataNodeSchemaCache();
   }
 
@@ -76,91 +59,41 @@ public class DataNodeSchemaCache {
    * @param measurements
    * @return timeseries partialPath and its SchemaEntity
    */
-  public Map<PartialPath, SchemaCacheEntity> getSchemaEntity(
-      PartialPath devicePath, String[] measurements) {
-    Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap = new HashMap<>();
-    SchemaCacheEntity schemaCacheEntity;
-    List<String> fetchMeasurements = new ArrayList<>();
+  public SchemaTree get(PartialPath devicePath, String[] measurements) {
+    SchemaTree schemaTree = new SchemaTree();
+    SchemaCacheEntry schemaCacheEntry;
     for (String measurement : measurements) {
-      PartialPath path = null;
-      try {
-        path = new PartialPath(devicePath.getFullPath(), measurement);
-      } catch (IllegalPathException e) {
-        logger.error(
-            "Create PartialPath:{} failed.",
-            devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurement);
-      }
-      schemaCacheEntity = schemaEntityCache.getIfPresent(path);
-      if (schemaCacheEntity != null) {
-        schemaCacheEntityMap.put(path, schemaCacheEntity);
-      } else {
-        fetchMeasurements.add(measurement);
+      PartialPath path = devicePath.concatNode(measurement);
+      schemaCacheEntry = cache.getIfPresent(path);
+      if (schemaCacheEntry != null) {
+        schemaTree.appendSingleMeasurement(
+            devicePath.concatNode(
+                schemaCacheEntry.getSchemaEntryId()), // the cached path may be alias path
+            schemaCacheEntry.getMeasurementSchema(),
+            schemaCacheEntry.getAlias(),
+            schemaCacheEntry.isAligned());
       }
     }
-    if (fetchMeasurements.size() != 0) {
-      SchemaTree schemaTree;
-      schemaTree = schemaFetcher.fetchSchema(new PathPatternTree(devicePath, fetchMeasurements));
-      // TODO need to construct schemaEntry from schemaTree
-
-    }
-    return schemaCacheEntityMap;
+    return schemaTree;
   }
 
-  /**
-   * Get SchemaEntity info with auto create schema
-   *
-   * @param devicePath
-   * @param measurements
-   * @param tsDataTypes
-   * @param isAligned
-   * @return timeseries partialPath and its SchemaEntity
-   */
-  public Map<PartialPath, SchemaCacheEntity> getSchemaEntityWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean isAligned) {
-    Map<PartialPath, SchemaCacheEntity> schemaCacheEntityMap = new HashMap<>();
-    SchemaCacheEntity schemaCacheEntity;
-    List<String> fetchMeasurements = new ArrayList<>();
-    List<TSDataType> fetchTsDataTypes = new ArrayList<>();
-    for (int i = 0; i < measurements.length; i++) {
-      PartialPath path = null;
-      try {
-        path = new PartialPath(devicePath.getFullPath(), measurements[i]);
-      } catch (IllegalPathException e) {
-        logger.error(
-            "Create PartialPath:{} failed.",
-            devicePath.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurements[i]);
-      }
-      schemaCacheEntity = schemaEntityCache.getIfPresent(path);
-      if (schemaCacheEntity != null) {
-        schemaCacheEntityMap.put(path, schemaCacheEntity);
-      } else {
-        fetchMeasurements.add(measurements[i]);
-        fetchTsDataTypes.add(tsDataTypes[i]);
+  public void put(SchemaTree schemaTree) {
+    for (MeasurementPath measurementPath : schemaTree.getAllMeasurement()) {
+      SchemaCacheEntry schemaCacheEntry =
+          new SchemaCacheEntry(
+              (MeasurementSchema) measurementPath.getMeasurementSchema(),
+              measurementPath.isMeasurementAliasExists()
+                  ? measurementPath.getMeasurementAlias()
+                  : null,
+              measurementPath.isUnderAlignedEntity());
+      cache.put(new PartialPath(measurementPath.getNodes()), schemaCacheEntry);
+      if (measurementPath.isMeasurementAliasExists()) {
+        // cache alias path
+        cache.put(
+            measurementPath.getDevicePath().concatNode(measurementPath.getMeasurementAlias()),
+            schemaCacheEntry);
       }
     }
-    if (fetchMeasurements.size() != 0) {
-      SchemaTree schemaTree;
-      schemaTree =
-          schemaFetcher.fetchSchemaWithAutoCreate(
-              devicePath,
-              fetchMeasurements.toArray(new String[fetchMeasurements.size()]),
-              fetchTsDataTypes.toArray(new TSDataType[fetchTsDataTypes.size()]),
-              isAligned);
-      // TODO need to construct schemaEntry from schemaTree
-
-      for (int i = 0; i < fetchMeasurements.size(); i++) {
-        try {
-          PartialPath path = new PartialPath(devicePath.getFullPath(), fetchMeasurements.get(i));
-          SchemaCacheEntity entity =
-              new SchemaCacheEntity(fetchMeasurements.get(i), fetchTsDataTypes.get(i), isAligned);
-          schemaEntityCache.put(path, entity);
-          schemaCacheEntityMap.put(path, entity);
-        } catch (IllegalPathException e) {
-          logger.error("Create PartialPath:{} failed.", devicePath.getFullPath());
-        }
-      }
-    }
-    return schemaCacheEntityMap;
   }
 
   /**
@@ -170,17 +103,15 @@ public class DataNodeSchemaCache {
    * @return
    */
   public void invalidate(PartialPath partialPath) {
-    schemaEntityCache.invalidate(partialPath);
+    cache.invalidate(partialPath);
   }
 
-  @TestOnly
+  public long estimatedSize() {
+    return cache.estimatedSize();
+  }
+
   public void cleanUp() {
-    schemaEntityCache.invalidateAll();
-    schemaEntityCache.cleanUp();
-  }
-
-  @TestOnly
-  protected Cache<PartialPath, SchemaCacheEntity> getSchemaEntityCache() {
-    return schemaEntityCache;
+    cache.invalidateAll();
+    cache.cleanUp();
   }
 }

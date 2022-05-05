@@ -20,29 +20,30 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.execution.Coordinator;
-import org.apache.iotdb.db.mpp.execution.ExecutionResult;
-import org.apache.iotdb.db.mpp.execution.IQueryExecution;
-import org.apache.iotdb.db.mpp.sql.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.mpp.sql.analyze.ClusterSchemaFetcher;
-import org.apache.iotdb.db.mpp.sql.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.mpp.sql.analyze.ISchemaFetcher;
-import org.apache.iotdb.db.mpp.sql.analyze.StandalonePartitionFetcher;
-import org.apache.iotdb.db.mpp.sql.analyze.StandaloneSchemaFetcher;
-import org.apache.iotdb.db.mpp.sql.parser.StatementGenerator;
-import org.apache.iotdb.db.mpp.sql.statement.Statement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertMultiTabletsStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsOfOneDeviceStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertRowsStatement;
-import org.apache.iotdb.db.mpp.sql.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.plan.Coordinator;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandalonePartitionFetcher;
+import org.apache.iotdb.db.mpp.plan.analyze.StandaloneSchemaFetcher;
+import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Operation;
@@ -111,7 +112,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTSIServiceImpl.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final Coordinator COORDINATOR = Coordinator.getInstance();
 
@@ -134,10 +135,45 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
-    BasicOpenSessionResp openSessionResp =
-        AuthorizerManager.getInstance()
-            .openSession(
-                req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
+    TSStatus loginStatus = AuthorityChecker.checkUser(req.username, req.password);
+    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
+    long sessionId = -1;
+    if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // check the version compatibility
+      boolean compatible = req.client_protocol.equals(SessionManager.CURRENT_RPC_VERSION);
+      if (!compatible) {
+        openSessionResp.setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
+        openSessionResp.setMessage(
+            "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
+        openSessionResp = openSessionResp.sessionId(sessionId);
+      } else {
+        openSessionResp.setCode(loginStatus.getCode());
+        openSessionResp.setMessage(loginStatus.getMessage());
+
+        sessionId = SESSION_MANAGER.requestSessionId(req.username, req.zoneId, clientVersion);
+
+        LOGGER.info(
+            "{}: Login status: {}. User : {}, opens Session-{}",
+            IoTDBConstant.GLOBAL_DB_NAME,
+            openSessionResp.getMessage(),
+            req.username,
+            sessionId);
+
+        SessionTimeoutManager.getInstance().register(sessionId);
+        openSessionResp = openSessionResp.sessionId(sessionId);
+      }
+    } else {
+      openSessionResp.setMessage(loginStatus.getMessage());
+      openSessionResp.setCode(loginStatus.getCode());
+
+      sessionId = SESSION_MANAGER.requestSessionId(req.username, req.zoneId, clientVersion);
+      SessionManager.AUDIT_LOGGER.info(
+          "User {} opens Session failed with an incorrect password", req.username);
+
+      SessionTimeoutManager.getInstance().register(sessionId);
+      openSessionResp = openSessionResp.sessionId(sessionId);
+    }
+
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
@@ -271,7 +307,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
             statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
 
     // permission check
-    TSStatus status = AuthorizerManager.getInstance().checkAuthority(s, req.sessionId);
+    TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return RpcUtils.getTSExecuteStatementResp(status);
     }
@@ -384,7 +420,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorizerManager.getInstance().checkAuthority(statement, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -430,7 +466,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorizerManager.getInstance().checkAuthority(statement, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -476,7 +512,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           (InsertRowsOfOneDeviceStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorizerManager.getInstance().checkAuthority(statement, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -518,7 +554,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorizerManager.getInstance().checkAuthority(statement, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -556,7 +592,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           (InsertMultiTabletsStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorizerManager.getInstance().checkAuthority(statement, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -594,7 +630,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
           (InsertTabletStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorizerManager.getInstance().checkAuthority(statement, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -638,7 +674,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorizerManager.getInstance().checkAuthority(statement, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -776,7 +812,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       InsertRowStatement statement = (InsertRowStatement) StatementGenerator.createStatement(req);
 
       // permission check
-      TSStatus status = AuthorizerManager.getInstance().checkAuthority(statement, req.sessionId);
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }

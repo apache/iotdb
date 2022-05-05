@@ -19,8 +19,8 @@
  */
 package org.apache.iotdb.db.sync.pipedata;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.sync.receiver.load.DeletionLoader;
 import org.apache.iotdb.db.sync.receiver.load.ILoader;
 

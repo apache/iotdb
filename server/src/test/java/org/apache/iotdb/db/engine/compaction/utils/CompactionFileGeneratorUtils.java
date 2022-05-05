@@ -20,14 +20,14 @@
 package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -182,7 +182,8 @@ public class CompactionFileGeneratorUtils {
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
-          deviceMeasurementMap.computeIfAbsent(partialPath.getDevice(), (s) -> new ArrayList<>());
+          deviceMeasurementMap.computeIfAbsent(
+              partialPath.getDeviceIdString(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     for (Entry<String, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
@@ -239,7 +240,8 @@ public class CompactionFileGeneratorUtils {
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
-          deviceMeasurementMap.computeIfAbsent(partialPath.getDevice(), (s) -> new ArrayList<>());
+          deviceMeasurementMap.computeIfAbsent(
+              partialPath.getDeviceIdString(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     int currChunksIndex = 0;
