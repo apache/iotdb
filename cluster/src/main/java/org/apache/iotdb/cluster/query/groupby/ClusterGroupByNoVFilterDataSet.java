@@ -54,7 +54,8 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
       QueryContext context,
       Filter timeFilter,
       TsFileFilter fileFilter,
-      boolean ascending) {
+      boolean ascending,
+      boolean leftCRightO) {
     return new MergeGroupByExecutor(
         path, deviceMeasurements, context, timeFilter, metaGroupMember, ascending);
   }

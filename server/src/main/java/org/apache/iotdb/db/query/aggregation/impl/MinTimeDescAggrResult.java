@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 
 import java.io.IOException;
+import java.util.function.Predicate;
 
 public class MinTimeDescAggrResult extends MinTimeAggrResult {
 
@@ -35,8 +36,9 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, long minBound, long maxBound) {
-    while (batchIterator.hasNext(minBound, maxBound) && batchIterator.currentTime() >= minBound) {
+      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
+    while (batchIterator.hasNext(boundPredicate)
+        && !boundPredicate.test(batchIterator.currentTime())) {
       setValue(batchIterator.currentTime());
       batchIterator.next();
     }

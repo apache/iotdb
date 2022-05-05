@@ -19,11 +19,19 @@
 
 package org.apache.iotdb.tsfile.read.common;
 
+import java.util.function.Predicate;
+
 public interface IBatchDataIterator {
 
   boolean hasNext();
 
   boolean hasNext(long minBound, long maxBound);
+
+  /**
+   * @param predicate
+   * @return
+   */
+  boolean hasNext(Predicate<Long> predicate);
 
   void next();
 

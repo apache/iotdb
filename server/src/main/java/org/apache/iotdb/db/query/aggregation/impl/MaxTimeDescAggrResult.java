@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 
 import java.io.IOException;
+import java.util.function.Predicate;
 
 public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
 
@@ -37,13 +38,12 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, long minBound, long maxBound) {
+      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
     if (hasFinalResult()) {
       return;
     }
-    if (batchIterator.hasNext(minBound, maxBound)
-        && batchIterator.currentTime() < maxBound
-        && batchIterator.currentTime() >= minBound) {
+    if (batchIterator.hasNext(boundPredicate)
+        && !boundPredicate.test(batchIterator.currentTime())) {
       updateMaxTimeResult(batchIterator.currentTime());
     }
   }

@@ -140,7 +140,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
                 context,
                 timeFilter.copy(),
                 null,
-                ascending));
+                ascending,
+                leftCRightO));
       }
       for (int index : indexes) {
         AggregateResult aggrResult =
@@ -244,7 +245,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       QueryContext context,
       Filter timeFilter,
       TsFileFilter fileFilter,
-      boolean ascending)
+      boolean ascending,
+      boolean leftCRightO)
       throws StorageEngineException, QueryProcessException {
     return new LocalGroupByExecutor(path, allSensors, context, timeFilter, fileFilter, ascending);
   }

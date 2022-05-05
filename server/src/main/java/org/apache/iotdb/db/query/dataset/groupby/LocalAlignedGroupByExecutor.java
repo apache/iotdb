@@ -29,6 +29,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.AlignedSeriesAggregateReader;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -41,6 +42,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 
 public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
@@ -286,6 +288,8 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     boolean hasCached = false;
     int curReadCurArrayIndex = lastReadCurArrayIndex;
     int curReadCurListIndex = lastReadCurListIndex;
+    Predicate<Long> iteratorPredicate =
+        QueryUtils.getPredicate(curStartTime, curEndTime, ascending);
     while (reader.hasNextSubSeries()) {
       int subIndex = reader.getCurIndex();
       List<AggregateResult> aggregateResultList = results.get(subIndex);
@@ -299,18 +303,18 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
         IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator(subIndex);
         if (ascending) {
           // skip points that cannot be calculated
-          while (batchDataIterator.hasNext(curStartTime, curEndTime)
+          while (batchDataIterator.hasNext(iteratorPredicate)
               && batchDataIterator.currentTime() < curStartTime) {
             batchDataIterator.next();
           }
         } else {
-          while (batchDataIterator.hasNext(curStartTime, curEndTime)
+          while (batchDataIterator.hasNext(iteratorPredicate)
               && batchDataIterator.currentTime() >= curEndTime) {
             batchDataIterator.next();
           }
         }
-        if (batchDataIterator.hasNext(curStartTime, curEndTime)) {
-          result.updateResultFromPageData(batchDataIterator, curStartTime, curEndTime);
+        if (batchDataIterator.hasNext(iteratorPredicate)) {
+          result.updateResultFromPageData(batchDataIterator, iteratorPredicate);
         }
         if (ascending) {
           if (batchData.getReadCurListIndex() > curReadCurListIndex) {

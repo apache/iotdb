@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.function.Predicate;
 
 public class CountAggrResult extends AggregateResult {
 
@@ -56,12 +57,10 @@ public class CountAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, long minBound, long maxBound) {
+      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
     int cnt = 0;
-    while (batchIterator.hasNext(minBound, maxBound)) {
-      if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
-        break;
-      }
+    while (batchIterator.hasNext(boundPredicate)
+        && !boundPredicate.test(batchIterator.currentTime())) {
       cnt++;
       batchIterator.next();
     }
