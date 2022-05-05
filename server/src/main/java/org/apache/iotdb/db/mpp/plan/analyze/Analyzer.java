@@ -187,7 +187,7 @@ public class Analyzer {
         }
         analysis.setSourceExpressions(sourceExpressions);
 
-        DatasetHeader datasetHeader = analyzeOutput(outputExpressions, false);
+        DatasetHeader datasetHeader = analyzeOutput(queryStatement, outputExpressions);
         analysis.setRespDatasetHeader(datasetHeader);
         analysis.setTypeProvider(typeProvider);
 
@@ -483,7 +483,9 @@ public class Analyzer {
     }
 
     private DatasetHeader analyzeOutput(
-        List<Pair<Expression, String>> outputExpressions, boolean isIgnoreTimestamp) {
+        QueryStatement queryStatement, List<Pair<Expression, String>> outputExpressions) {
+      boolean isIgnoreTimestamp =
+          queryStatement instanceof AggregationQueryStatement && !queryStatement.isGroupByTime();
       List<ColumnHeader> columnHeaders =
           outputExpressions.stream()
               .map(
