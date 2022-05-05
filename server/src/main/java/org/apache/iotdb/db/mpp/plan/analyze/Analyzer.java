@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.AggregationQueryStatement;
@@ -176,7 +177,7 @@ public class Analyzer {
         }
 
         if (queryStatement.getFillComponent() != null) {
-          List<FillDescriptor> fillDescriptorList = analyzeFill(queryStatement);
+          List<FillDescriptor> fillDescriptorList = analyzeFill(queryStatement, outputExpressions);
           analysis.setFillDescriptorList(fillDescriptorList);
         }
 
@@ -468,9 +469,17 @@ public class Analyzer {
       return filterNullParameter;
     }
 
-    private List<FillDescriptor> analyzeFill(QueryStatement queryStatement) {
-
-      return null;
+    private List<FillDescriptor> analyzeFill(
+        QueryStatement queryStatement, List<Pair<Expression, String>> outputExpressions) {
+      // TODO: support more powerful FILL
+      FillComponent fillComponent = queryStatement.getFillComponent();
+      return outputExpressions.stream()
+          .map(Pair::getLeft)
+          .map(
+              expression ->
+                  new FillDescriptor(
+                      fillComponent.getFillPolicy(), fillComponent.getFillValue(), expression))
+          .collect(Collectors.toList());
     }
 
     private DatasetHeader analyzeOutput(

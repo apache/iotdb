@@ -31,23 +31,34 @@ public class FillDescriptor {
   // policy of fill null values
   private final FillPolicy fillPolicy;
 
+  // filled value when fillPolicy is VALUE
+  private final String fillValue;
+
   // target column for fill
   private final Expression expression;
 
-  public FillDescriptor(FillPolicy fillPolicy, Expression expression) {
+  public FillDescriptor(FillPolicy fillPolicy, String fillValue, Expression expression) {
     this.fillPolicy = fillPolicy;
+    this.fillValue = fillValue;
     this.expression = expression;
   }
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(fillPolicy.ordinal(), byteBuffer);
+    if (fillPolicy == FillPolicy.VALUE) {
+      ReadWriteIOUtils.write(fillValue, byteBuffer);
+    }
     Expression.serialize(expression, byteBuffer);
   }
 
   public static FillDescriptor deserialize(ByteBuffer byteBuffer) {
     FillPolicy fillPolicy = FillPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    String fillValue = null;
+    if (fillPolicy == FillPolicy.VALUE) {
+      fillValue = ReadWriteIOUtils.readString(byteBuffer);
+    }
     Expression expression = Expression.deserialize(byteBuffer);
-    return new FillDescriptor(fillPolicy, expression);
+    return new FillDescriptor(fillPolicy, fillValue, expression);
   }
 
   @Override
@@ -59,11 +70,13 @@ public class FillDescriptor {
       return false;
     }
     FillDescriptor that = (FillDescriptor) o;
-    return fillPolicy == that.fillPolicy && Objects.equals(expression, that.expression);
+    return fillPolicy == that.fillPolicy
+        && Objects.equals(fillValue, that.fillValue)
+        && Objects.equals(expression, that.expression);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fillPolicy, expression);
+    return Objects.hash(fillPolicy, fillValue, expression);
   }
 }
