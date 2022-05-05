@@ -42,11 +42,11 @@ import java.util.HashMap;
 
 public class UDTFJexl implements UDTF {
 
+  private int inputSeriesNumber;
+  private TSDataType[] inputDataType;
   private TSDataType outputDataType;
   private JexlScript script;
   private Evaluator evaluator;
-  private int inputSeriesNumber;
-  private TSDataType[] inputDataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -182,67 +182,6 @@ public class UDTFJexl implements UDTF {
         throws IOException, UDFInputSeriesDataTypeNotValidException;
   }
 
-  private class EvaluatorMulInput implements Evaluator {
-
-    Object[] values = new Object[inputSeriesNumber];
-
-    @Override
-    public void evaluateDouble(Row row, PointCollector collector)
-        throws IOException, UDFInputSeriesDataTypeNotValidException {
-      getValues(row);
-      collector.putDouble(row.getTime(), ((Number) script.execute(null, values)).doubleValue());
-    }
-
-    @Override
-    public void evaluateText(Row row, PointCollector collector)
-        throws IOException, QueryProcessException, UDFInputSeriesDataTypeNotValidException {
-      getValues(row);
-      collector.putString(row.getTime(), (String) script.execute(null, values));
-    }
-
-    @Override
-    public void evaluateBoolean(Row row, PointCollector collector)
-        throws IOException, UDFInputSeriesDataTypeNotValidException {
-      getValues(row);
-      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, values));
-    }
-
-    public void getValues(Row row) throws IOException, UDFInputSeriesDataTypeNotValidException {
-      for (int i = 0; i < inputSeriesNumber; i++) {
-        switch (inputDataType[i]) {
-          case INT32:
-            values[i] = row.getInt(i);
-            break;
-          case INT64:
-            values[i] = row.getLong(i);
-            break;
-          case FLOAT:
-            values[i] = row.getFloat(i);
-            break;
-          case DOUBLE:
-            values[i] = row.getDouble(i);
-            break;
-          case TEXT:
-            values[i] = row.getString(i);
-            break;
-          case BOOLEAN:
-            values[i] = row.getBoolean(i);
-            break;
-          default:
-            throw new UDFInputSeriesDataTypeNotValidException(
-                i,
-                inputDataType[i],
-                TSDataType.INT32,
-                TSDataType.INT64,
-                TSDataType.FLOAT,
-                TSDataType.DOUBLE,
-                TSDataType.TEXT,
-                TSDataType.BOOLEAN);
-        }
-      }
-    }
-  }
-
   private class EvaluatorIntInput implements Evaluator {
     @Override
     public void evaluateDouble(Row row, PointCollector collector) throws IOException {
@@ -354,6 +293,67 @@ public class UDTFJexl implements UDTF {
     @Override
     public void evaluateBoolean(Row row, PointCollector collector) throws IOException {
       collector.putBoolean(row.getTime(), (Boolean) script.execute(null, row.getBoolean(0)));
+    }
+  }
+
+  private class EvaluatorMulInput implements Evaluator {
+
+    Object[] values = new Object[inputSeriesNumber];
+
+    @Override
+    public void evaluateDouble(Row row, PointCollector collector)
+        throws IOException, UDFInputSeriesDataTypeNotValidException {
+      getValues(row);
+      collector.putDouble(row.getTime(), ((Number) script.execute(null, values)).doubleValue());
+    }
+
+    @Override
+    public void evaluateText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException, UDFInputSeriesDataTypeNotValidException {
+      getValues(row);
+      collector.putString(row.getTime(), (String) script.execute(null, values));
+    }
+
+    @Override
+    public void evaluateBoolean(Row row, PointCollector collector)
+        throws IOException, UDFInputSeriesDataTypeNotValidException {
+      getValues(row);
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, values));
+    }
+
+    public void getValues(Row row) throws IOException, UDFInputSeriesDataTypeNotValidException {
+      for (int i = 0; i < inputSeriesNumber; i++) {
+        switch (inputDataType[i]) {
+          case INT32:
+            values[i] = row.getInt(i);
+            break;
+          case INT64:
+            values[i] = row.getLong(i);
+            break;
+          case FLOAT:
+            values[i] = row.getFloat(i);
+            break;
+          case DOUBLE:
+            values[i] = row.getDouble(i);
+            break;
+          case TEXT:
+            values[i] = row.getString(i);
+            break;
+          case BOOLEAN:
+            values[i] = row.getBoolean(i);
+            break;
+          default:
+            throw new UDFInputSeriesDataTypeNotValidException(
+                i,
+                inputDataType[i],
+                TSDataType.INT32,
+                TSDataType.INT64,
+                TSDataType.FLOAT,
+                TSDataType.DOUBLE,
+                TSDataType.TEXT,
+                TSDataType.BOOLEAN);
+        }
+      }
     }
   }
 }
