@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlParseConvertUtils;
