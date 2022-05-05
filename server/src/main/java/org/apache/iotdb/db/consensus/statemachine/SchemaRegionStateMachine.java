@@ -78,7 +78,10 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
-    logger.info("SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}", schemaRegion.getSchemaRegionId(), fragmentInstance.getId());
+    logger.info(
+        "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
+        schemaRegion.getSchemaRegionId(),
+        fragmentInstance.getId());
     return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
   }
 }

@@ -182,13 +182,12 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onFinished(ISourceHandle sourceHandle) {
-      logger.info("Release resources of finished source handle {}", sourceHandle);
+      logger.info("{} finished and release resources", sourceHandle);
       if (!sourceHandles.containsKey(sourceHandle.getLocalFragmentInstanceId())
           || !sourceHandles
               .get(sourceHandle.getLocalFragmentInstanceId())
               .containsKey(sourceHandle.getLocalPlanNodeId())) {
-        logger.info(
-            "Resources of finished source handle {} has already been released", sourceHandle);
+        logger.info("{} resources has already been released", sourceHandle);
       } else {
         sourceHandles
             .get(sourceHandle.getLocalFragmentInstanceId())
@@ -202,6 +201,7 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onAborted(ISourceHandle sourceHandle) {
+      logger.info("{}: onAborted is invoked", sourceHandle);
       onFinished(sourceHandle);
     }
 
@@ -228,11 +228,7 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onFinish(ISinkHandle sinkHandle) {
-      logger.info("Release resources of finished sink handle {}", sourceHandles);
-      if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
-        logger.info("Resources of finished sink handle {} has already been released", sinkHandle);
-      }
-      sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
+      removeFromDataBlockManager(sinkHandle);
       context.finished();
     }
 
@@ -243,15 +239,21 @@ public class DataBlockManager implements IDataBlockManager {
 
     @Override
     public void onAborted(ISinkHandle sinkHandle) {
-      logger.info("Release resources of aborted sink handle {}", sourceHandles);
+      logger.info("{} onAborted is invoked", sinkHandle);
+      removeFromDataBlockManager(sinkHandle);
+    }
+
+    private void removeFromDataBlockManager(ISinkHandle sinkHandle) {
+      logger.info("{} release resources of finished sink handle", sinkHandle);
       if (!sinkHandles.containsKey(sinkHandle.getLocalFragmentInstanceId())) {
-        logger.info("Resources of aborted sink handle {} has already been released", sinkHandle);
+        logger.info("{} resources already been released", sinkHandle);
       }
       sinkHandles.remove(sinkHandle.getLocalFragmentInstanceId());
     }
 
     @Override
     public void onFailure(ISinkHandle sinkHandle, Throwable t) {
+      // TODO: (xingtanzjr) should we remove the sinkHandle from DataBlockManager ?
       logger.error("Sink handle {} failed due to {}", sinkHandle, t);
       if (onFailureCallback != null) {
         onFailureCallback.call(t);

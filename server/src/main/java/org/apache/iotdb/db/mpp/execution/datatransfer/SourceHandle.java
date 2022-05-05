@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.nonCancellationPropagating;
@@ -52,6 +51,7 @@ public class SourceHandle implements ISourceHandle {
   private static final Logger logger = LoggerFactory.getLogger(SourceHandle.class);
 
   public static final int MAX_ATTEMPT_TIMES = 3;
+  private static final long RETRY_INTERVAL_IN_MS = 1000;
 
   private final TEndPoint remoteEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
@@ -120,6 +120,7 @@ public class SourceHandle implements ISourceHandle {
         .free(localFragmentInstanceId.getQueryId(), tsBlock.getRetainedSizeInBytes());
 
     if (sequenceIdToTsBlock.isEmpty() && !isFinished()) {
+      logger.info("{}: no buffered TsBlock, blocked", this);
       blocked = SettableFuture.create();
     }
     if (isFinished()) {
@@ -189,6 +190,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   synchronized void setNoMoreTsBlocks(int lastSequenceId) {
+    logger.info("{}: receive NoMoreTsBlock event. ", this);
     this.lastSequenceId = lastSequenceId;
     if (!blocked.isDone() && remoteTsBlockedConsumedUp()) {
       blocked.set(null);
@@ -199,6 +201,11 @@ public class SourceHandle implements ISourceHandle {
   }
 
   synchronized void updatePendingDataBlockInfo(int startSequenceId, List<Long> dataBlockSizes) {
+    logger.info(
+        "{}: receive newDataBlockEvent. [{}, {})",
+        this,
+        startSequenceId,
+        startSequenceId + dataBlockSizes.size());
     for (int i = 0; i < dataBlockSizes.size(); i++) {
       sequenceIdToDataBlockSize.put(i + startSequenceId, dataBlockSizes.get(i));
     }
@@ -267,12 +274,12 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public String toString() {
-    return new StringJoiner(", ", SourceHandle.class.getSimpleName() + "[", "]")
-        .add("remoteEndpoint='" + remoteEndpoint + "'")
-        .add("remoteFragmentInstanceId=" + remoteFragmentInstanceId)
-        .add("localFragmentInstanceId=" + localFragmentInstanceId)
-        .add("localPlanNodeId='" + localPlanNodeId + "'")
-        .toString();
+    return String.format(
+        "Query[%s]-[%s-%s-SourceHandle-%s]",
+        localFragmentInstanceId.getQueryId(),
+        localFragmentInstanceId.getFragmentId(),
+        localFragmentInstanceId.getInstanceId(),
+        localPlanNodeId);
   }
 
   /** Get data blocks from an upstream fragment instance. */
@@ -300,13 +307,11 @@ public class SourceHandle implements ISourceHandle {
 
     @Override
     public void run() {
-      logger.debug(
-          "Get data blocks [{}, {}) from {} for plan node {} of {}.",
+      logger.info(
+          "{}: try to get data blocks [{}, {}) ",
+          SourceHandle.this,
           startSequenceId,
-          endSequenceId,
-          remoteFragmentInstanceId,
-          localPlanNodeId,
-          localFragmentInstanceId);
+          endSequenceId);
       TGetDataBlockRequest req =
           new TGetDataBlockRequest(remoteFragmentInstanceId, startSequenceId, endSequenceId);
       int attempt = 0;
@@ -320,6 +325,7 @@ public class SourceHandle implements ISourceHandle {
             TsBlock tsBlock = serde.deserialize(byteBuffer);
             tsBlocks.add(tsBlock);
           }
+          logger.info("{}: got data blocks. count: {}", SourceHandle.this, tsBlocks.size());
           synchronized (SourceHandle.this) {
             if (aborted) {
               return;
@@ -336,8 +342,8 @@ public class SourceHandle implements ISourceHandle {
           break;
         } catch (Throwable e) {
           logger.error(
-              "Failed to get data block from {} due to {}, attempt times: {}",
-              remoteFragmentInstanceId,
+              "{}: failed to get data block {}, attempt times: {}",
+              SourceHandle.this,
               e.getMessage(),
               attempt);
           if (attempt == MAX_ATTEMPT_TIMES) {
@@ -346,6 +352,14 @@ public class SourceHandle implements ISourceHandle {
               localMemoryManager
                   .getQueryPool()
                   .free(localFragmentInstanceId.getQueryId(), reservedBytes);
+              sourceHandleListener.onFailure(SourceHandle.this, e);
+            }
+          }
+          try {
+            Thread.sleep(RETRY_INTERVAL_IN_MS);
+          } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            synchronized (SourceHandle.this) {
               sourceHandleListener.onFailure(SourceHandle.this, e);
             }
           }
@@ -366,11 +380,11 @@ public class SourceHandle implements ISourceHandle {
 
     @Override
     public void run() {
-      logger.debug(
-          "Send ack data block event [{}, {}) to {}.",
+      logger.info(
+          "{}: send ack data block event [{}, {}).",
+          SourceHandle.this,
           startSequenceId,
-          endSequenceId,
-          remoteFragmentInstanceId);
+          endSequenceId);
       int attempt = 0;
       TAcknowledgeDataBlockEvent acknowledgeDataBlockEvent =
           new TAcknowledgeDataBlockEvent(remoteFragmentInstanceId, startSequenceId, endSequenceId);
@@ -382,14 +396,22 @@ public class SourceHandle implements ISourceHandle {
           break;
         } catch (Throwable e) {
           logger.error(
-              "Failed to send ack data block event [{}, {}) to {} due to {}, attempt times: {}",
+              "{}: failed to send ack data block event [{}, {}) due to {}, attempt times: {}",
+              SourceHandle.this,
               startSequenceId,
               endSequenceId,
-              remoteFragmentInstanceId,
               e.getMessage(),
               attempt);
           if (attempt == MAX_ATTEMPT_TIMES) {
-            synchronized (this) {
+            synchronized (SourceHandle.this) {
+              sourceHandleListener.onFailure(SourceHandle.this, e);
+            }
+          }
+          try {
+            Thread.sleep(RETRY_INTERVAL_IN_MS);
+          } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            synchronized (SourceHandle.this) {
               sourceHandleListener.onFailure(SourceHandle.this, e);
             }
           }
