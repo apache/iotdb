@@ -38,26 +38,30 @@ import org.apache.commons.jexl3.JexlEngine;
 import org.apache.commons.jexl3.JexlScript;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 public class UDTFJexl implements UDTF {
 
   private TSDataType outputDataType;
   private JexlScript script;
   private Evaluator evaluator;
+  private int inputSeriesNumber;
+  private TSDataType[] inputDataType;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
-    validator
-        .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT,
-            TSDataType.BOOLEAN)
-        .validateRequiredAttribute("expr");
+    inputSeriesNumber = validator.getParameters().getPaths().size();
+    for (int i = 0; i < inputSeriesNumber; i++) {
+      validator.validateInputSeriesDataType(
+          i,
+          TSDataType.INT32,
+          TSDataType.INT64,
+          TSDataType.FLOAT,
+          TSDataType.DOUBLE,
+          TSDataType.TEXT,
+          TSDataType.BOOLEAN);
+    }
+    validator.validateRequiredAttribute("expr");
   }
 
   @Override
@@ -68,38 +72,45 @@ public class UDTFJexl implements UDTF {
     JexlEngine jexl = new JexlBuilder().create();
     script = jexl.createScript(expr);
 
-    TSDataType inputDataType = parameters.getDataType(0);
-    outputDataType = probeOutputDataType(inputDataType);
+    inputDataType = new TSDataType[inputSeriesNumber];
+    for (int i = 0; i < inputSeriesNumber; i++) {
+      inputDataType[i] = parameters.getDataType(i);
+    }
+    outputDataType = probeOutputDataType();
 
-    switch (inputDataType) {
-      case INT32:
-        evaluator = new EvaluatorIntInput();
-        break;
-      case INT64:
-        evaluator = new EvaluatorLongInput();
-        break;
-      case FLOAT:
-        evaluator = new EvaluatorFloatInput();
-        break;
-      case DOUBLE:
-        evaluator = new EvaluatorDoubleInput();
-        break;
-      case TEXT:
-        evaluator = new EvaluatorStringInput();
-        break;
-      case BOOLEAN:
-        evaluator = new EvaluatorBooleanInput();
-        break;
-      default:
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            inputDataType,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT,
-            TSDataType.BOOLEAN);
+    if (inputSeriesNumber == 1) {
+      switch (inputDataType[0]) {
+        case INT32:
+          evaluator = new EvaluatorIntInput();
+          break;
+        case INT64:
+          evaluator = new EvaluatorLongInput();
+          break;
+        case FLOAT:
+          evaluator = new EvaluatorFloatInput();
+          break;
+        case DOUBLE:
+          evaluator = new EvaluatorDoubleInput();
+          break;
+        case TEXT:
+          evaluator = new EvaluatorStringInput();
+          break;
+        case BOOLEAN:
+          evaluator = new EvaluatorBooleanInput();
+          break;
+        default:
+          throw new UDFInputSeriesDataTypeNotValidException(
+              0,
+              inputDataType[0],
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.TEXT,
+              TSDataType.BOOLEAN);
+      }
+    } else {
+      evaluator = new EvaluatorMulInput();
     }
 
     configurations
@@ -107,41 +118,27 @@ public class UDTFJexl implements UDTF {
         .setOutputDataType(outputDataType);
   }
 
-  private TSDataType probeOutputDataType(TSDataType inputDataType)
-      throws UDFInputSeriesDataTypeNotValidException, UDFOutputSeriesDataTypeNotValidException {
-    Object o;
-    // 23, 23L, 23f, 23d, "string", true are hard codes for probing
-    switch (inputDataType) {
-      case INT32:
-        o = script.execute(null, 23);
-        break;
-      case INT64:
-        o = script.execute(null, 23L);
-        break;
-      case FLOAT:
-        o = script.execute(null, 23f);
-        break;
-      case DOUBLE:
-        o = script.execute(null, 23d);
-        break;
-      case TEXT:
-        o = script.execute(null, "string");
-        break;
-      case BOOLEAN:
-        o = script.execute(null, true);
-        break;
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(
-            0,
-            inputDataType,
-            TSDataType.INT32,
-            TSDataType.INT64,
-            TSDataType.FLOAT,
-            TSDataType.DOUBLE,
-            TSDataType.TEXT,
-            TSDataType.BOOLEAN);
+  // 23, 23L, 23f, 23d, "string", true are hard codes for probing
+  private HashMap<TSDataType, Object> initialMap() {
+    HashMap<TSDataType, Object> map = new HashMap<TSDataType, Object>();
+    map.put(TSDataType.INT32, 23);
+    map.put(TSDataType.INT64, 23L);
+    map.put(TSDataType.FLOAT, 23f);
+    map.put(TSDataType.DOUBLE, 23d);
+    map.put(TSDataType.TEXT, "string");
+    map.put(TSDataType.BOOLEAN, true);
+    return map;
+  }
+
+  private TSDataType probeOutputDataType() throws UDFOutputSeriesDataTypeNotValidException {
+    // initial inputHardCodes to probe OutputDataType
+    HashMap<TSDataType, Object> map = initialMap();
+    Object[] inputHardCodes = new Object[inputSeriesNumber];
+    for (int i = 0; i < inputSeriesNumber; i++) {
+      inputHardCodes[i] = map.get(inputDataType[i]);
     }
+
+    Object o = script.execute(null, inputHardCodes);
 
     if (o instanceof Number) {
       return TSDataType.DOUBLE;
@@ -156,7 +153,8 @@ public class UDTFJexl implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector)
-      throws IOException, UDFOutputSeriesDataTypeNotValidException, QueryProcessException {
+      throws IOException, UDFOutputSeriesDataTypeNotValidException, QueryProcessException,
+          UDFInputSeriesDataTypeNotValidException {
     switch (outputDataType) {
       case DOUBLE:
         evaluator.evaluateDouble(row, collector);
@@ -174,11 +172,75 @@ public class UDTFJexl implements UDTF {
   }
 
   private interface Evaluator {
-    void evaluateDouble(Row row, PointCollector collector) throws IOException;
+    void evaluateDouble(Row row, PointCollector collector)
+        throws IOException, UDFInputSeriesDataTypeNotValidException;
 
-    void evaluateText(Row row, PointCollector collector) throws IOException, QueryProcessException;
+    void evaluateText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException, UDFInputSeriesDataTypeNotValidException;
 
-    void evaluateBoolean(Row row, PointCollector collector) throws IOException;
+    void evaluateBoolean(Row row, PointCollector collector)
+        throws IOException, UDFInputSeriesDataTypeNotValidException;
+  }
+
+  private class EvaluatorMulInput implements Evaluator {
+
+    Object[] values = new Object[inputSeriesNumber];
+
+    @Override
+    public void evaluateDouble(Row row, PointCollector collector)
+        throws IOException, UDFInputSeriesDataTypeNotValidException {
+      getValues(row);
+      collector.putDouble(row.getTime(), ((Number) script.execute(null, values)).doubleValue());
+    }
+
+    @Override
+    public void evaluateText(Row row, PointCollector collector)
+        throws IOException, QueryProcessException, UDFInputSeriesDataTypeNotValidException {
+      getValues(row);
+      collector.putString(row.getTime(), (String) script.execute(null, values));
+    }
+
+    @Override
+    public void evaluateBoolean(Row row, PointCollector collector)
+        throws IOException, UDFInputSeriesDataTypeNotValidException {
+      getValues(row);
+      collector.putBoolean(row.getTime(), (Boolean) script.execute(null, values));
+    }
+
+    public void getValues(Row row) throws IOException, UDFInputSeriesDataTypeNotValidException {
+      for (int i = 0; i < inputSeriesNumber; i++) {
+        switch (inputDataType[i]) {
+          case INT32:
+            values[i] = row.getInt(i);
+            break;
+          case INT64:
+            values[i] = row.getLong(i);
+            break;
+          case FLOAT:
+            values[i] = row.getFloat(i);
+            break;
+          case DOUBLE:
+            values[i] = row.getDouble(i);
+            break;
+          case TEXT:
+            values[i] = row.getString(i);
+            break;
+          case BOOLEAN:
+            values[i] = row.getBoolean(i);
+            break;
+          default:
+            throw new UDFInputSeriesDataTypeNotValidException(
+                i,
+                inputDataType[i],
+                TSDataType.INT32,
+                TSDataType.INT64,
+                TSDataType.FLOAT,
+                TSDataType.DOUBLE,
+                TSDataType.TEXT,
+                TSDataType.BOOLEAN);
+        }
+      }
+    }
   }
 
   private class EvaluatorIntInput implements Evaluator {
