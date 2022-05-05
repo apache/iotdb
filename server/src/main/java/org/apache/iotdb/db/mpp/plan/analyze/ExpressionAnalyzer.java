@@ -347,8 +347,33 @@ public class ExpressionAnalyzer {
     }
   }
 
-  public static List<Expression> searchSourceExpressions(Expression selectExpr) {
-    return null;
+  public static List<Expression> searchSourceExpressions(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      List<Expression> resultExpressions = new ArrayList<>();
+      resultExpressions.addAll(
+          searchSourceExpressions(((BinaryExpression) expression).getLeftExpression()));
+      resultExpressions.addAll(
+          searchSourceExpressions(((BinaryExpression) expression).getRightExpression()));
+      return resultExpressions;
+    } else if (expression instanceof UnaryExpression) {
+      return searchSourceExpressions(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      if (expression.isBuiltInAggregationFunctionExpression()) {
+        return Collections.singletonList(expression);
+      }
+      List<Expression> resultExpressions = new ArrayList<>();
+      for (Expression childExpression : expression.getExpressions()) {
+        resultExpressions.addAll(searchSourceExpressions(childExpression));
+      }
+      return resultExpressions;
+    } else if (expression instanceof TimeSeriesOperand) {
+      return Collections.singletonList(expression);
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      return Collections.emptyList();
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
   }
 
   public static Pair<Expression, String> getMeasurementWithAliasInExpression(
@@ -693,6 +718,17 @@ public class ExpressionAnalyzer {
       return new LogicAndExpression(
           expressions.get(0),
           constructBinaryFilterTreeWithAnd(expressions.subList(1, expressions.size())));
+    }
+  }
+
+  public static String getDeviceName(Expression expression) {
+    if (expression instanceof TimeSeriesOperand) {
+      return ((TimeSeriesOperand) expression).getPath().getDeviceIdString();
+    } else if (expression instanceof FunctionExpression) {
+      return getDeviceName(expression.getExpressions().get(0));
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
     }
   }
 }

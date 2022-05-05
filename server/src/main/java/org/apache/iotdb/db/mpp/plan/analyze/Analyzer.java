@@ -183,7 +183,13 @@ public class Analyzer {
 
         Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
         for (Expression selectExpr : selectExpressions) {
-          // TODO
+          for (Expression sourceExpression :
+              ExpressionAnalyzer.searchSourceExpressions(selectExpr)) {
+            sourceExpressions
+                .computeIfAbsent(
+                    ExpressionAnalyzer.getDeviceName(sourceExpression), key -> new HashSet<>())
+                .add(sourceExpression);
+          }
         }
         analysis.setSourceExpressions(sourceExpressions);
 
