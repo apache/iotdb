@@ -38,7 +38,8 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class SimpleQueryTerminator implements IQueryTerminator {
-  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleQueryTerminator.class);
+  private static final Logger logger = LoggerFactory.getLogger(SimpleQueryTerminator.class);
+  private static final long TERMINATION_GRACE_PERIOD_IN_MS = 1000L;
   private final ExecutorService executor;
   private final QueryId queryId;
   private final List<FragmentInstance> fragmentInstances;
@@ -60,7 +61,11 @@ public class SimpleQueryTerminator implements IQueryTerminator {
   @Override
   public Future<Boolean> terminate() {
     List<TEndPoint> relatedHost = getRelatedHost();
-
+    try {
+      Thread.sleep(TERMINATION_GRACE_PERIOD_IN_MS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
     return executor.submit(
         () -> {
           for (TEndPoint endPoint : relatedHost) {
@@ -70,7 +75,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
               client.cancelQuery(
                   new TCancelQueryReq(queryId.getId(), getRelatedFragmentInstances(endPoint)));
             } catch (IOException e) {
-              LOGGER.error("can't connect to node {}", endPoint, e);
+              logger.error("can't connect to node {}", endPoint, e);
               return false;
             } catch (TException e) {
               return false;
