@@ -37,6 +37,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -133,12 +134,12 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public TsBlock getBatchResult() {
+  public Optional<TsBlock> getBatchResult() {
     if (!resultSetConsumed) {
       resultSetConsumed = true;
-      return resultSet;
+      return Optional.of(resultSet);
     }
-    return null;
+    return Optional.empty();
   }
 
   // According to the execution process of ConfigExecution, there is only one TsBlock for

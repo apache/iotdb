@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.CommonUtils;
 
@@ -36,6 +37,7 @@ public class ConfigNodeDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
 
   private final ConfigNodeConf conf = new ConfigNodeConf();
+  private final CommonConfig commonConfig = CommonConfig.getInstance();
 
   private ConfigNodeDescriptor() {
     loadProps();
@@ -45,12 +47,20 @@ public class ConfigNodeDescriptor {
     return conf;
   }
 
+  /** init common config according to iotdb config */
+  private void initCommonConfig() {
+    // first init the user and role folder in common config
+    commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
+    commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
+  }
+
   /**
    * get props url location
    *
    * @return url object if location exit, otherwise null.
    */
   public URL getPropsUrl() {
+    initCommonConfig();
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
     // If it wasn't, check if a home directory was provided
@@ -205,6 +215,8 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
+      commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
+      commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
 
       String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
 

@@ -62,12 +62,14 @@ public class MemUtils {
    */
   public static long getRecordsSize(
       List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
+    int emptyRecordCount = 0;
     long memSize = 0L;
-    for (int i = 0; i < dataTypes.size(); i++) {
+    for (int i = 0; i < value.length; i++) {
       if (value[i] == null) {
+        emptyRecordCount++;
         continue;
       }
-      memSize += getRecordSize(dataTypes.get(i), value[i], addingTextDataSize);
+      memSize += getRecordSize(dataTypes.get(i - emptyRecordCount), value[i], addingTextDataSize);
     }
     return memSize;
   }
