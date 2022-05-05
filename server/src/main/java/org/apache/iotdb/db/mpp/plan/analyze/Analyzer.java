@@ -137,12 +137,14 @@ public class Analyzer {
 
         List<Pair<Expression, String>> outputExpressions;
         Set<Expression> selectExpressions = new HashSet<>();
+        List<DeviceSchemaInfo> deviceSchemaInfos = new ArrayList<>();
         if (!queryStatement.isAlignByDevice()) {
           outputExpressions = analyzeSelect(queryStatement, schemaTree);
           selectExpressions =
               outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet());
         } else {
-          outputExpressions = analyzeFrom(queryStatement, schemaTree, selectExpressions);
+          outputExpressions =
+              analyzeFrom(queryStatement, schemaTree, deviceSchemaInfos, selectExpressions);
         }
 
         if (queryStatement.isGroupByLevel()) {
@@ -157,8 +159,14 @@ public class Analyzer {
         analysis.setGlobalTimeFilter(globalTimeFilter);
 
         if (queryStatement.getWhereCondition() != null) {
-          Expression queryFilter = analyzeWhere(queryStatement, schemaTree, selectExpressions);
-          analysis.setQueryFilter(queryFilter);
+          if (!queryStatement.isAlignByDevice()) {
+            Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
+            analysis.setQueryFilter(queryFilter);
+          } else {
+            Map<String, Expression> deviceToQueryFilter =
+                analyzeWhereSplitByDevice(queryStatement, deviceSchemaInfos);
+            analysis.setDeviceToQueryFilter(deviceToQueryFilter);
+          }
         }
 
         if (queryStatement.getFilterNullComponent() != null) {
@@ -168,7 +176,6 @@ public class Analyzer {
         }
 
         if (queryStatement.getFillComponent() != null) {
-          Validate.isTrue(!queryStatement.isAlignByDevice());
           List<FillDescriptor> fillDescriptorList = analyzeFill(queryStatement);
           analysis.setFillDescriptorList(fillDescriptorList);
         }
@@ -264,11 +271,15 @@ public class Analyzer {
     }
 
     private List<Pair<Expression, String>> analyzeFrom(
-        QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> selectExpressions) {
+        QueryStatement queryStatement,
+        SchemaTree schemaTree,
+        List<DeviceSchemaInfo> allDeviceSchemaInfos,
+        Set<Expression> selectExpressions) {
       List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
       List<MeasurementPath> allSelectedPaths = new ArrayList<>();
       for (PartialPath devicePattern : devicePatternList) {
         List<DeviceSchemaInfo> deviceSchemaInfos = schemaTree.getMatchedDevices(devicePattern);
+        allDeviceSchemaInfos.addAll(deviceSchemaInfos);
         for (DeviceSchemaInfo deviceSchema : deviceSchemaInfos) {
           allSelectedPaths.addAll(deviceSchema.getMeasurements());
         }
@@ -356,12 +367,39 @@ public class Analyzer {
           .collect(Collectors.toList());
     }
 
-    private Expression analyzeWhere(
-        QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> selectExpressions) {
-      Expression rewrittenPredicate =
+    private Expression analyzeWhere(QueryStatement queryStatement, SchemaTree schemaTree) {
+      List<Expression> rewrittenPredicates =
           ExpressionAnalyzer.removeWildcardInQueryFilter(
-              queryStatement.getWhereCondition().getPredicate(), schemaTree, typeProvider);
-      return rewrittenPredicate;
+              queryStatement.getWhereCondition().getPredicate(),
+              queryStatement.getFromComponent().getPrefixPaths(),
+              schemaTree,
+              typeProvider);
+      if (rewrittenPredicates.size() == 1) {
+        return rewrittenPredicates.get(0);
+      } else {
+        return ExpressionAnalyzer.constructBinaryFilterTreeWithAnd(
+            rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
+      }
+    }
+
+    private Map<String, Expression> analyzeWhereSplitByDevice(
+        QueryStatement queryStatement, List<DeviceSchemaInfo> deviceSchemaInfos) {
+      Map<String, Expression> deviceToQueryFilter = new HashMap<>();
+      for (DeviceSchemaInfo deviceSchemaInfo : deviceSchemaInfos) {
+        List<Expression> rewrittenPredicates =
+            ExpressionAnalyzer.removeWildcardInQueryFilterByDevice(
+                queryStatement.getWhereCondition().getPredicate(), deviceSchemaInfo, typeProvider);
+        if (rewrittenPredicates.size() == 1) {
+          deviceToQueryFilter.put(
+              deviceSchemaInfo.getDevicePath().getFullPath(), rewrittenPredicates.get(0));
+        } else {
+          deviceToQueryFilter.put(
+              deviceSchemaInfo.getDevicePath().getFullPath(),
+              ExpressionAnalyzer.constructBinaryFilterTreeWithAnd(
+                  rewrittenPredicates.stream().distinct().collect(Collectors.toList())));
+        }
+      }
+      return deviceToQueryFilter;
     }
 
     private Map<Expression, Set<Expression>> analyzeGroupByLevel(
@@ -419,6 +457,12 @@ public class Analyzer {
       for (Expression filterNullColumn : rawFilterNullColumns) {
         List<Expression> resultExpressions =
             ExpressionAnalyzer.removeWildcardInExpression(filterNullColumn, schemaTree);
+        for (Expression expression : resultExpressions) {
+          if (!selectExpressions.contains(expression)) {
+            throw new SemanticException("");
+          }
+          resultFilterNullColumns.add(expression);
+        }
       }
       filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
       return filterNullParameter;

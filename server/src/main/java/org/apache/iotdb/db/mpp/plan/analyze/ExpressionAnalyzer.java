@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -203,11 +204,6 @@ public class ExpressionAnalyzer {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
     }
-  }
-
-  public static Expression removeWildcardInQueryFilter(
-      Expression predicate, SchemaTree schemaTree, TypeProvider typeProvider) {
-    return null;
   }
 
   private static List<Expression> reconstructTimeSeriesOperands(
@@ -551,6 +547,158 @@ public class ExpressionAnalyzer {
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static List<Expression> removeWildcardInQueryFilter(
+      Expression predicate,
+      List<PartialPath> prefixPaths,
+      SchemaTree schemaTree,
+      TypeProvider typeProvider) {
+    if (predicate instanceof BinaryExpression) {
+      List<Expression> leftExpressions =
+          removeWildcardInQueryFilter(
+              ((BinaryExpression) predicate).getLeftExpression(),
+              prefixPaths,
+              schemaTree,
+              typeProvider);
+      List<Expression> rightExpressions =
+          removeWildcardInQueryFilter(
+              ((BinaryExpression) predicate).getRightExpression(),
+              prefixPaths,
+              schemaTree,
+              typeProvider);
+      if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
+        List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
+        resultExpressions.addAll(rightExpressions);
+        return resultExpressions;
+      }
+      return reconstructBinaryExpressions(
+          predicate.getExpressionType(), leftExpressions, rightExpressions);
+    } else if (predicate instanceof UnaryExpression) {
+      List<Expression> childExpressions =
+          removeWildcardInQueryFilter(
+              ((UnaryExpression) predicate).getExpression(), prefixPaths, schemaTree, typeProvider);
+      return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
+    } else if (predicate instanceof FunctionExpression) {
+      if (predicate.isBuiltInAggregationFunctionExpression()) {
+        throw new SemanticException("aggregate functions are not supported in WHERE clause");
+      }
+      List<List<Expression>> extendedExpressions = new ArrayList<>();
+      for (Expression suffixExpression : predicate.getExpressions()) {
+        extendedExpressions.add(
+            removeWildcardInQueryFilter(suffixExpression, prefixPaths, schemaTree, typeProvider));
+      }
+      List<List<Expression>> childExpressionsList = new ArrayList<>();
+      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+      return reconstructFunctionExpressions((FunctionExpression) predicate, childExpressionsList);
+    } else if (predicate instanceof TimeSeriesOperand) {
+      PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
+      if (SQLConstant.isReservedPath(filterPath)) {
+        // do nothing in the case of "where time > 5"
+        return Collections.singletonList(predicate);
+      }
+
+      List<PartialPath> concatPaths = new ArrayList<>();
+      if (!filterPath.getFirstNode().equals(SQLConstant.ROOT)) {
+        prefixPaths.forEach(prefix -> concatPaths.add(prefix.concatPath(filterPath)));
+      } else {
+        // do nothing in the case of "where root.d1.s1 > 5"
+        concatPaths.add(filterPath);
+      }
+
+      List<PartialPath> noStarPaths =
+          concatPaths.stream()
+              .map(concatPath -> schemaTree.searchMeasurementPaths(concatPath).left)
+              .flatMap(List::stream)
+              .collect(Collectors.toList());
+      noStarPaths.forEach(path -> typeProvider.setType(path.getFullPath(), path.getSeriesType()));
+      return reconstructTimeSeriesOperands(noStarPaths);
+    } else if (predicate instanceof ConstantOperand) {
+      return Collections.singletonList(predicate);
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
+    }
+  }
+
+  public static List<Expression> removeWildcardInQueryFilterByDevice(
+      Expression predicate, DeviceSchemaInfo deviceSchemaInfo, TypeProvider typeProvider) {
+    if (predicate instanceof BinaryExpression) {
+      List<Expression> leftExpressions =
+          removeWildcardInQueryFilterByDevice(
+              ((BinaryExpression) predicate).getLeftExpression(), deviceSchemaInfo, typeProvider);
+      List<Expression> rightExpressions =
+          removeWildcardInQueryFilterByDevice(
+              ((BinaryExpression) predicate).getRightExpression(), deviceSchemaInfo, typeProvider);
+      if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
+        List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
+        resultExpressions.addAll(rightExpressions);
+        return resultExpressions;
+      }
+      return reconstructBinaryExpressions(
+          predicate.getExpressionType(), leftExpressions, rightExpressions);
+    } else if (predicate instanceof UnaryExpression) {
+      List<Expression> childExpressions =
+          removeWildcardInQueryFilterByDevice(
+              ((UnaryExpression) predicate).getExpression(), deviceSchemaInfo, typeProvider);
+      return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
+    } else if (predicate instanceof FunctionExpression) {
+      if (predicate.isBuiltInAggregationFunctionExpression()) {
+        throw new SemanticException("aggregate functions are not supported in WHERE clause");
+      }
+      List<List<Expression>> extendedExpressions = new ArrayList<>();
+      for (Expression suffixExpression : predicate.getExpressions()) {
+        extendedExpressions.add(
+            removeWildcardInQueryFilterByDevice(suffixExpression, deviceSchemaInfo, typeProvider));
+      }
+      List<List<Expression>> childExpressionsList = new ArrayList<>();
+      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+      return reconstructFunctionExpressions((FunctionExpression) predicate, childExpressionsList);
+    } else if (predicate instanceof TimeSeriesOperand) {
+      PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
+      if (SQLConstant.isReservedPath(filterPath)) {
+        // do nothing in the case of "where time > 5"
+        return Collections.singletonList(predicate);
+      }
+      if (filterPath.getNodes().length > 1
+          || filterPath.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        throw new SemanticException(
+            "ALIGN BY DEVICE: The paths of the WHERE clause can only be measurements or wildcard.");
+      }
+
+      String measurement = filterPath.getFullPath();
+      List<PartialPath> concatPaths = new ArrayList<>();
+      if (measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+        concatPaths.addAll(deviceSchemaInfo.getMeasurements());
+      } else {
+        MeasurementPath concatPath = deviceSchemaInfo.getPathByMeasurement(measurement);
+        if (concatPath == null) {
+          throw new SemanticException(
+              String.format(
+                  "ALIGN BY DEVICE: measurement '%s' does not exist in device '%s'",
+                  measurement, deviceSchemaInfo.getDevicePath()));
+        }
+        concatPaths.add(concatPath);
+      }
+      concatPaths.forEach(path -> typeProvider.setType(path.getFullPath(), path.getSeriesType()));
+      return reconstructTimeSeriesOperands(concatPaths);
+    } else if (predicate instanceof ConstantOperand) {
+      return Collections.singletonList(predicate);
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
+    }
+  }
+
+  public static Expression constructBinaryFilterTreeWithAnd(List<Expression> expressions) {
+    // TODO: consider AVL tree
+    if (expressions.size() == 2) {
+      return new LogicAndExpression(expressions.get(0), expressions.get(1));
+    } else {
+      return new LogicAndExpression(
+          expressions.get(0),
+          constructBinaryFilterTreeWithAnd(expressions.subList(1, expressions.size())));
     }
   }
 }

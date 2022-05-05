@@ -74,6 +74,8 @@ public class Analysis {
 
   private Expression queryFilter;
 
+  private Map<String, Expression> deviceToQueryFilter;
+
   // a global time filter used in `initQueryDataSource`
   private Filter globalTimeFilter;
 
@@ -202,5 +204,13 @@ public class Analysis {
 
   public void setQueryFilter(Expression queryFilter) {
     this.queryFilter = queryFilter;
+  }
+
+  public Map<String, Expression> getDeviceToQueryFilter() {
+    return deviceToQueryFilter;
+  }
+
+  public void setDeviceToQueryFilter(Map<String, Expression> deviceToQueryFilter) {
+    this.deviceToQueryFilter = deviceToQueryFilter;
   }
 }

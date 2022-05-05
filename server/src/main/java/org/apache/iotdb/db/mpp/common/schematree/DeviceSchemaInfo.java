@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.commons.lang.Validate;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -69,5 +71,26 @@ public class DeviceSchemaInfo {
               return measurementPath;
             })
         .collect(Collectors.toList());
+  }
+
+  public MeasurementPath getPathByMeasurement(String measurementName) {
+    List<MeasurementPath> resultPaths =
+        measurementNodeList.stream()
+            .filter(measurementNode -> measurementNode.getName().equals(measurementName))
+            .map(
+                measurementNode -> {
+                  MeasurementPath measurementPath =
+                      new MeasurementPath(
+                          devicePath.concatNode(measurementNode.getName()),
+                          measurementNode.getSchema());
+                  measurementPath.setUnderAlignedEntity(isAligned);
+                  if (measurementNode.getAlias() != null) {
+                    measurementPath.setMeasurementAlias(measurementNode.getAlias());
+                  }
+                  return measurementPath;
+                })
+            .collect(Collectors.toList());
+    Validate.isTrue(resultPaths.size() == 1);
+    return resultPaths.get(0);
   }
 }

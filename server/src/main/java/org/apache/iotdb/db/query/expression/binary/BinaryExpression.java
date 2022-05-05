@@ -47,8 +47,8 @@ import java.util.Set;
 
 public abstract class BinaryExpression extends Expression {
 
-  protected final Expression leftExpression;
-  protected final Expression rightExpression;
+  protected Expression leftExpression;
+  protected Expression rightExpression;
 
   protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
     this.leftExpression = leftExpression;
@@ -66,6 +66,14 @@ public abstract class BinaryExpression extends Expression {
 
   public Expression getRightExpression() {
     return rightExpression;
+  }
+
+  public void setLeftExpression(Expression leftExpression) {
+    this.leftExpression = leftExpression;
+  }
+
+  public void setRightExpression(Expression rightExpression) {
+    this.rightExpression = rightExpression;
   }
 
   @Override
