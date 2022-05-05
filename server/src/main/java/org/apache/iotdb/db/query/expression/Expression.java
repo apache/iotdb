@@ -69,11 +69,9 @@ import java.util.Set;
 /** A skeleton class for expression */
 public abstract class Expression {
 
-  private String expressionStringCache;
-
-  protected Boolean isConstantOperandCache = null;
-
-  protected Integer inputColumnIndex = null;
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Expression type inferring for execution plan generation
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public boolean isBuiltInAggregationFunctionExpression() {
     return false;
@@ -86,6 +84,10 @@ public abstract class Expression {
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Operations for time series paths
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public abstract void concat(
       List<PartialPath> prefixPaths,
@@ -107,8 +109,18 @@ public abstract class Expression {
 
   public abstract void collectPaths(Set<PartialPath> pathSet);
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // For UDF instances initialization
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
   public abstract void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // For expression evaluation DAG building
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  protected Integer inputColumnIndex = null;
 
   public abstract void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan);
 
@@ -123,13 +135,20 @@ public abstract class Expression {
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
 
-  /** Sub-classes should override this method indicating if the expression is a constant operand */
-  protected abstract boolean isConstantOperandInternal();
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // getExpressions: returning DIRECT children expressions
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   /**
    * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
    */
   public abstract List<Expression> getExpressions();
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // isConstantOperand
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  protected Boolean isConstantOperandCache = null;
 
   /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
   public final boolean isConstantOperand() {
@@ -139,11 +158,20 @@ public abstract class Expression {
     return isConstantOperandCache;
   }
 
-  /**
-   * Sub-classes should override this method to provide valid string representation of this object.
-   * See {@link #getExpressionString()}
-   */
-  protected abstract String getExpressionStringInternal();
+  /** Sub-classes should override this method indicating if the expression is a constant operand */
+  protected abstract boolean isConstantOperandInternal();
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // toString
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  private String expressionStringCache;
+
+  /** Sub-classes must not override this method. */
+  @Override
+  public final String toString() {
+    return getExpressionString();
+  }
 
   /**
    * Get the representation of the expression in string. The hash code of the returned value will be
@@ -157,6 +185,16 @@ public abstract class Expression {
     }
     return expressionStringCache;
   }
+
+  /**
+   * Sub-classes should override this method to provide valid string representation of this object.
+   * See {@link #getExpressionString()}
+   */
+  protected abstract String getExpressionStringInternal();
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // hashCode & equals
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   /** Sub-classes must not override this method. */
   @Override
@@ -178,11 +216,9 @@ public abstract class Expression {
     return getExpressionString().equals(((Expression) o).getExpressionString());
   }
 
-  /** Sub-classes must not override this method. */
-  @Override
-  public final String toString() {
-    return getExpressionString();
-  }
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // iterator: level-order traversal iterator
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   /** returns an iterator to traverse all the successor expressions in a level-order */
   public final Iterator<Expression> iterator() {
@@ -218,7 +254,9 @@ public abstract class Expression {
     }
   }
 
-  public abstract ExpressionType getExpressionType();
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // serialize & deserialize
+  /////////////////////////////////////////////////////////////////////////////////////////////////
 
   public static void serialize(Expression expression, ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(
@@ -231,8 +269,6 @@ public abstract class Expression {
       ReadWriteIOUtils.write(expression.inputColumnIndex, byteBuffer);
     }
   }
-
-  protected abstract void serialize(ByteBuffer byteBuffer);
 
   public static Expression deserialize(ByteBuffer byteBuffer) {
     short type = ReadWriteIOUtils.readShort(byteBuffer);
@@ -325,4 +361,8 @@ public abstract class Expression {
 
     return expression;
   }
+
+  public abstract ExpressionType getExpressionType();
+
+  protected abstract void serialize(ByteBuffer byteBuffer);
 }

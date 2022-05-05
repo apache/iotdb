@@ -22,9 +22,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
@@ -130,11 +131,11 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSchemaMerge(SeriesSchemaMergeNode node, C context) {
+  public R visitSchemaQueryMerge(SchemaQueryMergeNode node, C context) {
     return visitPlan(node, context);
-  };
+  }
 
-  public R visitSchemaScan(SchemaScanNode node, C context) {
+  public R visitSchemaQueryScan(SchemaQueryScanNode node, C context) {
     return visitPlan(node, context);
   }
 
@@ -170,7 +171,11 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSchemaFetch(SchemaFetchNode node, C context) {
+  public R visitSchemaFetchMerge(SchemaFetchMergeNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitSchemaFetchScan(SchemaFetchScanNode node, C context) {
     return visitPlan(node, context);
   }
 

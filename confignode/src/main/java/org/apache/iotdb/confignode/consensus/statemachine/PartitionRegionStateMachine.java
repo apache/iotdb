@@ -19,15 +19,14 @@
 package org.apache.iotdb.confignode.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -35,7 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /** Statemachine for PartitionRegion */
 public class PartitionRegionStateMachine implements IStateMachine {
@@ -99,20 +97,12 @@ public class PartitionRegionStateMachine implements IStateMachine {
   }
 
   @Override
-  public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+  public boolean takeSnapshot(File snapshotDir) {
     return false;
   }
 
   @Override
-  public SnapshotMeta getLatestSnapshot(File snapshotDir) {
-    return null;
-  }
-
-  @Override
-  public void loadSnapshot(SnapshotMeta latest) {}
-
-  @Override
-  public void cleanUpOldSnapshots(File snapshotDir) {}
+  public void loadSnapshot(File latestSnapshotRootDir) {}
 
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
   protected DataSet read(ConfigRequest plan) {

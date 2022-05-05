@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -712,9 +713,8 @@ public class SeriesScanUtil {
               // current timeValuePair is overlapped with firstPageReader, add it to merged reader
               // and update endTime to the max end time
               mergeReader.addReader(
-                  firstPageReader
-                      .getAllSatisfiedPageData(orderUtils.getAscending())
-                      .getTsBlockSingleColumnIterator(),
+                  getPointReader(
+                      firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
                   firstPageReader.version,
                   orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()),
                   context);
@@ -739,9 +739,7 @@ public class SeriesScanUtil {
                 timeValuePair.getTimestamp(), seqPageReaders.get(0).getStatistics())) {
               VersionPageReader pageReader = seqPageReaders.remove(0);
               mergeReader.addReader(
-                  pageReader
-                      .getAllSatisfiedPageData(orderUtils.getAscending())
-                      .getTsBlockSingleColumnIterator(),
+                  getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
                   pageReader.version,
                   orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
                   context);
@@ -922,9 +920,7 @@ public class SeriesScanUtil {
 
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     mergeReader.addReader(
-        pageReader
-            .getAllSatisfiedPageData(orderUtils.getAscending())
-            .getTsBlockSingleColumnIterator(),
+        getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
         pageReader.version,
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
         context);
@@ -1076,7 +1072,11 @@ public class SeriesScanUtil {
     return Collections.singletonList(dataType);
   }
 
-  protected Filter getAnyFilter() {
+  protected IPointReader getPointReader(TsBlock tsBlock) {
+    return tsBlock.getTsBlockSingleColumnIterator();
+  }
+
+  private Filter getAnyFilter() {
     return timeFilter != null ? timeFilter : valueFilter;
   }
 

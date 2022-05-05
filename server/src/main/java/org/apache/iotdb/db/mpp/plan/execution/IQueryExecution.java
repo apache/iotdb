@@ -22,6 +22,8 @@ package org.apache.iotdb.db.mpp.plan.execution;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import java.util.Optional;
+
 public interface IQueryExecution {
 
   void start();
@@ -32,7 +34,7 @@ public interface IQueryExecution {
 
   ExecutionResult getStatus();
 
-  TsBlock getBatchResult();
+  Optional<TsBlock> getBatchResult();
 
   boolean hasNextResult();
 

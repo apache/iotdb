@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.service;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
