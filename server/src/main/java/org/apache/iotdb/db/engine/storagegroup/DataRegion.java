@@ -41,6 +41,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
@@ -2384,11 +2385,16 @@ public class DataRegion {
 
   /** merge file under this storage group processor */
   public void compact() {
-    writeLock("merge");
+    //    writeLock("merge");
+    //    try {
+    //      executeCompaction();
+    //    } finally {
+    //      writeUnlock();
+    //    }
     try {
-      executeCompaction();
-    } finally {
-      writeUnlock();
+      new SnapshotTaker(this).takeFullSnapshot("../snapshot", true);
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
     }
   }
 
