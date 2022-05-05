@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import org.apache.thrift.async.AsyncMethodCallback;

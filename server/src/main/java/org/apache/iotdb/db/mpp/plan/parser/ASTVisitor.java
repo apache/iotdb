@@ -90,6 +90,7 @@ import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.InExpression;
 import org.apache.iotdb.db.query.expression.unary.LikeExpression;
@@ -1547,7 +1548,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     if (context.time != null) {
-      return new TimeSeriesOperand(TIME_PATH);
+      return new TimestampOperand();
     }
 
     if (context.constant() != null && !context.constant().isEmpty()) {

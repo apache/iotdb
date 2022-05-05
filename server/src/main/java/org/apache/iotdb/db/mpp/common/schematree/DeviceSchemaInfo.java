@@ -52,7 +52,7 @@ public class DeviceSchemaInfo {
 
   public List<MeasurementSchema> getMeasurementSchemaList() {
     return measurementNodeList.stream()
-        .map(SchemaMeasurementNode::getSchema)
+        .map(measurementNode -> measurementNode == null ? null : measurementNode.getSchema())
         .collect(Collectors.toList());
   }
 
@@ -60,6 +60,9 @@ public class DeviceSchemaInfo {
     return measurementNodeList.stream()
         .map(
             measurementNode -> {
+              if (measurementNode == null) {
+                return null;
+              }
               MeasurementPath measurementPath =
                   new MeasurementPath(
                       devicePath.concatNode(measurementNode.getName()),

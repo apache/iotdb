@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class TimeSeriesCountNode extends SchemaScanNode {
+public class TimeSeriesCountNode extends SchemaQueryScanNode {
 
   public TimeSeriesCountNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
     super(id, partialPath, isPrefixPath);

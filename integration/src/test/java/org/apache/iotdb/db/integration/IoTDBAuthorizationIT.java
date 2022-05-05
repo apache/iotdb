@@ -439,10 +439,38 @@ public class IoTDBAuthorizationIT {
         }
         assertTrue(caught);
 
-        // grant on a illegal seriesPath
+        // grant on an illegal seriesPath
         caught = false;
         try {
           adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on a.b");
+        } catch (SQLException e) {
+          caught = true;
+        }
+        assertTrue(caught);
+        caught = false;
+        try {
+          adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.*");
+        } catch (SQLException e) {
+          caught = true;
+        }
+        assertTrue(caught);
+        caught = false;
+        try {
+          adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.**");
+        } catch (SQLException e) {
+          caught = true;
+        }
+        assertTrue(caught);
+        caught = false;
+        try {
+          adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.*.a");
+        } catch (SQLException e) {
+          caught = true;
+        }
+        assertTrue(caught);
+        caught = false;
+        try {
+          adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.**.a");
         } catch (SQLException e) {
           caught = true;
         }
@@ -485,7 +513,7 @@ public class IoTDBAuthorizationIT {
         }
         assertTrue(caught);
 
-        // revoke on a illegal seriesPath
+        // revoke on an illegal seriesPath
         caught = false;
         try {
           adminStmt.execute("REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on a.b");

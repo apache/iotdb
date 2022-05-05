@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 

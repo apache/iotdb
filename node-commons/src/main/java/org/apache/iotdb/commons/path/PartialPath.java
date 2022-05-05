@@ -501,6 +501,8 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
   }
 
+  // Attention!!! If you want to use serialize and deserialize of partialPath, must invoke
+  // PathDeserializeUtil.deserialize
   public static PartialPath deserialize(ByteBuffer byteBuffer) {
     Path path = Path.deserialize(byteBuffer);
     PartialPath partialPath = new PartialPath();

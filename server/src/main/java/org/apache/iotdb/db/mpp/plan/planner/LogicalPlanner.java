@@ -210,7 +210,7 @@ public class LogicalPlanner {
         ShowTimeSeriesStatement showTimeSeriesStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planTimeSeriesMetaSource(
+          .planTimeSeriesSchemaSource(
               showTimeSeriesStatement.getPathPattern(),
               showTimeSeriesStatement.getKey(),
               showTimeSeriesStatement.getValue(),
@@ -219,7 +219,7 @@ public class LogicalPlanner {
               showTimeSeriesStatement.isOrderByHeat(),
               showTimeSeriesStatement.isContains(),
               showTimeSeriesStatement.isPrefixPath())
-          .planSchemaMerge(showTimeSeriesStatement.isOrderByHeat())
+          .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat())
           .planOffset(showTimeSeriesStatement.getOffset())
           .planLimit(showTimeSeriesStatement.getLimit())
           .getRoot();
@@ -236,7 +236,7 @@ public class LogicalPlanner {
               showDevicesStatement.getOffset(),
               showDevicesStatement.isPrefixPath(),
               showDevicesStatement.hasSgCol())
-          .planSchemaMerge(false)
+          .planSchemaQueryMerge(false)
           .planOffset(showDevicesStatement.getOffset())
           .planLimit(showDevicesStatement.getLimit())
           .getRoot();
@@ -360,8 +360,11 @@ public class LogicalPlanner {
         SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planSchemaFetchSource(schemaFetchStatement.getPatternTree())
-          .planSchemaMerge(false)
+          .planSchemaFetchMerge()
+          .planSchemaFetchSource(
+              new ArrayList<>(
+                  schemaFetchStatement.getSchemaPartition().getSchemaPartitionMap().keySet()),
+              schemaFetchStatement.getPatternTree())
           .getRoot();
     }
   }

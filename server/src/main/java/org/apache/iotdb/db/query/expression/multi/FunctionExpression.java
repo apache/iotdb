@@ -269,7 +269,7 @@ public class FunctionExpression extends Expression {
       if (isBuiltInAggregationFunctionExpression) {
         transformer =
             new TransparentTransformer(
-                rawTimeSeriesInputLayer.constructPointReader(inputColumnIndex));
+                rawTimeSeriesInputLayer.constructValuePointReader(inputColumnIndex));
       } else {
         IntermediateLayer udfInputIntermediateLayer =
             constructUdfInputIntermediateLayer(
