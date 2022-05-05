@@ -20,32 +20,28 @@
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
-import org.apache.iotdb.db.query.executor.fill.IFill;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.Map;
 
 /** This class maintains information of {@code FILL} clause. */
 public class FillComponent extends StatementNode {
 
-  private Map<TSDataType, IFill> fillTypes;
-  private IFill singleFill;
+  private FillPolicy fillPolicy;
+  private String fillValue;
 
   public FillComponent() {}
 
-  public Map<TSDataType, IFill> getFillTypes() {
-    return fillTypes;
+  public FillPolicy getFillPolicy() {
+    return fillPolicy;
   }
 
-  public IFill getSingleFill() {
-    return singleFill;
+  public void setFillPolicy(FillPolicy fillPolicy) {
+    this.fillPolicy = fillPolicy;
   }
 
-  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
-    this.fillTypes = fillTypes;
+  public String getFillValue() {
+    return fillValue;
   }
 
-  public void setSingleFill(IFill singleFill) {
-    this.singleFill = singleFill;
+  public void setFillValue(String fillValue) {
+    this.fillValue = fillValue;
   }
 }

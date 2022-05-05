@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
 import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
@@ -73,10 +74,6 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ExpressionContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.db.query.executor.fill.IFill;
-import org.apache.iotdb.db.query.executor.fill.LinearFill;
-import org.apache.iotdb.db.query.executor.fill.PreviousFill;
-import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
@@ -109,7 +106,6 @@ import org.apache.commons.lang.StringEscapeUtils;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -734,173 +730,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   public void parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
     FillComponent fillComponent = new FillComponent();
-    if (ctx.oldTypeClause().size() > 0) {
-      // old type fill logic
-      List<IoTDBSqlParser.OldTypeClauseContext> list = ctx.oldTypeClause();
-      Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
-      for (IoTDBSqlParser.OldTypeClauseContext typeClause : list) {
-        if (typeClause.ALL() != null) {
-          if (typeClause.linearClause() != null) {
-            throw new SemanticException("fill all doesn't support linear fill");
-          }
-          parseAllTypeClause(typeClause, fillTypes);
-          break;
-        } else {
-          parsePrimitiveTypeClause(typeClause, fillTypes);
-        }
+    if (ctx.linearClause() != null) {
+      fillComponent.setFillPolicy(FillPolicy.LINEAR);
+    } else if (ctx.previousClause() != null) {
+      fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
+    } else if (ctx.specificValueClause() != null) {
+      fillComponent.setFillPolicy(FillPolicy.VALUE);
+      if (ctx.specificValueClause().constant() != null) {
+        fillComponent.setFillValue(ctx.specificValueClause().constant().getText());
+      } else {
+        throw new SemanticException("fill value cannot be null");
       }
-      fillComponent.setFillTypes(fillTypes);
-    } else {
-      // new single fill logic
-      fillComponent.setSingleFill(getSingleIFill(ctx));
     }
     queryStatement.setFillComponent(fillComponent);
-  }
-
-  private IFill getSingleIFill(IoTDBSqlParser.FillClauseContext ctx) {
-    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-    if (ctx.linearClause() != null) { // linear
-      if (ctx.linearClause().DURATION_LITERAL(0) != null) {
-        String beforeStr = ctx.linearClause().DURATION_LITERAL(0).getText();
-        String afterStr = ctx.linearClause().DURATION_LITERAL(1).getText();
-        return new LinearFill(beforeStr, afterStr);
-      } else {
-        return new LinearFill(defaultFillInterval, defaultFillInterval);
-      }
-    } else if (ctx.previousClause() != null) { // previous
-      if (ctx.previousClause().DURATION_LITERAL() != null) {
-        String preRangeStr = ctx.previousClause().DURATION_LITERAL().getText();
-        return new PreviousFill(preRangeStr);
-      } else {
-        return new PreviousFill(defaultFillInterval);
-      }
-    } else if (ctx.specificValueClause() != null) { // value
-      if (ctx.specificValueClause().constant() != null) {
-        return new ValueFill(ctx.specificValueClause().constant().getText());
-      } else {
-        throw new SemanticException("fill value cannot be null");
-      }
-    } else if (ctx.previousUntilLastClause() != null) { // previous until last
-      if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
-        String preRangeStr = ctx.previousUntilLastClause().DURATION_LITERAL().getText();
-        return new PreviousFill(preRangeStr, true);
-      } else {
-        return new PreviousFill(defaultFillInterval, true);
-      }
-    } else {
-      throw new SemanticException("unknown single fill type");
-    }
-  }
-
-  private void parseAllTypeClause(
-      IoTDBSqlParser.OldTypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
-    IFill fill;
-    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-
-    if (ctx.linearClause() != null) { // linear
-      if (ctx.linearClause().DURATION_LITERAL(0) != null) {
-        String beforeStr = ctx.linearClause().DURATION_LITERAL(0).getText();
-        String afterStr = ctx.linearClause().DURATION_LITERAL(1).getText();
-        fill = new LinearFill(beforeStr, afterStr);
-      } else {
-        fill = new LinearFill(defaultFillInterval, defaultFillInterval);
-      }
-    } else if (ctx.previousClause() != null) { // previous
-      if (ctx.previousClause().DURATION_LITERAL() != null) {
-        String preRangeStr = ctx.previousClause().DURATION_LITERAL().getText();
-        fill = new PreviousFill(preRangeStr);
-      } else {
-        fill = new PreviousFill(defaultFillInterval);
-      }
-    } else if (ctx.specificValueClause() != null) {
-      throw new SemanticException("fill all doesn't support value fill");
-    } else { // previous until last
-      if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
-        String preRangeStr = ctx.previousUntilLastClause().DURATION_LITERAL().getText();
-        fill = new PreviousFill(preRangeStr, true);
-      } else {
-        fill = new PreviousFill(defaultFillInterval, true);
-      }
-    }
-
-    for (TSDataType tsDataType : TSDataType.values()) {
-      if (fill instanceof LinearFill
-          && (tsDataType == TSDataType.BOOLEAN || tsDataType == TSDataType.TEXT)) {
-        continue;
-      }
-      fillTypes.put(tsDataType, fill.copy());
-    }
-  }
-
-  private void parsePrimitiveTypeClause(
-      IoTDBSqlParser.OldTypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
-    TSDataType dataType = parseType(ctx.dataType.getText());
-    if (dataType == TSDataType.VECTOR) {
-      throw new SemanticException(String.format("type %s cannot use fill function", dataType));
-    }
-
-    if (ctx.linearClause() != null
-        && (dataType == TSDataType.TEXT || dataType == TSDataType.BOOLEAN)) {
-      throw new SemanticException(
-          String.format(
-              "type %s cannot use %s fill function",
-              dataType, ctx.linearClause().LINEAR().getText()));
-    }
-
-    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-
-    if (ctx.linearClause() != null) { // linear
-      if (ctx.linearClause().DURATION_LITERAL(0) != null) {
-        String beforeRangeStr = ctx.linearClause().DURATION_LITERAL(0).getText();
-        String afterRangeStr = ctx.linearClause().DURATION_LITERAL(1).getText();
-        LinearFill fill = new LinearFill(beforeRangeStr, afterRangeStr);
-        fillTypes.put(dataType, fill);
-      } else {
-        fillTypes.put(dataType, new LinearFill(defaultFillInterval, defaultFillInterval));
-      }
-    } else if (ctx.previousClause() != null) { // previous
-      if (ctx.previousClause().DURATION_LITERAL() != null) {
-        String beforeStr = ctx.previousClause().DURATION_LITERAL().getText();
-        fillTypes.put(dataType, new PreviousFill(beforeStr));
-      } else {
-        fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
-      }
-    } else if (ctx.specificValueClause() != null) { // value
-      if (ctx.specificValueClause().constant() != null) {
-        fillTypes.put(
-            dataType, new ValueFill(ctx.specificValueClause().constant().getText(), dataType));
-      } else {
-        throw new SemanticException("fill value cannot be null");
-      }
-    } else { // previous until last
-      if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
-        String preRangeStr = ctx.previousUntilLastClause().DURATION_LITERAL().getText();
-        fillTypes.put(dataType, new PreviousFill(preRangeStr, true));
-      } else {
-        fillTypes.put(dataType, new PreviousFill(defaultFillInterval, true));
-      }
-    }
-  }
-
-  // parse DataType
-  private TSDataType parseType(String datatype) {
-    String type = datatype.toLowerCase();
-    switch (type) {
-      case "int32":
-        return TSDataType.INT32;
-      case "int64":
-        return TSDataType.INT64;
-      case "float":
-        return TSDataType.FLOAT;
-      case "double":
-        return TSDataType.DOUBLE;
-      case "boolean":
-        return TSDataType.BOOLEAN;
-      case "text":
-        return TSDataType.TEXT;
-      default:
-        throw new SemanticException("not a valid fill type : " + type);
-    }
   }
 
   // Other Clauses
