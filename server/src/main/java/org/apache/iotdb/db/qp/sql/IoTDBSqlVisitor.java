@@ -2672,13 +2672,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        context.STRING_LITERAL().getText());
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseLikeExpression(ExpressionContext context, boolean inWithoutNull) {
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
-        context.STRING_LITERAL().getText());
+        parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
   private Expression parseInExpression(ExpressionContext context, boolean inWithoutNull) {
