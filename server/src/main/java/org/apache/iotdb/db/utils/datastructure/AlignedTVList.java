@@ -986,7 +986,7 @@ public class AlignedTVList extends TVList {
   }
 
   protected void writeValidValuesIntoTsBlock(
-      ColumnBuilder valueBuilder,
+      TsBlockBuilder builder,
       int floatPrecision,
       TSEncoding encoding,
       List<TimeRange> deletionList) {
