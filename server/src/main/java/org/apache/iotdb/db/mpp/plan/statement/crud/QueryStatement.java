@@ -207,6 +207,10 @@ public class QueryStatement extends Statement {
     return false;
   }
 
+  public boolean isGroupByTime() {
+    return false;
+  }
+
   public boolean isAlignByDevice() {
     return resultSetFormat == ResultSetFormat.ALIGN_BY_DEVICE;
   }

@@ -52,8 +52,12 @@ import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.db.query.expression.unary.UnaryExpression;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang.Validate;
@@ -61,6 +65,7 @@ import org.apache.commons.lang.Validate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class ExpressionAnalyzer {
 
@@ -132,16 +137,16 @@ public class ExpressionAnalyzer {
       if (SQLConstant.isReservedPath(rawPath)) {
         return;
       }
+      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+        patternTree.appendPath(rawPath);
+        return;
+      }
       for (PartialPath prefixPath : prefixPaths) {
-        if (!rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
-          PartialPath concatPath = prefixPath.concatPath(rawPath);
-          patternTree.appendPath(concatPath);
-        } else {
-          patternTree.appendPath(rawPath);
-        }
+        PartialPath concatPath = prefixPath.concatPath(rawPath);
+        patternTree.appendPath(concatPath);
       }
     } else if (predicate instanceof ConstantOperand) {
-      return;
+      // do nothing
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + predicate.getExpressionType());
@@ -149,20 +154,19 @@ public class ExpressionAnalyzer {
   }
 
   public static List<Expression> removeWildcardInExpression(
-      Expression expression, SchemaTree schemaTree, TypeProvider typeProvider) {
+      Expression expression, SchemaTree schemaTree) {
     if (expression instanceof BinaryExpression) {
       List<Expression> leftExpressions =
           removeWildcardInExpression(
-              ((BinaryExpression) expression).getLeftExpression(), schemaTree, typeProvider);
+              ((BinaryExpression) expression).getLeftExpression(), schemaTree);
       List<Expression> rightExpressions =
           removeWildcardInExpression(
-              ((BinaryExpression) expression).getRightExpression(), schemaTree, typeProvider);
+              ((BinaryExpression) expression).getRightExpression(), schemaTree);
       return reconstructBinaryExpressions(
           expression.getExpressionType(), leftExpressions, rightExpressions);
     } else if (expression instanceof UnaryExpression) {
       List<Expression> childExpressions =
-          removeWildcardInExpression(
-              ((UnaryExpression) expression).getExpression(), schemaTree, typeProvider);
+          removeWildcardInExpression(((UnaryExpression) expression).getExpression(), schemaTree);
       return reconstructUnaryExpressions((UnaryExpression) expression, childExpressions);
     } else if (expression instanceof FunctionExpression) {
       // One by one, remove the wildcards from the input expressions. In most cases, an expression
@@ -172,7 +176,7 @@ public class ExpressionAnalyzer {
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression originExpression : expression.getExpressions()) {
         List<Expression> actualExpressions =
-            removeWildcardInExpression(originExpression, schemaTree, typeProvider);
+            removeWildcardInExpression(originExpression, schemaTree);
         if (actualExpressions.isEmpty()) {
           // Let's ignore the eval of the function which has at least one non-existence series as
           // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
@@ -428,7 +432,125 @@ public class ExpressionAnalyzer {
     return replacePathInExpression(expression, newPath);
   }
 
-  public static Filter transformToGlobalTimeFilter(Expression queryFilter) {
+  public static Filter transformToGlobalTimeFilter(Expression predicate) {
+    if (predicate instanceof LogicAndExpression) {
+      Filter leftTimeFilter =
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
+      Filter rightTimeFilter =
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
+      if (leftTimeFilter != null && rightTimeFilter != null) {
+        return FilterFactory.and(leftTimeFilter, rightTimeFilter);
+      } else if (leftTimeFilter != null) {
+        return leftTimeFilter;
+      } else {
+        return rightTimeFilter;
+      }
+    } else if (predicate instanceof LogicOrExpression) {
+      Filter leftTimeFilter =
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
+      Filter rightTimeFilter =
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
+      if (leftTimeFilter != null && rightTimeFilter != null) {
+        return FilterFactory.or(leftTimeFilter, rightTimeFilter);
+      }
+      return null;
+    } else if (predicate instanceof LogicNotExpression) {
+      Filter childTimeFilter =
+          transformToGlobalTimeFilter(((UnaryExpression) predicate).getExpression());
+      if (childTimeFilter != null) {
+        return FilterFactory.not(childTimeFilter);
+      }
+      return null;
+    } else if (predicate instanceof GreaterEqualExpression
+        || predicate instanceof GreaterThanExpression
+        || predicate instanceof LessEqualExpression
+        || predicate instanceof LessThanExpression
+        || predicate instanceof EqualToExpression
+        || predicate instanceof NonEqualExpression) {
+      Filter timeInLeftFilter =
+          constructTimeFilter(
+              predicate.getExpressionType(),
+              ((BinaryExpression) predicate).getLeftExpression(),
+              ((BinaryExpression) predicate).getRightExpression());
+      if (timeInLeftFilter != null) {
+        return timeInLeftFilter;
+      }
+      return constructTimeFilter(
+          predicate.getExpressionType(),
+          ((BinaryExpression) predicate).getRightExpression(),
+          ((BinaryExpression) predicate).getLeftExpression());
+    } else if (predicate instanceof InExpression) {
+      Expression timeExpression = ((InExpression) predicate).getExpression();
+      if (timeExpression instanceof TimeSeriesOperand
+          && SQLConstant.isReservedPath(((TimeSeriesOperand) timeExpression).getPath())) {
+        return TimeFilter.in(
+            ((InExpression) predicate)
+                .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
+            ((InExpression) predicate).isNotIn());
+      }
+      return null;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
+    }
+  }
+
+  private static Filter constructTimeFilter(
+      ExpressionType expressionType, Expression timeExpression, Expression valueExpression) {
+    if (timeExpression instanceof TimeSeriesOperand
+        && SQLConstant.isReservedPath(((TimeSeriesOperand) timeExpression).getPath())
+        && valueExpression instanceof ConstantOperand
+        && ((ConstantOperand) valueExpression).getDataType() == TSDataType.INT64) {
+      long value = Long.parseLong(((ConstantOperand) valueExpression).getValueString());
+      switch (expressionType) {
+        case LESS_THAN:
+          return TimeFilter.lt(value);
+        case LESS_EQUAL:
+          return TimeFilter.ltEq(value);
+        case GREATER_THAN:
+          return TimeFilter.gt(value);
+        case GREATER_EQUAL:
+          return TimeFilter.gtEq(value);
+        case EQUAL_TO:
+          return TimeFilter.eq(value);
+        case NON_EQUAL:
+          return TimeFilter.notEq(value);
+        default:
+          throw new IllegalArgumentException("unsupported expression type: " + expressionType);
+      }
+    }
     return null;
+  }
+
+  public static void setTypeProvider(Expression expression, TypeProvider typeProvider) {
+    if (expression instanceof BinaryExpression) {
+      setTypeProvider(((BinaryExpression) expression).getLeftExpression(), typeProvider);
+      setTypeProvider(((BinaryExpression) expression).getRightExpression(), typeProvider);
+    } else if (expression instanceof UnaryExpression) {
+      setTypeProvider(((UnaryExpression) expression).getExpression(), typeProvider);
+    } else if (expression instanceof FunctionExpression) {
+      if (expression.isBuiltInAggregationFunctionExpression()) {
+        Validate.isTrue(expression.getExpressions().size() == 1);
+        Expression childExpression = expression.getExpressions().get(0);
+        PartialPath path = ((TimeSeriesOperand) childExpression).getPath();
+        typeProvider.setType(
+            expression.getExpressionString(),
+            SchemaUtils.getSeriesTypeByPath(
+                path, ((FunctionExpression) expression).getFunctionName()));
+        setTypeProvider(childExpression, typeProvider);
+      } else {
+        for (Expression childExpression : expression.getExpressions()) {
+          setTypeProvider(childExpression, typeProvider);
+        }
+      }
+    } else if (expression instanceof TimeSeriesOperand) {
+      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
+      typeProvider.setType(rawPath.getFullPath(), rawPath.getSeriesType());
+    } else if (expression instanceof ConstantOperand) {
+      // do nothing
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
   }
 }

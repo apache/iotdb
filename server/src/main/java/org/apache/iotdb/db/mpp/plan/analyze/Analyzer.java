@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -63,10 +64,14 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.lang.Validate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,6 +85,7 @@ import java.util.stream.Collectors;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(Analyzer.class);
 
   private final MPPQueryContext context;
 
@@ -147,11 +153,12 @@ public class Analyzer {
           analysis.setGroupByLevelExpressions(groupByLevelExpressions);
         }
 
+        Filter globalTimeFilter = analyzeGlobalTimeFilter(queryStatement);
+        analysis.setGlobalTimeFilter(globalTimeFilter);
+
         if (queryStatement.getWhereCondition() != null) {
           Expression queryFilter = analyzeWhere(queryStatement, schemaTree, selectExpressions);
-          Filter globalTimeFilter = ExpressionAnalyzer.transformToGlobalTimeFilter(queryFilter);
           analysis.setQueryFilter(queryFilter);
-          analysis.setGlobalTimeFilter(globalTimeFilter);
         }
 
         if (queryStatement.getFilterNullComponent() != null) {
@@ -189,9 +196,35 @@ public class Analyzer {
         DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException e) {
+        LOGGER.error("Meet error when analyzing the query statement: ", e);
         throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
+    }
+
+    private Filter analyzeGlobalTimeFilter(QueryStatement queryStatement) {
+      Filter globalTimeFilter = null;
+      if (queryStatement.getWhereCondition() != null) {
+        globalTimeFilter =
+            ExpressionAnalyzer.transformToGlobalTimeFilter(
+                queryStatement.getWhereCondition().getPredicate());
+      }
+      if (queryStatement.isGroupByTime()) {
+        GroupByTimeComponent groupByTimeComponent =
+            ((AggregationQueryStatement) queryStatement).getGroupByTimeComponent();
+        Filter groupByFilter =
+            new GroupByFilter(
+                groupByTimeComponent.getInterval(),
+                groupByTimeComponent.getSlidingStep(),
+                groupByTimeComponent.getStartTime(),
+                groupByTimeComponent.getEndTime());
+        if (globalTimeFilter == null) {
+          globalTimeFilter = groupByFilter;
+        } else {
+          globalTimeFilter = FilterFactory.and(globalTimeFilter, groupByFilter);
+        }
+      }
+      return globalTimeFilter;
     }
 
     private List<Pair<Expression, String>> analyzeSelect(
@@ -206,8 +239,7 @@ public class Analyzer {
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
         boolean hasAlias = resultColumn.hasAlias();
         List<Expression> resultExpressions =
-            ExpressionAnalyzer.removeWildcardInExpression(
-                resultColumn.getExpression(), schemaTree, typeProvider);
+            ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
         if (hasAlias && resultExpressions.size() > 1) {
           throw new SemanticException(
               String.format(
@@ -219,6 +251,7 @@ public class Analyzer {
             continue;
           }
           if (paginationController.hasCurLimit()) {
+            ExpressionAnalyzer.setTypeProvider(expression, typeProvider);
             outputExpressions.add(
                 new Pair<>(expression, hasAlias ? resultColumn.getAlias() : null));
             paginationController.consumeLimit();
@@ -259,19 +292,21 @@ public class Analyzer {
             ExpressionAnalyzer.getPathInLeafExpression(measurementWithAlias.left).toString();
         if (measurementNameToPathsMap.containsKey(measurement)) {
           List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurement);
+          TSDataType dataType = measurementPaths.get(0).getSeriesType();
           if (paginationController.hasCurOffset()) {
             paginationController.consumeOffset();
             continue;
           }
           if (paginationController.hasCurLimit()) {
             outputExpressions.add(measurementWithAlias);
-            selectExpressions.addAll(
-                measurementPaths.stream()
-                    .map(
-                        measurementPath ->
-                            ExpressionAnalyzer.replacePathInExpression(
-                                measurementWithAlias.left, measurementPath))
-                    .collect(Collectors.toList()));
+            typeProvider.setType(measurementWithAlias.left.getExpressionString(), dataType);
+            for (MeasurementPath measurementPath : measurementPaths) {
+              Expression tmpExpression =
+                  ExpressionAnalyzer.replacePathInExpression(
+                      measurementWithAlias.left, measurementPath);
+              typeProvider.setType(tmpExpression.getExpressionString(), dataType);
+              selectExpressions.add(tmpExpression);
+            }
             paginationController.consumeLimit();
           } else {
             break;
@@ -279,23 +314,24 @@ public class Analyzer {
         } else if (measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
           for (String measurementName : measurementNameToPathsMap.keySet()) {
             List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurementName);
+            TSDataType dataType = measurementPaths.get(0).getSeriesType();
             if (paginationController.hasCurOffset()) {
               paginationController.consumeOffset();
               continue;
             }
             if (paginationController.hasCurLimit()) {
-              outputExpressions.add(
-                  new Pair<>(
-                      ExpressionAnalyzer.replacePathInExpression(
-                          measurementWithAlias.left, measurementName),
-                      measurementWithAlias.right));
-              selectExpressions.addAll(
-                  measurementPaths.stream()
-                      .map(
-                          measurementPath ->
-                              ExpressionAnalyzer.replacePathInExpression(
-                                  measurementWithAlias.left, measurementPath))
-                      .collect(Collectors.toList()));
+              Expression replacedMeasurement =
+                  ExpressionAnalyzer.replacePathInExpression(
+                      measurementWithAlias.left, measurementName);
+              typeProvider.setType(replacedMeasurement.getExpressionString(), dataType);
+              outputExpressions.add(new Pair<>(replacedMeasurement, measurementWithAlias.right));
+              for (MeasurementPath measurementPath : measurementPaths) {
+                Expression tmpExpression =
+                    ExpressionAnalyzer.replacePathInExpression(
+                        measurementWithAlias.left, measurementPath);
+                typeProvider.setType(tmpExpression.getExpressionString(), dataType);
+                selectExpressions.add(tmpExpression);
+              }
               paginationController.consumeLimit();
             } else {
               break;
@@ -382,8 +418,7 @@ public class Analyzer {
           queryStatement.getFilterNullComponent().getWithoutNullColumns();
       for (Expression filterNullColumn : rawFilterNullColumns) {
         List<Expression> resultExpressions =
-            ExpressionAnalyzer.removeWildcardInExpression(
-                filterNullColumn, schemaTree, typeProvider);
+            ExpressionAnalyzer.removeWildcardInExpression(filterNullColumn, schemaTree);
       }
       filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
       return filterNullParameter;

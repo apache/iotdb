@@ -73,6 +73,11 @@ public class AggregationQueryStatement extends QueryStatement {
     return groupByLevelComponent != null && groupByLevelComponent.getLevels().length > 0;
   }
 
+  @Override
+  public boolean isGroupByTime() {
+    return getGroupByTimeComponent() != null;
+  }
+
   public Map<String, Map<PartialPath, Set<AggregationType>>> getDeviceNameToAggregationsMap() {
     Map<String, Map<PartialPath, Set<AggregationType>>> deviceNameToAggregationsMap =
         new HashMap<>();

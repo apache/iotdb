@@ -49,7 +49,8 @@ public class AnalyzerTest {
 
   @Test
   public void test() {
-    Analysis analysis = analyzeSQL("SELECT s1 as t, s2, * FROM root.sg.d1 WITHOUT NULL ANY(t, s2)");
+    Analysis analysis =
+        analyzeSQL("SELECT sum(s1), max_time(status) FROM root.sg.* where time > 100 or s2 > 10");
   }
 
   private void assertAnalyzeSemanticException(String sql, String message) {
