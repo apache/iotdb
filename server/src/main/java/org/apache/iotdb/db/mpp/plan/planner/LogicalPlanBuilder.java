@@ -31,7 +31,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchem
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -179,16 +179,15 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planDeviceSchemaSource(
       PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
-    DevicesSchemaScanNode devicesSchemaScanNode =
+    this.root =
         new DevicesSchemaScanNode(
             context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
-    this.root = devicesSchemaScanNode;
     return this;
   }
 
-  public LogicalPlanBuilder planSchemaMerge(boolean orderByHeat) {
-    SeriesSchemaMergeNode schemaMergeNode =
-        new SeriesSchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
+  public LogicalPlanBuilder planSchemaQueryMerge(boolean orderByHeat) {
+    SchemaQueryMergeNode schemaMergeNode =
+        new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
     schemaMergeNode.addChild(this.getRoot());
     this.root = schemaMergeNode;
     return this;

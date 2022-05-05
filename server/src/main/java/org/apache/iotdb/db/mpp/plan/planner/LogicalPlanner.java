@@ -239,7 +239,7 @@ public class LogicalPlanner {
               showTimeSeriesStatement.isOrderByHeat(),
               showTimeSeriesStatement.isContains(),
               showTimeSeriesStatement.isPrefixPath())
-          .planSchemaMerge(showTimeSeriesStatement.isOrderByHeat())
+          .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat())
           .planOffset(showTimeSeriesStatement.getOffset())
           .planLimit(showTimeSeriesStatement.getLimit())
           .getRoot();
@@ -256,7 +256,7 @@ public class LogicalPlanner {
               showDevicesStatement.getOffset(),
               showDevicesStatement.isPrefixPath(),
               showDevicesStatement.hasSgCol())
-          .planSchemaMerge(false)
+          .planSchemaQueryMerge(false)
           .planOffset(showDevicesStatement.getOffset())
           .planLimit(showDevicesStatement.getLimit())
           .getRoot();

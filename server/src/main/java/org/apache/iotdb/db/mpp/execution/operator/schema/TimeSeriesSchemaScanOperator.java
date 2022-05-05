@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class TimeSeriesSchemaScanOperator extends SchemaScanOperator {
+public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   private String key;
   private String value;
   private boolean isContains;

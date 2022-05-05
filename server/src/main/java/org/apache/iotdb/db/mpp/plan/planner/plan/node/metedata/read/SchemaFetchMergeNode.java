@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
 
+/** This class defines the scanned result merge task of schema fetcher. */
 public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
 
   public SchemaFetchMergeNode(PlanNodeId id) {

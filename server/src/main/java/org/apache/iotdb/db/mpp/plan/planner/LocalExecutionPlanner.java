@@ -49,7 +49,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperat
 import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
@@ -65,8 +65,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchem
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
@@ -189,7 +189,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSchemaScan(SchemaScanNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaScan(SchemaQueryScanNode node, LocalExecutionPlanContext context) {
       if (node instanceof TimeSeriesSchemaScanNode) {
         return visitTimeSeriesSchemaScan((TimeSeriesSchemaScanNode) node, context);
       } else if (node instanceof DevicesSchemaScanNode) {
@@ -244,8 +244,8 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSchemaMerge(
-        SeriesSchemaMergeNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaQueryMerge(
+        SchemaQueryMergeNode node, LocalExecutionPlanContext context) {
       List<Operator> children =
           node.getChildren().stream()
               .map(n -> n.accept(this, context))
@@ -254,8 +254,8 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SchemaMergeOperator.class.getSimpleName());
-      return new SchemaMergeOperator(node.getPlanNodeId(), operatorContext, children);
+              SchemaQueryMergeOperator.class.getSimpleName());
+      return new SchemaQueryMergeOperator(node.getPlanNodeId(), operatorContext, children);
     }
 
     @Override

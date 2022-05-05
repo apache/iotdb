@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
+/** This class defines the scan task of schema fetcher. */
 public class SchemaFetchScanNode extends SourceNode {
 
   private final PartialPath storageGroup;
@@ -81,7 +82,7 @@ public class SchemaFetchScanNode extends SourceNode {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SCHEMA_FETCH.serialize(byteBuffer);
+    PlanNodeType.SCHEMA_FETCH_SCAN.serialize(byteBuffer);
     storageGroup.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
   }
