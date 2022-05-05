@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.querycontext;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.chunk.MemAlignedChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -47,9 +46,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   private final List<TSDataType> dataTypes;
 
-  private final List<List<TimeRange>> deletionList;
-
-  private AlignedTVList chunkData;
+  private IPointReader iter;
 
   /**
    * The constructor for Aligned type.
@@ -67,11 +64,10 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.dataTypes = schema.getSubMeasurementsTSDataTypeList();
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     List<TSEncoding> encodingList = schema.getSubMeasurementsTSEncodingList();
-    this.deletionList = deletionList;
-    this.chunkData = (AlignedTVList) tvList;
     this.tsBlock =
         ((AlignedTVList) tvList).buildTsBlock(floatPrecision, encodingList, deletionList);
     initAlignedChunkMetaFromTsBlock();
+    iter = ((AlignedTVList) tvList).getAlignedIterator(floatPrecision, encodingList, deletionList);
   }
 
   private void initAlignedChunkMetaFromTsBlock() throws QueryProcessException {
@@ -158,10 +154,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     return tsBlock.isEmpty();
   }
 
-  @TestOnly
   @Override
   public IPointReader getPointReader() {
-    // todo
-    return tsBlock.getTsBlockSingleColumnIterator();
+    return tsBlock.getTsBlockAlignedRowIterator();
   }
 }

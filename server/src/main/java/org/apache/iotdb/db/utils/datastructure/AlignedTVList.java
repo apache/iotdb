@@ -912,19 +912,22 @@ public class AlignedTVList extends TVList {
     // value columns
     for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
       int deleteCursor = 0;
-      Pair<Long, Integer> lastValidPointIndexForTimeDepCheck = null;
+      // Pair of Time and Index
+      Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
       if (Objects.nonNull(timeDuplicateInfo)) {
-        lastValidPointIndexForTimeDepCheck = new Pair<>(Long.MIN_VALUE, null);
+        lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
       }
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
         // skip time duplicated rows
-        if (Objects.nonNull(timeDuplicateInfo) && timeDuplicateInfo[sortedRowIndex]) {
+        if (Objects.nonNull(timeDuplicateInfo)) {
           if (!isNullValue(getValueIndex(sortedRowIndex), columnIndex)) {
-            lastValidPointIndexForTimeDepCheck.left = getTime(sortedRowIndex);
-            lastValidPointIndexForTimeDepCheck.right = getValueIndex(sortedRowIndex);
+            lastValidPointIndexForTimeDupCheck.left = getTime(sortedRowIndex);
+            lastValidPointIndexForTimeDupCheck.right = getValueIndex(sortedRowIndex);
           }
-          continue;
+          if (timeDuplicateInfo[sortedRowIndex]) {
+            continue;
+          }
         }
         // The part of code solves the following problem:
         // Time: 1,2,2,3
@@ -934,9 +937,9 @@ public class AlignedTVList extends TVList {
         // When rowIndex:3, pair(2,2), timeDuplicateInfo:false, T:2!=air.left:2, write(T:2,V:2)
         // When rowIndex:4, pair(2,2), timeDuplicateInfo:false, T:3!=pair.left:2, write(T:3,V:null)
         int originRowIndex;
-        if (Objects.nonNull(lastValidPointIndexForTimeDepCheck)
-            && (getTime(sortedRowIndex) == lastValidPointIndexForTimeDepCheck.left)) {
-          originRowIndex = lastValidPointIndexForTimeDepCheck.right;
+        if (Objects.nonNull(lastValidPointIndexForTimeDupCheck)
+            && (getTime(sortedRowIndex) == lastValidPointIndexForTimeDupCheck.left)) {
+          originRowIndex = lastValidPointIndexForTimeDupCheck.right;
         } else {
           originRowIndex = getValueIndex(sortedRowIndex);
         }
