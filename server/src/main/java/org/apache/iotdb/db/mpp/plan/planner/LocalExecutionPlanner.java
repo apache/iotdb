@@ -48,8 +48,9 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchOperator;
-import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
@@ -64,9 +65,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
@@ -216,7 +218,8 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSchemaScan(SchemaScanNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaQueryScan(
+        SchemaQueryScanNode node, LocalExecutionPlanContext context) {
       if (node instanceof TimeSeriesSchemaScanNode) {
         return visitTimeSeriesSchemaScan((TimeSeriesSchemaScanNode) node, context);
       } else if (node instanceof DevicesSchemaScanNode) {
@@ -271,8 +274,8 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSchemaMerge(
-        SeriesSchemaMergeNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaQueryMerge(
+        SchemaQueryMergeNode node, LocalExecutionPlanContext context) {
       List<Operator> children =
           node.getChildren().stream()
               .map(n -> n.accept(this, context))
@@ -281,8 +284,8 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SchemaMergeOperator.class.getSimpleName());
-      return new SchemaMergeOperator(node.getPlanNodeId(), operatorContext, children);
+              SchemaQueryMergeOperator.class.getSimpleName());
+      return new SchemaQueryMergeOperator(node.getPlanNodeId(), operatorContext, children);
     }
 
     @Override
@@ -558,13 +561,29 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSchemaFetch(SchemaFetchNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaFetchMerge(
+        SchemaFetchMergeNode node, LocalExecutionPlanContext context) {
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(n -> n.accept(this, context))
+              .collect(Collectors.toList());
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SchemaFetchOperator.class.getSimpleName());
-      return new SchemaFetchOperator(
+              SchemaFetchMergeOperator.class.getSimpleName());
+      return new SchemaFetchMergeOperator(node.getPlanNodeId(), operatorContext, children);
+    }
+
+    @Override
+    public Operator visitSchemaFetchScan(
+        SchemaFetchScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              SchemaFetchScanOperator.class.getSimpleName());
+      return new SchemaFetchScanOperator(
           node.getPlanNodeId(),
           operatorContext,
           node.getPatternTree(),
