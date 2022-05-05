@@ -404,7 +404,7 @@ public class DistributionPlanner {
     }
 
     @Override
-    public PlanNode visitSchemaScan(SchemaQueryScanNode node, NodeGroupContext context) {
+    public PlanNode visitSchemaQueryScan(SchemaQueryScanNode node, NodeGroupContext context) {
       NodeDistribution nodeDistribution = new NodeDistribution(NodeDistributionType.NO_CHILD);
       nodeDistribution.region = node.getRegionReplicaSet();
       context.putNodeDistribution(node.getPlanNodeId(), nodeDistribution);

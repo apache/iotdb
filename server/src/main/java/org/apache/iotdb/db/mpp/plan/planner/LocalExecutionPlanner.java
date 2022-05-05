@@ -189,7 +189,8 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSchemaScan(SchemaQueryScanNode node, LocalExecutionPlanContext context) {
+    public Operator visitSchemaQueryScan(
+        SchemaQueryScanNode node, LocalExecutionPlanContext context) {
       if (node instanceof TimeSeriesSchemaScanNode) {
         return visitTimeSeriesSchemaScan((TimeSeriesSchemaScanNode) node, context);
       } else if (node instanceof DevicesSchemaScanNode) {

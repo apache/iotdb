@@ -135,7 +135,7 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitSchemaScan(SchemaQueryScanNode node, C context) {
+  public R visitSchemaQueryScan(SchemaQueryScanNode node, C context) {
     return visitPlan(node, context);
   }
 

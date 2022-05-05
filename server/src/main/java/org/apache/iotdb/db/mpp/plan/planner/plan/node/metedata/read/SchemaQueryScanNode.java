@@ -127,7 +127,7 @@ public abstract class SchemaQueryScanNode extends SourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaScan(this, context);
+    return visitor.visitSchemaQueryScan(this, context);
   }
 
   @Override
