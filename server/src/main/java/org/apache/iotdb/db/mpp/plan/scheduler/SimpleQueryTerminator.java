@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -58,7 +59,7 @@ public class SimpleQueryTerminator implements IQueryTerminator {
 
   @Override
   public Future<Boolean> terminate() {
-    List<TEndPoint> relatedHost = getRelatedHost(fragmentInstances);
+    List<TEndPoint> relatedHost = getRelatedHost();
 
     return executor.submit(
         () -> {
@@ -66,7 +67,8 @@ public class SimpleQueryTerminator implements IQueryTerminator {
             // TODO (jackie tien) change the port
             try (SyncDataNodeInternalServiceClient client =
                 internalServiceClientManager.borrowClient(endPoint)) {
-              client.cancelQuery(new TCancelQueryReq(queryId.getId()));
+              client.cancelQuery(
+                  new TCancelQueryReq(queryId.getId(), getRelatedFragmentInstances(endPoint)));
             } catch (IOException e) {
               LOGGER.error("can't connect to node {}", endPoint, e);
               return false;
@@ -78,10 +80,17 @@ public class SimpleQueryTerminator implements IQueryTerminator {
         });
   }
 
-  private List<TEndPoint> getRelatedHost(List<FragmentInstance> instances) {
-    return instances.stream()
+  private List<TEndPoint> getRelatedHost() {
+    return fragmentInstances.stream()
         .map(instance -> instance.getHostDataNode().internalEndPoint)
         .distinct()
+        .collect(Collectors.toList());
+  }
+
+  private List<TFragmentInstanceId> getRelatedFragmentInstances(TEndPoint endPoint) {
+    return fragmentInstances.stream()
+        .filter(instance -> instance.getHostDataNode().internalEndPoint.equals(endPoint))
+        .map(instance -> instance.getId().toThrift())
         .collect(Collectors.toList());
   }
 }

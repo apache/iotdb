@@ -320,6 +320,8 @@ public class SourceHandle implements ISourceHandle {
             TsBlock tsBlock = serde.deserialize(byteBuffer);
             tsBlocks.add(tsBlock);
           }
+          executorService.submit(
+              new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
           synchronized (SourceHandle.this) {
             if (aborted) {
               return;
@@ -331,8 +333,6 @@ public class SourceHandle implements ISourceHandle {
               blocked.set(null);
             }
           }
-          executorService.submit(
-              new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
           break;
         } catch (Throwable e) {
           logger.error(
