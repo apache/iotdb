@@ -20,13 +20,17 @@ package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -73,10 +77,42 @@ public class SnapshotTaker {
                   + timePartition);
       if (!seqTargetDir.mkdirs()) {
         LOGGER.error("Failed to create target directory {}", seqTargetDir);
+        return false;
+      }
+
+      try {
+        createFileSnapshot(seqDataDirs, seqTargetDir);
+      } catch (IOException e) {
+        LOGGER.error("Fail to create snapshot", e);
+        return false;
+      }
+
+      List<String> unseqDataDirs = getAllDataDirOfOnePartition(false, timePartition);
+      File unseqTargetDir =
+          new File(
+              snapshotDirPath
+                  + File.separator
+                  + IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                  + File.separator
+                  + dataRegion.getLogicalStorageGroupName()
+                  + File.separator
+                  + dataRegion.getDataRegionId()
+                  + File.separator
+                  + timePartition);
+      if (!unseqTargetDir.mkdirs()) {
+        LOGGER.error("Failed to create target directory {}", seqTargetDir);
+        return false;
+      }
+
+      try {
+        createFileSnapshot(unseqDataDirs, unseqTargetDir);
+      } catch (IOException e) {
+        LOGGER.error("Fail to create snapshot", e);
+        return false;
       }
     }
 
-    return false;
+    return true;
   }
 
   public boolean takeIncrementalSnapshot(long maxWalSizeBeforeSnapshot, String snapshotDirPath) {
@@ -103,5 +139,30 @@ public class SnapshotTaker {
               + File.separator);
     }
     return resultDirs;
+  }
+
+  private void createFileSnapshot(List<String> sourceDirPaths, File targetDir) throws IOException {
+    for (String sourceDirPath : sourceDirPaths) {
+      File sourceDir = new File(sourceDirPath);
+      if (!sourceDir.exists()) {
+        continue;
+      }
+      // Collect TsFile, TsFileResource, Mods, CompactionMods
+      File[] files =
+          sourceDir.listFiles(
+              (dir, name) ->
+                  name.endsWith(".tsfile")
+                      || name.endsWith(TsFileResource.RESOURCE_SUFFIX)
+                      || name.endsWith(ModificationFile.FILE_SUFFIX)
+                      || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX));
+      if (files == null || files.length == 0) {
+        continue;
+      }
+
+      for (File file : files) {
+        File linkFile = new File(targetDir, file.getName());
+        Files.createLink(linkFile.toPath(), file.toPath());
+      }
+    }
   }
 }
