@@ -933,8 +933,6 @@ public class IoTDBDescriptor {
       // update all data seriesPath
       conf.updatePath();
     }
-    commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
-    commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
   }
 
   // to keep consistent with the cluster module.
