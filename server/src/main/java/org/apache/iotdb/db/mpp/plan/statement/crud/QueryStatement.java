@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
@@ -258,13 +259,14 @@ public class QueryStatement extends Statement {
   public void selfCheck() {
     if (isAlignByDevice()) {
       if (hasTimeSeriesGeneratingFunction() || hasUserDefinedAggregationFunction()) {
-        throw new SemanticException("The ALIGN BY DEVICE clause is not supported in UDF queries.");
+        throw new SemanticException("ALIGN BY DEVICE: User-Defined Functions are not supported.");
       }
 
       for (PartialPath path : selectComponent.getPaths()) {
-        if (path.getNodes().length > 1) {
+        if (path.getNodes().length > 1
+            || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
           throw new SemanticException(
-              "The paths of the SELECT clause can only be measurements or wildcard.");
+              "ALIGN BY DEVICE: The paths of the SELECT clause can only be measurement or one-level wildcard.");
         }
       }
     }
