@@ -104,7 +104,10 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     registerResp.convertToRpcDataNodeRegisterResp(resp);
+
+    // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
     LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
+
     return resp;
   }
 
@@ -145,7 +148,10 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
     SetStorageGroupReq setReq = new SetStorageGroupReq(storageGroupSchema);
     TSStatus resp = configManager.setStorageGroup(setReq);
+
+    // Print log to record the ConfigNode that performs the set SetStorageGroupRequest
     LOGGER.info("Execute SetStorageGroupRequest {} with result {}", req, resp);
+
     return resp;
   }
 
@@ -315,13 +321,23 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    return configManager.registerConfigNode(req);
+    TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
+
+    // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
+    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
+
+    return resp;
   }
 
   @Override
   public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     ApplyConfigNodeReq applyConfigNodeReq = new ApplyConfigNodeReq(configNodeLocation);
-    return configManager.applyConfigNode(applyConfigNodeReq);
+    TSStatus status = configManager.applyConfigNode(applyConfigNodeReq);
+
+    // Print log to record the ConfigNode that performs the ApplyConfigNodeRequest
+    LOGGER.info("Execute ApplyConfigNodeRequest {} with result {}", configNodeLocation, status);
+
+    return status;
   }
 
   public void handleClientExit() {}

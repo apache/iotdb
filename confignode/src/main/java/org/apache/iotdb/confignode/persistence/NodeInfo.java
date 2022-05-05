@@ -143,6 +143,11 @@ public class NodeInfo {
       } else if (nextDataNodeId.get() == minimumDataNode) {
         result.setMessage("IoTDB-Cluster could provide data service, now enjoy yourself!");
       }
+
+      LOGGER.info(
+          "Successfully register DataNode: {}. Current online DataNodes: {}",
+          info,
+          onlineDataNodes);
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }

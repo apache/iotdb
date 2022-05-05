@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -104,7 +105,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     ClusterSchemaInfo.getInstance().clear();
     PartitionInfo.getInstance().clear();
     processor.close();
-    FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
+    FileUtils.deleteFully(new File(ConfigNodeConstant.DATA_DIR));
   }
 
   private void checkGlobalConfig(TGlobalConfig globalConfig) {
