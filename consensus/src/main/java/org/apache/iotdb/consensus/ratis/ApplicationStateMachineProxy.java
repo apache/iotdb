@@ -169,6 +169,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
     return snapshotStorage;
   }
 
+  @Override
   public void notifyLeaderChanged(RaftGroupMemberId groupMemberId, RaftPeerId newLeaderId) {
     applicationStateMachine
         .event()
@@ -177,6 +178,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             Utils.formRaftPeerIdToTEndPoint(newLeaderId));
   }
 
+  @Override
   public void notifyConfigurationChanged(
       long term, long index, RaftConfigurationProto newRaftConfiguration) {
     applicationStateMachine
