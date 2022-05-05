@@ -46,8 +46,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   private final List<TSDataType> dataTypes;
 
-  private IPointReader iter;
-
   /**
    * The constructor for Aligned type.
    *
@@ -67,7 +65,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.tsBlock =
         ((AlignedTVList) tvList).buildTsBlock(floatPrecision, encodingList, deletionList);
     initAlignedChunkMetaFromTsBlock();
-    iter = ((AlignedTVList) tvList).getAlignedIterator(floatPrecision, encodingList, deletionList);
   }
 
   private void initAlignedChunkMetaFromTsBlock() throws QueryProcessException {

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
@@ -32,7 +31,6 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -993,122 +991,6 @@ public class AlignedTVList extends TVList {
       TSEncoding encoding,
       List<TimeRange> deletionList) {}
 
-  @TestOnly
-  public IPointReader getAlignedIterator(
-      Integer floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
-    return new AlignedIte(floatPrecision, encodingList, deletionList);
-  }
-
-  private class AlignedIte implements IPointReader {
-
-    protected TimeValuePair cachedTimeValuePair;
-    protected boolean hasCachedPair;
-    protected int cur;
-    protected Integer floatPrecision;
-    private List<TSEncoding> encodingList;
-    private int[] deleteCursors;
-
-    /**
-     * because TV list may be share with different query, each iterator has to record its own size
-     */
-    protected int iteSize;
-    /** this field is effective only in the AlignedTvList in a AlignedRealOnlyMemChunk. */
-    private List<List<TimeRange>> deletionList;
-
-    public AlignedIte(
-        Integer floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
-      this.floatPrecision = floatPrecision;
-      this.encodingList = encodingList;
-      this.deletionList = deletionList;
-      this.iteSize = rowCount;
-      if (deletionList != null) {
-        deleteCursors = new int[deletionList.size()];
-      }
-    }
-
-    @Override
-    public boolean hasNextTimeValuePair() {
-      if (hasCachedPair) {
-        return true;
-      }
-
-      List<Integer> timeDuplicatedAlignedRowIndexList = null;
-      while (cur < iteSize) {
-        long time = getTime(cur);
-        if (cur + 1 < rowCount() && (time == getTime(cur + 1))) {
-          if (timeDuplicatedAlignedRowIndexList == null) {
-            timeDuplicatedAlignedRowIndexList = new ArrayList<>();
-            timeDuplicatedAlignedRowIndexList.add(getValueIndex(cur));
-          }
-          timeDuplicatedAlignedRowIndexList.add(getValueIndex(cur + 1));
-          cur++;
-          continue;
-        }
-        TimeValuePair tvPair;
-        if (timeDuplicatedAlignedRowIndexList != null) {
-          tvPair =
-              getTimeValuePairForTimeDuplicatedRows(
-                  timeDuplicatedAlignedRowIndexList, time, floatPrecision, encodingList);
-          timeDuplicatedAlignedRowIndexList = null;
-        } else {
-          tvPair = getTimeValuePair(cur, time, floatPrecision, encodingList);
-        }
-        cur++;
-        if (deletePointsInDeletionList(time, tvPair)) {
-          continue;
-        }
-        if (tvPair.getValue() != null) {
-          cachedTimeValuePair = tvPair;
-          hasCachedPair = true;
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    @Override
-    public TimeValuePair nextTimeValuePair() throws IOException {
-      if (hasCachedPair || hasNextTimeValuePair()) {
-        hasCachedPair = false;
-        return cachedTimeValuePair;
-      } else {
-        throw new IOException("no next time value pair");
-      }
-    }
-
-    @Override
-    public TimeValuePair currentTimeValuePair() throws IOException {
-      return cachedTimeValuePair;
-    }
-
-    @Override
-    public void close() throws IOException {
-      // Do nothing because of this is an in memory object
-    }
-
-    private boolean deletePointsInDeletionList(long timestamp, TimeValuePair tvPair) {
-      if (deletionList == null) {
-        return false;
-      }
-      boolean deletedAll = true;
-      for (int i = 0; i < deleteCursors.length; i++) {
-        while (deletionList.get(i) != null && deleteCursors[i] < deletionList.get(i).size()) {
-          if (deletionList.get(i).get(deleteCursors[i]).contains(timestamp)) {
-            tvPair.getValue().getVector()[i] = null;
-            break;
-          } else if (deletionList.get(i).get(deleteCursors[i]).getMax() < timestamp) {
-            deleteCursors[i]++;
-          } else {
-            deletedAll = false;
-            break;
-          }
-        }
-      }
-      return deletedAll;
-    }
-  }
-
   @Override
   public int serializedSize() {
     int size = (1 + dataTypes.size()) * Byte.BYTES + 2 * Integer.BYTES;
@@ -1144,29 +1026,6 @@ public class AlignedTVList extends TVList {
     // bitmap
     size += rowCount * dataTypes.size() * Byte.BYTES;
     return size;
-  }
-
-  @TestOnly
-  private TimeValuePair getTimeValuePairForTimeDuplicatedRows(
-      List<Integer> indexList, long time, Integer floatPrecision, List<TSEncoding> encodingList) {
-    return new TimeValuePair(time, getAlignedValue(indexList, floatPrecision, encodingList));
-  }
-
-  @TestOnly
-  private TsPrimitiveType getAlignedValue(
-      List<Integer> timeDuplicatedIndexList,
-      Integer floatPrecision,
-      List<TSEncoding> encodingList) {
-    int[] validIndexesForTimeDuplicatedRows = new int[values.size()];
-    for (int i = 0; i < values.size(); i++) {
-      validIndexesForTimeDuplicatedRows[i] =
-          getValidRowIndexForTimeDuplicatedRows(timeDuplicatedIndexList, i);
-    }
-    return getAlignedValueByValueIndex(
-        timeDuplicatedIndexList.get(timeDuplicatedIndexList.size() - 1),
-        validIndexesForTimeDuplicatedRows,
-        floatPrecision,
-        encodingList);
   }
 
   @Override
