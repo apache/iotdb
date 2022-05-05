@@ -25,8 +25,11 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.apache.ratis.proto.RaftProtos;
+import org.apache.ratis.proto.RaftProtos.RaftConfigurationProto;
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.protocol.RaftGroupId;
+import org.apache.ratis.protocol.RaftGroupMemberId;
+import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.server.raftlog.RaftLog;
@@ -49,11 +52,13 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   // Raft Storage sub dir for statemachine data, default (_sm)
   private File statemachineDir;
   private final SnapshotStorage snapshotStorage;
+  private final RaftGroupId groupId;
 
-  public ApplicationStateMachineProxy(IStateMachine stateMachine) {
+  public ApplicationStateMachineProxy(IStateMachine stateMachine, RaftGroupId id) {
     applicationStateMachine = stateMachine;
     snapshotStorage = new SnapshotStorage(applicationStateMachine);
     applicationStateMachine.start();
+    groupId = id;
   }
 
   @Override
@@ -69,7 +74,7 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   }
 
   @Override
-  public void reinitialize() throws IOException {
+  public void reinitialize() {
     setLastAppliedTermIndex(null);
     loadSnapshot(snapshotStorage.findLatestSnapshotDir());
     if (getLifeCycleState() == LifeCycle.State.PAUSED) {
@@ -158,5 +163,24 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   @Override
   public StateMachineStorage getStateMachineStorage() {
     return snapshotStorage;
+  }
+
+  public void notifyLeaderChanged(RaftGroupMemberId groupMemberId, RaftPeerId newLeaderId) {
+    applicationStateMachine
+        .event()
+        .notifyLeaderChanged(
+            Utils.fromRaftGroupIdToConsensusGroupId(groupMemberId.getGroupId()),
+            Utils.formRaftPeerIdToTEndPoint(newLeaderId));
+  }
+
+  public void notifyConfigurationChanged(
+      long term, long index, RaftConfigurationProto newRaftConfiguration) {
+    applicationStateMachine
+        .event()
+        .notifyConfigurationChanged(
+            term,
+            index,
+            Utils.fromRaftProtoListAndRaftGroupIdToPeers(
+                newRaftConfiguration.getPeersList(), groupId));
   }
 }

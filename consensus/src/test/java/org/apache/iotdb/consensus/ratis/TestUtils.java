@@ -61,7 +61,7 @@ public class TestUtils {
     }
   }
 
-  static class IntegerCounter implements IStateMachine {
+  static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
     private AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
 
