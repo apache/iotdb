@@ -129,12 +129,17 @@ public class IoTDBDescriptor {
     }
   }
 
-  /** load an property file and set TsfileDBConfig variables. */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void loadProps() {
+  /** init common config according to iotdb config */
+  private void initCommonConfig() {
     // first init the user and role folder in common config
     commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
     commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
+  }
+
+  /** load an property file and set TsfileDBConfig variables. */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  private void loadProps() {
+    initCommonConfig();
     URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
