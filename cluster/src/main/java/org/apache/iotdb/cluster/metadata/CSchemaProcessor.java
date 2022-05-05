@@ -41,9 +41,10 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -54,7 +55,6 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
@@ -236,7 +236,9 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
         if (measurementSchema instanceof VectorMeasurementSchema) {
           for (String subMeasurement : measurementSchema.getSubMeasurementsList()) {
             cacheMeta(
-                new AlignedPath(fullPath.getDevice(), subMeasurement), measurementMNode, false);
+                new AlignedPath(fullPath.getDeviceIdString(), subMeasurement),
+                measurementMNode,
+                false);
           }
         } else {
           cacheMeta(fullPath, measurementMNode, true);
@@ -380,7 +382,7 @@ public class CSchemaProcessor extends LocalSchemaProcessor {
         getMNodesLocally(plan.getDevicePath(), plan.getMeasurements(), measurementMNodes);
     if (nonExistSchemaIndex == -1) {
       plan.setMeasurementMNodes(measurementMNodes);
-      return new InternalMNode(null, plan.getDevicePath().getDevice());
+      return new InternalMNode(null, plan.getDevicePath().getDeviceIdString());
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this

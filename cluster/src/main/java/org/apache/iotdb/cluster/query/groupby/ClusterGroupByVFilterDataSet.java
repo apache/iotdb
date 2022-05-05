@@ -22,10 +22,10 @@ package org.apache.iotdb.cluster.query.groupby;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -66,7 +66,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
       throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(
         path,
-        dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
+        dataQueryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
         path.getSeriesType(),
         context,
         dataQueryPlan.isAscending(),

@@ -23,9 +23,9 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -115,7 +115,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
       mergeReader =
           readerFactory.getSeriesReader(
               path,
-              queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+              queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
               dataType,
               timeFilter,
               filter,
@@ -187,7 +187,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
           IPointReader pointReader =
               readerFactory.getSeriesPointReader(
                   path,
-                  queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+                  queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
                   dataType,
                   timeFilter,
                   filter,

@@ -43,7 +43,6 @@ import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
-import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -198,7 +197,6 @@ public class ConfigManager implements Manager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<String> devicePaths = patternTree.findAllDevicePaths();
       List<String> storageGroups = getClusterSchemaManager().getStorageGroupNames();
-
       GetSchemaPartitionReq getSchemaPartitionReq = new GetSchemaPartitionReq();
       Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
 
@@ -207,7 +205,7 @@ public class ConfigManager implements Manager {
       for (String devicePath : devicePaths) {
         boolean matchStorageGroup = false;
         for (String storageGroup : storageGroups) {
-          if (devicePath.contains(storageGroup)) {
+          if (devicePath.startsWith(storageGroup + ".")) {
             matchStorageGroup = true;
             if (devicePath.contains("*")) {
               // Get all SchemaPartitions of this StorageGroup if the devicePath contains "*"
@@ -263,7 +261,7 @@ public class ConfigManager implements Manager {
         if (!devicePath.contains("*")) {
           // Only check devicePaths that without "*"
           for (String storageGroup : storageGroups) {
-            if (devicePath.contains(storageGroup)) {
+            if (devicePath.startsWith(storageGroup + ".")) {
               partitionSlotsMap
                   .computeIfAbsent(storageGroup, key -> new ArrayList<>())
                   .add(getPartitionManager().getSeriesPartitionSlot(devicePath));
@@ -362,7 +360,17 @@ public class ConfigManager implements Manager {
   public TSStatus login(String username, String password) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorInfo.getInstance().login(username, password);
+      return permissionManager.login(username, password);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return permissionManager.checkUserPrivileges(username, paths, permission);
     } else {
       return status;
     }

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -228,7 +228,7 @@ public class SchemaTree {
    */
   public String getBelongedStorageGroup(PartialPath path) {
     for (String storageGroup : storageGroups) {
-      if (path.getFullPath().startsWith(storageGroup)) {
+      if (path.getFullPath().startsWith(storageGroup + ".")) {
         return storageGroup;
       }
     }
@@ -247,5 +247,9 @@ public class SchemaTree {
   @TestOnly
   SchemaNode getRoot() {
     return root;
+  }
+
+  public boolean isEmpty() {
+    return root.getChildren() == null || root.getChildren().size() == 0;
   }
 }

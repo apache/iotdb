@@ -67,14 +67,14 @@ public class IoTDBMetadataFetchIT {
             "SET STORAGE GROUP TO root.ln2.wf01.wt01",
             "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+                + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3' ",
             "CREATE ALIGNED TIMESERIES root.ln.wf01.wt02(s1 INT32, s2 DOUBLE)",
             "CREATE TIMESERIES root.ln1.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln1.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+                + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3'",
             "CREATE TIMESERIES root.ln2.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln2.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
-                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"
+                + "compressor = SNAPPY, 'MAX_POINT_NUMBER' = '3'"
           };
 
       for (String sql : insertSqls) {
@@ -595,7 +595,7 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create aligned timeseries root.sg.d(s1(alias1) int32 tags(tag1=v1, tag2=v2), s2 double attributes(attr3=v3))");
+          "create aligned timeseries root.sg.d(s1(alias1) int32 tags('tag1'='v1', 'tag2'='v2'), s2 double attributes('attr3'='v3'))");
       String[] expected =
           new String[] {
             "root.sg.d.s1,alias1,root.sg,INT32,RLE,SNAPPY,{\"tag1\":\"v1\",\"tag2\":\"v2\"},null,",

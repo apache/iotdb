@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.ArrayList;
 import java.util.List;

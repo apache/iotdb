@@ -19,18 +19,18 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -98,7 +98,7 @@ public class Template {
         // If sublist of measurements has only one item,
         // but it share prefix with other aligned sublist, it will be aligned too
         String[] thisMeasurement =
-            MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
+            PathUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
         String thisPrefix =
             joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length - 1));
         isAlign =
@@ -184,7 +184,7 @@ public class Template {
       if (getPathNodeInTemplate(path) != null) {
         throw new IllegalPathException("Path duplicated: " + path);
       }
-      pathNodes = MetaUtils.splitPathToDetachedPath(path);
+      pathNodes = PathUtils.splitPathToDetachedPath(path);
 
       if (pathNodes.length == 1) {
         prefix = "";
@@ -233,7 +233,7 @@ public class Template {
     if (getPathNodeInTemplate(path) != null) {
       throw new IllegalPathException("Path duplicated: " + path);
     }
-    String[] pathNode = MetaUtils.splitPathToDetachedPath(path);
+    String[] pathNode = PathUtils.splitPathToDetachedPath(path);
     IMNode cur = constructEntityPath(path);
 
     synchronized (this) {
@@ -358,7 +358,7 @@ public class Template {
   }
 
   public IMNode getPathNodeInTemplate(String path) throws IllegalPathException {
-    return getPathNodeInTemplate(MetaUtils.splitPathToDetachedPath(path));
+    return getPathNodeInTemplate(PathUtils.splitPathToDetachedPath(path));
   }
 
   private IMNode getPathNodeInTemplate(String[] pathNodes) {
@@ -380,7 +380,7 @@ public class Template {
   }
 
   public boolean isPathExistInTemplate(String path) throws IllegalPathException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedPath(path);
     if (!directNodes.containsKey(pathNodes[0])) {
       return false;
     }
@@ -400,7 +400,7 @@ public class Template {
   }
 
   public boolean isPathMeasurement(String path) throws MetadataException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedPath(path);
     if (!directNodes.containsKey(pathNodes[0])) {
       throw new PathNotExistException(path);
     }
@@ -476,7 +476,7 @@ public class Template {
    * @return null if need to add direct node, will never return a measurement.
    */
   private IMNode constructEntityPath(String path) throws IllegalPathException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedPath(path);
     if (pathNodes.length == 1) {
       return null;
     }
@@ -532,7 +532,7 @@ public class Template {
 
     // If prefix exists and not aligned, it will throw exception
     // Prefix equality will be checked in constructTemplateTree
-    pathNode = MetaUtils.splitPathToDetachedPath(measurements[0]);
+    pathNode = PathUtils.splitPathToDetachedPath(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
     IMNode targetNode = getPathNodeInTemplate(prefix);
     if ((targetNode != null && !targetNode.getAsEntityMNode().isAligned())
@@ -541,7 +541,7 @@ public class Template {
     }
 
     for (int i = 0; i <= measurements.length - 1; i++) {
-      pathNode = MetaUtils.splitPathToDetachedPath(measurements[i]);
+      pathNode = PathUtils.splitPathToDetachedPath(measurements[i]);
       leafNodes[i] = pathNode[pathNode.length - 1];
     }
     schema = constructSchemas(leafNodes, dataTypes, encodings, compressors);
@@ -564,7 +564,7 @@ public class Template {
     }
 
     for (int i = 0; i <= measurements.length - 1; i++) {
-      pathNode = MetaUtils.splitPathToDetachedPath(measurements[i]);
+      pathNode = PathUtils.splitPathToDetachedPath(measurements[i]);
 
       // If prefix exists and aligned, it will throw exception
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));

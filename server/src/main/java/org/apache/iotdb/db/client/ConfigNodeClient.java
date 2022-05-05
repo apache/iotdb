@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -36,6 +38,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -223,6 +226,22 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
+  public TCountStorageGroupResp countMatchedStorageGroups(List<String> storageGroupPathPattern)
+      throws IoTDBConnectionException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+  }
+
   public TStorageGroupSchemaResp getMatchedStorageGroupSchemas(List<String> storageGroupPathPattern)
       throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
@@ -231,6 +250,21 @@ public class ConfigNodeClient {
             client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+  }
+
+  public TSStatus setTTL(TSetTTLReq setTTLReq) throws IoTDBConnectionException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.setTTL(setTTLReq);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
         }
       } catch (TException e) {
         configLeader = null;
@@ -338,6 +372,21 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TSStatus status = client.login(req);
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+  }
+
+  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws IoTDBConnectionException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.checkUserPrivileges(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }

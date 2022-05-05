@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -61,7 +63,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
@@ -298,6 +299,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus login(TLoginReq req) throws TException {
     return configManager.login(req.getUserrname(), req.getPassword());
+  }
+
+  @Override
+  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+    return configManager.checkUserPrivileges(
+        req.getUsername(), req.getPaths(), req.getPermission());
   }
 
   public void handleClientExit() {}

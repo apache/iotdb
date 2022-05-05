@@ -640,9 +640,6 @@ public class IoTDBConfig {
    */
   private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
 
-  /** Default system file storage is in local file system (unsupported) */
-  private FSType systemFileStorageFs = FSType.LOCAL;
-
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
 
@@ -731,12 +728,6 @@ public class IoTDBConfig {
   // if enable partial insert, one measurement failure will not impact other measurements
   private boolean enablePartialInsert = true;
 
-  // Open ID Secret
-  private String openIdProviderUrl = "";
-
-  // the authorizer provider class which extends BasicAuthorizer
-  private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
-
   /**
    * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
    * value to be slightly larger than the average length of all text records.
@@ -799,10 +790,6 @@ public class IoTDBConfig {
 
   private boolean enableDiscardOutOfOrderData = false;
 
-  private String adminName = "root";
-
-  private String adminPassword = "root";
-
   /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
   private String deviceIDTransformationMethod = "Plain";
 
@@ -814,21 +801,11 @@ public class IoTDBConfig {
    */
   private boolean enableIDTableLogFile = false;
 
-  /** Encryption provider class */
-  private String encryptDecryptProvider =
-      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
-
-  /** Encryption provided class parameter */
-  private String encryptDecryptProviderParameter;
-
   /** whether to use persistent schema mode */
   private String schemaEngineMode = "Memory";
 
   /** the memory used for metadata cache when using persistent schema */
   private int cachedMNodeSizeInSchemaFileMode = -1;
-
-  /** the max num of thread used for flushing metadata to schema file */
-  private int maxSchemaFlushThreadNum = 15;
 
   /** the minimum size (in bytes) of segment inside a schema file page */
   private short minimumSegmentInSchemaFile = 0;
@@ -903,7 +880,7 @@ public class IoTDBConfig {
 
   /**
    * Cache size of partition cache in {@link
-   * org.apache.iotdb.db.mpp.sql.analyze.ClusterPartitionFetcher}
+   * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
   private int partitionCacheSize = 10000;
 
@@ -2042,14 +2019,6 @@ public class IoTDBConfig {
     this.defaultTextEncoding = TSEncoding.valueOf(defaultTextEncoding);
   }
 
-  public FSType getSystemFileStorageFs() {
-    return systemFileStorageFs;
-  }
-
-  public void setSystemFileStorageFs(String systemFileStorageFs) {
-    this.systemFileStorageFs = FSType.valueOf(systemFileStorageFs);
-  }
-
   FSType getTsFileStorageFs() {
     return tsFileStorageFs;
   }
@@ -2254,22 +2223,6 @@ public class IoTDBConfig {
     this.primitiveArraySize = primitiveArraySize;
   }
 
-  public String getOpenIdProviderUrl() {
-    return openIdProviderUrl;
-  }
-
-  public void setOpenIdProviderUrl(String openIdProviderUrl) {
-    this.openIdProviderUrl = openIdProviderUrl;
-  }
-
-  public String getAuthorizerProvider() {
-    return authorizerProvider;
-  }
-
-  public void setAuthorizerProvider(String authorizerProvider) {
-    this.authorizerProvider = authorizerProvider;
-  }
-
   public long getStartUpNanosecond() {
     return startUpNanosecond;
   }
@@ -2435,22 +2388,6 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
-  }
-
-  public String getAdminName() {
-    return adminName;
-  }
-
-  public void setAdminName(String adminName) {
-    this.adminName = adminName;
-  }
-
-  public String getAdminPassword() {
-    return adminPassword;
-  }
-
-  public void setAdminPassword(String adminPassword) {
-    this.adminPassword = adminPassword;
   }
 
   public boolean isEnableSeqSpaceCompaction() {
@@ -2649,22 +2586,6 @@ public class IoTDBConfig {
     this.enableIDTableLogFile = enableIDTableLogFile;
   }
 
-  public String getEncryptDecryptProvider() {
-    return encryptDecryptProvider;
-  }
-
-  public void setEncryptDecryptProvider(String encryptDecryptProvider) {
-    this.encryptDecryptProvider = encryptDecryptProvider;
-  }
-
-  public String getEncryptDecryptProviderParameter() {
-    return encryptDecryptProviderParameter;
-  }
-
-  public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
-    this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
-  }
-
   public String getSchemaEngineMode() {
     return schemaEngineMode;
   }
@@ -2679,14 +2600,6 @@ public class IoTDBConfig {
 
   public void setCachedMNodeSizeInSchemaFileMode(int cachedMNodeSizeInSchemaFileMode) {
     this.cachedMNodeSizeInSchemaFileMode = cachedMNodeSizeInSchemaFileMode;
-  }
-
-  public int getMaxSchemaFlushThreadNum() {
-    return maxSchemaFlushThreadNum;
-  }
-
-  public void setMaxSchemaFlushThreadNum(int maxSchemaFlushThreadNum) {
-    this.maxSchemaFlushThreadNum = maxSchemaFlushThreadNum;
   }
 
   public short getMinimumSegmentInSchemaFile() {

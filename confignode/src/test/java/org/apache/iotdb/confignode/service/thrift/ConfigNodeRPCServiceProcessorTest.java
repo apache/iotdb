@@ -25,7 +25,10 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
@@ -33,6 +36,7 @@ import org.apache.iotdb.confignode.persistence.DataNodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -49,9 +53,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -547,20 +548,29 @@ public class ConfigNodeRPCServiceProcessorTest {
     userList.add("root");
     userList.add("tempuser0");
     userList.add("tempuser1");
+
     List<String> roleList = new ArrayList<>();
     roleList.add("temprole0");
     roleList.add("temprole1");
+
     TAuthorizerReq authorizerReq;
     TAuthorizerResp authorizerResp;
+    TCheckUserPrivilegesReq checkUserPrivilegesReq;
+
     Set<Integer> privilegeList = new HashSet<>();
     privilegeList.add(PrivilegeType.DELETE_USER.ordinal());
     privilegeList.add(PrivilegeType.CREATE_USER.ordinal());
+
     Set<Integer> revokePrivilege = new HashSet<>();
     revokePrivilege.add(PrivilegeType.DELETE_USER.ordinal());
+
     Map<String, List<String>> permissionInfo;
     List<String> privilege = new ArrayList<>();
     privilege.add("root : CREATE_USER");
     privilege.add("root : CREATE_USER");
+
+    List<String> paths = new ArrayList<>();
+    paths.add("root.ln");
 
     cleanUserAndRole();
 
@@ -579,6 +589,12 @@ public class ConfigNodeRPCServiceProcessorTest {
     authorizerReq.setUserName("tempuser1");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // check user privileges
+    checkUserPrivilegesReq =
+        new TCheckUserPrivilegesReq("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
+    status = processor.checkUserPrivileges(checkUserPrivilegesReq);
+    Assert.assertEquals(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(), status.getCode());
 
     // drop user
     authorizerReq =
@@ -668,6 +684,12 @@ public class ConfigNodeRPCServiceProcessorTest {
             privilegeList,
             "root.ln");
     status = processor.operatePermission(authorizerReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    // check user privileges
+    checkUserPrivilegesReq =
+        new TCheckUserPrivilegesReq("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
+    status = processor.checkUserPrivileges(checkUserPrivilegesReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role

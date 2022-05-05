@@ -26,20 +26,21 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.consensus.EmptyStateMachine;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
+import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
-import org.apache.iotdb.consensus.statemachine.EmptyStateMachine;
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
 
+import org.apache.ratis.util.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -112,20 +113,12 @@ public class StandAloneConsensusTest {
     }
 
     @Override
-    public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+    public boolean takeSnapshot(File snapshotDir) {
       return false;
     }
 
     @Override
-    public SnapshotMeta getLatestSnapshot(File snapshotDir) {
-      return null;
-    }
-
-    @Override
-    public void loadSnapshot(SnapshotMeta latest) {}
-
-    @Override
-    public void cleanUpOldSnapshots(File snapshotDir) {}
+    public void loadSnapshot(File latestSnapshotRootDir) {}
   }
 
   @Before
@@ -133,8 +126,8 @@ public class StandAloneConsensusTest {
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
                 STANDALONE_CONSENSUS_CLASS_NAME,
-                new TEndPoint("localhost", 6667),
-                new File("./"),
+                new TEndPoint("0.0.0.0", 6667),
+                new File("./target/standalone"),
                 gid -> {
                   switch (gid.getType()) {
                     case SchemaRegion:
@@ -156,6 +149,7 @@ public class StandAloneConsensusTest {
   @After
   public void tearDown() throws Exception {
     consensusImpl.stop();
+    FileUtils.deleteFully(new File("./target/standalone"));
   }
 
   @Test
@@ -185,10 +179,17 @@ public class StandAloneConsensusTest {
 
     ConsensusGenericResponse response4 =
         consensusImpl.addConsensusGroup(
+            dataRegionId,
+            Collections.singletonList(new Peer(dataRegionId, new TEndPoint("0.0.0.1", 6667))));
+    assertFalse(response4.isSuccess());
+    assertTrue(response4.getException() instanceof IllegalPeerEndpointException);
+
+    ConsensusGenericResponse response5 =
+        consensusImpl.addConsensusGroup(
             schemaRegionId,
             Collections.singletonList(new Peer(schemaRegionId, new TEndPoint("0.0.0.0", 6667))));
-    assertTrue(response4.isSuccess());
-    assertNull(response4.getException());
+    assertTrue(response5.isSuccess());
+    assertNull(response5.getException());
   }
 
   @Test

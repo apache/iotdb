@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.common.filter;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.mpp.plan.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
