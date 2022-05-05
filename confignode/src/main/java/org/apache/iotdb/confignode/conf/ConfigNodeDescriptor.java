@@ -53,6 +53,9 @@ public class ConfigNodeDescriptor {
    * @return url object if location exit, otherwise null.
    */
   public URL getPropsUrl() {
+    // first init the user and role folder in common config
+    commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
+    commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
     // If it wasn't, check if a home directory was provided

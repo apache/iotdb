@@ -132,6 +132,9 @@ public class IoTDBDescriptor {
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
+    // first init the user and role folder in common config
+    commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
+    commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
     URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
@@ -925,6 +928,8 @@ public class IoTDBDescriptor {
       // update all data seriesPath
       conf.updatePath();
     }
+    commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
+    commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
   }
 
   // to keep consistent with the cluster module.
