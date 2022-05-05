@@ -2786,8 +2786,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       filter.addChildOperator(
           convertExpressionToFilter(((BinaryExpression) predicate).getRightExpression()));
     } else if (predicate instanceof LogicNotExpression) {
-      FilterOperator childFilter =
-          convertExpressionToFilter(((LogicNotExpression) predicate).getExpression());
       filter = new FilterOperator(FilterType.KW_NOT);
       filter.addChildOperator(
           convertExpressionToFilter(((LogicNotExpression) predicate).getExpression()));
@@ -2824,11 +2822,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private PartialPath parsePathFromExpression(Expression expression) {
-    if (!(expression instanceof TimeSeriesOperand)) {
+    if (expression instanceof TimeSeriesOperand) {
+      return ((TimeSeriesOperand) expression).getPath();
+    } else if (expression instanceof TimestampOperand) {
+      return TIME_PATH;
+    } else {
       throw new IllegalArgumentException(
           "Unsupported expression type: " + expression.getExpressionType());
     }
-    return ((TimeSeriesOperand) expression).getPath();
   }
 
   private String parseValueFromExpression(Expression expression) {

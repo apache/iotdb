@@ -114,8 +114,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
-
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 

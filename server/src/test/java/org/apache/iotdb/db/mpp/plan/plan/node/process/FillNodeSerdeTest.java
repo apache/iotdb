@@ -49,7 +49,7 @@ public class FillNodeSerdeTest {
             Collections.singletonList(
                 new FillDescriptor(
                     FillPolicy.PREVIOUS,
-                    fillValue,
+                    null,
                     new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);

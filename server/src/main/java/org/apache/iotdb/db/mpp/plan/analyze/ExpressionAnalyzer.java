@@ -46,6 +46,7 @@ import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.InExpression;
 import org.apache.iotdb.db.query.expression.unary.LikeExpression;
@@ -98,19 +99,18 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       List<PartialPath> actualPaths = new ArrayList<>();
-      for (PartialPath prefixPath : prefixPaths) {
-        if (!SQLConstant.isReservedPath(rawPath)
-            && !rawPath
-                .getFullPath()
-                .startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+      if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
+        actualPaths.add(rawPath);
+      } else {
+        for (PartialPath prefixPath : prefixPaths) {
           PartialPath concatPath = prefixPath.concatPath(rawPath);
           patternTree.appendPath(concatPath);
           actualPaths.add(concatPath);
-        } else {
-          actualPaths.add(rawPath);
         }
       }
       return reconstructTimeSeriesOperands(actualPaths);
+    } else if (expression instanceof TimestampOperand) {
+      return Collections.singletonList(expression);
     } else if (expression instanceof ConstantOperand) {
       return Collections.singletonList(expression);
     } else {
@@ -146,7 +146,7 @@ public class ExpressionAnalyzer {
         PartialPath concatPath = prefixPath.concatPath(rawPath);
         patternTree.appendPath(concatPath);
       }
-    } else if (predicate instanceof ConstantOperand) {
+    } else if (predicate instanceof TimestampOperand || predicate instanceof ConstantOperand) {
       // do nothing
     } else {
       throw new IllegalArgumentException(
@@ -193,11 +193,10 @@ public class ExpressionAnalyzer {
       return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath path = ((TimeSeriesOperand) expression).getPath();
-      if (SQLConstant.isReservedPath(path)) {
-        return Collections.singletonList(expression);
-      }
       List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(path).left;
       return reconstructTimeSeriesOperands(actualPaths);
+    } else if (expression instanceof TimestampOperand) {
+      return Collections.singletonList(expression);
     } else if (expression instanceof ConstantOperand) {
       return Collections.singletonList(expression);
     } else {
@@ -477,8 +476,7 @@ public class ExpressionAnalyzer {
           ((BinaryExpression) predicate).getLeftExpression());
     } else if (predicate instanceof InExpression) {
       Expression timeExpression = ((InExpression) predicate).getExpression();
-      if (timeExpression instanceof TimeSeriesOperand
-          && SQLConstant.isReservedPath(((TimeSeriesOperand) timeExpression).getPath())) {
+      if (timeExpression instanceof TimestampOperand) {
         return TimeFilter.in(
             ((InExpression) predicate)
                 .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
@@ -493,8 +491,7 @@ public class ExpressionAnalyzer {
 
   private static Filter constructTimeFilter(
       ExpressionType expressionType, Expression timeExpression, Expression valueExpression) {
-    if (timeExpression instanceof TimeSeriesOperand
-        && SQLConstant.isReservedPath(((TimeSeriesOperand) timeExpression).getPath())
+    if (timeExpression instanceof TimestampOperand
         && valueExpression instanceof ConstantOperand
         && ((ConstantOperand) valueExpression).getDataType() == TSDataType.INT64) {
       long value = Long.parseLong(((ConstantOperand) valueExpression).getValueString());
@@ -542,7 +539,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       typeProvider.setType(rawPath.getFullPath(), rawPath.getSeriesType());
-    } else if (expression instanceof ConstantOperand) {
+    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
       // do nothing
     } else {
       throw new IllegalArgumentException(
@@ -594,11 +591,6 @@ public class ExpressionAnalyzer {
       return reconstructFunctionExpressions((FunctionExpression) predicate, childExpressionsList);
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
-      if (SQLConstant.isReservedPath(filterPath)) {
-        // do nothing in the case of "where time > 5"
-        return Collections.singletonList(predicate);
-      }
-
       List<PartialPath> concatPaths = new ArrayList<>();
       if (!filterPath.getFirstNode().equals(SQLConstant.ROOT)) {
         prefixPaths.forEach(prefix -> concatPaths.add(prefix.concatPath(filterPath)));
@@ -614,6 +606,9 @@ public class ExpressionAnalyzer {
               .collect(Collectors.toList());
       noStarPaths.forEach(path -> typeProvider.setType(path.getFullPath(), path.getSeriesType()));
       return reconstructTimeSeriesOperands(noStarPaths);
+    } else if (predicate instanceof TimestampOperand) {
+      // do nothing in the case of "where time > 5"
+      return Collections.singletonList(predicate);
     } else if (predicate instanceof ConstantOperand) {
       return Collections.singletonList(predicate);
     } else {
@@ -657,10 +652,6 @@ public class ExpressionAnalyzer {
       return reconstructFunctionExpressions((FunctionExpression) predicate, childExpressionsList);
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
-      if (SQLConstant.isReservedPath(filterPath)) {
-        // do nothing in the case of "where time > 5"
-        return Collections.singletonList(predicate);
-      }
       if (filterPath.getNodes().length > 1
           || filterPath.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
         throw new SemanticException(
@@ -683,6 +674,9 @@ public class ExpressionAnalyzer {
       }
       concatPaths.forEach(path -> typeProvider.setType(path.getFullPath(), path.getSeriesType()));
       return reconstructTimeSeriesOperands(concatPaths);
+    } else if (predicate instanceof TimestampOperand) {
+      // do nothing in the case of "where time > 5"
+      return Collections.singletonList(predicate);
     } else if (predicate instanceof ConstantOperand) {
       return Collections.singletonList(predicate);
     } else {
