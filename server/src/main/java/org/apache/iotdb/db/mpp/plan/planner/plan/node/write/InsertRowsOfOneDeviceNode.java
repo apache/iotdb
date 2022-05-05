@@ -138,9 +138,9 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
   }
 
   @Override
-  public boolean validateSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(SchemaTree schemaTree) {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      if (!insertRowNode.validateSchema(schemaTree)) {
+      if (!insertRowNode.validateAndSetSchema(schemaTree)) {
         return false;
       }
     }

@@ -232,7 +232,8 @@ public class IoTDBJDBCDataSet {
 
         this.columnNameList.add(name);
         this.columnTypeList.add(columnTypeList.get(i));
-        if (!columnOrdinalMap.containsKey(name)) {
+        // "Time".equals(name) -> to allow the Time column appear in value columns
+        if (!columnOrdinalMap.containsKey(name) || "Time".equals(name)) {
           int index = columnNameIndex.get(name);
           columnOrdinalMap.put(name, index + START_INDEX);
           columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));

@@ -79,7 +79,7 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  protected void initLayerPointReaders() throws QueryProcessException, IOException {
+  protected void readyForFirstIteration() throws QueryProcessException, IOException {
     iterateFilterReaderToNextValid();
   }
 
@@ -128,6 +128,8 @@ public class FilterOperator extends TransformOperator {
         }
 
         iterateFilterReaderToNextValid();
+
+        inputLayer.updateRowRecordListEvictionUpperBound();
       }
     } catch (Exception e) {
       throw new RuntimeException(e);

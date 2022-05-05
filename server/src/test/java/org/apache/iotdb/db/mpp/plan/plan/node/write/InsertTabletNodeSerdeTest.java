@@ -48,7 +48,7 @@ public class InsertTabletNodeSerdeTest {
 
     Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), byteBuffer.getShort());
 
-    Assert.assertEquals(InsertTabletNode.deserialize(byteBuffer), insertTabletNode);
+    Assert.assertEquals(insertTabletNode, InsertTabletNode.deserialize(byteBuffer));
 
     insertTabletNode = getInsertTabletNodeWithSchema();
     byteBuffer = ByteBuffer.allocate(10000);
@@ -57,7 +57,7 @@ public class InsertTabletNodeSerdeTest {
 
     Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), byteBuffer.getShort());
 
-    Assert.assertEquals(InsertTabletNode.deserialize(byteBuffer), insertTabletNode);
+    Assert.assertEquals(insertTabletNode, InsertTabletNode.deserialize(byteBuffer));
   }
 
   @Test
@@ -66,26 +66,20 @@ public class InsertTabletNodeSerdeTest {
 
     int serializedSize = insertTabletNode.serializedSize();
 
-    Assert.assertEquals(229, serializedSize);
-
     byte[] bytes = new byte[serializedSize];
     WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
 
     insertTabletNode.serializeToWAL(walBuffer);
+    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
 
     DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
 
     Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), dataInputStream.readShort());
 
     InsertTabletNode tmpNode = InsertTabletNode.deserialize(dataInputStream);
+    tmpNode.setPlanNodeId(insertTabletNode.getPlanNodeId());
 
-    Assert.assertArrayEquals(tmpNode.getTimes(), insertTabletNode.getTimes());
-    Assert.assertEquals(tmpNode.getDevicePath(), insertTabletNode.getDevicePath());
-    Assert.assertEquals(tmpNode.isAligned(), insertTabletNode.isAligned());
-    Assert.assertArrayEquals(tmpNode.getColumns(), insertTabletNode.getColumns());
-    Assert.assertArrayEquals(tmpNode.getBitMaps(), insertTabletNode.getBitMaps());
-    Assert.assertArrayEquals(
-        tmpNode.getMeasurementSchemas(), insertTabletNode.getMeasurementSchemas());
+    Assert.assertEquals(insertTabletNode, tmpNode);
   }
 
   private InsertTabletNode getInsertTabletNode() throws IllegalPathException {

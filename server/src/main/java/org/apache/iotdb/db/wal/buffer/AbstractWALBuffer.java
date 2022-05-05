@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALWriter;
 

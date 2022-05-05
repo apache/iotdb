@@ -53,7 +53,8 @@ public class SingleColumnMerger implements ColumnMerger {
     // input column is empty or current time of input column is already larger than currentEndTime
     // just appendNull rowCount null
     if (empty(tsBlockIndex, inputTsBlocks, inputIndex)
-        || !comparator.satisfy(inputTsBlocks[tsBlockIndex].getTimeByIndex(index), currentEndTime)) {
+        || !comparator.satisfyCurEndTime(
+            inputTsBlocks[tsBlockIndex].getTimeByIndex(index), currentEndTime)) {
       columnBuilder.appendNull(rowCount);
     } else {
       // read from input column and write it into columnBuilder
@@ -63,7 +64,7 @@ public class SingleColumnMerger implements ColumnMerger {
         // current index reaches the size of input column or current time of input column is already
         // larger than currentEndTime, use null column to fill the remaining
         if (timeColumn.getPositionCount() == index
-            || !comparator.satisfy(
+            || !comparator.satisfyCurEndTime(
                 inputTsBlocks[tsBlockIndex].getTimeByIndex(index), currentEndTime)) {
           columnBuilder.appendNull(rowCount - i);
           break;
