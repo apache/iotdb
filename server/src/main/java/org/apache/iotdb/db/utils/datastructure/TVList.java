@@ -29,8 +29,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -519,27 +517,12 @@ public abstract class TVList implements WALEntryValue {
   public TsBlock buildTsBlock(
       int floatPrecision, TSEncoding encoding, List<TimeRange> deletionList) {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
-    // Time column
-    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
-    int validRowCount = 0;
-    Integer deleteCursor = 0;
-    for (int i = 0; i < rowCount; i++) {
-      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
-          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
-        timeBuilder.writeLong(this.getTime(i));
-        validRowCount++;
-      }
-    }
-
-    // value column
-    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
-    writeValidValuesIntoTsBlock(valueBuilder, floatPrecision, encoding, deletionList);
-    builder.declarePositions(validRowCount);
+    writeValidValuesIntoTsBlock(builder, floatPrecision, encoding, deletionList);
     return builder.build();
   }
 
   protected abstract void writeValidValuesIntoTsBlock(
-      ColumnBuilder valueBuilder,
+      TsBlockBuilder builder,
       int floatPrecision,
       TSEncoding encoding,
       List<TimeRange> deletionList);

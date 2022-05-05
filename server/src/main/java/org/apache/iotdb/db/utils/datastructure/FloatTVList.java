@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -203,7 +203,7 @@ public class FloatTVList extends TVList {
 
   @Override
   protected void writeValidValuesIntoTsBlock(
-      ColumnBuilder valueBuilder,
+      TsBlockBuilder builder,
       int floatPrecision,
       TSEncoding encoding,
       List<TimeRange> deletionList) {
@@ -211,8 +211,11 @@ public class FloatTVList extends TVList {
     for (int i = 0; i < rowCount; i++) {
       if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
           && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
-        valueBuilder.writeFloat(
-            roundValueWithGivenPrecision(getFloat(i), floatPrecision, encoding));
+        builder.getTimeColumnBuilder().writeLong(getTime(i));
+        builder
+            .getColumnBuilder(0)
+            .writeFloat(roundValueWithGivenPrecision(getFloat(i), floatPrecision, encoding));
+        builder.declarePosition();
       }
     }
   }

@@ -989,7 +989,9 @@ public class AlignedTVList extends TVList {
       ColumnBuilder valueBuilder,
       int floatPrecision,
       TSEncoding encoding,
-      List<TimeRange> deletionList) {}
+      List<TimeRange> deletionList) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
 
   @Override
   public int serializedSize() {
