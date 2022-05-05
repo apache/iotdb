@@ -22,6 +22,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
+import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
@@ -352,13 +354,21 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               SeriesAggregationScanNode.class.getSimpleName());
 
+      List<Aggregator> aggregators = new ArrayList<>();
+      node.getAggregationDescriptorList()
+          .forEach(
+              o ->
+                  new Aggregator(
+                      AccumulatorFactory.createAccumulator(
+                          o.getAggregationType(), node.getSeriesPath().getSeriesType(), ascending),
+                      o.getStep()));
       SeriesAggregateScanOperator aggregateScanOperator =
           new SeriesAggregateScanOperator(
               node.getPlanNodeId(),
               seriesPath,
               node.getAllSensors(),
               operatorContext,
-              null,
+              aggregators,
               node.getTimeFilter(),
               ascending,
               node.getGroupByTimeParameter());
