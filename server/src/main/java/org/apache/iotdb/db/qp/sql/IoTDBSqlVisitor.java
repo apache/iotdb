@@ -657,9 +657,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     // rename
     if (ctx.RENAME() != null) {
       alterTimeSeriesOperator.setAlterType(AlterType.RENAME);
-      alterMap.put(
-          parseStringLiteral(ctx.beforeName.getText()),
-          parseStringLiteral(ctx.currentName.getText()));
+      alterMap.put(parseAttributeKey(ctx.beforeName), parseAttributeKey(ctx.currentName));
     } else if (ctx.SET() != null) {
       // set
       alterTimeSeriesOperator.setAlterType(AlterType.SET);
@@ -667,8 +665,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     } else if (ctx.DROP() != null) {
       // drop
       alterTimeSeriesOperator.setAlterType(AlterType.DROP);
-      for (int i = 0; i < ctx.STRING_LITERAL().size(); i++) {
-        alterMap.put(parseStringLiteral(ctx.STRING_LITERAL(i).getText()), null);
+      for (int i = 0; i < ctx.attributeKey().size(); i++) {
+        alterMap.put(parseAttributeKey(ctx.attributeKey().get(i)), null);
       }
     } else if (ctx.TAGS() != null) {
       // add tag
