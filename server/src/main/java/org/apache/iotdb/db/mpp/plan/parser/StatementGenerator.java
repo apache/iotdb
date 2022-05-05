@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -76,13 +75,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
 
-  public static Statement createStatement(
-      String sql, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion) {
-    return invokeParser(sql, zoneId, clientVersion);
-  }
-
   public static Statement createStatement(String sql, ZoneId zoneId) {
-    return invokeParser(sql, zoneId, IoTDBConstant.ClientVersion.V_0_13);
+    return invokeParser(sql, zoneId);
   }
 
   public static Statement createStatement(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
@@ -342,11 +336,9 @@ public class StatementGenerator {
     return statement;
   }
 
-  private static Statement invokeParser(
-      String sql, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion) {
+  private static Statement invokeParser(String sql, ZoneId zoneId) {
     ASTVisitor astVisitor = new ASTVisitor();
     astVisitor.setZoneId(zoneId);
-    astVisitor.setClientVersion(clientVersion);
 
     CharStream charStream1 = CharStreams.fromString(sql);
 
