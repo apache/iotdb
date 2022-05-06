@@ -574,6 +574,10 @@ public class Analyzer {
           resultFilterNullColumns.add(expression);
         }
       }
+      // don't specify columns, by default, it is effective for all columns
+      if (rawFilterNullColumns.isEmpty()) {
+        resultFilterNullColumns.addAll(selectExpressions);
+      }
       filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
       return filterNullParameter;
     }
