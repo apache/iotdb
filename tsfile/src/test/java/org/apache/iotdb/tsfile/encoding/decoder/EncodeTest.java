@@ -19,8 +19,8 @@ import java.util.ArrayList;
 public class EncodeTest {
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    String inputPath = "C:\\Users\\xiaoj\\Desktop\\int",
-        Output = "C:\\Users\\xiaoj\\Desktop\\UncompressedSpeedResult_testint.csv";
+    String inputPath = "C:\\Users\\xiaoj\\Desktop\\float",
+        Output = "C:\\Users\\xiaoj\\Desktop\\compressedResult.csv";
     if (args.length >= 2) inputPath = args[1];
     if (args.length >= 3) Output = args[2];
 
@@ -30,32 +30,30 @@ public class EncodeTest {
       TSEncoding.PLAIN,
       TSEncoding.TS_2DIFF,
       TSEncoding.RLE,
-      TSEncoding.SPRINTZ,
-      TSEncoding.GORILLA,
-      TSEncoding.RAKE
+      TSEncoding.SPRINTZ,  TSEncoding.GORILLA, TSEncoding.RLBE, TSEncoding.RAKE
     };
     //        TSEncoding[] schemeList = { TSEncoding.RLBE,TSEncoding.PLAIN};
     //        CompressionType[] compressList = {CompressionType.LZ4, CompressionType.GZIP,
     // CompressionType.SNAPPY};
-    CompressionType[] compressList = {CompressionType.UNCOMPRESSED}; //
+    CompressionType[] compressList = {CompressionType.GZIP}; //
     CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
 
     String[] head = {
       "Encoding",
       "Compress",
-      "Encoding Time",
-      "Compress Time",
-      "Uncompress Time",
-      "Decoding Time",
+//      "Encoding Time",
+//      "Compress Time",
+//      "Uncompress Time",
+//      "Decoding Time",
       "Compression Ratio"
     };
     writer.writeRecord(head);
-    int repeatTime = 10;
+    int repeatTime = 1;
 
     assert tempList != null;
     int fileRepeat = 0;
     for (File f : tempList) {
-      System.out.println(f);
+//      System.out.println(f);
       fileRepeat += 1;
       InputStream inputStream = new FileInputStream(f);
       CsvReader loader = new CsvReader(inputStream, StandardCharsets.UTF_8);
@@ -65,7 +63,7 @@ public class EncodeTest {
 
       loader.readHeaders();
       while (loader.readRecord()) {
-        data.add(loader.getValues()[2]);
+        data.add(loader.getValues()[1]);
       }
       loader.close();
       inputStream.close();
@@ -144,7 +142,8 @@ public class EncodeTest {
             writer.writeRecord(record);
           }
         }
-      } else if (fileName.contains("long")) {
+      }
+      else if (fileName.contains("long")) {
         dataType = TSDataType.INT64;
         ArrayList<Long> tmp = new ArrayList<>();
         for (String value : data) {
@@ -218,7 +217,8 @@ public class EncodeTest {
             writer.writeRecord(record);
           }
         }
-      } else if (fileName.contains("double")) {
+      }
+      else if (fileName.contains("double")) {
         dataType = TSDataType.DOUBLE;
         ArrayList<Double> tmp = new ArrayList<>();
         for (String value : data) {
@@ -292,59 +292,62 @@ public class EncodeTest {
             writer.writeRecord(record);
           }
         }
-      } else if (fileName.contains("float")) {
+      }
+      else if (fileName.contains("float")) {
         dataType = TSDataType.FLOAT;
         ArrayList<Float> tmp = new ArrayList<>();
         for (String value : data) {
           tmp.add(Float.valueOf(value));
         }
+//        System.out.println(tmp);
         for (TSEncoding scheme : schemeList) {
           Encoder encoder = TSEncodingBuilder.getEncodingBuilder(scheme).getEncoder(dataType);
           Decoder decoder = Decoder.getDecoderByType(scheme, dataType);
-          long encodeTime = 0;
-          long decodeTime = 0;
+//          long encodeTime = 0;
+//          long decodeTime = 0;
           for (CompressionType comp : compressList) {
             ICompressor compressor = ICompressor.getCompressor(comp);
             IUnCompressor unCompressor = IUnCompressor.getUnCompressor(comp);
-            long compressTime = 0;
-            long uncompressTime = 0;
+//            long compressTime = 0;
+//            long uncompressTime = 0;
             double ratio = 0;
             for (int i = 0; i < repeatTime; i++) {
               ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-              long s = System.nanoTime();
+//              long s = System.nanoTime();
               for (float val : tmp) encoder.encode(val, buffer);
-              long e = System.nanoTime();
-              encodeTime += (e - s);
-              System.out.println("encodeTime:");
-              System.out.println(e - s);
+//              long e = System.nanoTime();
+//              encodeTime += (e - s);
+//              System.out.println("encodeTime:");
+//              System.out.println(e - s);
               encoder.flush(buffer);
 
               byte[] elems = buffer.toByteArray();
-              s = System.nanoTime();
+//              s = System.nanoTime();
               byte[] compressed = compressor.compress(elems);
-              e = System.nanoTime();
-              compressTime += (e - s);
-
-              int ratioTmp = compressed.length / (tmp.size() * Long.BYTES);
+//              e = System.nanoTime();
+//              compressTime += (e - s);
+//              System.out.println( compressed.length);
+              float ratioTmp = (float) compressed.length / (float) (tmp.size() * Long.BYTES);
               ratio += ratioTmp;
 
-              s = System.nanoTime();
+//              s = System.nanoTime();
               byte[] x = unCompressor.uncompress(compressed);
-              e = System.nanoTime();
-              uncompressTime += (e - s);
+//              e = System.nanoTime();
+//              uncompressTime += (e - s);
 
               ByteBuffer ebuffer = ByteBuffer.wrap(buffer.toByteArray());
-              s = System.nanoTime();
+//              s = System.nanoTime();
               while (decoder.hasNext(ebuffer)) {
                 decoder.readFloat(ebuffer);
               }
-              e = System.nanoTime();
-              decodeTime += (e - s);
+//              e = System.nanoTime();
+//              decodeTime += (e - s);
               buffer.close();
             }
+            System.out.println(ratio);
             ratio /= repeatTime;
-            encodeTime = encodeTime / ((long) repeatTime);
-            decodeTime = decodeTime / ((long) repeatTime);
+//            encodeTime = encodeTime / ((long) repeatTime);
+//            decodeTime = decodeTime / ((long) repeatTime);
             //                        compressTime = compressTime / ((long) repeatTime);
             //                        uncompressTime = uncompressTime / ((long) repeatTime);
             System.out.println(scheme.toString());
@@ -352,10 +355,10 @@ public class EncodeTest {
             String[] record = {
               scheme.toString(),
               comp.toString(),
-              String.valueOf(encodeTime),
-              "",
-              "",
-              String.valueOf(decodeTime),
+//              String.valueOf(encodeTime),
+//              "",
+//              "",
+//              String.valueOf(decodeTime),
               String.valueOf(ratio)
             };
 
@@ -366,9 +369,10 @@ public class EncodeTest {
             writer.writeRecord(record);
           }
         }
-      } else if (fileName.contains("text")) {
-        dataType = TSDataType.FLOAT;
       }
+//      else if (fileName.contains("text")) {
+//        dataType = TSDataType.FLOAT;
+//      }
 
       if (fileRepeat > 2) break;
     }
