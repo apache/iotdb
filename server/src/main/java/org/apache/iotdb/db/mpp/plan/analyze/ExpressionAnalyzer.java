@@ -61,6 +61,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -375,18 +376,28 @@ public class ExpressionAnalyzer {
    * -> {@link MeasurementPath}) and removes wildcards.
    *
    * @param deviceSchemaInfo device path and schema infos of measurements under this device
+   * @param measurementSet
    * @param typeProvider a map to record output symbols and their data types
    * @return the expression list with full path and after binding schema
    */
   public static List<Expression> removeWildcardInQueryFilterByDevice(
-      Expression predicate, DeviceSchemaInfo deviceSchemaInfo, TypeProvider typeProvider) {
+      Expression predicate,
+      DeviceSchemaInfo deviceSchemaInfo,
+      Set<String> measurementSet,
+      TypeProvider typeProvider) {
     if (predicate instanceof BinaryExpression) {
       List<Expression> leftExpressions =
           removeWildcardInQueryFilterByDevice(
-              ((BinaryExpression) predicate).getLeftExpression(), deviceSchemaInfo, typeProvider);
+              ((BinaryExpression) predicate).getLeftExpression(),
+              deviceSchemaInfo,
+              measurementSet,
+              typeProvider);
       List<Expression> rightExpressions =
           removeWildcardInQueryFilterByDevice(
-              ((BinaryExpression) predicate).getRightExpression(), deviceSchemaInfo, typeProvider);
+              ((BinaryExpression) predicate).getRightExpression(),
+              deviceSchemaInfo,
+              measurementSet,
+              typeProvider);
       if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
         List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
         resultExpressions.addAll(rightExpressions);
@@ -397,7 +408,10 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof UnaryExpression) {
       List<Expression> childExpressions =
           removeWildcardInQueryFilterByDevice(
-              ((UnaryExpression) predicate).getExpression(), deviceSchemaInfo, typeProvider);
+              ((UnaryExpression) predicate).getExpression(),
+              deviceSchemaInfo,
+              measurementSet,
+              typeProvider);
       return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
     } else if (predicate instanceof FunctionExpression) {
       if (predicate.isBuiltInAggregationFunctionExpression()) {
@@ -406,7 +420,8 @@ public class ExpressionAnalyzer {
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression suffixExpression : predicate.getExpressions()) {
         extendedExpressions.add(
-            removeWildcardInQueryFilterByDevice(suffixExpression, deviceSchemaInfo, typeProvider));
+            removeWildcardInQueryFilterByDevice(
+                suffixExpression, deviceSchemaInfo, measurementSet, typeProvider));
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -416,7 +431,7 @@ public class ExpressionAnalyzer {
       String measurement = filterPath.getFullPath();
       List<PartialPath> concatPaths = new ArrayList<>();
       if (measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-        concatPaths.addAll(deviceSchemaInfo.getMeasurements());
+        concatPaths.addAll(deviceSchemaInfo.getMeasurements(measurementSet));
       } else {
         MeasurementPath concatPath = deviceSchemaInfo.getPathByMeasurement(measurement);
         if (concatPath == null) {
@@ -647,7 +662,7 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * remove alias from expression. eg: root.sg.d1.status + 1 -> root.sg.d1.s2 + 1
+   * Remove alias from expression. eg: root.sg.d1.status + 1 -> root.sg.d1.s2 + 1
    *
    * @return expression after removing alias
    */
@@ -681,6 +696,60 @@ public class ExpressionAnalyzer {
       if (rawPath.isMeasurementAliasExists()) {
         MeasurementPath newPath = new MeasurementPath(rawPath, rawPath.getMeasurementSchema());
         newPath.setUnderAlignedEntity(rawPath.isUnderAlignedEntity());
+        return new TimeSeriesOperand(newPath);
+      }
+      return expression;
+    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
+      // do nothing
+      return expression;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  /**
+   * Remove alias from measurement expression according to map. This method is used in ALIGN BY
+   * DEVICE query. eg: status -> s2, sum(status) -> sum(s2)
+   *
+   * @param aliasToMeasurementNameMap a map from alias to measurement name
+   * @return expression after removing alias
+   */
+  public static Expression removeAliasInMeasurementExpression(
+      Expression expression, Map<String, String> aliasToMeasurementNameMap) {
+    if (expression instanceof BinaryExpression) {
+      Expression leftExpression =
+          removeAliasInMeasurementExpression(
+              ((BinaryExpression) expression).getLeftExpression(), aliasToMeasurementNameMap);
+      Expression rightExpression =
+          removeAliasInMeasurementExpression(
+              ((BinaryExpression) expression).getRightExpression(), aliasToMeasurementNameMap);
+      return reconstructBinaryExpressions(
+              expression.getExpressionType(),
+              Collections.singletonList(leftExpression),
+              Collections.singletonList(rightExpression))
+          .get(0);
+    } else if (expression instanceof UnaryExpression) {
+      Expression childExpression =
+          removeAliasInMeasurementExpression(
+              ((UnaryExpression) expression).getExpression(), aliasToMeasurementNameMap);
+      return reconstructUnaryExpressions(
+              (UnaryExpression) expression, Collections.singletonList(childExpression))
+          .get(0);
+    } else if (expression instanceof FunctionExpression) {
+      List<Expression> childExpressions = new ArrayList<>();
+      for (Expression suffixExpression : expression.getExpressions()) {
+        childExpressions.add(
+            removeAliasInMeasurementExpression(suffixExpression, aliasToMeasurementNameMap));
+      }
+      return reconstructFunctionExpressions(
+              (FunctionExpression) expression, Collections.singletonList(childExpressions))
+          .get(0);
+    } else if (expression instanceof TimeSeriesOperand) {
+      String rawMeasurement = ((TimeSeriesOperand) expression).getPath().getFullPath();
+      if (aliasToMeasurementNameMap.containsKey(rawMeasurement)) {
+        PartialPath newPath =
+            new PartialPath(new String[] {aliasToMeasurementNameMap.get(rawMeasurement)});
         return new TimeSeriesOperand(newPath);
       }
       return expression;

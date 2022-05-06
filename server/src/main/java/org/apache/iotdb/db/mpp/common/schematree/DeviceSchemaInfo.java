@@ -21,11 +21,10 @@ package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.apache.commons.lang.Validate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,26 +58,6 @@ public class DeviceSchemaInfo {
         .collect(Collectors.toList());
   }
 
-  public List<MeasurementPath> getMeasurements() {
-    return measurementNodeList.stream()
-        .map(
-            measurementNode -> {
-              if (measurementNode == null) {
-                return null;
-              }
-              MeasurementPath measurementPath =
-                  new MeasurementPath(
-                      devicePath.concatNode(measurementNode.getName()),
-                      measurementNode.getSchema());
-              measurementPath.setUnderAlignedEntity(isAligned);
-              if (measurementNode.getAlias() != null) {
-                measurementPath.setMeasurementAlias(measurementNode.getAlias());
-              }
-              return measurementPath;
-            })
-        .collect(Collectors.toList());
-  }
-
   public List<MeasurementPath> getMeasurements(Set<String> measurements) {
     if (measurements.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       return measurementNodeList.stream()
@@ -91,6 +70,9 @@ public class DeviceSchemaInfo {
                     new MeasurementPath(
                         devicePath.concatNode(measurementNode.getName()),
                         measurementNode.getSchema());
+                if (measurementNode.getAlias() != null) {
+                  measurementPath.setMeasurementAlias(measurementNode.getAlias());
+                }
                 measurementPath.setUnderAlignedEntity(isAligned);
                 return measurementPath;
               })
@@ -98,9 +80,6 @@ public class DeviceSchemaInfo {
     }
     List<MeasurementPath> measurementPaths = new ArrayList<>();
     for (SchemaMeasurementNode measurementNode : measurementNodeList) {
-      if (measurementNode == null) {
-        continue;
-      }
       MeasurementPath measurementPath =
           new MeasurementPath(
               devicePath.concatNode(measurementNode.getName()), measurementNode.getSchema());
@@ -117,23 +96,22 @@ public class DeviceSchemaInfo {
   }
 
   public MeasurementPath getPathByMeasurement(String measurementName) {
-    List<MeasurementPath> resultPaths =
-        measurementNodeList.stream()
-            .filter(measurementNode -> measurementNode.getName().equals(measurementName))
-            .map(
-                measurementNode -> {
-                  MeasurementPath measurementPath =
-                      new MeasurementPath(
-                          devicePath.concatNode(measurementNode.getName()),
-                          measurementNode.getSchema());
-                  measurementPath.setUnderAlignedEntity(isAligned);
-                  if (measurementNode.getAlias() != null) {
-                    measurementPath.setMeasurementAlias(measurementNode.getAlias());
-                  }
-                  return measurementPath;
-                })
-            .collect(Collectors.toList());
-    Validate.isTrue(resultPaths.size() == 1);
-    return resultPaths.get(0);
+    for (SchemaMeasurementNode measurementNode : measurementNodeList) {
+      MeasurementPath measurementPath =
+          new MeasurementPath(
+              devicePath.concatNode(measurementNode.getName()), measurementNode.getSchema());
+      measurementPath.setUnderAlignedEntity(isAligned);
+      if (measurementNode.getName().equals(measurementName)) {
+        return measurementPath;
+      } else if (measurementNode.getAlias() != null
+          && measurementNode.getAlias().equals(measurementName)) {
+        measurementPath.setMeasurementAlias(measurementNode.getAlias());
+        return measurementPath;
+      }
+    }
+    throw new SemanticException(
+        String.format(
+            "ALIGN BY DEVICE: measurement '%s' does not exist in device '%s'",
+            measurementName, getDevicePath()));
   }
 }
