@@ -447,34 +447,6 @@ public class IoTDBAuthorizationIT {
           caught = true;
         }
         assertTrue(caught);
-        caught = false;
-        try {
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.*");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-        caught = false;
-        try {
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.**");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-        caught = false;
-        try {
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.*.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
-        caught = false;
-        try {
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.**.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
 
         // grant admin
         caught = false;
