@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -57,11 +56,11 @@ public class Analysis {
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> sourceExpressions;
 
-  // all aggregations that need to be calculated
+  //
   private Set<Expression> selectExpressions;
 
-  // parameter of `GROUP BY TIME`
-  private GroupByTimeParameter groupByTimeParameter;
+  // all aggregations that need to be calculated
+  private Map<String, Set<Expression>> AggregationExpressions;
 
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
@@ -75,6 +74,9 @@ public class Analysis {
   private Expression queryFilter;
 
   private Map<String, Expression> deviceToQueryFilter;
+
+  // indicate is there a value filter
+  private boolean hasValueFilter = false;
 
   // a global time filter used in `initQueryDataSource`
   private Filter globalTimeFilter;
@@ -166,12 +168,12 @@ public class Analysis {
     this.selectExpressions = selectExpressions;
   }
 
-  public GroupByTimeParameter getGroupByTimeParameter() {
-    return groupByTimeParameter;
+  public Map<String, Set<Expression>> getAggregationExpressions() {
+    return AggregationExpressions;
   }
 
-  public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
-    this.groupByTimeParameter = groupByTimeParameter;
+  public void setAggregationExpressions(Map<String, Set<Expression>> aggregationExpressions) {
+    AggregationExpressions = aggregationExpressions;
   }
 
   public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
@@ -196,6 +198,14 @@ public class Analysis {
 
   public void setFillDescriptorList(List<FillDescriptor> fillDescriptorList) {
     this.fillDescriptorList = fillDescriptorList;
+  }
+
+  public boolean isHasValueFilter() {
+    return hasValueFilter;
+  }
+
+  public void setHasValueFilter(boolean hasValueFilter) {
+    this.hasValueFilter = hasValueFilter;
   }
 
   public Expression getQueryFilter() {

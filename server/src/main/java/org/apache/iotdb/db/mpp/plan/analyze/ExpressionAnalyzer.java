@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.query.expression.binary.LogicOrExpression;
 import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.query.expression.leaf.LeafOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
@@ -441,35 +442,37 @@ public class ExpressionAnalyzer {
    * @param predicate raw query filter
    * @return global time filter
    */
-  public static Filter transformToGlobalTimeFilter(Expression predicate) {
+  public static Pair<Filter, Boolean> transformToGlobalTimeFilter(Expression predicate) {
     if (predicate instanceof LogicAndExpression) {
-      Filter leftTimeFilter =
+      Pair<Filter, Boolean> leftResultPair =
           transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
-      Filter rightTimeFilter =
+      Pair<Filter, Boolean> rightResultPair =
           transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
-      if (leftTimeFilter != null && rightTimeFilter != null) {
-        return FilterFactory.and(leftTimeFilter, rightTimeFilter);
-      } else if (leftTimeFilter != null) {
-        return leftTimeFilter;
-      } else {
-        return rightTimeFilter;
+      if (leftResultPair.left != null && rightResultPair.left != null) {
+        return new Pair<>(
+            FilterFactory.and(leftResultPair.left, rightResultPair.left),
+            leftResultPair.right || rightResultPair.right);
+      } else if (leftResultPair.left != null) {
+        return new Pair<>(leftResultPair.left, true);
+      } else if (rightResultPair.left != null) {
+        return new Pair<>(rightResultPair.left, true);
       }
+      return new Pair<>(null, true);
     } else if (predicate instanceof LogicOrExpression) {
-      Filter leftTimeFilter =
+      Pair<Filter, Boolean> leftResultPair =
           transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
-      Filter rightTimeFilter =
+      Pair<Filter, Boolean> rightResultPair =
           transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
-      if (leftTimeFilter != null && rightTimeFilter != null) {
-        return FilterFactory.or(leftTimeFilter, rightTimeFilter);
+      if (leftResultPair.left != null && rightResultPair.left != null) {
+        return new Pair<>(
+            FilterFactory.or(leftResultPair.left, rightResultPair.left),
+            leftResultPair.right || rightResultPair.right);
       }
-      return null;
+      return new Pair<>(null, true);
     } else if (predicate instanceof LogicNotExpression) {
-      Filter childTimeFilter =
+      Pair<Filter, Boolean> childResultPair =
           transformToGlobalTimeFilter(((UnaryExpression) predicate).getExpression());
-      if (childTimeFilter != null) {
-        return FilterFactory.not(childTimeFilter);
-      }
-      return null;
+      return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
     } else if (predicate instanceof GreaterEqualExpression
         || predicate instanceof GreaterThanExpression
         || predicate instanceof LessEqualExpression
@@ -482,21 +485,28 @@ public class ExpressionAnalyzer {
               ((BinaryExpression) predicate).getLeftExpression(),
               ((BinaryExpression) predicate).getRightExpression());
       if (timeInLeftFilter != null) {
-        return timeInLeftFilter;
+        return new Pair<>(timeInLeftFilter, false);
       }
-      return constructTimeFilter(
-          predicate.getExpressionType(),
-          ((BinaryExpression) predicate).getRightExpression(),
-          ((BinaryExpression) predicate).getLeftExpression());
+      Filter timeInRightFilter =
+          constructTimeFilter(
+              predicate.getExpressionType(),
+              ((BinaryExpression) predicate).getRightExpression(),
+              ((BinaryExpression) predicate).getLeftExpression());
+      if (timeInRightFilter != null) {
+        return new Pair<>(timeInRightFilter, false);
+      }
+      return new Pair<>(null, true);
     } else if (predicate instanceof InExpression) {
       Expression timeExpression = ((InExpression) predicate).getExpression();
       if (timeExpression instanceof TimestampOperand) {
-        return TimeFilter.in(
-            ((InExpression) predicate)
-                .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
-            ((InExpression) predicate).isNotIn());
+        return new Pair<>(
+            TimeFilter.in(
+                ((InExpression) predicate)
+                    .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
+                ((InExpression) predicate).isNotIn()),
+            false);
       }
-      return null;
+      return new Pair<>(null, true);
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + predicate.getExpressionType());
@@ -508,30 +518,61 @@ public class ExpressionAnalyzer {
    * built-in aggregate functions.
    *
    * @param expression expression to be searched
+   * @param isRawDataSource if true, built-in aggregate functions are not be returned
    * @return searched subexpression list
    */
-  public static List<Expression> searchSourceExpressions(Expression expression) {
+  public static List<Expression> searchSourceExpressions(
+      Expression expression, boolean isRawDataSource) {
     if (expression instanceof BinaryExpression) {
       List<Expression> resultExpressions = new ArrayList<>();
       resultExpressions.addAll(
-          searchSourceExpressions(((BinaryExpression) expression).getLeftExpression()));
+          searchSourceExpressions(
+              ((BinaryExpression) expression).getLeftExpression(), isRawDataSource));
       resultExpressions.addAll(
-          searchSourceExpressions(((BinaryExpression) expression).getRightExpression()));
+          searchSourceExpressions(
+              ((BinaryExpression) expression).getRightExpression(), isRawDataSource));
       return resultExpressions;
     } else if (expression instanceof UnaryExpression) {
-      return searchSourceExpressions(((UnaryExpression) expression).getExpression());
+      return searchSourceExpressions(
+          ((UnaryExpression) expression).getExpression(), isRawDataSource);
     } else if (expression instanceof FunctionExpression) {
-      if (expression.isBuiltInAggregationFunctionExpression()) {
+      if (!isRawDataSource && expression.isBuiltInAggregationFunctionExpression()) {
         return Collections.singletonList(expression);
       }
       List<Expression> resultExpressions = new ArrayList<>();
       for (Expression childExpression : expression.getExpressions()) {
-        resultExpressions.addAll(searchSourceExpressions(childExpression));
+        resultExpressions.addAll(searchSourceExpressions(childExpression, isRawDataSource));
       }
       return resultExpressions;
     } else if (expression instanceof TimeSeriesOperand) {
       return Collections.singletonList(expression);
     } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      return Collections.emptyList();
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  /**
+   * Search for built-in aggregate functions subexpressions.
+   *
+   * @param expression expression to be searched
+   * @return searched aggregate functions list
+   */
+  public static List<Expression> searchAggregationExpressions(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      List<Expression> resultExpressions = new ArrayList<>();
+      resultExpressions.addAll(
+          searchAggregationExpressions(((BinaryExpression) expression).getLeftExpression()));
+      resultExpressions.addAll(
+          searchAggregationExpressions(((BinaryExpression) expression).getRightExpression()));
+      return resultExpressions;
+    } else if (expression instanceof UnaryExpression) {
+      return searchAggregationExpressions(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      return Collections.singletonList(expression);
+    } else if (expression instanceof LeafOperand) {
       return Collections.emptyList();
     } else {
       throw new IllegalArgumentException(

@@ -156,8 +156,15 @@ public class Analyzer {
         //
         // Example 3: select sum(s1) + 1 as t, count(s2) from root.sg.d1
         //   outputExpressions: [<sum(root.sg.d1.s1) + 1,t>, <count(root.sg.d1.s2),t>]
-        //   selectExpressions: [<sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
+        //   selectExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
+        //   aggregationExpressions: [sum(root.sg.d1.s1), count(root.sg.d1.s2)]
         //   sourceExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
+        //
+        // Example 4: select sum(s1) + 1 as t, count(s2) from root.sg.d1 where s1 > 1
+        //   outputExpressions: [<sum(root.sg.d1.s1) + 1,t>, <count(root.sg.d1.s2),t>]
+        //   selectExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
+        //   aggregationExpressions: [sum(root.sg.d1.s1), count(root.sg.d1.s2)]
+        //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2]}
         List<DeviceSchemaInfo> deviceSchemaInfos = new ArrayList<>();
         if (!queryStatement.isAlignByDevice()) {
           outputExpressions = analyzeSelect(queryStatement, schemaTree);
@@ -175,20 +182,32 @@ public class Analyzer {
           analysis.setGroupByLevelExpressions(groupByLevelExpressions);
         }
 
-        // generate sourceExpression according to selectExpressions
-        for (Expression selectExpr : selectExpressions) {
-          analyzeSource(selectExpr, sourceExpressions);
-        }
-
-        // extract global time filter from query filter
-        Filter globalTimeFilter = analyzeGlobalTimeFilter(queryStatement);
+        // extract global time filter from query filter and determine if there is a value filter
+        Pair<Filter, Boolean> resultPair = analyzeGlobalTimeFilter(queryStatement);
+        Filter globalTimeFilter = resultPair.left;
+        boolean hasValueFilter = resultPair.right;
         analysis.setGlobalTimeFilter(globalTimeFilter);
+        analysis.setHasValueFilter(hasValueFilter);
+
+        // generate sourceExpression according to selectExpressions
+        boolean isValueFilterAggregation = queryStatement.isAggregationQuery() && hasValueFilter;
+        boolean isRawDataSource = !queryStatement.isAggregationQuery() || isValueFilterAggregation;
+        for (Expression selectExpr : selectExpressions) {
+          analyzeSource(selectExpr, sourceExpressions, isRawDataSource);
+        }
+        if (isValueFilterAggregation) {
+          Map<String, Set<Expression>> aggregationExpressions = new HashMap<>();
+          for (Expression selectExpr : selectExpressions) {
+            analyzeAggregation(selectExpr, aggregationExpressions);
+          }
+          analysis.setAggregationExpressions(aggregationExpressions);
+        }
 
         if (queryStatement.getWhereCondition() != null) {
           if (!queryStatement.isAlignByDevice()) {
             Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
             // update sourceExpression according to queryFilter
-            analyzeSource(queryFilter, sourceExpressions);
+            analyzeSource(queryFilter, sourceExpressions, isRawDataSource);
             analysis.setQueryFilter(queryFilter);
           } else {
             // generate query filter for each device in ALIGN BY DEVICE query
@@ -196,7 +215,7 @@ public class Analyzer {
                 analyzeWhereSplitByDevice(queryStatement, deviceSchemaInfos);
             // update sourceExpression according to deviceToQueryFilter
             for (Expression predicate : deviceToQueryFilter.values()) {
-              analyzeSource(predicate, sourceExpressions);
+              analyzeSource(predicate, sourceExpressions, isRawDataSource);
             }
             analysis.setDeviceToQueryFilter(deviceToQueryFilter);
           }
@@ -398,12 +417,15 @@ public class Analyzer {
       return measurementWithAliasList;
     }
 
-    private Filter analyzeGlobalTimeFilter(QueryStatement queryStatement) {
+    private Pair<Filter, Boolean> analyzeGlobalTimeFilter(QueryStatement queryStatement) {
       Filter globalTimeFilter = null;
+      boolean hasValueFilter = false;
       if (queryStatement.getWhereCondition() != null) {
-        globalTimeFilter =
+        Pair<Filter, Boolean> resultPair =
             ExpressionAnalyzer.transformToGlobalTimeFilter(
                 queryStatement.getWhereCondition().getPredicate());
+        globalTimeFilter = resultPair.left;
+        hasValueFilter = resultPair.right;
       }
       if (queryStatement.isGroupByTime()) {
         GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
@@ -419,7 +441,33 @@ public class Analyzer {
           globalTimeFilter = FilterFactory.and(globalTimeFilter, groupByFilter);
         }
       }
-      return globalTimeFilter;
+      return new Pair<>(globalTimeFilter, hasValueFilter);
+    }
+
+    private void analyzeSource(
+        Expression selectExpr,
+        Map<String, Set<Expression>> sourceExpressions,
+        boolean isRawDataSource) {
+      for (Expression sourceExpression :
+          ExpressionAnalyzer.searchSourceExpressions(selectExpr, isRawDataSource)) {
+        sourceExpressions
+            .computeIfAbsent(
+                ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
+                key -> new HashSet<>())
+            .add(sourceExpression);
+      }
+    }
+
+    private void analyzeAggregation(
+        Expression selectExpr, Map<String, Set<Expression>> aggregationExpressions) {
+      for (Expression sourceExpression :
+          ExpressionAnalyzer.searchAggregationExpressions(selectExpr)) {
+        aggregationExpressions
+            .computeIfAbsent(
+                ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
+                key -> new HashSet<>())
+            .add(sourceExpression);
+      }
     }
 
     private Expression analyzeWhere(QueryStatement queryStatement, SchemaTree schemaTree) {
@@ -533,6 +581,7 @@ public class Analyzer {
       FillComponent fillComponent = queryStatement.getFillComponent();
       return outputExpressions.stream()
           .map(Pair::getLeft)
+          .distinct()
           .map(
               expression ->
                   new FillDescriptor(
@@ -541,17 +590,6 @@ public class Analyzer {
                       fillComponent.getFillValue(),
                       fillComponent.getFillDatatype()))
           .collect(Collectors.toList());
-    }
-
-    private void analyzeSource(
-        Expression selectExpr, Map<String, Set<Expression>> sourceExpressions) {
-      for (Expression sourceExpression : ExpressionAnalyzer.searchSourceExpressions(selectExpr)) {
-        sourceExpressions
-            .computeIfAbsent(
-                ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
-                key -> new HashSet<>())
-            .add(sourceExpression);
-      }
     }
 
     private DatasetHeader analyzeOutput(
