@@ -54,7 +54,7 @@ import java.util.Set;
  *   <li>WHERE whereCondition
  *   <li>[GROUP BY ([startTime, endTime), interval, slidingStep)]
  *   <li>[GROUP BY LEVEL = levelNum [, levelNum] ...]
- *   <li>[FILL ({PREVIOUS, beforeRange | LINEAR, beforeRange, afterRange | constant})]
+ *   <li>[FILL ({PREVIOUS | LINEAR | constant})]
  *   <li>[LIMIT rowLimit] [OFFSET rowOffset]
  *   <li>[SLIMIT seriesLimit] [SOFFSET seriesOffset]
  *   <li>[WITHOUT NULL {ANY | ALL} [resultColumn [, resultColumn] ...]]
