@@ -203,7 +203,7 @@ public class PartitionInfo {
    * Filter no assigned SchemaPartitionSlots
    *
    * @param partitionSlotsMap Map<StorageGroupName, List<TSeriesPartitionSlot>>
-   * @return Map<StorageGroupName, List < TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
+   * @return Map<StorageGroupName, List<TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
    *     assigned in partitionSlotsMap
    */
   public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlots(
@@ -280,7 +280,7 @@ public class PartitionInfo {
    *
    * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot,
    *     List<TTimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map < TSeriesPartitionSlot, List < TTimePartitionSlot>>>,
+   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>,
    *     DataPartitionSlots that is not assigned in partitionSlotsMap
    */
   public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
@@ -312,11 +312,11 @@ public class PartitionInfo {
 
   public boolean takeSnapshot(File snapshotFile) throws TException, IOException {
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
-
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
+
+    lockAllRead();
+    ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
     try {
-      lockAllRead();
       // first, put nextRegionGroupId
       byteBuffer.putInt(nextRegionGroupId.get());
       // second, put regionMap
@@ -342,12 +342,12 @@ public class PartitionInfo {
 
   public void loadSnapshot(File snapshotFile) throws TException, IOException {
 
-    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+    // no operations are processed at this time
+    lockAllWrite();
 
+    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
         FileChannel fileChannel = fileInputStream.getChannel()) {
-      // no operations are processed at this time
-      lockAllWrite();
       // get buffer from fileChannel
       fileChannel.read(buffer);
       // before restoring a snapshot, clear all old data
