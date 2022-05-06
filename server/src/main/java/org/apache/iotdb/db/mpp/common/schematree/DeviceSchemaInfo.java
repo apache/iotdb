@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -79,6 +80,22 @@ public class DeviceSchemaInfo {
   }
 
   public List<MeasurementPath> getMeasurements(Set<String> measurements) {
+    if (measurements.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+      return measurementNodeList.stream()
+          .map(
+              measurementNode -> {
+                if (measurementNode == null) {
+                  return null;
+                }
+                MeasurementPath measurementPath =
+                    new MeasurementPath(
+                        devicePath.concatNode(measurementNode.getName()),
+                        measurementNode.getSchema());
+                measurementPath.setUnderAlignedEntity(isAligned);
+                return measurementPath;
+              })
+          .collect(Collectors.toList());
+    }
     List<MeasurementPath> measurementPaths = new ArrayList<>();
     for (SchemaMeasurementNode measurementNode : measurementNodeList) {
       if (measurementNode == null) {
