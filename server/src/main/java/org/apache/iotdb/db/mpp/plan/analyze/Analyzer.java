@@ -285,7 +285,9 @@ public class Analyzer {
             Expression expressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(expression);
             String alias =
-                    !Objects.equals(expressionWithoutAlias, expression) ? expression.getExpressionString() : null;
+                !Objects.equals(expressionWithoutAlias, expression)
+                    ? expression.getExpressionString()
+                    : null;
             alias = hasAlias ? resultColumn.getAlias() : alias;
             outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
             ExpressionAnalyzer.updateTypeProvider(expressionWithoutAlias, typeProvider);
@@ -568,12 +570,14 @@ public class Analyzer {
         List<Expression> resultExpressions =
             ExpressionAnalyzer.removeWildcardInExpression(filterNullColumn, schemaTree);
         for (Expression expression : resultExpressions) {
-          if (!selectExpressions.contains(expression)) {
+          Expression expressionWithoutAlias =
+              ExpressionAnalyzer.removeAliasFromExpression(expression);
+          if (!selectExpressions.contains(expressionWithoutAlias)) {
             throw new SemanticException(
                 String.format(
                     "The without null column '%s' don't match the columns queried.", expression));
           }
-          resultFilterNullColumns.add(expression);
+          resultFilterNullColumns.add(expressionWithoutAlias);
         }
       }
       // don't specify columns, by default, it is effective for all columns
