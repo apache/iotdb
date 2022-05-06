@@ -39,8 +39,6 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Base class of SELECT statement.
@@ -239,11 +237,6 @@ public class QueryStatement extends Statement {
 
   public boolean hasUserDefinedAggregationFunction() {
     return selectComponent.isHasUserDefinedAggregationFunction();
-  }
-
-  @Deprecated
-  public Map<String, Set<PartialPath>> getDeviceNameToDeduplicatedPathsMap() {
-    return getSelectComponent().getDeviceNameToDeduplicatedPathsMap();
   }
 
   public void semanticCheck() {

@@ -19,15 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * This class is used to represent a result column of a query.
@@ -71,8 +66,6 @@ public class ResultColumn extends StatementNode {
   private final Expression expression;
   private final String alias;
 
-  @Deprecated private List<PartialPath> allPathsInExpression;
-
   public ResultColumn(Expression expression, String alias) {
     this.expression = expression;
     this.alias = alias;
@@ -81,16 +74,6 @@ public class ResultColumn extends StatementNode {
   public ResultColumn(Expression expression) {
     this.expression = expression;
     alias = null;
-  }
-
-  @Deprecated
-  public List<PartialPath> collectPaths() {
-    if (allPathsInExpression == null) {
-      Set<PartialPath> pathSet = new HashSet<>();
-      expression.collectPaths(pathSet);
-      allPathsInExpression = new ArrayList<>(pathSet);
-    }
-    return allPathsInExpression;
   }
 
   public Expression getExpression() {

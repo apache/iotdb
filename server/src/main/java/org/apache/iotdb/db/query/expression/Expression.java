@@ -97,6 +97,8 @@ public abstract class Expression {
       List<Expression> resultExpressions)
       throws LogicalOptimizeException;
 
+  // TODO: remove after MPP finish
+  @Deprecated
   public abstract void collectPaths(Set<PartialPath> pathSet);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

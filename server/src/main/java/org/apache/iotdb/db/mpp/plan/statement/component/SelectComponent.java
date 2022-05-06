@@ -19,19 +19,13 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** This class maintains information of {@code SELECT} clause. */
 public class SelectComponent extends StatementNode {
@@ -47,9 +41,6 @@ public class SelectComponent extends StatementNode {
   private List<ResultColumn> resultColumns = new ArrayList<>();
 
   private Map<String, Expression> aliasToColumnMap;
-
-  @Deprecated private List<PartialPath> pathsCache;
-  @Deprecated private Map<String, Set<PartialPath>> deviceNameToDeduplicatedPathsCache;
 
   public SelectComponent(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -106,39 +97,5 @@ public class SelectComponent extends StatementNode {
 
   public void setHasLast(boolean hasLast) {
     this.hasLast = hasLast;
-  }
-
-  @Deprecated
-  public List<PartialPath> getPaths() {
-    if (pathsCache == null) {
-      pathsCache = new ArrayList<>();
-      for (ResultColumn resultColumn : resultColumns) {
-        Expression expression = resultColumn.getExpression();
-        if (expression instanceof TimeSeriesOperand) {
-          pathsCache.add(((TimeSeriesOperand) expression).getPath());
-        } else if (expression instanceof FunctionExpression
-            && expression.isBuiltInAggregationFunctionExpression()) {
-          pathsCache.add(((TimeSeriesOperand) expression.getExpressions().get(0)).getPath());
-        } else {
-          pathsCache.add(null);
-        }
-      }
-    }
-    return pathsCache;
-  }
-
-  @Deprecated
-  public Map<String, Set<PartialPath>> getDeviceNameToDeduplicatedPathsMap() {
-    if (deviceNameToDeduplicatedPathsCache == null) {
-      deviceNameToDeduplicatedPathsCache = new HashMap<>();
-      for (ResultColumn resultColumn : resultColumns) {
-        for (PartialPath path : resultColumn.collectPaths()) {
-          deviceNameToDeduplicatedPathsCache
-              .computeIfAbsent(path.getDeviceIdString(), k -> new HashSet<>())
-              .add(path);
-        }
-      }
-    }
-    return deviceNameToDeduplicatedPathsCache;
   }
 }

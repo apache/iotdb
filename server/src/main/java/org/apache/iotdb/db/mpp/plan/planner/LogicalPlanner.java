@@ -98,7 +98,7 @@ public class LogicalPlanner {
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
       return new LogicalPlanBuilder(context)
           .planRawDataQuerySource(
-              queryStatement.getDeviceNameToDeduplicatedPathsMap(),
+              analysis.getSourceExpressions(),
               queryStatement.getResultOrder(),
               queryStatement.isAlignByDevice())
           .planOffset(queryStatement.getRowOffset())
