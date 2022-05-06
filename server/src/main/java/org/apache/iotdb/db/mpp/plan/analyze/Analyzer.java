@@ -157,13 +157,13 @@ public class Analyzer {
         // Example 3: select sum(s1) + 1 as t, count(s2) from root.sg.d1
         //   outputExpressions: [<sum(root.sg.d1.s1) + 1,t>, <count(root.sg.d1.s2),t>]
         //   selectExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
-        //   aggregationExpressions: [sum(root.sg.d1.s1), count(root.sg.d1.s2)]
+        //   aggregationExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
         //   sourceExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
         //
         // Example 4: select sum(s1) + 1 as t, count(s2) from root.sg.d1 where s1 > 1
         //   outputExpressions: [<sum(root.sg.d1.s1) + 1,t>, <count(root.sg.d1.s2),t>]
         //   selectExpressions: [sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
-        //   aggregationExpressions: [sum(root.sg.d1.s1), count(root.sg.d1.s2)]
+        //   aggregationExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
         //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2]}
         List<DeviceSchemaInfo> deviceSchemaInfos = new ArrayList<>();
         if (!queryStatement.isAlignByDevice()) {
@@ -253,7 +253,6 @@ public class Analyzer {
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException e) {
         LOGGER.error("Meet error when analyzing the query statement: ", e);
-        throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
     }
@@ -460,13 +459,13 @@ public class Analyzer {
 
     private void analyzeAggregation(
         Expression selectExpr, Map<String, Set<Expression>> aggregationExpressions) {
-      for (Expression sourceExpression :
+      for (Expression aggregationExpression :
           ExpressionAnalyzer.searchAggregationExpressions(selectExpr)) {
         aggregationExpressions
             .computeIfAbsent(
-                ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
+                ExpressionAnalyzer.getDeviceNameInSourceExpression(aggregationExpression),
                 key -> new HashSet<>())
-            .add(sourceExpression);
+            .add(aggregationExpression);
       }
     }
 
