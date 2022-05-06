@@ -26,12 +26,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class CommonUtils {
   private static final Logger logger = LoggerFactory.getLogger(CommonUtils.class);
 
-  public static TEndPoint parseNodeUrl(String nodeUrl) throws BadNodeUrlException {
+  public static TEndPoint parseSingleNodeUrl(String nodeUrl) throws BadNodeUrlException {
     String[] split = nodeUrl.split(":");
     if (split.length != 2) {
       logger.warn("Bad node url: {}", nodeUrl);
@@ -49,11 +50,33 @@ public class CommonUtils {
     return result;
   }
 
-  public static List<TEndPoint> parseNodeUrls(List<String> nodeUrls) throws BadNodeUrlException {
-    List<TEndPoint> result = new ArrayList<>();
-    for (String url : nodeUrls) {
-      result.add(parseNodeUrl(url));
+  /**
+   * Split the node urls and parse urls to endpoints.
+   *
+   * @param nodeUrl the config node urls.
+   * @return the node endpoints as a list.
+   */
+  public static List<TEndPoint> parseNodeUrl(String nodeUrl) throws BadNodeUrlException {
+    if (nodeUrl == null) {
+      return Collections.emptyList();
     }
-    return result;
+    List<TEndPoint> configNodeList = new ArrayList<>();
+    String[] split = nodeUrl.split(",");
+    for (String singleNodeUrl : split) {
+      singleNodeUrl = singleNodeUrl.trim();
+      if ("".equals(singleNodeUrl)) {
+        continue;
+      }
+      configNodeList.add(parseSingleNodeUrl(singleNodeUrl));
+    }
+    return configNodeList;
+  }
+
+  public static String toNodeUrl(List<TEndPoint> nodeList) {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (TEndPoint endPoint : nodeList) {
+      stringBuilder.append(endPoint.getIp()).append(':').append(endPoint.getPort()).append(',');
+    }
+    return stringBuilder.toString();
   }
 }

@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -137,7 +136,7 @@ public class DataNode implements DataNodeMBean {
     ConfigNodeClient configNodeClient = null;
     try {
       configNodeClient = new ConfigNodeClient();
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (IoTDBConnectionException e) {
       throw new StartupException(e.getMessage());
     }
 

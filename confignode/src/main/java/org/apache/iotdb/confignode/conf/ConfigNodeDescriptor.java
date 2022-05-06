@@ -220,12 +220,8 @@ public class ConfigNodeDescriptor {
 
       String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
 
-      String[] addressList = addresses.split(",");
-      TEndPoint[] endpointList = new TEndPoint[addressList.length];
-      for (int i = 0; i < addressList.length; i++) {
-        endpointList[i] = CommonUtils.parseNodeUrl(addressList[i]);
-      }
-      conf.setConfigNodeGroupAddressList(endpointList);
+      conf.setConfigNodeGroupAddressList(
+          CommonUtils.parseNodeUrl(addresses).toArray(new TEndPoint[0]));
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
