@@ -31,7 +31,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Sync send RPC requests to ConfigNode. See confignode.thrift for more details. */
+/** Synchronously send RPC requests to ConfigNode. See confignode.thrift for more details. */
 public class SyncConfigNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncConfigNodeClientPool.class);

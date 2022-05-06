@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-/** Async send RPC requests to DataNodes. See mpp.thrift for more details. */
+/** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class AsyncDataNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AsyncDataNodeClientPool.class);
