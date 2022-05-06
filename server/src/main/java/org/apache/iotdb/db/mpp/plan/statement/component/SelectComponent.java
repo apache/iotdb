@@ -24,7 +24,6 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -39,32 +38,21 @@ public class SelectComponent extends StatementNode {
 
   private final ZoneId zoneId;
 
+  private boolean hasLast = false;
+
   private boolean hasBuiltInAggregationFunction = false;
   private boolean hasTimeSeriesGeneratingFunction = false;
   private boolean hasUserDefinedAggregationFunction = false;
 
-  protected List<ResultColumn> resultColumns = new ArrayList<>();
+  private List<ResultColumn> resultColumns = new ArrayList<>();
 
-  Map<String, Expression> aliasToColumnMap;
+  private Map<String, Expression> aliasToColumnMap;
 
   private List<PartialPath> pathsCache;
-  private List<String> aggregationFunctionsCache;
-  private Map<String, List<PartialPath>> deviceNameToPathsCache;
   private Map<String, Set<PartialPath>> deviceNameToDeduplicatedPathsCache;
 
   public SelectComponent(ZoneId zoneId) {
     this.zoneId = zoneId;
-  }
-
-  public SelectComponent(SelectComponent another) {
-    zoneId = another.getZoneId();
-
-    hasBuiltInAggregationFunction = another.isHasBuiltInAggregationFunction();
-    hasTimeSeriesGeneratingFunction = another.isHasTimeSeriesGeneratingFunction();
-    hasUserDefinedAggregationFunction = another.isHasUserDefinedAggregationFunction();
-
-    resultColumns.addAll(another.getResultColumns());
-    aliasToColumnMap = another.getAliasToColumnMap();
   }
 
   public ZoneId getZoneId() {
@@ -112,6 +100,14 @@ public class SelectComponent extends StatementNode {
     this.aliasToColumnMap = aliasToColumnMap;
   }
 
+  public boolean isHasLast() {
+    return hasLast;
+  }
+
+  public void setHasLast(boolean hasLast) {
+    this.hasLast = hasLast;
+  }
+
   public List<PartialPath> getPaths() {
     if (pathsCache == null) {
       pathsCache = new ArrayList<>();
@@ -130,20 +126,6 @@ public class SelectComponent extends StatementNode {
     return pathsCache;
   }
 
-  public List<String> getAggregationFunctions() {
-    if (aggregationFunctionsCache == null) {
-      aggregationFunctionsCache = new ArrayList<>();
-      for (ResultColumn resultColumn : resultColumns) {
-        Expression expression = resultColumn.getExpression();
-        aggregationFunctionsCache.add(
-            expression instanceof FunctionExpression
-                ? ((FunctionExpression) resultColumn.getExpression()).getFunctionName()
-                : null);
-      }
-    }
-    return aggregationFunctionsCache;
-  }
-
   public Map<String, Set<PartialPath>> getDeviceNameToDeduplicatedPathsMap() {
     if (deviceNameToDeduplicatedPathsCache == null) {
       deviceNameToDeduplicatedPathsCache = new HashMap<>();
@@ -156,27 +138,5 @@ public class SelectComponent extends StatementNode {
       }
     }
     return deviceNameToDeduplicatedPathsCache;
-  }
-
-  public Map<String, List<PartialPath>> getDeviceNameToPathsMap() {
-    if (deviceNameToPathsCache == null) {
-      deviceNameToPathsCache = new HashMap<>();
-      for (ResultColumn resultColumn : resultColumns) {
-        for (PartialPath path : resultColumn.collectPaths()) {
-          deviceNameToPathsCache
-              .computeIfAbsent(path.getDeviceIdString(), k -> new ArrayList<>())
-              .add(path);
-        }
-      }
-    }
-    return deviceNameToPathsCache;
-  }
-
-  public List<Path> getDeduplicatedPaths() {
-    Set<Path> deduplicatedPaths = new HashSet<>();
-    for (ResultColumn resultColumn : resultColumns) {
-      deduplicatedPaths.addAll(resultColumn.collectPaths());
-    }
-    return new ArrayList<>(deduplicatedPaths);
   }
 }

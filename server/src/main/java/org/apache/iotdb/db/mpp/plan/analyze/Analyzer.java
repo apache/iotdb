@@ -42,14 +42,12 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
-import org.apache.iotdb.db.mpp.plan.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
@@ -151,8 +149,7 @@ public class Analyzer {
         if (queryStatement.isGroupByLevel()) {
           Validate.isTrue(!queryStatement.isAlignByDevice());
           Map<Expression, Set<Expression>> groupByLevelExpressions =
-              analyzeGroupByLevel(
-                  (AggregationQueryStatement) queryStatement, outputExpressions, selectExpressions);
+              analyzeGroupByLevel(queryStatement, outputExpressions, selectExpressions);
           analysis.setGroupByLevelExpressions(groupByLevelExpressions);
         }
 
@@ -224,8 +221,7 @@ public class Analyzer {
                 queryStatement.getWhereCondition().getPredicate());
       }
       if (queryStatement.isGroupByTime()) {
-        GroupByTimeComponent groupByTimeComponent =
-            ((AggregationQueryStatement) queryStatement).getGroupByTimeComponent();
+        GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
         Filter groupByFilter =
             new GroupByFilter(
                 groupByTimeComponent.getInterval(),
@@ -248,7 +244,7 @@ public class Analyzer {
           new ColumnPaginationController(
               queryStatement.getSeriesLimit(),
               queryStatement.getSeriesOffset(),
-              queryStatement instanceof LastQueryStatement || queryStatement.isGroupByLevel());
+              queryStatement.isLastQuery() || queryStatement.isGroupByLevel());
 
       for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
         boolean hasAlias = resultColumn.hasAlias();
@@ -423,7 +419,7 @@ public class Analyzer {
     }
 
     private Map<Expression, Set<Expression>> analyzeGroupByLevel(
-        AggregationQueryStatement queryStatement,
+        QueryStatement queryStatement,
         List<Pair<Expression, String>> outputExpressions,
         Set<Expression> selectExpressions) {
       GroupByLevelController groupByLevelController =
@@ -506,7 +502,7 @@ public class Analyzer {
     private DatasetHeader analyzeOutput(
         QueryStatement queryStatement, List<Pair<Expression, String>> outputExpressions) {
       boolean isIgnoreTimestamp =
-          queryStatement instanceof AggregationQueryStatement && !queryStatement.isGroupByTime();
+          queryStatement.isAggregationQuery() && !queryStatement.isGroupByTime();
       List<ColumnHeader> columnHeaders =
           outputExpressions.stream()
               .map(

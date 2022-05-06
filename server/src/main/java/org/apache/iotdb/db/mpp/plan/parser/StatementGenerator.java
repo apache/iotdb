@@ -35,7 +35,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -126,10 +125,12 @@ public class StatementGenerator {
   public static Statement createStatement(TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     // construct query statement
-    LastQueryStatement lastQueryStatement = new LastQueryStatement();
+    QueryStatement lastQueryStatement = new QueryStatement();
     SelectComponent selectComponent = new SelectComponent(zoneId);
     FromComponent fromComponent = new FromComponent();
     WhereCondition whereCondition = new WhereCondition();
+
+    selectComponent.setHasLast(true);
 
     // iterate the path list and add it to from operator
     for (String pathStr : lastDataQueryReq.getPaths()) {

@@ -40,12 +40,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
-import org.apache.iotdb.db.mpp.plan.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDAFQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -481,22 +477,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSelectStatement(IoTDBSqlParser.SelectStatementContext ctx) {
-    // visit special clause first to initialize different query statement
-    if (ctx.specialClause() != null) {
-      queryStatement = (QueryStatement) visit(ctx.specialClause());
-    }
+    // initialize query statement
+    queryStatement = new QueryStatement();
 
-    // there is no special clause in query statement
-    if (queryStatement == null) {
-      queryStatement = new QueryStatement();
-    }
-
-    // parser select, from, where clauses
+    // parser select, from
     parseSelectClause(ctx.selectClause());
     parseFromClause(ctx.fromClause());
+
+    // parse where clause
     if (ctx.whereClause() != null) {
       WhereCondition whereCondition = parseWhereClause(ctx.whereClause());
       queryStatement.setWhereCondition(whereCondition);
+    }
+
+    // parser special clause
+    if (ctx.specialClause() != null) {
+      queryStatement = (QueryStatement) visit(ctx.specialClause());
     }
     return queryStatement;
   }
@@ -508,7 +504,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     // parse LAST
     if (ctx.LAST() != null) {
-      queryStatement = new LastQueryStatement(queryStatement);
+      selectComponent.setHasLast(true);
     }
 
     // parse resultColumn
@@ -525,22 +521,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       selectComponent.addResultColumn(resultColumn);
     }
     selectComponent.setAliasToColumnMap(aliasToColumnMap);
-
-    // judge query type
-    if (!(queryStatement instanceof LastQueryStatement)
-        && !(queryStatement instanceof AggregationQueryStatement)
-        && !(queryStatement instanceof UDTFQueryStatement)
-        && !(queryStatement instanceof UDAFQueryStatement)) {
-      if (selectComponent.isHasUserDefinedAggregationFunction()) {
-        queryStatement = new UDAFQueryStatement(new AggregationQueryStatement(queryStatement));
-      } else if (selectComponent.isHasBuiltInAggregationFunction()) {
-        queryStatement = new AggregationQueryStatement(queryStatement);
-      } else if (selectComponent.isHasTimeSeriesGeneratingFunction()) {
-        queryStatement = new UDTFQueryStatement(queryStatement);
-      }
-    } else if (selectComponent.isHasUserDefinedAggregationFunction()) {
-      queryStatement = new UDAFQueryStatement((AggregationQueryStatement) (queryStatement));
-    }
 
     // set selectComponent
     queryStatement.setSelectComponent(selectComponent);
@@ -582,8 +562,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitGroupByTimeStatement(IoTDBSqlParser.GroupByTimeStatementContext ctx) {
-    queryStatement = new AggregationQueryStatement();
-
     // parse group by time clause
     parseGroupByTimeClause(ctx.groupByTimeClause());
 
@@ -634,7 +612,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         levels[i] = Integer.parseInt(ctx.INTEGER_LITERAL().get(i).getText());
       }
       groupByLevelComponent.setLevels(levels);
-      ((AggregationQueryStatement) queryStatement).setGroupByLevelComponent(groupByLevelComponent);
+      queryStatement.setGroupByLevelComponent(groupByLevelComponent);
     }
 
     // parse fill clause
@@ -643,7 +621,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     // set groupByTimeComponent
-    ((AggregationQueryStatement) queryStatement).setGroupByTimeComponent(groupByTimeComponent);
+    queryStatement.setGroupByTimeComponent(groupByTimeComponent);
   }
 
   /** parse time range (startTime and endTime) in group by query. */
@@ -680,8 +658,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Group By Level Clause
   @Override
   public Statement visitGroupByLevelStatement(IoTDBSqlParser.GroupByLevelStatementContext ctx) {
-    queryStatement = new AggregationQueryStatement();
-
     // parse GroupByLevel clause
     parseGroupByLevelClause(ctx.groupByLevelClause());
 
@@ -710,7 +686,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       parseFillClause(ctx.fillClause());
     }
 
-    ((AggregationQueryStatement) queryStatement).setGroupByLevelComponent(groupByLevelComponent);
+    queryStatement.setGroupByLevelComponent(groupByLevelComponent);
   }
 
   // Fill Clause
@@ -740,10 +716,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitLimitStatement(IoTDBSqlParser.LimitStatementContext ctx) {
-    if (queryStatement == null) {
-      queryStatement = new QueryStatement();
-    }
-
     // parse LIMIT
     parseLimitClause(ctx.limitClause(), queryStatement);
 
@@ -807,10 +779,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSlimitStatement(IoTDBSqlParser.SlimitStatementContext ctx) {
-    if (queryStatement == null) {
-      queryStatement = new QueryStatement();
-    }
-
     // parse SLIMIT
     parseSlimitClause(ctx.slimitClause());
 
@@ -864,10 +832,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitWithoutNullStatement(IoTDBSqlParser.WithoutNullStatementContext ctx) {
-    if (queryStatement == null) {
-      queryStatement = new QueryStatement();
-    }
-
     // parse WITHOUT NULL
     parseWithoutNullClause(ctx.withoutNullClause());
 
@@ -914,8 +878,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitOrderByTimeStatement(IoTDBSqlParser.OrderByTimeStatementContext ctx) {
-    queryStatement = new QueryStatement();
-
     // parse ORDER BY TIME
     parseOrderByTimeClause(ctx.orderByTimeClause());
 
@@ -938,9 +900,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitAlignByDeviceClauseOrDisableAlignStatement(
       IoTDBSqlParser.AlignByDeviceClauseOrDisableAlignStatementContext ctx) {
-    if (queryStatement == null) {
-      queryStatement = new QueryStatement();
-    }
     parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
     return queryStatement;
   }

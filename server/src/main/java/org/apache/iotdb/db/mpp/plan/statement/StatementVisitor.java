@@ -19,17 +19,13 @@
 
 package org.apache.iotdb.db.mpp.plan.statement;
 
-import org.apache.iotdb.db.mpp.plan.statement.crud.AggregationQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDAFQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -108,22 +104,6 @@ public abstract class StatementVisitor<R, C> {
   // Select Statement
   public R visitQuery(QueryStatement queryStatement, C context) {
     return visitStatement(queryStatement, context);
-  }
-
-  public R visitAggregationQuery(AggregationQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitLastQuery(LastQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitUDTFQuery(UDTFQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitUDAFQuery(UDAFQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
   }
 
   // Insert Statement
