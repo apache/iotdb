@@ -642,6 +642,53 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /**
+   * remove alias from expression. eg: root.sg.d1.status + 1 -> root.sg.d1.s2 + 1
+   *
+   * @return expression after removing alias
+   */
+  public static Expression removeAliasFromExpression(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      Expression leftExpression =
+          removeAliasFromExpression(((BinaryExpression) expression).getLeftExpression());
+      Expression rightExpression =
+          removeAliasFromExpression(((BinaryExpression) expression).getRightExpression());
+      return reconstructBinaryExpressions(
+              expression.getExpressionType(),
+              Collections.singletonList(leftExpression),
+              Collections.singletonList(rightExpression))
+          .get(0);
+    } else if (expression instanceof UnaryExpression) {
+      Expression childExpression =
+          removeAliasFromExpression(((UnaryExpression) expression).getExpression());
+      return reconstructUnaryExpressions(
+              (UnaryExpression) expression, Collections.singletonList(childExpression))
+          .get(0);
+    } else if (expression instanceof FunctionExpression) {
+      List<Expression> childExpressions = new ArrayList<>();
+      for (Expression suffixExpression : expression.getExpressions()) {
+        childExpressions.add(removeAliasFromExpression(suffixExpression));
+      }
+      return reconstructFunctionExpressions(
+              (FunctionExpression) expression, Collections.singletonList(childExpressions))
+          .get(0);
+    } else if (expression instanceof TimeSeriesOperand) {
+      MeasurementPath rawPath = (MeasurementPath) ((TimeSeriesOperand) expression).getPath();
+      if (rawPath.isMeasurementAliasExists()) {
+        MeasurementPath newPath = new MeasurementPath(rawPath, rawPath.getMeasurementSchema());
+        newPath.setUnderAlignedEntity(rawPath.isUnderAlignedEntity());
+        return new TimeSeriesOperand(newPath);
+      }
+      return expression;
+    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
+      // do nothing
+      return expression;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Method can only be used in source expression
   /////////////////////////////////////////////////////////////////////////////////////////////////
