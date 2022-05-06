@@ -175,6 +175,11 @@ public class Analyzer {
           analysis.setGroupByLevelExpressions(groupByLevelExpressions);
         }
 
+        // generate sourceExpression according to selectExpressions
+        for (Expression selectExpr : selectExpressions) {
+          analyzeSource(selectExpr, sourceExpressions);
+        }
+
         // extract global time filter from query filter
         Filter globalTimeFilter = analyzeGlobalTimeFilter(queryStatement);
         analysis.setGlobalTimeFilter(globalTimeFilter);
@@ -182,14 +187,22 @@ public class Analyzer {
         if (queryStatement.getWhereCondition() != null) {
           if (!queryStatement.isAlignByDevice()) {
             Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
+            // update sourceExpression according to queryFilter
+            analyzeSource(queryFilter, sourceExpressions);
             analysis.setQueryFilter(queryFilter);
           } else {
             // generate query filter for each device in ALIGN BY DEVICE query
             Map<String, Expression> deviceToQueryFilter =
                 analyzeWhereSplitByDevice(queryStatement, deviceSchemaInfos);
+            // update sourceExpression according to deviceToQueryFilter
+            for (Expression predicate : deviceToQueryFilter.values()) {
+              analyzeSource(predicate, sourceExpressions);
+            }
             analysis.setDeviceToQueryFilter(deviceToQueryFilter);
           }
         }
+        analysis.setSourceExpressions(sourceExpressions);
+        analysis.setSelectExpressions(selectExpressions);
 
         if (queryStatement.getFilterNullComponent() != null) {
           FilterNullParameter filterNullParameter =
@@ -201,19 +214,6 @@ public class Analyzer {
           List<FillDescriptor> fillDescriptorList = analyzeFill(queryStatement, outputExpressions);
           analysis.setFillDescriptorList(fillDescriptorList);
         }
-
-        // generate sourceExpression according to selectExpressions
-        for (Expression selectExpr : selectExpressions) {
-          for (Expression sourceExpression :
-              ExpressionAnalyzer.searchSourceExpressions(selectExpr)) {
-            sourceExpressions
-                .computeIfAbsent(
-                    ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
-                    key -> new HashSet<>())
-                .add(sourceExpression);
-          }
-        }
-        analysis.setSourceExpressions(sourceExpressions);
 
         // generate result set header according to output expressions
         DatasetHeader datasetHeader = analyzeOutput(queryStatement, outputExpressions);
@@ -541,6 +541,17 @@ public class Analyzer {
                       fillComponent.getFillValue(),
                       fillComponent.getFillDatatype()))
           .collect(Collectors.toList());
+    }
+
+    private void analyzeSource(
+        Expression selectExpr, Map<String, Set<Expression>> sourceExpressions) {
+      for (Expression sourceExpression : ExpressionAnalyzer.searchSourceExpressions(selectExpr)) {
+        sourceExpressions
+            .computeIfAbsent(
+                ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
+                key -> new HashSet<>())
+            .add(sourceExpression);
+      }
     }
 
     private DatasetHeader analyzeOutput(
