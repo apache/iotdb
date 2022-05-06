@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public class DevicesSchemaScanOperator extends SchemaScanOperator {
+public class DevicesSchemaScanOperator extends SchemaQueryScanOperator {
   private final boolean hasSgCol;
 
   public DevicesSchemaScanOperator(

@@ -110,6 +110,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
     SchemaTree result = new SchemaTree();
     while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+      // The query will be transited to FINISHED when invoking getBatchResult() at the last time
+      // So we don't need to clean up it manually
       Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
       if (!tsBlock.isPresent()) {
         break;
@@ -124,8 +126,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         result.mergeSchemaTree(fetchedSchemaTree);
       }
     }
-    // TODO: (xingtanzjr) need to release this query's resource here. This is a temporary way
-    coordinator.getQueryExecution(queryId).stopAndCleanup();
     return result;
   }
 

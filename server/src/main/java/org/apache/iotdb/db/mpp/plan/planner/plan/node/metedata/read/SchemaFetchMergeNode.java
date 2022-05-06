@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -25,40 +26,34 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 
 import java.nio.ByteBuffer;
 
-public class SeriesSchemaMergeNode extends AbstractSchemaMergeNode {
+/** This class defines the scanned result merge task of schema fetcher. */
+public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
 
-  private boolean orderByHeat;
-
-  public SeriesSchemaMergeNode(PlanNodeId id) {
+  public SchemaFetchMergeNode(PlanNodeId id) {
     super(id);
-  }
-
-  public SeriesSchemaMergeNode(PlanNodeId id, boolean orderByHeat) {
-    this(id);
-    this.orderByHeat = orderByHeat;
   }
 
   @Override
   public PlanNode clone() {
-    return new SeriesSchemaMergeNode(getPlanNodeId(), this.orderByHeat);
+    return new SchemaFetchMergeNode(getPlanNodeId());
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.SCHEMA_MERGE.serialize(byteBuffer);
+    PlanNodeType.SCHEMA_FETCH_MERGE.serialize(byteBuffer);
   }
 
-  public static SeriesSchemaMergeNode deserialize(ByteBuffer byteBuffer) {
-    PlanNodeId id = PlanNodeId.deserialize(byteBuffer);
-    return new SeriesSchemaMergeNode(id);
+  public static PlanNode deserialize(ByteBuffer byteBuffer) {
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new SchemaFetchMergeNode(planNodeId);
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaMerge(this, context);
+    return visitor.visitSchemaFetchMerge(this, context);
   }
 
   public String toString() {
-    return String.format("SchemaMergeNode-%s", getPlanNodeId());
+    return String.format("SchemaFetchNode-%s", getPlanNodeId());
   }
 }

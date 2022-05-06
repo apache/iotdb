@@ -326,6 +326,8 @@ public class SourceHandle implements ISourceHandle {
             tsBlocks.add(tsBlock);
           }
           logger.info("{}: got data blocks. count: {}", SourceHandle.this, tsBlocks.size());
+          executorService.submit(
+              new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
           synchronized (SourceHandle.this) {
             if (aborted) {
               return;
@@ -337,8 +339,6 @@ public class SourceHandle implements ISourceHandle {
               blocked.set(null);
             }
           }
-          executorService.submit(
-              new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
           break;
         } catch (Throwable e) {
           logger.error(

@@ -253,7 +253,9 @@ public class QueryExecution implements IQueryExecution {
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
       if (resultHandle.isFinished()) {
-        releaseResource();
+        // Once the resultHandle is finished, we should transit the state of this query to FINISHED.
+        // So that the corresponding cleanup work could be triggered.
+        stateMachine.transitionToFinished();
         return Optional.empty();
       }
       return Optional.of(resultHandle.receive());

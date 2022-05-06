@@ -41,9 +41,9 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
-public class SchemaFetchOperator implements SourceOperator {
+public class SchemaFetchScanOperator implements SourceOperator {
 
-  private static final Logger logger = LoggerFactory.getLogger(SchemaFetchOperator.class);
+  private static final Logger logger = LoggerFactory.getLogger(SchemaFetchScanOperator.class);
   private static final int MAX_BINARY_SIZE = 1024 * 1024;
 
   private final PlanNodeId sourceId;
@@ -54,7 +54,7 @@ public class SchemaFetchOperator implements SourceOperator {
   private TsBlock tsBlock;
   private boolean isFinished = false;
 
-  public SchemaFetchOperator(
+  public SchemaFetchScanOperator(
       PlanNodeId planNodeId,
       OperatorContext context,
       PathPatternTree patternTree,

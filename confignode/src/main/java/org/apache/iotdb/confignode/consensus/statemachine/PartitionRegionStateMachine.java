@@ -36,7 +36,7 @@ import java.io.File;
 import java.io.IOException;
 
 /** Statemachine for PartitionRegion */
-public class PartitionRegionStateMachine implements IStateMachine {
+public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
 

@@ -106,10 +106,10 @@ public class DataBlockManager implements IDataBlockManager {
           e.getEndSequenceId(),
           e.getSourceFragmentInstanceId());
       if (!sinkHandles.containsKey(e.getSourceFragmentInstanceId())) {
-        throw new TException(
-            "Source fragment instance not found. Fragment instance ID: "
-                + e.getSourceFragmentInstanceId()
-                + ".");
+        logger.warn(
+            "received ACK event but target FragmentInstance[{}] is not found.",
+            e.getSourceFragmentInstanceId());
+        return;
       }
       ((SinkHandle) sinkHandles.get(e.getSourceFragmentInstanceId()))
           .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
@@ -130,10 +130,13 @@ public class DataBlockManager implements IDataBlockManager {
               .get(e.getTargetFragmentInstanceId())
               .get(e.getTargetPlanNodeId())
               .isAborted()) {
-        throw new TException(
-            "Target fragment instance not found. Fragment instance ID: "
-                + e.getTargetFragmentInstanceId()
-                + ".");
+        // In some scenario, when the SourceHandle sends the data block ACK event, its upstream may
+        // have already been stopped. For example, in the query whit LimitOperator, the downstream
+        // FragmentInstance may be finished, although the upstream is still working.
+        logger.warn(
+            "received NewDataBlockEvent but the upstream FragmentInstance[{}] is not found",
+            e.getTargetFragmentInstanceId());
+        return;
       }
 
       SourceHandle sourceHandle =
