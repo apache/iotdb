@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -167,10 +166,5 @@ public abstract class UnaryExpression extends Expression {
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     Expression.serialize(expression, byteBuffer);
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitUnaryExpression(this, context);
   }
 }

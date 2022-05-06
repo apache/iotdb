@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.expression.binary;
 
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
@@ -52,10 +51,5 @@ public class LogicOrExpression extends BinaryExpression {
   @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.LOGIC_OR;
-  }
-
-  @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitLogicOrExpression(this, context);
   }
 }
