@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.expression.leaf;
 
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 
@@ -38,5 +39,10 @@ public abstract class LeafOperand extends Expression {
   public final void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     // nothing to do
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitLeafOperand(this, context);
   }
 }

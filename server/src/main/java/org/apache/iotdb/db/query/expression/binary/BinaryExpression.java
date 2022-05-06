@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
@@ -281,5 +282,10 @@ public abstract class BinaryExpression extends Expression {
   protected void serialize(ByteBuffer byteBuffer) {
     Expression.serialize(leftExpression, byteBuffer);
     Expression.serialize(rightExpression, byteBuffer);
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitExpression(this, context);
   }
 }

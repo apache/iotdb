@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
@@ -95,5 +96,10 @@ public class InExpression extends UnaryExpression {
     for (String value : values) {
       ReadWriteIOUtils.write(value, byteBuffer);
     }
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitInExpression(this, context);
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.expression.binary;
 
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
@@ -51,5 +52,10 @@ public class LessThanExpression extends BinaryExpression {
   @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.LESS_THAN;
+  }
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitLessThanExpression(this, context);
   }
 }

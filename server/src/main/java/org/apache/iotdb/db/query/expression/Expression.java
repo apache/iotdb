@@ -22,6 +22,8 @@ package org.apache.iotdb.db.query.expression;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
@@ -64,7 +66,7 @@ import java.util.Map;
 import java.util.Set;
 
 /** A skeleton class for expression */
-public abstract class Expression {
+public abstract class Expression extends StatementNode {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Expression type inferring for execution plan generation
@@ -355,4 +357,9 @@ public abstract class Expression {
   public abstract ExpressionType getExpressionType();
 
   protected abstract void serialize(ByteBuffer byteBuffer);
+
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitExpression(this, context);
+  }
 }
