@@ -79,6 +79,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -284,7 +285,7 @@ public class Analyzer {
             Expression expressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(expression);
             String alias =
-                expressionWithoutAlias != expression ? expression.getExpressionString() : null;
+                    !Objects.equals(expressionWithoutAlias, expression) ? expression.getExpressionString() : null;
             alias = hasAlias ? resultColumn.getAlias() : alias;
             outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
             ExpressionAnalyzer.updateTypeProvider(expressionWithoutAlias, typeProvider);
@@ -441,6 +442,7 @@ public class Analyzer {
         if (globalTimeFilter == null) {
           globalTimeFilter = groupByFilter;
         } else {
+          // TODO: optimize the filter
           globalTimeFilter = FilterFactory.and(globalTimeFilter, groupByFilter);
         }
       }
