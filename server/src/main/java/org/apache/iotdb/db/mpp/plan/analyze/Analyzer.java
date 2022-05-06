@@ -283,12 +283,16 @@ public class Analyzer {
         List<DeviceSchemaInfo> allDeviceSchemaInfos,
         Set<Expression> selectExpressions) {
       List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
+      Set<String> measurementSet = new HashSet<>();
+      List<Pair<Expression, String>> measurementWithAliasList =
+          analyzeMeasurements(queryStatement, measurementSet);
+
       List<MeasurementPath> allSelectedPaths = new ArrayList<>();
       for (PartialPath devicePattern : devicePatternList) {
         List<DeviceSchemaInfo> deviceSchemaInfos = schemaTree.getMatchedDevices(devicePattern);
         allDeviceSchemaInfos.addAll(deviceSchemaInfos);
         for (DeviceSchemaInfo deviceSchema : deviceSchemaInfos) {
-          allSelectedPaths.addAll(deviceSchema.getMeasurements());
+          allSelectedPaths.addAll(deviceSchema.getMeasurements(measurementSet));
         }
       }
       Map<String, List<MeasurementPath>> measurementNameToPathsMap = new HashMap<>();
@@ -299,7 +303,6 @@ public class Analyzer {
       }
       measurementNameToPathsMap.values().forEach(Analyzer::checkDataTypeConsistency);
 
-      List<Pair<Expression, String>> measurementWithAliasList = analyzeMeasurements(queryStatement);
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       ColumnPaginationController paginationController =
           new ColumnPaginationController(
@@ -365,13 +368,23 @@ public class Analyzer {
       return outputExpressions;
     }
 
-    private List<Pair<Expression, String>> analyzeMeasurements(QueryStatement queryStatement) {
-      return queryStatement.getSelectComponent().getResultColumns().stream()
-          .map(
-              resultColumn ->
-                  ExpressionAnalyzer.getMeasurementWithAliasInExpression(
-                      resultColumn.getExpression(), resultColumn.getAlias()))
-          .collect(Collectors.toList());
+    private List<Pair<Expression, String>> analyzeMeasurements(
+        QueryStatement queryStatement, Set<String> measurementSet) {
+      List<Pair<Expression, String>> measurementWithAliasList =
+          queryStatement.getSelectComponent().getResultColumns().stream()
+              .map(
+                  resultColumn ->
+                      ExpressionAnalyzer.getMeasurementWithAliasInExpression(
+                          resultColumn.getExpression(), resultColumn.getAlias()))
+              .collect(Collectors.toList());
+      measurementSet.addAll(
+          measurementWithAliasList.stream()
+              .map(Pair::getLeft)
+              .map(ExpressionAnalyzer::collectPaths)
+              .flatMap(Set::stream)
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toSet()));
+      return measurementWithAliasList;
     }
 
     private Expression analyzeWhere(QueryStatement queryStatement, SchemaTree schemaTree) {
@@ -466,7 +479,9 @@ public class Analyzer {
             ExpressionAnalyzer.removeWildcardInExpression(filterNullColumn, schemaTree);
         for (Expression expression : resultExpressions) {
           if (!selectExpressions.contains(expression)) {
-            throw new SemanticException("");
+            throw new SemanticException(
+                String.format(
+                    "The without null column '%s' don't match the columns queried.", expression));
           }
           resultFilterNullColumns.add(expression);
         }

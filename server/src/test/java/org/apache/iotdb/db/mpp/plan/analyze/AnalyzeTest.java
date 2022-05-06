@@ -23,7 +23,6 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,14 +35,7 @@ public class AnalyzeTest {
 
   @Test
   public void testRawDataQuery() {
-    Analysis analysis = analyzeSQL("SELECT s1, s2 FROM root.sg.*");
-
-    TypeProvider expectedTypeProvider = new TypeProvider();
-    expectedTypeProvider.setType("root.sg.d1.s1", TSDataType.INT32);
-    expectedTypeProvider.setType("root.sg.d1.s2", TSDataType.INT32);
-    expectedTypeProvider.setType("root.sg.d2.s1", TSDataType.INT32);
-    expectedTypeProvider.setType("root.sg.d2.s2", TSDataType.INT32);
-    assertQueryAnalysisEquals(analysis, expectedTypeProvider);
+    Analysis analysis = analyzeSQL("SELECT s1, status FROM root.sg.*");
   }
 
   private Analysis analyzeSQL(String sql) {

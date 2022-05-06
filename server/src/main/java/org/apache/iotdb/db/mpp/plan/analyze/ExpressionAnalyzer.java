@@ -62,11 +62,14 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.collect.Sets;
 import org.apache.commons.lang.Validate;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ExpressionAnalyzer {
@@ -563,7 +566,11 @@ public class ExpressionAnalyzer {
       }
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
-      typeProvider.setType(rawPath.getFullPath(), rawPath.getSeriesType());
+      typeProvider.setType(
+          rawPath.isMeasurementAliasExists()
+              ? rawPath.getFullPathWithAlias()
+              : rawPath.getFullPath(),
+          rawPath.getSeriesType());
     } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
       // do nothing
     } else {
@@ -726,6 +733,30 @@ public class ExpressionAnalyzer {
       return ((TimeSeriesOperand) expression).getPath().getDeviceIdString();
     } else if (expression instanceof FunctionExpression) {
       return getDeviceName(expression.getExpressions().get(0));
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static Set<PartialPath> collectPaths(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      Set<PartialPath> resultSet =
+          collectPaths(((BinaryExpression) expression).getLeftExpression());
+      resultSet.addAll(collectPaths(((BinaryExpression) expression).getRightExpression()));
+      return resultSet;
+    } else if (expression instanceof UnaryExpression) {
+      return collectPaths(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      Set<PartialPath> resultSet = new HashSet<>();
+      for (Expression childExpression : expression.getExpressions()) {
+        resultSet.addAll(collectPaths(childExpression));
+      }
+      return resultSet;
+    } else if (expression instanceof TimeSeriesOperand) {
+      return Sets.newHashSet(((TimeSeriesOperand) expression).getPath());
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      return Collections.emptySet();
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
