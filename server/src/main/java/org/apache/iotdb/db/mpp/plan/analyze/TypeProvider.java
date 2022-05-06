@@ -41,11 +41,10 @@ public class TypeProvider {
   }
 
   public TSDataType getType(String path) {
-    TSDataType type = typeMap.get(path);
-    if (type == null) {
+    if (!typeMap.containsKey(path)) {
       throw new StatementAnalyzeException(String.format("no data type found for path: %s", path));
     }
-    return type;
+    return typeMap.get(path);
   }
 
   public void setType(String path, TSDataType dataType) {

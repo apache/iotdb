@@ -68,7 +68,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.commons.lang.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -254,6 +253,7 @@ public class Analyzer {
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException e) {
         LOGGER.error("Meet error when analyzing the query statement: ", e);
+        throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
     }
@@ -335,7 +335,7 @@ public class Analyzer {
       }
       // check whether the datatype of paths which has the same measurement name are consistent
       // if not, throw a SemanticException
-      measurementNameToPathsMap.values().forEach(Analyzer::checkDataTypeConsistency);
+      measurementNameToPathsMap.values().forEach(this::checkDataTypeConsistencyInAlignByDevice);
 
       // apply SLIMIT&SOFFSET and set outputExpressions & selectExpressions
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
@@ -521,10 +521,13 @@ public class Analyzer {
       for (Pair<Expression, String> measurementWithAlias : outputExpressions) {
         groupByLevelController.control(measurementWithAlias.left, measurementWithAlias.right);
       }
-
-      Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
       Map<Expression, Set<Expression>> rawGroupByLevelExpressions =
           groupByLevelController.getGroupedPathMap();
+      // check whether the datatype of paths which has the same output column name are consistent
+      // if not, throw a SemanticException
+      rawGroupByLevelExpressions.values().forEach(this::checkDataTypeConsistencyInGroupByLevel);
+
+      Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
       ColumnPaginationController paginationController =
           new ColumnPaginationController(
               queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
@@ -545,6 +548,12 @@ public class Analyzer {
       // reset outputExpressions & selectExpressions after applying SLIMIT/SOFFSET
       outputExpressions.clear();
       for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
+        TSDataType dataType =
+            typeProvider.getType(
+                new ArrayList<>(groupByLevelExpressions.get(groupedExpression))
+                    .get(0)
+                    .getExpressionString());
+        typeProvider.setType(groupedExpression.getExpressionString(), dataType);
         outputExpressions.add(
             new Pair<>(
                 groupedExpression,
@@ -619,6 +628,35 @@ public class Analyzer {
                   })
               .collect(Collectors.toList());
       return new DatasetHeader(columnHeaders, isIgnoreTimestamp);
+    }
+
+    /**
+     * Check datatype consistency in ALIGN BY DEVICE.
+     *
+     * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
+     * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
+     */
+    private void checkDataTypeConsistencyInAlignByDevice(List<MeasurementPath> measurementPaths) {
+      TSDataType checkedDataType = measurementPaths.get(0).getSeriesType();
+      for (MeasurementPath path : measurementPaths) {
+        if (path.getSeriesType() != checkedDataType) {
+          throw new SemanticException(
+              "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
+        }
+      }
+    }
+
+    /** Check datatype consistency in GROUP BY LEVEL. */
+    private void checkDataTypeConsistencyInGroupByLevel(Set<Expression> expressions) {
+      List<Expression> expressionList = new ArrayList<>(expressions);
+      TSDataType checkedDataType =
+          typeProvider.getType(expressionList.get(0).getExpressionString());
+      for (Expression expression : expressionList) {
+        if (typeProvider.getType(expression.getExpressionString()) != checkedDataType) {
+          throw new SemanticException(
+              "GROUP BY LEVEL: the data types of the same output column should be the same.");
+        }
+      }
     }
 
     @Override
@@ -959,23 +997,6 @@ public class Analyzer {
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       analysis.setRespDatasetHeader(HeaderConstant.countLevelTimeSeriesHeader);
       return analysis;
-    }
-  }
-
-  /**
-   * Check datatype consistency in ALIGN BY DEVICE.
-   *
-   * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
-   * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
-   */
-  private static void checkDataTypeConsistency(List<MeasurementPath> measurementPaths) {
-    Validate.isTrue(measurementPaths.size() > 0);
-    TSDataType checkedDataType = measurementPaths.get(0).getSeriesType();
-    for (MeasurementPath path : measurementPaths) {
-      if (path.getSeriesType() != checkedDataType) {
-        throw new SemanticException(
-            "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
-      }
     }
   }
 }

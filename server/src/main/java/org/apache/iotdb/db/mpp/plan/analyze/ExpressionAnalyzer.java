@@ -349,10 +349,11 @@ public class ExpressionAnalyzer {
       }
 
       List<PartialPath> noStarPaths = new ArrayList<>();
-      for(PartialPath concatPath:concatPaths) {
+      for (PartialPath concatPath : concatPaths) {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-        if(actualPaths.size() == 0) {
-          throw new SemanticException(String.format("the path '%s' in WHERE clause does not exist", concatPath));
+        if (actualPaths.size() == 0) {
+          throw new SemanticException(
+              String.format("the path '%s' in WHERE clause does not exist", concatPath));
         }
         noStarPaths.addAll(actualPaths);
       }
