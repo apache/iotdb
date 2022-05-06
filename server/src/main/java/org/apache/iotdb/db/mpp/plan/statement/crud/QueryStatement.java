@@ -242,6 +242,7 @@ public class QueryStatement extends Statement {
     return selectComponent.isHasUserDefinedAggregationFunction();
   }
 
+  @Deprecated
   public Map<String, Set<PartialPath>> getDeviceNameToDeduplicatedPathsMap() {
     return getSelectComponent().getDeviceNameToDeduplicatedPathsMap();
   }

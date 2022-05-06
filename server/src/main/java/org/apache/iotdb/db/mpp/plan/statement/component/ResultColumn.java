@@ -22,7 +22,6 @@ package org.apache.iotdb.db.mpp.plan.statement.component;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -72,9 +71,7 @@ public class ResultColumn extends StatementNode {
   private final Expression expression;
   private final String alias;
 
-  private TSDataType dataType;
-
-  private List<PartialPath> allPathsInExpression;
+  @Deprecated private List<PartialPath> allPathsInExpression;
 
   public ResultColumn(Expression expression, String alias) {
     this.expression = expression;
@@ -86,6 +83,7 @@ public class ResultColumn extends StatementNode {
     alias = null;
   }
 
+  @Deprecated
   public List<PartialPath> collectPaths() {
     if (allPathsInExpression == null) {
       Set<PartialPath> pathSet = new HashSet<>();
@@ -105,22 +103,6 @@ public class ResultColumn extends StatementNode {
 
   public String getAlias() {
     return alias;
-  }
-
-  public String getResultColumnName() {
-    return alias != null ? alias : expression.getExpressionString();
-  }
-
-  public String getExpressionString() {
-    return expression.getExpressionString();
-  }
-
-  public void setDataType(TSDataType dataType) {
-    this.dataType = dataType;
-  }
-
-  public TSDataType getDataType() {
-    return dataType;
   }
 
   @Override

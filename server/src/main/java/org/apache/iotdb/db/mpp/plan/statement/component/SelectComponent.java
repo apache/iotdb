@@ -48,8 +48,8 @@ public class SelectComponent extends StatementNode {
 
   private Map<String, Expression> aliasToColumnMap;
 
-  private List<PartialPath> pathsCache;
-  private Map<String, Set<PartialPath>> deviceNameToDeduplicatedPathsCache;
+  @Deprecated private List<PartialPath> pathsCache;
+  @Deprecated private Map<String, Set<PartialPath>> deviceNameToDeduplicatedPathsCache;
 
   public SelectComponent(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -108,6 +108,7 @@ public class SelectComponent extends StatementNode {
     this.hasLast = hasLast;
   }
 
+  @Deprecated
   public List<PartialPath> getPaths() {
     if (pathsCache == null) {
       pathsCache = new ArrayList<>();
@@ -126,6 +127,7 @@ public class SelectComponent extends StatementNode {
     return pathsCache;
   }
 
+  @Deprecated
   public Map<String, Set<PartialPath>> getDeviceNameToDeduplicatedPathsMap() {
     if (deviceNameToDeduplicatedPathsCache == null) {
       deviceNameToDeduplicatedPathsCache = new HashMap<>();
