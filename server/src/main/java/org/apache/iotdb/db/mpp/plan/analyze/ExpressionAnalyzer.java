@@ -348,11 +348,14 @@ public class ExpressionAnalyzer {
         concatPaths.add(filterPath);
       }
 
-      List<PartialPath> noStarPaths =
-          concatPaths.stream()
-              .map(concatPath -> schemaTree.searchMeasurementPaths(concatPath).left)
-              .flatMap(List::stream)
-              .collect(Collectors.toList());
+      List<PartialPath> noStarPaths = new ArrayList<>();
+      for(PartialPath concatPath:concatPaths) {
+        List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
+        if(actualPaths.size() == 0) {
+          throw new SemanticException(String.format("the path '%s' in WHERE clause does not exist", concatPath));
+        }
+        noStarPaths.addAll(actualPaths);
+      }
       noStarPaths.forEach(path -> typeProvider.setType(path.getFullPath(), path.getSeriesType()));
       return reconstructTimeSeriesOperands(noStarPaths);
     } else if (predicate instanceof TimestampOperand) {
