@@ -684,12 +684,6 @@ public class ExpressionAnalyzer {
       return reconstructFunctionExpressions((FunctionExpression) predicate, childExpressionsList);
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
-      if (filterPath.getNodes().length > 1
-          || filterPath.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-        throw new SemanticException(
-            "ALIGN BY DEVICE: The paths of the WHERE clause can only be measurements or wildcard.");
-      }
-
       String measurement = filterPath.getFullPath();
       List<PartialPath> concatPaths = new ArrayList<>();
       if (measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
@@ -757,6 +751,54 @@ public class ExpressionAnalyzer {
       return Sets.newHashSet(((TimeSeriesOperand) expression).getPath());
     } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
       return Collections.emptySet();
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static void checkIsAllMeasurement(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      checkIsAllMeasurement(((BinaryExpression) expression).getLeftExpression());
+      checkIsAllMeasurement(((BinaryExpression) expression).getRightExpression());
+    } else if (expression instanceof UnaryExpression) {
+      checkIsAllMeasurement(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      for (Expression childExpression : expression.getExpressions()) {
+        checkIsAllMeasurement(childExpression);
+      }
+    } else if (expression instanceof TimeSeriesOperand) {
+      PartialPath path = ((TimeSeriesOperand) expression).getPath();
+      if (path.getNodes().length > 1
+          || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        throw new SemanticException(
+            "ALIGN BY DEVICE: the paths can only be measurement or one-level wildcard");
+      }
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      // do nothing
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static void checkIsAllAggregation(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      checkIsAllAggregation(((BinaryExpression) expression).getLeftExpression());
+      checkIsAllAggregation(((BinaryExpression) expression).getRightExpression());
+    } else if (expression instanceof UnaryExpression) {
+      checkIsAllAggregation(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      if (expression.getExpressions().size() != 1
+          || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand)) {
+        throw new SemanticException(
+            "The argument of the aggregation function must be a time series.");
+      }
+    } else if (expression instanceof TimeSeriesOperand) {
+      throw new SemanticException(
+          "Raw data queries and aggregated queries are not allowed to appear at the same time.");
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      // do nothing
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());

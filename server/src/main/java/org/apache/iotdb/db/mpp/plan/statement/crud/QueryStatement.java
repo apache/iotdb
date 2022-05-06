@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -37,7 +37,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 
 import java.util.List;
 import java.util.Map;
@@ -247,19 +246,14 @@ public class QueryStatement extends Statement {
     return getSelectComponent().getDeviceNameToDeduplicatedPathsMap();
   }
 
-  /** semantic check */
-  public void selfCheck() {
+  public void semanticCheck() {
     if (isAlignByDevice()) {
-      if (hasTimeSeriesGeneratingFunction() || hasUserDefinedAggregationFunction()) {
-        throw new SemanticException("ALIGN BY DEVICE: User-Defined Functions are not supported.");
+      // the paths can only be measurement or one-level wildcard in ALIGN BY DEVICE
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
       }
-
-      for (PartialPath path : selectComponent.getPaths()) {
-        if (path.getNodes().length > 1
-            || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-          throw new SemanticException(
-              "ALIGN BY DEVICE: The paths of the SELECT clause can only be measurement or one-level wildcard.");
-        }
+      if (getWhereCondition() != null) {
+        ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
       }
     }
 
@@ -267,11 +261,9 @@ public class QueryStatement extends Statement {
       if (isAlignByDevice()) {
         throw new SemanticException("Last query doesn't support align by device.");
       }
-
       if (disableAlign()) {
         throw new SemanticException("Disable align cannot be applied to LAST query.");
       }
-
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         Expression expression = resultColumn.getExpression();
         if (!(expression instanceof TimeSeriesOperand)) {
@@ -284,31 +276,15 @@ public class QueryStatement extends Statement {
       if (disableAlign()) {
         throw new SemanticException("AGGREGATION doesn't support disable align clause.");
       }
-      checkSelectComponent(selectComponent);
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("group by level does not support align by device now.");
       }
-    }
-  }
-
-  protected void checkSelectComponent(SelectComponent selectComponent) throws SemanticException {
-    if (hasTimeSeriesGeneratingFunction()) {
-      throw new SemanticException(
-          "User-defined and built-in hybrid aggregation is not supported together.");
-    }
-
-    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-      Expression expression = resultColumn.getExpression();
-      if (expression instanceof TimeSeriesOperand) {
+      if (hasTimeSeriesGeneratingFunction()) {
         throw new SemanticException(
-            "Common queries and aggregated queries are not allowed to appear at the same time.");
+            "User-defined and built-in hybrid aggregation is not supported together.");
       }
-      // Currently, the aggregation function expression can only contain a timeseries operand.
-      if (expression instanceof FunctionExpression
-          && (expression.getExpressions().size() != 1
-              || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand))) {
-        throw new SemanticException(
-            "The argument of the aggregation function must be a time series.");
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        ExpressionAnalyzer.checkIsAllAggregation(resultColumn.getExpression());
       }
     }
   }

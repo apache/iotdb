@@ -118,7 +118,7 @@ public class Analyzer {
       Analysis analysis = new Analysis();
       try {
         // check for semantic errors
-        queryStatement.selfCheck();
+        queryStatement.semanticCheck();
 
         // concat path and construct path pattern tree
         PathPatternTree patternTree = new PathPatternTree();
