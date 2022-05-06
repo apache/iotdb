@@ -565,12 +565,12 @@ public class ExpressionAnalyzer {
   }
 
   /** Update typeProvider by expression. */
-  public static void setTypeProvider(Expression expression, TypeProvider typeProvider) {
+  public static void updateTypeProvider(Expression expression, TypeProvider typeProvider) {
     if (expression instanceof BinaryExpression) {
-      setTypeProvider(((BinaryExpression) expression).getLeftExpression(), typeProvider);
-      setTypeProvider(((BinaryExpression) expression).getRightExpression(), typeProvider);
+      updateTypeProvider(((BinaryExpression) expression).getLeftExpression(), typeProvider);
+      updateTypeProvider(((BinaryExpression) expression).getRightExpression(), typeProvider);
     } else if (expression instanceof UnaryExpression) {
-      setTypeProvider(((UnaryExpression) expression).getExpression(), typeProvider);
+      updateTypeProvider(((UnaryExpression) expression).getExpression(), typeProvider);
     } else if (expression instanceof FunctionExpression) {
       if (expression.isBuiltInAggregationFunctionExpression()) {
         Validate.isTrue(expression.getExpressions().size() == 1);
@@ -580,10 +580,10 @@ public class ExpressionAnalyzer {
             expression.getExpressionString(),
             SchemaUtils.getSeriesTypeByPath(
                 path, ((FunctionExpression) expression).getFunctionName()));
-        setTypeProvider(childExpression, typeProvider);
+        updateTypeProvider(childExpression, typeProvider);
       } else {
         for (Expression childExpression : expression.getExpressions()) {
-          setTypeProvider(childExpression, typeProvider);
+          updateTypeProvider(childExpression, typeProvider);
         }
       }
     } else if (expression instanceof TimeSeriesOperand) {

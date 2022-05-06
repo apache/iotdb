@@ -134,8 +134,30 @@ public class Analyzer {
           return analysis;
         }
 
+        // a list of output column with alias (null if alias not exist)
         List<Pair<Expression, String>> outputExpressions;
+        //
         Set<Expression> selectExpressions = new HashSet<>();
+        //
+        Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
+        // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
+        //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
+        //                       <udf(udf(root.sg.d1.s1)),null>]
+        //   selectExpressions: [root.sg.d1.s1, root.sg.d1.s1 + root.sg.d1.s2,
+        //                       udf(udf(root.sg.d1.s1))]
+        //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2]}
+        //
+        // Example 2: select s1, s2, s3 as t from root.sg.* align by device
+        //   outputExpressions: [<s1,null>, <s2,null>, <s1,t>]
+        //   selectExpressions: [root.sg.d1.s1, root.sg.d1.s2, root.sg.d1.s3,
+        //                       root.sg.d2.s1, root.sg.d2.s2]
+        //   sourceExpressions: {root.sg.d1 -> [root.sg.d1.s1, root.sg.d1.s2, root.sg.d1.s2],
+        //                       root.sg.d2 -> [root.sg.d2.s1, root.sg.d2.s2]}
+        //
+        // Example 3: select sum(s1) + 1 as t, count(s2) from root.sg.d1
+        //   outputExpressions: [<sum(root.sg.d1.s1) + 1,t>, <count(root.sg.d1.s2),t>]
+        //   selectExpressions: [<sum(root.sg.d1.s1) + 1, count(root.sg.d1.s2)]
+        //   sourceExpressions: {root.sg.d1 -> [sum(root.sg.d1.s1), count(root.sg.d1.s2)]}
         List<DeviceSchemaInfo> deviceSchemaInfos = new ArrayList<>();
         if (!queryStatement.isAlignByDevice()) {
           outputExpressions = analyzeSelect(queryStatement, schemaTree);
@@ -147,12 +169,13 @@ public class Analyzer {
         }
 
         if (queryStatement.isGroupByLevel()) {
-          Validate.isTrue(!queryStatement.isAlignByDevice());
+          // map from grouped expression to set of input expressions
           Map<Expression, Set<Expression>> groupByLevelExpressions =
               analyzeGroupByLevel(queryStatement, outputExpressions, selectExpressions);
           analysis.setGroupByLevelExpressions(groupByLevelExpressions);
         }
 
+        // extract global time filter from query filter
         Filter globalTimeFilter = analyzeGlobalTimeFilter(queryStatement);
         analysis.setGlobalTimeFilter(globalTimeFilter);
 
@@ -161,6 +184,7 @@ public class Analyzer {
             Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
             analysis.setQueryFilter(queryFilter);
           } else {
+            // generate query filter for each device in ALIGN BY DEVICE query
             Map<String, Expression> deviceToQueryFilter =
                 analyzeWhereSplitByDevice(queryStatement, deviceSchemaInfos);
             analysis.setDeviceToQueryFilter(deviceToQueryFilter);
@@ -178,7 +202,7 @@ public class Analyzer {
           analysis.setFillDescriptorList(fillDescriptorList);
         }
 
-        Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
+        // generate sourceExpression according to selectExpressions
         for (Expression selectExpr : selectExpressions) {
           for (Expression sourceExpression :
               ExpressionAnalyzer.searchSourceExpressions(selectExpr)) {
@@ -191,6 +215,7 @@ public class Analyzer {
         }
         analysis.setSourceExpressions(sourceExpressions);
 
+        // generate result set header according to output expressions
         DatasetHeader datasetHeader = analyzeOutput(queryStatement, outputExpressions);
         analysis.setRespDatasetHeader(datasetHeader);
         analysis.setTypeProvider(typeProvider);
@@ -212,30 +237,6 @@ public class Analyzer {
         throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
-    }
-
-    private Filter analyzeGlobalTimeFilter(QueryStatement queryStatement) {
-      Filter globalTimeFilter = null;
-      if (queryStatement.getWhereCondition() != null) {
-        globalTimeFilter =
-            ExpressionAnalyzer.transformToGlobalTimeFilter(
-                queryStatement.getWhereCondition().getPredicate());
-      }
-      if (queryStatement.isGroupByTime()) {
-        GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
-        Filter groupByFilter =
-            new GroupByFilter(
-                groupByTimeComponent.getInterval(),
-                groupByTimeComponent.getSlidingStep(),
-                groupByTimeComponent.getStartTime(),
-                groupByTimeComponent.getEndTime());
-        if (globalTimeFilter == null) {
-          globalTimeFilter = groupByFilter;
-        } else {
-          globalTimeFilter = FilterFactory.and(globalTimeFilter, groupByFilter);
-        }
-      }
-      return globalTimeFilter;
     }
 
     private List<Pair<Expression, String>> analyzeSelect(
@@ -262,7 +263,7 @@ public class Analyzer {
             continue;
           }
           if (paginationController.hasCurLimit()) {
-            ExpressionAnalyzer.setTypeProvider(expression, typeProvider);
+            ExpressionAnalyzer.updateTypeProvider(expression, typeProvider);
             outputExpressions.add(
                 new Pair<>(expression, hasAlias ? resultColumn.getAlias() : null));
             paginationController.consumeLimit();
@@ -279,32 +280,43 @@ public class Analyzer {
         SchemaTree schemaTree,
         List<DeviceSchemaInfo> allDeviceSchemaInfos,
         Set<Expression> selectExpressions) {
+      // device path patterns in FROM clause
       List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
+
+      // a set that contains all measurement names,
       Set<String> measurementSet = new HashSet<>();
+      // a list of measurement name with alias (null if alias not exist)
       List<Pair<Expression, String>> measurementWithAliasList =
           analyzeMeasurements(queryStatement, measurementSet);
 
+      // a list contains all selected measurement paths
       List<MeasurementPath> allSelectedPaths = new ArrayList<>();
       for (PartialPath devicePattern : devicePatternList) {
+        // get matched device path and all measurement schema infos under this device
         List<DeviceSchemaInfo> deviceSchemaInfos = schemaTree.getMatchedDevices(devicePattern);
         allDeviceSchemaInfos.addAll(deviceSchemaInfos);
         for (DeviceSchemaInfo deviceSchema : deviceSchemaInfos) {
+          // add matched measurement path into allSelectedPaths
           allSelectedPaths.addAll(deviceSchema.getMeasurements(measurementSet));
         }
       }
+
+      // convert allSelectedPaths to a map from measurement name to corresponding paths
       Map<String, List<MeasurementPath>> measurementNameToPathsMap = new HashMap<>();
       for (MeasurementPath measurementPath : allSelectedPaths) {
         measurementNameToPathsMap
             .computeIfAbsent(measurementPath.getMeasurement(), key -> new ArrayList<>())
             .add(measurementPath);
       }
+      // check whether the datatype of paths which has the same measurement name are consistent
+      // if not, throw a SemanticException
       measurementNameToPathsMap.values().forEach(Analyzer::checkDataTypeConsistency);
 
+      // apply SLIMIT&SOFFSET and set outputExpressions & selectExpressions
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       ColumnPaginationController paginationController =
           new ColumnPaginationController(
               queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
-
       for (Pair<Expression, String> measurementWithAlias : measurementWithAliasList) {
         String measurement =
             ExpressionAnalyzer.getPathInSourceExpression(measurementWithAlias.left).toString();
@@ -338,12 +350,14 @@ public class Analyzer {
               continue;
             }
             if (paginationController.hasCurLimit()) {
+              // replace `*` with exact measurement name
               Expression replacedMeasurement =
                   ExpressionAnalyzer.replacePathInSourceExpression(
                       measurementWithAlias.left, measurementName);
               typeProvider.setType(replacedMeasurement.getExpressionString(), dataType);
               outputExpressions.add(new Pair<>(replacedMeasurement, measurementWithAlias.right));
               for (MeasurementPath measurementPath : measurementPaths) {
+                // replace `*` with exact measurement path
                 Expression tmpExpression =
                     ExpressionAnalyzer.replacePathInSourceExpression(
                         measurementWithAlias.left, measurementPath);
@@ -382,6 +396,30 @@ public class Analyzer {
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
       return measurementWithAliasList;
+    }
+
+    private Filter analyzeGlobalTimeFilter(QueryStatement queryStatement) {
+      Filter globalTimeFilter = null;
+      if (queryStatement.getWhereCondition() != null) {
+        globalTimeFilter =
+            ExpressionAnalyzer.transformToGlobalTimeFilter(
+                queryStatement.getWhereCondition().getPredicate());
+      }
+      if (queryStatement.isGroupByTime()) {
+        GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+        Filter groupByFilter =
+            new GroupByFilter(
+                groupByTimeComponent.getInterval(),
+                groupByTimeComponent.getSlidingStep(),
+                groupByTimeComponent.getStartTime(),
+                groupByTimeComponent.getEndTime());
+        if (globalTimeFilter == null) {
+          globalTimeFilter = groupByFilter;
+        } else {
+          globalTimeFilter = FilterFactory.and(globalTimeFilter, groupByFilter);
+        }
+      }
+      return globalTimeFilter;
     }
 
     private Expression analyzeWhere(QueryStatement queryStatement, SchemaTree schemaTree) {
@@ -448,6 +486,8 @@ public class Analyzer {
           break;
         }
       }
+
+      // reset outputExpressions & selectExpressions after applying SLIMIT/SOFFSET
       outputExpressions.clear();
       for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
         outputExpressions.add(
