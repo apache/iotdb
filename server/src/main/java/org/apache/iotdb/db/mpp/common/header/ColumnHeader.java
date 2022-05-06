@@ -55,7 +55,7 @@ public class ColumnHeader {
   }
 
   public boolean hasAlias() {
-    return alias != null;
+    return alias != null && !alias.isEmpty();
   }
 
   public void serialize(ByteBuffer byteBuffer) {
@@ -70,6 +70,14 @@ public class ColumnHeader {
     TSDataType dataType = TSDataType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     String alias = ReadWriteIOUtils.readString(byteBuffer);
     return new ColumnHeader(columnName, dataType, alias);
+  }
+
+  @Override
+  public String toString() {
+    if (hasAlias()) {
+      return String.format("%s(%s) [%s]", columnName, alias, dataType);
+    }
+    return String.format("%s [%s]", columnName, dataType);
   }
 
   @Override
