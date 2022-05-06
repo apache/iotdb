@@ -248,16 +248,14 @@ public class QueryExecution implements IQueryExecution {
   public Optional<TsBlock> getBatchResult() {
     try {
       if (resultHandle == null || resultHandle.isAborted() || resultHandle.isFinished()) {
+        // Once the resultHandle is finished, we should transit the state of this query to FINISHED.
+        // So that the corresponding cleanup work could be triggered.
+        logger.info("{} resultHandle for client is finished", getLogHeader());
+        stateMachine.transitionToFinished();
         return Optional.empty();
       }
       ListenableFuture<Void> blocked = resultHandle.isBlocked();
       blocked.get();
-      if (resultHandle.isFinished()) {
-        // Once the resultHandle is finished, we should transit the state of this query to FINISHED.
-        // So that the corresponding cleanup work could be triggered.
-        stateMachine.transitionToFinished();
-        return Optional.empty();
-      }
       return Optional.of(resultHandle.receive());
     } catch (ExecutionException | CancellationException e) {
       stateMachine.transitionToFailed(e);

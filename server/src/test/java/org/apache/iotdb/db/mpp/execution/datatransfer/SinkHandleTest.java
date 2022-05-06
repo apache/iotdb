@@ -394,6 +394,7 @@ public class SinkHandleTest {
             Utils.createMockTsBlockSerde(mockTsBlockSize),
             mockSinkHandleListener,
             mockClientManager);
+    sinkHandle.setRetryIntervalInMs(0L);
     Assert.assertTrue(sinkHandle.isFull().isDone());
     Assert.assertFalse(sinkHandle.isFinished());
     Assert.assertFalse(sinkHandle.isAborted());
@@ -421,7 +422,7 @@ public class SinkHandleTest {
                           && localFragmentInstanceId.equals(e.getSourceFragmentInstanceId())
                           && e.getStartSequenceId() == 0
                           && e.getBlockSizes().size() == numOfMockTsBlock));
-    } catch (InterruptedException | TException e) {
+    } catch (TException | InterruptedException e) {
       e.printStackTrace();
       Assert.fail();
     }

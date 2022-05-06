@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.datatransfer;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SourceHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TAcknowledgeDataBlockEvent;
@@ -51,7 +52,7 @@ public class SourceHandle implements ISourceHandle {
   private static final Logger logger = LoggerFactory.getLogger(SourceHandle.class);
 
   public static final int MAX_ATTEMPT_TIMES = 3;
-  private static final long RETRY_INTERVAL_IN_MS = 1000;
+  private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000;
 
   private final TEndPoint remoteEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
@@ -64,6 +65,7 @@ public class SourceHandle implements ISourceHandle {
 
   private final Map<Integer, TsBlock> sequenceIdToTsBlock = new HashMap<>();
   private final Map<Integer, Long> sequenceIdToDataBlockSize = new HashMap<>();
+  private long retryIntervalInMs;
 
   private final IClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient>
       dataBlockServiceClientManager;
@@ -100,6 +102,7 @@ public class SourceHandle implements ISourceHandle {
     this.sourceHandleListener = Validate.notNull(sourceHandleListener);
     bufferRetainedSizeInBytes = 0L;
     this.dataBlockServiceClientManager = dataBlockServiceClientManager;
+    this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
   }
 
   @Override
@@ -282,6 +285,11 @@ public class SourceHandle implements ISourceHandle {
         localPlanNodeId);
   }
 
+  @TestOnly
+  public void setRetryIntervalInMs(long retryIntervalInMs) {
+    this.retryIntervalInMs = retryIntervalInMs;
+  }
+
   /** Get data blocks from an upstream fragment instance. */
   class GetDataBlocksTask implements Runnable {
     private final int startSequenceId;
@@ -356,7 +364,7 @@ public class SourceHandle implements ISourceHandle {
             }
           }
           try {
-            Thread.sleep(RETRY_INTERVAL_IN_MS);
+            Thread.sleep(retryIntervalInMs);
           } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             synchronized (SourceHandle.this) {
@@ -408,7 +416,7 @@ public class SourceHandle implements ISourceHandle {
             }
           }
           try {
-            Thread.sleep(RETRY_INTERVAL_IN_MS);
+            Thread.sleep(retryIntervalInMs);
           } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             synchronized (SourceHandle.this) {

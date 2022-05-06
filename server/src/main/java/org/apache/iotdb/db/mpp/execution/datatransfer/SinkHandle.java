@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.datatransfer;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
@@ -52,7 +53,7 @@ public class SinkHandle implements ISinkHandle {
   private static final Logger logger = LoggerFactory.getLogger(SinkHandle.class);
 
   public static final int MAX_ATTEMPT_TIMES = 3;
-  private static final long RETRY_INTERVAL_IN_MS = 1000L;
+  private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000L;
 
   private final TEndPoint remoteEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
@@ -62,6 +63,7 @@ public class SinkHandle implements ISinkHandle {
   private final ExecutorService executorService;
   private final TsBlockSerde serde;
   private final SinkHandleListener sinkHandleListener;
+  private long retryIntervalInMs;
 
   // Use LinkedHashMap to meet 2 needs,
   //   1. Predictable iteration order so that removing buffered tsblocks can be efficient.
@@ -98,6 +100,7 @@ public class SinkHandle implements ISinkHandle {
     this.serde = Validate.notNull(serde);
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.dataBlockServiceClientManager = dataBlockServiceClientManager;
+    this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
   }
 
   @Override
@@ -178,7 +181,7 @@ public class SinkHandle implements ISinkHandle {
         if (attempt == MAX_ATTEMPT_TIMES) {
           throw e;
         }
-        Thread.sleep(RETRY_INTERVAL_IN_MS);
+        Thread.sleep(retryIntervalInMs);
       }
     }
   }
@@ -303,6 +306,11 @@ public class SinkHandle implements ISinkHandle {
         localFragmentInstanceId.instanceId);
   }
 
+  @TestOnly
+  public void setRetryIntervalInMs(long retryIntervalInMs) {
+    this.retryIntervalInMs = retryIntervalInMs;
+  }
+
   /**
    * Send a {@link org.apache.iotdb.mpp.rpc.thrift.TNewDataBlockEvent} to downstream fragment
    * instance.
@@ -354,7 +362,7 @@ public class SinkHandle implements ISinkHandle {
             sinkHandleListener.onFailure(SinkHandle.this, e);
           }
           try {
-            Thread.sleep(RETRY_INTERVAL_IN_MS);
+            Thread.sleep(retryIntervalInMs);
           } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             sinkHandleListener.onFailure(SinkHandle.this, e);
