@@ -184,7 +184,8 @@ public class Analyzer {
               ExpressionAnalyzer.searchSourceExpressions(selectExpr)) {
             sourceExpressions
                 .computeIfAbsent(
-                    ExpressionAnalyzer.getDeviceName(sourceExpression), key -> new HashSet<>())
+                    ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
+                    key -> new HashSet<>())
                 .add(sourceExpression);
           }
         }
@@ -306,7 +307,7 @@ public class Analyzer {
 
       for (Pair<Expression, String> measurementWithAlias : measurementWithAliasList) {
         String measurement =
-            ExpressionAnalyzer.getPathInLeafExpression(measurementWithAlias.left).toString();
+            ExpressionAnalyzer.getPathInSourceExpression(measurementWithAlias.left).toString();
         if (measurementNameToPathsMap.containsKey(measurement)) {
           List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurement);
           TSDataType dataType = measurementPaths.get(0).getSeriesType();
@@ -319,7 +320,7 @@ public class Analyzer {
             typeProvider.setType(measurementWithAlias.left.getExpressionString(), dataType);
             for (MeasurementPath measurementPath : measurementPaths) {
               Expression tmpExpression =
-                  ExpressionAnalyzer.replacePathInExpression(
+                  ExpressionAnalyzer.replacePathInSourceExpression(
                       measurementWithAlias.left, measurementPath);
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
               selectExpressions.add(tmpExpression);
@@ -338,13 +339,13 @@ public class Analyzer {
             }
             if (paginationController.hasCurLimit()) {
               Expression replacedMeasurement =
-                  ExpressionAnalyzer.replacePathInExpression(
+                  ExpressionAnalyzer.replacePathInSourceExpression(
                       measurementWithAlias.left, measurementName);
               typeProvider.setType(replacedMeasurement.getExpressionString(), dataType);
               outputExpressions.add(new Pair<>(replacedMeasurement, measurementWithAlias.right));
               for (MeasurementPath measurementPath : measurementPaths) {
                 Expression tmpExpression =
-                    ExpressionAnalyzer.replacePathInExpression(
+                    ExpressionAnalyzer.replacePathInSourceExpression(
                         measurementWithAlias.left, measurementPath);
                 typeProvider.setType(tmpExpression.getExpressionString(), dataType);
                 selectExpressions.add(tmpExpression);
@@ -370,7 +371,7 @@ public class Analyzer {
           queryStatement.getSelectComponent().getResultColumns().stream()
               .map(
                   resultColumn ->
-                      ExpressionAnalyzer.getMeasurementWithAliasInExpression(
+                      ExpressionAnalyzer.getMeasurementWithAliasInSourceExpression(
                           resultColumn.getExpression(), resultColumn.getAlias()))
               .collect(Collectors.toList());
       measurementSet.addAll(
@@ -393,7 +394,7 @@ public class Analyzer {
       if (rewrittenPredicates.size() == 1) {
         return rewrittenPredicates.get(0);
       } else {
-        return ExpressionAnalyzer.constructBinaryFilterTreeWithAnd(
+        return ExpressionUtils.constructBinaryFilterTreeWithAnd(
             rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
       }
     }
@@ -411,7 +412,7 @@ public class Analyzer {
         } else {
           deviceToQueryFilter.put(
               deviceSchemaInfo.getDevicePath().getFullPath(),
-              ExpressionAnalyzer.constructBinaryFilterTreeWithAnd(
+              ExpressionUtils.constructBinaryFilterTreeWithAnd(
                   rewrittenPredicates.stream().distinct().collect(Collectors.toList())));
         }
       }

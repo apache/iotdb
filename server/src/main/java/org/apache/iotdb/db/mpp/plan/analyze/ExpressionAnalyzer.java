@@ -30,9 +30,7 @@ import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
-import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.query.expression.binary.BinaryExpression;
-import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
 import org.apache.iotdb.db.query.expression.binary.EqualToExpression;
 import org.apache.iotdb.db.query.expression.binary.GreaterEqualExpression;
 import org.apache.iotdb.db.query.expression.binary.GreaterThanExpression;
@@ -40,23 +38,16 @@ import org.apache.iotdb.db.query.expression.binary.LessEqualExpression;
 import org.apache.iotdb.db.query.expression.binary.LessThanExpression;
 import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.query.expression.binary.LogicOrExpression;
-import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
-import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.query.expression.binary.NonEqualExpression;
-import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.InExpression;
-import org.apache.iotdb.db.query.expression.unary.LikeExpression;
 import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
-import org.apache.iotdb.db.query.expression.unary.NegationExpression;
-import org.apache.iotdb.db.query.expression.unary.RegularExpression;
 import org.apache.iotdb.db.query.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -72,8 +63,84 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.constructTimeFilter;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTimeSeriesOperands;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUnaryExpressions;
+
 public class ExpressionAnalyzer {
 
+  /**
+   * Check if all suffix paths in expression are measurements or one-level wildcards in ALIGN BY
+   * DEVICE query. If not, throw a {@link SemanticException}.
+   *
+   * @param expression expression to be checked
+   */
+  public static void checkIsAllMeasurement(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      checkIsAllMeasurement(((BinaryExpression) expression).getLeftExpression());
+      checkIsAllMeasurement(((BinaryExpression) expression).getRightExpression());
+    } else if (expression instanceof UnaryExpression) {
+      checkIsAllMeasurement(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      for (Expression childExpression : expression.getExpressions()) {
+        checkIsAllMeasurement(childExpression);
+      }
+    } else if (expression instanceof TimeSeriesOperand) {
+      PartialPath path = ((TimeSeriesOperand) expression).getPath();
+      if (path.getNodes().length > 1
+          || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        throw new SemanticException(
+            "ALIGN BY DEVICE: the suffix paths can only be measurement or one-level wildcard");
+      }
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      // do nothing
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  /**
+   * Check if expression is a built-in aggregation function. If not, throw a {@link
+   * SemanticException}.
+   *
+   * @param expression expression to be checked
+   */
+  public static void checkIsAllAggregation(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      checkIsAllAggregation(((BinaryExpression) expression).getLeftExpression());
+      checkIsAllAggregation(((BinaryExpression) expression).getRightExpression());
+    } else if (expression instanceof UnaryExpression) {
+      checkIsAllAggregation(((UnaryExpression) expression).getExpression());
+    } else if (expression instanceof FunctionExpression) {
+      if (expression.getExpressions().size() != 1
+          || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand)) {
+        throw new SemanticException(
+            "The argument of the aggregation function must be a time series.");
+      }
+    } else if (expression instanceof TimeSeriesOperand) {
+      throw new SemanticException(
+          "Raw data queries and aggregated queries are not allowed to appear at the same time.");
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      // do nothing
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  /**
+   * Concat suffix path in SELECT or WITHOUT NULL clause with the prefix path in the FROM clause.
+   * and Construct a {@link PathPatternTree}.
+   *
+   * @param expression expression in SELECT or WITHOUT NULL clause which may include suffix paths
+   * @param prefixPaths prefix paths in the FROM clause
+   * @param patternTree a PathPatternTree contains all paths to query
+   * @return the concatenated expression list
+   */
   public static List<Expression> concatExpressionWithSuffixPaths(
       Expression expression, List<PartialPath> prefixPaths, PathPatternTree patternTree) {
     if (expression instanceof BinaryExpression) {
@@ -122,6 +189,14 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /**
+   * Concat suffix path in WHERE clause with the prefix path in the FROM clause and Construct a
+   * {@link PathPatternTree}. This method return void, i.e. will not rewrite the statement.
+   *
+   * @param predicate expression in WHERE clause
+   * @param prefixPaths prefix paths in the FROM clause
+   * @param patternTree a PathPatternTree contains all paths to query
+   */
   public static void constructPatternTreeFromQueryFilter(
       Expression predicate, List<PartialPath> prefixPaths, PathPatternTree patternTree) {
     if (predicate instanceof BinaryExpression) {
@@ -138,9 +213,6 @@ public class ExpressionAnalyzer {
       }
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) predicate).getPath();
-      if (SQLConstant.isReservedPath(rawPath)) {
-        return;
-      }
       if (rawPath.getFullPath().startsWith(SQLConstant.ROOT + TsFileConstant.PATH_SEPARATOR)) {
         patternTree.appendPath(rawPath);
         return;
@@ -157,6 +229,13 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /**
+   * Bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
+   * Expression.
+   *
+   * @param schemaTree interface for querying schema information
+   * @return the expression list after binding schema
+   */
   public static List<Expression> removeWildcardInExpression(
       Expression expression, SchemaTree schemaTree) {
     if (expression instanceof BinaryExpression) {
@@ -175,8 +254,7 @@ public class ExpressionAnalyzer {
     } else if (expression instanceof FunctionExpression) {
       // One by one, remove the wildcards from the input expressions. In most cases, an expression
       // will produce multiple expressions after removing the wildcards. We use extendedExpressions
-      // to
-      // collect the produced expressions.
+      // to collect the produced expressions.
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression originExpression : expression.getExpressions()) {
         List<Expression> actualExpressions =
@@ -208,377 +286,15 @@ public class ExpressionAnalyzer {
     }
   }
 
-  private static List<Expression> reconstructTimeSeriesOperands(
-      List<? extends PartialPath> actualPaths) {
-    List<Expression> resultExpressions = new ArrayList<>();
-    for (PartialPath actualPath : actualPaths) {
-      resultExpressions.add(new TimeSeriesOperand(actualPath));
-    }
-    return resultExpressions;
-  }
-
-  private static List<Expression> reconstructFunctionExpressions(
-      FunctionExpression expression, List<List<Expression>> childExpressionsList) {
-    List<Expression> resultExpressions = new ArrayList<>();
-    for (List<Expression> functionExpressions : childExpressionsList) {
-      resultExpressions.add(
-          new FunctionExpression(
-              expression.getFunctionName(),
-              expression.getFunctionAttributes(),
-              functionExpressions));
-    }
-    return resultExpressions;
-  }
-
-  private static List<Expression> reconstructUnaryExpressions(
-      UnaryExpression expression, List<Expression> childExpressions) {
-    List<Expression> resultExpressions = new ArrayList<>();
-    for (Expression childExpression : childExpressions) {
-      switch (expression.getExpressionType()) {
-        case IN:
-          resultExpressions.add(
-              new InExpression(
-                  childExpression,
-                  ((InExpression) expression).isNotIn(),
-                  ((InExpression) expression).getValues()));
-          break;
-        case LIKE:
-          resultExpressions.add(
-              new LikeExpression(
-                  childExpression,
-                  ((LikeExpression) expression).getPatternString(),
-                  ((LikeExpression) expression).getPattern()));
-          break;
-        case LOGIC_NOT:
-          resultExpressions.add(new LogicNotExpression(childExpression));
-          break;
-        case NEGATION:
-          resultExpressions.add(new NegationExpression(childExpression));
-          break;
-        case REGEXP:
-          resultExpressions.add(
-              new RegularExpression(
-                  childExpression,
-                  ((RegularExpression) expression).getPatternString(),
-                  ((RegularExpression) expression).getPattern()));
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "unsupported expression type: " + expression.getExpressionType());
-      }
-    }
-    return resultExpressions;
-  }
-
-  private static List<Expression> reconstructBinaryExpressions(
-      ExpressionType expressionType,
-      List<Expression> leftExpressions,
-      List<Expression> rightExpressions) {
-    List<Expression> resultExpressions = new ArrayList<>();
-    for (Expression le : leftExpressions) {
-      for (Expression re : rightExpressions) {
-        switch (expressionType) {
-          case ADDITION:
-            resultExpressions.add(new AdditionExpression(le, re));
-            break;
-          case SUBTRACTION:
-            resultExpressions.add(new SubtractionExpression(le, re));
-            break;
-          case MULTIPLICATION:
-            resultExpressions.add(new MultiplicationExpression(le, re));
-            break;
-          case DIVISION:
-            resultExpressions.add(new DivisionExpression(le, re));
-            break;
-          case MODULO:
-            resultExpressions.add(new ModuloExpression(le, re));
-            break;
-          case LESS_THAN:
-            resultExpressions.add(new LessThanExpression(le, re));
-            break;
-          case LESS_EQUAL:
-            resultExpressions.add(new LessEqualExpression(le, re));
-            break;
-          case GREATER_THAN:
-            resultExpressions.add(new GreaterThanExpression(le, re));
-            break;
-          case GREATER_EQUAL:
-            resultExpressions.add(new GreaterEqualExpression(le, re));
-            break;
-          case EQUAL_TO:
-            resultExpressions.add(new EqualToExpression(le, re));
-            break;
-          case NON_EQUAL:
-            resultExpressions.add(new NonEqualExpression(le, re));
-            break;
-          case LOGIC_AND:
-            resultExpressions.add(new LogicAndExpression(le, re));
-            break;
-          case LOGIC_OR:
-            resultExpressions.add(new LogicOrExpression(le, re));
-            break;
-          default:
-            throw new IllegalArgumentException("unsupported expression type: " + expressionType);
-        }
-      }
-    }
-    return resultExpressions;
-  }
-
-  private static <T> void cartesianProduct(
-      List<List<T>> dimensionValue, List<List<T>> resultList, int layer, List<T> currentList) {
-    if (layer < dimensionValue.size() - 1) {
-      if (dimensionValue.get(layer).isEmpty()) {
-        cartesianProduct(dimensionValue, resultList, layer + 1, currentList);
-      } else {
-        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
-          List<T> list = new ArrayList<>(currentList);
-          list.add(dimensionValue.get(layer).get(i));
-          cartesianProduct(dimensionValue, resultList, layer + 1, list);
-        }
-      }
-    } else if (layer == dimensionValue.size() - 1) {
-      if (dimensionValue.get(layer).isEmpty()) {
-        resultList.add(currentList);
-      } else {
-        for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
-          List<T> list = new ArrayList<>(currentList);
-          list.add(dimensionValue.get(layer).get(i));
-          resultList.add(list);
-        }
-      }
-    }
-  }
-
-  public static List<Expression> searchSourceExpressions(Expression expression) {
-    if (expression instanceof BinaryExpression) {
-      List<Expression> resultExpressions = new ArrayList<>();
-      resultExpressions.addAll(
-          searchSourceExpressions(((BinaryExpression) expression).getLeftExpression()));
-      resultExpressions.addAll(
-          searchSourceExpressions(((BinaryExpression) expression).getRightExpression()));
-      return resultExpressions;
-    } else if (expression instanceof UnaryExpression) {
-      return searchSourceExpressions(((UnaryExpression) expression).getExpression());
-    } else if (expression instanceof FunctionExpression) {
-      if (expression.isBuiltInAggregationFunctionExpression()) {
-        return Collections.singletonList(expression);
-      }
-      List<Expression> resultExpressions = new ArrayList<>();
-      for (Expression childExpression : expression.getExpressions()) {
-        resultExpressions.addAll(searchSourceExpressions(childExpression));
-      }
-      return resultExpressions;
-    } else if (expression instanceof TimeSeriesOperand) {
-      return Collections.singletonList(expression);
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
-      return Collections.emptyList();
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
-  public static Pair<Expression, String> getMeasurementWithAliasInExpression(
-      Expression expression, String alias) {
-    if (expression instanceof TimeSeriesOperand) {
-      String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
-      if (measurement.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-        throw new SemanticException(
-            "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
-      }
-      if (alias != null && measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-        throw new SemanticException(
-            String.format(
-                "ALIGN BY DEVICE: alias '%s' can only be matched with one measurement", alias));
-      }
-      Expression measurementExpression;
-      try {
-        measurementExpression = new TimeSeriesOperand(new PartialPath(measurement));
-        return new Pair<>(measurementExpression, alias);
-      } catch (IllegalPathException e) {
-        throw new SemanticException("ALIGN BY DEVICE: illegal measurement name: " + measurement);
-      }
-    } else if (expression instanceof FunctionExpression) {
-      if (expression.getExpressions().size() > 1) {
-        throw new SemanticException(
-            "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
-      }
-      Expression measurementFunctionExpression =
-          new FunctionExpression(
-              ((FunctionExpression) expression).getFunctionName(),
-              ((FunctionExpression) expression).getFunctionAttributes(),
-              Collections.singletonList(
-                  getMeasurementWithAliasInExpression(expression.getExpressions().get(0), alias)
-                      .left));
-      return new Pair<>(measurementFunctionExpression, alias);
-    } else {
-      throw new SemanticException(
-          "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
-    }
-  }
-
-  public static PartialPath getPathInLeafExpression(Expression expression) {
-    if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath();
-    } else if (expression instanceof FunctionExpression) {
-      Validate.isTrue(expression.getExpressions().size() == 1);
-      Validate.isTrue(expression.getExpressions().get(0) instanceof TimeSeriesOperand);
-      return ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
-  public static Expression replacePathInExpression(Expression expression, PartialPath path) {
-    if (expression instanceof TimeSeriesOperand) {
-      return new TimeSeriesOperand(path);
-    } else if (expression instanceof FunctionExpression) {
-      return new FunctionExpression(
-          ((FunctionExpression) expression).getFunctionName(),
-          ((FunctionExpression) expression).getFunctionAttributes(),
-          Collections.singletonList(new TimeSeriesOperand(path)));
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
-  public static Expression replacePathInExpression(Expression expression, String path) {
-    PartialPath newPath;
-    try {
-      newPath = new PartialPath(path);
-    } catch (IllegalPathException e) {
-      throw new SemanticException("illegal path: " + path);
-    }
-    return replacePathInExpression(expression, newPath);
-  }
-
-  public static Filter transformToGlobalTimeFilter(Expression predicate) {
-    if (predicate instanceof LogicAndExpression) {
-      Filter leftTimeFilter =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
-      Filter rightTimeFilter =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
-      if (leftTimeFilter != null && rightTimeFilter != null) {
-        return FilterFactory.and(leftTimeFilter, rightTimeFilter);
-      } else if (leftTimeFilter != null) {
-        return leftTimeFilter;
-      } else {
-        return rightTimeFilter;
-      }
-    } else if (predicate instanceof LogicOrExpression) {
-      Filter leftTimeFilter =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
-      Filter rightTimeFilter =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
-      if (leftTimeFilter != null && rightTimeFilter != null) {
-        return FilterFactory.or(leftTimeFilter, rightTimeFilter);
-      }
-      return null;
-    } else if (predicate instanceof LogicNotExpression) {
-      Filter childTimeFilter =
-          transformToGlobalTimeFilter(((UnaryExpression) predicate).getExpression());
-      if (childTimeFilter != null) {
-        return FilterFactory.not(childTimeFilter);
-      }
-      return null;
-    } else if (predicate instanceof GreaterEqualExpression
-        || predicate instanceof GreaterThanExpression
-        || predicate instanceof LessEqualExpression
-        || predicate instanceof LessThanExpression
-        || predicate instanceof EqualToExpression
-        || predicate instanceof NonEqualExpression) {
-      Filter timeInLeftFilter =
-          constructTimeFilter(
-              predicate.getExpressionType(),
-              ((BinaryExpression) predicate).getLeftExpression(),
-              ((BinaryExpression) predicate).getRightExpression());
-      if (timeInLeftFilter != null) {
-        return timeInLeftFilter;
-      }
-      return constructTimeFilter(
-          predicate.getExpressionType(),
-          ((BinaryExpression) predicate).getRightExpression(),
-          ((BinaryExpression) predicate).getLeftExpression());
-    } else if (predicate instanceof InExpression) {
-      Expression timeExpression = ((InExpression) predicate).getExpression();
-      if (timeExpression instanceof TimestampOperand) {
-        return TimeFilter.in(
-            ((InExpression) predicate)
-                .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
-            ((InExpression) predicate).isNotIn());
-      }
-      return null;
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
-    }
-  }
-
-  private static Filter constructTimeFilter(
-      ExpressionType expressionType, Expression timeExpression, Expression valueExpression) {
-    if (timeExpression instanceof TimestampOperand
-        && valueExpression instanceof ConstantOperand
-        && ((ConstantOperand) valueExpression).getDataType() == TSDataType.INT64) {
-      long value = Long.parseLong(((ConstantOperand) valueExpression).getValueString());
-      switch (expressionType) {
-        case LESS_THAN:
-          return TimeFilter.lt(value);
-        case LESS_EQUAL:
-          return TimeFilter.ltEq(value);
-        case GREATER_THAN:
-          return TimeFilter.gt(value);
-        case GREATER_EQUAL:
-          return TimeFilter.gtEq(value);
-        case EQUAL_TO:
-          return TimeFilter.eq(value);
-        case NON_EQUAL:
-          return TimeFilter.notEq(value);
-        default:
-          throw new IllegalArgumentException("unsupported expression type: " + expressionType);
-      }
-    }
-    return null;
-  }
-
-  public static void setTypeProvider(Expression expression, TypeProvider typeProvider) {
-    if (expression instanceof BinaryExpression) {
-      setTypeProvider(((BinaryExpression) expression).getLeftExpression(), typeProvider);
-      setTypeProvider(((BinaryExpression) expression).getRightExpression(), typeProvider);
-    } else if (expression instanceof UnaryExpression) {
-      setTypeProvider(((UnaryExpression) expression).getExpression(), typeProvider);
-    } else if (expression instanceof FunctionExpression) {
-      if (expression.isBuiltInAggregationFunctionExpression()) {
-        Validate.isTrue(expression.getExpressions().size() == 1);
-        Expression childExpression = expression.getExpressions().get(0);
-        PartialPath path = ((TimeSeriesOperand) childExpression).getPath();
-        typeProvider.setType(
-            expression.getExpressionString(),
-            SchemaUtils.getSeriesTypeByPath(
-                path, ((FunctionExpression) expression).getFunctionName()));
-        setTypeProvider(childExpression, typeProvider);
-      } else {
-        for (Expression childExpression : expression.getExpressions()) {
-          setTypeProvider(childExpression, typeProvider);
-        }
-      }
-    } else if (expression instanceof TimeSeriesOperand) {
-      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
-      typeProvider.setType(
-          rawPath.isMeasurementAliasExists()
-              ? rawPath.getFullPathWithAlias()
-              : rawPath.getFullPath(),
-          rawPath.getSeriesType());
-    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
-      // do nothing
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
+  /**
+   * Concat suffix path in WHERE clause with the prefix path in the FROM clause. And then, bind
+   * schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in Expression.
+   *
+   * @param prefixPaths prefix paths in the FROM clause
+   * @param schemaTree interface for querying schema information
+   * @param typeProvider a map to record output symbols and their data types
+   * @return the expression list with full path and after binding schema
+   */
   public static List<Expression> removeWildcardInQueryFilter(
       Expression predicate,
       List<PartialPath> prefixPaths,
@@ -649,6 +365,14 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /**
+   * Concat measurement in WHERE clause with device path. And then, bind schema ({@link PartialPath}
+   * -> {@link MeasurementPath}) and removes wildcards.
+   *
+   * @param deviceSchemaInfo device path and schema infos of measurements under this device
+   * @param typeProvider a map to record output symbols and their data types
+   * @return the expression list with full path and after binding schema
+   */
   public static List<Expression> removeWildcardInQueryFilterByDevice(
       Expression predicate, DeviceSchemaInfo deviceSchemaInfo, TypeProvider typeProvider) {
     if (predicate instanceof BinaryExpression) {
@@ -711,28 +435,111 @@ public class ExpressionAnalyzer {
     }
   }
 
-  public static Expression constructBinaryFilterTreeWithAnd(List<Expression> expressions) {
-    // TODO: consider AVL tree
-    if (expressions.size() == 2) {
-      return new LogicAndExpression(expressions.get(0), expressions.get(1));
+  /**
+   * Extract global time filter from query filter.
+   *
+   * @param predicate raw query filter
+   * @return global time filter
+   */
+  public static Filter transformToGlobalTimeFilter(Expression predicate) {
+    if (predicate instanceof LogicAndExpression) {
+      Filter leftTimeFilter =
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
+      Filter rightTimeFilter =
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
+      if (leftTimeFilter != null && rightTimeFilter != null) {
+        return FilterFactory.and(leftTimeFilter, rightTimeFilter);
+      } else if (leftTimeFilter != null) {
+        return leftTimeFilter;
+      } else {
+        return rightTimeFilter;
+      }
+    } else if (predicate instanceof LogicOrExpression) {
+      Filter leftTimeFilter =
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
+      Filter rightTimeFilter =
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
+      if (leftTimeFilter != null && rightTimeFilter != null) {
+        return FilterFactory.or(leftTimeFilter, rightTimeFilter);
+      }
+      return null;
+    } else if (predicate instanceof LogicNotExpression) {
+      Filter childTimeFilter =
+          transformToGlobalTimeFilter(((UnaryExpression) predicate).getExpression());
+      if (childTimeFilter != null) {
+        return FilterFactory.not(childTimeFilter);
+      }
+      return null;
+    } else if (predicate instanceof GreaterEqualExpression
+        || predicate instanceof GreaterThanExpression
+        || predicate instanceof LessEqualExpression
+        || predicate instanceof LessThanExpression
+        || predicate instanceof EqualToExpression
+        || predicate instanceof NonEqualExpression) {
+      Filter timeInLeftFilter =
+          constructTimeFilter(
+              predicate.getExpressionType(),
+              ((BinaryExpression) predicate).getLeftExpression(),
+              ((BinaryExpression) predicate).getRightExpression());
+      if (timeInLeftFilter != null) {
+        return timeInLeftFilter;
+      }
+      return constructTimeFilter(
+          predicate.getExpressionType(),
+          ((BinaryExpression) predicate).getRightExpression(),
+          ((BinaryExpression) predicate).getLeftExpression());
+    } else if (predicate instanceof InExpression) {
+      Expression timeExpression = ((InExpression) predicate).getExpression();
+      if (timeExpression instanceof TimestampOperand) {
+        return TimeFilter.in(
+            ((InExpression) predicate)
+                .getValues().stream().map(Long::parseLong).collect(Collectors.toSet()),
+            ((InExpression) predicate).isNotIn());
+      }
+      return null;
     } else {
-      return new LogicAndExpression(
-          expressions.get(0),
-          constructBinaryFilterTreeWithAnd(expressions.subList(1, expressions.size())));
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + predicate.getExpressionType());
     }
   }
 
-  public static String getDeviceName(Expression expression) {
-    if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath().getDeviceIdString();
+  /**
+   * Search for subexpressions that can be queried natively, including time series raw data and
+   * built-in aggregate functions.
+   *
+   * @param expression expression to be searched
+   * @return searched subexpression list
+   */
+  public static List<Expression> searchSourceExpressions(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      List<Expression> resultExpressions = new ArrayList<>();
+      resultExpressions.addAll(
+          searchSourceExpressions(((BinaryExpression) expression).getLeftExpression()));
+      resultExpressions.addAll(
+          searchSourceExpressions(((BinaryExpression) expression).getRightExpression()));
+      return resultExpressions;
+    } else if (expression instanceof UnaryExpression) {
+      return searchSourceExpressions(((UnaryExpression) expression).getExpression());
     } else if (expression instanceof FunctionExpression) {
-      return getDeviceName(expression.getExpressions().get(0));
+      if (expression.isBuiltInAggregationFunctionExpression()) {
+        return Collections.singletonList(expression);
+      }
+      List<Expression> resultExpressions = new ArrayList<>();
+      for (Expression childExpression : expression.getExpressions()) {
+        resultExpressions.addAll(searchSourceExpressions(childExpression));
+      }
+      return resultExpressions;
+    } else if (expression instanceof TimeSeriesOperand) {
+      return Collections.singletonList(expression);
+    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      return Collections.emptyList();
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
     }
   }
 
+  /** Returns all the timeseries path in the expression */
   public static Set<PartialPath> collectPaths(Expression expression) {
     if (expression instanceof BinaryExpression) {
       Set<PartialPath> resultSet =
@@ -757,24 +564,36 @@ public class ExpressionAnalyzer {
     }
   }
 
-  public static void checkIsAllMeasurement(Expression expression) {
+  /** Update typeProvider by expression. */
+  public static void setTypeProvider(Expression expression, TypeProvider typeProvider) {
     if (expression instanceof BinaryExpression) {
-      checkIsAllMeasurement(((BinaryExpression) expression).getLeftExpression());
-      checkIsAllMeasurement(((BinaryExpression) expression).getRightExpression());
+      setTypeProvider(((BinaryExpression) expression).getLeftExpression(), typeProvider);
+      setTypeProvider(((BinaryExpression) expression).getRightExpression(), typeProvider);
     } else if (expression instanceof UnaryExpression) {
-      checkIsAllMeasurement(((UnaryExpression) expression).getExpression());
+      setTypeProvider(((UnaryExpression) expression).getExpression(), typeProvider);
     } else if (expression instanceof FunctionExpression) {
-      for (Expression childExpression : expression.getExpressions()) {
-        checkIsAllMeasurement(childExpression);
+      if (expression.isBuiltInAggregationFunctionExpression()) {
+        Validate.isTrue(expression.getExpressions().size() == 1);
+        Expression childExpression = expression.getExpressions().get(0);
+        PartialPath path = ((TimeSeriesOperand) childExpression).getPath();
+        typeProvider.setType(
+            expression.getExpressionString(),
+            SchemaUtils.getSeriesTypeByPath(
+                path, ((FunctionExpression) expression).getFunctionName()));
+        setTypeProvider(childExpression, typeProvider);
+      } else {
+        for (Expression childExpression : expression.getExpressions()) {
+          setTypeProvider(childExpression, typeProvider);
+        }
       }
     } else if (expression instanceof TimeSeriesOperand) {
-      PartialPath path = ((TimeSeriesOperand) expression).getPath();
-      if (path.getNodes().length > 1
-          || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-        throw new SemanticException(
-            "ALIGN BY DEVICE: the paths can only be measurement or one-level wildcard");
-      }
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
+      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
+      typeProvider.setType(
+          rawPath.isMeasurementAliasExists()
+              ? rawPath.getFullPathWithAlias()
+              : rawPath.getFullPath(),
+          rawPath.getSeriesType());
+    } else if (expression instanceof ConstantOperand || expression instanceof TimestampOperand) {
       // do nothing
     } else {
       throw new IllegalArgumentException(
@@ -782,26 +601,93 @@ public class ExpressionAnalyzer {
     }
   }
 
-  public static void checkIsAllAggregation(Expression expression) {
-    if (expression instanceof BinaryExpression) {
-      checkIsAllAggregation(((BinaryExpression) expression).getLeftExpression());
-      checkIsAllAggregation(((BinaryExpression) expression).getRightExpression());
-    } else if (expression instanceof UnaryExpression) {
-      checkIsAllAggregation(((UnaryExpression) expression).getExpression());
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Method can only be used in source expression
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public static Expression replacePathInSourceExpression(
+      Expression expression, PartialPath replacedPath) {
+    if (expression instanceof TimeSeriesOperand) {
+      return new TimeSeriesOperand(replacedPath);
     } else if (expression instanceof FunctionExpression) {
-      if (expression.getExpressions().size() != 1
-          || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand)) {
-        throw new SemanticException(
-            "The argument of the aggregation function must be a time series.");
-      }
-    } else if (expression instanceof TimeSeriesOperand) {
-      throw new SemanticException(
-          "Raw data queries and aggregated queries are not allowed to appear at the same time.");
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
-      // do nothing
+      return new FunctionExpression(
+          ((FunctionExpression) expression).getFunctionName(),
+          ((FunctionExpression) expression).getFunctionAttributes(),
+          Collections.singletonList(new TimeSeriesOperand(replacedPath)));
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static Expression replacePathInSourceExpression(
+      Expression expression, String replacedPathString) {
+    PartialPath replacedPath;
+    try {
+      replacedPath = new PartialPath(replacedPathString);
+    } catch (IllegalPathException e) {
+      throw new SemanticException("illegal path: " + replacedPathString);
+    }
+    return replacePathInSourceExpression(expression, replacedPath);
+  }
+
+  public static PartialPath getPathInSourceExpression(Expression expression) {
+    if (expression instanceof TimeSeriesOperand) {
+      return ((TimeSeriesOperand) expression).getPath();
+    } else if (expression instanceof FunctionExpression) {
+      Validate.isTrue(expression.getExpressions().size() == 1);
+      Validate.isTrue(expression.getExpressions().get(0) instanceof TimeSeriesOperand);
+      return ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static String getDeviceNameInSourceExpression(Expression expression) {
+    if (expression instanceof TimeSeriesOperand) {
+      return ((TimeSeriesOperand) expression).getPath().getDeviceIdString();
+    } else if (expression instanceof FunctionExpression) {
+      return getDeviceNameInSourceExpression(expression.getExpressions().get(0));
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
+  public static Pair<Expression, String> getMeasurementWithAliasInSourceExpression(
+      Expression expression, String alias) {
+    if (expression instanceof TimeSeriesOperand) {
+      String measurement = ((TimeSeriesOperand) expression).getPath().getMeasurement();
+      if (alias != null && measurement.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+        throw new SemanticException(
+            String.format(
+                "ALIGN BY DEVICE: alias '%s' can only be matched with one measurement", alias));
+      }
+      Expression measurementExpression;
+      try {
+        measurementExpression = new TimeSeriesOperand(new PartialPath(measurement));
+        return new Pair<>(measurementExpression, alias);
+      } catch (IllegalPathException e) {
+        throw new SemanticException("ALIGN BY DEVICE: illegal measurement name: " + measurement);
+      }
+    } else if (expression instanceof FunctionExpression) {
+      if (expression.getExpressions().size() > 1) {
+        throw new SemanticException(
+            "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
+      }
+      Expression measurementFunctionExpression =
+          new FunctionExpression(
+              ((FunctionExpression) expression).getFunctionName(),
+              ((FunctionExpression) expression).getFunctionAttributes(),
+              Collections.singletonList(
+                  getMeasurementWithAliasInSourceExpression(
+                          expression.getExpressions().get(0), alias)
+                      .left));
+      return new Pair<>(measurementFunctionExpression, alias);
+    } else {
+      throw new SemanticException(
+          "ALIGN BY DEVICE: prefix path in SELECT clause can only be one measurement or one-layer wildcard.");
     }
   }
 }
