@@ -61,7 +61,8 @@ public class LongPreviousFill implements IFill {
       } else {
         // update the value using last non-null value
         value = column.getLong(size - 1);
-        return new RunLengthEncodedColumn(new LongColumn(1, Optional.empty(), new long[] {value}), size);
+        return new RunLengthEncodedColumn(
+            new LongColumn(1, Optional.empty(), new long[] {value}), size);
       }
     } else {
       long[] array = new long[size];

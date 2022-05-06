@@ -61,7 +61,8 @@ public class DoublePreviousFill implements IFill {
       } else {
         // update the value using last non-null value
         value = column.getDouble(size - 1);
-        return new RunLengthEncodedColumn(new DoubleColumn(1, Optional.empty(), new double[] {value}), size);
+        return new RunLengthEncodedColumn(
+            new DoubleColumn(1, Optional.empty(), new double[] {value}), size);
       }
     } else {
       double[] array = new double[size];

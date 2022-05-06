@@ -62,7 +62,8 @@ public class BinaryPreviousFill implements IFill {
       } else {
         // update the value using last non-null value
         value = column.getBinary(size - 1);
-        return new RunLengthEncodedColumn(new BinaryColumn(1, Optional.empty(), new Binary[] {value}), size);
+        return new RunLengthEncodedColumn(
+            new BinaryColumn(1, Optional.empty(), new Binary[] {value}), size);
       }
     } else {
       Binary[] array = new Binary[size];

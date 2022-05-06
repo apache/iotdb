@@ -61,7 +61,8 @@ public class BooleanPreviousFill implements IFill {
       } else {
         // update the value using last non-null value
         value = column.getBoolean(size - 1);
-        return new RunLengthEncodedColumn(new BooleanColumn(1, Optional.empty(), new boolean[] {value}), size);
+        return new RunLengthEncodedColumn(
+            new BooleanColumn(1, Optional.empty(), new boolean[] {value}), size);
       }
     } else {
       boolean[] array = new boolean[size];

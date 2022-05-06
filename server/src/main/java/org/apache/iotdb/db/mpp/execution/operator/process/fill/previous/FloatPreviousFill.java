@@ -61,7 +61,8 @@ public class FloatPreviousFill implements IFill {
       } else {
         // update the value using last non-null value
         value = column.getFloat(size - 1);
-        return new RunLengthEncodedColumn(new FloatColumn(1, Optional.empty(), new float[] {value}), size);
+        return new RunLengthEncodedColumn(
+            new FloatColumn(1, Optional.empty(), new float[] {value}), size);
       }
     } else {
       float[] array = new float[size];
