@@ -78,8 +78,21 @@ public class UDTFKSigma implements UDTF {
     long timestamp = row.getTime();
     if (Double.isFinite(value) && !Double.isNaN(value)) {
       if (v.isFull()) {
-        double frontValue = (double) v.pop();
-        v.push(Util.getValueAsDouble(row));
+        double frontValue = Double.parseDouble(v.pop().toString());
+        switch (dataType) {
+          case INT32:
+            v.push(row.getInt(0));
+            break;
+          case INT64:
+            v.push(row.getLong(0));
+            break;
+          case DOUBLE:
+            v.push(row.getDouble(0));
+            break;
+          case FLOAT:
+            v.push(row.getFloat(0));
+            break;
+        }
         t.pop();
         t.push(timestamp);
         this.sumX1 = this.sumX1 - frontValue + value;
@@ -91,7 +104,20 @@ public class UDTFKSigma implements UDTF {
           Util.putValue(collector, dataType, timestamp, Util.getValueAsObject(row));
         }
       } else {
-        v.push(Util.getValueAsDouble(row));
+        switch (dataType) {
+          case INT32:
+            v.push(row.getInt(0));
+            break;
+          case INT64:
+            v.push(row.getLong(0));
+            break;
+          case DOUBLE:
+            v.push(row.getDouble(0));
+            break;
+          case FLOAT:
+            v.push(row.getFloat(0));
+            break;
+        }
         t.push(timestamp);
         this.sumX1 = this.sumX1 + value;
         this.sumX2 = this.sumX2 + value * value;
@@ -102,7 +128,7 @@ public class UDTFKSigma implements UDTF {
           for (int i = 0; i < v.getSize(); i++) {
             Object v = this.v.get(i);
             timestamp = this.t.get(i);
-            if (Math.abs((double) v - mean) > multipleK * stddev) {
+            if (Math.abs(Double.parseDouble(v.toString()) - mean) > multipleK * stddev) {
               Util.putValue(collector, dataType, timestamp, v);
             }
           }
@@ -118,7 +144,7 @@ public class UDTFKSigma implements UDTF {
       for (int i = 0; i < v.getSize(); i++) {
         Object v = this.v.get(i);
         long timestamp = this.t.get(i);
-        if (Math.abs((double) v - mean) > multipleK * stddev) {
+        if (Math.abs(Double.parseDouble(v.toString()) - mean) > multipleK * stddev) {
           Util.putValue(collector, dataType, timestamp, v);
         }
       }
