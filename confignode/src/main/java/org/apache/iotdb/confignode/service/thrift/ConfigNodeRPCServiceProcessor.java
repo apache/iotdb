@@ -270,7 +270,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       plan =
           new AuthorReq(
               ConfigRequestType.values()[
-                  req.getAuthorType() + ConfigRequestType.AUTHOR.ordinal() + 1],
+                  req.getAuthorType() + ConfigRequestType.Author.ordinal() + 1],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
@@ -294,7 +294,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       plan =
           new AuthorReq(
               ConfigRequestType.values()[
-                  req.getAuthorType() + ConfigRequestType.AUTHOR.ordinal() + 1],
+                  req.getAuthorType() + ConfigRequestType.Author.ordinal() + 1],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),

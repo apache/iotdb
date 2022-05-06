@@ -134,8 +134,7 @@ public class NodeManager {
 
     // Return PartitionRegionId
     resp.setPartitionRegionId(
-        ConsensusGroupId.Factory.convertToTConsensusGroupId(
-            getConsensusManager().getConsensusGroupId()));
+        ConsensusGroupId.convertToTConsensusGroupId(getConsensusManager().getConsensusGroupId()));
 
     // Return online ConfigNodes
     resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
@@ -145,7 +144,7 @@ public class NodeManager {
   }
 
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
-    if (getConsensusManager().applyConfigNodePeer(applyConfigNodeReq)) {
+    if (getConsensusManager().addConfigNodePeer(applyConfigNodeReq)) {
       return getConsensusManager().write(applyConfigNodeReq).getStatus();
     } else {
       return new TSStatus(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode())

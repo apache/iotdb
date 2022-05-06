@@ -78,17 +78,17 @@ public class ConfigRequestExecutor {
       case GetSchemaPartition:
       case GetOrCreateSchemaPartition:
         return partitionInfo.getSchemaPartition((GetSchemaPartitionReq) req);
-      case LIST_USER:
+      case ListUser:
         return authorInfo.executeListUser();
-      case LIST_ROLE:
+      case ListRole:
         return authorInfo.executeListRole();
-      case LIST_USER_PRIVILEGE:
+      case ListUserPrivilege:
         return authorInfo.executeListUserPrivileges((AuthorReq) req);
-      case LIST_ROLE_PRIVILEGE:
+      case ListRolePrivilege:
         return authorInfo.executeListRolePrivileges((AuthorReq) req);
-      case LIST_USER_ROLES:
+      case ListUserRoles:
         return authorInfo.executeListUserRoles((AuthorReq) req);
-      case LIST_ROLE_USERS:
+      case ListRoleUsers:
         return authorInfo.executeListRoleUsers((AuthorReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
@@ -120,17 +120,17 @@ public class ConfigRequestExecutor {
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
       case CreateDataPartition:
         return partitionInfo.createDataPartition((CreateDataPartitionReq) req);
-      case CREATE_USER:
-      case CREATE_ROLE:
-      case DROP_USER:
-      case DROP_ROLE:
-      case GRANT_ROLE:
-      case GRANT_USER:
-      case GRANT_ROLE_TO_USER:
-      case REVOKE_USER:
-      case REVOKE_ROLE:
-      case REVOKE_ROLE_FROM_USER:
-      case UPDATE_USER:
+      case CreateUser:
+      case CreateRole:
+      case DropUser:
+      case DropRole:
+      case GrantRole:
+      case GrantUser:
+      case GrantRoleToUser:
+      case RevokeUser:
+      case RevokeRole:
+      case RevokeRoleFromUser:
+      case UpdateUser:
         return authorInfo.authorNonQuery((AuthorReq) req);
       case ApplyConfigNode:
         return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);

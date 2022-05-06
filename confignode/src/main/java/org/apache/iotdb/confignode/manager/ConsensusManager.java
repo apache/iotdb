@@ -112,7 +112,7 @@ public class ConsensusManager {
    * @return True if successfully addPeer. False if another ConfigNode is being added to the
    *     PartitionRegion
    */
-  public boolean applyConfigNodePeer(ApplyConfigNodeReq applyConfigNodeReq) {
+  public boolean addConfigNodePeer(ApplyConfigNodeReq applyConfigNodeReq) {
     return consensusImpl
         .addPeer(
             consensusGroupId,

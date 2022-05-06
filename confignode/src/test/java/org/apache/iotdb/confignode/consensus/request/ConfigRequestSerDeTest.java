@@ -377,7 +377,7 @@ public class ConfigRequestSerDeTest {
     // create user
     req0 =
         new AuthorReq(
-            ConfigRequestType.CREATE_USER, "thulab", "", "passwd", "", new HashSet<>(), "");
+            ConfigRequestType.CreateUser, "thulab", "", "passwd", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -385,7 +385,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // create role
-    req0 = new AuthorReq(ConfigRequestType.CREATE_ROLE, "", "admin", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.CreateRole, "", "admin", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -395,7 +395,7 @@ public class ConfigRequestSerDeTest {
     // alter user
     req0 =
         new AuthorReq(
-            ConfigRequestType.UPDATE_USER, "tempuser", "", "", "newpwd", new HashSet<>(), "");
+            ConfigRequestType.UpdateUser, "tempuser", "", "", "newpwd", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -404,7 +404,7 @@ public class ConfigRequestSerDeTest {
 
     // grant user
     req0 =
-        new AuthorReq(ConfigRequestType.GRANT_USER, "tempuser", "", "", "", permissions, "root.ln");
+        new AuthorReq(ConfigRequestType.GrantUser, "tempuser", "", "", "", permissions, "root.ln");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -414,7 +414,7 @@ public class ConfigRequestSerDeTest {
     // grant role
     req0 =
         new AuthorReq(
-            ConfigRequestType.GRANT_ROLE_TO_USER,
+            ConfigRequestType.GrantRoleToUser,
             "tempuser",
             "temprole",
             "",
@@ -428,7 +428,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // grant role to user
-    req0 = new AuthorReq(ConfigRequestType.GRANT_ROLE, "", "temprole", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.GrantRole, "", "temprole", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -437,8 +437,7 @@ public class ConfigRequestSerDeTest {
 
     // revoke user
     req0 =
-        new AuthorReq(
-            ConfigRequestType.REVOKE_USER, "tempuser", "", "", "", permissions, "root.ln");
+        new AuthorReq(ConfigRequestType.RevokeUser, "tempuser", "", "", "", permissions, "root.ln");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -447,8 +446,7 @@ public class ConfigRequestSerDeTest {
 
     // revoke role
     req0 =
-        new AuthorReq(
-            ConfigRequestType.REVOKE_ROLE, "", "temprole", "", "", permissions, "root.ln");
+        new AuthorReq(ConfigRequestType.RevokeRole, "", "temprole", "", "", permissions, "root.ln");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -458,7 +456,7 @@ public class ConfigRequestSerDeTest {
     // revoke role from user
     req0 =
         new AuthorReq(
-            ConfigRequestType.REVOKE_ROLE_FROM_USER,
+            ConfigRequestType.RevokeRoleFromUser,
             "tempuser",
             "temprole",
             "",
@@ -472,7 +470,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // drop user
-    req0 = new AuthorReq(ConfigRequestType.DROP_USER, "xiaoming", "", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.DropUser, "xiaoming", "", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -480,7 +478,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // drop role
-    req0 = new AuthorReq(ConfigRequestType.DROP_ROLE, "", "admin", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.DropRole, "", "admin", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -488,7 +486,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // list user
-    req0 = new AuthorReq(ConfigRequestType.LIST_USER, "", "", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.ListUser, "", "", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -496,7 +494,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // list role
-    req0 = new AuthorReq(ConfigRequestType.LIST_ROLE, "", "", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.ListRole, "", "", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -504,8 +502,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // list privileges user
-    req0 =
-        new AuthorReq(ConfigRequestType.LIST_USER_PRIVILEGE, "", "", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.ListUserPrivilege, "", "", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -513,8 +510,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // list privileges role
-    req0 =
-        new AuthorReq(ConfigRequestType.LIST_ROLE_PRIVILEGE, "", "", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.ListRolePrivilege, "", "", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -522,8 +518,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // list user privileges
-    req0 =
-        new AuthorReq(ConfigRequestType.LIST_USER_PRIVILEGE, "", "", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.ListUserPrivilege, "", "", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -531,8 +526,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // list role privileges
-    req0 =
-        new AuthorReq(ConfigRequestType.LIST_ROLE_PRIVILEGE, "", "", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.ListRolePrivilege, "", "", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -540,7 +534,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // list all role of user
-    req0 = new AuthorReq(ConfigRequestType.LIST_USER_ROLES, "", "", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.ListUserRoles, "", "", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
@@ -548,7 +542,7 @@ public class ConfigRequestSerDeTest {
     cleanBuffer();
 
     // list all user of role
-    req0 = new AuthorReq(ConfigRequestType.LIST_ROLE_USERS, "", "", "", "", new HashSet<>(), "");
+    req0 = new AuthorReq(ConfigRequestType.ListRoleUsers, "", "", "", "", new HashSet<>(), "");
     req0.serialize(buffer);
     buffer.flip();
     req1 = (AuthorReq) ConfigRequest.Factory.create(buffer);
