@@ -26,10 +26,19 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
-import static org.apache.iotdb.db.constant.TestConstant.*;
-import static org.junit.Assert.*;
+import static org.apache.iotdb.db.constant.TestConstant.avg;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.sum;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IOTDBGroupByInnerIntervalIT {
 
@@ -228,7 +237,7 @@ public class IOTDBGroupByInnerIntervalIT {
 
   @Test
   public void countSumAvgInnerIntervalTestWithTimeFilter() {
-    String retArray = "1,0,0.0,null";
+    String retArray = "1,0,null,null";
     double[][] retArray1 = {
       {6.0, 3.0, 23.1, 7.7},
       {11.0, 3.0, 36.6, 12.2},
