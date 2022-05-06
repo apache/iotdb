@@ -700,7 +700,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.specificValueClause() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
       if (ctx.specificValueClause().constant() != null) {
-        fillComponent.setFillValue(ctx.specificValueClause().constant().getText());
+        ConstantOperand constantOperand =
+            (ConstantOperand) parseConstantOperand(ctx.specificValueClause().constant());
+        fillComponent.setFillValue(constantOperand.getValueString());
+        fillComponent.setFillDatatype(constantOperand.getDataType());
       } else {
         throw new SemanticException("fill value cannot be null");
       }

@@ -495,7 +495,10 @@ public class Analyzer {
           .map(
               expression ->
                   new FillDescriptor(
-                      fillComponent.getFillPolicy(), fillComponent.getFillValue(), expression))
+                      fillComponent.getFillPolicy(),
+                      expression,
+                      fillComponent.getFillValue(),
+                      fillComponent.getFillDatatype()))
           .collect(Collectors.toList());
     }
 

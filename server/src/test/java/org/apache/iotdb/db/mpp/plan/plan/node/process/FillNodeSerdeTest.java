@@ -49,8 +49,9 @@ public class FillNodeSerdeTest {
             Collections.singletonList(
                 new FillDescriptor(
                     FillPolicy.PREVIOUS,
+                    new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")),
                     null,
-                    new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
+                    null)));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fillNode.serialize(byteBuffer);

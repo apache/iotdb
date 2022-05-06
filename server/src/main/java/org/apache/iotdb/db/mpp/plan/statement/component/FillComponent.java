@@ -20,12 +20,14 @@
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /** This class maintains information of {@code FILL} clause. */
 public class FillComponent extends StatementNode {
 
   private FillPolicy fillPolicy;
   private String fillValue;
+  private TSDataType fillDatatype;
 
   public FillComponent() {}
 
@@ -43,5 +45,13 @@ public class FillComponent extends StatementNode {
 
   public void setFillValue(String fillValue) {
     this.fillValue = fillValue;
+  }
+
+  public TSDataType getFillDatatype() {
+    return fillDatatype;
+  }
+
+  public void setFillDatatype(TSDataType fillDatatype) {
+    this.fillDatatype = fillDatatype;
   }
 }
