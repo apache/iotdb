@@ -43,7 +43,18 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.DataNodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.Snapshot;
 import org.apache.iotdb.consensus.common.DataSet;
+
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConfigRequestExecutor {
 
@@ -54,6 +65,8 @@ public class ConfigRequestExecutor {
   private final PartitionInfo partitionInfo;
 
   private final AuthorInfo authorInfo;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRequestExecutor.class);
 
   public ConfigRequestExecutor() {
     this.dataNodeInfo = DataNodeInfo.getInstance();
@@ -134,5 +147,57 @@ public class ConfigRequestExecutor {
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
+  }
+
+  public boolean takeSnapshot(File snapshotDir) {
+
+    AtomicBoolean result = new AtomicBoolean(true);
+    getAllAttributes()
+        .parallelStream()
+        .forEach(
+            x -> {
+              boolean takeSnapshotResult = true;
+              try {
+                String fileName = x.getClass().getSimpleName();
+                File file = new File(snapshotDir, fileName);
+                takeSnapshotResult = x.takeSnapshot(file);
+              } catch (TException | IOException e) {
+                LOGGER.error(e.getMessage());
+                takeSnapshotResult = false;
+              } finally {
+                // If any snapshot fails, the whole fails
+                // So this is just going to be false
+                if (!takeSnapshotResult) {
+                  result.set(false);
+                }
+              }
+            });
+    return result.get();
+  }
+
+  public void loadSnapshot(File latestSnapshotRootDir) {
+
+    getAllAttributes()
+        .parallelStream()
+        .forEach(
+            x -> {
+              try {
+                String fileName = x.getClass().getSimpleName();
+                File file = new File(latestSnapshotRootDir, fileName);
+                if (!file.exists() || !file.isFile()) {
+                  LOGGER.error("snapshot file [{}] is not exist.", file.getAbsolutePath());
+                  return;
+                }
+                x.loadSnapshot(file);
+              } catch (TException | IOException e) {
+                LOGGER.error(e.getMessage());
+              }
+            });
+  }
+
+  private List<Snapshot> getAllAttributes() {
+    List<Snapshot> allAttributes = new ArrayList<>();
+    allAttributes.add(clusterSchemaInfo);
+    return allAttributes;
   }
 }
