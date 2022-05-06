@@ -164,11 +164,7 @@ public class ConfigNodeClient {
       throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDataNodeRegisterResp resp = client.registerDataNode(req);
-        if (!updateConfigNodeLeader(resp.status)) {
-          return resp;
-        }
-        logger.info("Register current node using request {} with response {}", req, resp);
+        return client.registerDataNode(req);
       } catch (TException e) {
         configLeader = null;
       }

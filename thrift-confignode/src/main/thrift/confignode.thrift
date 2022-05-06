@@ -36,10 +36,16 @@ struct TGlobalConfig {
   4: required i64 timePartitionInterval
 }
 
+struct TConfigNodeLocation {
+   1: required common.TEndPoint internalEndPoint
+   2: required common.TEndPoint consensusEndPoint
+}
+
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
-  2: optional i32 dataNodeId
-  3: optional TGlobalConfig globalConfig
+  2: required list<TConfigNodeLocation> configNodeList
+  3: optional i32 dataNodeId
+  4: optional TGlobalConfig globalConfig
 }
 
 struct TDataNodeLocationResp {

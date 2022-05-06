@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -63,6 +64,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -157,10 +160,21 @@ public class DataNode implements DataNodeMBean {
         req.setDataNodeLocation(location);
 
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
+
+        // store config node lists from resp
+        List<TEndPoint> configNodeList = new ArrayList<>();
+        for (TConfigNodeLocation configNodeLocation : dataNodeRegisterResp.getConfigNodeList()) {
+          configNodeList.add(configNodeLocation.getInternalEndPoint());
+        }
+        config.setConfigNodeList(configNodeList);
+        IoTDBConfigCheck.getInstance().serializeConfigNodeList(configNodeList);
+
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+          logger.info(
+              "Register current node using request {} with response {}", req, dataNodeRegisterResp);
           int dataNodeID = dataNodeRegisterResp.getDataNodeId();
           if (dataNodeID != config.getDataNodeId()) {
             IoTDBConfigCheck.getInstance().serializeDataNodeId(dataNodeID);
@@ -170,8 +184,12 @@ public class DataNode implements DataNodeMBean {
           logger.info("Joined the cluster successfully");
           return;
         }
-      } catch (IOException | IoTDBConnectionException e) {
+      } catch (IOException e) {
         logger.warn("Cannot join the cluster, because: {}", e.getMessage());
+      } catch (IoTDBConnectionException e) {
+        // read config nodes from system.properties
+        logger.warn("Cannot join the cluster, because: {}", e.getMessage());
+        IoTDBConfigCheck.getInstance().loadConfigNodeList();
       }
 
       try {
