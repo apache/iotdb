@@ -48,12 +48,12 @@ public class ApplyConfigNodeReq extends ConfigRequest {
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(ConfigRequestType.ApplyConfigNode.ordinal());
 
-    ThriftConfigNodeSerDeUtils.writeTConfigNodeLocation(configNodeLocation, buffer);
+    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    configNodeLocation = ThriftConfigNodeSerDeUtils.readTConfigNodeLocation(buffer);
+    configNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
   }
 
   @Override

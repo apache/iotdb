@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.NodeUrlParseConvertUtils;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +123,7 @@ public class ConfigNodeDescriptor {
 
       String targetConfigNode = properties.getProperty("target_confignode", null);
       if (targetConfigNode != null) {
-        conf.setTargetConfigNode(NodeUrlParseConvertUtils.parseTEndPointUrl(targetConfigNode));
+        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
       }
 
       conf.setSeriesPartitionSlotNum(

@@ -31,9 +31,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.StringJoiner;
 
-public class NodeUrlParseConvertUtils {
+public class NodeUrlUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(NodeUrlParseConvertUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(NodeUrlUtils.class);
 
   /**
    * Convert TEndPoint to TEndPointUrl

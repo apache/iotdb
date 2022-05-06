@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.utils.NodeUrlParseConvertUtils;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -185,7 +185,11 @@ public class ConfigNodeStartupCheck {
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())),
             conf.getDataNodeConsensusProtocolClass(),
             conf.getSeriesPartitionSlotNum(),
-            conf.getSeriesPartitionExecutorClass());
+            conf.getSeriesPartitionExecutorClass(),
+            conf.getDefaultTTL(),
+            conf.getTimePartitionInterval(),
+            conf.getSchemaReplicationFactor(),
+            conf.getDataReplicationFactor());
 
     TConfigNodeRegisterResp resp =
         SyncConfigNodeClientPool.getInstance().registerConfigNode(conf.getTargetConfigNode(), req);
@@ -226,8 +230,7 @@ public class ConfigNodeStartupCheck {
 
     // ConfigNodeList
     systemProperties.setProperty(
-        "confignode_list",
-        NodeUrlParseConvertUtils.convertTConfigNodeUrls(conf.getConfigNodeList()));
+        "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(conf.getConfigNodeList()));
 
     try {
       systemProperties.store(new FileOutputStream(systemPropertiesFile), "");
@@ -318,7 +321,7 @@ public class ConfigNodeStartupCheck {
     String addresses = systemProperties.getProperty("confignode_list", null);
     if (addresses != null) {
       try {
-        conf.setConfigNodeList(NodeUrlParseConvertUtils.parseTConfigNodeUrls(addresses));
+        conf.setConfigNodeList(NodeUrlUtils.parseTConfigNodeUrls(addresses));
       } catch (BadNodeUrlException e) {
         throw new StartupException("Parse ConfigNodeList failed: {}", e.getMessage());
       }

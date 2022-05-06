@@ -28,7 +28,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.List;
 
-public class NodeUrlParseConvertUtilsTest {
+public class NodeUrlUtilsTest {
 
   @Test
   public void parseAndConvertTEndPointUrlsTest() throws BadNodeUrlException {
@@ -39,8 +39,8 @@ public class NodeUrlParseConvertUtilsTest {
             new TEndPoint("0.0.0.0", 6669));
     final String endPointUrls = "0.0.0.0:6667,0.0.0.0:6668,0.0.0.0:6669";
 
-    Assert.assertEquals(endPointUrls, NodeUrlParseConvertUtils.convertTEndPointUrls(endPoints));
-    Assert.assertEquals(endPoints, NodeUrlParseConvertUtils.parseTEndPointUrls(endPointUrls));
+    Assert.assertEquals(endPointUrls, NodeUrlUtils.convertTEndPointUrls(endPoints));
+    Assert.assertEquals(endPoints, NodeUrlUtils.parseTEndPointUrls(endPointUrls));
   }
 
   @Test
@@ -56,9 +56,7 @@ public class NodeUrlParseConvertUtilsTest {
     final String configNodeUrls =
         "0.0.0.0:22277,0.0.0.0:22278;0.0.0.0:22279,0.0.0.0:22280;0.0.0.0:22281,0.0.0.0:22282";
 
-    Assert.assertEquals(
-        configNodeUrls, NodeUrlParseConvertUtils.convertTConfigNodeUrls(configNodeLocations));
-    Assert.assertEquals(
-        configNodeLocations, NodeUrlParseConvertUtils.parseTConfigNodeUrls(configNodeUrls));
+    Assert.assertEquals(configNodeUrls, NodeUrlUtils.convertTConfigNodeUrls(configNodeLocations));
+    Assert.assertEquals(configNodeLocations, NodeUrlUtils.parseTConfigNodeUrls(configNodeUrls));
   }
 }

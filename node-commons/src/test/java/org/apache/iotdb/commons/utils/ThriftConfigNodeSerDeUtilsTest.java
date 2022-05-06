@@ -60,10 +60,10 @@ public class ThriftConfigNodeSerDeUtilsTest {
           .add(new TConsensusGroupId(TConsensusGroupType.DataRegion, i * 2 + 1));
     }
 
-    ThriftConfigNodeSerDeUtils.writeTStorageGroupSchema(storageGroupSchema0, buffer);
+    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(storageGroupSchema0, buffer);
     buffer.flip();
     TStorageGroupSchema storageGroupSchema1 =
-        ThriftConfigNodeSerDeUtils.readTStorageGroupSchema(buffer);
+        ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(buffer);
     Assert.assertEquals(storageGroupSchema0, storageGroupSchema1);
   }
 
@@ -72,10 +72,10 @@ public class ThriftConfigNodeSerDeUtilsTest {
     TConfigNodeLocation configNodeLocation0 =
         new TConfigNodeLocation(new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278));
 
-    ThriftConfigNodeSerDeUtils.writeTConfigNodeLocation(configNodeLocation0, buffer);
+    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation0, buffer);
     buffer.flip();
     TConfigNodeLocation configNodeLocation1 =
-        ThriftConfigNodeSerDeUtils.readTConfigNodeLocation(buffer);
+        ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
     Assert.assertEquals(configNodeLocation0, configNodeLocation1);
   }
 }

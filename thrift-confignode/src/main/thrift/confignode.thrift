@@ -161,6 +161,10 @@ struct TConfigNodeRegisterReq {
   2: required string dataNodeConsensusProtocolClass
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
+  5: required i64 defaultTTL
+  6: required i64 timePartitionInterval
+  7: required i32 schemaReplicationFactor
+  8: required i32 dataReplicationFactor
 }
 
 struct TConfigNodeRegisterResp {

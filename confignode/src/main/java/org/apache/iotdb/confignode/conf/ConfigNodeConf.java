@@ -77,9 +77,6 @@ public class ConfigNodeConf {
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
 
-  /** Time partition interval in seconds */
-  private long timePartitionInterval = 604800;
-
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
 
@@ -113,6 +110,9 @@ public class ConfigNodeConf {
 
   /** Default TTL for storage groups that are not set TTL by statements, in ms. */
   private long defaultTTL = Long.MAX_VALUE;
+
+  /** Time partition interval in seconds */
+  private long timePartitionInterval = 604800;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 3;

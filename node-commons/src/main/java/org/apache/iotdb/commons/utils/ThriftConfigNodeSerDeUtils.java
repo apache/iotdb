@@ -49,7 +49,7 @@ public class ThriftConfigNodeSerDeUtils {
     return new TBinaryProtocol(transport);
   }
 
-  public static void writeTStorageGroupSchema(
+  public static void serializeTStorageGroupSchema(
       TStorageGroupSchema storageGroupSchema, ByteBuffer buffer) {
     try {
       storageGroupSchema.write(generateWriteProtocol(buffer));
@@ -58,7 +58,7 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
-  public static TStorageGroupSchema readTStorageGroupSchema(ByteBuffer buffer) {
+  public static TStorageGroupSchema deserializeTStorageGroupSchema(ByteBuffer buffer) {
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
     try {
       storageGroupSchema.read(generateReadProtocol(buffer));
@@ -68,7 +68,7 @@ public class ThriftConfigNodeSerDeUtils {
     return storageGroupSchema;
   }
 
-  public static void writeTConfigNodeLocation(
+  public static void serializeTConfigNodeLocation(
       TConfigNodeLocation configNodeLocation, ByteBuffer buffer) {
     try {
       configNodeLocation.write(generateWriteProtocol(buffer));
@@ -77,7 +77,7 @@ public class ThriftConfigNodeSerDeUtils {
     }
   }
 
-  public static TConfigNodeLocation readTConfigNodeLocation(ByteBuffer buffer) {
+  public static TConfigNodeLocation deserializeTConfigNodeLocation(ByteBuffer buffer) {
     TConfigNodeLocation configNodeLocation = new TConfigNodeLocation();
     try {
       configNodeLocation.read(generateReadProtocol(buffer));

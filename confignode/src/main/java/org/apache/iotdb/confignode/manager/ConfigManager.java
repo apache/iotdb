@@ -409,6 +409,33 @@ public class ConfigManager implements Manager {
               "Reject register, please ensure that the series_partition_executor_class are consistent.");
       return errorResp;
     }
+    if (req.getDefaultTTL() != conf.getDefaultTTL()) {
+      errorResp
+          .getStatus()
+          .setMessage("Reject register, please ensure that the default_ttl are consistent.");
+      return errorResp;
+    }
+    if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the time_partition_interval are consistent.");
+      return errorResp;
+    }
+    if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the schema_replication_factor are consistent.");
+      return errorResp;
+    }
+    if (req.getDataReplicationFactor() != conf.getDataReplicationFactor()) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the data_replication_factor are consistent.");
+      return errorResp;
+    }
 
     return nodeManager.registerConfigNode(req);
   }

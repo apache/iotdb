@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.utils.NodeUrlParseConvertUtils;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -249,8 +249,7 @@ public class NodeInfo {
       systemProperties.load(inputStream);
     }
     systemProperties.setProperty(
-        "confignode_list",
-        NodeUrlParseConvertUtils.convertTConfigNodeUrls(new ArrayList<>(onlineConfigNodes)));
+        "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(onlineConfigNodes)));
     systemProperties.store(new FileOutputStream(systemPropertiesFile), "");
   }
 

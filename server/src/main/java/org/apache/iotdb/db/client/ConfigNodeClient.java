@@ -22,7 +22,7 @@ package org.apache.iotdb.db.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.NodeUrlParseConvertUtils;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -78,7 +78,7 @@ public class ConfigNodeClient {
   public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
     // Read config nodes from configuration
     configNodes =
-        NodeUrlParseConvertUtils.parseTEndPointUrls(
+        NodeUrlUtils.parseTEndPointUrls(
             IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
     init();
   }
