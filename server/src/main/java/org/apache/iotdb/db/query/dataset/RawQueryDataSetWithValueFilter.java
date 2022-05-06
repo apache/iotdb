@@ -87,10 +87,11 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
    */
   private boolean cacheRowRecords() throws IOException {
     int cachedTimeCnt = 0;
-    long[] cachedTimeArray = new long[fetchSize];
+    int timeArraySize = rowLimit > 0 ? Math.min(fetchSize, rowLimit + rowOffset) : fetchSize;
+    long[] cachedTimeArray = new long[timeArraySize];
     // TODO: LIMIT constraint
     // 1. fill time array from time Generator
-    while (timeGenerator.hasNext() && cachedTimeCnt < fetchSize) {
+    while (timeGenerator.hasNext() && cachedTimeCnt < timeArraySize) {
       cachedTimeArray[cachedTimeCnt++] = timeGenerator.next();
     }
     if (cachedTimeCnt == 0) {

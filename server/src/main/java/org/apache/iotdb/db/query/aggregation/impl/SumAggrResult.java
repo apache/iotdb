@@ -47,7 +47,7 @@ public class SumAggrResult extends AggregateResult {
 
   @Override
   public Double getResult() {
-    return getDoubleValue();
+    return hasCandidateResult() ? getDoubleValue() : null;
   }
 
   @Override

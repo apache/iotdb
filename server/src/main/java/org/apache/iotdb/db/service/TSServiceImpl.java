@@ -249,7 +249,6 @@ public class TSServiceImpl implements TSIService.Iface {
 
     @Override
     public TSExecuteStatementResp call() throws Exception {
-      queryCount.incrementAndGet();
       AUDIT_LOGGER.debug(
           "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
       long startTime = System.currentTimeMillis();
@@ -804,6 +803,7 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           processor.rawDataQueryReqToPhysicalPlan(req, sessionManager.getZoneId(req.sessionId));
       if (physicalPlan.isQuery()) {
+        queryCount.incrementAndGet();
         Future<TSExecuteStatementResp> resp =
             QueryTaskManager.getInstance()
                 .submit(
@@ -833,6 +833,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private TSExecuteStatementResp submitQueryTask(
       PhysicalPlan physicalPlan, TSExecuteStatementReq req) throws Exception {
+    queryCount.incrementAndGet();
     QueryTask queryTask =
         new QueryTask(
             physicalPlan,

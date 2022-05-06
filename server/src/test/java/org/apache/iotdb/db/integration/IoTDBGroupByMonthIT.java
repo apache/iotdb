@@ -246,7 +246,7 @@ public class IoTDBGroupByMonthIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
-          if (ans.equals("0.0")) {
+          if (ans == null) {
             cnt++;
           }
         }
