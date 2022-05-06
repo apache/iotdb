@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -46,13 +45,18 @@ import org.apache.thrift.transport.TIOStreamTransport;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -71,6 +75,9 @@ public class PartitionInfo {
   // DataPartition read write lock
   private final ReentrantReadWriteLock dataPartitionReadWriteLock;
   private final DataPartition dataPartition;
+
+  // The size of the buffer used for snapshot(temporary value)
+  private final int bufferSize = 10 * 1024 * 1024;
 
   private PartitionInfo() {
     this.regionReadWriteLock = new ReentrantReadWriteLock();
@@ -303,27 +310,81 @@ public class PartitionInfo {
     return result;
   }
 
-  public void serialize(ByteBuffer buffer) throws TException, IOException {
+  public boolean takeSnapshot(File snapshotFile) throws TException, IOException {
 
-    // first,put nextRegionGroupId
-    buffer.putInt(nextRegionGroupId.get());
-    // second, put regionMap
-    serializeRegionMap(buffer);
-    // third, put schemaPartition
-    schemaPartition.serialize(buffer);
-    // final, put dataPartition
-    dataPartition.serialize(buffer);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
+
+    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
+    try {
+      lockAllRead();
+      // first, put nextRegionGroupId
+      byteBuffer.putInt(nextRegionGroupId.get());
+      // second, put regionMap
+      serializeRegionMap(byteBuffer);
+      // third, put schemaPartition
+      schemaPartition.serialize(byteBuffer);
+      // then, put dataPartition
+      dataPartition.serialize(byteBuffer);
+      // write to file
+      try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+          FileChannel fileChannel = fileOutputStream.getChannel()) {
+        fileChannel.write(byteBuffer);
+      }
+      // rename file
+      return tmpFile.renameTo(snapshotFile);
+    } finally {
+      unlockAllRead();
+      byteBuffer.clear();
+      // with or without success, delete temporary files anyway
+      tmpFile.delete();
+    }
   }
 
-  public void deserialize(ByteBuffer buffer) throws TException, IOException {
+  public void loadSnapshot(File snapshotFile) throws TException, IOException {
 
-    nextRegionGroupId.set(buffer.getInt());
+    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
 
-    deserializeRegionMap(buffer);
+    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+        FileChannel fileChannel = fileInputStream.getChannel()) {
+      // no operations are processed at this time
+      lockAllWrite();
+      // get buffer from fileChannel
+      fileChannel.read(buffer);
+      // before restoring a snapshot, clear all old data
+      clear();
+      // start to restore
+      nextRegionGroupId.set(buffer.getInt());
+      deserializeRegionMap(buffer);
+      schemaPartition.deserialize(buffer);
+      dataPartition.deserialize(buffer);
+    } finally {
+      unlockAllWrite();
+      buffer.clear();
+    }
+  }
 
-    schemaPartition.deserialize(buffer);
+  private void lockAllWrite() {
+    regionReadWriteLock.writeLock().lock();
+    schemaPartitionReadWriteLock.writeLock().lock();
+    dataPartitionReadWriteLock.writeLock().lock();
+  }
 
-    dataPartition.deserialize(buffer);
+  private void unlockAllWrite() {
+    regionReadWriteLock.writeLock().unlock();
+    schemaPartitionReadWriteLock.writeLock().unlock();
+    schemaPartitionReadWriteLock.writeLock().unlock();
+  }
+
+  private void lockAllRead() {
+    regionReadWriteLock.readLock().lock();
+    schemaPartitionReadWriteLock.readLock().lock();
+    dataPartitionReadWriteLock.readLock().lock();
+  }
+
+  private void unlockAllRead() {
+    regionReadWriteLock.readLock().unlock();
+    schemaPartitionReadWriteLock.readLock().unlock();
+    schemaPartitionReadWriteLock.readLock().unlock();
   }
 
   private void serializeRegionMap(ByteBuffer buffer) throws TException, IOException {
@@ -357,7 +418,6 @@ public class PartitionInfo {
     }
   }
 
-  @TestOnly
   public void clear() {
     nextRegionGroupId = new AtomicInteger(0);
     regionMap.clear();
