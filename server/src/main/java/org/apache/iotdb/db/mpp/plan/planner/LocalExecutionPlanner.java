@@ -498,6 +498,7 @@ public class LocalExecutionPlanner {
     }
 
     private List<OutputColumn> generateOutputColumns(TimeJoinNode node) {
+      // TODO we should also sort the InputLocation for each column if they are not overlapped
       return makeLayout(node).values().stream()
           .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))
           .collect(Collectors.toList());

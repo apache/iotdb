@@ -78,10 +78,9 @@ public class NonOverlappedMultiColumnMerger implements ColumnMerger {
     if (index == inputLocations.size() - 1) {
       return;
     }
-    InputLocation location = inputLocations.get(index);
-    int tsBlockIndex = location.getTsBlockIndex();
     // if inputTsBlocks[tsBlockIndex] is null, means current index's TsBlock has been consumed up
-    while (index < inputLocations.size() - 1 && inputTsBlocks[tsBlockIndex] == null) {
+    while (index < inputLocations.size() - 1
+        && inputTsBlocks[inputLocations.get(index).getTsBlockIndex()] == null) {
       index++;
     }
   }
