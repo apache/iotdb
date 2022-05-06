@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class SchemaScanNode extends SourceNode {
+public abstract class SchemaQueryScanNode extends SourceNode {
   protected int limit;
   protected int offset;
   protected PartialPath path;
@@ -38,11 +38,11 @@ public abstract class SchemaScanNode extends SourceNode {
 
   private TRegionReplicaSet schemaRegionReplicaSet;
 
-  protected SchemaScanNode(PlanNodeId id) {
+  protected SchemaQueryScanNode(PlanNodeId id) {
     this(id, null, false);
   }
 
-  protected SchemaScanNode(
+  protected SchemaQueryScanNode(
       PlanNodeId id, PartialPath partialPath, int limit, int offset, boolean isPrefixPath) {
     super(id);
     this.path = partialPath;
@@ -51,7 +51,7 @@ public abstract class SchemaScanNode extends SourceNode {
     this.isPrefixPath = isPrefixPath;
   }
 
-  protected SchemaScanNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
+  protected SchemaQueryScanNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
     this(id, partialPath, 0, 0, isPrefixPath);
   }
 
@@ -127,7 +127,7 @@ public abstract class SchemaScanNode extends SourceNode {
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitSchemaScan(this, context);
+    return visitor.visitSchemaQueryScan(this, context);
   }
 
   @Override
@@ -141,7 +141,7 @@ public abstract class SchemaScanNode extends SourceNode {
     if (!super.equals(o)) {
       return false;
     }
-    SchemaScanNode that = (SchemaScanNode) o;
+    SchemaQueryScanNode that = (SchemaQueryScanNode) o;
     return limit == that.limit
         && offset == that.offset
         && isPrefixPath == that.isPrefixPath
