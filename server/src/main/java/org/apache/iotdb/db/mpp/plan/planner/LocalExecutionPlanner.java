@@ -76,6 +76,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
@@ -341,6 +342,11 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitFill(FillNode node, LocalExecutionPlanContext context) {
       return super.visitFill(node, context);
+    }
+
+    @Override
+    public Operator visitTransform(TransformNode node, LocalExecutionPlanContext context) {
+      return super.visitTransform(node, context);
     }
 
     @Override
