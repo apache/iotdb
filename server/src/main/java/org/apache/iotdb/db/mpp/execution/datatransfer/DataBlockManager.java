@@ -113,7 +113,6 @@ public class DataBlockManager implements IDataBlockManager {
       }
       ((SinkHandle) sinkHandles.get(e.getSourceFragmentInstanceId()))
           .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
-
     }
 
     @Override
