@@ -281,13 +281,13 @@ public class Analyzer {
             continue;
           }
           if (paginationController.hasCurLimit()) {
-            ExpressionAnalyzer.updateTypeProvider(expression, typeProvider);
             Expression expressionWithoutAlias =
                 ExpressionAnalyzer.removeAliasFromExpression(expression);
             String alias =
                 expressionWithoutAlias != expression ? expression.getExpressionString() : null;
             alias = hasAlias ? resultColumn.getAlias() : alias;
             outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
+            ExpressionAnalyzer.updateTypeProvider(expressionWithoutAlias, typeProvider);
             paginationController.consumeLimit();
           } else {
             break;
