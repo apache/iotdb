@@ -83,9 +83,9 @@ public class ClusterSchemaInfoTest {
       clusterSchemaInfo.setStorageGroup(new SetStorageGroupReq(tStorageGroupSchema));
       i++;
     }
-    clusterSchemaInfo.takeSnapshot(snapshotDir);
+    clusterSchemaInfo.processTakeSnapshot(snapshotDir);
     clusterSchemaInfo.clear();
-    clusterSchemaInfo.loadSnapshot(snapshotDir);
+    clusterSchemaInfo.processLoadSnapshot(snapshotDir);
 
     Assert.assertEquals(
         storageGroupPathList.size(), clusterSchemaInfo.getStorageGroupNames().size());

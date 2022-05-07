@@ -44,7 +44,7 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.Snapshot;
+import org.apache.iotdb.confignode.persistence.SnapshotProcessor;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import org.apache.thrift.TException;
@@ -172,7 +172,7 @@ public class ConfigRequestExecutor {
             x -> {
               boolean takeSnapshotResult = true;
               try {
-                takeSnapshotResult = x.takeSnapshot(snapshotDir);
+                takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
               } catch (TException | IOException e) {
                 LOGGER.error(e.getMessage());
                 takeSnapshotResult = false;
@@ -201,15 +201,15 @@ public class ConfigRequestExecutor {
         .forEach(
             x -> {
               try {
-                x.loadSnapshot(latestSnapshotRootDir);
+                x.processLoadSnapshot(latestSnapshotRootDir);
               } catch (TException | IOException e) {
                 LOGGER.error(e.getMessage());
               }
             });
   }
 
-  private List<Snapshot> getAllAttributes() {
-    List<Snapshot> allAttributes = new ArrayList<>();
+  private List<SnapshotProcessor> getAllAttributes() {
+    List<SnapshotProcessor> allAttributes = new ArrayList<>();
     allAttributes.add(clusterSchemaInfo);
     return allAttributes;
   }

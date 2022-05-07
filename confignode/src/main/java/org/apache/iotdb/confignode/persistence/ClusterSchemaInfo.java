@@ -56,7 +56,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class ClusterSchemaInfo implements Snapshot {
+public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaInfo.class);
 
@@ -343,7 +343,7 @@ public class ClusterSchemaInfo implements Snapshot {
   }
 
   @Override
-  public boolean takeSnapshot(File snapshotDir) throws IOException {
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
@@ -373,7 +373,7 @@ public class ClusterSchemaInfo implements Snapshot {
   }
 
   @Override
-  public void loadSnapshot(File snapshotDir) throws IOException {
+  public void processLoadSnapshot(File snapshotDir) throws IOException {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
