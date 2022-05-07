@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
@@ -184,6 +185,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitAlterTimeSeries(AlterTimeSeriesNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitChildPathsSchemaScan(ChildPathsSchemaScanNode node, C context) {
     return visitPlan(node, context);
   }
 }

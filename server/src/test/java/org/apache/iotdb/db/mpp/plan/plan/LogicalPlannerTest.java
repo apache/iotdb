@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
@@ -447,6 +448,21 @@ public class LogicalPlannerTest {
       Assert.assertEquals(20, showDevicesNode2.getLimit());
       Assert.assertEquals(10, showDevicesNode2.getOffset());
       Assert.assertTrue(showDevicesNode2.isHasLimit());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testShowChildPaths() {
+    String sql = "SHOW CHILD PATHS root.ln";
+    try {
+      SchemaQueryMergeNode schemaQueryMergeNode = (SchemaQueryMergeNode) parseSQLToPlanNode(sql);
+      ChildPathsSchemaScanNode childPathsSchemaScanNode =
+          (ChildPathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
+      Assert.assertNotNull(childPathsSchemaScanNode);
+      Assert.assertEquals(new PartialPath("root.ln"), childPathsSchemaScanNode.getPrefixPath());
     } catch (Exception e) {
       e.printStackTrace();
       fail();

@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
@@ -204,5 +205,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitSchemaFetch(SchemaFetchStatement schemaFetchStatement, C context) {
     return visitStatement(schemaFetchStatement, context);
+  }
+
+  public R visitShowChildPaths(ShowChildPathsStatement showChildPathsStatement, C context) {
+    return visitStatement(showChildPathsStatement, context);
   }
 }

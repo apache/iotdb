@@ -53,6 +53,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 
@@ -385,6 +386,16 @@ public class LogicalPlanner {
               new ArrayList<>(
                   schemaFetchStatement.getSchemaPartition().getSchemaPartitionMap().keySet()),
               schemaFetchStatement.getPatternTree())
+          .getRoot();
+    }
+
+    @Override
+    public PlanNode visitShowChildPaths(
+        ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      return planBuilder
+          .planChildPathsSchemaSource(showChildPathsStatement.getPathPattern())
+          .planSchemaQueryMerge(false)
           .getRoot();
     }
   }

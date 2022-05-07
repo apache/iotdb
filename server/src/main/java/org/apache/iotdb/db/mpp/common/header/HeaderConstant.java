@@ -42,6 +42,7 @@ public class HeaderConstant {
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TTL = "ttl";
+  public static final String COLUMN_CHILDPATHS = "child paths";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -56,6 +57,7 @@ public class HeaderConstant {
   public static final DatasetHeader showDevicesWithSgHeader;
   public static final DatasetHeader showStorageGroupHeader;
   public static final DatasetHeader showTTLHeader;
+  public static final DatasetHeader showChildPathsHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -126,5 +128,8 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
             true);
+    showChildPathsHeader =
+        new DatasetHeader(
+            Arrays.asList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
   }
 }
