@@ -790,6 +790,62 @@ public class IoTDBDescriptor {
               "iotdb_server_encrypt_decrypt_provider_parameter",
               conf.getEncryptDecryptProviderParameter()));
 
+      // set OperationSync config
+      conf.setEnableOperationSync(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_operation_sync", String.valueOf(conf.isEnableOperationSync()))));
+
+      conf.setSecondaryAddress(
+          properties.getProperty("secondary_address", conf.getSecondaryAddress()));
+
+      conf.setSecondaryPort(
+          Integer.parseInt(
+              properties.getProperty("secondary_port", String.valueOf(conf.getSecondaryPort()))));
+
+      conf.setSecondaryUser(properties.getProperty("secondary_user", conf.getSecondaryUser()));
+
+      conf.setSecondaryPassword(
+          properties.getProperty("secondary_password", conf.getSecondaryPassword()));
+
+      conf.setOperationSyncSessionConcurrencySize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "operation_sync_session_concurrency_size",
+                  String.valueOf(conf.getOperationSyncSessionConcurrencySize()))));
+
+      conf.setOperationSyncLogDir(
+          properties.getProperty("operation_sync_log_dir", conf.getOperationSyncLogDir()));
+
+      conf.setOperationSyncLogValidity(
+          Integer.parseInt(
+              properties.getProperty(
+                  "operation_sync_log_file_validity",
+                  String.valueOf(conf.getOperationSyncLogValidity()))));
+
+      conf.setOperationSyncLogNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "operation_sync_log_file_num", String.valueOf(conf.getOperationSyncLogNum()))));
+
+      conf.setOperationSyncMaxLogSize(
+          Long.parseLong(
+              properties.getProperty(
+                  "operation_sync_max_log_size",
+                  String.valueOf(conf.getOperationSyncMaxLogSize()))));
+
+      conf.setOperationSyncProducerCacheSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "operation_sync_producer_cache_size",
+                  String.valueOf(conf.getOperationSyncProducerCacheSize()))));
+
+      conf.setOperationSyncConsumerConcurrencySize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "operation_sync_consumer_concurrency_size",
+                  String.valueOf(conf.getOperationSyncConsumerConcurrencySize()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
