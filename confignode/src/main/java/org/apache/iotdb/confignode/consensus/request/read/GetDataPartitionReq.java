@@ -99,11 +99,12 @@ public class GetDataPartitionReq extends ConfigRequest {
           buffer.putInt(seriesPartitionTimePartitionSlots.size());
           seriesPartitionTimePartitionSlots.forEach(
               ((seriesPartitionSlot, timePartitionSlots) -> {
-                ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
+                ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesPartitionSlot, buffer);
                 buffer.putInt(timePartitionSlots.size());
                 timePartitionSlots.forEach(
                     timePartitionSlot ->
-                        ThriftCommonsSerDeUtils.writeTTimePartitionSlot(timePartitionSlot, buffer));
+                        ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(
+                            timePartitionSlot, buffer));
               }));
         }));
   }
@@ -118,12 +119,12 @@ public class GetDataPartitionReq extends ConfigRequest {
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
         TSeriesPartitionSlot seriesPartitionSlot =
-            ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
+            ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
         partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
         int timePartitionSlotNum = buffer.getInt();
         for (int k = 0; k < timePartitionSlotNum; k++) {
           TTimePartitionSlot timePartitionSlot =
-              ThriftCommonsSerDeUtils.readTTimePartitionSlot(buffer);
+              ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
           partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
         }
       }

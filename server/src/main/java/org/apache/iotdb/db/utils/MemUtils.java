@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -62,12 +62,14 @@ public class MemUtils {
    */
   public static long getRecordsSize(
       List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
+    int emptyRecordCount = 0;
     long memSize = 0L;
-    for (int i = 0; i < dataTypes.size(); i++) {
+    for (int i = 0; i < value.length; i++) {
       if (value[i] == null) {
+        emptyRecordCount++;
         continue;
       }
-      memSize += getRecordSize(dataTypes.get(i), value[i], addingTextDataSize);
+      memSize += getRecordSize(dataTypes.get(i - emptyRecordCount), value[i], addingTextDataSize);
     }
     return memSize;
   }

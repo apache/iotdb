@@ -24,6 +24,8 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -31,8 +33,6 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -119,10 +119,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
     }
     DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(9, processor.getPartitionMaxFileVersions(0));
+    assertEquals(10, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < loadedFiles.size(); i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
@@ -163,10 +163,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
       }
       DataRegion processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-      assertEquals(9, processor.getPartitionMaxFileVersions(0));
+      assertEquals(10, processor.getPartitionMaxFileVersions(0));
       List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(tsFileResources.size(), loadedFiles.size());
-      for (int i = 0; i < 9; i++) {
+      for (int i = 0; i < loadedFiles.size(); i++) {
         assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
       }
       assertEquals(0, processor.getUnSequenceFileList().size());
@@ -213,10 +213,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
     }
     DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(9, processor.getPartitionMaxFileVersions(0));
+    assertEquals(10, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < loadedFiles.size(); i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
       ModificationFile modFile = loadedFiles.get(i).getModFile();
       assertTrue(modFile.exists());
@@ -253,10 +253,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
     for (int j = 0; j < 10; j++) {
       DataRegion processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(j)));
-      assertEquals(9, processor.getPartitionMaxFileVersions(0));
+      assertEquals(10, processor.getPartitionMaxFileVersions(0));
       List<TsFileResource> loadedFiles = processor.getSequenceFileList();
       assertEquals(10, loadedFiles.size());
-      for (int i = 0; i < 9; i++) {
+      for (int i = 0; i < loadedFiles.size(); i++) {
         assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
       }
       assertEquals(0, processor.getUnSequenceFileList().size());
@@ -299,10 +299,10 @@ public class FileSnapshotTest extends DataSnapshotTest {
     }
     DataRegion processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(10, processor.getPartitionMaxFileVersions(0));
+    assertEquals(11, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileList();
     assertEquals(tsFileResources.size(), loadedFiles.size());
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < loadedFiles.size(); i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(1, processor.getUnSequenceFileList().size());

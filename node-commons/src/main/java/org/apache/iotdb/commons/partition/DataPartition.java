@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -38,6 +39,11 @@ public class DataPartition extends Partition {
 
   public DataPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
     super(seriesSlotExecutorName, seriesPartitionSlotNum);
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return dataPartitionMap == null || dataPartitionMap.isEmpty();
   }
 
   public DataPartition(
@@ -230,5 +236,13 @@ public class DataPartition extends Partition {
         .computeIfAbsent(storageGroup, key -> new HashMap<>())
         .computeIfAbsent(seriesPartitionSlot, key -> new HashMap<>())
         .put(timePartitionSlot, Collections.singletonList(regionReplicaSet));
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    // TODO: Serialize DataPartition
+  }
+
+  public void deserialize(ByteBuffer buffer) {
+    // TODO: Deserialize DataPartition
   }
 }

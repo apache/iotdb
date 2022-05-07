@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -254,7 +256,7 @@ public class LocalFileAuthorizerTest {
     IAuthorizer authorizer = BasicAuthorizer.getInstance();
     List<String> userList = authorizer.listAllUsers();
     assertEquals(1, userList.size());
-    assertEquals(IoTDBDescriptor.getInstance().getConfig().getAdminName(), userList.get(0));
+    assertEquals(CommonConfig.getInstance().getAdminName(), userList.get(0));
 
     int userCnt = 10;
     for (int i = 0; i < userCnt; i++) {

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.query.control;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -134,7 +134,7 @@ public class QueryResourceManager {
       // when all the selected series are under the same device, the QueryDataSource will be
       // filtered according to timeIndex
       Set<String> selectedDeviceIdSet =
-          pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
+          pathList.stream().map(PartialPath::getDeviceIdString).collect(Collectors.toSet());
 
       long queryId = context.getQueryId();
       String storageGroupPath = processor.getStorageGroupPath();
@@ -162,7 +162,7 @@ public class QueryResourceManager {
 
     long queryId = context.getQueryId();
     String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(selectedPath);
-    String deviceId = selectedPath.getDevice();
+    String deviceId = selectedPath.getDeviceIdString();
 
     // get cached QueryDataSource
     QueryDataSource cachedQueryDataSource;
@@ -176,7 +176,7 @@ public class QueryResourceManager {
       cachedQueryDataSource =
           processor.query(
               Collections.singletonList(translatedPath),
-              translatedPath.getDevice(),
+              translatedPath.getDeviceIdString(),
               context,
               filePathsManager,
               timeFilter);

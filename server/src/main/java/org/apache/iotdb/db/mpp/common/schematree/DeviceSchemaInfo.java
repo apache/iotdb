@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -50,7 +50,7 @@ public class DeviceSchemaInfo {
 
   public List<MeasurementSchema> getMeasurementSchemaList() {
     return measurementNodeList.stream()
-        .map(SchemaMeasurementNode::getSchema)
+        .map(measurementNode -> measurementNode == null ? null : measurementNode.getSchema())
         .collect(Collectors.toList());
   }
 
@@ -58,6 +58,9 @@ public class DeviceSchemaInfo {
     return measurementNodeList.stream()
         .map(
             measurementNode -> {
+              if (measurementNode == null) {
+                return null;
+              }
               MeasurementPath measurementPath =
                   new MeasurementPath(
                       devicePath.concatNode(measurementNode.getName()),

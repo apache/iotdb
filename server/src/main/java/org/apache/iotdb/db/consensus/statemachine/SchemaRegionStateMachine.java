@@ -21,18 +21,16 @@ package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
-import org.apache.iotdb.db.mpp.execution.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.sql.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.nio.ByteBuffer;
 
 public class SchemaRegionStateMachine extends BaseStateMachine {
 
@@ -53,20 +51,12 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void stop() {}
 
   @Override
-  public boolean takeSnapshot(ByteBuffer metadata, File snapshotDir) {
+  public boolean takeSnapshot(File snapshotDir) {
     return false;
   }
 
   @Override
-  public SnapshotMeta getLatestSnapshot(File snapshotDir) {
-    return null;
-  }
-
-  @Override
-  public void loadSnapshot(SnapshotMeta latest) {}
-
-  @Override
-  public void cleanUpOldSnapshots(File snapshotDir) {}
+  public void loadSnapshot(File latestSnapshotRootDir) {}
 
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {
@@ -78,7 +68,10 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   protected DataSet read(FragmentInstance fragmentInstance) {
-    logger.info("Execute read plan in SchemaRegionStateMachine");
+    logger.info(
+        "SchemaRegionStateMachine[{}]: Execute read plan: FragmentInstance-{}",
+        schemaRegion.getSchemaRegionId(),
+        fragmentInstance.getId());
     return QUERY_INSTANCE_MANAGER.execSchemaQueryFragmentInstance(fragmentInstance, schemaRegion);
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.mpp.execution.IQueryExecution;
+import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 /** TimeValuePairUtils to convert between thrift format and TsFile format. */
 public class QueryDataSetUtils {
@@ -196,10 +197,11 @@ public class QueryDataSetUtils {
     // used to record a bitmap for every 8 points
     int[] bitmaps = new int[columnNum];
     while (rowCount < fetchSize) {
-      TsBlock tsBlock = queryExecution.getBatchResult();
-      if (tsBlock == null) {
+      Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
+      if (!optionalTsBlock.isPresent()) {
         break;
       }
+      TsBlock tsBlock = optionalTsBlock.get();
       int currentCount = tsBlock.getPositionCount();
       // serialize time column
       for (int i = 0; i < currentCount; i++) {

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
@@ -166,7 +166,7 @@ public abstract class UnaryExpression extends Expression {
 
   @Override
   public final void removeWildcards(
-      org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover wildcardsRemover,
+      org.apache.iotdb.db.mpp.plan.rewriter.WildcardsRemover wildcardsRemover,
       List<Expression> resultExpressions)
       throws StatementAnalyzeException {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
