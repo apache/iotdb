@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.literal;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -43,6 +44,11 @@ public class DoubleLiteral extends Literal {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.DOUBLE.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
+  }
+
+  @Override
+  public boolean isDataTypeConsistency(TSDataType dataType) {
+    return dataType == TSDataType.FLOAT || dataType == TSDataType.DOUBLE;
   }
 
   @Override

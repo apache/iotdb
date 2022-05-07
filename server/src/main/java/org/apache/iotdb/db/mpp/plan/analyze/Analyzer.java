@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -135,11 +137,8 @@ public class Analyzer {
           return analysis;
         }
 
-        // a list of output column with alias (null if alias not exist)
         List<Pair<Expression, String>> outputExpressions;
-        //
         Set<Expression> selectExpressions = new HashSet<>();
-        //
         Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
         // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
         //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
@@ -239,6 +238,16 @@ public class Analyzer {
 
         if (queryStatement.getFillComponent() != null) {
           FillComponent fillComponent = queryStatement.getFillComponent();
+          if (fillComponent.getFillPolicy() == FillPolicy.VALUE) {
+            List<Expression> fillColumnList =
+                outputExpressions.stream()
+                    .map(Pair::getLeft)
+                    .distinct()
+                    .collect(Collectors.toList());
+            for (Expression fillColumn : fillColumnList) {
+              checkDataTypeConsistencyInFill(fillColumn, fillComponent.getFillValue());
+            }
+          }
           analysis.setFillDescriptor(
               new FillDescriptor(fillComponent.getFillPolicy(), fillComponent.getFillValue()));
         }
@@ -691,6 +700,15 @@ public class Analyzer {
           throw new SemanticException(
               "GROUP BY LEVEL: the data types of the same output column should be the same.");
         }
+      }
+    }
+
+    private void checkDataTypeConsistencyInFill(Expression fillColumn, Literal fillValue) {
+      TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
+      if (!fillValue.isDataTypeConsistency(checkedDataType)) {
+        // TODO: consider type casting
+        throw new SemanticException(
+            "FILL: the data type of the fill value should be the same as the output column");
       }
     }
 

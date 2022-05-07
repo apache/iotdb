@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.literal;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -46,6 +47,11 @@ public class BooleanLiteral extends Literal {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.BOOLEAN.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
+  }
+
+  @Override
+  public boolean isDataTypeConsistency(TSDataType dataType) {
+    return dataType == TSDataType.BOOLEAN;
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.literal;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -28,6 +29,11 @@ public class NullLiteral extends Literal {
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.NULL.ordinal(), byteBuffer);
+  }
+
+  @Override
+  public boolean isDataTypeConsistency(TSDataType dataType) {
+    return false;
   }
 
   @Override

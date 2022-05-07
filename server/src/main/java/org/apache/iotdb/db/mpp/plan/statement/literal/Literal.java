@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.statement.literal;
 
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -53,4 +54,6 @@ public abstract class Literal extends StatementNode {
   }
 
   public abstract void serialize(ByteBuffer byteBuffer);
+
+  public abstract boolean isDataTypeConsistency(TSDataType dataType);
 }

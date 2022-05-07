@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.literal;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -43,6 +44,11 @@ public class LongLiteral extends Literal {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.LONG.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
+  }
+
+  @Override
+  public boolean isDataTypeConsistency(TSDataType dataType) {
+    return dataType == TSDataType.INT32 || dataType == TSDataType.INT64;
   }
 
   @Override
