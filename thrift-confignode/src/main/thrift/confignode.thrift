@@ -36,11 +36,6 @@ struct TGlobalConfig {
   4: required i64 timePartitionInterval
 }
 
-struct TConfigNodeLocation {
-   1: required common.TEndPoint internalEndPoint
-   2: required common.TEndPoint consensusEndPoint
-}
-
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
   2: required list<TConfigNodeLocation> configNodeList

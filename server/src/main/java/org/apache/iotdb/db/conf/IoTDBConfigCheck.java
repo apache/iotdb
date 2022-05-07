@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.utils.CommonUtils;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -427,7 +427,7 @@ public class IoTDBConfigCheck {
     }
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-      properties.setProperty(CONFIG_NODE_LIST, CommonUtils.toNodeUrl(configNodeList));
+      properties.setProperty(CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(configNodeList));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {
@@ -443,7 +443,7 @@ public class IoTDBConfigCheck {
     try {
       if (properties.containsKey(CONFIG_NODE_LIST)) {
         config.setConfigNodeList(
-            CommonUtils.parseNodeUrl(properties.getProperty(CONFIG_NODE_LIST)));
+            NodeUrlUtils.parseTEndPointUrls(properties.getProperty(CONFIG_NODE_LIST)));
       }
     } catch (BadNodeUrlException e) {
       logger.error("Cannot parse config node list in system.properties");

@@ -136,16 +136,11 @@ public class DataNode implements DataNodeMBean {
 
   public void joinCluster() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
-    ConfigNodeClient configNodeClient = null;
-    try {
-      configNodeClient = new ConfigNodeClient();
-    } catch (IoTDBConnectionException e) {
-      throw new StartupException(e.getMessage());
-    }
 
     while (retry > 0) {
       logger.info("start joining the cluster.");
       try {
+        ConfigNodeClient configNodeClient = new ConfigNodeClient();
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         TDataNodeLocation location = new TDataNodeLocation();

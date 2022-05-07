@@ -97,7 +97,7 @@ public class NodeManager {
     }
 
     dataSet.setDataNodeId(req.getLocation().getDataNodeId());
-    dataSet.setConfigNodeList(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
+    dataSet.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
     setGlobalConfig(dataSet);
     return dataSet;
   }

@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -51,6 +52,8 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 public class ConfigNodeClient {
@@ -164,7 +167,18 @@ public class ConfigNodeClient {
       throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        return client.registerDataNode(req);
+        TDataNodeRegisterResp resp = client.registerDataNode(req);
+
+        // check if config nodes are inconsistent
+        List<TEndPoint> newConfigNodes = new ArrayList<>();
+        for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
+          newConfigNodes.add(configNodeLocation.getInternalEndPoint());
+        }
+        if ((new HashSet<>(configNodes).containsAll(newConfigNodes)
+                && new HashSet<>(newConfigNodes).containsAll(configNodes))
+            && updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
       } catch (TException e) {
         configLeader = null;
       }

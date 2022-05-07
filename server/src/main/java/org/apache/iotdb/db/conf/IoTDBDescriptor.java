@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.CommonUtils;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -1569,7 +1569,7 @@ public class IoTDBDescriptor {
     String configNodeUrls = properties.getProperty("config_nodes");
     if (configNodeUrls != null) {
       try {
-        conf.setConfigNodeList(CommonUtils.parseNodeUrl(configNodeUrls));
+        conf.setConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
             "Config nodes are set in wrong format, please set them like 0.0.0.0:22277,0.0.0.0:22281");

@@ -215,11 +215,6 @@ public class ConfigNodeDescriptor {
                   "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
       commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
       commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
-
-      String addresses = properties.getProperty("config_node_group_address_list", "0.0.0.0:22278");
-
-      conf.setConfigNodeGroupAddressList(
-          CommonUtils.parseNodeUrl(addresses).toArray(new TEndPoint[0]));
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
