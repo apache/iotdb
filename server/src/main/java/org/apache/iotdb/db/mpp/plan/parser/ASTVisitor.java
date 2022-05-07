@@ -1702,20 +1702,25 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupStatement.setStorageGroupPath(path);
-    if (ctx.time != null) {
-      setStorageGroupStatement.setTtl(Long.parseLong(ctx.time.getText()));
-    }
-    if (ctx.schemaReplicationFactor != null) {
-      setStorageGroupStatement.setSchemaReplicationFactor(
-          Integer.parseInt(ctx.schemaReplicationFactor.getText()));
-    }
-    if (ctx.dataReplicationFactor != null) {
-      setStorageGroupStatement.setDataReplicationFactor(
-          Integer.parseInt(ctx.dataReplicationFactor.getText()));
-    }
-    if (ctx.timePartitionInterval != null) {
-      setStorageGroupStatement.setTimePartitionInterval(
-          Long.parseLong(ctx.timePartitionInterval.getText()));
+    if (ctx.sgAttributeClause() != null) {
+      for (IoTDBSqlParser.SgAttributeClauseContext attribute : ctx.sgAttributeClause()) {
+        if (attribute.TTL() != null) {
+          long ttl = Long.parseLong(attribute.TTL().getText());
+          setStorageGroupStatement.setTtl(ttl);
+        } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
+          int schemaReplicationFactor =
+              Integer.parseInt(attribute.SCHEMA_REPLICATION_FACTOR().getText());
+          setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
+        } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
+          int dataReplicationFactor =
+              Integer.parseInt(attribute.DATA_REPLICATION_FACTOR().getText());
+          setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
+        } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
+          long timePartitionInterval =
+              Long.parseLong(attribute.TIME_PARTITION_INTERVAL().getText());
+          setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
+        }
+      }
     }
     return setStorageGroupStatement;
   }
