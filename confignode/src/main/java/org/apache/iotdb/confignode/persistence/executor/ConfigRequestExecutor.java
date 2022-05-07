@@ -59,6 +59,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ConfigRequestExecutor {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRequestExecutor.class);
+
   private final NodeInfo nodeInfo;
 
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -66,8 +68,6 @@ public class ConfigRequestExecutor {
   private final PartitionInfo partitionInfo;
 
   private final AuthorInfo authorInfo;
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRequestExecutor.class);
 
   public ConfigRequestExecutor() {
     this.nodeInfo = NodeInfo.getInstance();
