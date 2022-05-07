@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.datatransfer;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager.SinkHandleListener;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
 import org.apache.iotdb.mpp.rpc.thrift.TEndOfDataBlockEvent;
@@ -32,7 +33,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.TsBlockSerde;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.commons.lang3.Validate;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +43,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.StringJoiner;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
@@ -54,6 +53,7 @@ public class SinkHandle implements ISinkHandle {
   private static final Logger logger = LoggerFactory.getLogger(SinkHandle.class);
 
   public static final int MAX_ATTEMPT_TIMES = 3;
+  private static final long DEFAULT_RETRY_INTERVAL_IN_MS = 1000L;
 
   private final TEndPoint remoteEndpoint;
   private final TFragmentInstanceId remoteFragmentInstanceId;
@@ -63,6 +63,7 @@ public class SinkHandle implements ISinkHandle {
   private final ExecutorService executorService;
   private final TsBlockSerde serde;
   private final SinkHandleListener sinkHandleListener;
+  private long retryIntervalInMs;
 
   // Use LinkedHashMap to meet 2 needs,
   //   1. Predictable iteration order so that removing buffered tsblocks can be efficient.
@@ -99,6 +100,7 @@ public class SinkHandle implements ISinkHandle {
     this.serde = Validate.notNull(serde);
     this.sinkHandleListener = Validate.notNull(sinkHandleListener);
     this.dataBlockServiceClientManager = dataBlockServiceClientManager;
+    this.retryIntervalInMs = DEFAULT_RETRY_INTERVAL_IN_MS;
   }
 
   @Override
@@ -155,11 +157,7 @@ public class SinkHandle implements ISinkHandle {
   }
 
   private void sendEndOfDataBlockEvent() throws Exception {
-    logger.debug(
-        "Send end of data block event to plan node {} of {}. {}",
-        remotePlanNodeId,
-        remoteFragmentInstanceId,
-        Thread.currentThread().getName());
+    logger.info("{} send end of data block event", this);
     int attempt = 0;
     TEndOfDataBlockEvent endOfDataBlockEvent =
         new TEndOfDataBlockEvent(
@@ -173,29 +171,24 @@ public class SinkHandle implements ISinkHandle {
           dataBlockServiceClientManager.borrowClient(remoteEndpoint)) {
         client.onEndOfDataBlockEvent(endOfDataBlockEvent);
         break;
-      } catch (TException e) {
+      } catch (Throwable e) {
         logger.error(
-            "Failed to send end of data block event to plan node {} of {} due to {}, attempt times: {}",
-            remotePlanNodeId,
-            remoteFragmentInstanceId,
+            "{} Failed to send end of data block event due to {}, attempt times: {}",
+            this,
             e.getMessage(),
             attempt,
             e);
         if (attempt == MAX_ATTEMPT_TIMES) {
           throw e;
         }
-      } catch (IOException e) {
-        logger.error("can't connect to node {}", remoteEndpoint, e);
-        if (attempt == MAX_ATTEMPT_TIMES) {
-          throw e;
-        }
+        Thread.sleep(retryIntervalInMs);
       }
     }
   }
 
   @Override
   public synchronized void setNoMoreTsBlocks() {
-    logger.info("Setting no-more-tsblocks to {}", this);
+    logger.info("{} start to set no-more-tsblocks", this);
     if (aborted) {
       return;
     }
@@ -204,17 +197,19 @@ public class SinkHandle implements ISinkHandle {
     } catch (Exception e) {
       throw new RuntimeException("Send EndOfDataBlockEvent failed", e);
     }
+    logger.info("{} set noMoreTsBlocks to true", this);
     noMoreTsBlocks = true;
     if (isFinished()) {
+      logger.info("{} revoke onFinish() of sinkHandleListener", this);
       sinkHandleListener.onFinish(this);
     }
+    logger.info("{} revoke onEndOfBlocks() of sinkHandleListener", this);
     sinkHandleListener.onEndOfBlocks(this);
-    logger.info("No more tsblocks has been set to {}", this);
   }
 
   @Override
   public synchronized void abort() {
-    logger.info("Sink handle {} is being aborted.", this);
+    logger.info("{} is being aborted.", this);
     sequenceIdToTsBlock.clear();
     aborted = true;
     bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blocked);
@@ -225,7 +220,7 @@ public class SinkHandle implements ISinkHandle {
       bufferRetainedSizeInBytes = 0;
     }
     sinkHandleListener.onAborted(this);
-    logger.info("Sink handle {} is aborted", this);
+    logger.info("{} is aborted", this);
   }
 
   @Override
@@ -304,12 +299,16 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public String toString() {
-    return new StringJoiner(", ", SinkHandle.class.getSimpleName() + "[", "]")
-        .add("remoteEndpoint='" + remoteEndpoint + "'")
-        .add("remoteFragmentInstanceId=" + remoteFragmentInstanceId)
-        .add("remotePlanNodeId='" + remotePlanNodeId + "'")
-        .add("localFragmentInstanceId=" + localFragmentInstanceId)
-        .toString();
+    return String.format(
+        "Query[%s]-[%s-%s-SinkHandle]:",
+        localFragmentInstanceId.queryId,
+        localFragmentInstanceId.fragmentId,
+        localFragmentInstanceId.instanceId);
+  }
+
+  @TestOnly
+  public void setRetryIntervalInMs(long retryIntervalInMs) {
+    this.retryIntervalInMs = retryIntervalInMs;
   }
 
   /**
@@ -333,12 +332,11 @@ public class SinkHandle implements ISinkHandle {
 
     @Override
     public void run() {
-      logger.debug(
-          "Send new data block event [{}, {}) to plan node {} of {}.",
+      logger.info(
+          "{} send new data block event [{}, {})",
+          SinkHandle.this,
           startSequenceId,
-          startSequenceId + blockSizes.size(),
-          remotePlanNodeId,
-          remoteFragmentInstanceId);
+          startSequenceId + blockSizes.size());
       int attempt = 0;
       TNewDataBlockEvent newDataBlockEvent =
           new TNewDataBlockEvent(
@@ -355,13 +353,18 @@ public class SinkHandle implements ISinkHandle {
           break;
         } catch (Throwable e) {
           logger.error(
-              "Failed to send new data block event to plan node {} of {} due to {}, attempt times: {}",
-              remotePlanNodeId,
-              remoteFragmentInstanceId,
+              "{} failed to send new data block event due to {}, attempt times: {}",
+              SinkHandle.this,
               e.getMessage(),
               attempt,
               e);
           if (attempt == MAX_ATTEMPT_TIMES) {
+            sinkHandleListener.onFailure(SinkHandle.this, e);
+          }
+          try {
+            Thread.sleep(retryIntervalInMs);
+          } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
             sinkHandleListener.onFailure(SinkHandle.this, e);
           }
         }
