@@ -190,9 +190,9 @@ public class ConfigRequestExecutor {
   public void loadSnapshot(File latestSnapshotRootDir) {
 
     if (!latestSnapshotRootDir.exists()) {
-      LOGGER
-          .error("snapshot directory [{}] is not exist, can not load snapshot with this directory.",
-              latestSnapshotRootDir.getAbsolutePath());
+      LOGGER.error(
+          "snapshot directory [{}] is not exist, can not load snapshot with this directory.",
+          latestSnapshotRootDir.getAbsolutePath());
       return;
     }
 

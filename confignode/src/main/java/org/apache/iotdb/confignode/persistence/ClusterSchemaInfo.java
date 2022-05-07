@@ -235,9 +235,7 @@ public class ClusterSchemaInfo implements Snapshot {
     return result;
   }
 
-  /**
-   * @return List<StorageGroupName>, all storageGroups' name
-   */
+  /** @return List<StorageGroupName>, all storageGroups' name */
   public List<String> getStorageGroupNames() {
     List<String> storageGroups = new ArrayList<>();
     storageGroupReadWriteLock.readLock().lock();
@@ -252,9 +250,7 @@ public class ClusterSchemaInfo implements Snapshot {
     return storageGroups;
   }
 
-  /**
-   * @return The number of matched StorageGroups by the specific StorageGroup pattern
-   */
+  /** @return The number of matched StorageGroups by the specific StorageGroup pattern */
   public CountStorageGroupResp countMatchedStorageGroups(CountStorageGroupReq req) {
     CountStorageGroupResp result = new CountStorageGroupResp();
     storageGroupReadWriteLock.readLock().lock();
@@ -273,9 +269,7 @@ public class ClusterSchemaInfo implements Snapshot {
     return result;
   }
 
-  /**
-   * @return All StorageGroupSchemas that matches to the specific StorageGroup pattern
-   */
+  /** @return All StorageGroupSchemas that matches to the specific StorageGroup pattern */
   public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetStorageGroupReq req) {
     StorageGroupSchemaResp result = new StorageGroupSchemaResp();
     storageGroupReadWriteLock.readLock().lock();
@@ -300,9 +294,7 @@ public class ClusterSchemaInfo implements Snapshot {
     return result;
   }
 
-  /**
-   * @return True if StorageGroupInfo contains the specific StorageGroup
-   */
+  /** @return True if StorageGroupInfo contains the specific StorageGroup */
   public boolean containsStorageGroup(String storageName) {
     boolean result;
     storageGroupReadWriteLock.readLock().lock();
@@ -321,9 +313,9 @@ public class ClusterSchemaInfo implements Snapshot {
    * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup
    *
    * @param storageGroup StorageGroupName
-   * @param type         SchemaRegion or DataRegion
+   * @param type SchemaRegion or DataRegion
    * @return All SchemaRegionGroupIds when type is SchemaRegion, and all DataRegionGroupIds when
-   * type is DataRegion
+   *     type is DataRegion
    */
   public List<TConsensusGroupId> getRegionGroupIds(String storageGroup, TConsensusGroupType type) {
     List<TConsensusGroupId> result;
@@ -355,7 +347,8 @@ public class ClusterSchemaInfo implements Snapshot {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
-      LOGGER.error("Failed to take snapshot, because snapshot file [{}] is already exist.",
+      LOGGER.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
           snapshotFile.getAbsolutePath());
       return false;
     }
@@ -383,7 +376,8 @@ public class ClusterSchemaInfo implements Snapshot {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
-      LOGGER.error("Failed to load snapshot,snapshot file [{}] is not exist.",
+      LOGGER.error(
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
           snapshotFile.getAbsolutePath());
       return;
     }
