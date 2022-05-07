@@ -39,6 +39,7 @@ public class LinearFillOperator implements ProcessOperator {
   private final LinearFill[] fillArray;
   private final Operator child;
   private final int outputColumnCount;
+  // TODO need to spill it to disk if it consumes too much memory
   private final LinkedList<TsBlock> cachedTsBlock;
   private final Column[] cachedFilledValueColumns;
 
