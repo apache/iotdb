@@ -361,6 +361,7 @@ public class ClusterSchemaInfo implements Snapshot {
       try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
           FileChannel fileChannel = fileOutputStream.getChannel()) {
         mTree.serialize(buffer);
+        buffer.flip();
         fileChannel.write(buffer);
       }
       return tmpFile.renameTo(snapshotFile);
@@ -388,6 +389,7 @@ public class ClusterSchemaInfo implements Snapshot {
       // get buffer from fileChannel
       fileChannel.read(buffer);
       mTree.clear();
+      buffer.flip();
       mTree.deserialize(buffer);
     } finally {
       buffer.clear();
