@@ -550,7 +550,7 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return String.format("file is %s, status: ", file.toString(), status);
+    return String.format("file is %s, status: %s", file.toString(), status);
   }
 
   @Override
@@ -591,8 +591,6 @@ public class TsFileResource {
         break;
       case UNCLOSED:
         // Print a stack trace in a warn statement.
-        RuntimeException e = new RuntimeException();
-        LOGGER.error("Setting the status of a TsFileResource to UNCLOSED", e);
         this.status = TsFileResourceStatus.UNCLOSED;
         break;
       case DELETED:
