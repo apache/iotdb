@@ -83,7 +83,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       throws QueryProcessException {
     super(null, null);
     // align by device's column number is different from other datasets
-    // TODO I don't know whether it's right or not in AlignedPath, remember to check here while
+    // TODO I don't know whether it's right or not in AlignedPath, remember to check
+    // here while
     // adapting AlignByDevice query for new vector
     super.columnNum = alignByDevicePlan.getMeasurements().size() + 1; // + 1 for 'device'
     this.measurements = alignByDevicePlan.getMeasurements();
@@ -161,15 +162,18 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       // get filter to execute for the current device
       if (deviceToFilterMap != null) {
         IExpression newExpression = deviceToFilterMap.get(currentDevice);
-        this.expression = expression == null ? newExpression : BinaryExpression.or(expression, newExpression);
+        this.expression =
+            expression == null ? newExpression : BinaryExpression.or(expression, newExpression);
       }
     }
     if (dataSetType == DataSetType.GROUP_BY_TIME || dataSetType == DataSetType.GROUP_BY_FILL) {
-      this.expression = expression == null ? timeExpression : BinaryExpression.and(expression, timeExpression);
+      this.expression =
+          expression == null ? timeExpression : BinaryExpression.and(expression, timeExpression);
     }
     if (expression != null) {
       try {
-        this.expression = ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(executePaths));
+        this.expression =
+            ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(executePaths));
       } catch (QueryFilterOptimizationException e) {
         throw new IOException(e.getMessage());
       }
@@ -214,14 +218,13 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         default:
           throw new IOException("unsupported DataSetType");
       }
-    } catch (QueryProcessException
-        | QueryFilterOptimizationException
-        | StorageEngineException e) {
+    } catch (QueryProcessException | QueryFilterOptimizationException | StorageEngineException e) {
       throw new IOException(e);
     }
 
     if (currentDataSet.getEndPoint() != null) {
-      org.apache.iotdb.service.rpc.thrift.EndPoint endPoint = new org.apache.iotdb.service.rpc.thrift.EndPoint();
+      org.apache.iotdb.service.rpc.thrift.EndPoint endPoint =
+          new org.apache.iotdb.service.rpc.thrift.EndPoint();
       endPoint.setIp(currentDataSet.getEndPoint().getIp());
       endPoint.setPort(currentDataSet.getEndPoint().getPort());
       throw new RedirectException(endPoint);
@@ -256,7 +259,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     Field deviceField = new Field(TSDataType.TEXT);
     deviceField.setBinaryV(new Binary(currentDevice));
     rowRecord.addField(deviceField);
-    // device field should not be considered as a value field it should affect the WITHOUT NULL
+    // device field should not be considered as a value field it should affect the
+    // WITHOUT NULL
     // judgement
     rowRecord.resetNullFlag();
 

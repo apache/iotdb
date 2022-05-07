@@ -105,7 +105,8 @@ public class RawDataQueryPlan extends QueryPlan {
     if (expression instanceof SingleSeriesExpression) {
       Path path = ((SingleSeriesExpression) expression).getSeriesPath();
       if (path instanceof AlignedPath) {
-        deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+        deviceToMeasurements
+            .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
             .addAll(((AlignedPath) path).getMeasurementList());
       } else {
         deviceToMeasurements
