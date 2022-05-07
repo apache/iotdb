@@ -321,18 +321,14 @@ public class Analyzer {
       // device path patterns in FROM clause
       List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
-      // a list of measurement name with alias (null if alias not exist)
-      List<Pair<Expression, String>> measurementWithAliasList =
-          getAllMeasurements(queryStatement, measurementSet);
-
-      // a list contains all selected measurement paths
+      // a list contains all selected paths
       List<MeasurementPath> allSelectedPaths = new ArrayList<>();
       for (PartialPath devicePattern : devicePatternList) {
         // get matched device path and all measurement schema infos under this device
         List<DeviceSchemaInfo> deviceSchemaInfos = schemaTree.getMatchedDevices(devicePattern);
         allDeviceSchemaInfos.addAll(deviceSchemaInfos);
         for (DeviceSchemaInfo deviceSchema : deviceSchemaInfos) {
-          // add matched measurement path into allSelectedPaths
+          // add matched path into allSelectedPaths
           allSelectedPaths.addAll(deviceSchema.getMeasurements(measurementSet));
         }
       }
@@ -362,7 +358,11 @@ public class Analyzer {
       // if not, throw a SemanticException
       measurementNameToPathsMap.values().forEach(this::checkDataTypeConsistencyInAlignByDevice);
 
-      // apply SLIMIT&SOFFSET and set outputExpressions & selectExpressions
+      // a list of measurement name with alias (null if alias not exist)
+      List<Pair<Expression, String>> measurementWithAliasList =
+          getAllMeasurements(queryStatement, measurementSet);
+
+      // apply SLIMIT & SOFFSET and set outputExpressions & selectExpressions
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       ColumnPaginationController paginationController =
           new ColumnPaginationController(
