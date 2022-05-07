@@ -123,6 +123,14 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       return;
     }
 
+    long totalSize = 0L;
+    for (TsFileResource resource : selectedSeqTsFileResourceList) {
+      totalSize += resource.getTsFileSize();
+    }
+    for (TsFileResource resource : selectedUnSeqTsFileResourceList) {
+      totalSize += resource.getTsFileSize();
+    }
+
     logger.info(
         "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}",
         fullStorageGroupName,
@@ -170,10 +178,12 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
+      double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       logger.info(
-          "{} [Compaction] CrossSpaceCompactionTask Costs {} s",
+          "{} [Compaction] CrossSpaceCompactionTask Costs {} s, compaction speed is {} MB/s",
           fullStorageGroupName,
-          (System.currentTimeMillis() - startTime) / 1000);
+          costTime,
+          totalSize / costTime);
     }
   }
 
