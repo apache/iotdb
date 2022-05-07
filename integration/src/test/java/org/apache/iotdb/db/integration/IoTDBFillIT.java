@@ -198,7 +198,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature,status, hardware from "
-                  + "root.ln.wf01.wt01 where time == 3 "
+                  + "root.ln.wf01.wt01 where time = 3 "
                   + "Fill(int32[linear, 5ms, 5ms], double[linear, 5ms, 5ms], boolean[previous, 5ms])");
 
       Assert.assertTrue(hasResultSet);
@@ -222,7 +222,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature,status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 70 Fill(int32[linear, 500ms, 500ms], "
+                    + "from root.ln.wf01.wt01 where time = 70 Fill(int32[linear, 500ms, 500ms], "
                     + "double[linear, 500ms, 500ms], boolean[previous, 500ms])");
 
         Assert.assertTrue(hasResultSet);
@@ -243,7 +243,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature,status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 70 Fill(int32[linear], "
+                    + "from root.ln.wf01.wt01 where time = 70 Fill(int32[linear], "
                     + "double[linear], boolean[previous])");
 
         Assert.assertTrue(hasResultSet);
@@ -279,7 +279,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature, status, hardware from "
-                  + "root.ln.wf01.wt01 where time == 3 "
+                  + "root.ln.wf01.wt01 where time = 3 "
                   + "Fill(linear, 5ms, 5ms)");
 
       Assert.assertTrue(hasResultSet);
@@ -303,7 +303,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature, status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 70 "
+                    + "from root.ln.wf01.wt01 where time = 70 "
                     + "Fill(linear, 500ms, 500ms)");
 
         Assert.assertTrue(hasResultSet);
@@ -324,7 +324,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature, status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 70 "
+                    + "from root.ln.wf01.wt01 where time = 70 "
                     + "Fill(linear)");
 
         Assert.assertTrue(hasResultSet);
@@ -361,7 +361,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature,status, hardware "
-                  + "from root.ln.wf01.wt01 where time == 70 "
+                  + "from root.ln.wf01.wt01 where time = 70 "
                   + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
 
       int cnt = 0;
@@ -384,7 +384,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature,status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 80 "
+                    + "from root.ln.wf01.wt01 where time = 80 "
                     + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
 
         Assert.assertTrue(hasResultSet);
@@ -405,7 +405,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature,status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 625 "
+                    + "from root.ln.wf01.wt01 where time = 625 "
                     + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
 
         Assert.assertTrue(hasResultSet);
@@ -440,7 +440,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature,status, hardware "
-                  + "from root.ln.wf01.wt01 where time == 7 "
+                  + "from root.ln.wf01.wt01 where time = 7 "
                   + "Fill(int32[7], double[7], boolean[true])");
 
       Assert.assertTrue(hasResultSet);
@@ -471,7 +471,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature, status, hardware "
-                  + "from root.ln.wf01.wt01 where time == 7 "
+                  + "from root.ln.wf01.wt01 where time = 7 "
                   + "Fill(7)");
 
       Assert.assertTrue(hasResultSet);
@@ -502,7 +502,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature, status, hardware "
-                  + "from root.ln.wf01.wt01 where time == 7 "
+                  + "from root.ln.wf01.wt01 where time = 7 "
                   + "Fill('test string')");
 
       Assert.assertTrue(hasResultSet);
@@ -533,7 +533,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature, status, hardware "
-                  + "from root.ln.wf01.wt01 where time == 7 "
+                  + "from root.ln.wf01.wt01 where time = 7 "
                   + "Fill(true)");
 
       Assert.assertTrue(hasResultSet);
@@ -565,7 +565,7 @@ public class IoTDBFillIT {
           statement.execute(
               "SELECT temperature, status, hardware"
                   + " FROM root.ln.wf01.wt01"
-                  + " WHERE time == 1 FILL(int32[7], double[7], boolean[true])");
+                  + " WHERE time = 1 FILL(int32[7], double[7], boolean[true])");
 
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
@@ -595,7 +595,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature,status, hardware "
-                  + "from root.ln.wf01.wt01 where time == 3 "
+                  + "from root.ln.wf01.wt01 where time = 3 "
                   + "Fill(int32[previous, 5ms], double[previous, 5ms], boolean[previous, 5ms])");
 
       Assert.assertTrue(hasResultSet);
@@ -619,7 +619,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature,status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 70 "
+                    + "from root.ln.wf01.wt01 where time = 70 "
                     + "Fill(int32[previous, 500ms], double[previous, 500ms], boolean[previous, 500ms])");
 
         Assert.assertTrue(hasResultSet);
@@ -640,7 +640,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature,status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 70 "
+                    + "from root.ln.wf01.wt01 where time = 70 "
                     + "Fill(int32[previous, 15ms], double[previous, 15ms], boolean[previous, 5ms])");
 
         Assert.assertTrue(hasResultSet);
@@ -676,7 +676,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature,status, hardware "
-                  + "from root.ln.wf01.wt01 where time == 3 "
+                  + "from root.ln.wf01.wt01 where time = 3 "
                   + "Fill(previous, 5ms)");
 
       Assert.assertTrue(hasResultSet);
@@ -700,7 +700,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature,status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 70 "
+                    + "from root.ln.wf01.wt01 where time = 70 "
                     + "Fill(previous, 500ms)");
 
         Assert.assertTrue(hasResultSet);
@@ -721,7 +721,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature,status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 70 "
+                    + "from root.ln.wf01.wt01 where time = 70 "
                     + "Fill(previous, 5ms)");
 
         Assert.assertTrue(hasResultSet);
@@ -757,7 +757,7 @@ public class IoTDBFillIT {
       boolean hasResultSet =
           statement.execute(
               "select temperature,status, hardware "
-                  + "from root.ln.wf01.wt01 where time == 3 "
+                  + "from root.ln.wf01.wt01 where time = 3 "
                   + "Fill(int32[linear], double[linear], boolean[previous])");
 
       Assert.assertTrue(hasResultSet);
@@ -780,7 +780,7 @@ public class IoTDBFillIT {
         hasResultSet =
             statement.execute(
                 "select temperature,status, hardware "
-                    + "from root.ln.wf01.wt01 where time == 70 "
+                    + "from root.ln.wf01.wt01 where time = 70 "
                     + "Fill(int32[linear], double[linear], boolean[previous])");
 
         Assert.assertTrue(hasResultSet);
@@ -815,7 +815,7 @@ public class IoTDBFillIT {
       ResultSet resultSet =
           statement.executeQuery(
               "select temperature,status "
-                  + "from root.ln.wf01.wt02 where time == 1050 Fill(double[previous])");
+                  + "from root.ln.wf01.wt02 where time = 1050 Fill(double[previous])");
 
       int cnt = 0;
       try {
@@ -833,7 +833,7 @@ public class IoTDBFillIT {
         resultSet =
             statement.executeQuery(
                 "select temperature,status "
-                    + "from root.ln.wf01.wt02 where time == 800 Fill(double[previous])");
+                    + "from root.ln.wf01.wt02 where time = 800 Fill(double[previous])");
 
         while (resultSet.next()) {
           String ans =
@@ -876,7 +876,7 @@ public class IoTDBFillIT {
       ResultSet resultSet =
           statement.executeQuery(
               "select temperature,status "
-                  + "from root.ln.wf01.wt02 where time == 58 Fill(double[previous])");
+                  + "from root.ln.wf01.wt02 where time = 58 Fill(double[previous])");
       try {
         while (resultSet.next()) {
           String ans =
@@ -892,7 +892,7 @@ public class IoTDBFillIT {
         resultSet =
             statement.executeQuery(
                 "select temperature,status "
-                    + "from root.ln.wf01.wt02 where time == 40 Fill(double[previous])");
+                    + "from root.ln.wf01.wt02 where time = 40 Fill(double[previous])");
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -907,7 +907,7 @@ public class IoTDBFillIT {
         resultSet =
             statement.executeQuery(
                 "select temperature,status "
-                    + "from root.ln.wf01.wt02 where time == 80 Fill(double[previous])");
+                    + "from root.ln.wf01.wt02 where time = 80 Fill(double[previous])");
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -946,7 +946,7 @@ public class IoTDBFillIT {
       ResultSet resultSet =
           statement.executeQuery(
               "select temperature,status "
-                  + "from root.ln.wf01.wt02 where time == 59 Fill(double[previous])");
+                  + "from root.ln.wf01.wt02 where time = 59 Fill(double[previous])");
       try {
         while (resultSet.next()) {
           String ans =
@@ -968,7 +968,7 @@ public class IoTDBFillIT {
         resultSet =
             statement.executeQuery(
                 "select temperature,status "
-                    + "from root.ln.wf01.wt02 where time == 52 Fill(double[previous])");
+                    + "from root.ln.wf01.wt02 where time = 52 Fill(double[previous])");
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -1014,7 +1014,7 @@ public class IoTDBFillIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "select temperature,status from root.ln.wf01.wt02 where time == 886 "
+              "select temperature,status from root.ln.wf01.wt02 where time = 886 "
                   + "Fill(double[previous])");
       try {
         while (resultSet.next()) {
@@ -1030,7 +1030,7 @@ public class IoTDBFillIT {
 
         resultSet =
             statement.executeQuery(
-                "select temperature,status from root.ln.wf01.wt02 where time == 730 "
+                "select temperature,status from root.ln.wf01.wt02 where time = 730 "
                     + "Fill(double[previous])");
 
         while (resultSet.next()) {
@@ -1081,7 +1081,7 @@ public class IoTDBFillIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "select temperature,status from root.ln.wf01.wt02 where time == 990 "
+              "select temperature,status from root.ln.wf01.wt02 where time = 990 "
                   + "Fill(double[previous])");
       try {
         while (resultSet.next()) {
@@ -1097,7 +1097,7 @@ public class IoTDBFillIT {
 
         resultSet =
             statement.executeQuery(
-                "select temperature,status from root.ln.wf01.wt02 where time == 925 "
+                "select temperature,status from root.ln.wf01.wt02 where time = 925 "
                     + "Fill(double[previous])");
 
         while (resultSet.next()) {
@@ -1140,7 +1140,7 @@ public class IoTDBFillIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "select temperature,status from root.ln.wf01.wt02 where time == 990 "
+              "select temperature,status from root.ln.wf01.wt02 where time = 990 "
                   + "Fill(double[previous])");
       try {
         while (resultSet.next()) {
@@ -1186,7 +1186,7 @@ public class IoTDBFillIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "select temperature,status from root.ln.wf01.wt02 where time == 1080 "
+              "select temperature,status from root.ln.wf01.wt02 where time = 1080 "
                   + "Fill(double[previous])");
       try {
         while (resultSet.next()) {
