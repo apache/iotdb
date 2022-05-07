@@ -169,14 +169,14 @@ public class Analyzer {
         List<DeviceSchemaInfo> deviceSchemaInfos = new ArrayList<>();
         // a set that contains all measurement names,
         Set<String> measurementSet = new HashSet<>();
-        if (!queryStatement.isAlignByDevice()) {
-          outputExpressions = analyzeSelect(queryStatement, schemaTree);
-          selectExpressions =
-              outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet());
-        } else {
+        if (queryStatement.isAlignByDevice()) {
           outputExpressions =
               analyzeFrom(
                   queryStatement, schemaTree, deviceSchemaInfos, selectExpressions, measurementSet);
+        } else {
+          outputExpressions = analyzeSelect(queryStatement, schemaTree);
+          selectExpressions =
+              outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet());
         }
 
         if (queryStatement.isGroupByLevel()) {
@@ -202,7 +202,7 @@ public class Analyzer {
         boolean isValueFilterAggregation = queryStatement.isAggregationQuery() && hasValueFilter;
         boolean isRawDataSource = !queryStatement.isAggregationQuery() || isValueFilterAggregation;
         for (Expression selectExpr : selectExpressions) {
-          analyzeSource(selectExpr, sourceExpressions, isRawDataSource);
+          updateSource(selectExpr, sourceExpressions, isRawDataSource);
         }
         if (isValueFilterAggregation) {
           Map<String, Set<Expression>> aggregationExpressions = new HashMap<>();
@@ -213,20 +213,19 @@ public class Analyzer {
         }
 
         if (queryStatement.getWhereCondition() != null) {
-          if (!queryStatement.isAlignByDevice()) {
-            Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
-            // update sourceExpression according to queryFilter
-            analyzeSource(queryFilter, sourceExpressions, isRawDataSource);
-            analysis.setQueryFilter(queryFilter);
-          } else {
-            // generate query filter for each device in ALIGN BY DEVICE query
+          if (queryStatement.isAlignByDevice()) {
             Map<String, Expression> deviceToQueryFilter =
                 analyzeWhereSplitByDevice(queryStatement, deviceSchemaInfos, measurementSet);
-            // update sourceExpression according to deviceToQueryFilter
-            for (Expression predicate : deviceToQueryFilter.values()) {
-              analyzeSource(predicate, sourceExpressions, isRawDataSource);
-            }
+            deviceToQueryFilter
+                .values()
+                .forEach(
+                    queryFilter -> updateSource(queryFilter, sourceExpressions, isRawDataSource));
             analysis.setDeviceToQueryFilter(deviceToQueryFilter);
+          } else {
+            Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
+            // update sourceExpression according to queryFilter
+            updateSource(queryFilter, sourceExpressions, isRawDataSource);
+            analysis.setQueryFilter(queryFilter);
           }
         }
         analysis.setSourceExpressions(sourceExpressions);
@@ -324,7 +323,7 @@ public class Analyzer {
 
       // a list of measurement name with alias (null if alias not exist)
       List<Pair<Expression, String>> measurementWithAliasList =
-          analyzeMeasurements(queryStatement, measurementSet);
+          getAllMeasurements(queryStatement, measurementSet);
 
       // a list contains all selected measurement paths
       List<MeasurementPath> allSelectedPaths = new ArrayList<>();
@@ -368,9 +367,9 @@ public class Analyzer {
       ColumnPaginationController paginationController =
           new ColumnPaginationController(
               queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
-      for (Pair<Expression, String> measurementWithAlias : measurementWithAliasList) {
+      for (Pair<Expression, String> measurementAliasPair : measurementWithAliasList) {
         String measurement =
-            ExpressionAnalyzer.getPathInSourceExpression(measurementWithAlias.left).toString();
+            ExpressionAnalyzer.getPathInSourceExpression(measurementAliasPair.left).toString();
         if (measurementNameToPathsMap.containsKey(measurement)) {
           List<MeasurementPath> measurementPaths = measurementNameToPathsMap.get(measurement);
           measurementPaths.forEach(MeasurementPath::removeMeasurementAlias);
@@ -380,12 +379,12 @@ public class Analyzer {
             continue;
           }
           if (paginationController.hasCurLimit()) {
-            outputExpressions.add(measurementWithAlias);
-            typeProvider.setType(measurementWithAlias.left.getExpressionString(), dataType);
+            outputExpressions.add(measurementAliasPair);
+            typeProvider.setType(measurementAliasPair.left.getExpressionString(), dataType);
             for (MeasurementPath measurementPath : measurementPaths) {
               Expression tmpExpression =
                   ExpressionAnalyzer.replacePathInSourceExpression(
-                      measurementWithAlias.left, measurementPath);
+                      measurementAliasPair.left, measurementPath);
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
               selectExpressions.add(tmpExpression);
             }
@@ -399,13 +398,13 @@ public class Analyzer {
               measurementNameToPathsMap.get(aliasToMeasurementNameMap.get(measurement));
           measurementPaths.forEach(MeasurementPath::removeMeasurementAlias);
           TSDataType dataType = measurementPaths.get(0).getSeriesType();
-          Expression expressionWithAlias = measurementWithAlias.left;
+          Expression expressionWithAlias = measurementAliasPair.left;
           Expression expressionWithoutAlias =
               ExpressionAnalyzer.removeAliasInMeasurementExpression(
-                  measurementWithAlias.left, aliasToMeasurementNameMap);
+                  measurementAliasPair.left, aliasToMeasurementNameMap);
           String alias =
-              measurementWithAlias.right != null
-                  ? measurementWithAlias.right
+              measurementAliasPair.right != null
+                  ? measurementAliasPair.right
                   : expressionWithAlias.getExpressionString();
           if (paginationController.hasCurOffset()) {
             paginationController.consumeOffset();
@@ -438,14 +437,14 @@ public class Analyzer {
               // replace `*` with exact measurement name
               Expression replacedMeasurement =
                   ExpressionAnalyzer.replacePathInSourceExpression(
-                      measurementWithAlias.left, measurementName);
+                      measurementAliasPair.left, measurementName);
               typeProvider.setType(replacedMeasurement.getExpressionString(), dataType);
-              outputExpressions.add(new Pair<>(replacedMeasurement, measurementWithAlias.right));
+              outputExpressions.add(new Pair<>(replacedMeasurement, measurementAliasPair.right));
               for (MeasurementPath measurementPath : measurementPaths) {
                 // replace `*` with exact measurement path
                 Expression tmpExpression =
                     ExpressionAnalyzer.replacePathInSourceExpression(
-                        measurementWithAlias.left, measurementPath);
+                        measurementAliasPair.left, measurementPath);
                 typeProvider.setType(tmpExpression.getExpressionString(), dataType);
                 selectExpressions.add(tmpExpression);
               }
@@ -464,7 +463,7 @@ public class Analyzer {
       return outputExpressions;
     }
 
-    private List<Pair<Expression, String>> analyzeMeasurements(
+    private List<Pair<Expression, String>> getAllMeasurements(
         QueryStatement queryStatement, Set<String> measurementSet) {
       List<Pair<Expression, String>> measurementWithAliasList =
           queryStatement.getSelectComponent().getResultColumns().stream()
@@ -511,7 +510,7 @@ public class Analyzer {
       return new Pair<>(globalTimeFilter, hasValueFilter);
     }
 
-    private void analyzeSource(
+    private void updateSource(
         Expression selectExpr,
         Map<String, Set<Expression>> sourceExpressions,
         boolean isRawDataSource) {
@@ -544,12 +543,8 @@ public class Analyzer {
               queryStatement.getFromComponent().getPrefixPaths(),
               schemaTree,
               typeProvider);
-      if (rewrittenPredicates.size() == 1) {
-        return rewrittenPredicates.get(0);
-      } else {
-        return ExpressionUtils.constructBinaryFilterTreeWithAnd(
-            rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
-      }
+      return ExpressionUtils.constructQueryFilter(
+          rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
     }
 
     private Map<String, Expression> analyzeWhereSplitByDevice(
@@ -564,15 +559,10 @@ public class Analyzer {
                 deviceSchemaInfo,
                 measurementSet,
                 typeProvider);
-        if (rewrittenPredicates.size() == 1) {
-          deviceToQueryFilter.put(
-              deviceSchemaInfo.getDevicePath().getFullPath(), rewrittenPredicates.get(0));
-        } else {
-          deviceToQueryFilter.put(
-              deviceSchemaInfo.getDevicePath().getFullPath(),
-              ExpressionUtils.constructBinaryFilterTreeWithAnd(
-                  rewrittenPredicates.stream().distinct().collect(Collectors.toList())));
-        }
+        deviceToQueryFilter.put(
+            deviceSchemaInfo.getDevicePath().getFullPath(),
+            ExpressionUtils.constructQueryFilter(
+                rewrittenPredicates.stream().distinct().collect(Collectors.toList())));
       }
       return deviceToQueryFilter;
     }

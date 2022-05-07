@@ -222,7 +222,14 @@ public class ExpressionUtils {
     return null;
   }
 
-  public static Expression constructBinaryFilterTreeWithAnd(List<Expression> expressions) {
+  public static Expression constructQueryFilter(List<Expression> expressions) {
+    if (expressions.size() == 1) {
+      return expressions.get(0);
+    }
+    return ExpressionUtils.constructBinaryFilterTreeWithAnd(expressions);
+  }
+
+  private static Expression constructBinaryFilterTreeWithAnd(List<Expression> expressions) {
     // TODO: consider AVL tree
     if (expressions.size() == 2) {
       return new LogicAndExpression(expressions.get(0), expressions.get(1));
