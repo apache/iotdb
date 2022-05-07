@@ -240,10 +240,7 @@ public class Analyzer {
         if (queryStatement.getFillComponent() != null) {
           FillComponent fillComponent = queryStatement.getFillComponent();
           analysis.setFillDescriptor(
-              new FillDescriptor(
-                  fillComponent.getFillPolicy(),
-                  fillComponent.getFillValue(),
-                  fillComponent.getFillDatatype()));
+              new FillDescriptor(fillComponent.getFillPolicy(), fillComponent.getFillValue()));
         }
 
         // generate result set header according to output expressions

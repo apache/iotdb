@@ -26,11 +26,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.literal.NullLiteral;
 
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 
@@ -44,7 +44,7 @@ public class FillNodeSerdeTest {
         new FillNode(
             new PlanNodeId("TestFillNode"),
             timeJoinNode,
-            Collections.singletonList(new FillDescriptor(FillPolicy.PREVIOUS, null, null)));
+            new FillDescriptor(FillPolicy.PREVIOUS, new NullLiteral()));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fillNode.serialize(byteBuffer);

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -32,33 +32,29 @@ public class FillDescriptor {
   private final FillPolicy fillPolicy;
 
   // filled value when fillPolicy is VALUE
-  private String fillValueString;
-  private TSDataType fillDataType;
+  private Literal fillValue;
 
   public FillDescriptor(FillPolicy fillPolicy) {
     this.fillPolicy = fillPolicy;
   }
 
-  public FillDescriptor(FillPolicy fillPolicy, String fillValueString, TSDataType fillDataType) {
+  public FillDescriptor(FillPolicy fillPolicy, Literal fillValue) {
     this.fillPolicy = fillPolicy;
-    this.fillValueString = fillValueString;
-    this.fillDataType = fillDataType;
+    this.fillValue = fillValue;
   }
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(fillPolicy.ordinal(), byteBuffer);
     if (fillPolicy == FillPolicy.VALUE) {
-      ReadWriteIOUtils.write(fillValueString, byteBuffer);
-      ReadWriteIOUtils.write(fillDataType.ordinal(), byteBuffer);
+      fillValue.serialize(byteBuffer);
     }
   }
 
   public static FillDescriptor deserialize(ByteBuffer byteBuffer) {
     FillPolicy fillPolicy = FillPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     if (fillPolicy == FillPolicy.VALUE) {
-      String fillValueString = ReadWriteIOUtils.readString(byteBuffer);
-      TSDataType fillDataType = TSDataType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-      return new FillDescriptor(fillPolicy, fillValueString, fillDataType);
+      Literal fillValue = Literal.deserialize(byteBuffer);
+      return new FillDescriptor(fillPolicy, fillValue);
     } else {
       return new FillDescriptor(fillPolicy);
     }
@@ -73,13 +69,11 @@ public class FillDescriptor {
       return false;
     }
     FillDescriptor that = (FillDescriptor) o;
-    return fillPolicy == that.fillPolicy
-        && Objects.equals(fillValueString, that.fillValueString)
-        && fillDataType == that.fillDataType;
+    return fillPolicy == that.fillPolicy && Objects.equals(fillValue, that.fillValue);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fillPolicy, fillValueString, fillDataType);
+    return Objects.hash(fillPolicy, fillValue);
   }
 }

@@ -42,6 +42,11 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.literal.BooleanLiteral;
+import org.apache.iotdb.db.mpp.plan.statement.literal.DoubleLiteral;
+import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
+import org.apache.iotdb.db.mpp.plan.statement.literal.LongLiteral;
+import org.apache.iotdb.db.mpp.plan.statement.literal.StringLiteral;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -716,15 +721,30 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else if (ctx.specificValueClause() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
       if (ctx.specificValueClause().constant() != null) {
-        ConstantOperand constantOperand =
-            (ConstantOperand) parseConstantOperand(ctx.specificValueClause().constant());
-        fillComponent.setFillValue(constantOperand.getValueString());
-        fillComponent.setFillDatatype(constantOperand.getDataType());
+        Literal fillValue = parseLiteral(ctx.specificValueClause().constant());
+        fillComponent.setFillValue(fillValue);
       } else {
         throw new SemanticException("fill value cannot be null");
       }
     }
     queryStatement.setFillComponent(fillComponent);
+  }
+
+  private Literal parseLiteral(ConstantContext constantContext) {
+    String text = constantContext.getText();
+    if (constantContext.BOOLEAN_LITERAL() != null) {
+      return new BooleanLiteral(text);
+    } else if (constantContext.STRING_LITERAL() != null) {
+      return new StringLiteral(parseStringLiteral(text));
+    } else if (constantContext.INTEGER_LITERAL() != null) {
+      return new LongLiteral(text);
+    } else if (constantContext.realLiteral() != null) {
+      return new DoubleLiteral(text);
+    } else if (constantContext.dateExpression() != null) {
+      return new LongLiteral(parseDateExpression(constantContext.dateExpression()));
+    } else {
+      throw new SQLParserException("Unsupported constant operand: " + text);
+    }
   }
 
   // Other Clauses

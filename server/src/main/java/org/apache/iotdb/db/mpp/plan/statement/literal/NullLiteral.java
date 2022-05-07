@@ -17,32 +17,32 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.component;
+package org.apache.iotdb.db.mpp.plan.statement.literal;
 
-import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
-import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-/** This class maintains information of {@code FILL} clause. */
-public class FillComponent extends StatementNode {
+import java.nio.ByteBuffer;
 
-  private FillPolicy fillPolicy;
-  private Literal fillValue;
+public class NullLiteral extends Literal {
 
-  public FillComponent() {}
-
-  public FillPolicy getFillPolicy() {
-    return fillPolicy;
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(LiteralType.NULL.ordinal(), byteBuffer);
   }
 
-  public void setFillPolicy(FillPolicy fillPolicy) {
-    this.fillPolicy = fillPolicy;
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    return true;
   }
 
-  public Literal getFillValue() {
-    return fillValue;
-  }
-
-  public void setFillValue(Literal fillValue) {
-    this.fillValue = fillValue;
+  @Override
+  public int hashCode() {
+    return getClass().hashCode();
   }
 }
