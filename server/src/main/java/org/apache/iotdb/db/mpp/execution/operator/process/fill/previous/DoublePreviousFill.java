@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution.operator.process.fill.previous;
 
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
@@ -32,35 +31,25 @@ public class DoublePreviousFill implements IFill {
   // previous value
   private double value;
   // whether previous value is null
-  private boolean previousIsNull;
-  // index of the column which is need to be filled
-  private final int columnIndex;
-
-  public DoublePreviousFill(double value, int columnIndex) {
-    this.value = value;
-    this.columnIndex = columnIndex;
-  }
+  private boolean previousIsNull = true;
 
   @Override
-  public Column fill(TsBlock tsBlock) {
-    Column column = tsBlock.getColumn(columnIndex);
-    int size = column.getPositionCount();
-    // if this column doesn't have any null value, or it's empty, just return itself;
-    if (!column.mayHaveNull() || size == 0) {
+  public Column fill(Column valueColumn) {
+    int size = valueColumn.getPositionCount();
+    // if this valueColumn doesn't have any null value, or it's empty, just return itself;
+    if (!valueColumn.mayHaveNull() || size == 0) {
       if (size != 0) {
         previousIsNull = false;
         // update the value using last non-null value
-        value = column.getDouble(size - 1);
+        value = valueColumn.getDouble(size - 1);
       }
-      return column;
+      return valueColumn;
     }
     // if its values are all null
-    if (column instanceof RunLengthEncodedColumn) {
+    if (valueColumn instanceof RunLengthEncodedColumn) {
       if (previousIsNull) {
         return new RunLengthEncodedColumn(DoubleColumnBuilder.NULL_VALUE_BLOCK, size);
       } else {
-        // update the value using last non-null value
-        value = column.getDouble(size - 1);
         return new RunLengthEncodedColumn(
             new DoubleColumn(1, Optional.empty(), new double[] {value}), size);
       }
@@ -70,7 +59,7 @@ public class DoublePreviousFill implements IFill {
       // have no null value
       boolean nonNullValue = true;
       for (int i = 0; i < size; i++) {
-        if (column.isNull(i)) {
+        if (valueColumn.isNull(i)) {
           if (previousIsNull) {
             isNull[i] = true;
             nonNullValue = false;
@@ -78,7 +67,7 @@ public class DoublePreviousFill implements IFill {
             array[i] = value;
           }
         } else {
-          array[i] = column.getDouble(i);
+          array[i] = valueColumn.getDouble(i);
           value = array[i];
           previousIsNull = false;
         }

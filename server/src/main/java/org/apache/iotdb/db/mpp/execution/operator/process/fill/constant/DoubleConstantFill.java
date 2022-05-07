@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution.operator.process.fill.constant;
 
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -30,35 +29,31 @@ public class DoubleConstantFill implements IFill {
 
   // fill value
   private final double value;
-  // index of the column which is need to be filled
-  private final int columnIndex;
   // used for constructing RunLengthEncodedColumn
   private final double[] valueArray;
 
-  public DoubleConstantFill(double value, int columnIndex) {
+  public DoubleConstantFill(double value) {
     this.value = value;
-    this.columnIndex = columnIndex;
     this.valueArray = new double[] {value};
   }
 
   @Override
-  public Column fill(TsBlock tsBlock) {
-    Column column = tsBlock.getColumn(columnIndex);
-    int size = column.getPositionCount();
-    // if this column doesn't have any null value, or it's empty, just return itself;
-    if (!column.mayHaveNull() || size == 0) {
-      return column;
+  public Column fill(Column valueColumn) {
+    int size = valueColumn.getPositionCount();
+    // if this valueColumn doesn't have any null value, or it's empty, just return itself;
+    if (!valueColumn.mayHaveNull() || size == 0) {
+      return valueColumn;
     }
     // if its values are all null
-    if (column instanceof RunLengthEncodedColumn) {
+    if (valueColumn instanceof RunLengthEncodedColumn) {
       return new RunLengthEncodedColumn(new DoubleColumn(1, Optional.empty(), valueArray), size);
     } else {
       double[] array = new double[size];
       for (int i = 0; i < size; i++) {
-        if (column.isNull(i)) {
+        if (valueColumn.isNull(i)) {
           array[i] = value;
         } else {
-          array[i] = column.getDouble(i);
+          array[i] = valueColumn.getDouble(i);
         }
       }
       return new DoubleColumn(size, Optional.empty(), array);

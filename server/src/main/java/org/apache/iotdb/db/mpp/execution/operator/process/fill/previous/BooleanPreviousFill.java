@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.execution.operator.process.fill.previous;
 
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -32,35 +31,25 @@ public class BooleanPreviousFill implements IFill {
   // previous value
   private boolean value;
   // whether previous value is null
-  private boolean previousIsNull;
-  // index of the column which is need to be filled
-  private final int columnIndex;
-
-  public BooleanPreviousFill(boolean value, int columnIndex) {
-    this.value = value;
-    this.columnIndex = columnIndex;
-  }
+  private boolean previousIsNull = true;
 
   @Override
-  public Column fill(TsBlock tsBlock) {
-    Column column = tsBlock.getColumn(columnIndex);
-    int size = column.getPositionCount();
-    // if this column doesn't have any null value, or it's empty, just return itself;
-    if (!column.mayHaveNull() || size == 0) {
+  public Column fill(Column valueColumn) {
+    int size = valueColumn.getPositionCount();
+    // if this valueColumn doesn't have any null value, or it's empty, just return itself;
+    if (!valueColumn.mayHaveNull() || size == 0) {
       if (size != 0) {
         previousIsNull = false;
         // update the value using last non-null value
-        value = column.getBoolean(size - 1);
+        value = valueColumn.getBoolean(size - 1);
       }
-      return column;
+      return valueColumn;
     }
     // if its values are all null
-    if (column instanceof RunLengthEncodedColumn) {
+    if (valueColumn instanceof RunLengthEncodedColumn) {
       if (previousIsNull) {
         return new RunLengthEncodedColumn(BooleanColumnBuilder.NULL_VALUE_BLOCK, size);
       } else {
-        // update the value using last non-null value
-        value = column.getBoolean(size - 1);
         return new RunLengthEncodedColumn(
             new BooleanColumn(1, Optional.empty(), new boolean[] {value}), size);
       }
@@ -70,7 +59,7 @@ public class BooleanPreviousFill implements IFill {
       // have no null value
       boolean nonNullValue = true;
       for (int i = 0; i < size; i++) {
-        if (column.isNull(i)) {
+        if (valueColumn.isNull(i)) {
           if (previousIsNull) {
             isNull[i] = true;
             nonNullValue = false;
@@ -78,7 +67,7 @@ public class BooleanPreviousFill implements IFill {
             array[i] = value;
           }
         } else {
-          array[i] = column.getBoolean(i);
+          array[i] = valueColumn.getBoolean(i);
           value = array[i];
           previousIsNull = false;
         }

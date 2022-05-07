@@ -18,10 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.fill;
 
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public interface IFill {
 
-  Column fill(TsBlock tsBlock);
+  Column fill(Column valueColumn);
 }
