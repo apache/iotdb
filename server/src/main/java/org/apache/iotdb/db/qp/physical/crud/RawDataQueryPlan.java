@@ -104,9 +104,14 @@ public class RawDataQueryPlan extends QueryPlan {
   public void updateDeviceMeasurementsUsingExpression(IExpression expression) {
     if (expression instanceof SingleSeriesExpression) {
       Path path = ((SingleSeriesExpression) expression).getSeriesPath();
-      deviceToMeasurements
-          .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
-          .add(path.getMeasurement());
+      if (path instanceof AlignedPath) {
+        deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+            .addAll(((AlignedPath) path).getMeasurementList());
+      } else {
+        deviceToMeasurements
+            .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+            .add(path.getMeasurement());
+      }
     } else if (expression instanceof IBinaryExpression) {
       updateDeviceMeasurementsUsingExpression(((IBinaryExpression) expression).getLeft());
       updateDeviceMeasurementsUsingExpression(((IBinaryExpression) expression).getRight());

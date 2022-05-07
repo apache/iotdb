@@ -143,11 +143,11 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       curDataSetInitialized = false;
     }
 
+    executeColumns = new ArrayList<>();
+    List<PartialPath> executePaths = new ArrayList<>();
+    List<String> executeAggregations = new ArrayList<>();
     while (deviceIterator.hasNext()) {
       currentDevice = deviceIterator.next();
-      executeColumns = new ArrayList<>();
-      List<PartialPath> executePaths = new ArrayList<>();
-      List<String> executeAggregations = new ArrayList<>();
       for (int i : deviceToPathIndex.get(currentDevice)) {
         executePaths.add(paths.get(i));
         String executeColumn = paths.get(i).getMeasurement();
@@ -160,78 +160,76 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
       // get filter to execute for the current device
       if (deviceToFilterMap != null) {
-        this.expression = deviceToFilterMap.get(currentDevice);
+        IExpression newExpression = deviceToFilterMap.get(currentDevice);
+        this.expression = expression == null ? newExpression : BinaryExpression.or(expression, newExpression);
       }
-      if (dataSetType == DataSetType.GROUP_BY_TIME || dataSetType == DataSetType.GROUP_BY_FILL) {
-        this.expression =
-            expression == null ? timeExpression : BinaryExpression.and(expression, timeExpression);
-      }
-      if (expression != null) {
-        try {
-          this.expression =
-              ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(executePaths));
-        } catch (QueryFilterOptimizationException e) {
-          throw new IOException(e.getMessage());
-        }
-      }
-
-      // for tracing: try to calculate the number of series paths
-      if (context.isEnableTracing()) {
-        pathsNum += executeColumns.size();
-      }
-
+    }
+    if (dataSetType == DataSetType.GROUP_BY_TIME || dataSetType == DataSetType.GROUP_BY_FILL) {
+      this.expression = expression == null ? timeExpression : BinaryExpression.and(expression, timeExpression);
+    }
+    if (expression != null) {
       try {
-        switch (dataSetType) {
-          case GROUP_BY_FILL:
-            groupByFillPlan.setDeduplicatedPathsAndUpdate(executePaths);
-            groupByFillPlan.setDeduplicatedAggregations(executeAggregations);
-            groupByFillPlan.setExpression(expression);
-            currentDataSet = queryRouter.groupByFill(groupByFillPlan, context);
-            break;
-          case GROUP_BY_TIME:
-            groupByTimePlan.setDeduplicatedPathsAndUpdate(executePaths);
-            groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
-            groupByTimePlan.setExpression(expression);
-            currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
-            break;
-          case AGGREGATE:
-            aggregationPlan.setDeduplicatedPathsAndUpdate(executePaths);
-            aggregationPlan.setDeduplicatedAggregations(executeAggregations);
-            aggregationPlan.setExpression(expression);
-            currentDataSet = queryRouter.aggregate(aggregationPlan, context);
-            break;
-          case FILL:
-            fillQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
-            currentDataSet = queryRouter.fill(fillQueryPlan, context);
-            break;
-          case QUERY:
-            // Group all the subSensors of one vector into one VectorPartialPath
-            rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
-            rawDataQueryPlan.setDeduplicatedVectorPaths(MetaUtils.groupAlignedPaths(executePaths));
-            rawDataQueryPlan.setExpression(expression);
-            currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
-            break;
-          default:
-            throw new IOException("unsupported DataSetType");
-        }
-      } catch (QueryProcessException
-          | QueryFilterOptimizationException
-          | StorageEngineException e) {
-        throw new IOException(e);
+        this.expression = ExpressionOptimizer.getInstance().optimize(expression, new ArrayList<>(executePaths));
+      } catch (QueryFilterOptimizationException e) {
+        throw new IOException(e.getMessage());
       }
+    }
 
-      if (currentDataSet.getEndPoint() != null) {
-        org.apache.iotdb.service.rpc.thrift.EndPoint endPoint =
-            new org.apache.iotdb.service.rpc.thrift.EndPoint();
-        endPoint.setIp(currentDataSet.getEndPoint().getIp());
-        endPoint.setPort(currentDataSet.getEndPoint().getPort());
-        throw new RedirectException(endPoint);
-      }
+    // for tracing: try to calculate the number of series paths
+    if (context.isEnableTracing()) {
+      pathsNum += executeColumns.size();
+    }
 
-      if (currentDataSet.hasNext()) {
-        curDataSetInitialized = true;
-        return true;
+    try {
+      switch (dataSetType) {
+        case GROUP_BY_FILL:
+          groupByFillPlan.setDeduplicatedPathsAndUpdate(executePaths);
+          groupByFillPlan.setDeduplicatedAggregations(executeAggregations);
+          groupByFillPlan.setExpression(expression);
+          currentDataSet = queryRouter.groupByFill(groupByFillPlan, context);
+          break;
+        case GROUP_BY_TIME:
+          groupByTimePlan.setDeduplicatedPathsAndUpdate(executePaths);
+          groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
+          groupByTimePlan.setExpression(expression);
+          currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
+          break;
+        case AGGREGATE:
+          aggregationPlan.setDeduplicatedPathsAndUpdate(executePaths);
+          aggregationPlan.setDeduplicatedAggregations(executeAggregations);
+          aggregationPlan.setExpression(expression);
+          currentDataSet = queryRouter.aggregate(aggregationPlan, context);
+          break;
+        case FILL:
+          fillQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
+          currentDataSet = queryRouter.fill(fillQueryPlan, context);
+          break;
+        case QUERY:
+          // Group all the subSensors of one vector into one VectorPartialPath
+          rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
+          rawDataQueryPlan.setDeduplicatedVectorPaths(MetaUtils.groupAlignedPaths(executePaths));
+          rawDataQueryPlan.setExpression(expression);
+          currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
+          break;
+        default:
+          throw new IOException("unsupported DataSetType");
       }
+    } catch (QueryProcessException
+        | QueryFilterOptimizationException
+        | StorageEngineException e) {
+      throw new IOException(e);
+    }
+
+    if (currentDataSet.getEndPoint() != null) {
+      org.apache.iotdb.service.rpc.thrift.EndPoint endPoint = new org.apache.iotdb.service.rpc.thrift.EndPoint();
+      endPoint.setIp(currentDataSet.getEndPoint().getIp());
+      endPoint.setPort(currentDataSet.getEndPoint().getPort());
+      throw new RedirectException(endPoint);
+    }
+
+    if (currentDataSet.hasNext()) {
+      curDataSetInitialized = true;
+      return true;
     }
     return false;
   }
@@ -242,18 +240,25 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
     RowRecord rowRecord = new RowRecord(originRowRecord.getTimestamp());
 
+    List<Field> measurementFields = originRowRecord.getFields();
+    Map<String, Field> currentColumnMap = new HashMap<>();
+    String device = null;
+    for (int i = 0; i < measurementFields.size(); i++) {
+      Field measurementField = measurementFields.get(i);
+      if (measurementField != null) {
+        currentColumnMap.put(executeColumns.get(i), measurementFields.get(i));
+        if (device == null) {
+          device = paths.get(Math.round(i / measurements.size())).getDevice();
+          currentDevice = device;
+        }
+      }
+    }
     Field deviceField = new Field(TSDataType.TEXT);
     deviceField.setBinaryV(new Binary(currentDevice));
     rowRecord.addField(deviceField);
     // device field should not be considered as a value field it should affect the WITHOUT NULL
     // judgement
     rowRecord.resetNullFlag();
-
-    List<Field> measurementFields = originRowRecord.getFields();
-    Map<String, Field> currentColumnMap = new HashMap<>();
-    for (int i = 0; i < measurementFields.size(); i++) {
-      currentColumnMap.put(executeColumns.get(i), measurementFields.get(i));
-    }
 
     for (String measurement : measurements) {
       if (currentColumnMap.get(measurement) != null) {

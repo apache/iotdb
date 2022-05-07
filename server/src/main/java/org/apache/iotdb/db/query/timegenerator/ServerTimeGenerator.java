@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -112,11 +114,17 @@ public class ServerTimeGenerator extends TimeGenerator {
       IExpression expression, List<PartialPath> pathList) {
     if (expression.getType() == ExpressionType.SERIES) {
       SingleSeriesExpression seriesExpression = (SingleSeriesExpression) expression;
-      MeasurementPath measurementPath = (MeasurementPath) seriesExpression.getSeriesPath();
-      // change the MeasurementPath to AlignedPath if the MeasurementPath's isUnderAlignedEntity ==
-      // true
-      seriesExpression.setSeriesPath(measurementPath.transformToExactPath());
-      pathList.add((PartialPath) seriesExpression.getSeriesPath());
+      PartialPath path = (PartialPath) seriesExpression.getSeriesPath();
+      if (path instanceof AlignedPath) {
+        pathList.add(path);
+      } else {
+        MeasurementPath measurementPath = (MeasurementPath) seriesExpression.getSeriesPath();
+        // change the MeasurementPath to AlignedPath if the MeasurementPath's
+        // isUnderAlignedEntity ==
+        // true
+        seriesExpression.setSeriesPath(measurementPath.transformToExactPath());
+        pathList.add((PartialPath) seriesExpression.getSeriesPath());
+      }
       return getTimeFilter(((SingleSeriesExpression) expression).getFilter());
     } else {
       Filter leftTimeFilter =
