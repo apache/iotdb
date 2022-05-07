@@ -32,6 +32,7 @@ import java.util.LinkedList;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
+/** Used for linear fill */
 public class LinearFillOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
