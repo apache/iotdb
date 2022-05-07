@@ -1702,6 +1702,21 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupStatement.setStorageGroupPath(path);
+    if (ctx.time != null) {
+      setStorageGroupStatement.setTtl(Long.parseLong(ctx.time.getText()));
+    }
+    if (ctx.schemaReplicationFactor != null) {
+      setStorageGroupStatement.setSchemaReplicationFactor(
+          Integer.parseInt(ctx.schemaReplicationFactor.getText()));
+    }
+    if (ctx.dataReplicationFactor != null) {
+      setStorageGroupStatement.setDataReplicationFactor(
+          Integer.parseInt(ctx.dataReplicationFactor.getText()));
+    }
+    if (ctx.timePartitionInterval != null) {
+      setStorageGroupStatement.setTimePartitionInterval(
+          Long.parseLong(ctx.timePartitionInterval.getText()));
+    }
     return setStorageGroupStatement;
   }
 

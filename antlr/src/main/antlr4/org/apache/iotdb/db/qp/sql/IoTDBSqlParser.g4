@@ -75,7 +75,10 @@ syncStatement
 
 // Create Storage Group
 setStorageGroup
-    : SET STORAGE GROUP TO prefixPath
+    : SET STORAGE GROUP TO prefixPath (WITH (COMMA? TTL '=' time=INTEGER_LITERAL)?
+    (COMMA? SCHEMA_REPLICATION_FACTOR '=' schemaReplicationFactor=INTEGER_LITERAL)?
+    (COMMA? DATA_REPLICATION_FACTOR '=' dataReplicationFactor=INTEGER_LITERAL)?
+    (COMMA? TIME_PARTITION_INTERVAL '=' timePartitionInterval=INTEGER_LITERAL)?)?
     ;
 
 createStorageGroup
