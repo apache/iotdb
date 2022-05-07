@@ -691,7 +691,7 @@ public class IoTDBSessionSimpleIT {
 
     SessionDataSet dataSet =
         session.executeQueryStatement(
-            "select * from root.sg.d where time == 70 fill(all[previous, 1m])");
+            "select * from root.sg.d where time=70 fill(all[previous, 1m])");
     RowRecord record = dataSet.next();
     assertEquals(70, record.getTimestamp());
     for (Field field : record.getFields()) {

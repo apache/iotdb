@@ -497,7 +497,7 @@ public class IoTDBQueryDemoIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
-          statement.execute("select hardware from root.ln.wf02.wt02 where hardware == 'v2'");
+          statement.execute("select hardware from root.ln.wf02.wt02 where hardware = 'v2'");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();

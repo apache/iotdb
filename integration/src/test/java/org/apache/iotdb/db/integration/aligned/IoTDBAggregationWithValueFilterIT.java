@@ -88,8 +88,7 @@ public class IoTDBAggregationWithValueFilterIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet =
-          statement.execute("select count(s4) from root.sg1.d1 where s4 == true");
+      boolean hasResultSet = statement.execute("select count(s4) from root.sg1.d1 where s4 = true");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -188,7 +187,7 @@ public class IoTDBAggregationWithValueFilterIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select count(*) from root.sg1.d1 where s4 == true");
+      boolean hasResultSet = statement.execute("select count(*) from root.sg1.d1 where s4 = true");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -234,7 +233,7 @@ public class IoTDBAggregationWithValueFilterIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select sum(s1), count(s4), min_value(s3), max_time(s2) from root.sg1.d1 where s4 == true");
+              "select sum(s1), count(s4), min_value(s3), max_time(s2) from root.sg1.d1 where s4 = true");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();

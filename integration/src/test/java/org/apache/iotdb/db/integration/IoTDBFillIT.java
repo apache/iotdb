@@ -163,7 +163,7 @@ public class IoTDBFillIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           "SELECT temperature, status, hardware"
-              + " FROM root.ln.wf01.wt01 WHERE status == true"
+              + " FROM root.ln.wf01.wt01 WHERE status=true"
               + " FILL(int32[linear, 5ms, 5ms], double[linear, 5ms, 5ms], boolean[previous, 5ms])");
       fail();
     } catch (SQLException e) {
@@ -179,7 +179,7 @@ public class IoTDBFillIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           "SELECT temperature, status, hardware"
-              + " FROM root.ln.wf01.wt01 WHERE time > 0"
+              + " FROM root.ln.wf01.wt01 WHERE time>0"
               + " FILL(int32[linear, 5ms, 5ms], double[linear, 5ms, 5ms], boolean[previous, 5ms])");
       fail();
     } catch (SQLException e) {

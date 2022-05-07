@@ -727,7 +727,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select * from root.vehicle.* where time == 3 Fill(int32[previous, 5ms]) align by device");
+              "select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

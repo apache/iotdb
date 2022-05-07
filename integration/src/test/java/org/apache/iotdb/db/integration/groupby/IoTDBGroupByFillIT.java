@@ -422,7 +422,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "WHERE status == true "
+                  + "WHERE status = true "
                   + "GROUP BY ([17, 55), 5ms) FILL(previous)");
       assertTrue(hasResultSet);
       int cnt;
@@ -443,7 +443,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "WHERE status == true "
+                  + "WHERE status = true "
                   + "GROUP BY ([17, 55), 5ms) FILL(previous) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {

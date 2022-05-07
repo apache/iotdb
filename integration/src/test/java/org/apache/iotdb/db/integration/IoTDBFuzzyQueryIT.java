@@ -145,20 +145,20 @@ public class IoTDBFuzzyQueryIT {
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals("6116,6%16", outputResultStr(st0.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6\\\\%%'");
+    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6\\%%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals("6%16", outputResultStr(st0.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '\\\\%%'");
+    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '\\%%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals("%123", outputResultStr(st0.getResultSet()));
 
-    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%\\\\%'");
+    hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%\\%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals("123%", outputResultStr(st0.getResultSet()));
 
     hasResultSet =
-        st0.execute("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\\\\\\\\\%'");
+        st0.execute("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals("\\", outputResultStr(st0.getResultSet()));
   }

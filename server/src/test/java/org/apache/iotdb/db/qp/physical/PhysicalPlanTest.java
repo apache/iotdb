@@ -272,7 +272,7 @@ public class PhysicalPlanTest {
   @Test
   public void testFill1() throws QueryProcessException {
     String sqlStr =
-        "SELECT s1 FROM root.vehicle.d1 WHERE time == 5000 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
+        "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();
@@ -287,7 +287,7 @@ public class PhysicalPlanTest {
   @Test
   public void testFill2() throws QueryProcessException {
     String sqlStr =
-        "SELECT s1 FROM root.vehicle.d1 WHERE time == 5000 Fill(int32[linear], boolean[previous])";
+        "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear], boolean[previous])";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     if (!plan.isQuery()) {
       fail();

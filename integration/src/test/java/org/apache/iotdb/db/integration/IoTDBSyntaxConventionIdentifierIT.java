@@ -129,7 +129,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       for (int i = 0; i < selectNodeNames.length; i++) {
         String selectSql =
-            String.format("SELECT %s FROM root.sg1.d1 WHERE time == 1", selectNodeNames[i]);
+            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
         hasResult = statement.execute(selectSql);
         Assert.assertTrue(hasResult);
 

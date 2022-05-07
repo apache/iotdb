@@ -627,7 +627,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-          statement.execute("select * from root.sg1.d1 where s4 == true align by device");
+          statement.execute("select * from root.sg1.d1 where s4 = true align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -797,7 +797,7 @@ public class IoTDBAlignByDeviceIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select s1,s4,s5 from root.sg1.d1 where s1 < 17 or s5 == 'aligned_test34' align by device");
+              "select s1,s4,s5 from root.sg1.d1 where s1 < 17 or s5 = 'aligned_test34' align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -845,7 +845,7 @@ public class IoTDBAlignByDeviceIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select s1,s4 from root.sg1.d1 where s1 < 19 and s4 == false align by device");
+              "select s1,s4 from root.sg1.d1 where s1 < 19 and s4 = false align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1065,7 +1065,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-          statement.execute("select count(s4) from root.sg1.d1 where s4 == true align by device");
+          statement.execute("select count(s4) from root.sg1.d1 where s4 = true align by device");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -1165,7 +1165,7 @@ public class IoTDBAlignByDeviceIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select count(*) from root.sg1.d1 where s4 == true " + "align by device");
+              "select count(*) from root.sg1.d1 where s4 = true " + "align by device");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -1208,7 +1208,7 @@ public class IoTDBAlignByDeviceIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select sum(s1), count(s4), min_value(s3), max_time(s2) from root.sg1.d1 where s4 == true "
+              "select sum(s1), count(s4), min_value(s3), max_time(s2) from root.sg1.d1 where s4 = true "
                   + "align by device");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {

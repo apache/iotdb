@@ -618,7 +618,7 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       boolean hasResultSet =
           statement.execute(
               "select count(*), last_value(*) from root.sg1.d1 "
-                  + " where s3 > 5 or s4 == true GROUP BY ([1, 41), 10ms)");
+                  + " where s3 > 5 or s4 = true GROUP BY ([1, 41), 10ms)");
       Assert.assertTrue(hasResultSet);
 
       int cnt;
@@ -652,7 +652,7 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
       hasResultSet =
           statement.execute(
               "select count(*), last_value(*) from root.sg1.d1 "
-                  + "where s3 > 5 or s4 == true GROUP BY ([1, 41), 10ms) order by time desc");
+                  + "where s3 > 5 or s4 = true GROUP BY ([1, 41), 10ms) order by time desc");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

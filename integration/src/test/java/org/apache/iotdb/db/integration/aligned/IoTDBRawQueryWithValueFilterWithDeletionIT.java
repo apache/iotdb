@@ -114,7 +114,7 @@ public class IoTDBRawQueryWithValueFilterWithDeletionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root.sg1.d1 where s4 == true");
+      boolean hasResultSet = statement.execute("select * from root.sg1.d1 where s4 = true");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -167,7 +167,7 @@ public class IoTDBRawQueryWithValueFilterWithDeletionIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-          statement.execute("select * from root.sg1.d1 where s4 == false and s3 <= 33");
+          statement.execute("select * from root.sg1.d1 where s4 = false and s3 <= 33");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -241,7 +241,7 @@ public class IoTDBRawQueryWithValueFilterWithDeletionIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select * from root.sg1.d1 where s5 == 'aligned_test40' or s4 == false or s3 <= 33");
+              "select * from root.sg1.d1 where s5 = 'aligned_test40' or s4 = false or s3 <= 33");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -389,7 +389,7 @@ public class IoTDBRawQueryWithValueFilterWithDeletionIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select * from root.sg1.* where root.sg1.d1.s3 > 16 or root.sg1.d2.s4 == false");
+              "select * from root.sg1.* where root.sg1.d1.s3 > 16 or root.sg1.d2.s4 = false");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -526,7 +526,7 @@ public class IoTDBRawQueryWithValueFilterWithDeletionIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select * from root.sg1.d1 where time >= 9 and time <= 33 or s5 == 'aligned_test36' or s5 == 'aligned_test37'");
+              "select * from root.sg1.d1 where time >= 9 and time <= 33 or s5 = 'aligned_test36' or s5 = 'aligned_test37'");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -582,7 +582,7 @@ public class IoTDBRawQueryWithValueFilterWithDeletionIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select s1,s4,s5 from root.sg1.d1 where s4 == false or s5 == 'aligned_test34'");
+              "select s1,s4,s5 from root.sg1.d1 where s4 = false or s5 = 'aligned_test34'");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -629,7 +629,7 @@ public class IoTDBRawQueryWithValueFilterWithDeletionIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-          statement.execute("select s1,s4 from root.sg1.d1 where s1 > 29 and s4 == false");
+          statement.execute("select s1,s4 from root.sg1.d1 where s1 > 29 and s4 = false");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -682,7 +682,7 @@ public class IoTDBRawQueryWithValueFilterWithDeletionIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select s1,s4,s5 from root.sg1.d1 where time >= 16 and time <= 34 and s4 == false");
+              "select s1,s4,s5 from root.sg1.d1 where time >= 16 and time <= 34 and s4=false");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -746,7 +746,7 @@ public class IoTDBRawQueryWithValueFilterWithDeletionIT {
       // 1 4 5
       boolean hasResultSet =
           statement.execute(
-              "select d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time >= 16 and time <= 34 and (d1.s5 == 'aligned_test31' or d1.s5 == 'aligned_test32' or d1.s5 == 'aligned_test33' or d1.s5 == 'aligned_test34' or d2.s4 == true)");
+              "select d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time >= 16 and time <= 34 and (d1.s5 = 'aligned_test31' or d1.s5 = 'aligned_test32' or d1.s5 = 'aligned_test33' or d1.s5 = 'aligned_test34' or d2.s4 = true)");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

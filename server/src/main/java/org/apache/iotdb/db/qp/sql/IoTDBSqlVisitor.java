@@ -2589,7 +2589,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       if (context.OPERATOR_DEQ() != null) {
         return new EqualToExpression(leftExpression, rightExpression);
       }
-      if (context.OPERATOR_NEQ() != null) {
+      if (context.OPERATOR_NEQ() != null || context.OPERATOR_SEQ() != null) {
         return new NonEqualExpression(leftExpression, rightExpression);
       }
       if (context.OPERATOR_AND() != null) {

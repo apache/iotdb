@@ -839,7 +839,7 @@ expression
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-    | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
+    | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
     | unaryBeforeRegularOrLikeExpression=expression (REGEXP | LIKE) STRING_LITERAL
     | unaryBeforeInExpression=expression OPERATOR_NOT? (OPERATOR_IN | OPERATOR_CONTAINS) LR_BRACKET constant (COMMA constant)* RR_BRACKET
     | leftExpression=expression OPERATOR_AND rightExpression=expression

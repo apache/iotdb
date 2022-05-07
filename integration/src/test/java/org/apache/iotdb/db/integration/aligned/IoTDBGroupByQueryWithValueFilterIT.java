@@ -631,7 +631,7 @@ public class IoTDBGroupByQueryWithValueFilterIT {
       boolean hasResultSet =
           statement.execute(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
-                  + "where s4 == true GROUP BY ([1, 41), 10ms)");
+                  + "where s4 = true GROUP BY ([1, 41), 10ms)");
       Assert.assertTrue(hasResultSet);
 
       int cnt;
@@ -653,7 +653,7 @@ public class IoTDBGroupByQueryWithValueFilterIT {
       hasResultSet =
           statement.execute(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
-                  + " where s4 == true GROUP BY ([1, 41), 10ms) order by time desc");
+                  + " where s4 = true GROUP BY ([1, 41), 10ms) order by time desc");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -685,7 +685,7 @@ public class IoTDBGroupByQueryWithValueFilterIT {
       boolean hasResultSet =
           statement.execute(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
-                  + "where s4 == false GROUP BY ([1, 41), 5ms)");
+                  + "where s4 = false GROUP BY ([1, 41), 5ms)");
       Assert.assertTrue(hasResultSet);
 
       int cnt;
@@ -707,7 +707,7 @@ public class IoTDBGroupByQueryWithValueFilterIT {
       hasResultSet =
           statement.execute(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
-                  + " where s4 == false GROUP BY ([1, 41), 5ms) order by time desc");
+                  + " where s4 = false GROUP BY ([1, 41), 5ms) order by time desc");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

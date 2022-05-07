@@ -27,7 +27,6 @@ import org.apache.iotdb.jdbc.Constant;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -153,7 +152,6 @@ public class IoTDBQueryVersionAdaptionIT {
   }
 
   @Test
-  @Ignore
   public void selectTest() {
     String[] retArray =
         new String[] {
@@ -171,7 +169,7 @@ public class IoTDBQueryVersionAdaptionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root where time > 10");
+      boolean hasResultSet = statement.execute("select * from root where time>10");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -253,7 +251,6 @@ public class IoTDBQueryVersionAdaptionIT {
   }
 
   @Test
-  @Ignore
   public void selectAlignByDeviceTest() {
     String[] retArray =
         new String[] {

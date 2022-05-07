@@ -687,7 +687,7 @@ public class IoTDBGroupBySlidingWindowQueryWithValueFilterIT {
       boolean hasResultSet =
           statement.execute(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
-                  + "where s4 == true GROUP BY ([1, 41), 10ms, 5ms)");
+                  + "where s4 = true GROUP BY ([1, 41), 10ms, 5ms)");
       Assert.assertTrue(hasResultSet);
 
       int cnt;
@@ -709,7 +709,7 @@ public class IoTDBGroupBySlidingWindowQueryWithValueFilterIT {
       hasResultSet =
           statement.execute(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
-                  + " where s4 == true GROUP BY ([1, 41), 10ms, 5ms) order by time desc");
+                  + " where s4 = true GROUP BY ([1, 41), 10ms, 5ms) order by time desc");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -753,7 +753,7 @@ public class IoTDBGroupBySlidingWindowQueryWithValueFilterIT {
       boolean hasResultSet =
           statement.execute(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
-                  + "where s4 == false GROUP BY ([1, 41), 5ms, 3ms)");
+                  + "where s4 = false GROUP BY ([1, 41), 5ms, 3ms)");
       Assert.assertTrue(hasResultSet);
 
       int cnt;
@@ -775,7 +775,7 @@ public class IoTDBGroupBySlidingWindowQueryWithValueFilterIT {
       hasResultSet =
           statement.execute(
               "select last_value(s4), first_value(s5) from root.sg1.d1 "
-                  + " where s4 == false GROUP BY ([1, 41), 5ms, 3ms) order by time desc");
+                  + " where s4 = false GROUP BY ([1, 41), 5ms, 3ms) order by time desc");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

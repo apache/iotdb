@@ -191,7 +191,7 @@ public class PlannerTest {
     assertEquals(OperatorType.GROUP_BY_TIME, plan9.getOperatorType());
 
     String fillStatement =
-        "select sensor1 from root.vehicle.device1 where time == 50 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
+        "select sensor1 from root.vehicle.device1 where time = 50 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
     PhysicalPlan plan10 = processor.parseSQLToPhysicalPlan(fillStatement);
     assertEquals(OperatorType.FILL, plan10.getOperatorType());
 

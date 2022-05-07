@@ -1473,7 +1473,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (context.OPERATOR_LTE() != null) {
         return new LessEqualExpression(leftExpression, rightExpression);
       }
-      if (context.OPERATOR_DEQ() != null) {
+      if (context.OPERATOR_DEQ() != null || context.OPERATOR_SEQ() != null) {
         return new EqualToExpression(leftExpression, rightExpression);
       }
       if (context.OPERATOR_NEQ() != null) {

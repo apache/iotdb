@@ -323,7 +323,7 @@ public class IoTDBGroupByFillMixPathsIT {
           statement.execute(
               "select sum(hardware), last_value(hardware), max_time(hardware) "
                   + "from root.ln.wf01.wt01 "
-                  + "WHERE temperature >= 25 and status == false "
+                  + "WHERE temperature >= 25 and status = false "
                   + "GROUP BY ([117, 155), 5ms) "
                   + "FILL(previousUntilLast, 12ms)");
       assertTrue(hasResultSet);
@@ -349,7 +349,7 @@ public class IoTDBGroupByFillMixPathsIT {
           statement.execute(
               "select sum(hardware), last_value(hardware), max_time(hardware) "
                   + "from root.ln.wf01.wt01 "
-                  + "WHERE temperature >= 25 and status == false "
+                  + "WHERE temperature >= 25 and status = false "
                   + "GROUP BY ([117, 155), 5ms) "
                   + "FILL(previousUntilLast, 12ms) "
                   + "order by time desc");
@@ -411,7 +411,7 @@ public class IoTDBGroupByFillMixPathsIT {
               "select sum(temperature), avg(hardware), max_time(status), "
                   + "min_value(temperature), max_value(hardware), first_value(status) "
                   + "from root.ln.wf01.wt01 "
-                  + "WHERE temperature >= 25 and status == false "
+                  + "WHERE temperature >= 25 and status = false "
                   + "GROUP BY ([117, 155), 5ms) "
                   + "FILL(linear, 12ms, 12ms)");
       assertTrue(hasResultSet);
@@ -444,7 +444,7 @@ public class IoTDBGroupByFillMixPathsIT {
               "select sum(temperature), avg(hardware), max_time(status), "
                   + "min_value(temperature), max_value(hardware), first_value(status) "
                   + "from root.ln.wf01.wt01 "
-                  + "WHERE temperature >= 25 and status == false "
+                  + "WHERE temperature >= 25 and status = false "
                   + "GROUP BY ([117, 155), 5ms) "
                   + "FILL(linear, 12ms, 12ms) "
                   + "order by time desc");

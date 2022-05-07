@@ -336,7 +336,7 @@ public class IoTDBDisableAlignIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "select * from root.vehicle.** where time == 3 Fill(int32[previous, 5ms]) disable align");
+          "select * from root.vehicle.** where time = 3 Fill(int32[previous, 5ms]) disable align");
       fail("No exception thrown.");
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains("doesn't support disable align clause."));

@@ -306,7 +306,7 @@ public class IoTDBSimpleQueryIT {
 
       for (int i = 1; i < originalValues.length; i++) {
         String sql =
-            "select * from root.** where time == " + i + " fill(int32 [linear, 20ms, 20ms])";
+            "select * from root.** where time = " + i + " fill(int32 [linear, 20ms, 20ms])";
         ResultSet resultSet = statement.executeQuery(sql);
 
         while (resultSet.next()) {

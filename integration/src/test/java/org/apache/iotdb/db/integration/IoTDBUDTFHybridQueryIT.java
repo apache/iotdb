@@ -109,7 +109,7 @@ public class IoTDBUDTFHybridQueryIT {
   public void testUserDefinedFunctionFillFunctionHybridQuery() {
     String sql =
         String.format(
-            "select temperature, counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01 where time == 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])",
+            "select temperature, counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])",
             ExampleUDFConstant.ACCESS_STRATEGY_KEY, ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();

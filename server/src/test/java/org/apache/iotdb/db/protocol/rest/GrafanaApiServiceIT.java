@@ -244,7 +244,7 @@ public class GrafanaApiServiceIT {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"condition\":\"timestamp==1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
+          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"condition\":\"timestamp=1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();

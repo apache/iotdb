@@ -302,7 +302,7 @@ public class IoTDBWithoutNullAllFilterIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select * from root.test.sg1 where s1 == false without null all (s2, s3)");
+              "select * from root.test.sg1 where s1 = false without null all (s2, s3)");
       Assert.assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -325,7 +325,7 @@ public class IoTDBWithoutNullAllFilterIT {
       }
 
       hasResultSet =
-          statement.execute("select * from root.test.sg1 where s2 == 1 without null all (s1)");
+          statement.execute("select * from root.test.sg1 where s2 = 1 without null all (s1)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -348,13 +348,13 @@ public class IoTDBWithoutNullAllFilterIT {
       }
 
       hasResultSet =
-          statement.execute("select * from root.test.sg1 where s2 == 2 without null all (s1)");
+          statement.execute("select * from root.test.sg1 where s2 = 2 without null all (s1)");
 
       Assert.assertTrue(hasResultSet);
       Assert.assertFalse(statement.getResultSet().next());
 
       hasResultSet =
-          statement.execute("select * from root.test.sg1 where s1 == true without null all");
+          statement.execute("select * from root.test.sg1 where s1 = true without null all");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -378,7 +378,7 @@ public class IoTDBWithoutNullAllFilterIT {
 
       hasResultSet =
           statement.execute(
-              "select * from root.test.sg1 where s1 == true without null all(s1,s2,s3,s4)");
+              "select * from root.test.sg1 where s1 = true without null all(s1,s2,s3,s4)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
