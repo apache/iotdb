@@ -87,7 +87,7 @@ public class SnapshotTest {
   @Test
   public void testSnapshot() throws Exception {
     ApplicationStateMachineProxy proxy =
-        new ApplicationStateMachineProxy(new TestUtils.IntegerCounter());
+        new ApplicationStateMachineProxy(new TestUtils.IntegerCounter(), null);
 
     proxy.initialize(null, null, new EmptyStorageWithOnlySMDir());
 

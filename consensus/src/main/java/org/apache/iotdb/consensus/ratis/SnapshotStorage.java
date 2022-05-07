@@ -18,8 +18,7 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
-import org.apache.iotdb.consensus.common.SnapshotMeta;
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
+import org.apache.iotdb.consensus.IStateMachine;
 
 import org.apache.ratis.io.MD5Hash;
 import org.apache.ratis.server.protocol.TermIndex;
@@ -29,15 +28,20 @@ import org.apache.ratis.statemachine.SnapshotInfo;
 import org.apache.ratis.statemachine.SnapshotRetentionPolicy;
 import org.apache.ratis.statemachine.StateMachineStorage;
 import org.apache.ratis.statemachine.impl.FileListSnapshotInfo;
+import org.apache.ratis.util.FileUtils;
 import org.apache.ratis.util.MD5FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * TODO: Warning, currently in Ratis 2.2.0, there is a bug in installSnapshot. In subsequent
@@ -46,7 +50,7 @@ import java.util.List;
  * hopefully will be introduced in Ratis 2.3.0.
  */
 public class SnapshotStorage implements StateMachineStorage {
-  private IStateMachine applicationStateMachine;
+  private final IStateMachine applicationStateMachine;
 
   private File stateMachineDir;
   private final Logger logger = LoggerFactory.getLogger(SnapshotStorage.class);
@@ -60,16 +64,46 @@ public class SnapshotStorage implements StateMachineStorage {
     this.stateMachineDir = raftStorage.getStorageDir().getStateMachineDir();
   }
 
-  @Override
-  public SnapshotInfo getLatestSnapshot() {
-    SnapshotMeta snapshotMeta = applicationStateMachine.getLatestSnapshot(stateMachineDir);
-    if (snapshotMeta == null) {
+  private Path[] getSortedSnapshotDirPaths() {
+    ArrayList<Path> snapshotPaths = new ArrayList<>();
+    try (DirectoryStream<Path> stream = Files.newDirectoryStream(stateMachineDir.toPath())) {
+      for (Path path : stream) {
+        snapshotPaths.add(path);
+      }
+    } catch (IOException exception) {
+      logger.warn("cannot construct snapshot directory stream ", exception);
       return null;
     }
-    TermIndex snapshotTermIndex = Utils.getTermIndexFromMetadata(snapshotMeta.getMetadata());
+
+    Path[] pathArray = snapshotPaths.toArray(new Path[0]);
+    Arrays.sort(
+        pathArray,
+        (o1, o2) -> {
+          String index1 = o1.toFile().getName().split("_")[1];
+          String index2 = o2.toFile().getName().split("_")[1];
+          return Long.compare(Long.parseLong(index1), Long.parseLong(index2));
+        });
+    return pathArray;
+  }
+
+  public File findLatestSnapshotDir() {
+    Path[] snapshots = getSortedSnapshotDirPaths();
+    if (snapshots == null || snapshots.length == 0) {
+      return null;
+    }
+    return snapshots[snapshots.length - 1].toFile();
+  }
+
+  @Override
+  public SnapshotInfo getLatestSnapshot() {
+    File latestSnapshotDir = findLatestSnapshotDir();
+    if (latestSnapshotDir == null) {
+      return null;
+    }
+    TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
 
     List<FileInfo> fileInfos = new ArrayList<>();
-    for (File file : snapshotMeta.getSnapshotFiles()) {
+    for (File file : Objects.requireNonNull(latestSnapshotDir.listFiles())) {
       Path filePath = file.toPath();
       MD5Hash fileHash = null;
       try {
@@ -91,10 +125,20 @@ public class SnapshotStorage implements StateMachineStorage {
   @Override
   public void cleanupOldSnapshots(SnapshotRetentionPolicy snapshotRetentionPolicy)
       throws IOException {
-    applicationStateMachine.cleanUpOldSnapshots(stateMachineDir);
+    Path[] sortedSnapshotDirs = getSortedSnapshotDirPaths();
+    if (sortedSnapshotDirs == null || sortedSnapshotDirs.length == 0) {
+      return;
+    }
+    for (int i = 0; i < sortedSnapshotDirs.length - 1; i++) {
+      FileUtils.deleteFully(sortedSnapshotDirs[i]);
+    }
   }
 
   public File getStateMachineDir() {
     return stateMachineDir;
+  }
+
+  public File getSnapshotDir(String snapshotMetadata) {
+    return new File(stateMachineDir.getAbsolutePath() + File.separator + snapshotMetadata);
   }
 }

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.udf.api.UDTF;

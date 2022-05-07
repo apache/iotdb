@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
@@ -40,6 +39,7 @@ import java.util.Deque;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
@@ -71,14 +71,17 @@ public class SchemaTree {
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
+  public List<MeasurementPath> getAllMeasurement() {
+    return searchMeasurementPaths(ALL_MATCH_PATTERN, 0, 0, false).left;
+  }
+
   /**
    * Get all device matching the path pattern.
    *
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores info of the devices matching the given path pattern.
    */
-  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
+  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
     SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
     return visitor.getAllResult();
   }
@@ -89,12 +92,21 @@ public class SchemaTree {
     String[] nodes = devicePath.getNodes();
     SchemaNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
+      if (cur == null) {
+        return null;
+      }
       cur = cur.getChild(nodes[i]);
     }
 
     List<SchemaMeasurementNode> measurementNodeList = new ArrayList<>();
+    SchemaNode node;
     for (String measurement : measurements) {
-      measurementNodeList.add(cur.getChild(measurement).getAsMeasurementNode());
+      node = cur.getChild(measurement);
+      if (node == null) {
+        measurementNodeList.add(null);
+      } else {
+        measurementNodeList.add(node.getAsMeasurementNode());
+      }
     }
 
     return new DeviceSchemaInfo(devicePath, cur.getAsEntityNode().isAligned(), measurementNodeList);
@@ -107,25 +119,31 @@ public class SchemaTree {
   }
 
   private void appendSingleMeasurementPath(MeasurementPath measurementPath) {
-    String[] nodes = measurementPath.getNodes();
+    appendSingleMeasurement(
+        measurementPath,
+        (MeasurementSchema) measurementPath.getMeasurementSchema(),
+        measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
+        measurementPath.isUnderAlignedEntity());
+  }
+
+  public void appendSingleMeasurement(
+      PartialPath path, MeasurementSchema schema, String alias, boolean isAligned) {
+    String[] nodes = path.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
     for (int i = 1; i < nodes.length; i++) {
       child = cur.getChild(nodes[i]);
       if (child == null) {
         if (i == nodes.length - 1) {
-          SchemaMeasurementNode measurementNode =
-              new SchemaMeasurementNode(
-                  nodes[i], (MeasurementSchema) measurementPath.getMeasurementSchema());
-          if (measurementPath.isMeasurementAliasExists()) {
-            measurementNode.setAlias(measurementPath.getMeasurementAlias());
-            cur.getAsEntityNode()
-                .addAliasChild(measurementPath.getMeasurementAlias(), measurementNode);
+          SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(nodes[i], schema);
+          if (alias != null) {
+            measurementNode.setAlias(alias);
+            cur.getAsEntityNode().addAliasChild(alias, measurementNode);
           }
           child = measurementNode;
         } else if (i == nodes.length - 2) {
           SchemaEntityNode entityNode = new SchemaEntityNode(nodes[i]);
-          entityNode.setAligned(measurementPath.isUnderAlignedEntity());
+          entityNode.setAligned(isAligned);
           child = entityNode;
         } else {
           child = new SchemaInternalNode(nodes[i]);
@@ -228,7 +246,7 @@ public class SchemaTree {
    */
   public String getBelongedStorageGroup(PartialPath path) {
     for (String storageGroup : storageGroups) {
-      if (path.getFullPath().startsWith(storageGroup)) {
+      if (path.getFullPath().startsWith(storageGroup + ".")) {
         return storageGroup;
       }
     }
@@ -247,5 +265,9 @@ public class SchemaTree {
   @TestOnly
   SchemaNode getRoot() {
     return root;
+  }
+
+  public boolean isEmpty() {
+    return root.getChildren() == null || root.getChildren().size() == 0;
   }
 }

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
@@ -107,7 +107,7 @@ public class FileLoaderUtils {
               .get(
                   new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                       resource.getTsFilePath(),
-                      seriesPath.getDevice(),
+                      seriesPath.getDeviceIdString(),
                       seriesPath.getMeasurement()),
                   allSensors,
                   resource.getTimeIndexType() != 1,
@@ -167,7 +167,7 @@ public class FileLoaderUtils {
       allSensors.add("");
       boolean isDebug = context.isDebug();
       String filePath = resource.getTsFilePath();
-      String deviceId = vectorPath.getDevice();
+      String deviceId = vectorPath.getDeviceIdString();
 
       // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
       // we should not ignore the non-exist of device in TsFileMetadata

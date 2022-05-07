@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.utils;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.AlignedLastPointReader;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
@@ -383,12 +383,13 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
-        writer.getVisibleMetadataList(partialPath.getDevice(), "", partialPath.getSeriesType());
+        writer.getVisibleMetadataList(
+            partialPath.getDeviceIdString(), "", partialPath.getSeriesType());
     List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
     for (int i = 0; i < partialPath.getMeasurementList().size(); i++) {
       valueChunkMetadataList.add(
           writer.getVisibleMetadataList(
-              partialPath.getDevice(),
+              partialPath.getDeviceIdString(),
               partialPath.getMeasurementList().get(i),
               partialPath.getSchemaList().get(i).getType()));
     }
@@ -456,6 +457,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         ascending);
   }
 
+  @Override
   @TestOnly
   public SeriesReader createSeriesReader(
       Set<String> allSensors,
@@ -574,6 +576,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     return TimeRange.sortAndMerge(deletionList);
   }
   /** get modifications from a memtable. */
+  @Override
   protected List<Modification> getModificationsForMemtable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
     List<Modification> modifications = new ArrayList<>();
@@ -596,7 +599,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(
             writer.getVisibleMetadataList(
-                partialPath.getDevice(),
+                partialPath.getDeviceIdString(),
                 partialPath.getMeasurement(),
                 partialPath.getSeriesType()));
 

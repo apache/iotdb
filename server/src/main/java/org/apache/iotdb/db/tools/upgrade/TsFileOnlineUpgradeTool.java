@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.tools.upgrade;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;

@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.AsyncClientPool;
+import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.InitRegionHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -39,7 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.DataNodeInfo;
+import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -136,7 +136,8 @@ public class ClusterSchemaManager {
       TConsensusGroupId consensusGroupId =
           new TConsensusGroupId(type, partitionInfo.generateNextRegionGroupId());
       regionReplicaSet.setRegionId(consensusGroupId);
-      regionReplicaSet.setDataNodeLocations(onlineDataNodes.subList(0, replicaCount));
+      regionReplicaSet.setDataNodeLocations(
+          new ArrayList<>(onlineDataNodes.subList(0, replicaCount)));
       createRegionsReq.addRegion(regionReplicaSet);
 
       switch (type) {
@@ -164,7 +165,7 @@ public class ClusterSchemaManager {
       for (TRegionReplicaSet regionReplicaSet : createRegionsReq.getRegionReplicaSets()) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           TEndPoint endPoint =
-              DataNodeInfo.getInstance()
+              NodeInfo.getInstance()
                   .getOnlineDataNode(dataNodeLocation.getDataNodeId())
                   .getInternalEndPoint();
           InitRegionHandler handler = new InitRegionHandler(index, bitSet, latch);
@@ -173,7 +174,7 @@ public class ClusterSchemaManager {
               if (retry == 0) {
                 schemaRegionEndPoints.add(endPoint);
               }
-              AsyncClientPool.getInstance()
+              AsyncDataNodeClientPool.getInstance()
                   .initSchemaRegion(
                       endPoint, genCreateSchemaRegionReq(storageGroup, regionReplicaSet), handler);
               break;
@@ -181,7 +182,7 @@ public class ClusterSchemaManager {
               if (retry == 0) {
                 dataRegionEndPoints.add(endPoint);
               }
-              AsyncClientPool.getInstance()
+              AsyncDataNodeClientPool.getInstance()
                   .initDataRegion(
                       endPoint,
                       genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL),
@@ -286,7 +287,7 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getStorageGroupNames();
   }
 
-  private DataNodeManager getDataNodeInfoManager() {
+  private NodeManager getDataNodeInfoManager() {
     return configManager.getDataNodeManager();
   }
 

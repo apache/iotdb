@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.exception.SystemCheckException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.node.WALNode;

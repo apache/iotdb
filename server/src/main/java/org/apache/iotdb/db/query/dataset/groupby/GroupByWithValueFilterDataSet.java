@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -180,7 +180,7 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
       throws StorageEngineException, QueryProcessException {
     return new SeriesReaderByTimestamp(
         path,
-        queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+        queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
         path.getSeriesType(),
         context,
         QueryResourceManager.getInstance()

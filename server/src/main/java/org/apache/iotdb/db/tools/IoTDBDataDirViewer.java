@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;

@@ -20,8 +20,8 @@ package org.apache.iotdb.db.query.expression;
 
 public enum ExpressionType {
   CONSTANT((short) -4, (short) 1400),
-  TIME_COLUMN((short) -3, (short) 1300),
-  TIME_SERIES((short) -2, (short) 1200),
+  TIMESTAMP((short) -3, (short) 1300),
+  TIMESERIES((short) -2, (short) 1200),
   FUNCTION((short) -1, (short) 1100),
 
   NEGATION((short) 0, (short) 1000),
