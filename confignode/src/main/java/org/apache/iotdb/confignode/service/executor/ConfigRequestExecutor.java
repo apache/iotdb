@@ -151,6 +151,17 @@ public class ConfigRequestExecutor {
 
   public boolean takeSnapshot(File snapshotDir) {
 
+    if (!snapshotDir.exists() && !snapshotDir.mkdirs()) {
+      LOGGER.error("snapshot directory [{}] can not be created.", snapshotDir.getAbsolutePath());
+      return false;
+    }
+
+    File[] fileList = snapshotDir.listFiles();
+    if (fileList != null && fileList.length > 0) {
+      LOGGER.error("snapshot directory [{}] is not empty.", snapshotDir.getAbsolutePath());
+      return false;
+    }
+
     AtomicBoolean result = new AtomicBoolean(true);
     getAllAttributes()
         .parallelStream()
@@ -158,9 +169,7 @@ public class ConfigRequestExecutor {
             x -> {
               boolean takeSnapshotResult = true;
               try {
-                String fileName = x.getClass().getSimpleName();
-                File file = new File(snapshotDir, fileName);
-                takeSnapshotResult = x.takeSnapshot(file);
+                takeSnapshotResult = x.takeSnapshot(snapshotDir);
               } catch (TException | IOException e) {
                 LOGGER.error(e.getMessage());
                 takeSnapshotResult = false;
@@ -177,18 +186,19 @@ public class ConfigRequestExecutor {
 
   public void loadSnapshot(File latestSnapshotRootDir) {
 
+    if (!latestSnapshotRootDir.exists()) {
+      LOGGER
+          .error("snapshot directory [{}] is not exist, can not load snapshot with this directory.",
+              latestSnapshotRootDir.getAbsolutePath());
+      return;
+    }
+
     getAllAttributes()
         .parallelStream()
         .forEach(
             x -> {
               try {
-                String fileName = x.getClass().getSimpleName();
-                File file = new File(latestSnapshotRootDir, fileName);
-                if (!file.exists() || !file.isFile()) {
-                  LOGGER.error("snapshot file [{}] is not exist.", file.getAbsolutePath());
-                  return;
-                }
-                x.loadSnapshot(file);
+                x.loadSnapshot(latestSnapshotRootDir);
               } catch (TException | IOException e) {
                 LOGGER.error(e.getMessage());
               }

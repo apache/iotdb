@@ -26,7 +26,7 @@ import java.io.IOException;
 
 public interface Snapshot {
 
-  boolean takeSnapshot(File snapshotFile) throws TException, IOException;
+  boolean takeSnapshot(File snapshotDir) throws TException, IOException;
 
-  void loadSnapshot(File snapshotFile) throws TException, IOException;
+  void loadSnapshot(File snapshotDir) throws TException, IOException;
 }
