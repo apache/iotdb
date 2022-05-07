@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -70,6 +71,9 @@ public class Analysis {
 
   // parameter of `FILL` clause
   private List<FillDescriptor> fillDescriptorList;
+
+  // parameter of `GROUP BY TIME` clause
+  private GroupByTimeParameter groupByTimeParameter;
 
   private Expression queryFilter;
 
@@ -222,5 +226,13 @@ public class Analysis {
 
   public void setDeviceToQueryFilter(Map<String, Expression> deviceToQueryFilter) {
     this.deviceToQueryFilter = deviceToQueryFilter;
+  }
+
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return groupByTimeParameter;
+  }
+
+  public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
+    this.groupByTimeParameter = groupByTimeParameter;
   }
 }

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -183,6 +184,11 @@ public class Analyzer {
           Map<Expression, Set<Expression>> groupByLevelExpressions =
               analyzeGroupByLevel(queryStatement, outputExpressions, selectExpressions);
           analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+        }
+
+        if (queryStatement.isGroupByTime()) {
+          analysis.setGroupByTimeParameter(
+              new GroupByTimeParameter(queryStatement.getGroupByTimeComponent()));
         }
 
         // extract global time filter from query filter and determine if there is a value filter
