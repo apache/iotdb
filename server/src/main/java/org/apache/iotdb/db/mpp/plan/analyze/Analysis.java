@@ -70,7 +70,7 @@ public class Analysis {
   private FilterNullParameter filterNullParameter;
 
   // parameter of `FILL` clause
-  private List<FillDescriptor> fillDescriptorList;
+  private FillDescriptor fillDescriptor;
 
   // parameter of `GROUP BY TIME` clause
   private GroupByTimeParameter groupByTimeParameter;
@@ -196,12 +196,12 @@ public class Analysis {
     this.filterNullParameter = filterNullParameter;
   }
 
-  public List<FillDescriptor> getFillDescriptorList() {
-    return fillDescriptorList;
+  public FillDescriptor getFillDescriptor() {
+    return fillDescriptor;
   }
 
-  public void setFillDescriptorList(List<FillDescriptor> fillDescriptorList) {
-    this.fillDescriptorList = fillDescriptorList;
+  public void setFillDescriptor(FillDescriptor fillDescriptor) {
+    this.fillDescriptor = fillDescriptor;
   }
 
   public boolean isHasValueFilter() {

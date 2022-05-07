@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -32,32 +31,22 @@ public class FillDescriptor {
   // policy of fill null values
   private final FillPolicy fillPolicy;
 
-  // target column for fill
-  private final Expression expression;
-
   // filled value when fillPolicy is VALUE
   private String fillValueString;
   private TSDataType fillDataType;
 
-  public FillDescriptor(FillPolicy fillPolicy, Expression expression) {
+  public FillDescriptor(FillPolicy fillPolicy) {
     this.fillPolicy = fillPolicy;
-    this.expression = expression;
   }
 
-  public FillDescriptor(
-      FillPolicy fillPolicy,
-      Expression expression,
-      String fillValueString,
-      TSDataType fillDataType) {
+  public FillDescriptor(FillPolicy fillPolicy, String fillValueString, TSDataType fillDataType) {
     this.fillPolicy = fillPolicy;
-    this.expression = expression;
     this.fillValueString = fillValueString;
     this.fillDataType = fillDataType;
   }
 
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(fillPolicy.ordinal(), byteBuffer);
-    Expression.serialize(expression, byteBuffer);
     if (fillPolicy == FillPolicy.VALUE) {
       ReadWriteIOUtils.write(fillValueString, byteBuffer);
       ReadWriteIOUtils.write(fillDataType.ordinal(), byteBuffer);
@@ -66,13 +55,12 @@ public class FillDescriptor {
 
   public static FillDescriptor deserialize(ByteBuffer byteBuffer) {
     FillPolicy fillPolicy = FillPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    Expression expression = Expression.deserialize(byteBuffer);
     if (fillPolicy == FillPolicy.VALUE) {
       String fillValueString = ReadWriteIOUtils.readString(byteBuffer);
       TSDataType fillDataType = TSDataType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-      return new FillDescriptor(fillPolicy, expression, fillValueString, fillDataType);
+      return new FillDescriptor(fillPolicy, fillValueString, fillDataType);
     } else {
-      return new FillDescriptor(fillPolicy, expression);
+      return new FillDescriptor(fillPolicy);
     }
   }
 
@@ -86,13 +74,12 @@ public class FillDescriptor {
     }
     FillDescriptor that = (FillDescriptor) o;
     return fillPolicy == that.fillPolicy
-        && Objects.equals(expression, that.expression)
         && Objects.equals(fillValueString, that.fillValueString)
         && fillDataType == that.fillDataType;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fillPolicy, expression, fillValueString, fillDataType);
+    return Objects.hash(fillPolicy, fillValueString, fillDataType);
   }
 }

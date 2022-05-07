@@ -239,8 +239,12 @@ public class Analyzer {
         }
 
         if (queryStatement.getFillComponent() != null) {
-          List<FillDescriptor> fillDescriptorList = analyzeFill(queryStatement, outputExpressions);
-          analysis.setFillDescriptorList(fillDescriptorList);
+          FillComponent fillComponent = queryStatement.getFillComponent();
+          analysis.setFillDescriptor(
+              new FillDescriptor(
+                  fillComponent.getFillPolicy(),
+                  fillComponent.getFillValue(),
+                  fillComponent.getFillDatatype()));
         }
 
         // generate result set header according to output expressions
@@ -656,23 +660,6 @@ public class Analyzer {
       }
       filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
       return filterNullParameter;
-    }
-
-    private List<FillDescriptor> analyzeFill(
-        QueryStatement queryStatement, List<Pair<Expression, String>> outputExpressions) {
-      // TODO: support more powerful FILL
-      FillComponent fillComponent = queryStatement.getFillComponent();
-      return outputExpressions.stream()
-          .map(Pair::getLeft)
-          .distinct()
-          .map(
-              expression ->
-                  new FillDescriptor(
-                      fillComponent.getFillPolicy(),
-                      expression,
-                      fillComponent.getFillValue(),
-                      fillComponent.getFillDatatype()))
-          .collect(Collectors.toList());
     }
 
     private DatasetHeader analyzeOutput(
