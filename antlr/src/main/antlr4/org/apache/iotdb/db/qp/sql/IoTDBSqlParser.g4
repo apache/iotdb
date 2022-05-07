@@ -45,7 +45,6 @@ ddlStatement
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
-    | showSchemaReplicationFactor | showDataReplicationFactor | showTimePartitionInterval
     | countStorageGroup | countDevices | countTimeseries | countNodes
     ;
 
@@ -313,21 +312,6 @@ showPathsSetSchemaTemplate
 // Show Paths Using Schema Template
 showPathsUsingSchemaTemplate
     : SHOW PATHS USING SCHEMA? TEMPLATE templateName=identifier
-    ;
-
-// Show Schema Replication Factor
-showSchemaReplicationFactor
-    : SHOW SCHEMA_REPLICATION_FACTOR prefixPath?
-    ;
-
-// Show Data Replication Factor
-showDataReplicationFactor
-    : SHOW DATA_REPLICATION_FACTOR prefixPath?
-    ;
-
-// Show Time Partition Interval
-showTimePartitionInterval
-    : SHOW TIME_PARTITION_INTERVAL prefixPath?
     ;
 
 // Count Storage Group

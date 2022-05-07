@@ -42,9 +42,6 @@ public class HeaderConstant {
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TTL = "ttl";
-  public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "schema_replication_factor";
-  public static final String COLUMN_DATA_REPLICATION_FACTOR = "data_replication_factor";
-  public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -59,9 +56,6 @@ public class HeaderConstant {
   public static final DatasetHeader showDevicesWithSgHeader;
   public static final DatasetHeader showStorageGroupHeader;
   public static final DatasetHeader showTTLHeader;
-  public static final DatasetHeader showSchemaReplicationFactorHeader;
-  public static final DatasetHeader showDataReplicationFactorHeader;
-  public static final DatasetHeader showTimePartitionIntervalHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -131,24 +125,6 @@ public class HeaderConstant {
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
-            true);
-    showSchemaReplicationFactorHeader =
-        new DatasetHeader(
-            Arrays.asList(
-                new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32)),
-            true);
-    showDataReplicationFactorHeader =
-        new DatasetHeader(
-            Arrays.asList(
-                new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_DATA_REPLICATION_FACTOR, TSDataType.INT32)),
-            true);
-    showTimePartitionIntervalHeader =
-        new DatasetHeader(
-            Arrays.asList(
-                new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64)),
             true);
   }
 }

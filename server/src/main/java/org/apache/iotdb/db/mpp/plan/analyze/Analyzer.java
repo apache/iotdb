@@ -58,12 +58,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataReplicationFactorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowSchemaReplicationFactorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimePartitionIntervalStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -468,36 +465,6 @@ public class Analyzer {
           showDevicesStatement.hasSgCol()
               ? HeaderConstant.showDevicesWithSgHeader
               : HeaderConstant.showDevicesHeader);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitShowSchemaReplicationFactor(
-        ShowSchemaReplicationFactorStatement showSchemaReplicationFactorStatement,
-        MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(showSchemaReplicationFactorStatement);
-      analysis.setRespDatasetHeader(HeaderConstant.showSchemaReplicationFactorHeader);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitShowDataReplicationFactor(
-        ShowDataReplicationFactorStatement showDataReplicationFactorStatement,
-        MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(showDataReplicationFactorStatement);
-      analysis.setRespDatasetHeader(HeaderConstant.showDataReplicationFactorHeader);
-      return analysis;
-    }
-
-    @Override
-    public Analysis visitShowTimePartitionInterval(
-        ShowTimePartitionIntervalStatement showTimePartitionIntervalStatement,
-        MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(showTimePartitionIntervalStatement);
-      analysis.setRespDatasetHeader(HeaderConstant.showTimePartitionIntervalHeader);
       return analysis;
     }
 
