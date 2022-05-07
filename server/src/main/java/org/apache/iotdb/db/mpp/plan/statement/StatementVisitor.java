@@ -43,9 +43,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataReplicationFactorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowSchemaReplicationFactorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimePartitionIntervalStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -165,6 +168,21 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowDevices(ShowDevicesStatement showDevicesStatement, C context) {
     return visitStatement(showDevicesStatement, context);
+  }
+
+  public R visitShowSchemaReplicationFactor(
+      ShowSchemaReplicationFactorStatement showSchemaReplicationFactorStatement, C context) {
+    return visitStatement(showSchemaReplicationFactorStatement, context);
+  }
+
+  public R visitShowDataReplicationFactor(
+      ShowDataReplicationFactorStatement showDataReplicationFactorStatement, C context) {
+    return visitStatement(showDataReplicationFactorStatement, context);
+  }
+
+  public R visitShowTimePartitionInterval(
+      ShowTimePartitionIntervalStatement showTimePartitionIntervalStatement, C context) {
+    return visitStatement(showTimePartitionIntervalStatement, context);
   }
 
   public R visitCountStorageGroup(

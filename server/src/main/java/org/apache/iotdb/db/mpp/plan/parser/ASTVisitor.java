@@ -63,10 +63,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataReplicationFactorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowSchemaReplicationFactorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimePartitionIntervalStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
@@ -1758,6 +1761,39 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     ShowTTLStatement showTTLStatement = new ShowTTLStatement();
     showTTLStatement.setAll(true);
     return showTTLStatement;
+  }
+
+  @Override
+  public Statement visitShowSchemaReplicationFactor(
+      IoTDBSqlParser.ShowSchemaReplicationFactorContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowSchemaReplicationFactorStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowSchemaReplicationFactorStatement(
+          new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
+  @Override
+  public Statement visitShowDataReplicationFactor(
+      IoTDBSqlParser.ShowDataReplicationFactorContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowDataReplicationFactorStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowDataReplicationFactorStatement(
+          new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
+  @Override
+  public Statement visitShowTimePartitionInterval(
+      IoTDBSqlParser.ShowTimePartitionIntervalContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowTimePartitionIntervalStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowTimePartitionIntervalStatement(
+          new PartialPath(SQLConstant.getSingleRootArray()));
+    }
   }
 
   /** function for parsing file path used by LOAD statement. */

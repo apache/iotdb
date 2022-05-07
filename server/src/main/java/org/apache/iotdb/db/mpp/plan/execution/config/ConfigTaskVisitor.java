@@ -25,8 +25,11 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataReplicationFactorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowSchemaReplicationFactorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimePartitionIntervalStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -54,6 +57,25 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowStorageGroup(
       ShowStorageGroupStatement statement, TaskContext context) {
     return new ShowStorageGroupTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitShowSchemaReplicationFactor(
+      ShowSchemaReplicationFactorStatement showSchemaReplicationFactorStatement,
+      TaskContext context) {
+    return new ShowSchemaReplicationFactorTask(showSchemaReplicationFactorStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowDataReplicationFactor(
+      ShowDataReplicationFactorStatement showDataReplicationFactorStatement, TaskContext context) {
+    return new ShowDataReplicationFactorTask(showDataReplicationFactorStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowTimePartitionInterval(
+      ShowTimePartitionIntervalStatement showTimePartitionIntervalStatement, TaskContext context) {
+    return new ShowTimePartitionIntervalTask(showTimePartitionIntervalStatement);
   }
 
   @Override
