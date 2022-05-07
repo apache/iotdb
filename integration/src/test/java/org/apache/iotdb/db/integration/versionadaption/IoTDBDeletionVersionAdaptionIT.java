@@ -30,6 +30,7 @@ import org.apache.iotdb.jdbc.Constant;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -42,6 +43,7 @@ import java.util.Locale;
 import static org.junit.Assert.assertEquals;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@Ignore // No longer forward compatible since v0.14
 public class IoTDBDeletionVersionAdaptionIT {
 
   private static String[] creationSqls =

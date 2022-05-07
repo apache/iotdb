@@ -835,7 +835,7 @@ expression
     | constant
     | time=(TIME | TIMESTAMP)
     | fullPathInExpression
-    | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | functionName LR_BRACKET expression (COMMA expression)* RR_BRACKET
     | (PLUS | MINUS | OPERATOR_NOT) expressionAfterUnaryOperator=expression
     | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
@@ -849,10 +849,6 @@ expression
 functionName
     : identifier
     | COUNT
-    ;
-
-functionAttribute
-    : COMMA functionAttributeKey=attributeKey OPERATOR_SEQ functionAttributeValue=attributeValue
     ;
 
 containsExpression

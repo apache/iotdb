@@ -1436,7 +1436,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         return new NegationExpression(
             parseExpression(context.expressionAfterUnaryOperator, inWithoutNull));
       }
-      if (!inWithoutNull) {
+      if (context.OPERATOR_NOT() != null) {
         return new LogicNotExpression(
             parseExpression(context.expressionAfterUnaryOperator, inWithoutNull));
       }
@@ -1534,25 +1534,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       if (!subexpression.isConstantOperand()) {
         hasNonPureConstantSubExpression = true;
       }
-      functionExpression.addExpression(subexpression);
+      if (subexpression instanceof EqualToExpression
+          && ((EqualToExpression) subexpression).getLeftExpression().isConstantOperand()
+          && ((EqualToExpression) subexpression).getRightExpression().isConstantOperand()) {
+        // parse attribute
+        functionExpression.addAttribute(
+            ((ConstantOperand) ((EqualToExpression) subexpression).getLeftExpression())
+                .getValueString(),
+            ((ConstantOperand) ((EqualToExpression) subexpression).getRightExpression())
+                .getValueString());
+      } else {
+        functionExpression.addExpression(subexpression);
+      }
     }
 
     // It is not allowed to have function expressions like F(1, 1.0). There should be at least one
     // non-pure-constant sub-expression, otherwise the timestamp of the row cannot be inferred.
     if (!hasNonPureConstantSubExpression) {
-      throw new SQLParserException(
+      throw new SemanticException(
           "Invalid function expression, all the arguments are constant operands: "
               + functionClause.getText());
     }
-
-    // attributes
-    for (IoTDBSqlParser.FunctionAttributeContext functionAttribute :
-        functionClause.functionAttribute()) {
-      functionExpression.addAttribute(
-          parseAttributeKey(functionAttribute.attributeKey()),
-          parseAttributeValue(functionAttribute.attributeValue()));
-    }
-
     return functionExpression;
   }
 

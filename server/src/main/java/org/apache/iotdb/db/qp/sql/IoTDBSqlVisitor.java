@@ -2539,7 +2539,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @SuppressWarnings("squid:S3776")
   private Expression parseExpression(
-      IoTDBSqlParser.ExpressionContext context, boolean inWithoutNull) {
+      IoTDBSqlParser.ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
     if (context.unaryInBracket != null) {
       return parseExpression(context.unaryInBracket, inWithoutNull);
     }
@@ -2586,10 +2586,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       if (context.OPERATOR_LTE() != null) {
         return new LessEqualExpression(leftExpression, rightExpression);
       }
-      if (context.OPERATOR_DEQ() != null) {
+      if (context.OPERATOR_DEQ() != null || context.OPERATOR_SEQ() != null) {
         return new EqualToExpression(leftExpression, rightExpression);
       }
-      if (context.OPERATOR_NEQ() != null || context.OPERATOR_SEQ() != null) {
+      if (context.OPERATOR_NEQ() != null) {
         return new NonEqualExpression(leftExpression, rightExpression);
       }
       if (context.OPERATOR_AND() != null) {
@@ -2603,10 +2603,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     if (context.unaryBeforeRegularOrLikeExpression != null) {
       if (context.REGEXP() != null) {
-        return parseRegularExpression(context, inWithoutNull);
+        return parseRegularExpression(context, inWithoutNull, isQueryFilter);
       }
       if (context.LIKE() != null) {
-        return parseLikeExpression(context, inWithoutNull);
+        return parseLikeExpression(context, inWithoutNull, isQueryFilter);
       }
       throw new UnsupportedOperationException();
     }
@@ -2635,6 +2635,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     throw new UnsupportedOperationException();
   }
 
+  private Expression parseExpression(
+      IoTDBSqlParser.ExpressionContext context, boolean inWithoutNull) {
+    return parseExpression(context, inWithoutNull, false);
+  }
+
   private Expression parseFunctionExpression(
       IoTDBSqlParser.ExpressionContext functionClause, boolean inWithoutNull) {
     FunctionExpression functionExpression =
@@ -2647,7 +2652,18 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       if (!subexpression.isConstantOperand()) {
         hasNonPureConstantSubExpression = true;
       }
-      functionExpression.addExpression(subexpression);
+      if (subexpression instanceof EqualToExpression
+          && ((EqualToExpression) subexpression).getLeftExpression().isConstantOperand()
+          && ((EqualToExpression) subexpression).getRightExpression().isConstantOperand()) {
+        // parse attribute
+        functionExpression.addAttribute(
+            ((ConstantOperand) ((EqualToExpression) subexpression).getLeftExpression())
+                .getValueString(),
+            ((ConstantOperand) ((EqualToExpression) subexpression).getRightExpression())
+                .getValueString());
+      } else {
+        functionExpression.addExpression(subexpression);
+      }
     }
 
     // It is not allowed to have function expressions like F(1, 1.0). There should be at least one
@@ -2657,25 +2673,28 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           "Invalid function expression, all the arguments are constant operands: "
               + functionClause.getText());
     }
-
-    // attributes
-    for (IoTDBSqlParser.FunctionAttributeContext functionAttribute :
-        functionClause.functionAttribute()) {
-      functionExpression.addAttribute(
-          parseAttributeKey(functionAttribute.attributeKey()),
-          parseAttributeValue(functionAttribute.attributeValue()));
-    }
-
     return functionExpression;
   }
 
-  private Expression parseRegularExpression(ExpressionContext context, boolean inWithoutNull) {
+  private Expression parseRegularExpression(
+      ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
+    if (isQueryFilter) {
+      return new RegularExpression(
+          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
+          context.STRING_LITERAL().getText());
+    }
     return new RegularExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
         parseStringLiteral(context.STRING_LITERAL().getText()));
   }
 
-  private Expression parseLikeExpression(ExpressionContext context, boolean inWithoutNull) {
+  private Expression parseLikeExpression(
+      ExpressionContext context, boolean inWithoutNull, boolean isQueryFilter) {
+    if (isQueryFilter) {
+      return new LikeExpression(
+          parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
+          context.STRING_LITERAL().getText());
+    }
     return new LikeExpression(
         parseExpression(context.unaryBeforeRegularOrLikeExpression, inWithoutNull),
         parseStringLiteral(context.STRING_LITERAL().getText()));
@@ -2767,7 +2786,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public WhereComponent parseWhereClause(IoTDBSqlParser.WhereClauseContext ctx) {
     Expression predicate =
-        parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null);
+        parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null, true);
     return new WhereComponent(convertExpressionToFilter(predicate));
   }
 
