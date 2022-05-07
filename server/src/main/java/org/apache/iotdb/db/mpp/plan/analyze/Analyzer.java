@@ -87,7 +87,7 @@ import java.util.stream.Collectors;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
-  private static final Logger LOGGER = LoggerFactory.getLogger(Analyzer.class);
+  private static final Logger logger = LoggerFactory.getLogger(Analyzer.class);
 
   private final MPPQueryContext context;
 
@@ -105,6 +105,10 @@ public class Analyzer {
 
   public Analysis analyze(Statement statement) {
     return new AnalyzeVisitor().process(statement, context);
+  }
+
+  private String getLogHeader() {
+    return String.format("Query[%s]:", context.getQueryId());
   }
 
   /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
@@ -130,7 +134,9 @@ public class Analyzer {
         analysis.setStatement(rewrittenStatement);
 
         // request schema fetch API
+        logger.info("{} fetch query schema...", getLogHeader());
         SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+        logger.info("{} fetch schema done", getLogHeader());
         // If there is no leaf node in the schema tree, the query should be completed immediately
         if (schemaTree.isEmpty()) {
           analysis.setRespDatasetHeader(new DatasetHeader(new ArrayList<>(), false));
@@ -270,7 +276,7 @@ public class Analyzer {
         DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException e) {
-        LOGGER.error("Meet error when analyzing the query statement: ", e);
+        logger.error("Meet error when analyzing the query statement: ", e);
         throw new StatementAnalyzeException("Meet error when analyzing the query statement");
       }
       return analysis;
