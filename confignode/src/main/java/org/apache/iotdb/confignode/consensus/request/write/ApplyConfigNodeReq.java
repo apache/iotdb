@@ -18,62 +18,54 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
-public class DeleteRegionsReq extends ConfigRequest {
+public class ApplyConfigNodeReq extends ConfigRequest {
 
-  private final List<TConsensusGroupId> consensusGroupIds;
+  private TConfigNodeLocation configNodeLocation;
 
-  public DeleteRegionsReq() {
-    super(ConfigRequestType.DeleteRegions);
-    this.consensusGroupIds = new ArrayList<>();
+  public ApplyConfigNodeReq() {
+    super(ConfigRequestType.ApplyConfigNode);
   }
 
-  public void addConsensusGroupId(TConsensusGroupId consensusGroupId) {
-    consensusGroupIds.add(consensusGroupId);
+  public ApplyConfigNodeReq(TConfigNodeLocation configNodeLocation) {
+    this();
+    this.configNodeLocation = configNodeLocation;
   }
 
-  public List<TConsensusGroupId> getConsensusGroupIds() {
-    return consensusGroupIds;
+  public TConfigNodeLocation getConfigNodeLocation() {
+    return configNodeLocation;
   }
 
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.DeleteRegions.ordinal());
+    buffer.putInt(ConfigRequestType.ApplyConfigNode.ordinal());
 
-    buffer.putInt(consensusGroupIds.size());
-    for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
-      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, buffer);
-    }
+    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
-      consensusGroupIds.add(ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
-    }
+    configNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(buffer);
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    DeleteRegionsReq that = (DeleteRegionsReq) o;
-    return consensusGroupIds.equals(that.consensusGroupIds);
+    ApplyConfigNodeReq that = (ApplyConfigNodeReq) o;
+    return configNodeLocation.equals(that.configNodeLocation);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(consensusGroupIds);
+    return Objects.hash(configNodeLocation);
   }
 }
