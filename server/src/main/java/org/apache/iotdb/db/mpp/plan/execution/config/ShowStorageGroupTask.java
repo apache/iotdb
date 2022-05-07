@@ -19,17 +19,18 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -42,10 +43,11 @@ import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ShowStorageGroupTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShowStorageGroupTask.class);
@@ -61,7 +63,7 @@ public class ShowStorageGroupTask implements IConfigTask {
   @Override
   public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<String> storageGroupPaths = new ArrayList<>();
+    Map<String, TStorageGroupSchema> storageGroupSchemaMap = new HashMap<>();
     if (config.isClusterMode()) {
       List<String> storageGroupPathPattern =
           Arrays.asList(showStorageGroupStatement.getPathPattern().getNodes());
@@ -70,7 +72,7 @@ public class ShowStorageGroupTask implements IConfigTask {
         client = new ConfigNodeClient();
         TStorageGroupSchemaResp resp =
             client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
-        storageGroupPaths = new ArrayList<>(resp.getStorageGroupSchemaMap().keySet());
+        storageGroupSchemaMap = resp.getStorageGroupSchemaMap();
       } catch (IoTDBConnectionException | BadNodeUrlException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
@@ -81,13 +83,17 @@ public class ShowStorageGroupTask implements IConfigTask {
       }
     } else {
       try {
+        LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
         List<PartialPath> partialPaths =
-            LocalConfigNode.getInstance()
-                .getMatchedStorageGroups(
-                    showStorageGroupStatement.getPathPattern(),
-                    showStorageGroupStatement.isPrefixPath());
-        for (PartialPath partialPath : partialPaths) {
-          storageGroupPaths.add(partialPath.getFullPath());
+            localConfigNode.getMatchedStorageGroups(
+                showStorageGroupStatement.getPathPattern(),
+                showStorageGroupStatement.isPrefixPath());
+        for (PartialPath storageGroupPath : partialPaths) {
+          IStorageGroupMNode storageGroupMNode =
+              localConfigNode.getStorageGroupNodeByPath(storageGroupPath);
+          String storageGroup = storageGroupMNode.getFullPath();
+          TStorageGroupSchema storageGroupSchema = storageGroupMNode.getStorageGroupSchema();
+          storageGroupSchemaMap.put(storageGroup, storageGroupSchema);
         }
       } catch (MetadataException e) {
         future.setException(e);
@@ -95,17 +101,18 @@ public class ShowStorageGroupTask implements IConfigTask {
     }
     // build TSBlock
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
-    for (String storageGroupPath : storageGroupPaths) {
-      // The Time column will be ignored by the setting of ColumnHeader.
-      // So we can put a meaningless value here
+    for (Map.Entry<String, TStorageGroupSchema> entry : storageGroupSchemaMap.entrySet()) {
+      String storageGroup = entry.getKey();
+      TStorageGroupSchema storageGroupSchema = entry.getValue();
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(new Binary(storageGroupPath));
+      builder.getColumnBuilder(0).writeBinary(new Binary(storageGroup));
+      builder.getColumnBuilder(1).writeLong(storageGroupSchema.getTTL());
+      builder.getColumnBuilder(2).writeInt(storageGroupSchema.getSchemaReplicationFactor());
+      builder.getColumnBuilder(3).writeInt(storageGroupSchema.getDataReplicationFactor());
+      builder.getColumnBuilder(4).writeLong(storageGroupSchema.getTimePartitionInterval());
       builder.declarePosition();
     }
-    ColumnHeader storageGroupColumnHeader =
-        new ColumnHeader(IoTDBConstant.COLUMN_STORAGE_GROUP, TSDataType.TEXT);
-    DatasetHeader datasetHeader =
-        new DatasetHeader(Collections.singletonList(storageGroupColumnHeader), true);
+    DatasetHeader datasetHeader = HeaderConstant.showStorageGroupHeader;
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
     return future;
   }
