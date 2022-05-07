@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
+package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 

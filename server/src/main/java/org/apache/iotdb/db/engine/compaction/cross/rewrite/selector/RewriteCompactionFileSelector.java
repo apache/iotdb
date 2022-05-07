@@ -21,10 +21,14 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.utils.CompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.cross.utils.InplaceCompactionEstimator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.db.utils.MergeUtils;
-
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +58,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   private int maxCrossCompactionFileNum;
 
   // the number of timeseries being queried at the same time
-  int concurrentMergeNum = 1;
+  int concurrentMergeNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   /** Total metadata size of each file. */
   private Map<TsFileResource, Long> fileMetaSizeMap = new HashMap<>();
@@ -164,6 +168,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     if (timeLimit < 0) {
       timeLimit = Long.MAX_VALUE;
     }
+    CompactionEstimator compactionEstimator =
+        new InplaceCompactionEstimator(useTightBound, resource);
     while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
@@ -179,9 +185,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
 
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost =
-          useTightBound
-              ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit)
-              : calculateLooseMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit);
+          compactionEstimator.estimateMemory(unseqIndex, (List<Integer>) tmpSelectedSeqFiles);
       if (!updateSelectedFiles(newCost, unseqFile)) {
         // older unseq files must be merged before newer ones
         break;
@@ -290,107 +294,15 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     }
   }
 
-  private long calculateMemoryCost(
-      TsFileResource tmpSelectedUnseqFile,
-      Collection<Integer> tmpSelectedSeqFiles,
-      IFileQueryMemMeasurement unseqMeasurement,
-      IFileQueryMemMeasurement seqMeasurement,
-      long startTime,
-      long timeLimit)
-      throws IOException {
-    long cost = 0;
-    Long fileCost = unseqMeasurement.measure(tmpSelectedUnseqFile);
-    cost += fileCost;
-
-    for (Integer seqFileIdx : tmpSelectedSeqFiles) {
-      TsFileResource seqFile = resource.getSeqFiles().get(seqFileIdx);
-      fileCost = seqMeasurement.measure(seqFile);
-      if (fileCost > tempMaxSeqFileCost) {
-        // only one file will be read at the same time, so only the largest one is recorded here
-        cost -= tempMaxSeqFileCost;
-        cost += fileCost;
-        tempMaxSeqFileCost = fileCost;
-      }
-      // but writing data into a new file may generate the same amount of metadata in memory
-      cost += calculateMetadataSize(seqFile);
-      long timeConsumption = System.currentTimeMillis() - startTime;
-      if (timeConsumption > timeLimit) {
-        return Long.MAX_VALUE;
+  private void getMaxCurrentSeriesNum(TsFileSequenceReader reader) throws IOException {
+    TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+    while (deviceIterator.hasNext()) {
+      Pair<String, Boolean> deviceInfo = deviceIterator.next();
+      if (deviceInfo.right) {
+        Map<String, TimeseriesMetadata> deviceMetadata = reader.readDeviceMetadata(deviceInfo.left);
+        concurrentMergeNum =
+            concurrentMergeNum < deviceMetadata.size() ? deviceMetadata.size() : concurrentMergeNum;
       }
     }
-    return cost;
-  }
-
-  private long calculateLooseMemoryCost(
-      TsFileResource tmpSelectedUnseqFile,
-      Collection<Integer> tmpSelectedSeqFiles,
-      long startTime,
-      long timeLimit)
-      throws IOException {
-    return calculateMemoryCost(
-        tmpSelectedUnseqFile,
-        tmpSelectedSeqFiles,
-        TsFileResource::getTsFileSize,
-        this::calculateMetadataSize,
-        startTime,
-        timeLimit);
-  }
-
-  private long calculateTightMemoryCost(
-      TsFileResource tmpSelectedUnseqFile,
-      Collection<Integer> tmpSelectedSeqFiles,
-      long startTime,
-      long timeLimit)
-      throws IOException {
-    return calculateMemoryCost(
-        tmpSelectedUnseqFile,
-        tmpSelectedSeqFiles,
-        this::calculateTightUnseqMemoryCost,
-        this::calculateTightSeqMemoryCost,
-        startTime,
-        timeLimit);
-  }
-
-  private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
-    Long cost = fileMetaSizeMap.get(seqFile);
-    if (cost == null) {
-      cost = MergeUtils.getFileMetaSize(seqFile, resource.getFileReader(seqFile));
-      fileMetaSizeMap.put(seqFile, cost);
-      logger.debug(LOG_FILE_COST, seqFile, cost);
-    }
-    return cost;
-  }
-
-  private long calculateTightFileMemoryCost(
-      TsFileResource seqFile, IFileQueryMemMeasurement measurement) throws IOException {
-    Long cost = maxSeriesQueryCostMap.get(seqFile);
-    if (cost == null) {
-      long[] chunkNums =
-          MergeUtils.findTotalAndLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
-      long totalChunkNum = chunkNums[0];
-      long maxChunkNum = chunkNums[1];
-      cost = measurement.measure(seqFile) * maxChunkNum / totalChunkNum;
-      maxSeriesQueryCostMap.put(seqFile, cost);
-      logger.debug(LOG_FILE_COST, seqFile, cost);
-    }
-    return cost;
-  }
-
-  // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
-  // its proportion to all series to get a maximum estimation
-  private long calculateTightSeqMemoryCost(TsFileResource seqFile) throws IOException {
-    long singleSeriesCost = calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
-    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
-    long maxCost = calculateMetadataSize(seqFile);
-    return Math.min(multiSeriesCost, maxCost);
-  }
-
-  // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
-  // its proportion among all series to get a maximum estimation
-  private long calculateTightUnseqMemoryCost(TsFileResource unseqFile) throws IOException {
-    long singleSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getTsFileSize);
-    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
-    long maxCost = unseqFile.getTsFileSize();
-    return Math.min(multiSeriesCost, maxCost);
   }
 }
