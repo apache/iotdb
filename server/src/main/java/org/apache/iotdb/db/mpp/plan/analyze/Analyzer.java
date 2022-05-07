@@ -554,7 +554,7 @@ public class Analyzer {
 
       SchemaPartition schemaPartition =
           partitionFetcher.getSchemaPartition(
-              new PathPatternTree(showChildPathsStatement.getPathPattern()));
+              new PathPatternTree(showChildPathsStatement.getPartialPath()));
       analysis.setSchemaPartitionInfo(schemaPartition);
       analysis.setRespDatasetHeader(HeaderConstant.showChildPathsHeader);
       return analysis;

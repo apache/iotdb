@@ -394,7 +394,7 @@ public class LogicalPlanner {
         ShowChildPathsStatement showChildPathsStatement, MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
       return planBuilder
-          .planChildPathsSchemaSource(showChildPathsStatement.getPathPattern())
+          .planChildPathsSchemaSource(showChildPathsStatement.getPartialPath())
           .planSchemaQueryMerge(false)
           .getRoot();
     }

@@ -23,15 +23,15 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 public class ShowChildPathsStatement extends ShowStatement {
-  private final PartialPath pathPattern;
+  private final PartialPath partialPath;
 
-  public ShowChildPathsStatement(PartialPath pathPattern) {
+  public ShowChildPathsStatement(PartialPath partialPath) {
     super();
-    this.pathPattern = pathPattern;
+    this.partialPath = partialPath;
   }
 
-  public PartialPath getPathPattern() {
-    return pathPattern;
+  public PartialPath getPartialPath() {
+    return partialPath;
   }
 
   @Override
