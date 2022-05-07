@@ -536,7 +536,7 @@ public class MTreeAboveSG {
   private void serializeStorageGroupNode(StorageGroupMNode storageGroupNode, ByteBuffer buffer) {
     buffer.put(STORAGE_GROUP_MNODE_TYPE);
     ReadWriteIOUtils.write(storageGroupNode.getName(), buffer);
-    ThriftConfigNodeSerDeUtils.writeTStorageGroupSchema(
+    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(
         storageGroupNode.getStorageGroupSchema(), buffer);
   }
 
@@ -591,7 +591,7 @@ public class MTreeAboveSG {
     StorageGroupMNode storageGroupMNode =
         new StorageGroupMNode(null, ReadWriteIOUtils.readString(buffer));
     storageGroupMNode.setStorageGroupSchema(
-        ThriftConfigNodeSerDeUtils.readTStorageGroupSchema(buffer));
+        ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(buffer));
     return storageGroupMNode;
   }
 }
