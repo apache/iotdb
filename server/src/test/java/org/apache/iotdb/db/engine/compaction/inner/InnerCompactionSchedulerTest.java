@@ -134,4 +134,35 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     }
     Assert.assertEquals(4, tsFileManager.getTsFileList(true).size());
   }
+
+  @Test
+  public void testFileSelectorWithUnclosedFile()
+      throws IOException, MetadataException, WriteProcessException {
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
+    IoTDBDescriptor.getInstance().getConfig().setMaxInnerCompactionCandidateFileNum(50);
+    TsFileResourceList tsFileResources = new TsFileResourceList();
+    createFiles(2, 2, 3, 100, 0, 0, 50, 50, false, true);
+    createFiles(2, 3, 5, 50, 250, 250, 50, 50, false, true);
+    seqResources.get(3).setStatus(TsFileResourceStatus.UNCLOSED);
+    TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
+    tsFileManager.addAll(seqResources, true);
+    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
+        "testSG", "0", 0L, tsFileManager, true, new FakedInnerSpaceCompactionTaskFactory());
+    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
+    long waitingTime = 0;
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
+      try {
+        Thread.sleep(100);
+        waitingTime += 100;
+        if (waitingTime > MAX_WAITING_TIME) {
+          Assert.fail();
+          break;
+        }
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+    Assert.assertEquals(4, tsFileManager.getTsFileList(true).size());
+  }
 }
