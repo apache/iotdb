@@ -98,7 +98,7 @@ public abstract class LinearFill {
    * @param time end time of current valueColumn that need to be filled
    * @param valueColumn valueColumn that need to be filled
    * @return true if valueColumn can't be filled using current information, and we need to get next
-   *     TsBlock and then call prepareForNext false if valueColumn can be filled using current
+   *     TsBlock and then call prepareForNext. false if valueColumn can be filled using current
    *     information, and we can directly call fill() function
    */
   public boolean needPrepareForNext(long time, Column valueColumn) {
@@ -110,7 +110,7 @@ public abstract class LinearFill {
    * @param nextTimeColumn TimeColumn of next TsBlock
    * @param nextValueColumn Value Column of next TsBlock
    * @return true if we get enough information to fill current column, and we can stop getting next
-   *     TsBlock and calling prepareForNext false if we still don't get enough information to fill
+   *     TsBlock and calling prepareForNext. false if we still don't get enough information to fill
    *     current column, and still need to keep getting next TsBlock and then call prepareForNext
    */
   public boolean prepareForNext(long time, TimeColumn nextTimeColumn, Column nextValueColumn) {
