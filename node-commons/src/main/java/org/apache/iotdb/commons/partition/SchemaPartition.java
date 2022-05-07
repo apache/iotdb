@@ -25,9 +25,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransport;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -199,21 +200,15 @@ public class SchemaPartition extends Partition {
   }
 
   private Map<TSeriesPartitionSlot, TRegionReplicaSet> readMap(ByteBuffer buffer)
-      throws IOException, TException {
-    int length = buffer.getInt();
-    byte[] regionMapBuffer = new byte[length];
-    buffer.get(regionMapBuffer);
+      throws TException {
     Map<TSeriesPartitionSlot, TRegionReplicaSet> result = new HashMap<>();
-    try (ByteArrayInputStream in = new ByteArrayInputStream(regionMapBuffer);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(in)) {
-      while (in.available() > 0) {
-        TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-        TSeriesPartitionSlot tSeriesPartitionSlot = new TSeriesPartitionSlot();
-        tSeriesPartitionSlot.read(protocol);
-        TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-        tRegionReplicaSet.read(protocol);
-        result.put(tSeriesPartitionSlot, tRegionReplicaSet);
-      }
+    try (TTransport transport = new TByteBuffer(buffer)) {
+      TProtocol protocol = new TBinaryProtocol(transport);
+      TSeriesPartitionSlot tSeriesPartitionSlot = new TSeriesPartitionSlot();
+      tSeriesPartitionSlot.read(protocol);
+      TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+      tRegionReplicaSet.read(protocol);
+      result.put(tSeriesPartitionSlot, tRegionReplicaSet);
     }
     return result;
   }

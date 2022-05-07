@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
@@ -42,6 +43,8 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -63,6 +66,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /** manage data partition and schema partition */
 public class PartitionInfo {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
   // Region read write lock
   private final ReentrantReadWriteLock regionReadWriteLock;
   private AtomicInteger nextRegionGroupId = new AtomicInteger(0);
@@ -78,6 +82,8 @@ public class PartitionInfo {
 
   // The size of the buffer used for snapshot(temporary value)
   private final int bufferSize = 10 * 1024 * 1024;
+
+  private final String snapshotFileName = "PartitionInfo.st";
 
   private PartitionInfo() {
     this.regionReadWriteLock = new ReentrantReadWriteLock();
@@ -100,6 +106,11 @@ public class PartitionInfo {
 
   public int generateNextRegionGroupId() {
     return nextRegionGroupId.getAndIncrement();
+  }
+
+  @TestOnly
+  public Integer getNextRegionGroupId() {
+    return nextRegionGroupId.get();
   }
 
   /**
@@ -310,7 +321,15 @@ public class PartitionInfo {
     return result;
   }
 
-  public boolean takeSnapshot(File snapshotFile) throws TException, IOException {
+  public boolean takeSnapshot(File snapshotDir) throws TException, IOException {
+
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
 
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
@@ -328,6 +347,7 @@ public class PartitionInfo {
       // write to file
       try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
           FileChannel fileChannel = fileOutputStream.getChannel()) {
+        byteBuffer.flip();
         fileChannel.write(byteBuffer);
       }
       // rename file
@@ -340,7 +360,15 @@ public class PartitionInfo {
     }
   }
 
-  public void loadSnapshot(File snapshotFile) throws TException, IOException {
+  public void loadSnapshot(File snapshotDir) throws TException, IOException {
+
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          snapshotFile.getAbsolutePath());
+      return;
+    }
 
     // no operations are processed at this time
     lockAllWrite();
@@ -350,6 +378,7 @@ public class PartitionInfo {
         FileChannel fileChannel = fileInputStream.getChannel()) {
       // get buffer from fileChannel
       fileChannel.read(buffer);
+      buffer.flip();
       // before restoring a snapshot, clear all old data
       clear();
       // start to restore
@@ -372,7 +401,7 @@ public class PartitionInfo {
   private void unlockAllWrite() {
     regionReadWriteLock.writeLock().unlock();
     schemaPartitionReadWriteLock.writeLock().unlock();
-    schemaPartitionReadWriteLock.writeLock().unlock();
+    dataPartitionReadWriteLock.writeLock().unlock();
   }
 
   private void lockAllRead() {
@@ -384,7 +413,17 @@ public class PartitionInfo {
   private void unlockAllRead() {
     regionReadWriteLock.readLock().unlock();
     schemaPartitionReadWriteLock.readLock().unlock();
-    schemaPartitionReadWriteLock.readLock().unlock();
+    dataPartitionReadWriteLock.readLock().unlock();
+  }
+
+  @TestOnly
+  public DataPartition getDataPartition() {
+    return dataPartition;
+  }
+
+  @TestOnly
+  public SchemaPartition getSchemaPartition() {
+    return schemaPartition;
   }
 
   private void serializeRegionMap(ByteBuffer buffer) throws TException, IOException {
