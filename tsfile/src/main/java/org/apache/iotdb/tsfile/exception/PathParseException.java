@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,19 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.utils;
+package org.apache.iotdb.tsfile.exception;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
+public class PathParseException extends TsFileRuntimeException {
 
-public class PathUtils {
-
-  /**
-   * @param path the path will split. ex, root.ln.
-   * @return string array. ex, [root, ln]
-   * @throws IllegalPathException if path isn't correct, the exception will throw
-   */
-  public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
-    return PathNodesGenerator.splitPathToNodes(path);
+  public PathParseException(String msg) {
+    super(msg);
   }
 }

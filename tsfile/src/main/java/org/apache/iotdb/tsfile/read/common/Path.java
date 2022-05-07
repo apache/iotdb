@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.PathParseException;
+import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.Serializable;
@@ -58,40 +60,25 @@ public class Path implements Serializable, Comparable<Path> {
    */
   public Path(String pathSc, boolean needSplit) {
     if (pathSc == null) {
-      throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
+      throw new PathParseException(ILLEGAL_PATH_ARGUMENT);
     }
     if (!needSplit) {
+      // no split, we don't use antlr to check here.
       fullPath = pathSc;
     } else {
       if (pathSc.length() > 0) {
-        if (pathSc.charAt(pathSc.length() - 1) == TsFileConstant.DOUBLE_QUOTE) {
-          int endIndex = pathSc.lastIndexOf('"', pathSc.length() - 2);
-          // if a double quotes with escape character
-          while (endIndex != -1 && pathSc.charAt(endIndex - 1) == '\\') {
-            endIndex = pathSc.lastIndexOf('"', endIndex - 2);
+        String[] nodes = PathNodesGenerator.splitPathToNodes(pathSc);
+        device = "";
+        if (nodes.length > 1) {
+          StringBuilder s = new StringBuilder(nodes[0]);
+          for (int i = 1; i < nodes.length - 1; i++) {
+            s.append(".");
+            s.append(nodes[i]);
           }
-          if (endIndex != -1 && (endIndex == 0 || pathSc.charAt(endIndex - 1) == '.')) {
-            fullPath = pathSc;
-            device = pathSc.substring(0, endIndex - 1);
-            measurement = pathSc.substring(endIndex);
-          } else {
-            throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
-          }
-        } else if (pathSc.charAt(pathSc.length() - 1) != TsFileConstant.DOUBLE_QUOTE
-            && pathSc.charAt(pathSc.length() - 1) != TsFileConstant.PATH_SEPARATOR_CHAR) {
-          int endIndex = pathSc.lastIndexOf(TsFileConstant.PATH_SEPARATOR_CHAR);
-          if (endIndex < 0) {
-            fullPath = pathSc;
-            device = "";
-            measurement = pathSc;
-          } else {
-            fullPath = pathSc;
-            device = pathSc.substring(0, endIndex);
-            measurement = pathSc.substring(endIndex + 1);
-          }
-        } else {
-          throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
+          device = s.toString();
         }
+        measurement = nodes[nodes.length - 1];
+        fullPath = pathSc;
       } else {
         fullPath = pathSc;
         device = "";
@@ -108,14 +95,24 @@ public class Path implements Serializable, Comparable<Path> {
    */
   public Path(String device, String measurement) {
     if (device == null || measurement == null) {
-      throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
+      throw new PathParseException(ILLEGAL_PATH_ARGUMENT);
+    }
+    String[] nodes;
+    // use splitPathToNodes to check whether path is legal.
+    if (!"".equals(device) && !"".equals(measurement)) {
+      String fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+      nodes = PathNodesGenerator.splitPathToNodes(fullPath);
+    } else if (!"".equals(device)) {
+      nodes = PathNodesGenerator.splitPathToNodes(device);
+    } else if (!"".equals(measurement)) {
+      nodes = PathNodesGenerator.splitPathToNodes(measurement);
     }
     this.device = device;
     this.measurement = measurement;
     if (!"".equals(device)) {
       this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
     } else {
-      fullPath = measurement;
+      this.fullPath = measurement;
     }
   }
 

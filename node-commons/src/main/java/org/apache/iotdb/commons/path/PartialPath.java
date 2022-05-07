@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -63,13 +64,32 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @throws IllegalPathException
    */
   public PartialPath(String path) throws IllegalPathException {
-    this.nodes = PathUtils.splitPathToDetachedPath(path);
+    if ("".equals(path)) {
+      this.fullPath = path;
+      this.nodes = new String[] {""};
+      return;
+    }
+    try {
+      this.nodes = PathUtils.splitPathToDetachedPath(path);
+    } catch (PathParseException e) {
+      throw new IllegalPathException(path);
+    }
     this.fullPath = path;
   }
 
   public PartialPath(String device, String measurement) throws IllegalPathException {
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
-    this.nodes = PathUtils.splitPathToDetachedPath(fullPath);
+    if ("".equals(device) && "".equals(measurement)) {
+      this.fullPath = device;
+      this.nodes = new String[] {""};
+      return;
+    }
+    String fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    try {
+      this.nodes = PathUtils.splitPathToDetachedPath(fullPath);
+    } catch (PathParseException e) {
+      throw new IllegalPathException(fullPath);
+    }
+    this.fullPath = fullPath;
   }
 
   /** @param partialNodes nodes of a time series path */
@@ -310,9 +330,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   @Override
   public String getFullPath() {
     if (fullPath == null) {
-      StringBuilder s = new StringBuilder(parseNodeString(nodes[0]));
+      StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR).append(parseNodeString(nodes[i]));
+        s.append(TsFileConstant.PATH_SEPARATOR).append(nodes[i]);
       }
       fullPath = s.toString();
     }
@@ -366,34 +386,18 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @Override
   public String getDeviceIdString() {
-    if (device != null) {
-      return device;
-    } else {
+    if (device == null) {
       if (nodes.length == 1) {
         return "";
       }
-      StringBuilder s = new StringBuilder(parseNodeString(nodes[0]));
+      StringBuilder s = new StringBuilder(nodes[0]);
       for (int i = 1; i < nodes.length - 1; i++) {
         s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(parseNodeString(nodes[i]));
+        s.append(nodes[i]);
       }
       device = s.toString();
-      return device;
     }
-  }
-
-  /**
-   * wrap node that has . or ` in it with ``
-   *
-   * @param node
-   * @return
-   */
-  protected String parseNodeString(String node) {
-    node = node.replace("`", "``");
-    if (node.contains("`") || node.contains(".")) {
-      return "`" + node + "`";
-    }
-    return node;
+    return device;
   }
 
   // todo remove measurement related interface after invoker using MeasurementPath explicitly

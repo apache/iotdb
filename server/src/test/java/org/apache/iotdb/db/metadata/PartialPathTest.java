@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class PartialPathTest {
+
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
@@ -40,6 +41,84 @@ public class PartialPathTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
+
+  @Test
+  public void testLegalPath() throws IllegalPathException {
+    String[] nodes;
+    // empty path
+    PartialPath a = new PartialPath("");
+    Assert.assertEquals("", a.getFullPath());
+    Assert.assertEquals("", a.getNodes()[0]);
+
+    // suffix path
+    PartialPath b = new PartialPath("s1");
+    Assert.assertEquals("s1", b.getFullPath());
+    Assert.assertEquals("s1", b.getNodes()[0]);
+
+    // normal node
+    PartialPath c = new PartialPath("root.sg.a");
+    Assert.assertEquals("root.sg.a", c.getFullPath());
+    nodes = new String[] {"root", "sg", "a"};
+    checkNodes(nodes, c.getNodes());
+
+    // quoted node
+    PartialPath d = new PartialPath("root.sg.`a.b`");
+    Assert.assertEquals("root.sg.`a.b`", d.getFullPath());
+    nodes = new String[] {"root", "sg", "`a.b`"};
+    checkNodes(nodes, d.getNodes());
+
+    PartialPath e = new PartialPath("root.sg.`a.``b`");
+    Assert.assertEquals("root.sg.`a.``b`", e.getFullPath());
+    nodes = new String[] {"root", "sg", "`a.``b`"};
+    checkNodes(nodes, e.getNodes());
+
+    PartialPath f = new PartialPath("root.`sg\"`.`a.``b`");
+    Assert.assertEquals("root.`sg\"`.`a.``b`", f.getFullPath());
+    nodes = new String[] {"root", "`sg\"`", "`a.``b`"};
+    checkNodes(nodes, f.getNodes());
+
+    PartialPath g = new PartialPath("root.sg.`a.b\\\\`");
+    Assert.assertEquals("root.sg.`a.b\\\\`", g.getFullPath());
+    nodes = new String[] {"root", "sg", "`a.b\\\\`"};
+    checkNodes(nodes, g.getNodes());
+
+    // quoted node of digits
+    PartialPath h = new PartialPath("root.sg.`111`");
+    Assert.assertEquals("root.sg.`111`", h.getFullPath());
+    nodes = new String[] {"root", "sg", "`111`"};
+    checkNodes(nodes, h.getNodes());
+
+    // quoted node of key word
+    PartialPath i = new PartialPath("root.sg.`select`");
+    Assert.assertEquals("root.sg.`select`", i.getFullPath());
+    nodes = new String[] {"root", "sg", "`select`"};
+    checkNodes(nodes, i.getNodes());
+
+    // wildcard
+    PartialPath j = new PartialPath("root.sg.`a*b`");
+    Assert.assertEquals("root.sg.`a*b`", j.getFullPath());
+    nodes = new String[] {"root", "sg", "`a*b`"};
+    checkNodes(nodes, j.getNodes());
+
+    PartialPath k = new PartialPath("root.sg.*");
+    Assert.assertEquals("root.sg.*", k.getFullPath());
+    nodes = new String[] {"root", "sg", "*"};
+    checkNodes(nodes, k.getNodes());
+
+    PartialPath l = new PartialPath("root.sg.**");
+    Assert.assertEquals("root.sg.**", l.getFullPath());
+    nodes = new String[] {"root", "sg", "**"};
+    checkNodes(nodes, l.getNodes());
+  }
+
+  @Test
+  public void testIllegalPath() {}
+
+  @Test
+  public void testLegalDeviceAndMeasurement() {}
+
+  @Test
+  public void testIllegalDeviceAndMeasurement() {}
 
   @Test
   public void testConcatPath() {
@@ -154,5 +233,12 @@ public class PartialPathTest {
     List<String> stringPaths = PartialPath.toStringList(paths);
     Assert.assertEquals("root.sg1.d1.s1", stringPaths.get(0));
     Assert.assertEquals("root.sg1.d1.s2", stringPaths.get(1));
+  }
+
+  private void checkNodes(String[] expected, String[] actual) {
+    Assert.assertEquals(expected.length, actual.length);
+    for (int i = 0; i < expected.length; i++) {
+      Assert.assertEquals(expected[i], actual[i]);
+    }
   }
 }

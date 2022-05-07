@@ -967,6 +967,11 @@ NAN_LITERAL
  * 6. Identifier
  */
 
+IDENTIFIER
+    : ID
+    | QUOTED_ID
+    ;
+
 ID
     : NAME_CHAR+
     ;

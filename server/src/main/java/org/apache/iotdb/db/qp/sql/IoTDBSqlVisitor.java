@@ -2441,11 +2441,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   /** function for parsing node name. */
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    return parseIdentifier(ctx.getText());
+    return ctx.getText();
   }
 
   private String parseNodeNameWithoutWildCard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
-    return parseIdentifier(ctx.getText());
+    return ctx.getText();
   }
 
   // alias
@@ -2456,7 +2456,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.constant() != null) {
       alias = parseStringLiteral(ctx.constant().getText());
     } else {
-      alias = parseIdentifier(ctx.identifier().getText());
+      alias = parseIdentifier(ctx.IDENTIFIER().getText());
     }
     return alias;
   }
@@ -3153,9 +3153,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private String parseIdentifier(String src) {
     if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-      String unescaped = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+      String unWrapped = src.substring(1, src.length() - 1);
       // replace `` with `
-      return unescaped.replace("``", "`");
+      return unWrapped.replace("``", "`");
     }
     return src;
   }

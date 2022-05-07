@@ -203,7 +203,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       CreateAlignedTimeSeriesStatement createAlignedTimeSeriesStatement) {
     for (int i = 0; i < ctx.nodeNameWithoutWildcard().size(); i++) {
       createAlignedTimeSeriesStatement.addMeasurement(
-          parseNodeName(ctx.nodeNameWithoutWildcard(i).getText()));
+          parseNodeNameWithoutWildCard(ctx.nodeNameWithoutWildcard(i)));
       parseAttributeClauses(ctx.attributeClauses(i), createAlignedTimeSeriesStatement);
     }
   }
@@ -1271,7 +1271,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     List<String> measurementList = new ArrayList<>();
     for (IoTDBSqlParser.NodeNameWithoutWildcardContext measurementName :
         ctx.nodeNameWithoutWildcard()) {
-      measurementList.add(parseNodeName(measurementName.getText()));
+      measurementList.add(parseNodeNameWithoutWildCard(measurementName));
     }
     insertStatement.setMeasurementList(measurementList.toArray(new String[0]));
     return (ctx.TIME() == null && ctx.TIMESTAMP() == null);
@@ -1339,7 +1339,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
       i++;
-      path[i] = parseNodeName(nodeNameWithoutStar.getText());
+      path[i] = parseNodeNameWithoutWildCard(nodeNameWithoutStar);
     }
     return new PartialPath(path);
   }
@@ -1396,11 +1396,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   private String parseNodeName(IoTDBSqlParser.NodeNameContext ctx) {
-    return parseIdentifier(ctx.getText());
+    return ctx.getText();
   }
 
   private String parseNodeNameWithoutWildCard(IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
-    return parseIdentifier(ctx.getText());
+    return ctx.getText();
   }
 
   // Literals ========================================================================
@@ -1472,16 +1472,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private String parseIdentifier(String src) {
     if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-      String unescaped = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+      String unWrapped = src.substring(1, src.length() - 1);
       // replace `` with `
-      return unescaped.replace("``", "`");
-    }
-    return src;
-  }
-
-  private String parseNodeName(String src) {
-    if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-      return src.substring(1, src.length() - 1);
+      return unWrapped.replace("``", "`");
     }
     return src;
   }
@@ -1492,7 +1485,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.constant() != null) {
       alias = parseStringLiteral(ctx.constant().getText());
     } else {
-      alias = parseIdentifier(ctx.identifier().getText());
+      alias = parseIdentifier(ctx.IDENTIFIER().getText());
     }
     return alias;
   }

@@ -16,19 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
+parser grammar PathParser;
 
-public class PathUtils {
+options { tokenVocab=SqlLexer; }
 
-  /**
-   * @param path the path will split. ex, root.ln.
-   * @return string array. ex, [root, ln]
-   * @throws IllegalPathException if path isn't correct, the exception will throw
-   */
-  public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
-    return PathNodesGenerator.splitPathToNodes(path);
-  }
-}
+/**
+ * PartialPath and Path used by Session API and TsFile API should be parsed by Antlr4.
+ */
+
+path
+    : prefixPath EOF
+    | suffixPath EOF
+    ;
+
+prefixPath
+    : ROOT (DOT nodeName)*
+    ;
+
+suffixPath
+    : nodeName (DOT nodeName)*
+    ;
+
+nodeName
+    : wildcard
+    | wildcard? IDENTIFIER wildcard?
+    | IDENTIFIER
+    ;
+
+wildcard
+    : STAR
+    | DOUBLE_STAR
+    ;
