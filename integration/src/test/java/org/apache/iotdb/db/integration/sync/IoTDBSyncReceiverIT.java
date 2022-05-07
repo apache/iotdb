@@ -207,6 +207,28 @@ public class IoTDBSyncReceiverIT {
                 "")
           };
       SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
+      // create again
+      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1 + 1));
+      retArray =
+          new String[] {
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.DROP.name(),
+                ""),
+            String.format(
+                "%s,%s,%s,%s,%s,%s",
+                DatetimeUtils.convertLongToDate(createdTime1 + 1),
+                pipeName1,
+                "receiver",
+                remoteIp1,
+                PipeStatus.STOP.name(),
+                "")
+          };
+      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());
