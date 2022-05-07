@@ -61,14 +61,21 @@ public class ColumnHeader {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(columnName, byteBuffer);
     ReadWriteIOUtils.write(dataType.ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(alias, byteBuffer);
+    ReadWriteIOUtils.write(hasAlias(), byteBuffer);
+    if (hasAlias()) {
+      ReadWriteIOUtils.write(alias, byteBuffer);
+    }
     dataType.serializeTo(byteBuffer);
   }
 
   public static ColumnHeader deserialize(ByteBuffer byteBuffer) {
     String columnName = ReadWriteIOUtils.readString(byteBuffer);
     TSDataType dataType = TSDataType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
-    String alias = ReadWriteIOUtils.readString(byteBuffer);
+    String alias = null;
+    boolean hasAlias = ReadWriteIOUtils.readBool(byteBuffer);
+    if (hasAlias) {
+      alias = ReadWriteIOUtils.readString(byteBuffer);
+    }
     return new ColumnHeader(columnName, dataType, alias);
   }
 
