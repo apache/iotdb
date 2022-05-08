@@ -21,39 +21,144 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class TransformNode extends ProcessNode {
 
-  public TransformNode(PlanNodeId id) {
+  protected PlanNode childPlanNode;
+
+  protected final Expression[] outputExpressions;
+  protected final boolean keepNull;
+  protected final ZoneId zoneId;
+
+  private List<String> outputColumnNames;
+
+  public TransformNode(
+      PlanNodeId id,
+      PlanNode childPlanNode,
+      Expression[] outputExpressions,
+      boolean keepNull,
+      ZoneId zoneId) {
     super(id);
+    this.childPlanNode = childPlanNode;
+    this.outputExpressions = outputExpressions;
+    this.keepNull = keepNull;
+    this.zoneId = zoneId;
+  }
+
+  public TransformNode(
+      PlanNodeId id, Expression[] outputExpressions, boolean keepNull, ZoneId zoneId) {
+    super(id);
+    this.outputExpressions = outputExpressions;
+    this.keepNull = keepNull;
+    this.zoneId = zoneId;
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return null;
+  public final List<PlanNode> getChildren() {
+    return ImmutableList.of(childPlanNode);
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public final void addChild(PlanNode childPlanNode) {
+    this.childPlanNode = childPlanNode;
+  }
+
+  @Override
+  public final int allowedChildCount() {
+    return ONE_CHILD;
+  }
+
+  @Override
+  public final List<String> getOutputColumnNames() {
+    if (outputColumnNames == null) {
+      outputColumnNames = new ArrayList<>();
+      for (Expression expression : outputExpressions) {
+        outputColumnNames.add(expression.toString());
+      }
+    }
+    return outputColumnNames;
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitTransform(this, context);
+  }
 
   @Override
   public PlanNode clone() {
-    return null;
+    return new TransformNode(getPlanNodeId(), outputExpressions, keepNull, zoneId);
   }
 
   @Override
-  public int allowedChildCount() {
-    return 0;
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TRANSFORM.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputExpressions.length, byteBuffer);
+    for (Expression expression : outputExpressions) {
+      Expression.serialize(expression, byteBuffer);
+    }
+    ReadWriteIOUtils.write(keepNull, byteBuffer);
+    ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
+  }
+
+  public static TransformNode deserialize(ByteBuffer byteBuffer) {
+    int outputExpressionsLength = ReadWriteIOUtils.readInt(byteBuffer);
+    Expression[] outputExpressions = new Expression[outputExpressionsLength];
+    for (int i = 0; i < outputExpressionsLength; ++i) {
+      outputExpressions[i] = Expression.deserialize(byteBuffer);
+    }
+    boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
+    ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new TransformNode(planNodeId, outputExpressions, keepNull, zoneId);
+  }
+
+  public final Expression[] getOutputExpressions() {
+    return outputExpressions;
+  }
+
+  public final boolean isKeepNull() {
+    return keepNull;
+  }
+
+  public final ZoneId getZoneId() {
+    return zoneId;
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return null;
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof TransformNode)) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
+    TransformNode that = (TransformNode) o;
+    return keepNull == that.keepNull
+        && childPlanNode.equals(that.childPlanNode)
+        && Arrays.equals(outputExpressions, that.outputExpressions)
+        && zoneId.equals(that.zoneId);
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  public int hashCode() {
+    int result = Objects.hash(super.hashCode(), childPlanNode, keepNull, zoneId);
+    result = 31 * result + Arrays.hashCode(outputExpressions);
+    return result;
+  }
 }

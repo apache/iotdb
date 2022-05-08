@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.layer.EvaluationDAGBuilder;
@@ -42,11 +43,13 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 public class TransformOperator implements ProcessOperator {
 
+  // TODO: make it configurable
   protected static final int FETCH_SIZE = 10000;
 
   protected final float udfReaderMemoryBudgetInMB =
@@ -60,10 +63,10 @@ public class TransformOperator implements ProcessOperator {
   protected final Operator inputOperator;
   protected final List<TSDataType> inputDataTypes;
   protected final Expression[] outputExpressions;
-  protected final UDTFContext udtfContext;
   protected final boolean keepNull;
 
   protected RawQueryInputLayer inputLayer;
+  protected UDTFContext udtfContext;
   protected LayerPointReader[] transformers;
   protected TimeSelector timeHeap;
   protected List<TSDataType> outputDataTypes;
@@ -73,19 +76,21 @@ public class TransformOperator implements ProcessOperator {
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
       Expression[] outputExpressions,
-      UDTFContext udtfContext,
-      boolean keepNull)
+      boolean keepNull,
+      ZoneId zoneId,
+      TypeProvider typeProvider)
       throws QueryProcessException, IOException {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.inputDataTypes = inputDataTypes;
     this.outputExpressions = outputExpressions;
-    this.udtfContext = udtfContext;
     this.keepNull = keepNull;
 
     initInputLayer(inputDataTypes);
+    initUdtfContext(zoneId);
     initTransformers();
     readyForFirstIteration();
+    updateTypeProvider(typeProvider);
   }
 
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
@@ -94,6 +99,11 @@ public class TransformOperator implements ProcessOperator {
             operatorContext.getOperatorId(),
             udfReaderMemoryBudgetInMB,
             new TsBlockInputDataSet(inputOperator, inputDataTypes));
+  }
+
+  private void initUdtfContext(ZoneId zoneId) {
+    udtfContext = new UDTFContext(zoneId);
+    udtfContext.constructUdfExecutors(outputExpressions);
   }
 
   protected void initTransformers() throws QueryProcessException, IOException {
@@ -136,6 +146,12 @@ public class TransformOperator implements ProcessOperator {
       }
       timeHeap.add(reader.currentTime());
       break;
+    }
+  }
+
+  private void updateTypeProvider(TypeProvider typeProvider) {
+    for (int i = 0; i < transformers.length; ++i) {
+      typeProvider.setType(outputExpressions[i].toString(), transformers[i].getDataType());
     }
   }
 
