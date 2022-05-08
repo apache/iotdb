@@ -172,7 +172,7 @@ public class ConfigNodeClient {
           return resp;
         }
 
-        // need redirect to config group leader
+        // set latest config node list
         List<TEndPoint> newConfigNodes = new ArrayList<>();
         for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
           newConfigNodes.add(configNodeLocation.getInternalEndPoint());
