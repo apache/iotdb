@@ -34,7 +34,7 @@ The user is the legal user of the database. A user corresponds to a unique usern
 
 ### Privilege
 
-The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
+The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range. It is flexible that using [path pattern](../Data-Concept/Data-Model-and-Terminology.md) to manage privileges.
 
 ### Role
 
@@ -221,7 +221,7 @@ Eg: IoTDB > LIST ROLE
 
 ```
 LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES USER sgcc_write_user ON root.sgcc;
 ```
 
 * List Privileges of Roles
@@ -235,7 +235,7 @@ Eg: IoTDB > LIST ROLE PRIVILEGES actor;
 
 ```
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES ROLE write_role ON root.sgcc;
 ```
 
 * List Privileges of Users
