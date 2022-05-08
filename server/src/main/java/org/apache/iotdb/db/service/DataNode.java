@@ -32,8 +32,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -100,7 +100,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
-    IoTDBConfigCheck.getInstance().checkConfig();
+    IoTDBStartCheck.getInstance().checkConfig();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     // TODO: check configuration for data node
 
@@ -162,17 +162,17 @@ public class DataNode implements DataNodeMBean {
           configNodeList.add(configNodeLocation.getInternalEndPoint());
         }
         config.setConfigNodeList(configNodeList);
-        IoTDBConfigCheck.getInstance().serializeConfigNodeList(configNodeList);
+        IoTDBStartCheck.getInstance().serializeConfigNodeList(configNodeList);
 
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-          logger.info(
-              "Register current node using request {} with response {}", req, dataNodeRegisterResp);
+          logger.info("Register current node successfully using request {}", req);
+          logger.info(dataNodeRegisterResp.getStatus().getMessage());
           int dataNodeID = dataNodeRegisterResp.getDataNodeId();
           if (dataNodeID != config.getDataNodeId()) {
-            IoTDBConfigCheck.getInstance().serializeDataNodeId(dataNodeID);
+            IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
             config.setDataNodeId(dataNodeID);
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
@@ -184,7 +184,7 @@ public class DataNode implements DataNodeMBean {
       } catch (IoTDBConnectionException e) {
         // read config nodes from system.properties
         logger.warn("Cannot join the cluster, because: {}", e.getMessage());
-        IoTDBConfigCheck.getInstance().loadConfigNodeList();
+        IoTDBStartCheck.getInstance().loadConfigNodeList();
       }
 
       try {

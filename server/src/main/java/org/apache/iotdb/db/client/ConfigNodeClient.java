@@ -174,9 +174,12 @@ public class ConfigNodeClient {
         for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
           newConfigNodes.add(configNodeLocation.getInternalEndPoint());
         }
-        if ((new HashSet<>(configNodes).containsAll(newConfigNodes)
-                && new HashSet<>(newConfigNodes).containsAll(configNodes))
-            && updateConfigNodeLeader(resp.status)) {
+        if (new HashSet<>(configNodes).containsAll(newConfigNodes)
+            && new HashSet<>(newConfigNodes).containsAll(configNodes)) {
+          if (!updateConfigNodeLeader(resp.status)) {
+            return resp;
+          }
+        } else {
           return resp;
         }
       } catch (TException e) {

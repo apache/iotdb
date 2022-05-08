@@ -46,9 +46,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
-public class IoTDBConfigCheck {
+public class IoTDBStartCheck {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBConfigCheck.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBStartCheck.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -116,16 +116,16 @@ public class IoTDBConfigCheck {
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
-  public static IoTDBConfigCheck getInstance() {
+  public static IoTDBStartCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
 
   private static class IoTDBConfigCheckHolder {
 
-    private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
+    private static final IoTDBStartCheck INSTANCE = new IoTDBStartCheck();
   }
 
-  private IoTDBConfigCheck() {
+  private IoTDBStartCheck() {
     logger.info("Starting IoTDB " + IoTDBConstant.VERSION);
 
     // check whether SCHEMA_DIR exists, create if not exists
@@ -186,10 +186,10 @@ public class IoTDBConfigCheck {
   public void checkConfig() throws ConfigurationException, IOException {
     propertiesFile =
         SystemFileFactory.INSTANCE.getFile(
-            IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
+            IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
     tmpPropertiesFile =
         SystemFileFactory.INSTANCE.getFile(
-            IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
+            IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
 
     // system init first time, no need to check, write system.properties and return
     if (!propertiesFile.exists() && !tmpPropertiesFile.exists()) {
