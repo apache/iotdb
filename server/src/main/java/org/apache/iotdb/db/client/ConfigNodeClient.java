@@ -53,7 +53,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 
 public class ConfigNodeClient {
@@ -169,19 +168,16 @@ public class ConfigNodeClient {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
 
-        // check if config nodes are inconsistent
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
+        }
+
+        // need redirect to config group leader
         List<TEndPoint> newConfigNodes = new ArrayList<>();
         for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
           newConfigNodes.add(configNodeLocation.getInternalEndPoint());
         }
-        if (new HashSet<>(configNodes).containsAll(newConfigNodes)
-            && new HashSet<>(newConfigNodes).containsAll(configNodes)) {
-          if (!updateConfigNodeLeader(resp.status)) {
-            return resp;
-          }
-        } else {
-          return resp;
-        }
+        configNodes = newConfigNodes;
       } catch (TException e) {
         configLeader = null;
       }
