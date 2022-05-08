@@ -39,8 +39,9 @@ public class TsFileMetadata {
   // List of <name, offset, childMetadataIndexType>
   private MetadataIndexNode metadataIndex;
 
-  // offset of MetaMarker.SEPARATOR
-  private long metaOffset;
+  public TsFileMetadata(MetadataIndexNode metadataIndex) {
+    this.metadataIndex = metadataIndex;
+  }
 
   /**
    * deserialize data from the buffer.
@@ -49,14 +50,8 @@ public class TsFileMetadata {
    * @return -a instance of TsFileMetaData
    */
   public static TsFileMetadata deserializeFrom(ByteBuffer buffer) {
-    TsFileMetadata fileMetaData = new TsFileMetadata();
-
     // metadataIndex
-    fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer);
-
-    // metaOffset
-    long metaOffset = ReadWriteIOUtils.readLong(buffer);
-    fileMetaData.setMetaOffset(metaOffset);
+    TsFileMetadata fileMetaData = new TsFileMetadata(MetadataIndexNode.deserializeFrom(buffer));
 
     // read bloom filter
     if (buffer.hasRemaining()) {
@@ -92,9 +87,6 @@ public class TsFileMetadata {
     } else {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     }
-
-    // metaOffset
-    byteLen += ReadWriteIOUtils.write(metaOffset, outputStream);
 
     return byteLen;
   }
@@ -132,14 +124,6 @@ public class TsFileMetadata {
       filter.add(path.toString());
     }
     return filter;
-  }
-
-  public long getMetaOffset() {
-    return metaOffset;
-  }
-
-  public void setMetaOffset(long metaOffset) {
-    this.metaOffset = metaOffset;
   }
 
   public MetadataIndexNode getMetadataIndex() {

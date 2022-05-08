@@ -74,19 +74,18 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.measurementUid = schema.getMeasurementId();
     this.dataType = schema.getType();
 
-    this.encodingList = ((VectorMeasurementSchema) schema).getSubMeasurementsTSEncodingList();
+    this.encodingList = schema.getSubMeasurementsTSEncodingList();
     this.chunkData = (AlignedTVList) tvList;
     this.chunkDataSize = size;
     this.deletionList = deletionList;
 
     this.chunkPointReader =
-        (chunkData).getAlignedIterator(floatPrecision, encodingList, chunkDataSize, deletionList);
+        chunkData.getAlignedIterator(floatPrecision, encodingList, chunkDataSize, deletionList);
     initAlignedChunkMeta((VectorMeasurementSchema) schema);
   }
 
-  private void initAlignedChunkMeta(VectorMeasurementSchema schema)
-      throws IOException, QueryProcessException {
-    AlignedTVList alignedChunkData = (AlignedTVList) chunkData;
+  private void initAlignedChunkMeta(VectorMeasurementSchema schema) throws QueryProcessException {
+    AlignedTVList alignedChunkData = chunkData;
     List<String> measurementList = schema.getSubMeasurementsList();
     List<TSDataType> dataTypeList = schema.getSubMeasurementsTSDataTypeList();
     // time chunk

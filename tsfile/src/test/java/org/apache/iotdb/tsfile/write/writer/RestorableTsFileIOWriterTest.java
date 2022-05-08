@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -78,6 +79,10 @@ public class RestorableTsFileIOWriterTest {
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
+    File indexFile = fsFactory.getFile(FILE_NAME + TsFileConstant.INDEX_SUFFIX);
+    if (indexFile.exists()) {
+      Assert.assertTrue(indexFile.delete());
+    }
   }
 
   @Test(expected = NotCompatibleTsFileException.class)
@@ -108,21 +113,10 @@ public class RestorableTsFileIOWriterTest {
   public void testOnlyFirstMask() throws Exception {
     TsFileWriter writer = new TsFileWriter(file);
     // we have to flush using inner API.
-    writer.getIOWriter().out.write(new byte[] {MetaMarker.CHUNK_HEADER});
+    writer.getIOWriter().getIOWriterOut().write(new byte[] {MetaMarker.CHUNK_HEADER});
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
-    writer.close();
-    rWriter.close();
-    assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
-  }
-
-  @Test
-  public void testOnlyOneIncompleteChunkHeader() throws Exception {
-    TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
-
-    RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
-    TsFileWriter writer = new TsFileWriter(rWriter);
     writer.close();
     rWriter.close();
     assertEquals(TsFileIOWriter.MAGIC_STRING_BYTES.length + 1, rWriter.getTruncatedSize());
@@ -180,7 +174,7 @@ public class RestorableTsFileIOWriterTest {
     writer.flushAllChunkGroups();
     long pos2 = writer.getIOWriter().getPos();
     // let's delete one byte. the version is broken
-    writer.getIOWriter().out.truncate(pos2 - 1);
+    writer.getIOWriter().getIOWriterOut().truncate(pos2 - 1);
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);

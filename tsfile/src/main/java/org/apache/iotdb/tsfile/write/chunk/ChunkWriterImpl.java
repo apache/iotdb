@@ -22,7 +22,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -47,6 +46,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private static final Logger logger = LoggerFactory.getLogger(ChunkWriterImpl.class);
 
   private final IMeasurementSchema measurementSchema;
+  int separateModel = TSFileDescriptor.getInstance().getConfig().getSeparateModel();
 
   private final ICompressor compressor;
 
@@ -331,9 +331,9 @@ public class ChunkWriterImpl implements IChunkWriter {
     if (pageBuffer.size() == 0) {
       return 0;
     }
-    // return the serialized size of the chunk header + all pages
-    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId(), pageBuffer.size())
-        + (long) pageBuffer.size();
+
+    // return the serialized size of all page data
+    return pageBuffer.size();
   }
 
   @Override
@@ -432,7 +432,6 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // write all pages of this column
     writer.writeBytesToStream(pageBuffer);
-
     int dataSize = (int) (writer.getPos() - dataOffset);
     if (dataSize != pageBuffer.size()) {
       throw new IOException(
@@ -444,14 +443,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
 
     writer.endCurrentChunk();
-  }
-
-  public void setIsMerging(boolean isMerging) {
-    this.isMerging = isMerging;
-  }
-
-  public boolean isMerging() {
-    return isMerging;
   }
 
   public void setLastPoint(boolean isLastPoint) {

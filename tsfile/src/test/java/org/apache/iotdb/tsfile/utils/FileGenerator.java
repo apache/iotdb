@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -138,6 +139,10 @@ public class FileGenerator {
       file.delete();
     }
     file = new File(filePath);
+    if (file.exists()) {
+      file.delete();
+    }
+    file = new File(filePath + TsFileConstant.INDEX_SUFFIX);
     if (file.exists()) {
       file.delete();
     }

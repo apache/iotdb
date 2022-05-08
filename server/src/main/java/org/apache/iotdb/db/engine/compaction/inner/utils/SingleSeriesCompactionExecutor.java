@@ -101,8 +101,8 @@ public class SingleSeriesCompactionExecutor {
       List<ChunkMetadata> chunkMetadataList = readerListPair.right;
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
-        CompactionMetricsManager.recordReadInfo(
-            currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
+        CompactionMetricsManager.recordReadInfo(currentChunk.getChunkMetadata().getDataSize());
+        // + currentChunk.getChunkMetadata().getSerializedSize()
 
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
@@ -136,7 +136,7 @@ public class SingleSeriesCompactionExecutor {
   }
 
   private long getChunkSize(Chunk chunk) {
-    return chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
+    return chunk.getChunkMetadata().getDataSize();
   }
 
   private void processModifiedChunk(Chunk chunk) throws IOException {

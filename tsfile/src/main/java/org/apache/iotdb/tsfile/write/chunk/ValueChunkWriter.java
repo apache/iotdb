@@ -22,7 +22,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -206,23 +205,20 @@ public class ValueChunkWriter {
   }
 
   public long getCurrentChunkSize() {
-    /**
-     * It may happen if subsequent write operations are all out of order, then count of statistics
-     * in this chunk will be 0 and this chunk will not be flushed.
-     */
+    // It may happen if subsequent write operations are all out of order, then count of
+    // statistics in this chunk will be 0 and this chunk will not be flushed.
     if (pageBuffer.size() == 0) {
-      return 0;
+      return 0L;
     }
 
     // Empty chunk, it may happen if pageBuffer stores empty bits and only chunk header will be
     // flushed.
     if (statistics.getCount() == 0) {
-      return ChunkHeader.getSerializedSize(measurementId, pageBuffer.size());
+      return 0L;
     }
 
     // return the serialized size of the chunk header + all pages
-    return ChunkHeader.getSerializedSize(measurementId, pageBuffer.size())
-        + (long) pageBuffer.size();
+    return pageBuffer.size();
   }
 
   public boolean checkPageSizeAndMayOpenANewPage() {

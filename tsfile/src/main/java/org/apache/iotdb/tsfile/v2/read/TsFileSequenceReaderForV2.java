@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.v2.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -38,7 +37,6 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.v2.file.footer.ChunkGroupFooterV2;
-import org.apache.iotdb.tsfile.v2.file.header.ChunkHeaderV2;
 import org.apache.iotdb.tsfile.v2.file.header.PageHeaderV2;
 import org.apache.iotdb.tsfile.v2.file.metadata.ChunkMetadataV2;
 import org.apache.iotdb.tsfile.v2.file.metadata.MetadataIndexNodeV2;
@@ -128,7 +126,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     return tsFileInput.size()
             >= TSFileConfig.MAGIC_STRING.getBytes().length * 2
                 + TSFileConfig.VERSION_NUMBER_V2.getBytes().length
-        && (readTailMagic().equals(readHeadMagic()));
+        && (readTailMagicInTsFile().equals(readHeadMagicInTsFile()));
   }
 
   /** this function reads version number and checks compatibility of TsFile. */
@@ -355,9 +353,9 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     int size = 0;
     List<TimeseriesMetadata> timeseriesMetadataMap = getDeviceTimeseriesMetadataV2(device);
     for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap) {
-      if (start == 0) {
-        start = timeseriesMetadata.getOffsetOfChunkMetaDataList();
-      }
+      //      if (start == 0) {
+      //        start = timeseriesMetadata.getOffsetOfChunkMetaDataList();
+      //      }
       size += timeseriesMetadata.getDataSizeOfChunkMetaDataList();
     }
     // read buffer of all ChunkMetadatas of this device
@@ -518,9 +516,9 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    * @return a CHUNK_HEADER
    * @throws IOException io error
    */
-  public ChunkHeader readChunkHeader() throws IOException {
-    return ChunkHeaderV2.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
-  }
+  //  public ChunkHeader readChunkHeader() throws IOException {
+  //    return ChunkHeaderV2.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
+  //  }
 
   /**
    * read the chunk's header.
@@ -529,10 +527,10 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    * @param chunkHeaderSize the size of chunk's header
    * @param markerRead true if the offset does not contains the marker , otherwise false
    */
-  private ChunkHeader readChunkHeader(long position, int chunkHeaderSize, boolean markerRead)
-      throws IOException {
-    return ChunkHeaderV2.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead);
-  }
+  //  private ChunkHeader readChunkHeader(long position, int chunkHeaderSize, boolean markerRead)
+  //      throws IOException {
+  //    return ChunkHeaderV2.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead);
+  //  }
 
   /**
    * notice, this function will modify channel's position.
@@ -553,15 +551,17 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    */
   @Override
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
-    int chunkHeadSize = ChunkHeaderV2.getSerializedSize(metaData.getMeasurementUid());
-    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
-    ByteBuffer buffer =
-        readChunkV2(
-            metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
-    Chunk chunk =
-        new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
-    chunk.setFromOldFile(true);
-    return chunk;
+    //    int chunkHeadSize = ChunkHeaderV2.getSerializedSize(metaData.getMeasurementUid());
+    //    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize,
+    // false);
+    //    ByteBuffer buffer =
+    //        readChunkV2(
+    //            metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
+    // header.getDataSize());
+    //    Chunk chunk =
+    //        new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
+    //    chunk.setFromOldFile(true);
+    return null;
   }
 
   /**
@@ -587,21 +587,20 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    *
    * @return List of ChunkMetaData
    */
-  public ArrayList<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
-      throws IOException {
-    readFileMetadata();
+  public ArrayList<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData) {
+    //    readFileMetadata();
     ArrayList<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-    long startOffsetOfChunkMetadataList = timeseriesMetaData.getOffsetOfChunkMetaDataList();
-    int dataSizeOfChunkMetadataList = timeseriesMetaData.getDataSizeOfChunkMetaDataList();
-
-    ByteBuffer buffer = readData(startOffsetOfChunkMetadataList, dataSizeOfChunkMetadataList);
-    while (buffer.hasRemaining()) {
-      chunkMetadataList.add(ChunkMetadataV2.deserializeFrom(buffer));
-    }
-
-    // minimize the storage of an ArrayList instance.
-    chunkMetadataList.trimToSize();
-    applyVersion(chunkMetadataList);
+    //    long startOffsetOfChunkMetadataList = timeseriesMetaData.getOffsetOfChunkMetaDataList();
+    //    int dataSizeOfChunkMetadataList = timeseriesMetaData.getDataSizeOfChunkMetaDataList();
+    //
+    //    ByteBuffer buffer = readData(startOffsetOfChunkMetadataList, dataSizeOfChunkMetadataList);
+    //    while (buffer.hasRemaining()) {
+    //      chunkMetadataList.add(ChunkMetadataV2.deserializeFrom(buffer));
+    //    }
+    //
+    //    // minimize the storage of an ArrayList instance.
+    //    chunkMetadataList.trimToSize();
+    //    applyVersion(chunkMetadataList);
     return chunkMetadataList;
   }
 

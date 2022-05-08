@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.write;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -71,6 +72,11 @@ public class TsFileReadWriteTest {
   @After
   public void tearDown() {
     f = new File(path);
+    if (f.exists()) {
+      assertTrue(f.delete());
+    }
+
+    f = new File(path + TsFileConstant.INDEX_SUFFIX);
     if (f.exists()) {
       assertTrue(f.delete());
     }

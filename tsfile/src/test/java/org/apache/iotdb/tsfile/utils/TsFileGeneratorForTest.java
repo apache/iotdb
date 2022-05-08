@@ -19,10 +19,10 @@
 package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -40,7 +40,6 @@ import org.junit.Ignore;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -100,7 +99,15 @@ public class TsFileGeneratorForTest {
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
+    file = fsFactory.getFile(outputDataFile + TsFileConstant.INDEX_SUFFIX);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
     file = fsFactory.getFile(errorOutputDataFile);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+    file = fsFactory.getFile(errorOutputDataFile + TsFileConstant.INDEX_SUFFIX);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }
@@ -245,26 +252,6 @@ public class TsFileGeneratorForTest {
     return schema;
   }
 
-  /**
-   * Writes a File with one incomplete chunk header
-   *
-   * @param file File to write
-   * @throws IOException is thrown when encountering IO issues
-   */
-  public static void writeFileWithOneIncompleteChunkHeader(File file) throws IOException {
-    TsFileWriter writer = new TsFileWriter(file);
-
-    ChunkHeader header =
-        new ChunkHeader("s1", 100, TSDataType.FLOAT, CompressionType.SNAPPY, TSEncoding.PLAIN, 5);
-    ByteBuffer buffer = ByteBuffer.allocate(header.getSerializedSize());
-    header.serializeTo(buffer);
-    buffer.flip();
-    byte[] data = new byte[3];
-    buffer.get(data, 0, 3);
-    writer.getIOWriter().getIOWriterOut().write(data);
-    writer.getIOWriter().close();
-  }
-
   public static String getTestTsFilePath(
       String logicalStorageGroupName,
       long VirtualStorageGroupId,
@@ -326,6 +313,10 @@ public class TsFileGeneratorForTest {
 
   public static void closeAlignedTsFile() {
     File file = fsFactory.getFile(alignedOutputDataFile);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+    file = fsFactory.getFile(alignedOutputDataFile + TsFileConstant.INDEX_SUFFIX);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }

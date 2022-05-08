@@ -21,78 +21,75 @@ package org.apache.iotdb.tsfile;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import org.apache.commons.cli.BasicParser;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
+import org.apache.commons.cli.Options;
 
 import java.io.IOException;
 import java.util.ArrayList;
 
-import static org.apache.iotdb.tsfile.Constant.DEVICE_1;
-import static org.apache.iotdb.tsfile.Constant.SENSOR_1;
-import static org.apache.iotdb.tsfile.Constant.SENSOR_2;
-import static org.apache.iotdb.tsfile.Constant.SENSOR_3;
-
-/**
- * The class is to show how to read TsFile file named "test.tsfile". The TsFile file "test.tsfile"
- * is generated from class TsFileWriteWithTSRecord or TsFileWriteWithTablet. Run
- * TsFileWriteWithTSRecord or TsFileWriteWithTablet to generate the test.tsfile first
- */
 public class TsFileRead {
 
-  private static void queryAndPrint(
-      ArrayList<Path> paths, TsFileReader readTsFile, IExpression statement) throws IOException {
-    QueryExpression queryExpression = QueryExpression.create(paths, statement);
-    QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-    while (queryDataSet.hasNext()) {
-      System.out.println(queryDataSet.next());
-    }
-    System.out.println("----------------");
-  }
+  private static final String DEVICE1 = "device_1";
+  public static int deviceNum;
+  public static int sensorNum;
+  public static int fileNum;
 
   public static void main(String[] args) throws IOException {
+    Options opts = new Options();
+    Option deviceNumOption =
+        OptionBuilder.withArgName("args").withLongOpt("deviceNum").hasArg().create("d");
+    opts.addOption(deviceNumOption);
+    Option sensorNumOption =
+        OptionBuilder.withArgName("args").withLongOpt("sensorNum").hasArg().create("m");
+    opts.addOption(sensorNumOption);
+    Option fileNumOption =
+        OptionBuilder.withArgName("args").withLongOpt("fileNum").hasArg().create("f");
+    opts.addOption(fileNumOption);
 
-    // file path
-    String path = "test.tsfile";
-
-    // create reader and get the readTsFile interface
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(path);
-        TsFileReader readTsFile = new TsFileReader(reader)) {
-
-      // use these paths(all measurements) for all the queries
-      ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path(DEVICE_1, SENSOR_1));
-      paths.add(new Path(DEVICE_1, SENSOR_2));
-      paths.add(new Path(DEVICE_1, SENSOR_3));
-
-      // no filter, should select 1 2 3 4 6 7 8
-      queryAndPrint(paths, readTsFile, null);
-
-      // time filter : 4 <= time <= 10, should select 4 6 7 8
-      IExpression timeFilter =
-          BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(4L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(10L)));
-      queryAndPrint(paths, readTsFile, timeFilter);
-
-      // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
-      IExpression valueFilter =
-          new SingleSeriesExpression(new Path(DEVICE_1, SENSOR_2), ValueFilter.ltEq(20L));
-      queryAndPrint(paths, readTsFile, valueFilter);
-
-      // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should select 4 7 8
-      timeFilter =
-          BinaryExpression.and(
-              new GlobalTimeExpression(TimeFilter.gtEq(4L)),
-              new GlobalTimeExpression(TimeFilter.ltEq(10L)));
-      valueFilter = new SingleSeriesExpression(new Path(DEVICE_1, SENSOR_3), ValueFilter.gtEq(20L));
-      IExpression finalFilter = BinaryExpression.and(timeFilter, valueFilter);
-      queryAndPrint(paths, readTsFile, finalFilter);
+    BasicParser parser = new BasicParser();
+    CommandLine cl;
+    try {
+      cl = parser.parse(opts, args);
+      deviceNum = Integer.parseInt(cl.getOptionValue("d"));
+      sensorNum = Integer.parseInt(cl.getOptionValue("m"));
+      fileNum = Integer.parseInt(cl.getOptionValue("f"));
+    } catch (Exception e) {
+      e.printStackTrace();
     }
+
+    long totalStartTime = System.nanoTime();
+    for (int fileIndex = 0; fileIndex < fileNum; fileIndex++) {
+      // file path
+      String path =
+          "/data/szs/data/data/sequence/root/3/"
+              + deviceNum
+              + "."
+              + sensorNum
+              + "/test"
+              + fileIndex
+              + ".tsfile";
+
+      // raw data query
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(path, true);
+          TsFileReader readTsFile = new TsFileReader(reader)) {
+        ArrayList<Path> paths = new ArrayList<>();
+        paths.add(new Path(DEVICE1, "sensor_1"));
+
+        QueryExpression queryExpression = QueryExpression.create(paths, null);
+
+        QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+        while (queryDataSet.hasNext()) {
+          queryDataSet.next();
+        }
+      }
+    }
+    long totalTime = (System.nanoTime() - totalStartTime) / 1000_000;
+    System.out.println("Average cost time: " + (double) totalTime / (double) fileNum + "ms");
   }
 }

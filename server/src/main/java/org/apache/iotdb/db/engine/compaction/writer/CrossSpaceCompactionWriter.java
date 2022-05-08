@@ -48,9 +48,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // whether each target file has device data or not
   private final boolean[] isDeviceExistedInTargetFiles;
 
-  // current chunk group header size
-  private int chunkGroupHeaderSize;
-
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
@@ -70,9 +67,9 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     this.isAlign = isAlign;
     this.seqFileIndexArray = new int[subTaskNum];
     checkIsDeviceExistAndGetDeviceEndTime();
-    for (int i = 0; i < fileWriterList.size(); i++) {
-      chunkGroupHeaderSize = fileWriterList.get(i).startChunkGroup(deviceId);
-    }
+    //    for (int i = 0; i < fileWriterList.size(); i++) {
+    //      chunkGroupHeaderSize = fileWriterList.get(i).startChunkGroup(deviceId);
+    //    }
   }
 
   @Override
@@ -82,7 +79,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       if (isDeviceExistedInTargetFiles[i]) {
         targetFileWriter.endChunkGroup();
       } else {
-        targetFileWriter.truncate(targetFileWriter.getPos() - chunkGroupHeaderSize);
+        targetFileWriter.truncate(targetFileWriter.getPos());
       }
       isDeviceExistedInTargetFiles[i] = false;
     }

@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.write;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,7 +42,7 @@ import static org.junit.Assert.fail;
 
 public class ReadPageInMemTest {
 
-  private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("TsFileReadPageInMem");
+  private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("TsFileReadPageInMem.tsfile");
   private File file = new File(filePath);
   private TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
   private TsFileWriter innerWriter;
@@ -100,6 +101,9 @@ public class ReadPageInMemTest {
   @After
   public void tearDown() {
     file.delete();
+    File indexFile = new File(filePath + TsFileConstant.INDEX_SUFFIX);
+    indexFile.delete();
+
     conf.setPageSizeInByte(pageSize);
     conf.setGroupSizeInByte(ChunkGroupSize);
     conf.setPageCheckSizeThreshold(pageCheckSizeThreshold);

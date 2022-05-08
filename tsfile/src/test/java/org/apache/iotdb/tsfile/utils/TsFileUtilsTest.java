@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.write.writer.LocalTsFileOutput;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -42,8 +43,7 @@ public class TsFileUtilsTest {
   public void before() throws IOException {
     TsFileIOWriter completeWriter = new TsFileIOWriter(new File(COMPLETE_FILE_PATH));
     completeWriter.endFile();
-    LocalTsFileOutput output =
-        new LocalTsFileOutput(new FileOutputStream(new File(INCOMPLETE_FILE_PATH)));
+    LocalTsFileOutput output = new LocalTsFileOutput(new FileOutputStream(INCOMPLETE_FILE_PATH));
     byte[] MAGIC_STRING_BYTES = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
     byte MAGIC_NUMBER_BYTE = TSFileConfig.VERSION_NUMBER;
     // only write 1. version number 2. magic string
@@ -60,7 +60,16 @@ public class TsFileUtilsTest {
       completeFile.delete();
     }
     if (incompleteFile.exists()) {
-      completeFile.delete();
+      incompleteFile.delete();
+    }
+
+    File completeIndexFile = new File(COMPLETE_FILE_PATH + TsFileConstant.INDEX_SUFFIX);
+    File incompleteIndexFile = new File(INCOMPLETE_FILE_PATH + TsFileConstant.INDEX_SUFFIX);
+    if (completeIndexFile.exists()) {
+      completeIndexFile.delete();
+    }
+    if (incompleteIndexFile.exists()) {
+      incompleteIndexFile.delete();
     }
   }
 

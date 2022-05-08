@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -109,5 +110,7 @@ public class DefaultSchemaTemplateTest {
     }
 
     Files.deleteIfExists(file.toPath());
+    File indexFile = new File(file + TsFileConstant.INDEX_SUFFIX);
+    Files.deleteIfExists(indexFile.toPath());
   }
 }

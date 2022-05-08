@@ -124,9 +124,9 @@ public class TsFileWriter implements AutoCloseable {
    * @param schema the schema of this TsFile
    * @throws IOException
    */
-  public TsFileWriter(TsFileOutput output, Schema schema) throws IOException {
-    this(new TsFileIOWriter(output), schema, TSFileDescriptor.getInstance().getConfig());
-  }
+    public TsFileWriter(TsFileOutput output, Schema schema) throws IOException {
+      this(new TsFileIOWriter(output), schema, TSFileDescriptor.getInstance().getConfig());
+    }
 
   /**
    * init this TsFileWriter.

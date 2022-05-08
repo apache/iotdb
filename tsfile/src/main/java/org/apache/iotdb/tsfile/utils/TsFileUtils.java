@@ -17,6 +17,8 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
 import java.io.File;
@@ -31,6 +33,11 @@ public class TsFileUtils {
    * @throws IOException the io operations on file fails
    */
   public static boolean isTsFileComplete(File file) throws IOException {
+    if (!FSFactoryProducer.getFSFactory()
+        .getFile(file.getAbsolutePath() + TsFileConstant.INDEX_SUFFIX)
+        .exists()) {
+      return false;
+    }
     try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
       return reader.isComplete();
     }

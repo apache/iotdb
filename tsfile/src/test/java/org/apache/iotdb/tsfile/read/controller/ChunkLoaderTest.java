@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -60,8 +59,8 @@ public class ChunkLoaderTest {
     CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
     for (IChunkMetadata chunkMetaData : chunkMetadataList) {
       Chunk chunk = seriesChunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
-      ChunkHeader chunkHeader = chunk.getHeader();
-      Assert.assertEquals(chunkHeader.getDataSize(), chunk.getData().remaining());
+      ChunkMetadata chunkMetadata = chunk.getChunkMetadata();
+      Assert.assertEquals(chunkMetadata.getDataSize(), chunk.getData().remaining());
     }
   }
 }

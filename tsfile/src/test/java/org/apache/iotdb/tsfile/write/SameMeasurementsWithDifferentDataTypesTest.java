@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -64,8 +65,10 @@ public class SameMeasurementsWithDifferentDataTypesTest {
   @After
   public void after() {
     File file = new File(tsfilePath);
+    File indexFile = new File(tsfilePath + TsFileConstant.INDEX_SUFFIX);
     try {
       Files.deleteIfExists(file.toPath());
+      Files.deleteIfExists(indexFile.toPath());
     } catch (IOException e) {
       fail(e.getMessage());
     }

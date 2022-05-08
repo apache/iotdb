@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -122,6 +123,9 @@ public class TsFileReaderTest {
 
     tsFileReader.close();
     file.delete();
+    File indexFile = new File(filePath + TsFileConstant.INDEX_SUFFIX);
+    indexFile.delete();
+
     tsFileConfig.setGroupSizeInByte(oldGroupSizeInByte);
     tsFileConfig.setMaxNumberOfPointsInPage(oldPointNumInPage);
   }
@@ -471,7 +475,6 @@ public class TsFileReaderTest {
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     long rowCount = 0;
     while (queryDataSet.hasNext()) {
-      // System.out.println(queryDataSet.next());
       queryDataSet.next();
       rowCount++;
     }

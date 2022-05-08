@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,10 +46,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class TsFileIOWriterTest {
 
@@ -58,8 +55,6 @@ public class TsFileIOWriterTest {
   private static final String DEVICE_1 = "device1";
   private static final String DEVICE_2 = "device2";
   private static final String SENSOR_1 = "sensor1";
-
-  private static final int CHUNK_GROUP_NUM = 2;
 
   @Before
   public void before() throws IOException {
@@ -94,6 +89,10 @@ public class TsFileIOWriterTest {
     if (file.exists()) {
       file.delete();
     }
+    file = new File(FILE_PATH + TsFileConstant.INDEX_SUFFIX);
+    if (file.exists()) {
+      file.delete();
+    }
   }
 
   @Test
@@ -101,71 +100,75 @@ public class TsFileIOWriterTest {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
 
     // magic_string
-    Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readHeadMagic());
-    Assert.assertEquals(TSFileConfig.VERSION_NUMBER, reader.readVersionNumber());
-    Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readTailMagic());
+    Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readHeadMagicInTsFile());
+    Assert.assertEquals(TSFileConfig.VERSION_NUMBER, reader.readVersionNumberInTsFile());
+    Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readTailMagicInTsFile());
 
-    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+    Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readHeadMagicInIndexFile());
+    Assert.assertEquals(TSFileConfig.VERSION_NUMBER, reader.readVersionNumberInIndexFile());
+    Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readTailMagicInIndexFile());
 
-    ChunkHeader header;
-    ChunkGroupHeader chunkGroupHeader;
-    for (int i = 0; i < CHUNK_GROUP_NUM; i++) {
-      // chunk group header
-      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
-      chunkGroupHeader = reader.readChunkGroupHeader();
-      Assert.assertEquals(DEVICE_1, chunkGroupHeader.getDeviceID());
-      // ordinary chunk header
-      Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, reader.readMarker());
-      header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
-      Assert.assertEquals(SENSOR_1, header.getMeasurementID());
-    }
+    reader.indexFilePosition(TSFileConfig.MAGIC_STRING.getBytes().length + 1);
 
-    for (int i = 0; i < CHUNK_GROUP_NUM; i++) {
-      // chunk group header
-      Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
-      chunkGroupHeader = reader.readChunkGroupHeader();
-      Assert.assertEquals(DEVICE_2, chunkGroupHeader.getDeviceID());
-      // vector chunk header (time)
-      Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER, reader.readMarker());
-      header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
-      Assert.assertEquals("", header.getMeasurementID());
-      // vector chunk header (values)
-      Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER, reader.readMarker());
-      header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
-      Assert.assertEquals("s1", header.getMeasurementID());
-      Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER, reader.readMarker());
-      header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
-      Assert.assertEquals("s2", header.getMeasurementID());
-    }
+    long dataLength = 0L;
+    // chunk group header
+    Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarkerInIndexFile());
+    ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
+    Assert.assertEquals(DEVICE_1, chunkGroupHeader.getDeviceID());
 
-    Assert.assertEquals(MetaMarker.OPERATION_INDEX_RANGE, reader.readMarker());
-    reader.readPlanIndex();
-    Assert.assertEquals(100, reader.getMinPlanIndex());
-    Assert.assertEquals(10000, reader.getMaxPlanIndex());
+    TimeseriesMetadata timeseriesMetadata = reader.readTimeseriesMetadata();
+    Assert.assertEquals(SENSOR_1, timeseriesMetadata.getMeasurementId());
+    // ordinary chunkMetadata
+    ChunkMetadata chunkMetadata = (ChunkMetadata) timeseriesMetadata.getChunkMetadataList().get(0);
+    Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, chunkMetadata.getChunkType());
+    Assert.assertEquals(SENSOR_1, chunkMetadata.getMeasurementUid());
+    dataLength += chunkMetadata.getDataSize();
 
-    Assert.assertEquals(MetaMarker.SEPARATOR, reader.readMarker());
+    // chunk group header
+    Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarkerInIndexFile());
+    chunkGroupHeader = reader.readChunkGroupHeader();
+    Assert.assertEquals(DEVICE_2, chunkGroupHeader.getDeviceID());
 
-    // make sure timeseriesMetadata is only
-    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
-        reader.getAllTimeseriesMetadata();
-    Set<String> pathSet = new HashSet<>();
-    for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-        deviceTimeseriesMetadataMap.entrySet()) {
-      for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-        String seriesPath = entry.getKey() + "." + timeseriesMetadata.getMeasurementId();
-        Assert.assertFalse(pathSet.contains(seriesPath));
-        pathSet.add(seriesPath);
-      }
-    }
+    // vector chunkMetadata (time)
+    timeseriesMetadata = reader.readTimeseriesMetadata();
+    Assert.assertEquals("", timeseriesMetadata.getMeasurementId());
+    chunkMetadata = (ChunkMetadata) timeseriesMetadata.getChunkMetadataList().get(0);
+    Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER, chunkMetadata.getChunkType());
+    Assert.assertEquals("", chunkMetadata.getMeasurementUid());
+    dataLength += chunkMetadata.getDataSize();
+
+    // vector chunkMetadata (values)
+    timeseriesMetadata = reader.readTimeseriesMetadata();
+    Assert.assertEquals("s1", timeseriesMetadata.getMeasurementId());
+    chunkMetadata = (ChunkMetadata) timeseriesMetadata.getChunkMetadataList().get(0);
+    Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER, chunkMetadata.getChunkType());
+    Assert.assertEquals("s1", chunkMetadata.getMeasurementUid());
+    dataLength += chunkMetadata.getDataSize();
+
+    // vector chunkMetadata (values)
+    timeseriesMetadata = reader.readTimeseriesMetadata();
+    Assert.assertEquals("s2", timeseriesMetadata.getMeasurementId());
+    chunkMetadata = (ChunkMetadata) timeseriesMetadata.getChunkMetadataList().get(0);
+    Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER, chunkMetadata.getChunkType());
+    Assert.assertEquals("s2", chunkMetadata.getMeasurementUid());
+    dataLength += chunkMetadata.getDataSize();
+
+    Assert.assertEquals(MetaMarker.SEPARATOR, reader.readMarkerInIndexFile());
 
     // FileMetaData
     TsFileMetadata metaData = reader.readFileMetadata();
     Assert.assertEquals(2, metaData.getMetadataIndex().getChildren().size());
+
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + 1 + dataLength);
+    Assert.assertEquals(MetaMarker.OPERATION_INDEX_RANGE, reader.readMarker());
+    reader.readPlanIndex();
+    Assert.assertEquals(100, reader.getMinPlanIndex());
+    Assert.assertEquals(10000, reader.getMaxPlanIndex());
   }
 
   private void writeChunkGroup(TsFileIOWriter writer, MeasurementSchema measurementSchema)
       throws IOException {
-    for (int i = 0; i < CHUNK_GROUP_NUM; i++) {
+    for (int i = 0; i < 2; i++) {
       // chunk group
       writer.startChunkGroup(DEVICE_1);
       // ordinary chunk, chunk statistics
@@ -187,7 +190,7 @@ public class TsFileIOWriterTest {
 
   private void writeVectorChunkGroup(
       TsFileIOWriter writer, VectorMeasurementSchema vectorMeasurementSchema) throws IOException {
-    for (int i = 0; i < CHUNK_GROUP_NUM; i++) {
+    for (int i = 0; i < 2; i++) {
       // chunk group
       writer.startChunkGroup(DEVICE_2);
       // vector chunk (time)

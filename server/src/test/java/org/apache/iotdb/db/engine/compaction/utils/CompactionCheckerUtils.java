@@ -30,15 +30,10 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -47,12 +42,10 @@ import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -199,53 +192,61 @@ public class CompactionCheckerUtils {
             case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
             case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
             case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
-              ChunkHeader header = reader.readChunkHeader(marker);
-              // read the next measurement and pack data of last measurement
-              if (currTimeValuePairs.size() > 0) {
-                PartialPath path = new PartialPath(device, measurementID);
-                List<TimeValuePair> timeValuePairs =
-                    mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
-                timeValuePairs.addAll(currTimeValuePairs);
-                currTimeValuePairs.clear();
-              }
-              measurementID = header.getMeasurementID();
-              Decoder defaultTimeDecoder =
-                  Decoder.getDecoderByType(
-                      TSEncoding.valueOf(
-                          TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                      TSDataType.INT64);
-              Decoder valueDecoder =
-                  Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
-              int dataSize = header.getDataSize();
-              while (dataSize > 0) {
-                valueDecoder.reset();
-                PageHeader pageHeader =
-                    reader.readPageHeader(
-                        header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
-                PartialPath path = new PartialPath(device, measurementID);
-                ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
-                PageReader reader1 =
-                    new PageReader(
-                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
-                BatchData batchData = reader1.getAllSatisfiedPageData();
-                long count = fullPathPointNum.getOrDefault(path.getFullPath(), 0L);
-                if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
-                  count += pageHeader.getNumOfValues();
-                } else {
-                  count += batchData.length();
-                }
-                fullPathPointNum.put(path.getFullPath(), count);
-                IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
-                while (batchDataIterator.hasNext()) {
-                  currTimeValuePairs.add(
-                      new TimeValuePair(
-                          batchDataIterator.currentTime(),
-                          TsPrimitiveType.getByType(
-                              header.getDataType(), batchDataIterator.currentValue())));
-                  batchDataIterator.next();
-                }
-                dataSize -= pageHeader.getSerializedPageSize();
-              }
+              //              ChunkHeader header = reader.readChunkHeader(marker);
+              //              // read the next measurement and pack data of last measurement
+              //              if (currTimeValuePairs.size() > 0) {
+              //                PartialPath path = new PartialPath(device, measurementID);
+              //                List<TimeValuePair> timeValuePairs =
+              //                    mergedData.computeIfAbsent(path.getFullPath(), k -> new
+              // ArrayList<>());
+              //                timeValuePairs.addAll(currTimeValuePairs);
+              //                currTimeValuePairs.clear();
+              //              }
+              //              measurementID = header.getMeasurementID();
+              //              Decoder defaultTimeDecoder =
+              //                  Decoder.getDecoderByType(
+              //                      TSEncoding.valueOf(
+              //
+              // TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+              //                      TSDataType.INT64);
+              //              Decoder valueDecoder =
+              //                  Decoder.getDecoderByType(header.getEncodingType(),
+              // header.getDataType());
+              //              int dataSize = header.getDataSize();
+              //              while (dataSize > 0) {
+              //                valueDecoder.reset();
+              //                PageHeader pageHeader =
+              //                    reader.readPageHeader(
+              //                        header.getDataType(), header.getChunkType() ==
+              // MetaMarker.CHUNK_HEADER);
+              //                PartialPath path = new PartialPath(device, measurementID);
+              //                ByteBuffer pageData = reader.readPage(pageHeader,
+              // header.getCompressionType());
+              //                PageReader reader1 =
+              //                    new PageReader(
+              //                        pageData, header.getDataType(), valueDecoder,
+              // defaultTimeDecoder, null);
+              //                BatchData batchData = reader1.getAllSatisfiedPageData();
+              //                long count = fullPathPointNum.getOrDefault(path.getFullPath(), 0L);
+              //                if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
+              //                  count += pageHeader.getNumOfValues();
+              //                } else {
+              //                  count += batchData.length();
+              //                }
+              //                fullPathPointNum.put(path.getFullPath(), count);
+              //                IBatchDataIterator batchDataIterator =
+              // batchData.getBatchDataIterator();
+              //                while (batchDataIterator.hasNext()) {
+              //                  currTimeValuePairs.add(
+              //                      new TimeValuePair(
+              //                          batchDataIterator.currentTime(),
+              //                          TsPrimitiveType.getByType(
+              //                              header.getDataType(),
+              // batchDataIterator.currentValue())));
+              //                  batchDataIterator.next();
+              //                }
+              //                dataSize -= pageHeader.getSerializedPageSize();
+              //              }
               break;
             case MetaMarker.CHUNK_GROUP_HEADER:
               ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
@@ -396,44 +397,50 @@ public class CompactionCheckerUtils {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
-            ChunkHeader header = reader.readChunkHeader(marker);
-            // read the next measurement and pack data of last measurement
-            if (pagePointsNum.size() > 0) {
-              String fullPath = new PartialPath(entity, measurement).getFullPath();
-              List<List<Long>> currChunkPagePointsNum =
-                  mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
-              currChunkPagePointsNum.add(pagePointsNum);
-              pagePointsNum = new ArrayList<>();
-            }
-            measurement = header.getMeasurementID();
-            Decoder defaultTimeDecoder =
-                Decoder.getDecoderByType(
-                    TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                    TSDataType.INT64);
-            Decoder valueDecoder =
-                Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
-            int dataSize = header.getDataSize();
-            while (dataSize > 0) {
-              valueDecoder.reset();
-              PageHeader pageHeader =
-                  reader.readPageHeader(
-                      header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
-              PageReader reader1 =
-                  new PageReader(
-                      pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
-              BatchData batchData = reader1.getAllSatisfiedPageData();
-              if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
-                pagePointsNum.add(pageHeader.getNumOfValues());
-              } else {
-                pagePointsNum.add((long) batchData.length());
-              }
-              IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
-              while (batchDataIterator.hasNext()) {
-                batchDataIterator.next();
-              }
-              dataSize -= pageHeader.getSerializedPageSize();
-            }
+            //            ChunkHeader header = reader.readChunkHeader(marker);
+            //            // read the next measurement and pack data of last measurement
+            //            if (pagePointsNum.size() > 0) {
+            //              String fullPath = new PartialPath(entity, measurement).getFullPath();
+            //              List<List<Long>> currChunkPagePointsNum =
+            //                  mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new
+            // ArrayList<>());
+            //              currChunkPagePointsNum.add(pagePointsNum);
+            //              pagePointsNum = new ArrayList<>();
+            //            }
+            //            measurement = header.getMeasurementID();
+            //            Decoder defaultTimeDecoder =
+            //                Decoder.getDecoderByType(
+            //
+            // TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+            //                    TSDataType.INT64);
+            //            Decoder valueDecoder =
+            //                Decoder.getDecoderByType(header.getEncodingType(),
+            // header.getDataType());
+            //            int dataSize = header.getDataSize();
+            //            while (dataSize > 0) {
+            //              valueDecoder.reset();
+            //              PageHeader pageHeader =
+            //                  reader.readPageHeader(
+            //                      header.getDataType(), header.getChunkType() ==
+            // MetaMarker.CHUNK_HEADER);
+            //              ByteBuffer pageData = reader.readPage(pageHeader,
+            // header.getCompressionType());
+            //              PageReader reader1 =
+            //                  new PageReader(
+            //                      pageData, header.getDataType(), valueDecoder,
+            // defaultTimeDecoder, null);
+            //              BatchData batchData = reader1.getAllSatisfiedPageData();
+            //              if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
+            //                pagePointsNum.add(pageHeader.getNumOfValues());
+            //              } else {
+            //                pagePointsNum.add((long) batchData.length());
+            //              }
+            //              IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
+            //              while (batchDataIterator.hasNext()) {
+            //                batchDataIterator.next();
+            //              }
+            //              dataSize -= pageHeader.getSerializedPageSize();
+            //            }
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();

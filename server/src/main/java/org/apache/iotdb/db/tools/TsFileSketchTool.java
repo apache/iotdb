@@ -112,9 +112,6 @@ public class TsFileSketchTool {
     // metadata begins
     if (tsFileMetaData.getMetadataIndex().getChildren().isEmpty()) {
       printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos() - 1) + "|\t[marker] 2");
-    } else {
-      printlnBoth(
-          pw, String.format("%20s", reader.readFileMetadata().getMetaOffset()) + "|\t[marker] 2");
     }
     // get all timeseries index
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
@@ -152,8 +149,6 @@ public class TsFileSketchTool {
   private void printTsFileMetadata(TsFileMetadata tsFileMetaData) {
     try {
       printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetadata]");
-      printlnBoth(
-          pw, String.format("%20s", "") + "|\t\t[meta offset] " + tsFileMetaData.getMetaOffset());
       printlnBoth(
           pw,
           String.format("%20s", "")
@@ -194,7 +189,7 @@ public class TsFileSketchTool {
           pw,
           String.format("%20s", reader.getFileMetadataPos() + reader.getFileMetadataSize() + 4)
               + "|\t[magic tail] "
-              + reader.readTailMagic());
+              + reader.readTailMagicInIndexFile());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -228,12 +223,13 @@ public class TsFileSketchTool {
       printlnBoth(pw, "");
       printlnBoth(pw, String.format("%20s", "POSITION") + "|\tCONTENT");
       printlnBoth(pw, String.format("%20s", "--------") + " \t-------");
-      printlnBoth(pw, String.format("%20d", 0) + "|\t[magic head] " + reader.readHeadMagic());
+      printlnBoth(
+          pw, String.format("%20d", 0) + "|\t[magic head] " + reader.readHeadMagicInTsFile());
       printlnBoth(
           pw,
           String.format("%20d", TSFileConfig.MAGIC_STRING.getBytes().length)
               + "|\t[version number] "
-              + reader.readVersionNumber());
+              + reader.readVersionNumberInTsFile());
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -284,22 +280,22 @@ public class TsFileSketchTool {
               String.format("%20s", "")
                   + "|\t\t[chunk header] "
                   + "marker="
-                  + chunk.getHeader().getChunkType()
+                  + chunk.getChunkMetadata().getChunkType()
                   + ", measurementId="
-                  + chunk.getHeader().getMeasurementID()
+                  + chunk.getChunkMetadata().getMeasurementUid()
                   + ", dataSize="
-                  + chunk.getHeader().getDataSize()
+                  + chunk.getChunkMetadata().getDataSize()
                   + ", serializedSize="
-                  + chunk.getHeader().getSerializedSize());
+                  + chunk.getChunkMetadata().getSerializedSize());
 
           printlnBoth(pw, String.format("%20s", "") + "|\t\t[chunk] " + chunk.getData());
           PageHeader pageHeader;
-          if (((byte) (chunk.getHeader().getChunkType() & 0x3F))
+          if (((byte) (chunk.getChunkMetadata().getChunkType() & 0x3F))
               == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
             pageHeader = PageHeader.deserializeFrom(chunk.getData(), chunkMetadata.getStatistics());
           } else {
             pageHeader =
-                PageHeader.deserializeFrom(chunk.getData(), chunk.getHeader().getDataType());
+                PageHeader.deserializeFrom(chunk.getData(), chunk.getChunkMetadata().getDataType());
           }
           printlnBoth(
               pw,
@@ -311,8 +307,8 @@ public class TsFileSketchTool {
                   + pageHeader.getUncompressedSize());
           nextChunkGroupHeaderPos =
               chunkMetadata.getOffsetOfChunkHeader()
-                  + chunk.getHeader().getSerializedSize()
-                  + chunk.getHeader().getDataSize();
+                  + chunk.getChunkMetadata().getSerializedSize()
+                  + chunk.getChunkMetadata().getDataSize();
         }
         reader.position(nextChunkGroupHeaderPos);
         byte marker = reader.readMarker();
@@ -384,12 +380,12 @@ public class TsFileSketchTool {
       tableWriter.append("\t\t");
     }
     treeOutputStringBuffer.add(
-        tableWriter.toString() + "[MetadataIndex:" + metadataIndexNode.getNodeType() + "]");
+        tableWriter + "[MetadataIndex:" + metadataIndexNode.getNodeType() + "]");
     for (int i = 0; i < metadataIndexNode.getChildren().size(); i++) {
       MetadataIndexEntry metadataIndexEntry = metadataIndexNode.getChildren().get(i);
 
       treeOutputStringBuffer.add(
-          tableWriter.toString()
+          tableWriter
               + "└──────["
               + metadataIndexEntry.getName()
               + ","

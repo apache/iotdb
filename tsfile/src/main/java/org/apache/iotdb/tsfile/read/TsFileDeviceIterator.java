@@ -24,9 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 
@@ -56,11 +54,11 @@ public class TsFileDeviceIterator implements Iterator<Pair<String, Boolean>> {
       throw new NoSuchElementException();
     }
     Pair<String, Pair<Long, Long>> startEndPair = queue.remove();
-    List<Pair<String, Boolean>> devices = new ArrayList<>();
     try {
       MetadataIndexNode measurementNode =
           MetadataIndexNode.deserializeFrom(
-              reader.readData(startEndPair.right.left, startEndPair.right.right));
+              reader.readData(
+                  reader.getIndexFileInput(), startEndPair.right.left, startEndPair.right.right));
       // if tryToGetFirstTimeseriesMetadata(node) returns null, the device is not aligned
       boolean isAligned = reader.tryToGetFirstTimeseriesMetadata(measurementNode) != null;
       currentDevice = new Pair<>(startEndPair.left, isAligned);

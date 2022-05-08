@@ -57,10 +57,12 @@ public class TSFileConfig implements Serializable {
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
   public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
   public static final String MAGIC_STRING = "TsFile";
-  public static final String VERSION_NUMBER_V2 = "000002";
   public static final String VERSION_NUMBER_V1 = "000001";
+  public static final String VERSION_NUMBER_V2 = "000002";
   /** version number is changed to use 1 byte to represent since version 3 */
-  public static final byte VERSION_NUMBER = 0x03;
+  public static final byte VERSION_NUMBER_V3 = 0x03;
+
+  public static final byte VERSION_NUMBER = 0x04;
 
   /** Bloom filter constrain */
   public static final double MIN_BLOOM_FILTER_ERROR_RATE = 0.01;
@@ -77,6 +79,10 @@ public class TSFileConfig implements Serializable {
   private int maxNumberOfPointsInPage = 1024 * 1024;
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
+
+  /** The separate model of data area and index area of TsFile */
+  private int separateModel = 3;
+
   /** Data type for input timestamp, TsFile supports INT64. */
   private TSDataType timeSeriesDataType = TSDataType.INT64;
   /** Max length limitation of input string. */
@@ -182,6 +188,14 @@ public class TSFileConfig implements Serializable {
 
   public void setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
     this.maxDegreeOfIndexNode = maxDegreeOfIndexNode;
+  }
+
+  public int getSeparateModel() {
+    return separateModel;
+  }
+
+  public void setSeparateModel(int separateModel) {
+    this.separateModel = separateModel;
   }
 
   public TSDataType getTimeSeriesDataType() {

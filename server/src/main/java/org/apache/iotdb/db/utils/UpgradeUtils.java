@@ -23,10 +23,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,21 +71,21 @@ public class UpgradeUtils {
       tsFileResource.readUnlock();
     }
     tsFileResource.readLock();
-    try (TsFileSequenceReaderForV2 tsFileSequenceReader =
-        new TsFileSequenceReaderForV2(tsFileResource.getTsFile().getAbsolutePath())) {
-      String versionNumber = tsFileSequenceReader.readVersionNumberV2();
-      if (versionNumber.equals(TSFileConfig.VERSION_NUMBER_V2)
-          || versionNumber.equals(TSFileConfig.VERSION_NUMBER_V1)) {
-        return true;
-      }
-    } catch (IOException e) {
-      logger.error(
-          "meet error when judge whether file needs to be upgraded, the file's path:{}",
-          tsFileResource.getTsFile().getAbsolutePath(),
-          e);
-    } finally {
-      tsFileResource.readUnlock();
-    }
+    //    try (TsFileSequenceReaderForV2 tsFileSequenceReader =
+    //        new TsFileSequenceReaderForV2(tsFileResource.getTsFile().getAbsolutePath())) {
+    //      String versionNumber = tsFileSequenceReader.readVersionNumberV2();
+    //      if (versionNumber.equals(TSFileConfig.VERSION_NUMBER_V2)
+    //          || versionNumber.equals(TSFileConfig.VERSION_NUMBER_V1)) {
+    //        return true;
+    //      }
+    //    } catch (IOException e) {
+    //      logger.error(
+    //          "meet error when judge whether file needs to be upgraded, the file's path:{}",
+    //          tsFileResource.getTsFile().getAbsolutePath(),
+    //          e);
+    //    } finally {
+    //      tsFileResource.readUnlock();
+    //    }
     return false;
   }
 

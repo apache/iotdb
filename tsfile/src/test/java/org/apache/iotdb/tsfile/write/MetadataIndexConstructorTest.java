@@ -86,6 +86,11 @@ public class MetadataIndexConstructorTest {
     if (file.exists()) {
       file.delete();
     }
+
+    file = new File(FILE_PATH + TsFileConstant.INDEX_SUFFIX);
+    if (file.exists()) {
+      file.delete();
+    }
   }
 
   /** Example 1: 5 entities with 5 measurements each */

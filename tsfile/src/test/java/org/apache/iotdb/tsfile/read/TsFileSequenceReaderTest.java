@@ -24,8 +24,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -43,7 +41,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -80,15 +77,17 @@ public class TsFileSequenceReaderTest {
       switch (marker) {
         case MetaMarker.CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-          ChunkHeader header = reader.readChunkHeader(marker);
-          int dataSize = header.getDataSize();
-          while (dataSize > 0) {
-            PageHeader pageHeader =
-                reader.readPageHeader(
-                    header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
-            ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
-            dataSize -= pageHeader.getSerializedPageSize();
-          }
+          //          ChunkHeader header = reader.readChunkHeader(marker);
+          //          int dataSize = header.getDataSize();
+          //          while (dataSize > 0) {
+          //            PageHeader pageHeader =
+          //                reader.readPageHeader(
+          //                    header.getDataType(), header.getChunkType() ==
+          // MetaMarker.CHUNK_HEADER);
+          //            ByteBuffer pageData = reader.readPage(pageHeader,
+          // header.getCompressionType());
+          //            dataSize -= pageHeader.getSerializedPageSize();
+          //          }
           break;
         case MetaMarker.CHUNK_GROUP_HEADER:
           ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();

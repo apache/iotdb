@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -187,6 +189,45 @@ public class AlignedChunkMetadata implements IChunkMetadata {
   public byte getMask() {
     return 0;
   }
+
+  @Override
+  public int getSerializedSize() {
+    return 0;
+  }
+
+  @Override
+  public int getDataSize() {
+    return 0;
+  }
+
+  @Override
+  public int getNumOfPages() {
+    return 0;
+  }
+
+  @Override
+  public CompressionType getCompressionType() {
+    return null;
+  }
+
+  @Override
+  public TSEncoding getEncodingType() {
+    return null;
+  }
+
+  @Override
+  public void setDataSize(int dataSize) {}
+
+  @Override
+  public byte getChunkType() {
+    return 0;
+  }
+
+  @Override
+  public void setChunkType(byte chunkType) {}
+
+  @Override
+  public void increasePageNums(int i) {}
 
   public IChunkMetadata getTimeChunkMetadata() {
     return timeChunkMetadata;

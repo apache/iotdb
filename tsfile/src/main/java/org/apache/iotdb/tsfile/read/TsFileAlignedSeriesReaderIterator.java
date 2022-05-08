@@ -75,7 +75,8 @@ public class TsFileAlignedSeriesReaderIterator {
       }
       Chunk chunk = reader.readMemChunk((ChunkMetadata) valueChunkMetadata);
       valueChunks[schemaIdx++] = chunk;
-      totalSize += chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
+      totalSize +=
+          chunk.getChunkMetadata().getSerializedSize() + chunk.getChunkMetadata().getDataSize();
     }
 
     AlignedChunkReader chunkReader =

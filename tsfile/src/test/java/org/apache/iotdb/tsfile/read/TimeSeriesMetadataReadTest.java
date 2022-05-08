@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -56,6 +57,11 @@ public class TimeSeriesMetadataReadTest {
     FileGenerator.after();
     conf.setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
     File file = new File(FILE_PATH);
+    if (file.exists()) {
+      file.delete();
+    }
+
+    file = new File(FILE_PATH + TsFileConstant.INDEX_SUFFIX);
     if (file.exists()) {
       file.delete();
     }

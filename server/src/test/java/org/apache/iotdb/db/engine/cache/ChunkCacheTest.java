@@ -33,7 +33,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -114,7 +113,16 @@ public class ChunkCacheTest {
     chunkCache.getAverageSize();
 
     ChunkMetadata chunkMetadataKey =
-        new ChunkMetadata("sensor0", TSDataType.DOUBLE, 25, new DoubleStatistics());
+        new ChunkMetadata(
+            "sensor0",
+            TSDataType.DOUBLE,
+            7,
+            chunk1.getChunkStatistic(),
+            189,
+            CompressionType.UNCOMPRESSED,
+            TSEncoding.PLAIN,
+            0,
+            0);
     chunkMetadataKey.setVersion(0);
     chunkMetadataKey.setFilePath(tsFileResource.getTsFilePath());
 
@@ -122,7 +130,7 @@ public class ChunkCacheTest {
 
     // get cache
     Chunk chunk2 = chunkCache.get(chunkMetadataKey);
-    Assert.assertEquals(chunk1.getHeader(), chunk2.getHeader());
+    Assert.assertEquals(chunk1.getChunkMetadata(), chunk2.getChunkMetadata());
     Assert.assertEquals(chunk1.getData(), chunk2.getData());
 
     try {
@@ -233,6 +241,10 @@ public class ChunkCacheTest {
         FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".resource");
     for (File resourceFile : resourceFiles) {
       resourceFile.delete();
+    }
+    File[] indexFiles = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".index");
+    for (File indexFile : indexFiles) {
+      indexFile.delete();
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
   }

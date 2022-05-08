@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -47,9 +46,9 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.record.DeviceTimeseriesMetadataRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -60,7 +59,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -115,11 +113,11 @@ public class TsFileRewriteTool implements AutoCloseable {
     oldTsFileResource = resourceToBeRewritten;
     oldTsFile = resourceToBeRewritten.getTsFile();
     String file = oldTsFile.getAbsolutePath();
-    if (needReaderForV2) {
-      reader = new TsFileSequenceReaderForV2(file);
-    } else {
-      reader = new TsFileSequenceReader(file);
-    }
+    //    if (needReaderForV2) {
+    //      reader = new TsFileSequenceReaderForV2(file);
+    //    } else {
+    reader = new TsFileSequenceReader(file);
+    //    }
     partitionWriterMap = new HashMap<>();
     if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
       oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
@@ -160,7 +158,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
     int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length;
     reader.position(headerLength);
-    if (reader.readMarker() != 3) {
+    if (reader.readMarker() != 4) {
       throw new WriteProcessException(
           "The version of this tsfile is too low, please upgrade it to the version 3.");
     }
@@ -180,44 +178,46 @@ public class TsFileRewriteTool implements AutoCloseable {
             break;
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-            chunkHeaderOffset = reader.position() - 1;
-            ChunkHeader header = reader.readChunkHeader(marker);
-            MeasurementSchema measurementSchema =
-                new MeasurementSchema(
-                    header.getMeasurementID(),
-                    header.getDataType(),
-                    header.getEncodingType(),
-                    header.getCompressionType());
-            TSDataType dataType = header.getDataType();
-            TSEncoding encoding = header.getEncodingType();
-            List<PageHeader> pageHeadersInChunk = new ArrayList<>();
-            List<ByteBuffer> dataInChunk = new ArrayList<>();
-            List<Boolean> needToDecodeInfo = new ArrayList<>();
-            int dataSize = header.getDataSize();
-            while (dataSize > 0) {
-              // a new Page
-              PageHeader pageHeader =
-                  reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              boolean needToDecode =
-                  checkIfNeedToDecode(measurementSchema, deviceId, pageHeader, chunkHeaderOffset);
-              needToDecodeInfo.add(needToDecode);
-              ByteBuffer pageData =
-                  !needToDecode
-                      ? reader.readCompressedPage(pageHeader)
-                      : reader.readPage(pageHeader, header.getCompressionType());
-              pageHeadersInChunk.add(pageHeader);
-              dataInChunk.add(pageData);
-              dataSize -= pageHeader.getSerializedPageSize();
-            }
-            reWriteChunk(
-                deviceId,
-                firstChunkInChunkGroup,
-                measurementSchema,
-                pageHeadersInChunk,
-                dataInChunk,
-                needToDecodeInfo,
-                chunkHeaderOffset);
-            firstChunkInChunkGroup = false;
+            //            chunkHeaderOffset = reader.position() - 1;
+            //            ChunkMetadata header = reader.readTimeseriesMetadata();
+            //            MeasurementSchema measurementSchema =
+            //                new MeasurementSchema(
+            //                    header.getMeasurementUid(),
+            //                    header.getDataType(),
+            //                    header.getEncodingType(),
+            //                    header.getCompressionType());
+            //            TSDataType dataType = header.getDataType();
+            //            TSEncoding encoding = header.getEncodingType();
+            //            List<PageHeader> pageHeadersInChunk = new ArrayList<>();
+            //            List<ByteBuffer> dataInChunk = new ArrayList<>();
+            //            List<Boolean> needToDecodeInfo = new ArrayList<>();
+            //            int dataSize = header.getDataSize();
+            //            while (dataSize > 0) {
+            //              // a new Page
+            //              PageHeader pageHeader =
+            //                  reader.readPageHeader(dataType, header.getChunkType() ==
+            // MetaMarker.CHUNK_HEADER);
+            //              boolean needToDecode =
+            //                  checkIfNeedToDecode(measurementSchema, deviceId, pageHeader,
+            // chunkHeaderOffset);
+            //              needToDecodeInfo.add(needToDecode);
+            //              ByteBuffer pageData =
+            //                  !needToDecode
+            //                      ? reader.readCompressedPage(pageHeader)
+            //                      : reader.readPage(pageHeader, header.getCompressionType());
+            //              pageHeadersInChunk.add(pageHeader);
+            //              dataInChunk.add(pageData);
+            //              dataSize -= pageHeader.getSerializedPageSize();
+            //            }
+            //            reWriteChunk(
+            //                deviceId,
+            //                firstChunkInChunkGroup,
+            //                measurementSchema,
+            //                pageHeadersInChunk,
+            //                dataInChunk,
+            //                needToDecodeInfo,
+            //                chunkHeaderOffset);
+            //            firstChunkInChunkGroup = false;
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
@@ -470,19 +470,19 @@ public class TsFileRewriteTool implements AutoCloseable {
 
   /** check if the file has correct magic strings and version number */
   protected boolean fileCheck() throws IOException {
-    String magic = reader.readHeadMagic();
+    String magic = reader.readHeadMagicInTsFile();
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
       logger.error("the file's MAGIC STRING is incorrect, file path: {}", reader.getFileName());
       return false;
     }
 
-    byte versionNumber = reader.readVersionNumber();
+    byte versionNumber = reader.readVersionNumberInTsFile();
     if (versionNumber != TSFileConfig.VERSION_NUMBER) {
       logger.error("the file's Version Number is incorrect, file path: {}", reader.getFileName());
       return false;
     }
 
-    if (!reader.readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
+    if (!reader.readTailMagicInIndexFile().equals(TSFileConfig.MAGIC_STRING)) {
       logger.error("the file is not closed correctly, file path: {}", reader.getFileName());
       return false;
     }
@@ -493,11 +493,12 @@ public class TsFileRewriteTool implements AutoCloseable {
       throws IOException {
     tsFileIOWriter.endFile();
     TsFileResource tsFileResource = new TsFileResource(tsFileIOWriter.getFile());
-    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
+    Map<String, DeviceTimeseriesMetadataRecord> deviceTimeseriesMetadataMap =
         tsFileIOWriter.getDeviceTimeseriesMetadataMap();
-    for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
+    for (Entry<String, DeviceTimeseriesMetadataRecord> entry :
+        deviceTimeseriesMetadataMap.entrySet()) {
       String device = entry.getKey();
-      for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
+      for (TimeseriesMetadata timeseriesMetaData : entry.getValue().getTimeseriesMetadatas()) {
         tsFileResource.updateStartTime(device, timeseriesMetaData.getStatistics().getStartTime());
         tsFileResource.updateEndTime(device, timeseriesMetaData.getStatistics().getEndTime());
       }

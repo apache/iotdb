@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -136,6 +137,10 @@ public class WriteTest {
       file.delete();
     }
     file = new File(outputDataFile);
+    if (file.exists()) {
+      file.delete();
+    }
+    file = new File(outputDataFile + TsFileConstant.INDEX_SUFFIX);
     if (file.exists()) {
       file.delete();
     }

@@ -19,7 +19,7 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
@@ -30,8 +30,7 @@ import java.util.List;
 
 /** used in query. */
 public class Chunk {
-
-  private ChunkHeader chunkHeader;
+  private ChunkMetadata chunkMetadata;
   private Statistics chunkStatistic;
   private ByteBuffer chunkData;
   private boolean isFromOldFile = false;
@@ -41,18 +40,18 @@ public class Chunk {
   private long ramSize;
 
   public Chunk(
-      ChunkHeader header,
+      ChunkMetadata chunkMetadata,
       ByteBuffer buffer,
       List<TimeRange> deleteIntervalList,
       Statistics chunkStatistic) {
-    this.chunkHeader = header;
+    this.chunkMetadata = chunkMetadata;
     this.chunkData = buffer;
     this.deleteIntervalList = deleteIntervalList;
     this.chunkStatistic = chunkStatistic;
   }
 
-  public ChunkHeader getHeader() {
-    return chunkHeader;
+  public ChunkMetadata getChunkMetadata() {
+    return chunkMetadata;
   }
 
   public ByteBuffer getData() {
@@ -75,7 +74,7 @@ public class Chunk {
     // if the merged chunk has only one page, after merge with current chunk ,it will have more than
     // page
     // so we should add page statistics for it
-    if (((byte) (chunk.chunkHeader.getChunkType() & 0x3F))
+    if (((byte) (chunk.chunkMetadata.getChunkType() & 0x3F))
         == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
       // read the uncompressedSize and compressedSize of this page
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunk.chunkData);
@@ -96,9 +95,9 @@ public class Chunk {
     // if the current chunk has only one page, after merge with the merged chunk ,it will have more
     // than page
     // so we should add page statistics for it
-    if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+    if (((byte) (chunkMetadata.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
       // change the chunk type
-      chunkHeader.setChunkType(MetaMarker.CHUNK_HEADER);
+      chunkMetadata.setChunkType(MetaMarker.CHUNK_HEADER);
       // read the uncompressedSize and compressedSize of this page
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunkData);
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunkData);
@@ -112,7 +111,7 @@ public class Chunk {
       // the dataSize is equal to the before
       dataSize += chunkData.array().length;
     }
-    chunkHeader.setDataSize(dataSize);
+    chunkMetadata.setDataSize(dataSize);
     ByteBuffer newChunkData = ByteBuffer.allocate(dataSize);
     // the current chunk has more than one page, we can use its data part directly without any
     // changes

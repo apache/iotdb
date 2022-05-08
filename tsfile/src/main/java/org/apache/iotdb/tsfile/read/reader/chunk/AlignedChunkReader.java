@@ -22,8 +22,8 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -44,9 +44,9 @@ import java.util.List;
 public class AlignedChunkReader implements IChunkReader {
 
   // chunk header of the time column
-  private final ChunkHeader timeChunkHeader;
+  private final ChunkMetadata timeChunkMetadata;
   // chunk headers of all the sub sensors
-  private final List<ChunkHeader> valueChunkHeaderList = new ArrayList<>();
+  private final List<ChunkMetadata> valueChunkMetadataList = new ArrayList<>();
   // chunk data of the time column
   private final ByteBuffer timeChunkDataBuffer;
   // chunk data of all the sub sensors
@@ -75,13 +75,13 @@ public class AlignedChunkReader implements IChunkReader {
     this.filter = filter;
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
-    this.timeChunkHeader = timeChunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.timeChunkMetadata = timeChunk.getChunkMetadata();
+    this.unCompressor = IUnCompressor.getUnCompressor(timeChunkMetadata.getCompressionType());
     this.currentTimestamp = Long.MIN_VALUE;
     List<Statistics> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
         chunk -> {
-          valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
+          valueChunkMetadataList.add(chunk == null ? null : chunk.getChunkMetadata());
           valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
           valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
@@ -99,13 +99,13 @@ public class AlignedChunkReader implements IChunkReader {
     this.filter = filter;
     this.timeChunkDataBuffer = timeChunk.getData();
     this.valueDeleteIntervalList = new ArrayList<>();
-    this.timeChunkHeader = timeChunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.timeChunkMetadata = timeChunk.getChunkMetadata();
+    this.unCompressor = IUnCompressor.getUnCompressor(timeChunkMetadata.getCompressionType());
     this.currentTimestamp = currentTimestamp;
     List<Statistics> valueChunkStatisticsList = new ArrayList<>();
     valueChunkList.forEach(
         chunk -> {
-          valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
+          valueChunkMetadataList.add(chunk == null ? null : chunk.getChunkMetadata());
           valueChunkDataBufferList.add(chunk == null ? null : chunk.getData());
           valueChunkStatisticsList.add(chunk == null ? null : chunk.getChunkStatistic());
           valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
@@ -125,7 +125,7 @@ public class AlignedChunkReader implements IChunkReader {
 
       boolean exits = false;
       // this chunk has only one page
-      if ((timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+      if ((timeChunkMetadata.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         timePageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
         for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
           if (valueChunkDataBufferList.get(i) != null) {
@@ -139,13 +139,13 @@ public class AlignedChunkReader implements IChunkReader {
         }
       } else { // this chunk has more than one page
         timePageHeader =
-            PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
+            PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkMetadata.getDataType());
         for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
           if (valueChunkDataBufferList.get(i) != null) {
             exits = true;
             valuePageHeaderList.add(
                 PageHeader.deserializeFrom(
-                    valueChunkDataBufferList.get(i), valueChunkHeaderList.get(i).getDataType()));
+                    valueChunkDataBufferList.get(i), valueChunkMetadataList.get(i).getDataType()));
           } else {
             valuePageHeaderList.add(null);
           }
@@ -193,7 +193,7 @@ public class AlignedChunkReader implements IChunkReader {
   private AlignedPageReader constructPageReaderForNextPage(
       PageHeader timePageHeader, List<PageHeader> valuePageHeader) throws IOException {
     PageInfo timePageInfo = new PageInfo();
-    getPageInfo(timePageHeader, timeChunkDataBuffer, timeChunkHeader, timePageInfo);
+    getPageInfo(timePageHeader, timeChunkDataBuffer, timeChunkMetadata, timePageInfo);
     PageInfo valuePageInfo = new PageInfo();
     List<PageHeader> valuePageHeaderList = new ArrayList<>();
     List<ByteBuffer> valuePageDataList = new ArrayList<>();
@@ -213,7 +213,7 @@ public class AlignedChunkReader implements IChunkReader {
         getPageInfo(
             valuePageHeader.get(i),
             valueChunkDataBufferList.get(i),
-            valueChunkHeaderList.get(i),
+            valueChunkMetadataList.get(i),
             valuePageInfo);
         valuePageHeaderList.add(valuePageInfo.pageHeader);
         valuePageDataList.add(valuePageInfo.pageData);
@@ -254,14 +254,14 @@ public class AlignedChunkReader implements IChunkReader {
    *
    * @param pageHeader PageHeader for current page
    * @param chunkBuffer current chunk data buffer
-   * @param chunkHeader current chunk header
+   * @param chunkMetadata current chunk header
    * @param pageInfo A struct to put the deserialized page into.
    */
   private void getPageInfo(
-      PageHeader pageHeader, ByteBuffer chunkBuffer, ChunkHeader chunkHeader, PageInfo pageInfo)
+      PageHeader pageHeader, ByteBuffer chunkBuffer, ChunkMetadata chunkMetadata, PageInfo pageInfo)
       throws IOException {
     pageInfo.pageHeader = pageHeader;
-    pageInfo.dataType = chunkHeader.getDataType();
+    pageInfo.dataType = chunkMetadata.getDataType();
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
     // doesn't has a complete page body
@@ -275,7 +275,7 @@ public class AlignedChunkReader implements IChunkReader {
 
     chunkBuffer.get(compressedPageBody);
     pageInfo.decoder =
-        Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+        Decoder.getDecoderByType(chunkMetadata.getEncodingType(), chunkMetadata.getDataType());
     byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
     try {
       unCompressor.uncompress(

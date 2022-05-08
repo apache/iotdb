@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.write;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -82,6 +83,7 @@ public class TsFileWriterTest {
     }
     try {
       Files.deleteIfExists(new File(fileName).toPath());
+      Files.deleteIfExists(new File(fileName + TsFileConstant.INDEX_SUFFIX).toPath());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -26,13 +26,10 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -43,7 +40,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -99,109 +95,114 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
-          case MetaMarker.CHUNK_HEADER:
-            chunkHeaderOffset = reader.position() - 1;
-            if (skipReadingChunk || deviceId == null) {
-              ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
-              int dataSize = header.getDataSize();
-              while (dataSize > 0) {
-                // a new Page
-                PageHeader pageHeader =
-                    ((TsFileSequenceReaderForV2) reader).readPageHeader(header.getDataType());
-                ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader);
-                dataSize -=
-                    (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
-                        // count, startTime, endTime bytes size in old statistics
-                        + 24
-                        // statistics bytes size
-                        // new boolean StatsSize is 8 bytes larger than old one
-                        + (pageHeader.getStatistics().getStatsSize()
-                            - (header.getDataType() == TSDataType.BOOLEAN ? 8 : 0))
-                        // page data bytes
-                        + pageHeader.getCompressedSize());
-              }
-            } else {
-              ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
-              MeasurementSchema measurementSchema =
-                  new MeasurementSchema(
-                      header.getMeasurementID(),
-                      header.getDataType(),
-                      header.getEncodingType(),
-                      header.getCompressionType());
-              TSDataType dataType = header.getDataType();
-              TSEncoding encoding = header.getEncodingType();
-              List<PageHeader> pageHeadersInChunk = new ArrayList<>();
-              List<ByteBuffer> dataInChunk = new ArrayList<>();
-              List<Boolean> needToDecodeInfo = new ArrayList<>();
-              int dataSize = header.getDataSize();
-              while (dataSize > 0) {
-                // a new Page
-                PageHeader pageHeader =
-                    ((TsFileSequenceReaderForV2) reader).readPageHeader(dataType);
-                boolean needToDecode =
-                    checkIfNeedToDecode(
-                        dataType,
-                        encoding,
-                        pageHeader,
-                        measurementSchema,
-                        deviceId,
-                        chunkHeaderOffset);
-                needToDecodeInfo.add(needToDecode);
-                ByteBuffer pageData =
-                    !needToDecode
-                        ? reader.readCompressedPage(pageHeader)
-                        : reader.readPage(pageHeader, header.getCompressionType());
-                pageHeadersInChunk.add(pageHeader);
-                dataInChunk.add(pageData);
-                dataSize -=
-                    (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
-                        // count, startTime, endTime bytes size in old statistics
-                        + 24
-                        // statistics bytes size
-                        // new boolean StatsSize is 8 bytes larger than old one
-                        + (pageHeader.getStatistics().getStatsSize()
-                            - (dataType == TSDataType.BOOLEAN ? 8 : 0))
-                        // page data bytes
-                        + pageHeader.getCompressedSize());
-              }
-              reWriteChunk(
-                  deviceId,
-                  firstChunkInChunkGroup,
-                  measurementSchema,
-                  pageHeadersInChunk,
-                  dataInChunk,
-                  needToDecodeInfo,
-                  chunkHeaderOffset);
-              if (firstChunkInChunkGroup) {
-                firstChunkInChunkGroup = false;
-              }
-            }
-            break;
-          case MetaMarker.CHUNK_GROUP_HEADER:
-            // this is the footer of a ChunkGroup in TsFileV2.
-            if (skipReadingChunk) {
-              skipReadingChunk = false;
-              ChunkGroupHeader chunkGroupFooter =
-                  ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
-              deviceId = chunkGroupFooter.getDeviceID();
-              reader.position(firstChunkPositionInChunkGroup);
-            } else {
-              endChunkGroup();
-              skipReadingChunk = true;
-              ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
-              deviceId = null;
-              firstChunkPositionInChunkGroup = reader.position();
-              firstChunkInChunkGroup = true;
-            }
-            break;
-          case MetaMarker.VERSION:
-            long version = ((TsFileSequenceReaderForV2) reader).readVersion();
-            // write plan indices for ending memtable
-            for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
-              tsFileIOWriter.writePlanIndices();
-            }
-            firstChunkPositionInChunkGroup = reader.position();
-            break;
+            //          case MetaMarker.CHUNK_HEADER:
+            //            chunkHeaderOffset = reader.position() - 1;
+            //            if (skipReadingChunk || deviceId == null) {
+            //              ChunkMetadata header = ((TsFileSequenceReaderForV2)
+            // reader).readChunkHeader();
+            //              int dataSize = header.getDataSize();
+            //              while (dataSize > 0) {
+            //                // a new Page
+            //                PageHeader pageHeader =
+            //                    ((TsFileSequenceReaderForV2)
+            // reader).readPageHeader(header.getDataType());
+            //                ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader);
+            //                dataSize -=
+            //                    (Integer.BYTES * 2 // the bytes size of uncompressedSize and
+            // compressedSize
+            //                        // count, startTime, endTime bytes size in old statistics
+            //                        + 24
+            //                        // statistics bytes size
+            //                        // new boolean StatsSize is 8 bytes larger than old one
+            //                        + (pageHeader.getStatistics().getStatsSize()
+            //                            - (header.getDataType() == TSDataType.BOOLEAN ? 8 : 0))
+            //                        // page data bytes
+            //                        + pageHeader.getCompressedSize());
+            //              }
+            //            } else {
+            //              ChunkHeader header = ((TsFileSequenceReaderForV2)
+            // reader).readChunkHeader();
+            //              MeasurementSchema measurementSchema =
+            //                  new MeasurementSchema(
+            //                      header.getMeasurementID(),
+            //                      header.getDataType(),
+            //                      header.getEncodingType(),
+            //                      header.getCompressionType());
+            //              TSDataType dataType = header.getDataType();
+            //              TSEncoding encoding = header.getEncodingType();
+            //              List<PageHeader> pageHeadersInChunk = new ArrayList<>();
+            //              List<ByteBuffer> dataInChunk = new ArrayList<>();
+            //              List<Boolean> needToDecodeInfo = new ArrayList<>();
+            //              int dataSize = header.getDataSize();
+            //              while (dataSize > 0) {
+            //                // a new Page
+            //                PageHeader pageHeader =
+            //                    ((TsFileSequenceReaderForV2) reader).readPageHeader(dataType);
+            //                boolean needToDecode =
+            //                    checkIfNeedToDecode(
+            //                        dataType,
+            //                        encoding,
+            //                        pageHeader,
+            //                        measurementSchema,
+            //                        deviceId,
+            //                        chunkHeaderOffset);
+            //                needToDecodeInfo.add(needToDecode);
+            //                ByteBuffer pageData =
+            //                    !needToDecode
+            //                        ? reader.readCompressedPage(pageHeader)
+            //                        : reader.readPage(pageHeader, header.getCompressionType());
+            //                pageHeadersInChunk.add(pageHeader);
+            //                dataInChunk.add(pageData);
+            //                dataSize -=
+            //                    (Integer.BYTES * 2 // the bytes size of uncompressedSize and
+            // compressedSize
+            //                        // count, startTime, endTime bytes size in old statistics
+            //                        + 24
+            //                        // statistics bytes size
+            //                        // new boolean StatsSize is 8 bytes larger than old one
+            //                        + (pageHeader.getStatistics().getStatsSize()
+            //                            - (dataType == TSDataType.BOOLEAN ? 8 : 0))
+            //                        // page data bytes
+            //                        + pageHeader.getCompressedSize());
+            //              }
+            //              reWriteChunk(
+            //                  deviceId,
+            //                  firstChunkInChunkGroup,
+            //                  measurementSchema,
+            //                  pageHeadersInChunk,
+            //                  dataInChunk,
+            //                  needToDecodeInfo,
+            //                  chunkHeaderOffset);
+            //              if (firstChunkInChunkGroup) {
+            //                firstChunkInChunkGroup = false;
+            //              }
+            //            }
+            //            break;
+            //          case MetaMarker.CHUNK_GROUP_HEADER:
+            //            // this is the footer of a ChunkGroup in TsFileV2.
+            //            if (skipReadingChunk) {
+            //              skipReadingChunk = false;
+            //              ChunkGroupHeader chunkGroupFooter =
+            //                  ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
+            //              deviceId = chunkGroupFooter.getDeviceID();
+            //              reader.position(firstChunkPositionInChunkGroup);
+            //            } else {
+            //              endChunkGroup();
+            //              skipReadingChunk = true;
+            //              ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
+            //              deviceId = null;
+            //              firstChunkPositionInChunkGroup = reader.position();
+            //              firstChunkInChunkGroup = true;
+            //            }
+            //            break;
+            //          case MetaMarker.VERSION:
+            //            long version = ((TsFileSequenceReaderForV2) reader).readVersion();
+            //            // write plan indices for ending memtable
+            //            for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
+            //              tsFileIOWriter.writePlanIndices();
+            //            }
+            //            firstChunkPositionInChunkGroup = reader.position();
+            //            break;
           default:
             // the disk file is corrupted, using this file may be dangerous
             throw new IOException("Unrecognized marker detected, " + "this file may be corrupted");
@@ -270,19 +271,20 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
   /** check if the file to be upgraded has correct magic strings and version number */
   @Override
   protected boolean fileCheck() throws IOException {
-    String magic = reader.readHeadMagic();
+    String magic = reader.readHeadMagicInTsFile();
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
       logger.error("the file's MAGIC STRING is incorrect, file path: {}", reader.getFileName());
       return false;
     }
 
-    String versionNumber = ((TsFileSequenceReaderForV2) reader).readVersionNumberV2();
-    if (!versionNumber.equals(TSFileConfig.VERSION_NUMBER_V2)) {
-      logger.error("the file's Version Number is incorrect, file path: {}", reader.getFileName());
-      return false;
-    }
+    //    String versionNumber = ((TsFileSequenceReaderForV2) reader).readVersionNumberV2();
+    //    if (!versionNumber.equals(TSFileConfig.VERSION_NUMBER_V2)) {
+    //      logger.error("the file's Version Number is incorrect, file path: {}",
+    // reader.getFileName());
+    //      return false;
+    //    }
 
-    if (!reader.readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
+    if (!reader.readTailMagicInIndexFile().equals(TSFileConfig.MAGIC_STRING)) {
       logger.error("the file is not closed correctly, file path: {}", reader.getFileName());
       return false;
     }

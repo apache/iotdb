@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -74,4 +76,22 @@ public interface IChunkMetadata {
   int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException;
 
   byte getMask();
+
+  int getSerializedSize();
+
+  int getDataSize();
+
+  int getNumOfPages();
+
+  CompressionType getCompressionType();
+
+  TSEncoding getEncodingType();
+
+  void setDataSize(int dataSize);
+
+  byte getChunkType();
+
+  void setChunkType(byte chunkType);
+
+  void increasePageNums(int i);
 }

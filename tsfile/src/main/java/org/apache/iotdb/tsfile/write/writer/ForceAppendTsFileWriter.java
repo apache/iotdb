@@ -46,7 +46,8 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
     if (logger.isDebugEnabled()) {
       logger.debug("{} writer is opened.", file.getName());
     }
-    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
+    this.tsFileOutput =
+        FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
     this.file = file;
 
     // file doesn't exist
@@ -62,8 +63,8 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
             "File " + file.getPath() + " is not a complete TsFile");
       }
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      // truncate metadata and marker
-      truncatePosition = tsFileMetadata.getMetaOffset();
+      // FIXME truncate metadata and marker
+      truncatePosition = 0;
 
       canWrite = true;
       List<String> devices = reader.getAllDevices();
@@ -77,7 +78,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
   }
 
   public void doTruncate() throws IOException {
-    out.truncate(truncatePosition);
+    tsFileOutput.truncate(truncatePosition);
   }
 
   public long getTruncatePosition() {

@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.After;
 import org.junit.Before;
@@ -32,6 +31,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 
 public class TimeseriesMetadataTest {
 
@@ -64,13 +64,13 @@ public class TimeseriesMetadataTest {
     FileInputStream fis = null;
     TimeseriesMetadata metaData = null;
     try {
-      fis = new FileInputStream(new File(PATH));
+      fis = new FileInputStream(PATH);
       FileChannel fch = fis.getChannel();
       ByteBuffer buffer = ByteBuffer.allocate((int) fch.size());
       fch.read(buffer);
       buffer.flip();
       metaData = TimeseriesMetadata.deserializeFrom(buffer, true);
-      metaData.setChunkMetadataListBuffer(new PublicBAOS());
+      metaData.setChunkMetadataList(new ArrayList<>());
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();

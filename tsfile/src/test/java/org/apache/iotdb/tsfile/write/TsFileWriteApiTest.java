@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.write;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -40,7 +41,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TsFileWriteApiTest {
-  private final File f = FSFactoryProducer.getFSFactory().getFile("TsFileWriteTest.tsfile");
+  private final String filePath = "TsFileWriteTest.tsfile";
+  private final File f = FSFactoryProducer.getFSFactory().getFile(filePath);
   private final String deviceId = "root.sg.d1";
   private final List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -57,7 +59,13 @@ public class TsFileWriteApiTest {
 
   @After
   public void end() {
-    if (f.exists()) f.delete();
+    if (f.exists()) {
+      f.delete();
+    }
+    File indexFile = new File(filePath + TsFileConstant.INDEX_SUFFIX);
+    if (indexFile.exists()) {
+      indexFile.delete();
+    }
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldMaxNumOfPointsInPage);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
   }

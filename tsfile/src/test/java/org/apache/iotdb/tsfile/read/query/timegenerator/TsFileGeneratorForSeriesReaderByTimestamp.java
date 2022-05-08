@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -98,6 +99,10 @@ public class TsFileGeneratorForSeriesReaderByTimestamp {
       Assert.assertTrue(file.delete());
     }
     file = new File(outputDataFile);
+    if (file.exists()) {
+      Assert.assertTrue(file.delete());
+    }
+    file = new File(outputDataFile + TsFileConstant.INDEX_SUFFIX);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
     }

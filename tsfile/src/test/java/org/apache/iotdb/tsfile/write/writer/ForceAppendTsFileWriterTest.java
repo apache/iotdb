@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -119,5 +120,7 @@ public class ForceAppendTsFileWriterTest {
     assertFalse(dataSet.hasNext());
 
     assertTrue(file.delete());
+    File indexFile = fsFactory.getFile(FILE_NAME + TsFileConstant.INDEX_SUFFIX);
+    assertTrue(indexFile.delete());
   }
 }

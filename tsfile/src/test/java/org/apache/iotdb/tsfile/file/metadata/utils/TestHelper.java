@@ -24,21 +24,20 @@ import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 public class TestHelper {
 
   public static TsFileMetadata createSimpleFileMetaData() {
-    TsFileMetadata metaData = new TsFileMetadata();
-    metaData.setMetadataIndex(generateMetaDataIndex());
-    return metaData;
+    return new TsFileMetadata(generateMetaDataIndex());
   }
 
   private static MetadataIndexNode generateMetaDataIndex() {
@@ -60,9 +59,11 @@ public class TestHelper {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(measurementuid);
     timeseriesMetaData.setTSDataType(PageHeaderTest.DATA_TYPE);
+    timeseriesMetaData.setCompressionType(CompressionType.LZ4);
+    timeseriesMetaData.setEncodingType(TSEncoding.PLAIN);
     timeseriesMetaData.setOffsetOfChunkMetaDataList(1000L);
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(0);
-    timeseriesMetaData.setChunkMetadataListBuffer(new PublicBAOS());
+    timeseriesMetaData.setChunkMetadataList(new ArrayList<>());
     timeseriesMetaData.setStatistics(statistics);
     return timeseriesMetaData;
   }

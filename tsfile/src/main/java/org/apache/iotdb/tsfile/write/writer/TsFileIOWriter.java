@@ -20,9 +20,8 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
@@ -40,6 +39,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.record.DeviceTimeseriesMetadataRecord;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,10 +49,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -71,7 +72,9 @@ public class TsFileIOWriter implements AutoCloseable {
     VERSION_NUMBER_BYTE = TSFileConfig.VERSION_NUMBER;
   }
 
-  protected TsFileOutput out;
+  protected TsFileOutput tsFileOutput;
+  //  protected TsFileOutput tmpFileOutput;
+  protected TsFileOutput indexFileOutput;
   protected boolean canWrite = true;
   protected File file;
 
@@ -85,8 +88,10 @@ public class TsFileIOWriter implements AutoCloseable {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
 
-  // for upgrade tool and split tool
-  Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
+  // convert ChunkMetadataList to this field; also for upgrade tool and split tool
+  // device -> {measurementId -> TimeseriesMetadataRecord}
+  Map<String, DeviceTimeseriesMetadataRecord> deviceTimeseriesMetadataMap = new TreeMap<>();
+  Set<Path> paths = new HashSet<>();
 
   // the two longs marks the index range of operations in current MemTable
   // and are serialized after MetaMarker.OPERATION_INDEX_RANGE to recover file-level range
@@ -103,7 +108,9 @@ public class TsFileIOWriter implements AutoCloseable {
    * @throws IOException if I/O error occurs
    */
   public TsFileIOWriter(File file) throws IOException {
-    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), false);
+    this.tsFileOutput =
+        FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), false);
+
     this.file = file;
     if (resourceLogger.isDebugEnabled()) {
       resourceLogger.debug("{} writer is opened.", file.getName());
@@ -117,13 +124,14 @@ public class TsFileIOWriter implements AutoCloseable {
    * @param output be used to output written data
    */
   public TsFileIOWriter(TsFileOutput output) throws IOException {
-    this.out = output;
+    this.tsFileOutput = output;
     startFile();
   }
 
   /** for test only */
-  public TsFileIOWriter(TsFileOutput output, boolean test) {
-    this.out = output;
+  public TsFileIOWriter(TsFileOutput tsFileOutput, TsFileOutput indexFileOutput, boolean test) {
+    this.tsFileOutput = tsFileOutput;
+    this.indexFileOutput = indexFileOutput;
   }
 
   /**
@@ -134,22 +142,28 @@ public class TsFileIOWriter implements AutoCloseable {
    * @throws IOException if an I/O error occurs.
    */
   public void writeBytesToStream(PublicBAOS bytes) throws IOException {
-    bytes.writeTo(out.wrapAsStream());
+    bytes.writeTo(tsFileOutput.wrapAsStream());
   }
 
-  protected void startFile() throws IOException {
-    out.write(MAGIC_STRING_BYTES);
-    out.write(VERSION_NUMBER_BYTE);
+  public void startFile() throws IOException {
+    tsFileOutput.write(MAGIC_STRING_BYTES);
+    tsFileOutput.write(VERSION_NUMBER_BYTE);
   }
 
-  public int startChunkGroup(String deviceId) throws IOException {
-    this.currentChunkGroupDeviceId = deviceId;
+  public void startIndexFile() throws IOException {
+    indexFileOutput =
+        FSFactoryProducer.getFileOutputFactory()
+            .getTsFileOutput(file.getPath() + TsFileConstant.INDEX_SUFFIX, false);
+    indexFileOutput.write(MAGIC_STRING_BYTES);
+    indexFileOutput.write(VERSION_NUMBER_BYTE);
+  }
+
+  public void startChunkGroup(String deviceId) throws IOException {
     if (logger.isDebugEnabled()) {
-      logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
+      logger.debug("start chunk group:{}, file position {}", deviceId, tsFileOutput.getPosition());
     }
+    currentChunkGroupDeviceId = deviceId;
     chunkMetadataList = new ArrayList<>();
-    ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId);
-    return chunkGroupHeader.serializeTo(out.wrapAsStream());
   }
 
   /**
@@ -159,11 +173,32 @@ public class TsFileIOWriter implements AutoCloseable {
     if (currentChunkGroupDeviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
+
     chunkGroupMetadataList.add(
         new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
+
+    // group ChunkMetadata by series
+    Map<Path, ArrayList<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+      Path series = new Path(currentChunkGroupDeviceId, chunkMetadata.getMeasurementUid());
+      paths.add(series);
+      chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
+    }
+
+    // flush marker and deviceId to tmp file
+    //    ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId);
+    //    chunkGroupHeader.serializeTo(tmpFileOutput.wrapAsStream());
+
+    for (Map.Entry<Path, ArrayList<IChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
+      // for ordinary path
+      flushOneChunkMetadata(entry.getKey(), entry.getValue());
+    }
+
     currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
-    out.flush();
+    // V3-2: flush both tsFileOutput and indexFileOutput when ending chunkGroup
+    tsFileOutput.flush();
+    //    tmpFileOutput.flush();
   }
 
   /**
@@ -180,7 +215,7 @@ public class TsFileIOWriter implements AutoCloseable {
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
    * @param measurementId - measurementId of this time series
-   * @param compressionCodecName - compression name of this time series
+   * @param compressionType - compression name of this time series
    * @param tsDataType - data type
    * @param statistics - Chunk statistics
    * @param dataSize - the serialized size of all pages
@@ -189,7 +224,7 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   public void startFlushChunk(
       String measurementId,
-      CompressionType compressionCodecName,
+      CompressionType compressionType,
       TSDataType tsDataType,
       TSEncoding encodingType,
       Statistics<? extends Serializable> statistics,
@@ -199,37 +234,38 @@ public class TsFileIOWriter implements AutoCloseable {
       throws IOException {
 
     currentChunkMetadata =
-        new ChunkMetadata(measurementId, tsDataType, out.getPosition(), statistics);
-    currentChunkMetadata.setMask((byte) mask);
-
-    ChunkHeader header =
-        new ChunkHeader(
+        new ChunkMetadata(
             measurementId,
-            dataSize,
             tsDataType,
-            compressionCodecName,
+            tsFileOutput.getPosition(), // start offset of chunk
+            statistics,
+            dataSize,
+            compressionType,
             encodingType,
             numOfPages,
             mask);
-    header.serializeTo(out.wrapAsStream());
+    currentChunkMetadata.setMask((byte) mask);
   }
 
   /** Write a whole chunk in another file into this file. Providing fast merge for IoTDB. */
   public void writeChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
-    ChunkHeader chunkHeader = chunk.getHeader();
     currentChunkMetadata =
         new ChunkMetadata(
-            chunkHeader.getMeasurementID(),
-            chunkHeader.getDataType(),
-            out.getPosition(),
-            chunkMetadata.getStatistics());
-    chunkHeader.serializeTo(out.wrapAsStream());
-    out.write(chunk.getData());
+            chunkMetadata.getMeasurementUid(),
+            chunkMetadata.getDataType(),
+            tsFileOutput.getPosition(),
+            chunkMetadata.getStatistics(),
+            chunkMetadata.getDataSize(),
+            chunkMetadata.getCompressionType(),
+            chunkMetadata.getEncodingType(),
+            chunkMetadata.getNumOfPages(),
+            chunkMetadata.getMask());
+    tsFileOutput.write(chunk.getData());
     endCurrentChunk();
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "end flushing a chunk:{}, totalvalue:{}",
-          chunkHeader.getMeasurementID(),
+          "end flushing a chunk:{}, total value:{}",
+          chunkMetadata.getMeasurementUid(),
           chunkMetadata.getNumOfPoints());
     }
   }
@@ -247,77 +283,57 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endFile() throws IOException {
-    long metaOffset = out.getPosition();
+    startIndexFile();
 
-    // serialize the SEPARATOR of MetaData
-    ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
+    MetadataIndexNode metadataIndex =
+        MetadataIndexConstructor.constructMetadataIndex(
+            deviceTimeseriesMetadataMap, indexFileOutput);
+    TsFileMetadata tsFileMetaData = new TsFileMetadata(metadataIndex);
 
-    // group ChunkMetadata by series
-    Map<Path, List<IChunkMetadata>> chunkMetadataListMap = new TreeMap<>();
-
-    for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      List<ChunkMetadata> chunkMetadatas = chunkGroupMetadata.getChunkMetadataList();
-      for (IChunkMetadata chunkMetadata : chunkMetadatas) {
-        Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
-        chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
-      }
-    }
-
-    MetadataIndexNode metadataIndex = flushMetadataIndex(chunkMetadataListMap);
-    TsFileMetadata tsFileMetaData = new TsFileMetadata();
-    tsFileMetaData.setMetadataIndex(metadataIndex);
-    tsFileMetaData.setMetaOffset(metaOffset);
-
-    long footerIndex = out.getPosition();
+    long footerIndex = indexFileOutput.getPosition();
     if (logger.isDebugEnabled()) {
       logger.debug("start to flush the footer,file pos:{}", footerIndex);
     }
 
     // write TsFileMetaData
-    int size = tsFileMetaData.serializeTo(out.wrapAsStream());
+    int size = tsFileMetaData.serializeTo(indexFileOutput.wrapAsStream());
     if (logger.isDebugEnabled()) {
-      logger.debug("finish flushing the footer {}, file pos:{}", tsFileMetaData, out.getPosition());
+      logger.debug(
+          "finish flushing the footer {}, file pos:{}",
+          tsFileMetaData,
+          indexFileOutput.getPosition());
     }
 
     // write bloom filter
-    size += tsFileMetaData.serializeBloomFilter(out.wrapAsStream(), chunkMetadataListMap.keySet());
+    size += tsFileMetaData.serializeBloomFilter(indexFileOutput.wrapAsStream(), paths);
     if (logger.isDebugEnabled()) {
-      logger.debug("finish flushing the bloom filter file pos:{}", out.getPosition());
+      logger.debug("finish flushing the bloom filter file pos:{}", indexFileOutput.getPosition());
     }
 
     // write TsFileMetaData size
-    ReadWriteIOUtils.write(size, out.wrapAsStream()); // write the size of the file metadata.
+    ReadWriteIOUtils.write(
+        size, indexFileOutput.wrapAsStream()); // write the size of the file metadata.
 
     // write magic string
-    out.write(MAGIC_STRING_BYTES);
+    tsFileOutput.write(MAGIC_STRING_BYTES);
+    indexFileOutput.write(MAGIC_STRING_BYTES);
 
     // close file
-    out.close();
+    tsFileOutput.close();
+    indexFileOutput.close();
+    //    tmpFileOutput.close();
+
+    //    boolean isTmpFileDeleted =
+    //        FSFactoryProducer.getFSFactory()
+    //            .getFile(file.getPath() + TsFileConstant.INDEX_TMP_SUFFIX)
+    //            .delete();
+
     if (resourceLogger.isDebugEnabled() && file != null) {
       resourceLogger.debug("{} writer is closed.", file.getName());
+      //      resourceLogger.debug("tmp file is deleted {}.", isTmpFileDeleted ? "successfully" :
+      // "FAILED");
     }
     canWrite = false;
-  }
-
-  /**
-   * Flush TsFileMetadata, including ChunkMetadataList and TimeseriesMetaData
-   *
-   * @param chunkMetadataListMap chunkMetadata that Path.mask == 0
-   * @return MetadataIndexEntry list in TsFileMetadata
-   */
-  private MetadataIndexNode flushMetadataIndex(Map<Path, List<IChunkMetadata>> chunkMetadataListMap)
-      throws IOException {
-
-    // convert ChunkMetadataList to this field
-    deviceTimeseriesMetadataMap = new LinkedHashMap<>();
-    // create device -> TimeseriesMetaDataList Map
-    for (Map.Entry<Path, List<IChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
-      // for ordinary path
-      flushOneChunkMetadata(entry.getKey(), entry.getValue());
-    }
-
-    // construct TsFileMetadata and return
-    return MetadataIndexConstructor.constructMetadataIndex(deviceTimeseriesMetadataMap, out);
   }
 
   /**
@@ -326,36 +342,34 @@ public class TsFileIOWriter implements AutoCloseable {
    * @param path Path of chunk
    * @param chunkMetadataList List of chunkMetadata about path(previous param)
    */
-  private void flushOneChunkMetadata(Path path, List<IChunkMetadata> chunkMetadataList)
+  private void flushOneChunkMetadata(Path path, ArrayList<IChunkMetadata> chunkMetadataList)
       throws IOException {
-    // create TimeseriesMetaData
-    PublicBAOS publicBAOS = new PublicBAOS();
-    TSDataType dataType = chunkMetadataList.get(chunkMetadataList.size() - 1).getDataType();
-    Statistics seriesStatistics = Statistics.getStatsByType(dataType);
+    // create TimeseriesMetadata
+    String deviceId = path.getDeviceIdString();
+    String measurementId = path.getMeasurement();
 
-    int chunkMetadataListLength = 0;
-    boolean serializeStatistic = (chunkMetadataList.size() > 1);
-    // flush chunkMetadataList one by one
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-      if (!chunkMetadata.getDataType().equals(dataType)) {
-        continue;
-      }
-      chunkMetadataListLength += chunkMetadata.serializeTo(publicBAOS, serializeStatistic);
-      seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+    TimeseriesMetadata timeseriesMetadata = null;
+
+    new TimeseriesMetadata(chunkMetadataList);
+
+    // update timeseriesMetadata
+    if (deviceTimeseriesMetadataMap.containsKey(deviceId)
+        && deviceTimeseriesMetadataMap.get(deviceId).containsMeasurement(measurementId)) {
+      timeseriesMetadata =
+          deviceTimeseriesMetadataMap.get(deviceId).getStoredStatistics(measurementId);
+    }
+    if (timeseriesMetadata == null) {
+      timeseriesMetadata = new TimeseriesMetadata(chunkMetadataList);
+    } else {
+      timeseriesMetadata.mergeTimeseriesMetadata(new TimeseriesMetadata(chunkMetadataList));
     }
 
-    TimeseriesMetadata timeseriesMetadata =
-        new TimeseriesMetadata(
-            (byte)
-                ((serializeStatistic ? (byte) 1 : (byte) 0) | chunkMetadataList.get(0).getMask()),
-            chunkMetadataListLength,
-            path.getMeasurement(),
-            dataType,
-            seriesStatistics,
-            publicBAOS);
+    // serialize to tmp file
+    //    timeseriesMetadata.serializeTo(tmpFileOutput.wrapAsStream());
+
     deviceTimeseriesMetadataMap
-        .computeIfAbsent(path.getDeviceIdString(), k -> new ArrayList<>())
-        .add(timeseriesMetadata);
+        .computeIfAbsent(deviceId, k -> new DeviceTimeseriesMetadataRecord())
+        .addMeasurementTimeseriesMetadataRecord(measurementId, timeseriesMetadata);
   }
 
   /**
@@ -365,7 +379,7 @@ public class TsFileIOWriter implements AutoCloseable {
    * @throws IOException if I/O error occurs
    */
   public long getPos() throws IOException {
-    return out.getPosition();
+    return tsFileOutput.getPosition();
   }
 
   // device -> ChunkMetadataList
@@ -389,7 +403,7 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   public void reset() throws IOException {
-    out.truncate(markedPosition);
+    tsFileOutput.truncate(markedPosition);
   }
 
   /**
@@ -398,15 +412,16 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   public void close() throws IOException {
     canWrite = false;
-    out.close();
+    tsFileOutput.close();
+    indexFileOutput.close();
   }
 
-  void writeSeparatorMaskForTest() throws IOException {
-    out.write(new byte[] {MetaMarker.SEPARATOR});
+  public void writeSeparatorMaskForTest() throws IOException {
+    tsFileOutput.write(new byte[] {MetaMarker.SEPARATOR});
   }
 
-  void writeChunkGroupMarkerForTest() throws IOException {
-    out.write(new byte[] {MetaMarker.CHUNK_GROUP_HEADER});
+  public void writeChunkGroupMarkerForTest() throws IOException {
+    indexFileOutput.write(new byte[] {MetaMarker.CHUNK_GROUP_HEADER});
   }
 
   public File getFile() {
@@ -452,14 +467,14 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   public void writePlanIndices() throws IOException {
-    ReadWriteIOUtils.write(MetaMarker.OPERATION_INDEX_RANGE, out.wrapAsStream());
-    ReadWriteIOUtils.write(minPlanIndex, out.wrapAsStream());
-    ReadWriteIOUtils.write(maxPlanIndex, out.wrapAsStream());
-    out.flush();
+    ReadWriteIOUtils.write(MetaMarker.OPERATION_INDEX_RANGE, tsFileOutput.wrapAsStream());
+    ReadWriteIOUtils.write(minPlanIndex, tsFileOutput.wrapAsStream());
+    ReadWriteIOUtils.write(maxPlanIndex, tsFileOutput.wrapAsStream());
+    tsFileOutput.flush();
   }
 
   public void truncate(long offset) throws IOException {
-    out.truncate(offset);
+    tsFileOutput.truncate(offset);
   }
 
   /**
@@ -468,7 +483,7 @@ public class TsFileIOWriter implements AutoCloseable {
    * @return TsFileOutput
    */
   public TsFileOutput getIOWriterOut() {
-    return out;
+    return tsFileOutput;
   }
 
   /**
@@ -476,7 +491,7 @@ public class TsFileIOWriter implements AutoCloseable {
    *
    * @return DeviceTimeseriesMetadataMap
    */
-  public Map<String, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
+  public Map<String, DeviceTimeseriesMetadataRecord> getDeviceTimeseriesMetadataMap() {
     return deviceTimeseriesMetadataMap;
   }
 

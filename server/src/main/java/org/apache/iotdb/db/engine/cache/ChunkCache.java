@@ -115,7 +115,7 @@ public class ChunkCache {
               .get(chunkMetaData.getFilePath(), chunkMetaData.isClosed());
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       return new Chunk(
-          chunk.getHeader(),
+          chunk.getChunkMetadata(),
           chunk.getData().duplicate(),
           chunkMetaData.getDeleteIntervalList(),
           chunkMetaData.getStatistics());
@@ -128,7 +128,7 @@ public class ChunkCache {
     }
 
     return new Chunk(
-        chunk.getHeader(),
+        chunk.getChunkMetadata(),
         chunk.getData().duplicate(),
         chunkMetaData.getDeleteIntervalList(),
         chunkMetaData.getStatistics());

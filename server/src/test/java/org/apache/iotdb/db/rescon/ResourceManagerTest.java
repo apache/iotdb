@@ -378,7 +378,7 @@ public class ResourceManagerTest {
                         + ".tsfile"));
         TsFileResource tsFileResource = new TsFileResource(file);
         tsFileResource.setStatus(TsFileResourceStatus.CLOSED);
-        tsFileResource.updatePlanIndexes((long) i);
+        tsFileResource.updatePlanIndexes(i);
         seqResources.add(tsFileResource);
         assertEquals(
             TimeIndexLevel.FILE_TIME_INDEX,

@@ -38,11 +38,9 @@ public class TsFileMetadataV2 {
    * @return -a pair of TsFileMetaData and VersionInfo
    */
   public static Pair<TsFileMetadata, List<Pair<Long, Long>>> deserializeFrom(ByteBuffer buffer) {
-    TsFileMetadata fileMetaData = new TsFileMetadata();
+    TsFileMetadata fileMetaData = new TsFileMetadata(MetadataIndexNodeV2.deserializeFrom(buffer));
 
     List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-    // metadataIndex
-    fileMetaData.setMetadataIndex(MetadataIndexNodeV2.deserializeFrom(buffer));
     // totalChunkNum
     ReadWriteIOUtils.readInt(buffer);
     // invalidChunkNum
@@ -56,9 +54,7 @@ public class TsFileMetadataV2 {
       versionInfo.add(new Pair<>(versionPos, version));
     }
 
-    // metaOffset
     long metaOffset = ReadWriteIOUtils.readLong(buffer);
-    fileMetaData.setMetaOffset(metaOffset);
 
     // read bloom filter
     if (buffer.hasRemaining()) {

@@ -18,16 +18,21 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -38,14 +43,14 @@ import java.util.Objects;
 /** Metadata of one chunk. */
 public class ChunkMetadata implements IChunkMetadata {
 
-  private String measurementUid;
+  private String measurementUid; // do not need to be serialized
 
   /**
    * Byte offset of the corresponding data in the file Notice: include the chunk header and marker.
    */
   private long offsetOfChunkHeader;
 
-  private TSDataType tsDataType;
+  private TSDataType tsDataType; // do not need to be serialized
 
   /**
    * version is used to define the order of operations(insertion, deletion, update). version is set
@@ -63,9 +68,7 @@ public class ChunkMetadata implements IChunkMetadata {
 
   private Statistics<? extends Serializable> statistics;
 
-  private boolean isFromOldTsFile = false;
-
-  private long ramSize;
+  private final boolean isFromOldTsFile = false;
 
   private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 93;
 
@@ -82,16 +85,25 @@ public class ChunkMetadata implements IChunkMetadata {
   // high 32 bit is compaction level, low 32 bit is merge count
   private long compactionVersion;
 
+  /**
+   * 1 means this chunk has more than one page, so each page has its own page statistic. 5 means
+   * this chunk has only one page, and this page has no page statistic.
+   *
+   * <p>if the 8th bit of this byte is 1 means this chunk is a time chunk of one vector if the 7th
+   * bit of this byte is 1 means this chunk is a value chunk of one vector
+   */
+  private byte chunkType;
+
+  private int dataSize;
+  private CompressionType compressionType;
+  private TSEncoding encodingType;
+
+  private int numOfPages; // do not need to be serialized
+  private int serializedSize; // do not need to be serialized
+
   public ChunkMetadata() {}
 
-  /**
-   * constructor of ChunkMetaData.
-   *
-   * @param measurementUid measurement id
-   * @param tsDataType time series data type
-   * @param fileOffset file offset
-   * @param statistics value statistics
-   */
+  // FIXME
   public ChunkMetadata(
       String measurementUid,
       TSDataType tsDataType,
@@ -101,13 +113,61 @@ public class ChunkMetadata implements IChunkMetadata {
     this.tsDataType = tsDataType;
     this.offsetOfChunkHeader = fileOffset;
     this.statistics = statistics;
+    this.serializedSize = getSerializedSize(dataSize);
+  }
+
+  public ChunkMetadata(
+      String measurementUid,
+      TSDataType tsDataType,
+      long fileOffset,
+      Statistics<? extends Serializable> statistics,
+      int dataSize,
+      CompressionType compressionType,
+      TSEncoding encoding,
+      int numOfPages,
+      int mask) {
+    this.measurementUid = measurementUid;
+    this.tsDataType = tsDataType;
+    this.offsetOfChunkHeader = fileOffset;
+    this.statistics = statistics;
+    this.chunkType =
+        (byte)
+            ((numOfPages <= 1 ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER : MetaMarker.CHUNK_HEADER)
+                | (byte) mask);
+    this.dataSize = dataSize;
+    this.compressionType = compressionType;
+    this.encodingType = encoding;
+    this.numOfPages = numOfPages;
+    this.serializedSize = getSerializedSize(dataSize);
   }
 
   @Override
   public String toString() {
-    return String.format(
-        "measurementId: %s, datatype: %s, version: %d, Statistics: %s, deleteIntervalList: %s, filePath: %s",
-        measurementUid, tsDataType, version, statistics, deleteIntervalList, filePath);
+    return "CHUNK_METADATA{"
+        + "measurementID='"
+        + measurementUid
+        + '\''
+        + ", version="
+        + version
+        + ", statistics="
+        + statistics
+        + ", deleteIntervalList="
+        + deleteIntervalList
+        + ", filePath="
+        + filePath
+        + ", dataSize="
+        + dataSize
+        + ", dataType="
+        + tsDataType
+        + ", compressionType="
+        + compressionType
+        + ", encodingType="
+        + encodingType
+        + ", numOfPages="
+        + numOfPages
+        + ", serializedSize="
+        + serializedSize
+        + '}';
   }
 
   public long getNumOfPoints() {
@@ -158,6 +218,8 @@ public class ChunkMetadata implements IChunkMetadata {
     if (serializeStatistic) {
       byteLen += statistics.serialize(outputStream);
     }
+    byteLen += ReadWriteIOUtils.write(chunkType, outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(dataSize, outputStream);
     return byteLen;
   }
 
@@ -183,6 +245,42 @@ public class ChunkMetadata implements IChunkMetadata {
       // and that chunk's metadata has no statistic
       chunkMetaData.statistics = timeseriesMetadata.getStatistics();
     }
+    chunkMetaData.chunkType = ReadWriteIOUtils.readByte(buffer);
+    chunkMetaData.dataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    chunkMetaData.serializedSize = chunkMetaData.getSerializedSize(chunkMetaData.getDataSize());
+
+    chunkMetaData.compressionType = timeseriesMetadata.getCompressionType();
+    chunkMetaData.encodingType = timeseriesMetadata.getEncodingType();
+    return chunkMetaData;
+  }
+
+  /**
+   * deserialize from ByteBuffer.
+   *
+   * @return ChunkMetaData object
+   */
+  public static ChunkMetadata deserializeFrom(
+      InputStream inputStream, TimeseriesMetadata timeseriesMetadata) throws IOException {
+    ChunkMetadata chunkMetaData = new ChunkMetadata();
+
+    chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
+    chunkMetaData.tsDataType = timeseriesMetadata.getTSDataType();
+    chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(inputStream);
+    // if the TimeSeriesMetadataType is not 0, it means it has more than one chunk
+    // and each chunk's metadata has its own statistics
+    if ((timeseriesMetadata.getTimeSeriesMetadataType() & 0x3F) != 0) {
+      chunkMetaData.statistics = Statistics.deserialize(inputStream, chunkMetaData.tsDataType);
+    } else {
+      // if the TimeSeriesMetadataType is 0, it means it has only one chunk
+      // and that chunk's metadata has no statistic
+      chunkMetaData.statistics = timeseriesMetadata.getStatistics();
+    }
+    chunkMetaData.chunkType = ReadWriteIOUtils.readByte(inputStream);
+    chunkMetaData.dataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    chunkMetaData.serializedSize = chunkMetaData.getSerializedSize(chunkMetaData.getDataSize());
+
+    chunkMetaData.compressionType = timeseriesMetadata.getCompressionType();
+    chunkMetaData.encodingType = timeseriesMetadata.getEncodingType();
     return chunkMetaData;
   }
 
@@ -272,10 +370,6 @@ public class ChunkMetadata implements IChunkMetadata {
     return isFromOldTsFile;
   }
 
-  public void setFromOldTsFile(boolean isFromOldTsFile) {
-    this.isFromOldTsFile = isFromOldTsFile;
-  }
-
   public long calculateRamSize() {
     return CHUNK_METADATA_FIXED_RAM_SIZE
         + RamUsageEstimator.sizeOf(tsFilePrefixPath)
@@ -292,7 +386,8 @@ public class ChunkMetadata implements IChunkMetadata {
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
     Statistics<? extends Serializable> statistics = chunkMetadata.getStatistics();
     this.statistics.mergeStatistics(statistics);
-    this.ramSize = calculateRamSize();
+    this.dataSize += chunkMetadata.getDataSize();
+    this.numOfPages += chunkMetadata.getNumOfPages();
   }
 
   @Override
@@ -335,5 +430,49 @@ public class ChunkMetadata implements IChunkMetadata {
 
   public void setMask(byte mask) {
     this.mask = mask;
+  }
+
+  public int getSerializedSize() {
+    return serializedSize;
+  }
+
+  public int getDataSize() {
+    return dataSize;
+  }
+
+  public int getNumOfPages() {
+    return numOfPages;
+  }
+
+  public CompressionType getCompressionType() {
+    return compressionType;
+  }
+
+  public TSEncoding getEncodingType() {
+    return encodingType;
+  }
+
+  public void setDataSize(int dataSize) {
+    this.dataSize = dataSize;
+  }
+
+  public byte getChunkType() {
+    return chunkType;
+  }
+
+  public void setChunkType(byte chunkType) {
+    this.chunkType = chunkType;
+  }
+
+  public void increasePageNums(int i) {
+    numOfPages += i;
+  }
+
+  /** the exact serialized size of chunk header */
+  public int getSerializedSize(int dataSize) {
+    return Long.BYTES // offsetOfChunkHeader
+        + statistics.getSerializedSize()
+        + Byte.BYTES // chunkType
+        + ReadWriteForEncodingUtils.uVarIntSize(dataSize); // dataSize
   }
 }

@@ -32,7 +32,7 @@ public class UnClosedTsFileReader extends TsFileSequenceReader {
 
   /** unclosed file has no tail magic data. */
   @Override
-  public String readTailMagic() {
+  public String readTailMagicInIndexFile() {
     throw new NotImplementedException();
   }
 

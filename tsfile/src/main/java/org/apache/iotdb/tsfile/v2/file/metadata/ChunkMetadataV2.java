@@ -46,7 +46,7 @@ public class ChunkMetadataV2 {
     Statistics<? extends Serializable> statistics = StatisticsV2.deserialize(buffer, tsDataType);
     ChunkMetadata chunkMetaData =
         new ChunkMetadata(measurementUid, tsDataType, offsetOfChunkHeader, statistics);
-    chunkMetaData.setFromOldTsFile(true);
+    // chunkMetaData.setFromOldTsFile(true);
     return chunkMetaData;
   }
 }
