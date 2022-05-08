@@ -1705,19 +1705,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.sgAttributeClause() != null) {
       for (IoTDBSqlParser.SgAttributeClauseContext attribute : ctx.sgAttributeClause()) {
         if (attribute.TTL() != null) {
-          long ttl = Long.parseLong(attribute.TTL().getText());
+          long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
           setStorageGroupStatement.setTtl(ttl);
         } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
-          int schemaReplicationFactor =
-              Integer.parseInt(attribute.SCHEMA_REPLICATION_FACTOR().getText());
+          int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
           setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
         } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
-          int dataReplicationFactor =
-              Integer.parseInt(attribute.DATA_REPLICATION_FACTOR().getText());
+          int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
           setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
         } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
-          long timePartitionInterval =
-              Long.parseLong(attribute.TIME_PARTITION_INTERVAL().getText());
+          long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
           setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
         }
       }
