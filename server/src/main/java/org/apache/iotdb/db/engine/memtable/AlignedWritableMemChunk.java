@@ -234,11 +234,13 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     // increase reference count
     list.increaseReferenceCount();
     List<Integer> columnIndexList = new ArrayList<>();
+    List<TSDataType> dataTypeList = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : schemaList) {
       columnIndexList.add(
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
+      dataTypeList.add(measurementSchema.getType());
     }
-    return list.getTvListByColumnIndex(columnIndexList);
+    return list.getTvListByColumnIndex(columnIndexList, dataTypeList);
   }
 
   private void sortTVList() {
@@ -309,7 +311,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
               list.getValidRowIndexForTimeDuplicatedRows(
                   timeDuplicateAlignedRowIndexList, columnIndex);
         }
-        boolean isNull = list.isValueMarked(originRowIndex, columnIndex);
+        boolean isNull = list.isNullValue(originRowIndex, columnIndex);
         switch (dataTypes.get(columnIndex)) {
           case BOOLEAN:
             alignedChunkWriter.write(
