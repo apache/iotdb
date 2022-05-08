@@ -195,8 +195,8 @@ public class AuthUtils {
    *
    * @param pathA sub-path
    * @param pathB path
-   * @return True if pathA is a sub pattern of pathB, e.g. pathA = "root.a.b.c"
-   *     and pathB = "root.a.b.*", "root.a.**", "root.a.*.c", "root.**.c" or "root.*.b.**"
+   * @return True if pathA is a sub pattern of pathB, e.g. pathA = "root.a.b.c" and pathB =
+   *     "root.a.b.*", "root.a.**", "root.a.*.c", "root.**.c" or "root.*.b.**"
    */
   public static boolean pathBelongsTo(String pathA, String pathB) {
     List<String> nodeListA = spiltPath(pathA);
