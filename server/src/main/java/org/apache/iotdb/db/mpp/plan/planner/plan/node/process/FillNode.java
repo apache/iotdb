@@ -23,12 +23,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -36,7 +34,7 @@ import java.util.Objects;
 public class FillNode extends ProcessNode {
 
   // descriptions of how null values are filled
-  private List<FillDescriptor> fillDescriptorList;
+  private FillDescriptor fillDescriptor;
 
   private PlanNode child;
 
@@ -44,13 +42,13 @@ public class FillNode extends ProcessNode {
     super(id);
   }
 
-  public FillNode(PlanNodeId id, List<FillDescriptor> fillDescriptorList) {
+  public FillNode(PlanNodeId id, FillDescriptor fillDescriptor) {
     this(id);
-    this.fillDescriptorList = fillDescriptorList;
+    this.fillDescriptor = fillDescriptor;
   }
 
-  public FillNode(PlanNodeId id, PlanNode child, List<FillDescriptor> fillDescriptorList) {
-    this(id, fillDescriptorList);
+  public FillNode(PlanNodeId id, PlanNode child, FillDescriptor fillDescriptor) {
+    this(id, fillDescriptor);
     this.child = child;
   }
 
@@ -71,7 +69,7 @@ public class FillNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new FillNode(getPlanNodeId(), fillDescriptorList);
+    return new FillNode(getPlanNodeId(), fillDescriptor);
   }
 
   @Override
@@ -87,21 +85,13 @@ public class FillNode extends ProcessNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FILL.serialize(byteBuffer);
-    ReadWriteIOUtils.write(fillDescriptorList.size(), byteBuffer);
-    for (FillDescriptor fillDescriptor : fillDescriptorList) {
-      fillDescriptor.serialize(byteBuffer);
-    }
+    fillDescriptor.serialize(byteBuffer);
   }
 
   public static FillNode deserialize(ByteBuffer byteBuffer) {
-    int fillDescriptorsSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<FillDescriptor> fillDescriptorList = new ArrayList<>();
-    while (fillDescriptorsSize > 0) {
-      fillDescriptorList.add(FillDescriptor.deserialize(byteBuffer));
-      fillDescriptorsSize--;
-    }
+    FillDescriptor fillDescriptor = FillDescriptor.deserialize(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FillNode(planNodeId, fillDescriptorList);
+    return new FillNode(planNodeId, fillDescriptor);
   }
 
   @Override
@@ -116,11 +106,12 @@ public class FillNode extends ProcessNode {
       return false;
     }
     FillNode fillNode = (FillNode) o;
-    return fillDescriptorList.equals(fillNode.fillDescriptorList) && child.equals(fillNode.child);
+    return Objects.equals(fillDescriptor, fillNode.fillDescriptor)
+        && Objects.equals(child, fillNode.child);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), fillDescriptorList, child);
+    return Objects.hash(super.hashCode(), fillDescriptor, child);
   }
 }

@@ -54,6 +54,14 @@ public class RegularExpression extends UnaryExpression {
     pattern = Pattern.compile(Validate.notNull(patternString));
   }
 
+  public String getPatternString() {
+    return patternString;
+  }
+
+  public Pattern getPattern() {
+    return pattern;
+  }
+
   @Override
   protected Transformer constructTransformer(LayerPointReader pointReader) {
     return new RegularTransformer(pointReader, pattern);
