@@ -190,7 +190,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           fullStorageGroupName,
           targetTsFileResource.getTsFile().getName(),
           costTime,
-          ((double) selectedFileSize) / costTime);
+          ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
 
       if (logFile.exists()) {
         FileUtils.delete(logFile);

@@ -183,7 +183,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           "{} [Compaction] CrossSpaceCompactionTask Costs {} s, compaction speed is {} MB/s",
           fullStorageGroupName,
           costTime,
-          totalSize / costTime);
+          totalSize / 1024.0d / 1024.0d / costTime);
     }
   }
 
