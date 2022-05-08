@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
@@ -71,7 +70,7 @@ public class ShowStorageGroupTask implements IConfigTask {
         TStorageGroupSchemaResp resp =
             client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
         storageGroupPaths = new ArrayList<>(resp.getStorageGroupSchemaMap().keySet());
-      } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      } catch (IoTDBConnectionException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
       } finally {

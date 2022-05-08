@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
@@ -163,7 +162,7 @@ public class AuthorityChecker {
       configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       status = configNodeClient.login(req);
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (IoTDBConnectionException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
       if (configNodeClient != null) {
@@ -216,7 +215,7 @@ public class AuthorityChecker {
       configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       status = configNodeClient.checkUserPrivileges(req);
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (IoTDBConnectionException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
       if (configNodeClient != null) {
