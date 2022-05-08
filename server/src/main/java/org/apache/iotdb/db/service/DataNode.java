@@ -168,7 +168,6 @@ public class DataNode implements DataNodeMBean {
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-          logger.info("Register current node successfully using request {}", req);
           logger.info(dataNodeRegisterResp.getStatus().getMessage());
           int dataNodeID = dataNodeRegisterResp.getDataNodeId();
           if (dataNodeID != config.getDataNodeId()) {
