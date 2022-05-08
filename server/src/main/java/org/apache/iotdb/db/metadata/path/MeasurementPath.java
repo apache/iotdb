@@ -101,6 +101,10 @@ public class MeasurementPath extends PartialPath {
     }
   }
 
+  public void removeMeasurementAlias() {
+    this.measurementAlias = null;
+  }
+
   @Override
   public boolean isMeasurementAliasExists() {
     return measurementAlias != null && !measurementAlias.isEmpty();

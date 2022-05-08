@@ -532,9 +532,9 @@ public class IoTDBSyntaxConventionStringLiteralIT {
       assertTrue(resultSet.next());
       Assert.assertEquals("2.0", resultSet.getString(2));
 
-      resultSet = statement.executeQuery("select bottom_k(s1,k = 1) from root.vehicle.d1");
-      assertTrue(resultSet.next());
-      Assert.assertEquals("2.0", resultSet.getString(2));
+      //      resultSet = statement.executeQuery("select bottom_k(s1,k = 1) from root.vehicle.d1");
+      //      assertTrue(resultSet.next());
+      //      Assert.assertEquals("2.0", resultSet.getString(2));
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
@@ -545,7 +545,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
   public void testUDFAttribute1() {
     String errorMsg =
         "401: Error occurred while parsing SQL to physical plan: "
-            + "line 1:22 token recognition error at: '` = 1) from root.vehicle.d1'";
+            + "line 1:21 extraneous input 'k' expecting {',', ')'}";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       // UDF attribute should be STRING_LITERAL

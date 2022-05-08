@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartiti
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -151,24 +152,27 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case GetOrCreateDataPartition:
           req = new GetOrCreateDataPartitionReq();
           break;
-        case LIST_USER:
-        case LIST_ROLE:
-        case LIST_USER_PRIVILEGE:
-        case LIST_ROLE_PRIVILEGE:
-        case LIST_USER_ROLES:
-        case LIST_ROLE_USERS:
-        case CREATE_USER:
-        case CREATE_ROLE:
-        case DROP_USER:
-        case DROP_ROLE:
-        case GRANT_ROLE:
-        case GRANT_USER:
-        case GRANT_ROLE_TO_USER:
-        case REVOKE_USER:
-        case REVOKE_ROLE:
-        case REVOKE_ROLE_FROM_USER:
-        case UPDATE_USER:
+        case ListUser:
+        case ListRole:
+        case ListUserPrivilege:
+        case ListRolePrivilege:
+        case ListUserRoles:
+        case ListRoleUsers:
+        case CreateUser:
+        case CreateRole:
+        case DropUser:
+        case DropRole:
+        case GrantRole:
+        case GrantUser:
+        case GrantRoleToUser:
+        case RevokeUser:
+        case RevokeRole:
+        case RevokeRoleFromUser:
+        case UpdateUser:
           req = new AuthorReq(type);
+          break;
+        case ApplyConfigNode:
+          req = new ApplyConfigNodeReq();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

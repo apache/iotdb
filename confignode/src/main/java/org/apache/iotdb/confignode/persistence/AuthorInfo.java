@@ -118,45 +118,45 @@ public class AuthorInfo {
     String nodeName = authorReq.getNodeName();
     try {
       switch (authorType) {
-        case UPDATE_USER:
+        case UpdateUser:
           authorizer.updateUserPassword(userName, newPassword);
           break;
-        case CREATE_USER:
+        case CreateUser:
           authorizer.createUser(userName, password);
           break;
-        case CREATE_ROLE:
+        case CreateRole:
           authorizer.createRole(roleName);
           break;
-        case DROP_USER:
+        case DropUser:
           authorizer.deleteUser(userName);
           break;
-        case DROP_ROLE:
+        case DropRole:
           authorizer.deleteRole(roleName);
           break;
-        case GRANT_ROLE:
+        case GrantRole:
           for (int i : permissions) {
             authorizer.grantPrivilegeToRole(roleName, nodeName, i);
           }
           break;
-        case GRANT_USER:
+        case GrantUser:
           for (int i : permissions) {
             authorizer.grantPrivilegeToUser(userName, nodeName, i);
           }
           break;
-        case GRANT_ROLE_TO_USER:
+        case GrantRoleToUser:
           authorizer.grantRoleToUser(roleName, userName);
           break;
-        case REVOKE_USER:
+        case RevokeUser:
           for (int i : permissions) {
             authorizer.revokePrivilegeFromUser(userName, nodeName, i);
           }
           break;
-        case REVOKE_ROLE:
+        case RevokeRole:
           for (int i : permissions) {
             authorizer.revokePrivilegeFromRole(roleName, nodeName, i);
           }
           break;
-        case REVOKE_ROLE_FROM_USER:
+        case RevokeRoleFromUser:
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         default:

@@ -21,28 +21,22 @@ package org.apache.iotdb.db.mpp.plan.plan.node.write;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class InsertMultiTabletsNodeSerdeTest {
 
   @Test
-  public void testInsertMultiTabletPlan()
-      throws QueryProcessException, MetadataException, InterruptedException,
-          QueryFilterOptimizationException, StorageEngineException, IOException {
+  public void testInsertMultiTabletPlan() throws MetadataException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     TSDataType[] dataTypes =
         new TSDataType[] {
@@ -96,6 +90,6 @@ public class InsertMultiTabletsNodeSerdeTest {
 
     Assert.assertEquals(PlanNodeType.INSERT_MULTI_TABLET.ordinal(), byteBuffer.getShort());
 
-    Assert.assertEquals(InsertMultiTabletsNode.deserialize(byteBuffer), insertMultiTabletsNode);
+    Assert.assertEquals(insertMultiTabletsNode, InsertMultiTabletsNode.deserialize(byteBuffer));
   }
 }

@@ -128,22 +128,39 @@ public class TimeJoinOperator implements ProcessOperator {
     // TsBlocks order by asc/desc
     long currentEndTime = 0;
     boolean init = false;
+
+    // get TsBlock for each input, put their time stamp into TimeSelector and then use the min Time
+    // among all the input TsBlock as the current output TsBlock's endTime.
     for (int i = 0; i < inputOperatorsCount; i++) {
-      if (!noMoreTsBlocks[i] && empty(i) && children.get(i).hasNext()) {
-        inputIndex[i] = 0;
-        inputTsBlocks[i] = children.get(i).next();
-        if (!empty(i)) {
-          int rowSize = inputTsBlocks[i].getPositionCount();
-          for (int row = 0; row < rowSize; row++) {
-            timeSelector.add(inputTsBlocks[i].getTimeByIndex(row));
+      if (!noMoreTsBlocks[i] && empty(i)) {
+        if (children.get(i).hasNext()) {
+          inputIndex[i] = 0;
+          inputTsBlocks[i] = children.get(i).next();
+          if (!empty(i)) {
+            int rowSize = inputTsBlocks[i].getPositionCount();
+            for (int row = 0; row < rowSize; row++) {
+              timeSelector.add(inputTsBlocks[i].getTimeByIndex(row));
+            }
+          } else {
+            // child operator has next but return an empty TsBlock which means that it may not
+            // finish calculation in given time slice.
+            // In such case, TimeJoinOperator can't go on calculating, so we just return null.
+            // We can also use the while loop here to continuously call the hasNext() and next()
+            // methods of the child operator until its hasNext() returns false or the next() gets
+            // the data that is not empty, but this will cause the execution time of the while loop
+            // to be uncontrollable and may exceed all allocated time slice
+            return null;
           }
+        } else { // no more tsBlock
+          noMoreTsBlocks[i] = true;
+          inputTsBlocks[i] = null;
         }
       }
       // update the currentEndTime if the TsBlock is not empty
       if (!empty(i)) {
         currentEndTime =
             init
-                ? comparator.getSatisfiedTime(currentEndTime, inputTsBlocks[i].getEndTime())
+                ? comparator.getCurrentEndTime(currentEndTime, inputTsBlocks[i].getEndTime())
                 : inputTsBlocks[i].getEndTime();
         init = true;
       }
@@ -156,7 +173,8 @@ public class TimeJoinOperator implements ProcessOperator {
     }
 
     TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    while (!timeSelector.isEmpty() && comparator.satisfy(timeSelector.first(), currentEndTime)) {
+    while (!timeSelector.isEmpty()
+        && comparator.satisfyCurEndTime(timeSelector.first(), currentEndTime)) {
       timeBuilder.writeLong(timeSelector.pollFirst());
       tsBlockBuilder.declarePosition();
     }

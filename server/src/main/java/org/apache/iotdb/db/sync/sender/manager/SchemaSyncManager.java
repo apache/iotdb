@@ -140,7 +140,9 @@ public class SchemaSyncManager {
     Set<PartialPath> devices = IoTDB.schemaProcessor.getBelongedDevices(pathPattern);
     List<PartialPath> resultPathPattern = new LinkedList<>();
     for (PartialPath device : devices) {
-      resultPathPattern.addAll(pathPattern.alterPrefixPath(device));
+      pathPattern.alterPrefixPath(device).stream()
+          .filter(i -> !i.equals(device))
+          .forEach(resultPathPattern::add);
     }
     return resultPathPattern;
   }

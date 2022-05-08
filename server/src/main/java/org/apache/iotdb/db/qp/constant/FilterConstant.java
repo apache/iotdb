@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.qp.constant;
 
 import org.apache.iotdb.db.qp.sql.SqlLexer;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -28,6 +29,7 @@ import java.util.Map;
 public class FilterConstant {
 
   public static final Map<Integer, FilterType> lexerToFilterType = new HashMap<>();
+  public static final Map<ExpressionType, FilterType> ExpressionToFilterType = new HashMap<>();
   public static final Map<FilterType, String> filterSymbol = new EnumMap<>(FilterType.class);
   public static final Map<FilterType, String> filterNames = new EnumMap<>(FilterType.class);
   public static final Map<FilterType, FilterType> filterReverseWords =
@@ -60,6 +62,15 @@ public class FilterConstant {
     lexerToFilterType.put(SqlLexer.OPERATOR_IN, FilterType.IN);
     lexerToFilterType.put(SqlLexer.REGEXP, FilterType.REGEXP);
     lexerToFilterType.put(SqlLexer.LIKE, FilterType.LIKE);
+  }
+
+  static {
+    ExpressionToFilterType.put(ExpressionType.EQUAL_TO, FilterType.EQUAL);
+    ExpressionToFilterType.put(ExpressionType.NON_EQUAL, FilterType.NOTEQUAL);
+    ExpressionToFilterType.put(ExpressionType.LESS_EQUAL, FilterType.LESSTHANOREQUALTO);
+    ExpressionToFilterType.put(ExpressionType.LESS_THAN, FilterType.LESSTHAN);
+    ExpressionToFilterType.put(ExpressionType.GREATER_EQUAL, FilterType.GREATERTHANOREQUALTO);
+    ExpressionToFilterType.put(ExpressionType.GREATER_THAN, FilterType.GREATERTHAN);
   }
 
   static {

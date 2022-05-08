@@ -25,7 +25,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import java.io.File;
 
-public class EmptyStateMachine implements IStateMachine {
+public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   @Override
   public void start() {}

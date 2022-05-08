@@ -37,6 +37,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import jersey.repackaged.com.google.common.util.concurrent.SettableFuture;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
@@ -94,7 +95,9 @@ public class ConfigExecution implements IQueryExecution {
           },
           executor);
     } catch (Throwable e) {
-      Thread.currentThread().interrupt();
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       fail(e);
     }
   }
@@ -121,7 +124,9 @@ public class ConfigExecution implements IQueryExecution {
           statusCode == TSStatusCode.SUCCESS_STATUS ? "" : stateMachine.getFailureMessage();
       return new ExecutionResult(context.getQueryId(), RpcUtils.getStatus(statusCode, message));
     } catch (InterruptedException | ExecutionException e) {
-      Thread.currentThread().interrupt();
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       return new ExecutionResult(
           context.getQueryId(),
           RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR, e.getMessage()));
@@ -129,12 +134,12 @@ public class ConfigExecution implements IQueryExecution {
   }
 
   @Override
-  public TsBlock getBatchResult() {
+  public Optional<TsBlock> getBatchResult() {
     if (!resultSetConsumed) {
       resultSetConsumed = true;
-      return resultSet;
+      return Optional.of(resultSet);
     }
-    return null;
+    return Optional.empty();
   }
 
   // According to the execution process of ConfigExecution, there is only one TsBlock for

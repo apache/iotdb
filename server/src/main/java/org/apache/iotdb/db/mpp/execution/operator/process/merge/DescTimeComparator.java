@@ -22,12 +22,12 @@ public class DescTimeComparator implements TimeComparator {
 
   /** @return if order by time desc, return true if time >= endTime, otherwise false */
   @Override
-  public boolean satisfy(long time, long endTime) {
+  public boolean satisfyCurEndTime(long time, long endTime) {
     return time >= endTime;
   }
 
   @Override
-  public long getSatisfiedTime(long time1, long time2) {
+  public long getCurrentEndTime(long time1, long time2) {
     return Math.max(time1, time2);
   }
 }

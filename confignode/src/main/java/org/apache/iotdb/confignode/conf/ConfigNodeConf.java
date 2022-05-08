@@ -20,10 +20,12 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeConf {
@@ -33,21 +35,31 @@ public class ConfigNodeConf {
 
   /** used for communication between data node and config node */
   private int rpcPort = 22277;
+
   /** used for communication between config node and config node */
-  private int internalPort = 22278;
+  private int consensusPort = 22278;
+
+  /** Used for connecting to the ConfigNodeGroup */
+  private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
+
+  /** Mark if the ConfigNode needs to apply */
+  private boolean needApply = false;
+
+  // TODO: Read from iotdb-confignode.properties
+  private int partitionRegionId = 0;
+
+  /** Used for building the PartitionRegion */
+  private List<TConfigNodeLocation> configNodeList = new ArrayList<>();
 
   /** Thrift socket and connection timeout between nodes */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
-  /** ConfigNode consensus protocol */
-  private String configNodeConsensusProtocolClass =
+  /** ConfigNodeGroup consensus protocol */
+  private final String configNodeConsensusProtocolClass =
       "org.apache.iotdb.consensus.ratis.RatisConsensus";
 
+  /** DataNode Regions consensus protocol */
   private String dataNodeConsensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
-
-  /** Used for building the ConfigNode consensus group */
-  private TEndPoint[] configNodeGroupAddressList =
-      Collections.singletonList(new TEndPoint("0.0.0.0", 22278)).toArray(new TEndPoint[0]);
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -64,9 +76,6 @@ public class ConfigNodeConf {
   /** SeriesPartitionSlot executor class */
   private String seriesPartitionExecutorClass =
       "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
-
-  /** Time partition interval in seconds */
-  private long timePartitionInterval = 604800;
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -101,6 +110,9 @@ public class ConfigNodeConf {
 
   /** Default TTL for storage groups that are not set TTL by statements, in ms. */
   private long defaultTTL = Long.MAX_VALUE;
+
+  /** Time partition interval in seconds */
+  private long timePartitionInterval = 604800;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 3;
@@ -140,6 +152,62 @@ public class ConfigNodeConf {
       }
     }
     return dir;
+  }
+
+  public String getRpcAddress() {
+    return rpcAddress;
+  }
+
+  public void setRpcAddress(String rpcAddress) {
+    this.rpcAddress = rpcAddress;
+  }
+
+  public int getRpcPort() {
+    return rpcPort;
+  }
+
+  public void setRpcPort(int rpcPort) {
+    this.rpcPort = rpcPort;
+  }
+
+  public int getConsensusPort() {
+    return consensusPort;
+  }
+
+  public void setConsensusPort(int consensusPort) {
+    this.consensusPort = consensusPort;
+  }
+
+  public boolean isNeedApply() {
+    return needApply;
+  }
+
+  public void setNeedApply(boolean needApply) {
+    this.needApply = needApply;
+  }
+
+  public TEndPoint getTargetConfigNode() {
+    return targetConfigNode;
+  }
+
+  public void setTargetConfigNode(TEndPoint targetConfigNode) {
+    this.targetConfigNode = targetConfigNode;
+  }
+
+  public int getPartitionRegionId() {
+    return partitionRegionId;
+  }
+
+  public void setPartitionRegionId(int partitionRegionId) {
+    this.partitionRegionId = partitionRegionId;
+  }
+
+  public List<TConfigNodeLocation> getConfigNodeList() {
+    return configNodeList;
+  }
+
+  public void setConfigNodeList(List<TConfigNodeLocation> configNodeList) {
+    this.configNodeList = configNodeList;
   }
 
   public int getSeriesPartitionSlotNum() {
@@ -210,30 +278,6 @@ public class ConfigNodeConf {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
-  public String getRpcAddress() {
-    return rpcAddress;
-  }
-
-  public void setRpcAddress(String rpcAddress) {
-    this.rpcAddress = rpcAddress;
-  }
-
-  public int getRpcPort() {
-    return rpcPort;
-  }
-
-  public void setRpcPort(int rpcPort) {
-    this.rpcPort = rpcPort;
-  }
-
-  public int getInternalPort() {
-    return internalPort;
-  }
-
-  public void setInternalPort(int internalPort) {
-    this.internalPort = internalPort;
-  }
-
   public int getConnectionTimeoutInMS() {
     return connectionTimeoutInMS;
   }
@@ -259,24 +303,12 @@ public class ConfigNodeConf {
     return configNodeConsensusProtocolClass;
   }
 
-  public void setConfigNodeConsensusProtocolClass(String configNodeConsensusProtocolClass) {
-    this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
-  }
-
   public String getDataNodeConsensusProtocolClass() {
     return dataNodeConsensusProtocolClass;
   }
 
   public void setDataNodeConsensusProtocolClass(String dataNodeConsensusProtocolClass) {
     this.dataNodeConsensusProtocolClass = dataNodeConsensusProtocolClass;
-  }
-
-  public TEndPoint[] getConfigNodeGroupAddressList() {
-    return configNodeGroupAddressList;
-  }
-
-  public void setConfigNodeGroupAddressList(TEndPoint[] configNodeGroupAddressList) {
-    this.configNodeGroupAddressList = configNodeGroupAddressList;
   }
 
   public int getThriftServerAwaitTimeForStopService() {
