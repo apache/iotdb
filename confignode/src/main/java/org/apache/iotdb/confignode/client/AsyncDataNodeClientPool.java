@@ -31,13 +31,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AsyncClientPool {
+/** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
+public class AsyncDataNodeClientPool {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncClientPool.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncDataNodeClientPool.class);
 
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient> clientManager;
 
-  private AsyncClientPool() {
+  private AsyncDataNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, AsyncDataNodeInternalServiceClient>()
             .createClientManager(
@@ -92,14 +93,14 @@ public class AsyncClientPool {
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
-    private static final AsyncClientPool INSTANCE = new AsyncClientPool();
+    private static final AsyncDataNodeClientPool INSTANCE = new AsyncDataNodeClientPool();
 
     private ClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncClientPool getInstance() {
+  public static AsyncDataNodeClientPool getInstance() {
     return ClientPoolHolder.INSTANCE;
   }
 }

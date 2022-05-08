@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.internal.util.collections.Sets;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -431,7 +432,7 @@ public class SchemaTreeTest {
     DeviceSchemaInfo deviceSchemaInfo = deviceSchemaInfoList.get(0);
     Assert.assertEquals(new PartialPath("root.sg.d2.a"), deviceSchemaInfo.getDevicePath());
     Assert.assertTrue(deviceSchemaInfo.isAligned());
-    Assert.assertEquals(2, deviceSchemaInfo.getMeasurements().size());
+    Assert.assertEquals(2, deviceSchemaInfo.getMeasurements(Sets.newSet("*")).size());
 
     deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.*"), false);
     Assert.assertEquals(2, deviceSchemaInfoList.size());

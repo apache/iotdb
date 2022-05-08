@@ -89,6 +89,8 @@ public class ClusterSchemaInfo {
       mTree.getStorageGroupNodeByPath(partialPathName).setStorageGroupSchema(storageGroupSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+      LOGGER.info("Successfully set StorageGroup: {}", storageGroupSchema);
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
