@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,11 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -31,16 +29,6 @@ import java.util.Arrays;
 import java.util.List;
 
 public class PartialPathTest {
-
-  @Before
-  public void setUp() {
-    EnvironmentUtils.envSetUp();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
 
   @Test
   public void testLegalPath() throws IllegalPathException {
@@ -216,7 +204,7 @@ public class PartialPathTest {
 
     PartialPath path = new PartialPath("root.sg.d.s");
     String[] patterns = {
-      "root.**", "root.**.s", "root.sg.*.s", "root.*.*.*", "root.sg.d.s", "root.s*.d.s"
+        "root.**", "root.**.s", "root.sg.*.s", "root.*.*.*", "root.sg.d.s", "root.s*.d.s"
     };
     for (String pattern : patterns) {
       Assert.assertTrue(new PartialPath(pattern).matchFullPath(path));
@@ -242,3 +230,4 @@ public class PartialPathTest {
     }
   }
 }
+
