@@ -23,13 +23,13 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -198,55 +198,14 @@ public class AuthUtils {
    * @return True if pathA is a sub pattern of pathB, e.g. pathA = "root.a.b.c" and pathB =
    *     "root.a.b.*", "root.a.**", "root.a.*.c", "root.**.c" or "root.*.b.**"
    */
-  public static boolean pathBelongsTo(String pathA, String pathB) {
-    List<String> nodeListA = spiltPath(pathA);
-    List<String> nodeListB = spiltPath(pathB);
-
-    if (nodeListA.size() < nodeListB.size()) {
-      return false;
+  public static boolean pathBelongsTo(String pathA, String pathB) throws AuthException {
+    try {
+      PartialPath partialPathA = new PartialPath(pathA);
+      PartialPath partialPathB = new PartialPath(pathB);
+      return partialPathB.matchFullPath(partialPathA);
+    } catch (IllegalPathException e) {
+      throw new AuthException(e);
     }
-
-    int a = nodeListA.size() - 1;
-    int b = nodeListB.size() - 1;
-    for (; a >= 0 && b >= 0; a--, b--) {
-      String nodeA = nodeListA.get(a);
-      String nodeB = nodeListB.get(b);
-      if (nodeB.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
-          && !nodeA.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-        continue;
-      } else if (nodeB.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-        nodeB = nodeListB.get(--b);
-        a--;
-        for (; a >= 0; a--) {
-          nodeA = nodeListA.get(a);
-          if (nodeA.equals(nodeB)) {
-            break;
-          }
-        }
-        if (a < 0) {
-          return false;
-        }
-      } else if (!nodeB.equals(nodeA)) {
-        return false;
-      }
-    }
-    return a < 0 && b < 0;
-  }
-
-  private static List<String> spiltPath(String path) {
-    List<String> nodes = new ArrayList<>();
-    for (String subPath : path.split("\\.`")) {
-      if (subPath.endsWith("`")) {
-        nodes.add(subPath.substring(0, subPath.length() - 1));
-      } else if (subPath.contains("`.")) {
-        int separatorIdx = subPath.indexOf("`.");
-        nodes.add(subPath.substring(0, separatorIdx));
-        nodes.addAll(Arrays.asList(subPath.substring(separatorIdx + 2).split("\\.")));
-      } else {
-        nodes.addAll(Arrays.asList(subPath.split("\\.")));
-      }
-    }
-    return nodes;
   }
 
   /**
@@ -258,7 +217,7 @@ public class AuthUtils {
    * @return True if privilege-check passed
    */
   public static boolean checkPrivilege(
-      String path, int privilegeId, List<PathPrivilege> privilegeList) {
+      String path, int privilegeId, List<PathPrivilege> privilegeList) throws AuthException {
     if (privilegeList == null) {
       return false;
     }
@@ -286,7 +245,8 @@ public class AuthUtils {
    *     are desired, this should be null.
    * @return The privileges granted to the role.
    */
-  public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList) {
+  public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList)
+      throws AuthException {
     if (privilegeList == null) {
       return new HashSet<>();
     }
