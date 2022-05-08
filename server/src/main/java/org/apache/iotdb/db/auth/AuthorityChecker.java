@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -126,10 +126,10 @@ public class AuthorityChecker {
     List<String> allPath = new ArrayList<>();
     if (paths != null && !paths.isEmpty()) {
       for (PartialPath path : paths) {
-        allPath.add(path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath());
+        allPath.add(path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath());
       }
     } else {
-      allPath.add(IoTDBConstant.PATH_ROOT);
+      allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE);
     }
 
     TSStatus status = checkPath(username, allPath, permission);
@@ -143,7 +143,7 @@ public class AuthorityChecker {
   private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
     try {
-      String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
+      String fullPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath();
       if (authorizerManager.checkUserPrivileges(username, fullPath, permission)) {
         return true;
       }

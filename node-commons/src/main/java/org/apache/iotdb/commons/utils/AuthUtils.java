@@ -28,6 +28,8 @@ import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,6 +44,11 @@ public class AuthUtils {
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   private static final String ENCRYPT_ALGORITHM = "MD5";
   private static final String STRING_ENCODING = "utf-8";
+
+  public static final String ROOT_PATH_PRIVILEGE =
+      IoTDBConstant.PATH_ROOT
+          + IoTDBConstant.PATH_SEPARATOR
+          + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
   private AuthUtils() {}
 
@@ -129,7 +136,7 @@ public class AuthUtils {
   public static void validatePrivilegeOnPath(String path, int privilegeId) throws AuthException {
     validatePrivilege(privilegeId);
     PrivilegeType type = PrivilegeType.values()[privilegeId];
-    if (!path.equals(IoTDBConstant.PATH_ROOT)) {
+    if (!path.equals(ROOT_PATH_PRIVILEGE)) {
       validatePath(path);
       switch (type) {
         case READ_TIMESERIES:
@@ -184,17 +191,62 @@ public class AuthUtils {
   }
 
   /**
-   * check if pathA belongs to pathB.
+   * check if pathA belongs to pathB according to path pattern.
    *
    * @param pathA sub-path
    * @param pathB path
-   * @return True if pathA == pathB, or pathA is an extension of pathB, e.g. pathA = "root.a.b.c"
-   *     and pathB = "root.a"
+   * @return True if pathA is a sub pattern of pathB, e.g. pathA = "root.a.b.c"
+   *     and pathB = "root.a.b.*", "root.a.**", "root.a.*.c", "root.**.c" or "root.*.b.**"
    */
   public static boolean pathBelongsTo(String pathA, String pathB) {
-    return pathA.equals(pathB)
-        || (pathA.startsWith(pathB)
-            && pathA.charAt(pathB.length()) == IoTDBConstant.PATH_SEPARATOR);
+    List<String> nodeListA = spiltPath(pathA);
+    List<String> nodeListB = spiltPath(pathB);
+
+    if (nodeListA.size() < nodeListB.size()) {
+      return false;
+    }
+
+    int a = nodeListA.size() - 1;
+    int b = nodeListB.size() - 1;
+    for (; a >= 0 && b >= 0; a--, b--) {
+      String nodeA = nodeListA.get(a);
+      String nodeB = nodeListB.get(b);
+      if (nodeB.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+          && !nodeA.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        continue;
+      } else if (nodeB.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        nodeB = nodeListB.get(--b);
+        a--;
+        for (; a >= 0; a--) {
+          nodeA = nodeListA.get(a);
+          if (nodeA.equals(nodeB)) {
+            break;
+          }
+        }
+        if (a < 0) {
+          return false;
+        }
+      } else if (!nodeB.equals(nodeA)) {
+        return false;
+      }
+    }
+    return a < 0 && b < 0;
+  }
+
+  private static List<String> spiltPath(String path) {
+    List<String> nodes = new ArrayList<>();
+    for (String subPath : path.split("\\.`")) {
+      if (subPath.endsWith("`")) {
+        nodes.add(subPath.substring(0, subPath.length() - 1));
+      } else if (subPath.contains("`.")) {
+        int separatorIdx = subPath.indexOf("`.");
+        nodes.add(subPath.substring(0, separatorIdx));
+        nodes.addAll(Arrays.asList(subPath.substring(separatorIdx + 2).split("\\.")));
+      } else {
+        nodes.addAll(Arrays.asList(subPath.split("\\.")));
+      }
+    }
+    return nodes;
   }
 
   /**
