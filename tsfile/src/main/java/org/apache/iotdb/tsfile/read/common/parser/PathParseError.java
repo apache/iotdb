@@ -18,16 +18,13 @@
  */
 package org.apache.iotdb.tsfile.read.common.parser;
 
-import org.apache.iotdb.tsfile.exception.PathParseException;
-
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 
 public class PathParseError extends BaseErrorListener {
   public static final PathParseError INSTANCE = new PathParseError();
-
-  private static final String ILLEGAL_PATH_MESSAGE = "Illegal path.";
 
   @Override
   public void syntaxError(
@@ -37,6 +34,6 @@ public class PathParseError extends BaseErrorListener {
       int charPositionInLine,
       String msg,
       RecognitionException e) {
-    throw new PathParseException(ILLEGAL_PATH_MESSAGE);
+    throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
   }
 }

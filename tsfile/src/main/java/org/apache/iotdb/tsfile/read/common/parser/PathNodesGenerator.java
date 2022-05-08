@@ -20,17 +20,23 @@ package org.apache.iotdb.tsfile.read.common.parser;
 
 import org.apache.iotdb.db.qp.sql.PathParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
+import org.apache.iotdb.tsfile.exception.PathParseException;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 /** convert String path to String[] nodes * */
 public class PathNodesGenerator {
-  public static String[] splitPathToNodes(String path) {
-    return invokeParser(path);
+  public static String[] splitPathToNodes(String path) throws PathParseException {
+    try {
+      return invokeParser(path);
+    } catch (ParseCancellationException e) {
+      throw new PathParseException(path);
+    }
   }
 
   private static String[] invokeParser(String path) {

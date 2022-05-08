@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.exception;
 
 public class PathParseException extends TsFileRuntimeException {
 
-  public PathParseException(String msg) {
-    super(msg);
+  public PathParseException(String path) {
+    super(String.format("%s is not a legal path", path));
   }
 }

@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -64,16 +63,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @throws IllegalPathException
    */
   public PartialPath(String path) throws IllegalPathException {
-    if ("".equals(path)) {
-      this.fullPath = path;
-      this.nodes = new String[] {""};
-      return;
-    }
-    try {
-      this.nodes = PathUtils.splitPathToDetachedPath(path);
-    } catch (PathParseException e) {
-      throw new IllegalPathException(path);
-    }
+    this.nodes = PathUtils.splitPathToDetachedPath(path);
     this.fullPath = path;
   }
 
@@ -83,12 +73,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       this.nodes = new String[] {""};
       return;
     }
-    String fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
-    try {
-      this.nodes = PathUtils.splitPathToDetachedPath(fullPath);
-    } catch (PathParseException e) {
-      throw new IllegalPathException(fullPath);
+    String fullPath;
+    if (!"".equals(device)) {
+      fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    } else {
+      fullPath = measurement;
     }
+    this.nodes = PathUtils.splitPathToDetachedPath(fullPath);
     this.fullPath = fullPath;
   }
 
