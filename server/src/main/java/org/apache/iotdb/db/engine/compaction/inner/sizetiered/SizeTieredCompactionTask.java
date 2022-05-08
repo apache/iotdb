@@ -183,13 +183,14 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       InnerSpaceCompactionUtils.deleteModificationForSourceFile(
           selectedTsFileResourceList, fullStorageGroupName);
 
-      long costTime = System.currentTimeMillis() - startTime;
+      double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
           "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
-              + "time cost is {} s",
+              + "time cost is {} s, compaction speed is {} MB/s",
           fullStorageGroupName,
           targetTsFileResource.getTsFile().getName(),
-          costTime / 1000);
+          costTime,
+          ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
 
       if (logFile.exists()) {
         FileUtils.delete(logFile);
