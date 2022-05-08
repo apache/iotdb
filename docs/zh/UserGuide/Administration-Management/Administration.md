@@ -49,7 +49,7 @@ IoTDB 为用户提供了权限管理操作，从而为用户提供对于数据�
 
 ### 创建用户
 
-使用 `CREATE USER <userName> <password>` 创建用户。我们可以为 ln 和 sgcc 集团创建两个用户角色，名为 ln_write_user, sgcc_write_user，密码均为 write_pwd。SQL 语句为：
+使用 `CREATE USER <userName> <password>` 创建用户。例如，我们可以使用具有所有权限的root用户为 ln 和 sgcc 集团创建两个用户角色，名为 ln_write_user, sgcc_write_user，密码均为 write_pwd。SQL 语句为：
 
 ```
 CREATE USER ln_write_user 'write_pwd'
@@ -90,17 +90,16 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
-INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Msg: 602: No permissions for this operation INSERT
 ```
 
-现在，我们分别赋予他们向对应存储组数据的写入权限，并再次尝试向对应的存储组进行数据写入。
+现在，我们用root用户分别赋予他们向对应存储组数据的写入权限.
 
-我们 `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` 语句赋予用户权限，例如：
+我们使用 `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` 语句赋予用户权限，例如：
+
 ```
 GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
 GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 ```
 执行状态如下所示：
 
@@ -109,27 +108,34 @@ IoTDB> GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
 IoTDB> GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 Msg: The statement is executed successfully.
+```
+
+接着使用ln_write_user再尝试写入数据
+```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 Msg: The statement is executed successfully.
 ```
 
 ### 撤销用户权限
 
-授予用户权限后，我们可以使用 `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` 来撤销已授予的用户权限。 例如：
+授予用户权限后，我们可以使用 `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` 来撤销已授予的用户权限。例如，用root用户撤销ln_write_user和sgcc_write_user的权限：
 
 ```
 REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
 REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 ```
 
 执行状态如下所示：
 
 ```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
+REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
+REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 Msg: The statement is executed successfully.
+```
+
+撤销权限后，ln_write_user就没有向root.ln.**写入数据的权限了。
+```
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 Msg: 602: No permissions for this operation INSERT
 ```
@@ -331,6 +337,6 @@ IoTDB 规定密码的字符长度不小于 4，其中密码不能包含空格，
 
 IoTDB 规定角色名的字符长度不小于 4，其中角色名不能包含空格。
 
-### 权限的路径模式
+### 权限管理中的路径模式
 
 一个路径模式的结果集包含了它的子模式的结果集的所有元素。例如，`root.sg.d.*`是`root.sg.*.*`的子模式，而`root.sg.**`不是`root.sg.*.*`的子模式。当用户被授予对某个路径模式的权限时，在他的DDL或DML中使用的模式必须是该路径模式的子模式，这保证了用户访问时间序列时不会超出他的权限范围。
