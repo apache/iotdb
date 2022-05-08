@@ -37,8 +37,6 @@ import static org.junit.Assert.fail;
 public class StandaloneEnv implements BaseEnv {
   Logger logger = LoggerFactory.getLogger(StandaloneEnv.class);
 
-  private Connection connection;
-
   @Override
   public void initBeforeClass() {
     EnvironmentUtils.envSetUp();
@@ -57,15 +55,6 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public void cleanAfterTest() {
-    if (connection != null) {
-      try {
-        connection.close();
-      } catch (SQLException e) {
-        // we can do nothing for test, but it should be checked why...
-        logger.warn("close connection failed, should check if there is errors in UT/ITs");
-      }
-      connection = null;
-    }
     try {
       EnvironmentUtils.cleanEnv();
     } catch (Exception e) {
@@ -76,40 +65,29 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public Connection getConnection() throws SQLException {
-    if (connection == null || connection.isClosed()) {
-      try {
-        Class.forName(Config.JDBC_DRIVER_NAME);
-        connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-      } catch (ClassNotFoundException e) {
-        e.printStackTrace();
-        fail();
-      }
+    try {
+      Class.forName(Config.JDBC_DRIVER_NAME);
+      return DriverManager.getConnection(
+          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+      fail();
     }
-    return connection;
+    return null;
   }
 
   @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
-    if (connection == null || connection.isClosed()) {
-      try {
-        Class.forName(Config.JDBC_DRIVER_NAME);
-        connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX
-                    + "127.0.0.1:6667"
-                    + "?"
-                    + VERSION
-                    + "="
-                    + version.toString(),
-                "root",
-                "root");
-      } catch (ClassNotFoundException e) {
-        e.printStackTrace();
-        fail();
-      }
+    try {
+      Class.forName(Config.JDBC_DRIVER_NAME);
+      return DriverManager.getConnection(
+          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667" + "?" + VERSION + "=" + version.toString(),
+          "root",
+          "root");
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+      fail();
     }
-    return connection;
+    return null;
   }
 }
