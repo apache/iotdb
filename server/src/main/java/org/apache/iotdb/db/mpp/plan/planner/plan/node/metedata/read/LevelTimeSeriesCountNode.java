@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public class LevelTimeSeriesCountNode extends SchemaScanNode {
+public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
   private final int level;
 
   public LevelTimeSeriesCountNode(

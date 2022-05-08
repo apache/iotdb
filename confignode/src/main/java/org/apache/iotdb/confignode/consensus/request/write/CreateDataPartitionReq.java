@@ -67,14 +67,15 @@ public class CreateDataPartitionReq extends ConfigRequest {
       buffer.putInt(seriesPartitionTimePartitionEntry.getValue().size());
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           timePartitionEntry : seriesPartitionTimePartitionEntry.getValue().entrySet()) {
-        ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(timePartitionEntry.getKey(), buffer);
+        ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(timePartitionEntry.getKey(), buffer);
         buffer.putInt(timePartitionEntry.getValue().size());
         for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> regionReplicaSetEntry :
             timePartitionEntry.getValue().entrySet()) {
-          ThriftCommonsSerDeUtils.writeTTimePartitionSlot(regionReplicaSetEntry.getKey(), buffer);
+          ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(
+              regionReplicaSetEntry.getKey(), buffer);
           buffer.putInt(regionReplicaSetEntry.getValue().size());
           for (TRegionReplicaSet regionReplicaSet : regionReplicaSetEntry.getValue()) {
-            ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
+            ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
           }
         }
       }
@@ -91,12 +92,12 @@ public class CreateDataPartitionReq extends ConfigRequest {
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
         TSeriesPartitionSlot seriesPartitionSlot =
-            ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
+            ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
         assignedDataPartition.get(storageGroupName).put(seriesPartitionSlot, new HashMap<>());
         int timePartitionSlotNum = buffer.getInt();
         for (int k = 0; k < timePartitionSlotNum; k++) {
           TTimePartitionSlot timePartitionSlot =
-              ThriftCommonsSerDeUtils.readTTimePartitionSlot(buffer);
+              ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
           assignedDataPartition
               .get(storageGroupName)
               .get(seriesPartitionSlot)
@@ -107,7 +108,7 @@ public class CreateDataPartitionReq extends ConfigRequest {
                 .get(storageGroupName)
                 .get(seriesPartitionSlot)
                 .get(timePartitionSlot)
-                .add(ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer));
+                .add(ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer));
           }
         }
       }

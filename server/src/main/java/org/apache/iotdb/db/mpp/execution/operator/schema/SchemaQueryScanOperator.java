@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-public abstract class SchemaScanOperator implements SourceOperator {
+public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   protected OperatorContext operatorContext;
   protected TsBlock tsBlock;
@@ -37,7 +37,7 @@ public abstract class SchemaScanOperator implements SourceOperator {
 
   protected PlanNodeId sourceId;
 
-  protected SchemaScanOperator(
+  protected SchemaQueryScanOperator(
       PlanNodeId sourceId,
       OperatorContext operatorContext,
       int limit,

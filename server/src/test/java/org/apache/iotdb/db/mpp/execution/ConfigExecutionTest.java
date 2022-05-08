@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -45,6 +44,8 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class ConfigExecutionTest {
 
@@ -55,7 +56,7 @@ public class ConfigExecutionTest {
         new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
     execution.start();
     ExecutionResult result = execution.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
   }
 
   @Test
@@ -77,10 +78,12 @@ public class ConfigExecutionTest {
     ExecutionResult result = execution.getStatus();
     TsBlock tsBlockFromExecution = null;
     if (execution.hasNextResult()) {
-      tsBlockFromExecution = execution.getBatchResult();
+      Optional<TsBlock> optionalTsBlock = execution.getBatchResult();
+      assertTrue(optionalTsBlock.isPresent());
+      tsBlockFromExecution = optionalTsBlock.get();
     }
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
-    Assert.assertEquals(tsBlock, tsBlockFromExecution);
+    assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
+    assertEquals(tsBlock, tsBlockFromExecution);
   }
 
   @Test
@@ -93,7 +96,7 @@ public class ConfigExecutionTest {
         new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
     execution.start();
     ExecutionResult result = execution.getStatus();
-    Assert.assertEquals(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), result.status.code);
+    assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
   }
 
   @Test
@@ -120,8 +123,7 @@ public class ConfigExecutionTest {
         new Thread(
             () -> {
               ExecutionResult result = execution.getStatus();
-              Assert.assertEquals(
-                  TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
+              assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
             });
     resultThread.start();
     taskResult.cancel(true);
@@ -140,8 +142,7 @@ public class ConfigExecutionTest {
         new Thread(
             () -> {
               ExecutionResult result = execution.getStatus();
-              Assert.assertEquals(
-                  TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
+              assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
             });
     resultThread.start();
     execution.start();
@@ -154,7 +155,7 @@ public class ConfigExecutionTest {
       // Assert.fail("InterruptedException should be threw here");
     } catch (InterruptedException e) {
       ExecutionResult result = execution.getStatus();
-      Assert.assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
+      assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
       execution.stop();
     }
   }

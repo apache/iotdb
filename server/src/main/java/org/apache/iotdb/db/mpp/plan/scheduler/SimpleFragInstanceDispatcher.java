@@ -74,7 +74,6 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
               LOGGER.error("can't connect to node {}", endPoint, e);
               throw e;
             }
-
             if (!resp.accepted) {
               break;
             }
