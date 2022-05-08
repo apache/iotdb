@@ -22,6 +22,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public abstract class LinearFill {
 
   // whether previous value is null
@@ -30,8 +32,6 @@ public abstract class LinearFill {
   protected long nextTime = Long.MIN_VALUE;
 
   protected long nextTimeInCurrentColumn;
-  // whether next value is null
-  protected boolean noMoreNext = false;
 
   /**
    * Before we call this method, we need to make sure the nextValue has been prepared or noMoreNext
@@ -102,7 +102,7 @@ public abstract class LinearFill {
    *     information, and we can directly call fill() function
    */
   public boolean needPrepareForNext(long time, Column valueColumn) {
-    return !noMoreNext && time > nextTime && valueColumn.isNull(valueColumn.getPositionCount() - 1);
+    return time > nextTime && valueColumn.isNull(valueColumn.getPositionCount() - 1);
   }
 
   /**
@@ -114,6 +114,9 @@ public abstract class LinearFill {
    *     current column, and still need to keep getting next TsBlock and then call prepareForNext
    */
   public boolean prepareForNext(long time, TimeColumn nextTimeColumn, Column nextValueColumn) {
+    checkArgument(
+        nextTimeColumn.getPositionCount() > 0 && nextTimeColumn.getLong(0) > time,
+        "nextColumn's time should be greater than current time");
     if (time <= nextTime) {
       return true;
     }
@@ -126,11 +129,6 @@ public abstract class LinearFill {
       }
     }
     return false;
-  }
-
-  /** no more next column */
-  public void setNoMoreData() {
-    this.noMoreNext = true;
   }
 
   private boolean nextIsNull(long time) {
