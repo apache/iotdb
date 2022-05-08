@@ -52,4 +52,8 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSchemaFetchMerge(this, context);
   }
+
+  public String toString() {
+    return String.format("SchemaFetchNode-%s", getPlanNodeId());
+  }
 }

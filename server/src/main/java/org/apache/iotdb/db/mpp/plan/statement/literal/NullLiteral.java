@@ -17,33 +17,38 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.crud;
+package org.apache.iotdb.db.mpp.plan.statement.literal;
 
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class GroupByFillQueryStatement extends GroupByQueryStatement {
+import java.nio.ByteBuffer;
 
-  FillComponent fillComponent;
+public class NullLiteral extends Literal {
 
-  public GroupByFillQueryStatement() {
-    super();
-  }
-
-  public GroupByFillQueryStatement(QueryStatement queryStatement) {
-    super(queryStatement);
-  }
-
-  public FillComponent getFillComponent() {
-    return fillComponent;
-  }
-
-  public void setFillComponent(FillComponent fillComponent) {
-    this.fillComponent = fillComponent;
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(LiteralType.NULL.ordinal(), byteBuffer);
   }
 
   @Override
-  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitGroupByFillQuery(this, context);
+  public boolean isDataTypeConsistency(TSDataType dataType) {
+    return false;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    return getClass().hashCode();
   }
 }

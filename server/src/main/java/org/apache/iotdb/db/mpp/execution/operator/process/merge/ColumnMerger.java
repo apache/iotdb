@@ -32,7 +32,7 @@ public interface ColumnMerger {
    * @return true if TsBlock at tsBlockIndex is null or its current read index is larger than its
    *     size
    */
-  default boolean empty(int tsBlockIndex, TsBlock[] inputTsBlocks, int[] inputIndex) {
+  static boolean empty(int tsBlockIndex, TsBlock[] inputTsBlocks, int[] inputIndex) {
     return inputTsBlocks[tsBlockIndex] == null
         || inputTsBlocks[tsBlockIndex].getPositionCount() == inputIndex[tsBlockIndex];
   }
