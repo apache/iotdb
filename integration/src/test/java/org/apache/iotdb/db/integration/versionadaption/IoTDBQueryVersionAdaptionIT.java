@@ -27,6 +27,7 @@ import org.apache.iotdb.jdbc.Constant;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -52,6 +53,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@Ignore // No longer forward compatible since v0.14
 public class IoTDBQueryVersionAdaptionIT {
 
   private static String[] sqls =

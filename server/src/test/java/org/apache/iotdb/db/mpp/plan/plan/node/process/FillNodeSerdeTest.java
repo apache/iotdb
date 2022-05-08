@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.mpp.plan.plan.node.process;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
@@ -27,12 +26,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.statement.literal.LongLiteral;
 
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 
@@ -46,9 +44,7 @@ public class FillNodeSerdeTest {
         new FillNode(
             new PlanNodeId("TestFillNode"),
             timeJoinNode,
-            Collections.singletonList(
-                new FillDescriptor(
-                    FillPolicy.PREVIOUS, new TimeSeriesOperand(new PartialPath("root.sg.d1.s1")))));
+            new FillDescriptor(FillPolicy.VALUE, new LongLiteral("100")));
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fillNode.serialize(byteBuffer);
