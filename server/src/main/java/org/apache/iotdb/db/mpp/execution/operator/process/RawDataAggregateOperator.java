@@ -102,7 +102,11 @@ public class RawDataAggregateOperator implements ProcessOperator {
 
     // 2. Calculate aggregation result based on current time window
     while (!calcFromCacheData(curTimeRange)) {
-      preCachedData = child.next();
+      if (child.hasNext()) {
+        preCachedData = child.next();
+      } else {
+        break;
+      }
     }
 
     // 3. Update result using aggregators
@@ -189,5 +193,9 @@ public class RawDataAggregateOperator implements ProcessOperator {
       }
     }
     return true;
+  }
+
+  private boolean isTsBlockEmpty(TsBlock tsBlock) {
+    return tsBlock == null || tsBlock.getPositionCount() == 0;
   }
 }

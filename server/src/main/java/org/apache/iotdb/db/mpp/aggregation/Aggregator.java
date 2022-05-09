@@ -66,7 +66,7 @@ public class Aggregator {
     } else {
       for (InputLocation[] inputLocations : inputLocationList) {
         checkArgument(
-            inputLocations[0].getTsBlockIndex() == 1,
+            inputLocations[0].getTsBlockIndex() == 0,
             "RawDataAggregateOperator can only process one tsBlock input.");
         Column[] timeValueColumn = new Column[2];
         timeValueColumn[0] = tsBlock.getTimeColumn();

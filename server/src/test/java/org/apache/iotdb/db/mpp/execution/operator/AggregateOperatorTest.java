@@ -190,12 +190,14 @@ public class AggregateOperatorTest {
 
   @Test
   public void testGroupByIntermediateResult2() throws IllegalPathException {
-    int[][] result =
-        new int[][] {
+    double[][] result =
+        new double[][] {
+          {20049.5, 20149.5, 6249.5, 8349.5},
           {20000, 20100, 10200, 10300},
-          {20099, 20199, 299, 399}
+          {20099, 20199, 299, 399},
         };
     List<AggregationType> aggregationTypes = new ArrayList<>();
+    aggregationTypes.add(AggregationType.AVG);
     aggregationTypes.add(AggregationType.FIRST_VALUE);
     aggregationTypes.add(AggregationType.LAST_VALUE);
     GroupByTimeParameter groupByTimeParameter = new GroupByTimeParameter(0, 399, 100, 100, true);
@@ -214,8 +216,9 @@ public class AggregateOperatorTest {
     while (aggregateOperator.hasNext()) {
       TsBlock resultTsBlock = aggregateOperator.next();
       assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][count], resultTsBlock.getColumn(0).getInt(0));
-      assertEquals(result[1][count], resultTsBlock.getColumn(1).getInt(0));
+      assertEquals(result[0][count], resultTsBlock.getColumn(0).getDouble(0), 0.001);
+      assertEquals((int) result[1][count], resultTsBlock.getColumn(1).getInt(0));
+      assertEquals((int) result[2][count], resultTsBlock.getColumn(2).getInt(0));
       count++;
     }
     assertEquals(4, count);
@@ -223,7 +226,7 @@ public class AggregateOperatorTest {
 
   /**
    * @param aggregationTypes Aggregation function used in test
-   * @param groupByTimeParameter
+   * @param groupByTimeParameter group by time parameter
    * @param inputLocations each inputLocation is used in one aggregator
    */
   private AggregateOperator initAggregateOperator(
