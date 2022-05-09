@@ -53,7 +53,7 @@ public class CreateRegionsReq extends ConfigRequest {
 
     buffer.putInt(regionReplicaSets.size());
     for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-      ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
+      ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
     }
   }
 
@@ -61,7 +61,7 @@ public class CreateRegionsReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
-      regionReplicaSets.add(ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer));
+      regionReplicaSets.add(ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer));
     }
   }
 

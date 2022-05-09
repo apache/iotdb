@@ -82,7 +82,7 @@ public class StandAloneConsensusTest {
     }
   }
 
-  private static class TestStateMachine implements IStateMachine {
+  private static class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
     private final boolean direction;
 

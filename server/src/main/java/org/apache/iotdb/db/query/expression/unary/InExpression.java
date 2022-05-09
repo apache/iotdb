@@ -51,6 +51,14 @@ public class InExpression extends UnaryExpression {
     }
   }
 
+  public boolean isNotIn() {
+    return isNotIn;
+  }
+
+  public LinkedHashSet<String> getValues() {
+    return values;
+  }
+
   @Override
   protected String getExpressionStringInternal() {
     StringBuilder valuesStringBuilder = new StringBuilder();

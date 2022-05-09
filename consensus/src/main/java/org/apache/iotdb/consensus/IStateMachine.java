@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.File;
+import java.util.List;
 import java.util.function.Function;
 
 @ThreadSafe
@@ -54,7 +57,7 @@ public interface IStateMachine {
 
   /**
    * Take a snapshot of current statemachine. All files are required to be stored under snapshotDir,
-   * which is a sub-directory of the StorageDir in Consensus
+   * which is a subdirectory of the StorageDir in Consensus
    *
    * @param snapshotDir required storage dir
    * @return true if snapshot is successfully taken
@@ -67,4 +70,39 @@ public interface IStateMachine {
    * @param latestSnapshotRootDir dir where the latest snapshot sits
    */
   void loadSnapshot(File latestSnapshotRootDir);
+
+  /** An optional API for event notifications. */
+  interface EventApi {
+    /**
+     * Notify the {@link IStateMachine} that a new leader has been elected. Note that the new leader
+     * can possibly be this server.
+     *
+     * @param groupId The id of this consensus group.
+     * @param newLeader The id of the new leader.
+     */
+    default void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {}
+
+    /**
+     * Notify the {@link IStateMachine} a configuration change. This method will be invoked when a
+     * newConfiguration is processed.
+     *
+     * @param term term of the current log entry
+     * @param index index which is being updated
+     * @param newConfiguration new configuration
+     */
+    default void notifyConfigurationChanged(long term, long index, List<Peer> newConfiguration) {}
+  }
+
+  /**
+   * Get the {@link IStateMachine.EventApi} object.
+   *
+   * <p>If this {@link IStateMachine} chooses to support the optional {@link
+   * IStateMachine.EventApi}, it may either implement {@link IStateMachine.EventApi} directly or
+   * override this method to return an {@link IStateMachine.EventApi} object.
+   *
+   * @return The {@link IStateMachine.EventApi} object.
+   */
+  default IStateMachine.EventApi event() {
+    return (IStateMachine.EventApi) this;
+  }
 }

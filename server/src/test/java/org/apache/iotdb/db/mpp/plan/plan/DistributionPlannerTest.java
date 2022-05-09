@@ -43,7 +43,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
@@ -147,7 +147,7 @@ public class DistributionPlannerTest {
   @Test
   public void testRewriteMetaSourceNode() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query");
-    SeriesSchemaMergeNode metaMergeNode = new SeriesSchemaMergeNode(queryId.genPlanNodeId(), false);
+    SchemaQueryMergeNode metaMergeNode = new SchemaQueryMergeNode(queryId.genPlanNodeId(), false);
     metaMergeNode.addChild(
         new TimeSeriesSchemaScanNode(
             queryId.genPlanNodeId(),

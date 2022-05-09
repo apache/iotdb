@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
@@ -109,7 +108,7 @@ public class AuthorizerConfigTask implements IConfigTask {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (IoTDBConnectionException e) {
       LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     } finally {
@@ -169,7 +168,7 @@ public class AuthorizerConfigTask implements IConfigTask {
         future.set(
             new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
       }
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (IoTDBConnectionException e) {
       LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     } finally {

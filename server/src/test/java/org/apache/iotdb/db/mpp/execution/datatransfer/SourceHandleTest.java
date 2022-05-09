@@ -536,6 +536,7 @@ public class SourceHandleTest {
             mockTsBlockSerde,
             mockSourceHandleListener,
             mockClientManager);
+    sourceHandle.setRetryIntervalInMs(0L);
     Future<?> blocked = sourceHandle.isBlocked();
     Assert.assertFalse(blocked.isDone());
     Assert.assertFalse(sourceHandle.isAborted());

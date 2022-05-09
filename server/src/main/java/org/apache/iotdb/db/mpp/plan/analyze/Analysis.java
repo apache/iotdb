@@ -25,24 +25,24 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Analysis used for planning a query. TODO: This class may need to store more info for a query. */
 public class Analysis {
-  // Description for each series. Such as dataType, existence
-
-  // Data distribution info for each series. Series -> [DataRegion, DataRegion]
-
-  // Map<PartialPath, List<FullPath>> Used to remove asterisk
 
   // Statement
   private Statement statement;
 
-  // indicate whether this statement is write or read
+  // indicate whether this statement is `WRITE` or `READ`
   private QueryType queryType;
 
   private DataPartition dataPartition;
@@ -51,12 +51,42 @@ public class Analysis {
 
   private SchemaTree schemaTree;
 
-  private IExpression queryFilter;
+  // map from output column name (for every node) to its datatype
+  private TypeProvider typeProvider;
+
+  // map from device name to series/aggregation under this device
+  private Map<String, Set<Expression>> sourceExpressions;
+
+  //
+  private Set<Expression> selectExpressions;
+
+  // all aggregations that need to be calculated
+  private Map<String, Set<Expression>> AggregationExpressions;
+
+  // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
+  private Map<Expression, Set<Expression>> groupByLevelExpressions;
+
+  // parameter of `WITHOUT NULL` clause
+  private FilterNullParameter filterNullParameter;
+
+  // parameter of `FILL` clause
+  private FillDescriptor fillDescriptor;
+
+  // parameter of `GROUP BY TIME` clause
+  private GroupByTimeParameter groupByTimeParameter;
+
+  private Expression queryFilter;
+
+  private Map<String, Expression> deviceToQueryFilter;
+
+  // indicate is there a value filter
+  private boolean hasValueFilter = false;
+
+  // a global time filter used in `initQueryDataSource`
+  private Filter globalTimeFilter;
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
-
-  private TypeProvider typeProvider;
 
   public Analysis() {}
 
@@ -97,12 +127,12 @@ public class Analysis {
     this.schemaTree = schemaTree;
   }
 
-  public IExpression getQueryFilter() {
-    return queryFilter;
+  public Filter getGlobalTimeFilter() {
+    return globalTimeFilter;
   }
 
-  public void setQueryFilter(IExpression expression) {
-    this.queryFilter = expression;
+  public void setGlobalTimeFilter(Filter timeFilter) {
+    this.globalTimeFilter = timeFilter;
   }
 
   public DatasetHeader getRespDatasetHeader() {
@@ -124,5 +154,85 @@ public class Analysis {
   public boolean hasDataSource() {
     return (dataPartition != null && !dataPartition.isEmpty())
         || (schemaPartition != null && !schemaPartition.isEmpty());
+  }
+
+  public Map<String, Set<Expression>> getSourceExpressions() {
+    return sourceExpressions;
+  }
+
+  public void setSourceExpressions(Map<String, Set<Expression>> sourceExpressions) {
+    this.sourceExpressions = sourceExpressions;
+  }
+
+  public Set<Expression> getSelectExpressions() {
+    return selectExpressions;
+  }
+
+  public void setSelectExpressions(Set<Expression> selectExpressions) {
+    this.selectExpressions = selectExpressions;
+  }
+
+  public Map<String, Set<Expression>> getAggregationExpressions() {
+    return AggregationExpressions;
+  }
+
+  public void setAggregationExpressions(Map<String, Set<Expression>> aggregationExpressions) {
+    AggregationExpressions = aggregationExpressions;
+  }
+
+  public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
+    return groupByLevelExpressions;
+  }
+
+  public void setGroupByLevelExpressions(Map<Expression, Set<Expression>> groupByLevelExpressions) {
+    this.groupByLevelExpressions = groupByLevelExpressions;
+  }
+
+  public FilterNullParameter getFilterNullParameter() {
+    return filterNullParameter;
+  }
+
+  public void setFilterNullParameter(FilterNullParameter filterNullParameter) {
+    this.filterNullParameter = filterNullParameter;
+  }
+
+  public FillDescriptor getFillDescriptor() {
+    return fillDescriptor;
+  }
+
+  public void setFillDescriptor(FillDescriptor fillDescriptor) {
+    this.fillDescriptor = fillDescriptor;
+  }
+
+  public boolean isHasValueFilter() {
+    return hasValueFilter;
+  }
+
+  public void setHasValueFilter(boolean hasValueFilter) {
+    this.hasValueFilter = hasValueFilter;
+  }
+
+  public Expression getQueryFilter() {
+    return queryFilter;
+  }
+
+  public void setQueryFilter(Expression queryFilter) {
+    this.queryFilter = queryFilter;
+  }
+
+  public Map<String, Expression> getDeviceToQueryFilter() {
+    return deviceToQueryFilter;
+  }
+
+  public void setDeviceToQueryFilter(Map<String, Expression> deviceToQueryFilter) {
+    this.deviceToQueryFilter = deviceToQueryFilter;
+  }
+
+  public GroupByTimeParameter getGroupByTimeParameter() {
+    return groupByTimeParameter;
+  }
+
+  public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
+    this.groupByTimeParameter = groupByTimeParameter;
   }
 }

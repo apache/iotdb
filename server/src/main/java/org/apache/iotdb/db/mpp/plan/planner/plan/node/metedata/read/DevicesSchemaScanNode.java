@@ -30,7 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public class DevicesSchemaScanNode extends SchemaScanNode {
+public class DevicesSchemaScanNode extends SchemaQueryScanNode {
 
   private final boolean hasSgCol;
 

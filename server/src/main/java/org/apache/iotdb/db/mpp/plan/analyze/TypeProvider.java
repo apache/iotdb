@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class TypeProvider {
 
@@ -40,11 +41,10 @@ public class TypeProvider {
   }
 
   public TSDataType getType(String path) {
-    TSDataType type = typeMap.get(path);
-    if (type == null) {
+    if (!typeMap.containsKey(path)) {
       throw new StatementAnalyzeException(String.format("no data type found for path: %s", path));
     }
-    return type;
+    return typeMap.get(path);
   }
 
   public void setType(String path, TSDataType dataType) {
@@ -73,5 +73,22 @@ public class TypeProvider {
       mapSize--;
     }
     return new TypeProvider(typeMap);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TypeProvider that = (TypeProvider) o;
+    return Objects.equals(typeMap, that.typeMap);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(typeMap);
   }
 }
