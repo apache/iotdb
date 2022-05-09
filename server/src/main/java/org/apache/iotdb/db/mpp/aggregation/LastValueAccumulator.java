@@ -139,6 +139,7 @@ public class LastValueAccumulator implements Accumulator {
     checkArgument(columnBuilders.length == 2, "partialResult of LastValue should be 2");
     if (!initResult) {
       columnBuilders[0].appendNull();
+      columnBuilders[1].appendNull();
       return;
     }
     switch (seriesDataType) {

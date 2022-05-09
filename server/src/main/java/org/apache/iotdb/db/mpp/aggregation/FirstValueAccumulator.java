@@ -140,6 +140,7 @@ public class FirstValueAccumulator implements Accumulator {
     checkArgument(columnBuilders.length == 2, "partialResult of FirstValue should be 2");
     if (!hasCandidateResult) {
       columnBuilders[0].appendNull();
+      columnBuilders[1].appendNull();
       return;
     }
     switch (seriesDataType) {
