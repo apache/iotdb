@@ -20,7 +20,6 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -107,7 +106,6 @@ import static org.apache.iotdb.db.service.basic.ServiceProvider.CURRENT_RPC_VERS
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_FREQUENCY_RECORDER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.QUERY_TIME_MANAGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.SLOW_SQL_LOGGER;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
@@ -301,8 +299,6 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
               SCHEMA_FETCHER);
 
       return result.status;
-    } catch (IoTDBException e) {
-      return onIoTDBException(e, OperationType.CREATE_TIMESERIES, e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
