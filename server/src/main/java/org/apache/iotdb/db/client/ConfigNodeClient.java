@@ -92,13 +92,13 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   ClientManager<ConsensusGroupId, ConfigNodeClient> clientManager;
 
-  ConsensusGroupId consensusGroupId;
+  ConsensusGroupId consensusGroupId = ConfigNodeInfo.partitionRegionId;
 
   TProtocolFactory protocolFactory;
 
   public ConfigNodeClient() throws TException {
     // Read config nodes from configuration
-    configNodes = IoTDBDescriptor.getInstance().getConfig().getConfigNodeList();
+    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     protocolFactory =
         IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
             ? new TCompactProtocol.Factory()
@@ -112,7 +112,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
       int connectionTimeout,
       ClientManager<ConsensusGroupId, ConfigNodeClient> clientManager)
       throws TException {
-    configNodes = IoTDBDescriptor.getInstance().getConfig().getConfigNodeList();
+    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     this.protocolFactory = protocolFactory;
     this.connectionTimeout = connectionTimeout;
     this.clientManager = clientManager;
@@ -139,6 +139,16 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   private void reconnect() throws TException {
+    try {
+      tryToConnect();
+    } catch (TException e) {
+      // can not connect to each config node
+      syncLatestConfigNodeList();
+      tryToConnect();
+    }
+  }
+
+  private void tryToConnect() throws TException {
     if (configLeader != null) {
       try {
         connect(configLeader);
@@ -170,6 +180,11 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   public TTransport getTransport() {
     return transport;
+  }
+
+  public void syncLatestConfigNodeList() {
+    configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
+    cursor = 0;
   }
 
   @Override
