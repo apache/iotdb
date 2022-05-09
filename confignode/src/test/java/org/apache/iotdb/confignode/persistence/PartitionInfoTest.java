@@ -52,6 +52,22 @@ public class PartitionInfoTest {
   private static PartitionInfo partitionInfo;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
+  enum testFlag {
+    RegionReplica(10),
+    DataPartition(20),
+    SchemaPartition(30);
+
+    private final int flag;
+
+    testFlag(int flag) {
+      this.flag = flag;
+    }
+
+    public int getFlag() {
+      return flag;
+    }
+  }
+
   @BeforeClass
   public static void setup() {
     partitionInfo = PartitionInfo.getInstance();
@@ -76,16 +92,22 @@ public class PartitionInfoTest {
     CreateRegionsReq createRegionsReq = new CreateRegionsReq();
 
     TRegionReplicaSet tRegionReplicaSet =
-        generateTRegionReplicaSet(1, generateTConsensusGroupId(1));
+        generateTRegionReplicaSet(
+            testFlag.RegionReplica.getFlag(),
+            generateTConsensusGroupId(testFlag.RegionReplica.getFlag()));
     createRegionsReq.addRegion(tRegionReplicaSet);
     partitionInfo.createRegions(createRegionsReq);
 
     CreateSchemaPartitionReq createSchemaPartitionReq =
-        generateCreateSchemaPartitionReq(10, generateTConsensusGroupId(10));
+        generateCreateSchemaPartitionReq(
+            testFlag.SchemaPartition.getFlag(),
+            generateTConsensusGroupId(testFlag.SchemaPartition.getFlag()));
     partitionInfo.createSchemaPartition(createSchemaPartitionReq);
 
     CreateDataPartitionReq createDataPartitionReq =
-        generateCreateDataPartitionReq(20, generateTConsensusGroupId(20));
+        generateCreateDataPartitionReq(
+            testFlag.DataPartition.getFlag(),
+            generateTConsensusGroupId(testFlag.DataPartition.getFlag()));
     partitionInfo.createDataPartition(createDataPartitionReq);
     int nextId = partitionInfo.getNextRegionGroupId();
 
@@ -96,7 +118,8 @@ public class PartitionInfoTest {
     Assert.assertEquals(nextId, (int) partitionInfo.getNextRegionGroupId());
 
     List<TRegionReplicaSet> reloadTRegionReplicaSet =
-        partitionInfo.getRegionReplicaSets(Collections.singletonList(generateTConsensusGroupId(1)));
+        partitionInfo.getRegionReplicaSets(
+            Collections.singletonList(generateTConsensusGroupId(testFlag.RegionReplica.getFlag())));
     Assert.assertEquals(1, reloadTRegionReplicaSet.size());
     Assert.assertEquals(tRegionReplicaSet, reloadTRegionReplicaSet.get(0));
 

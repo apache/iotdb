@@ -258,13 +258,14 @@ public class DataPartition extends Partition {
             new TIOStreamTransport(byteArrayOutputStream)) {
           TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
           for (Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-              entry1 : entry.getValue().entrySet()) {
-            entry1.getKey().write(protocol);
-            for (Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry2 :
-                entry1.getValue().entrySet()) {
-              entry2.getKey().write(protocol);
-              ReadWriteIOUtils.write(entry2.getValue().size(), byteArrayOutputStream);
-              entry2
+              seriesPartitionSlotMapEntry : entry.getValue().entrySet()) {
+            seriesPartitionSlotMapEntry.getKey().write(protocol);
+            for (Entry<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListEntry :
+                seriesPartitionSlotMapEntry.getValue().entrySet()) {
+              timePartitionSlotListEntry.getKey().write(protocol);
+              ReadWriteIOUtils.write(
+                  timePartitionSlotListEntry.getValue().size(), byteArrayOutputStream);
+              timePartitionSlotListEntry
                   .getValue()
                   .forEach(
                       x -> {
@@ -308,12 +309,13 @@ public class DataPartition extends Partition {
           tRegionMessageList.add(tRegionReplicaSet);
           size--;
         }
-        Map<TTimePartitionSlot, List<TRegionReplicaSet>> re1 = new HashMap<>();
-        re1.put(tTimePartitionSlot, tRegionMessageList);
-        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> re2 =
+        Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListHashMap =
             new HashMap<>();
-        re2.put(tSeriesPartitionSlot, re1);
-        dataPartitionMap.put(storageGroup, re2);
+        timePartitionSlotListHashMap.put(tTimePartitionSlot, tRegionMessageList);
+        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+            seriesPartitionSlotMapHashMap = new HashMap<>();
+        seriesPartitionSlotMapHashMap.put(tSeriesPartitionSlot, timePartitionSlotListHashMap);
+        dataPartitionMap.put(storageGroup, seriesPartitionSlotMapHashMap);
       }
     }
   }

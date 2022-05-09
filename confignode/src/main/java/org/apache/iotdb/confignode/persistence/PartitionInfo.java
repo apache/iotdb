@@ -83,7 +83,7 @@ public class PartitionInfo {
   // The size of the buffer used for snapshot(temporary value)
   private final int bufferSize = 10 * 1024 * 1024;
 
-  private final String snapshotFileName = "PartitionInfo.st";
+  private final String snapshotFileName = "partition_info.bin";
 
   private PartitionInfo() {
     this.regionReadWriteLock = new ReentrantReadWriteLock();
