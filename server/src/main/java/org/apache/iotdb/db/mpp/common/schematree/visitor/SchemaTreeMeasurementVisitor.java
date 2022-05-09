@@ -55,12 +55,17 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
   }
 
   @Override
+  protected boolean processInternalMatchedNode(SchemaNode node) {
+    return true;
+  }
+
+  @Override
   protected boolean processFullMatchedNode(SchemaNode node) {
     if (node.isMeasurement()) {
       nextMatchedNode = node;
-      return true;
+      return false;
     }
-    return false;
+    return true;
   }
 
   @Override

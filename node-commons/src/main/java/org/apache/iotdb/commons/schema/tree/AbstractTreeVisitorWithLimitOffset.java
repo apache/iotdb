@@ -98,9 +98,4 @@ public abstract class AbstractTreeVisitorWithLimitOffset<N extends ITreeNode, R>
   public int getNextOffset() {
     return curOffset + 1;
   }
-
-  @Override
-  protected boolean processInternalMatchedNode(N node) {
-    return false;
-  }
 }

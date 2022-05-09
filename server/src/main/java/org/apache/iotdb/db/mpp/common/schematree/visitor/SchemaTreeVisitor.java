@@ -44,8 +44,8 @@ public abstract class SchemaTreeVisitor<R>
   }
 
   @Override
-  protected boolean isLeafNode(SchemaNode node) {
-    return node.isMeasurement();
+  protected boolean isInternalNode(SchemaNode node) {
+    return !node.isMeasurement();
   }
 
   @Override
