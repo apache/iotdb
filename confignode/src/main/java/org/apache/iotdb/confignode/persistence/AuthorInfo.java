@@ -361,16 +361,14 @@ public class AuthorInfo implements SnapshotProcessor {
         systemFileFactory.getFile(roleSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
 
     boolean result = true;
-    synchronized (IAuthorizer.class) {
-      try {
-        result &= copyDir(userFolder, userTmpSnapshotDir);
-        result &= copyDir(roleFolder, roleTmpSnapshotDir);
-        result &= userTmpSnapshotDir.renameTo(userSnapshotDir);
-        result &= roleTmpSnapshotDir.renameTo(roleSnapshotDir);
-      } finally {
-        userTmpSnapshotDir.delete();
-        roleTmpSnapshotDir.delete();
-      }
+    try {
+      result &= copyDir(userFolder, userTmpSnapshotDir);
+      result &= copyDir(roleFolder, roleTmpSnapshotDir);
+      result &= userTmpSnapshotDir.renameTo(userSnapshotDir);
+      result &= roleTmpSnapshotDir.renameTo(roleSnapshotDir);
+    } finally {
+      userTmpSnapshotDir.delete();
+      roleTmpSnapshotDir.delete();
     }
     return result;
   }
@@ -387,22 +385,20 @@ public class AuthorInfo implements SnapshotProcessor {
         systemFileFactory.getFile(roleFolder.getAbsolutePath() + "-" + UUID.randomUUID());
     File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, roleSnapshotFileName);
 
-    synchronized (IAuthorizer.class) {
-      try {
-        userFolder.renameTo(userTmpFolder);
-        roleFolder.renameTo(roleTmpFolder);
-        if (!(copyDir(userSnapshotDir, userFolder) & copyDir(roleSnapshotDir, roleFolder))) {
-          logger.error("Failed to load snapshot and rollback.");
-          // rollback if failed to copy
-          FileUtils.deleteDirectory(userFolder);
-          FileUtils.deleteDirectory(roleFolder);
-          userTmpFolder.renameTo(userFolder);
-          roleTmpFolder.renameTo(roleFolder);
-        }
-      } finally {
-        FileUtils.deleteDirectory(userTmpFolder);
-        FileUtils.deleteDirectory(roleTmpFolder);
+    try {
+      userFolder.renameTo(userTmpFolder);
+      roleFolder.renameTo(roleTmpFolder);
+      if (!(copyDir(userSnapshotDir, userFolder) & copyDir(roleSnapshotDir, roleFolder))) {
+        logger.error("Failed to load snapshot and rollback.");
+        // rollback if failed to copy
+        FileUtils.deleteDirectory(userFolder);
+        FileUtils.deleteDirectory(roleFolder);
+        userTmpFolder.renameTo(userFolder);
+        roleTmpFolder.renameTo(roleFolder);
       }
+    } finally {
+      FileUtils.deleteDirectory(userTmpFolder);
+      FileUtils.deleteDirectory(roleTmpFolder);
     }
   }
 
