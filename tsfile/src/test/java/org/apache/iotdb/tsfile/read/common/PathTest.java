@@ -95,7 +95,7 @@ public class PathTest {
 
     try {
       // key word with out `
-     new Path("root.select", true);
+      new Path("root.select", true);
       fail();
     } catch (PathParseException ignored) {
     }

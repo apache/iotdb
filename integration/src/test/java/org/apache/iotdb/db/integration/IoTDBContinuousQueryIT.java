@@ -62,8 +62,8 @@ public class IoTDBContinuousQueryIT {
         @Override
         public void run() {
           try (Connection connection =
-              DriverManager.getConnection(
-                  Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+                  DriverManager.getConnection(
+                      Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
               Statement statement = connection.createStatement()) {
             do {
               for (PartialPath partialPath : partialPathArray) {
@@ -129,14 +129,14 @@ public class IoTDBContinuousQueryIT {
   public void testCreateAndDropContinuousQuery() throws Exception {
     createTimeSeries(
         new String[] {
-            "root.ln.wf01.wt01.ws01.temperature",
-            "root.ln.wf01.wt01.ws02.temperature",
-            "root.ln.wf01.wt02.ws01.temperature",
-            "root.ln.wf01.wt02.ws02.temperature",
-            "root.ln.wf02.wt01.ws01.temperature",
-            "root.ln.wf02.wt01.ws02.temperature",
-            "root.ln.wf02.wt02.ws01.temperature",
-            "root.ln.wf02.wt02.ws02.temperature"
+          "root.ln.wf01.wt01.ws01.temperature",
+          "root.ln.wf01.wt01.ws02.temperature",
+          "root.ln.wf01.wt02.ws01.temperature",
+          "root.ln.wf01.wt02.ws02.temperature",
+          "root.ln.wf02.wt01.ws01.temperature",
+          "root.ln.wf02.wt01.ws02.temperature",
+          "root.ln.wf02.wt02.ws01.temperature",
+          "root.ln.wf02.wt02.ws02.temperature"
         });
 
     statement.execute(
@@ -202,14 +202,14 @@ public class IoTDBContinuousQueryIT {
   public void testContinuousQueryResultSeriesWithLevels() throws Exception {
     createTimeSeries(
         new String[] {
-            "root.ln.wf01.wt01.ws01.temperature",
-            "root.ln.wf01.wt01.ws02.temperature",
-            "root.ln.wf01.wt02.ws01.temperature",
-            "root.ln.wf01.wt02.ws02.temperature",
-            "root.ln.wf02.wt01.ws01.temperature",
-            "root.ln.wf02.wt01.ws02.temperature",
-            "root.ln.wf02.wt02.ws01.temperature",
-            "root.ln.wf02.wt02.ws02.temperature"
+          "root.ln.wf01.wt01.ws01.temperature",
+          "root.ln.wf01.wt01.ws02.temperature",
+          "root.ln.wf01.wt02.ws01.temperature",
+          "root.ln.wf01.wt02.ws02.temperature",
+          "root.ln.wf02.wt01.ws01.temperature",
+          "root.ln.wf02.wt01.ws02.temperature",
+          "root.ln.wf02.wt02.ws01.temperature",
+          "root.ln.wf02.wt02.ws02.temperature"
         });
     startDataGenerator();
 
@@ -224,16 +224,16 @@ public class IoTDBContinuousQueryIT {
 
     checkShowTimeSeriesResult(
         new String[] {
-            "root.ln.wf01.wt01.ws01.temperature",
-            "root.ln.wf01.wt01.ws02.temperature",
-            "root.ln.wf01.wt02.ws01.temperature",
-            "root.ln.wf01.wt02.ws02.temperature",
-            "root.ln.wf02.wt01.ws01.temperature",
-            "root.ln.wf02.wt01.ws02.temperature",
-            "root.ln.wf02.wt02.ws01.temperature",
-            "root.ln.wf02.wt02.ws02.temperature",
-            "root.ln.wf01.temperature_cnt",
-            "root.ln.wf02.temperature_cnt"
+          "root.ln.wf01.wt01.ws01.temperature",
+          "root.ln.wf01.wt01.ws02.temperature",
+          "root.ln.wf01.wt02.ws01.temperature",
+          "root.ln.wf01.wt02.ws02.temperature",
+          "root.ln.wf02.wt01.ws01.temperature",
+          "root.ln.wf02.wt01.ws02.temperature",
+          "root.ln.wf02.wt02.ws01.temperature",
+          "root.ln.wf02.wt02.ws02.temperature",
+          "root.ln.wf01.temperature_cnt",
+          "root.ln.wf02.temperature_cnt"
         });
 
     statement.execute("DROP CONTINUOUS QUERY cq1");
@@ -245,10 +245,10 @@ public class IoTDBContinuousQueryIT {
   public void testContinuousQueryResultSeriesWithDuplicatedTargetPaths() throws Exception {
     createTimeSeries(
         new String[] {
-            "root.ln.wf01.ws02.temperature",
-            "root.ln.wf01.ws01.temperature",
-            "root.ln.wf02.wt01.temperature",
-            "root.ln.wf02.wt02.temperature",
+          "root.ln.wf01.ws02.temperature",
+          "root.ln.wf01.ws01.temperature",
+          "root.ln.wf02.wt01.temperature",
+          "root.ln.wf02.wt02.temperature",
         });
     startDataGenerator();
 
@@ -324,14 +324,14 @@ public class IoTDBContinuousQueryIT {
   public void testInterval1000() throws Exception {
     createTimeSeries(
         new String[] {
-            "root.ln.wf01.wt01.ws01.temperature",
-            "root.ln.wf01.wt01.ws02.temperature",
-            "root.ln.wf01.wt02.ws01.temperature",
-            "root.ln.wf01.wt02.ws02.temperature",
-            "root.ln.wf02.wt01.ws01.temperature",
-            "root.ln.wf02.wt01.ws02.temperature",
-            "root.ln.wf02.wt02.ws01.temperature",
-            "root.ln.wf02.wt02.ws02.temperature"
+          "root.ln.wf01.wt01.ws01.temperature",
+          "root.ln.wf01.wt01.ws02.temperature",
+          "root.ln.wf01.wt02.ws01.temperature",
+          "root.ln.wf01.wt02.ws02.temperature",
+          "root.ln.wf02.wt01.ws01.temperature",
+          "root.ln.wf02.wt01.ws02.temperature",
+          "root.ln.wf02.wt02.ws01.temperature",
+          "root.ln.wf02.wt02.ws02.temperature"
         });
     startDataGenerator();
 
@@ -350,14 +350,14 @@ public class IoTDBContinuousQueryIT {
   public void testInterval2000() throws Exception {
     createTimeSeries(
         new String[] {
-            "root.ln.wf01.wt01.ws01.temperature",
-            "root.ln.wf01.wt01.ws02.temperature",
-            "root.ln.wf01.wt02.ws01.temperature",
-            "root.ln.wf01.wt02.ws02.temperature",
-            "root.ln.wf02.wt01.ws01.temperature",
-            "root.ln.wf02.wt01.ws02.temperature",
-            "root.ln.wf02.wt02.ws01.temperature",
-            "root.ln.wf02.wt02.ws02.temperature"
+          "root.ln.wf01.wt01.ws01.temperature",
+          "root.ln.wf01.wt01.ws02.temperature",
+          "root.ln.wf01.wt02.ws01.temperature",
+          "root.ln.wf01.wt02.ws02.temperature",
+          "root.ln.wf02.wt01.ws01.temperature",
+          "root.ln.wf02.wt01.ws02.temperature",
+          "root.ln.wf02.wt02.ws01.temperature",
+          "root.ln.wf02.wt02.ws02.temperature"
         });
     startDataGenerator();
 
@@ -376,14 +376,14 @@ public class IoTDBContinuousQueryIT {
   public void testInterval3000() throws Exception {
     createTimeSeries(
         new String[] {
-            "root.ln.wf01.wt01.ws01.temperature",
-            "root.ln.wf01.wt01.ws02.temperature",
-            "root.ln.wf01.wt02.ws01.temperature",
-            "root.ln.wf01.wt02.ws02.temperature",
-            "root.ln.wf02.wt01.ws01.temperature",
-            "root.ln.wf02.wt01.ws02.temperature",
-            "root.ln.wf02.wt02.ws01.temperature",
-            "root.ln.wf02.wt02.ws02.temperature"
+          "root.ln.wf01.wt01.ws01.temperature",
+          "root.ln.wf01.wt01.ws02.temperature",
+          "root.ln.wf01.wt02.ws01.temperature",
+          "root.ln.wf01.wt02.ws02.temperature",
+          "root.ln.wf02.wt01.ws01.temperature",
+          "root.ln.wf02.wt01.ws02.temperature",
+          "root.ln.wf02.wt02.ws01.temperature",
+          "root.ln.wf02.wt02.ws02.temperature"
         });
     startDataGenerator();
 

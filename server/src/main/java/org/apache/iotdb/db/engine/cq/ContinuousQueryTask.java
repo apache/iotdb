@@ -168,16 +168,17 @@ public class ContinuousQueryTask extends WrappedRunnable {
     return targetPaths;
   }
 
-  protected String fillTargetPathTemplate(PartialPath rawPath) {
-    String[] nodes = rawPath.getNodes();
-    int indexOfLeftBracket = nodes[0].indexOf("(");
+  protected String fillTargetPathTemplate(PartialPath rawPath) throws IllegalPathException {
+    String fullPath = rawPath.getFullPath();
+    int indexOfLeftBracket = fullPath.indexOf("(");
     if (indexOfLeftBracket != -1) {
-      nodes[0] = nodes[0].substring(indexOfLeftBracket + 1);
+      fullPath = fullPath.substring(indexOfLeftBracket + 1);
     }
-    int indexOfRightBracket = nodes[nodes.length - 1].indexOf(")");
+    int indexOfRightBracket = fullPath.indexOf(")");
     if (indexOfRightBracket != -1) {
-      nodes[nodes.length - 1] = nodes[nodes.length - 1].substring(0, indexOfRightBracket);
+      fullPath = fullPath.substring(0, indexOfRightBracket);
     }
+    String[] nodes = new PartialPath(fullPath).getNodes();
     StringBuffer sb = new StringBuffer();
     Matcher m =
         PATH_NODE_NAME_PATTERN.matcher(this.continuousQueryPlan.getTargetPath().getFullPath());
