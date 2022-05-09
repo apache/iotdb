@@ -104,9 +104,11 @@ public class SeriesAggregationScanNode extends SourceNode {
       MeasurementPath seriesPath,
       List<AggregationDescriptor> aggregationDescriptorList,
       Set<String> allSensors,
-      OrderBy scanOrder) {
+      OrderBy scanOrder,
+      @Nullable GroupByTimeParameter groupByTimeParameter) {
     this(id, seriesPath, aggregationDescriptorList, allSensors);
     this.scanOrder = scanOrder;
+    this.groupByTimeParameter = groupByTimeParameter;
   }
 
   public SeriesAggregationScanNode(
@@ -118,9 +120,8 @@ public class SeriesAggregationScanNode extends SourceNode {
       @Nullable Filter timeFilter,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet) {
-    this(id, seriesPath, aggregationDescriptorList, allSensors, scanOrder);
+    this(id, seriesPath, aggregationDescriptorList, allSensors, scanOrder, groupByTimeParameter);
     this.timeFilter = timeFilter;
-    this.groupByTimeParameter = groupByTimeParameter;
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
@@ -135,6 +136,10 @@ public class SeriesAggregationScanNode extends SourceNode {
   @Nullable
   public Filter getTimeFilter() {
     return timeFilter;
+  }
+
+  public void setTimeFilter(@Nullable Filter timeFilter) {
+    this.timeFilter = timeFilter;
   }
 
   @Nullable
@@ -154,10 +159,6 @@ public class SeriesAggregationScanNode extends SourceNode {
     return aggregationDescriptorList.stream()
         .map(AggregationDescriptor::getAggregationType)
         .collect(Collectors.toList());
-  }
-
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
   }
 
   @Override

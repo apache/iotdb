@@ -278,7 +278,8 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_DESC,
+            null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
             new PlanNodeId("test_query_1"),
@@ -290,7 +291,8 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_DESC,
+            null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
             new PlanNodeId("test_query_0"),
@@ -307,7 +309,8 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_DESC,
+            null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
             new PlanNodeId("test_query_1"),
@@ -319,7 +322,8 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_DESC,
+            null));
     sourceNodeList.forEach(node -> ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter));
 
     GroupByLevelNode groupByLevelNode =
@@ -387,7 +391,8 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_DESC,
+            null));
     sourceNodeList1.add(
         new SeriesAggregationScanNode(
             new PlanNodeId("test_query_1"),
@@ -399,7 +404,8 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_DESC,
+            null));
     sourceNodeList2.add(
         new SeriesAggregationScanNode(
             new PlanNodeId("test_query_0"),
@@ -416,7 +422,8 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_DESC,
+            null));
     sourceNodeList2.add(
         new SeriesAggregationScanNode(
             new PlanNodeId("test_query_1"),
@@ -428,7 +435,8 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
             Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_DESC));
+            OrderBy.TIMESTAMP_DESC,
+            null));
     sourceNodeList1.forEach(node -> ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter));
     sourceNodeList2.forEach(node -> ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter));
 

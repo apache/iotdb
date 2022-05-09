@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -48,9 +49,16 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.query.expression.Expression;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -96,14 +104,93 @@ public class LogicalPlanner {
 
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-      return new LogicalPlanBuilder(context)
-          .planRawDataQuerySource(
-              analysis.getSourceExpressions(),
-              queryStatement.getResultOrder(),
-              queryStatement.isAlignByDevice())
-          .planOffset(queryStatement.getRowOffset())
-          .planLimit(queryStatement.getRowLimit())
-          .getRoot();
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+
+      if (queryStatement.isAlignByDevice()) {
+        Map<String, PlanNode> deviceToSubPlanMap = new HashMap<>();
+        for (String deviceName : analysis.getSourceExpressions().keySet()) {
+          LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(context);
+          subPlanBuilder =
+              subPlanBuilder.withNewRoot(
+                  visitQueryBody(
+                      queryStatement,
+                      Maps.asMap(
+                          Sets.newHashSet(deviceName),
+                          (key) -> analysis.getSourceExpressions().get(key)),
+                      Maps.asMap(
+                          Sets.newHashSet(deviceName),
+                          (key) -> analysis.getAggregationExpressions().get(key)),
+                      context));
+          deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
+        }
+        // convert to ALIGN BY DEVICE view
+        planBuilder =
+            planBuilder.planDeviceView(deviceToSubPlanMap, queryStatement.getResultOrder());
+      } else {
+        planBuilder =
+            planBuilder.withNewRoot(
+                visitQueryBody(
+                    queryStatement,
+                    analysis.getSourceExpressions(),
+                    analysis.getAggregationExpressions(),
+                    context));
+      }
+
+      // other common upstream node
+      planBuilder =
+          planBuilder
+              .planFill(analysis.getFillDescriptor())
+              .planOffset(queryStatement.getSeriesOffset())
+              .planLimit(queryStatement.getSeriesOffset());
+
+      return planBuilder.getRoot();
+    }
+
+    public PlanNode visitQueryBody(
+        QueryStatement queryStatement,
+        Map<String, Set<Expression>> sourceExpressions,
+        Map<String, Set<Expression>> aggregationExpressions,
+        MPPQueryContext context) {
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      boolean isRawDataQuery =
+          !queryStatement.isAggregationQuery()
+              || (queryStatement.isAggregationQuery() && analysis.isHasValueFilter());
+
+      // plan data source node
+      if (isRawDataQuery) {
+        planBuilder =
+            planBuilder.planRawDataSource(
+                sourceExpressions, queryStatement.getResultOrder(), analysis.getGlobalTimeFilter());
+
+        // TODO: add value filter node
+
+        // TODO: add transform node
+
+        if (queryStatement.isAggregationQuery()) {
+          boolean outputPartial =
+              queryStatement.isGroupByLevel()
+                  || (queryStatement.isGroupByTime()
+                      && analysis.getGroupByTimeParameter().hasOverlap());
+          AggregationStep curStep =
+              outputPartial ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
+          planBuilder =
+              planBuilder.planAggregation(
+                  aggregationExpressions,
+                  queryStatement.isGroupByLevel()
+                      ? AggregationStep.INTERMEDIATE
+                      : AggregationStep.FINAL);
+        }
+      } else {
+        planBuilder =
+            planBuilder.planAggregationSource(
+                sourceExpressions,
+                queryStatement.getResultOrder(),
+                analysis.getGlobalTimeFilter(),
+                analysis.getGroupByTimeParameter(),
+                analysis.getGroupByLevelExpressions());
+      }
+
+      return planBuilder.getRoot();
     }
 
     @Override

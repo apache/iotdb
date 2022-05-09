@@ -34,7 +34,7 @@ public class AggregationDescriptor {
   private final AggregationType aggregationType;
 
   // indicate the input and output type
-  private final AggregationStep step;
+  private AggregationStep step;
 
   /**
    * Input of aggregation function. Currently, we only support one series in the aggregation
@@ -61,6 +61,10 @@ public class AggregationDescriptor {
 
   public AggregationStep getStep() {
     return step;
+  }
+
+  public void setStep(AggregationStep step) {
+    this.step = step;
   }
 
   public void serialize(ByteBuffer byteBuffer) {

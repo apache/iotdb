@@ -27,7 +27,9 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -202,6 +204,33 @@ public class SchemaUtils {
       case SQLConstant.MAX_VALUE:
       default:
         return null;
+    }
+  }
+
+  /**
+   * judge whether the order of aggregation calculation is consistent with the order of traversing
+   * data
+   */
+  public static boolean isConsistentWithScanOrder(
+      AggregationType aggregationFunction, OrderBy scanOrder) {
+    boolean ascending = scanOrder == OrderBy.TIMESTAMP_ASC;
+    switch (aggregationFunction) {
+      case MIN_TIME:
+      case FIRST_VALUE:
+        return ascending;
+      case MAX_TIME:
+      case LAST_VALUE:
+        return !ascending;
+      case SUM:
+      case MIN_VALUE:
+      case MAX_VALUE:
+      case EXTREME:
+      case COUNT:
+      case AVG:
+        return true;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid Aggregation function: %s", aggregationFunction));
     }
   }
 

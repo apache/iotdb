@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.ArrayList;
@@ -188,5 +189,10 @@ public class MetaUtils {
       }
     }
     return alignedPathToAggrIndexesMap;
+  }
+
+  public static Map<PartialPath, List<AggregationDescriptor>> groupAlignedAggregations(
+      Map<PartialPath, List<AggregationDescriptor>> descendingAggregations) {
+    return new HashMap<>();
   }
 }

@@ -21,7 +21,9 @@ package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -35,13 +37,27 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTimeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,69 +81,206 @@ public class LogicalPlanBuilder {
     return root;
   }
 
-  public LogicalPlanBuilder planRawDataQuerySource(
-      Map<String, Set<Expression>> deviceNameToPathsMap,
-      OrderBy scanOrder,
-      boolean isAlignByDevice) {
-    Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
-
-    for (Map.Entry<String, Set<Expression>> entry : deviceNameToPathsMap.entrySet()) {
-      String deviceName = entry.getKey();
-      Set<String> allSensors =
-          entry.getValue().stream()
-              .map(expression -> ((TimeSeriesOperand) expression).getPath())
-              .map(PartialPath::getMeasurement)
-              .collect(Collectors.toSet());
-      for (Expression expression : entry.getValue()) {
-        PartialPath path = ((TimeSeriesOperand) expression).getPath();
-        deviceNameToSourceNodesMap
-            .computeIfAbsent(deviceName, k -> new ArrayList<>())
-            .add(
-                new SeriesScanNode(
-                    context.getQueryId().genPlanNodeId(),
-                    (MeasurementPath) path,
-                    allSensors,
-                    scanOrder));
-      }
-    }
-
-    if (isAlignByDevice) {
-      planDeviceMerge(deviceNameToSourceNodesMap, scanOrder);
-    } else {
-      planTimeJoin(deviceNameToSourceNodesMap, scanOrder);
-    }
-
+  public LogicalPlanBuilder withNewRoot(PlanNode newRoot) {
+    this.root = newRoot;
     return this;
   }
 
-  public void planTimeJoin(
-      Map<String, List<PlanNode>> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
-    List<PlanNode> sourceNodes =
-        deviceNameToSourceNodesMap.entrySet().stream()
-            .flatMap(entry -> entry.getValue().stream())
-            .collect(Collectors.toList());
-    this.root = convergeWithTimeJoin(sourceNodes, mergeOrder);
+  public LogicalPlanBuilder planRawDataSource(
+      Map<String, Set<Expression>> deviceNameToSourceExpressions,
+      OrderBy scanOrder,
+      Filter timeFilter) {
+    List<PlanNode> sourceNodeList = new ArrayList<>();
+    for (Set<Expression> sourceExpressionList :
+        deviceNameToSourceExpressions.values()) { // for each device
+      List<PartialPath> selectedPaths =
+          sourceExpressionList.stream()
+              .map(expression -> ((TimeSeriesOperand) expression).getPath())
+              .collect(Collectors.toList());
+      Set<String> allSensors =
+          selectedPaths.stream().map(PartialPath::getMeasurement).collect(Collectors.toSet());
+      List<PartialPath> groupedPaths = MetaUtils.groupAlignedPaths(selectedPaths);
+      for (PartialPath path : groupedPaths) {
+        if (path instanceof MeasurementPath) { // non-aligned series
+          SeriesScanNode seriesScanNode =
+              new SeriesScanNode(
+                  context.getQueryId().genPlanNodeId(),
+                  (MeasurementPath) path,
+                  allSensors,
+                  scanOrder);
+          seriesScanNode.setTimeFilter(timeFilter);
+          sourceNodeList.add(seriesScanNode);
+        } else if (path instanceof AlignedPath) { // aligned series
+          AlignedSeriesScanNode alignedSeriesScanNode =
+              new AlignedSeriesScanNode(
+                  context.getQueryId().genPlanNodeId(), (AlignedPath) path, scanOrder);
+          alignedSeriesScanNode.setTimeFilter(timeFilter);
+          sourceNodeList.add(alignedSeriesScanNode);
+        } else {
+          throw new IllegalArgumentException("unexpected path type");
+        }
+      }
+    }
+
+    this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
+    return this;
   }
 
-  public void planDeviceMerge(
-      Map<String, List<PlanNode>> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
-    List<String> measurements =
-        deviceNameToSourceNodesMap.values().stream()
-            .flatMap(List::stream)
-            .map(node -> ((SeriesScanNode) node).getSeriesPath().getMeasurement())
-            .distinct()
-            .collect(Collectors.toList());
-    DeviceViewNode deviceViewNode =
-        new DeviceViewNode(
-            context.getQueryId().genPlanNodeId(),
-            Arrays.asList(OrderBy.DEVICE_ASC, mergeOrder),
-            measurements);
-    for (Map.Entry<String, List<PlanNode>> entry : deviceNameToSourceNodesMap.entrySet()) {
-      String deviceName = entry.getKey();
-      List<PlanNode> planNodes = new ArrayList<>(entry.getValue());
-      deviceViewNode.addChildDeviceNode(deviceName, convergeWithTimeJoin(planNodes, mergeOrder));
+  public LogicalPlanBuilder planAggregationSource(
+      Map<String, Set<Expression>> deviceNameToSourceExpressions,
+      OrderBy scanOrder,
+      Filter timeFilter,
+      GroupByTimeParameter groupByTimeParameter,
+      Map<Expression, Set<Expression>> groupByLevelExpressions) {
+    AggregationStep curStep =
+        (groupByLevelExpressions != null
+                || (groupByTimeParameter != null && groupByTimeParameter.hasOverlap()))
+            ? AggregationStep.PARTIAL
+            : AggregationStep.SINGLE;
+
+    List<PlanNode> sourceNodeList = new ArrayList<>();
+    for (Set<Expression> sourceExpressionList :
+        deviceNameToSourceExpressions.values()) { // for each device
+      //
+      Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
+      Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
+      for (Expression sourceExpression : sourceExpressionList) {
+        AggregationType aggregationFunction =
+            AggregationType.valueOf(
+                ((FunctionExpression) sourceExpression).getFunctionName().toUpperCase());
+        AggregationDescriptor aggregationDescriptor =
+            new AggregationDescriptor(
+                aggregationFunction, curStep, sourceExpression.getExpressions());
+        PartialPath selectPath =
+            ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
+        if (SchemaUtils.isConsistentWithScanOrder(aggregationFunction, scanOrder)) {
+          ascendingAggregations
+              .computeIfAbsent(selectPath, key -> new ArrayList<>())
+              .add(aggregationDescriptor);
+        } else {
+          descendingAggregations
+              .computeIfAbsent(selectPath, key -> new ArrayList<>())
+              .add(aggregationDescriptor);
+        }
+      }
+      Set<String> ascendingAllSensors =
+          ascendingAggregations.keySet().stream()
+              .map(PartialPath::getMeasurement)
+              .collect(Collectors.toSet());
+      Set<String> descendingAllSensors =
+          descendingAggregations.keySet().stream()
+              .map(PartialPath::getMeasurement)
+              .collect(Collectors.toSet());
+
+      //
+      Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations =
+          MetaUtils.groupAlignedAggregations(ascendingAggregations);
+      Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =
+          MetaUtils.groupAlignedAggregations(descendingAggregations);
+      for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
+          groupedAscendingAggregations.entrySet()) {
+        sourceNodeList.add(
+            createAggregationScanNode(
+                pathAggregationsEntry.getKey(),
+                pathAggregationsEntry.getValue(),
+                ascendingAllSensors,
+                scanOrder,
+                groupByTimeParameter,
+                timeFilter));
+      }
+      for (Map.Entry<PartialPath, List<AggregationDescriptor>> pathAggregationsEntry :
+          groupedDescendingAggregations.entrySet()) {
+        sourceNodeList.add(
+            createAggregationScanNode(
+                pathAggregationsEntry.getKey(),
+                pathAggregationsEntry.getValue(),
+                descendingAllSensors,
+                scanOrder,
+                groupByTimeParameter,
+                timeFilter));
+      }
     }
-    this.root = deviceViewNode;
+
+    if (curStep.isOutputPartial()) {
+      if (groupByTimeParameter != null && groupByTimeParameter.hasOverlap()) {
+        curStep =
+            groupByLevelExpressions != null ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
+        this.root = createGroupByTimeNode(sourceNodeList, groupByTimeParameter, curStep);
+
+        if (groupByLevelExpressions != null) {
+          curStep = AggregationStep.FINAL;
+          this.root =
+              createGroupByTLevelNode(this.root.getChildren(), groupByLevelExpressions, curStep);
+        }
+      } else {
+        if (groupByLevelExpressions != null) {
+          curStep = AggregationStep.FINAL;
+          this.root = createGroupByTLevelNode(sourceNodeList, groupByLevelExpressions, curStep);
+        }
+      }
+    } else {
+      this.root = convergeWithTimeJoin(sourceNodeList, scanOrder);
+    }
+    return this;
+  }
+
+  private PlanNode createGroupByTimeNode(
+      List<PlanNode> children, GroupByTimeParameter groupByTimeParameter, AggregationStep step) {
+    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    return new GroupByTimeNode(
+        context.getQueryId().genPlanNodeId(),
+        children,
+        aggregationDescriptorList,
+        groupByTimeParameter);
+  }
+
+  private PlanNode createGroupByTLevelNode(
+      List<PlanNode> children,
+      Map<Expression, Set<Expression>> groupByLevelExpressions,
+      AggregationStep step) {
+    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    List<String> outputColumnNames =
+        groupByLevelExpressions.keySet().stream()
+            .map(Expression::getExpressionString)
+            .collect(Collectors.toList());
+    return new GroupByLevelNode(
+        context.getQueryId().genPlanNodeId(),
+        children,
+        aggregationDescriptorList,
+        outputColumnNames);
+  }
+
+  private PlanNode createAggregationScanNode(
+      PartialPath selectPath,
+      List<AggregationDescriptor> aggregationDescriptorList,
+      Set<String> allSensors,
+      OrderBy scanOrder,
+      GroupByTimeParameter groupByTimeParameter,
+      Filter timeFilter) {
+    if (selectPath instanceof MeasurementPath) { // non-aligned series
+      SeriesAggregationScanNode seriesAggregationScanNode =
+          new SeriesAggregationScanNode(
+              context.getQueryId().genPlanNodeId(),
+              (MeasurementPath) selectPath,
+              aggregationDescriptorList,
+              allSensors,
+              scanOrder,
+              groupByTimeParameter);
+      seriesAggregationScanNode.setTimeFilter(timeFilter);
+      return seriesAggregationScanNode;
+    } else if (selectPath instanceof AlignedPath) { // aligned series
+      AlignedSeriesAggregationScanNode alignedSeriesAggregationScanNode =
+          new AlignedSeriesAggregationScanNode(
+              context.getQueryId().genPlanNodeId(),
+              (AlignedPath) selectPath,
+              aggregationDescriptorList,
+              scanOrder,
+              groupByTimeParameter);
+      alignedSeriesAggregationScanNode.setTimeFilter(timeFilter);
+      return alignedSeriesAggregationScanNode;
+    } else {
+      throw new IllegalArgumentException("unexpected path type");
+    }
   }
 
   private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, OrderBy mergeOrder) {
@@ -138,6 +291,47 @@ public class LogicalPlanBuilder {
       tmpNode = new TimeJoinNode(context.getQueryId().genPlanNodeId(), mergeOrder, sourceNodes);
     }
     return tmpNode;
+  }
+
+  public LogicalPlanBuilder planDeviceView(
+      Map<String, PlanNode> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
+    List<String> measurements = new ArrayList<>();
+    DeviceViewNode deviceViewNode =
+        new DeviceViewNode(
+            context.getQueryId().genPlanNodeId(),
+            Arrays.asList(OrderBy.DEVICE_ASC, mergeOrder),
+            measurements);
+    for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
+      String deviceName = entry.getKey();
+      PlanNode subPlan = entry.getValue();
+      deviceViewNode.addChildDeviceNode(deviceName, subPlan);
+    }
+
+    this.root = deviceViewNode;
+    return this;
+  }
+
+  public LogicalPlanBuilder planAggregation(
+      Map<String, Set<Expression>> aggregationExpressions, AggregationStep step) {
+    return this;
+  }
+
+  public LogicalPlanBuilder planGroupByLevel(
+      Map<Expression, Set<Expression>> groupByLevelExpressions) {
+    return this;
+  }
+
+  public LogicalPlanBuilder planTransform(Set<Expression> selectExpressions) {
+    return this;
+  }
+
+  public LogicalPlanBuilder planFill(FillDescriptor fillDescriptor) {
+    if (fillDescriptor == null) {
+      return this;
+    }
+
+    this.root = new FillNode(context.getQueryId().genPlanNodeId(), this.getRoot(), fillDescriptor);
+    return this;
   }
 
   public LogicalPlanBuilder planLimit(int rowLimit) {
@@ -246,6 +440,11 @@ public class LogicalPlanBuilder {
     this.root =
         new LevelTimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(), partialPath, prefixPath, level);
+    return this;
+  }
+
+  public LogicalPlanBuilder planGroupByTime(
+      Map<String, Set<Expression>> aggregationExpressions, AggregationStep step) {
     return this;
   }
 }

@@ -61,7 +61,7 @@ public class Analysis {
   private Set<Expression> selectExpressions;
 
   // all aggregations that need to be calculated
-  private Map<String, Set<Expression>> AggregationExpressions;
+  private Map<String, Set<Expression>> aggregationExpressions;
 
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
@@ -173,11 +173,11 @@ public class Analysis {
   }
 
   public Map<String, Set<Expression>> getAggregationExpressions() {
-    return AggregationExpressions;
+    return aggregationExpressions;
   }
 
   public void setAggregationExpressions(Map<String, Set<Expression>> aggregationExpressions) {
-    AggregationExpressions = aggregationExpressions;
+    this.aggregationExpressions = aggregationExpressions;
   }
 
   public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
