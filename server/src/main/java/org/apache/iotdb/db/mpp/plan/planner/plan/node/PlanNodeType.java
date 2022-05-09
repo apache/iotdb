@@ -45,6 +45,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -98,7 +99,8 @@ public enum PlanNodeType {
   ALIGNED_SERIES_AGGREGATE_SCAN((short) 34),
   DEVICE_MERGE((short) 35),
   SCHEMA_FETCH_MERGE((short) 36),
-  CHILD_PATHS_SCAN((short) 37);
+  TRANSFORM((short) 37),
+  CHILD_PATHS_SCAN((short) 38);
 
   private final short nodeType;
 
@@ -197,6 +199,8 @@ public enum PlanNodeType {
       case 36:
         return SchemaFetchMergeNode.deserialize(buffer);
       case 37:
+        return TransformNode.deserialize(buffer);
+      case 38:
         return ChildPathsSchemaScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);

@@ -114,18 +114,19 @@ public class SessionManager {
       } else {
         long sessionId = requestSessionId(username, zoneId, clientVersion);
 
-        LOGGER.info(
-            "{}: Login status: {}. User : {}, opens Session-{}",
-            IoTDBConstant.GLOBAL_DB_NAME,
-            openSessionResp.getMessage(),
-            username,
-            sessionId);
         SessionTimeoutManager.getInstance().register(sessionId);
 
         openSessionResp
             .sessionId(sessionId)
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
             .setMessage("Login successfully");
+
+        LOGGER.info(
+            "{}: Login status: {}. User : {}, opens Session-{}",
+            IoTDBConstant.GLOBAL_DB_NAME,
+            openSessionResp.getMessage(),
+            username,
+            sessionId);
       }
     } else {
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);

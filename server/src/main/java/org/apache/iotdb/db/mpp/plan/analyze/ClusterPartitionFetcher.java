@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -86,7 +85,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private ClusterPartitionFetcher() {
     try {
       client = new ConfigNodeClient();
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (IoTDBConnectionException e) {
       throw new StatementAnalyzeException("Couldn't connect config node");
     }
     this.partitionExecutor =

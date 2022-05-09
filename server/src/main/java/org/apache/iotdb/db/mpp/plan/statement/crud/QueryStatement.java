@@ -21,34 +21,24 @@ package org.apache.iotdb.db.mpp.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.index.common.IndexType;
-import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
-import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Base class of SELECT statement.
@@ -57,13 +47,12 @@ import java.util.stream.Collectors;
  *
  * <ul>
  *   SELECT
- *   <li>[LAST] [TOP k]
- *   <li>resultColumn [, resultColumn] ...
+ *   <li>[LAST] resultColumn [, resultColumn] ...
  *   <li>FROM prefixPath [, prefixPath] ...
  *   <li>WHERE whereCondition
  *   <li>[GROUP BY ([startTime, endTime), interval, slidingStep)]
  *   <li>[GROUP BY LEVEL = levelNum [, levelNum] ...]
- *   <li>[FILL ({PREVIOUS, beforeRange | LINEAR, beforeRange, afterRange | constant})]
+ *   <li>[FILL ({PREVIOUS | LINEAR | constant})]
  *   <li>[LIMIT rowLimit] [OFFSET rowOffset]
  *   <li>[SLIMIT seriesLimit] [SOFFSET seriesOffset]
  *   <li>[WITHOUT NULL {ANY | ALL} [resultColumn [, resultColumn] ...]]
@@ -87,17 +76,19 @@ public class QueryStatement extends Statement {
   // series offset for result set. The default value is 0
   protected int seriesOffset = 0;
 
+  protected FillComponent fillComponent;
+
   protected FilterNullComponent filterNullComponent;
 
   protected OrderBy resultOrder = OrderBy.TIMESTAMP_ASC;
 
   protected ResultSetFormat resultSetFormat = ResultSetFormat.ALIGN_BY_TIME;
 
-  // used for TOP_N, LIKE, CONTAIN
-  protected Map<String, Object> props;
+  // `GROUP BY TIME` clause
+  protected GroupByTimeComponent groupByTimeComponent;
 
-  // TODO: add comments
-  protected IndexType indexType;
+  // `GROUP BY LEVEL` clause
+  protected GroupByLevelComponent groupByLevelComponent;
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -106,22 +97,6 @@ public class QueryStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return fromComponent.getPrefixPaths();
-  }
-
-  public QueryStatement(QueryStatement another) {
-    this.statementType = StatementType.QUERY;
-    this.selectComponent = another.getSelectComponent();
-    this.fromComponent = another.getFromComponent();
-    this.whereCondition = another.getWhereCondition();
-    this.rowLimit = another.getRowLimit();
-    this.rowOffset = another.getRowOffset();
-    this.seriesLimit = another.getSeriesLimit();
-    this.seriesOffset = another.getSeriesOffset();
-    this.filterNullComponent = another.getFilterNullComponent();
-    this.resultOrder = another.getResultOrder();
-    this.resultSetFormat = another.getResultSetFormat();
-    this.props = another.getProps();
-    this.indexType = another.getIndexType();
   }
 
   public SelectComponent getSelectComponent() {
@@ -180,10 +155,12 @@ public class QueryStatement extends Statement {
     this.seriesOffset = seriesOffset;
   }
 
-  /** Reset sLimit and sOffset. */
-  public void resetSLimitOffset() {
-    this.seriesLimit = 0;
-    this.seriesOffset = 0;
+  public FillComponent getFillComponent() {
+    return fillComponent;
+  }
+
+  public void setFillComponent(FillComponent fillComponent) {
+    this.fillComponent = fillComponent;
   }
 
   public FilterNullComponent getFilterNullComponent() {
@@ -210,31 +187,36 @@ public class QueryStatement extends Statement {
     this.resultSetFormat = resultSetFormat;
   }
 
-  public Map<String, Object> getProps() {
-    return props;
+  public GroupByTimeComponent getGroupByTimeComponent() {
+    return groupByTimeComponent;
   }
 
-  public void addProp(String prop, Object value) {
-    if (props == null) {
-      props = new HashMap<>();
-    }
-    props.put(prop, value);
+  public void setGroupByTimeComponent(GroupByTimeComponent groupByTimeComponent) {
+    this.groupByTimeComponent = groupByTimeComponent;
   }
 
-  public void setProps(Map<String, Object> props) {
-    this.props = props;
+  public GroupByLevelComponent getGroupByLevelComponent() {
+    return groupByLevelComponent;
   }
 
-  public IndexType getIndexType() {
-    return indexType;
+  public void setGroupByLevelComponent(GroupByLevelComponent groupByLevelComponent) {
+    this.groupByLevelComponent = groupByLevelComponent;
   }
 
-  public void setIndexType(IndexType indexType) {
-    this.indexType = indexType;
+  public boolean isLastQuery() {
+    return selectComponent.isHasLast();
+  }
+
+  public boolean isAggregationQuery() {
+    return selectComponent.isHasBuiltInAggregationFunction();
   }
 
   public boolean isGroupByLevel() {
-    return false;
+    return groupByLevelComponent != null;
+  }
+
+  public boolean isGroupByTime() {
+    return groupByTimeComponent != null;
   }
 
   public boolean isAlignByDevice() {
@@ -245,6 +227,10 @@ public class QueryStatement extends Statement {
     return resultSetFormat == ResultSetFormat.DISABLE_ALIGN;
   }
 
+  public boolean HasBuiltInAggregationFunction() {
+    return selectComponent.isHasBuiltInAggregationFunction();
+  }
+
   public boolean hasTimeSeriesGeneratingFunction() {
     return selectComponent.isHasTimeSeriesGeneratingFunction();
   }
@@ -253,98 +239,47 @@ public class QueryStatement extends Statement {
     return selectComponent.isHasUserDefinedAggregationFunction();
   }
 
-  public Map<String, Set<PartialPath>> getDeviceNameToDeduplicatedPathsMap() {
-    Map<String, Set<PartialPath>> deviceNameToDeduplicatedPathsMap =
-        new HashMap<>(getSelectComponent().getDeviceNameToDeduplicatedPathsMap());
-    if (getWhereCondition() != null) {
-      for (PartialPath path :
-          getWhereCondition().getQueryFilter().getPathSet().stream()
-              .filter(SQLConstant::isNotReservedPath)
-              .collect(Collectors.toList())) {
-        deviceNameToDeduplicatedPathsMap
-            .computeIfAbsent(path.getDeviceIdString(), k -> new HashSet<>())
-            .add(path);
-      }
-    }
-    return deviceNameToDeduplicatedPathsMap;
-  }
-
-  public List<String> getSelectedPathNames() {
-    Set<String> pathSet = new HashSet<>();
-    for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
-      pathSet.addAll(
-          resultColumn.collectPaths().stream()
-              .map(PartialPath::getFullPath)
-              .collect(Collectors.toList()));
-    }
-    return new ArrayList<>(pathSet);
-  }
-
-  public DatasetHeader constructDatasetHeader() {
-    List<ColumnHeader> columnHeaders = new ArrayList<>();
-    if (this.isAlignByDevice()) {
-      // add DEVICE column
-      columnHeaders.add(new ColumnHeader(HeaderConstant.COLUMN_DEVICE, TSDataType.TEXT, null));
-
-      // TODO: consider ALIGN BY DEVICE
-    } else {
-      columnHeaders.addAll(
-          this.getSelectComponent().getResultColumns().stream()
-              .map(ResultColumn::constructColumnHeader)
-              .collect(Collectors.toList()));
-    }
-    return new DatasetHeader(columnHeaders, false);
-  }
-
-  /**
-   * If path is a vectorPartialPath, we return its measurementId + subMeasurement as the final
-   * measurement. e.g. path: root.sg.d1.vector1[s1], return "vector1.s1".
-   */
-  private String getMeasurementName(PartialPath path, String aggregation) {
-    String initialMeasurement = path.getMeasurement();
-    if (aggregation != null) {
-      initialMeasurement = aggregation + "(" + initialMeasurement + ")";
-    }
-    return initialMeasurement;
-  }
-
-  private PartialPath getPathFromExpression(Expression expression) {
-    return expression instanceof TimeSeriesOperand
-        ? ((TimeSeriesOperand) expression).getPath()
-        : (((FunctionExpression) expression).getPaths().get(0));
-  }
-
-  private String getAggregationFromExpression(Expression expression) {
-    return expression.isBuiltInAggregationFunctionExpression()
-        ? ((FunctionExpression) expression).getFunctionName()
-        : null;
-  }
-
-  /** semantic check */
-  public void selfCheck() {
+  public void semanticCheck() {
     if (isAlignByDevice()) {
-      if (hasTimeSeriesGeneratingFunction() || hasUserDefinedAggregationFunction()) {
-        throw new SemanticException("The ALIGN BY DEVICE clause is not supported in UDF queries.");
+      // the paths can only be measurement or one-level wildcard in ALIGN BY DEVICE
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
       }
+      if (getWhereCondition() != null) {
+        ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
+      }
+    }
 
-      for (PartialPath path : selectComponent.getPaths()) {
-        if (path.getNodes().length > 1) {
-          throw new SemanticException(
-              "The paths of the SELECT clause can only be measurements or wildcard.");
+    if (isLastQuery()) {
+      if (isAlignByDevice()) {
+        throw new SemanticException("Last query doesn't support align by device.");
+      }
+      if (disableAlign()) {
+        throw new SemanticException("Disable align cannot be applied to LAST query.");
+      }
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        Expression expression = resultColumn.getExpression();
+        if (!(expression instanceof TimeSeriesOperand)) {
+          throw new SemanticException("Last queries can only be applied on raw time series.");
         }
       }
     }
-  }
 
-  /**
-   * Check datatype consistency in ALIGN BY DEVICE.
-   *
-   * <p>an inconsistent example: select s0 from root.sg1.d1, root.sg1.d2 align by device, return
-   * false while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
-   */
-  private boolean checkDataTypeConsistency(
-      TSDataType checkedDataType, MeasurementInfo measurementInfo) {
-    return measurementInfo == null || checkedDataType.equals(measurementInfo.getColumnDataType());
+    if (isAggregationQuery()) {
+      if (disableAlign()) {
+        throw new SemanticException("AGGREGATION doesn't support disable align clause.");
+      }
+      if (isGroupByLevel() && isAlignByDevice()) {
+        throw new SemanticException("group by level does not support align by device now.");
+      }
+      if (hasTimeSeriesGeneratingFunction()) {
+        throw new SemanticException(
+            "User-defined and built-in hybrid aggregation is not supported together.");
+      }
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+        ExpressionAnalyzer.checkIsAllAggregation(resultColumn.getExpression());
+      }
+    }
   }
 
   @Override

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,15 +47,18 @@ public class FilterOperator extends TransformOperator {
       List<TSDataType> inputDataTypes,
       Expression filterExpression,
       Expression[] outputExpressions,
-      UDTFContext udtfContext)
+      boolean keepNull,
+      ZoneId zoneId,
+      TypeProvider typeProvider)
       throws QueryProcessException, IOException {
     super(
         operatorContext,
         inputOperator,
         inputDataTypes,
         bindExpressions(filterExpression, outputExpressions),
-        udtfContext,
-        false);
+        keepNull,
+        zoneId,
+        typeProvider);
   }
 
   private static Expression[] bindExpressions(

@@ -33,19 +33,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDevic
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.crud.AggregationQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.FillQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.GroupByFillQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.GroupByQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDAFQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -106,50 +99,12 @@ public class LogicalPlanner {
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
       return new LogicalPlanBuilder(context)
           .planRawDataQuerySource(
-              queryStatement.getDeviceNameToDeduplicatedPathsMap(),
+              analysis.getSourceExpressions(),
               queryStatement.getResultOrder(),
               queryStatement.isAlignByDevice())
           .planOffset(queryStatement.getRowOffset())
           .planLimit(queryStatement.getRowLimit())
           .getRoot();
-    }
-
-    @Override
-    public PlanNode visitAggregationQuery(
-        AggregationQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PlanNode visitGroupByQuery(
-        GroupByQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PlanNode visitGroupByFillQuery(
-        GroupByFillQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PlanNode visitFillQuery(FillQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PlanNode visitLastQuery(LastQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PlanNode visitUDTFQuery(UDTFQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public PlanNode visitUDAFQuery(UDAFQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
     }
 
     @Override
