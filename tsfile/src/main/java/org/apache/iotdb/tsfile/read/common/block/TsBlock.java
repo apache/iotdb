@@ -395,7 +395,9 @@ public class TsBlock {
     public TsPrimitiveType[] currentValue() {
       TsPrimitiveType[] tsPrimitiveTypes = new TsPrimitiveType[valueColumns.length];
       for (int i = 0; i < valueColumns.length; i++) {
-        tsPrimitiveTypes[i] = valueColumns[i].getTsPrimitiveType(rowIndex);
+        if (!valueColumns[i].isNull(rowIndex)) {
+          tsPrimitiveTypes[i] = valueColumns[i].getTsPrimitiveType(rowIndex);
+        }
       }
       return tsPrimitiveTypes;
     }
@@ -412,6 +414,9 @@ public class TsBlock {
 
     @Override
     public boolean hasNextTimeValuePair() {
+      while (hasNext() && isCurrentValueAllNull()) {
+        next();
+      }
       return hasNext();
     }
 
@@ -445,6 +450,15 @@ public class TsBlock {
 
     public void setRowIndex(int rowIndex) {
       this.rowIndex = rowIndex;
+    }
+
+    private boolean isCurrentValueAllNull() {
+      for (int i = 0; i < valueColumns.length; i++) {
+        if (!valueColumns[i].isNull(rowIndex)) {
+          return false;
+        }
+      }
+      return true;
     }
   }
 

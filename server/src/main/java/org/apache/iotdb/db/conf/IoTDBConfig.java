@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -813,11 +814,6 @@ public class IoTDBConfig {
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
 
-  /**
-   * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
-   */
-  private List<String> configNodeUrls = Collections.singletonList("127.0.0.1:22277");
-
   /** Internal ip for data node */
   private String internalIp = "127.0.0.1";
 
@@ -826,6 +822,10 @@ public class IoTDBConfig {
 
   /** Internal port for consensus protocol */
   private int consensusPort = 40010;
+
+  /** Ip and port of config nodes. */
+  private List<TEndPoint> configNodeList =
+      Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
   /** The max time of data node waiting to join into the cluster */
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
@@ -2618,14 +2618,6 @@ public class IoTDBConfig {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 
-  public List<String> getConfigNodeUrls() {
-    return configNodeUrls;
-  }
-
-  public void setConfigNodeUrls(List<String> configNodeUrls) {
-    this.configNodeUrls = configNodeUrls;
-  }
-
   public String getInternalIp() {
     return internalIp;
   }
@@ -2648,6 +2640,14 @@ public class IoTDBConfig {
 
   public void setConsensusPort(int consensusPort) {
     this.consensusPort = consensusPort;
+  }
+
+  public List<TEndPoint> getConfigNodeList() {
+    return configNodeList;
+  }
+
+  public void setConfigNodeList(List<TEndPoint> configNodeList) {
+    this.configNodeList = configNodeList;
   }
 
   public long getJoinClusterTimeOutMs() {

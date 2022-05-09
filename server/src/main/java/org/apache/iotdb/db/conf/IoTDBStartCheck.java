@@ -18,9 +18,12 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -38,13 +41,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
-public class IoTDBConfigCheck {
+public class IoTDBStartCheck {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBConfigCheck.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBStartCheck.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -108,18 +112,20 @@ public class IoTDBConfigCheck {
 
   private static final String DATA_NODE_ID = "data_node_id";
 
+  private static final String CONFIG_NODE_LIST = "config_node_list";
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
-  public static IoTDBConfigCheck getInstance() {
+  public static IoTDBStartCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
 
   private static class IoTDBConfigCheckHolder {
 
-    private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
+    private static final IoTDBStartCheck INSTANCE = new IoTDBStartCheck();
   }
 
-  private IoTDBConfigCheck() {
+  private IoTDBStartCheck() {
     logger.info("Starting IoTDB " + IoTDBConstant.VERSION);
 
     // check whether SCHEMA_DIR exists, create if not exists
@@ -180,10 +186,10 @@ public class IoTDBConfigCheck {
   public void checkConfig() throws ConfigurationException, IOException {
     propertiesFile =
         SystemFileFactory.INSTANCE.getFile(
-            IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
+            IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
     tmpPropertiesFile =
         SystemFileFactory.INSTANCE.getFile(
-            IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
+            IoTDBStartCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
 
     // system init first time, no need to check, write system.properties and return
     if (!propertiesFile.exists() && !tmpPropertiesFile.exists()) {
@@ -408,5 +414,39 @@ public class IoTDBConfigCheck {
     }
     // rename system.properties.tmp to system.properties
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
+  }
+
+  /** call this method to serialize config node list */
+  public void serializeConfigNodeList(List<TEndPoint> configNodeList) throws IOException {
+    // create an empty tmpPropertiesFile
+    if (tmpPropertiesFile.createNewFile()) {
+      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
+    } else {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      System.exit(-1);
+    }
+
+    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+      properties.setProperty(CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(configNodeList));
+      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      // serialize finished, delete old system.properties file
+      if (propertiesFile.exists()) {
+        Files.delete(propertiesFile.toPath());
+      }
+    }
+    // rename system.properties.tmp to system.properties
+    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
+  }
+
+  public void loadConfigNodeList() {
+    // properties contain CONFIG_NODE_LIST only when start as Data node
+    try {
+      if (properties.containsKey(CONFIG_NODE_LIST)) {
+        config.setConfigNodeList(
+            NodeUrlUtils.parseTEndPointUrls(properties.getProperty(CONFIG_NODE_LIST)));
+      }
+    } catch (BadNodeUrlException e) {
+      logger.error("Cannot parse config node list in system.properties");
+    }
   }
 }
