@@ -68,7 +68,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   // The size of the buffer used for snapshot(temporary value)
   private final int bufferSize = 10 * 1024 * 1024;
 
-  private final String snapshotFileName = "ClusterSchemaInfo.st";
+  private final String snapshotFileName = "cluster_schema.bin";
 
   private ClusterSchemaInfo() {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
