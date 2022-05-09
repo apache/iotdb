@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.udf.core.transformer.binary;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
@@ -30,9 +31,14 @@ public abstract class BinaryTransformer extends Transformer {
   protected final LayerPointReader leftPointReader;
   protected final LayerPointReader rightPointReader;
 
+  protected final TSDataType leftTSDataType;
+  protected final TSDataType rightTSDataType;
+
   protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     this.leftPointReader = leftPointReader;
     this.rightPointReader = rightPointReader;
+    leftTSDataType = leftPointReader.getDataType();
+    rightTSDataType = rightPointReader.getDataType();
   }
 
   @Override
@@ -106,9 +112,10 @@ public abstract class BinaryTransformer extends Transformer {
     return true;
   }
 
-  protected static double castCurrentValueToDoubleOperand(LayerPointReader layerPointReader)
+  protected static double castCurrentValueToDoubleOperand(
+      LayerPointReader layerPointReader, TSDataType dataType)
       throws IOException, QueryProcessException {
-    switch (layerPointReader.getDataType()) {
+    switch (dataType) {
       case INT32:
         return layerPointReader.currentInt();
       case INT64:

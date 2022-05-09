@@ -30,8 +30,6 @@ import java.util.Set;
 
 public class InTransformer extends UnaryTransformer {
 
-  private final TSDataType dataType;
-
   private final Satisfy satisfy;
 
   private Set<Integer> intSet;
@@ -43,7 +41,6 @@ public class InTransformer extends UnaryTransformer {
 
   public InTransformer(LayerPointReader layerPointReader, boolean isNotIn, Set<String> values) {
     super(layerPointReader);
-    dataType = layerPointReader.getDataType();
     satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
     initTypedSet(values);
   }

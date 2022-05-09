@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.udf.core.transformer.unary;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
@@ -29,8 +30,11 @@ public abstract class UnaryTransformer extends Transformer {
 
   protected final LayerPointReader layerPointReader;
 
+  protected final TSDataType dataType;
+
   public UnaryTransformer(LayerPointReader layerPointReader) {
     this.layerPointReader = layerPointReader;
+    this.dataType = layerPointReader.getDataType();
   }
 
   @Override

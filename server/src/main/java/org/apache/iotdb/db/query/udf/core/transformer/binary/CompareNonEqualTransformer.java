@@ -40,8 +40,8 @@ public class CompareNonEqualTransformer extends CompareBinaryTransformer {
     } else {
       cachedBoolean =
           evaluate(
-              castCurrentValueToDoubleOperand(leftPointReader),
-              castCurrentValueToDoubleOperand(rightPointReader));
+              castCurrentValueToDoubleOperand(leftPointReader, leftTSDataType),
+              castCurrentValueToDoubleOperand(rightPointReader, rightTSDataType));
     }
   }
 

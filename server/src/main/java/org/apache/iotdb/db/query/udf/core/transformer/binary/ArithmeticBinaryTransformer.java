@@ -36,8 +36,8 @@ public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
   protected void transformAndCache() throws QueryProcessException, IOException {
     cachedDouble =
         evaluate(
-            castCurrentValueToDoubleOperand(leftPointReader),
-            castCurrentValueToDoubleOperand(rightPointReader));
+            castCurrentValueToDoubleOperand(leftPointReader, leftTSDataType),
+            castCurrentValueToDoubleOperand(rightPointReader, rightTSDataType));
   }
 
   @Override

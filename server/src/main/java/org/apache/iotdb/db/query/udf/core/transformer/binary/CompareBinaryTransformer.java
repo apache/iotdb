@@ -36,8 +36,8 @@ public abstract class CompareBinaryTransformer extends BinaryTransformer {
   protected void transformAndCache() throws QueryProcessException, IOException {
     cachedBoolean =
         evaluate(
-            castCurrentValueToDoubleOperand(leftPointReader),
-            castCurrentValueToDoubleOperand(rightPointReader));
+            castCurrentValueToDoubleOperand(leftPointReader, leftTSDataType),
+            castCurrentValueToDoubleOperand(rightPointReader, rightTSDataType));
   }
 
   abstract boolean evaluate(double leftOperand, double rightOperand);

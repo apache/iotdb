@@ -44,7 +44,7 @@ public class TransparentTransformer extends UnaryTransformer {
 
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
-    switch (layerPointReader.getDataType()) {
+    switch (dataType) {
       case BOOLEAN:
         cachedBoolean = layerPointReader.currentBoolean();
         break;
