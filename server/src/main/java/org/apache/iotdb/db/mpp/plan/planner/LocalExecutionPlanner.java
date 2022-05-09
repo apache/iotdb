@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
@@ -38,12 +39,16 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.FilterOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.DescTimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.merge.MultiColumnMerger;
+import org.apache.iotdb.db.mpp.execution.operator.process.merge.NonOverlappedMultiColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
@@ -85,6 +90,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -96,6 +102,9 @@ import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.apache.commons.lang3.Validate;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -429,8 +438,50 @@ public class LocalExecutionPlanner {
     }
 
     @Override
+    public Operator visitTransform(TransformNode node, LocalExecutionPlanContext context) {
+      final OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              TransformNode.class.getSimpleName());
+      final Operator inputOperator = generateOnlyChildOperator(node, context);
+      final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+      try {
+        return new TransformOperator(
+            operatorContext,
+            inputOperator,
+            inputDataTypes,
+            node.getOutputExpressions(),
+            node.isKeepNull(),
+            node.getZoneId(),
+            context.getTypeProvider());
+      } catch (QueryProcessException | IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
-      return super.visitFilter(node, context);
+      final OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(), node.getPlanNodeId(), FilterNode.class.getSimpleName());
+      final Operator inputOperator = generateOnlyChildOperator(node, context);
+      final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+      try {
+        return new FilterOperator(
+            operatorContext,
+            inputOperator,
+            inputDataTypes,
+            node.getPredicate(),
+            node.getOutputExpressions(),
+            node.isKeepNull(),
+            node.getZoneId(),
+            context.getTypeProvider());
+      } catch (QueryProcessException | IOException e) {
+        throw new RuntimeException(e);
+      }
     }
 
     @Override
@@ -506,6 +557,7 @@ public class LocalExecutionPlanner {
     }
 
     private List<OutputColumn> generateOutputColumns(TimeJoinNode node) {
+      // TODO we should also sort the InputLocation for each column if they are not overlapped
       return makeLayout(node).values().stream()
           .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))
           .collect(Collectors.toList());
@@ -518,15 +570,14 @@ public class LocalExecutionPlanner {
         ColumnMerger merger;
         // only has one input column
         if (outputColumn.isSingleInputColumn()) {
-          merger = new SingleColumnMerger(outputColumn.getInputLocation(0), timeComparator);
-        } else if (!outputColumn.isOverlapped()) {
-          // has more than one input columns but time of these input columns is not overlapped
-          throw new UnsupportedOperationException(
-              "has more than one input columns but time of these input columns is not overlapped is not supported");
+          merger = new SingleColumnMerger(outputColumn.getSourceLocation(0), timeComparator);
+        } else if (outputColumn.isOverlapped()) {
+          // has more than one input columns but time of these input columns is overlapped
+          merger = new MultiColumnMerger(outputColumn.getSourceLocations());
         } else {
-          // has more than one input columns and time of these input columns is overlapped
-          throw new UnsupportedOperationException(
-              "has more than one input columns and time of these input columns is overlapped is not supported");
+          // has more than one input columns and time of these input columns is not overlapped
+          merger =
+              new NonOverlappedMultiColumnMerger(outputColumn.getSourceLocations(), timeComparator);
         }
         mergers.add(merger);
       }
@@ -620,6 +671,15 @@ public class LocalExecutionPlanner {
       return node.getOutputColumnNames().stream()
           .map(typeProvider::getType)
           .collect(Collectors.toList());
+    }
+
+    private Operator generateOnlyChildOperator(PlanNode node, LocalExecutionPlanContext context) {
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(child -> child.accept(this, context))
+              .collect(Collectors.toList());
+      Validate.isTrue(children.size() == 1);
+      return children.get(0);
     }
   }
 

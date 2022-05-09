@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
@@ -71,6 +72,17 @@ public class SchemaTree {
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
+  public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
+    SchemaTreeMeasurementVisitor visitor =
+        new SchemaTreeMeasurementVisitor(
+            root,
+            pathPattern,
+            IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum() + 1,
+            0,
+            false);
+    return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
+  }
+
   public List<MeasurementPath> getAllMeasurement() {
     return searchMeasurementPaths(ALL_MATCH_PATTERN, 0, 0, false).left;
   }
@@ -83,6 +95,11 @@ public class SchemaTree {
    */
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
     SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
+    return visitor.getAllResult();
+  }
+
+  public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern) {
+    SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, false);
     return visitor.getAllResult();
   }
 
@@ -241,17 +258,20 @@ public class SchemaTree {
    *
    * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
    *
-   * @param path only full path, cannot be path pattern
+   * @param pathName only full path, cannot be path pattern
    * @return storage group in the given path
    */
-  public String getBelongedStorageGroup(PartialPath path) {
+  public String getBelongedStorageGroup(String pathName) {
     for (String storageGroup : storageGroups) {
-      if (path.getFullPath().startsWith(storageGroup + ".")) {
+      if (pathName.startsWith(storageGroup + ".")) {
         return storageGroup;
       }
     }
-    throw new RuntimeException(
-        "No matched storage group. Please check the path " + path.getFullPath());
+    throw new RuntimeException("No matched storage group. Please check the path " + pathName);
+  }
+
+  public String getBelongedStorageGroup(PartialPath path) {
+    return getBelongedStorageGroup(path.getFullPath());
   }
 
   public List<String> getStorageGroups() {

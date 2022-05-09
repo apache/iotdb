@@ -322,13 +322,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(partialPath.getSchemaList());
-    int curSize = alignedTvListCopy.rowCount();
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
     }
-    return new AlignedReadOnlyMemChunk(
-        getMeasurementSchema(), alignedTvListCopy, curSize, deletionList);
+    return new AlignedReadOnlyMemChunk(getMeasurementSchema(), alignedTvListCopy, deletionList);
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
@@ -539,7 +537,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         memTableMap.get(deviceID).getMemChunkMap().get(partialPath.getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
-    int curSize = chunkCopy.rowCount();
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
@@ -550,7 +547,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         partialPath.getMeasurementSchema().getEncodingType(),
         chunkCopy,
         partialPath.getMeasurementSchema().getProps(),
-        curSize,
         deletionList);
   }
   /**

@@ -57,4 +57,8 @@ public class SchemaQueryMergeNode extends AbstractSchemaMergeNode {
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitSchemaQueryMerge(this, context);
   }
+
+  public String toString() {
+    return String.format("SchemaMergeNode-%s", getPlanNodeId());
+  }
 }

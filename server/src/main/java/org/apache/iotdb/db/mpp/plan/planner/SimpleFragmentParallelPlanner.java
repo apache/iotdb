@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
@@ -83,10 +82,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // If one PlanFragment will produce several FragmentInstance, the instanceIdx will be increased
     // one by one
     PlanNode rootCopy = PlanNodeUtil.deepCopy(fragment.getRoot());
-    Filter timeFilter =
-        analysis.getQueryFilter() == null
-            ? null
-            : ((GlobalTimeExpression) analysis.getQueryFilter()).getFilter();
+    Filter timeFilter = analysis.getGlobalTimeFilter();
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             new PlanFragment(fragment.getId(), rootCopy),

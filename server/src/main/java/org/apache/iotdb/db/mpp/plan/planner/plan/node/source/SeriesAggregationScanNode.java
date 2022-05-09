@@ -242,7 +242,7 @@ public class SeriesAggregationScanNode extends SourceNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       groupByTimeParameter.serialize(byteBuffer);
     }
-    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
+    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public static SeriesAggregationScanNode deserialize(ByteBuffer byteBuffer) {
@@ -268,7 +268,8 @@ public class SeriesAggregationScanNode extends SourceNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    TRegionReplicaSet regionReplicaSet = ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
+    TRegionReplicaSet regionReplicaSet =
+        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SeriesAggregationScanNode(
         planNodeId,

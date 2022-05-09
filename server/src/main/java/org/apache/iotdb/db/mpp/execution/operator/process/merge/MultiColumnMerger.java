@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
 
-/** has more than one input column, but these columns' time is not overlapped */
+/** has more than one input column, but these columns' time is overlapped */
 public class MultiColumnMerger implements ColumnMerger {
 
   private final List<InputLocation> inputLocations;
@@ -65,7 +65,7 @@ public class MultiColumnMerger implements ColumnMerger {
         int index = updatedInputIndex[tsBlockIndex];
 
         // current location's input column is not empty
-        if (!empty(tsBlockIndex, inputTsBlocks, updatedInputIndex)) {
+        if (!ColumnMerger.empty(tsBlockIndex, inputTsBlocks, updatedInputIndex)) {
           TimeColumn timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
           Column valueColumn = inputTsBlocks[tsBlockIndex].getColumn(columnIndex);
           // time of current location's input column is equal to current row's time

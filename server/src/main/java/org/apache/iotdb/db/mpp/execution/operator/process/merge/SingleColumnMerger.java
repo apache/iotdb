@@ -45,6 +45,27 @@ public class SingleColumnMerger implements ColumnMerger {
       TimeColumnBuilder timeBuilder,
       long currentEndTime,
       ColumnBuilder columnBuilder) {
+
+    mergeOneColumn(
+        inputTsBlocks,
+        inputIndex,
+        updatedInputIndex,
+        timeBuilder,
+        currentEndTime,
+        columnBuilder,
+        location,
+        comparator);
+  }
+
+  public static void mergeOneColumn(
+      TsBlock[] inputTsBlocks,
+      int[] inputIndex,
+      int[] updatedInputIndex,
+      TimeColumnBuilder timeBuilder,
+      long currentEndTime,
+      ColumnBuilder columnBuilder,
+      InputLocation location,
+      TimeComparator comparator) {
     int tsBlockIndex = location.getTsBlockIndex();
     int columnIndex = location.getValueColumnIndex();
 
@@ -52,7 +73,7 @@ public class SingleColumnMerger implements ColumnMerger {
     int index = inputIndex[tsBlockIndex];
     // input column is empty or current time of input column is already larger than currentEndTime
     // just appendNull rowCount null
-    if (empty(tsBlockIndex, inputTsBlocks, inputIndex)
+    if (ColumnMerger.empty(tsBlockIndex, inputTsBlocks, inputIndex)
         || !comparator.satisfyCurEndTime(
             inputTsBlocks[tsBlockIndex].getTimeByIndex(index), currentEndTime)) {
       columnBuilder.appendNull(rowCount);

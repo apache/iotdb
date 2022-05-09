@@ -40,7 +40,7 @@ public class DatasetHeader {
   // indicate whether the result dataset contain timestamp column
   private final boolean isIgnoreTimestamp;
 
-  // map from
+  // map from output column to output tsBlock index
   private Map<String, Integer> columnToTsBlockIndexMap;
 
   public DatasetHeader(List<ColumnHeader> columnHeaders, boolean isIgnoreTimestamp) {

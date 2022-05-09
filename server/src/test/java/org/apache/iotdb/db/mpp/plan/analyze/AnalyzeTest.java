@@ -22,41 +22,34 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
 
 import static org.junit.Assert.fail;
 
-public class AnalyzerTest {
+public class AnalyzeTest {
 
   @Test
-  public void samePropertyKeyTest() {
-    assertAnalyzeSemanticException(
-        "CREATE TIMESERIES root.sg1.d1.s1 INT32 TAGS('a'='1') ATTRIBUTES('a'='1')",
-        "Tag and attribute shouldn't have the same property key");
+  public void testRawDataQuery() {
+    // TODO: @lmh add UTs
   }
 
-  @Test
-  public void sameMeasurementsInAlignedTest() {
-    assertAnalyzeSemanticException(
-        "CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN  compressor=SNAPPY, latitude FLOAT encoding=PLAIN compressor=SNAPPY)",
-        "Measurement under an aligned device is not allowed to have the same measurement name");
-  }
-
-  private void assertAnalyzeSemanticException(String sql, String message) {
+  private Analysis analyzeSQL(String sql) {
     try {
+      Statement statement =
+          StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
+      MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
       Analyzer analyzer =
-          new Analyzer(
-              new MPPQueryContext(new QueryId("test_query")),
-              new FakePartitionFetcherImpl(),
-              new FakeSchemaFetcherImpl());
-      analyzer.analyze(StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset()));
-      fail();
-    } catch (RuntimeException e) {
-      Assert.assertTrue(e.getMessage().contains(message));
+          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+      return analyzer.analyze(statement);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
+    fail();
+    return null;
   }
 }

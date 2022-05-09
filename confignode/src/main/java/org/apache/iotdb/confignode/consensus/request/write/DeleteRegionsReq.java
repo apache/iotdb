@@ -52,7 +52,7 @@ public class DeleteRegionsReq extends ConfigRequest {
 
     buffer.putInt(consensusGroupIds.size());
     for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
-      ThriftCommonsSerDeUtils.writeTConsensusGroupId(consensusGroupId, buffer);
+      ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, buffer);
     }
   }
 
@@ -60,7 +60,7 @@ public class DeleteRegionsReq extends ConfigRequest {
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
-      consensusGroupIds.add(ThriftCommonsSerDeUtils.readTConsensusGroupId(buffer));
+      consensusGroupIds.add(ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
     }
   }
 
