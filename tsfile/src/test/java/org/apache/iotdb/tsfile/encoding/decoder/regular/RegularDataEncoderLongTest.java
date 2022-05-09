@@ -211,11 +211,11 @@ public class RegularDataEncoderLongTest {
   private List<String> getBetweenDateWithTwoSecond(String start, String end) {
     TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    List<String> list = new ArrayList<>();
     LocalDateTime startDate = LocalDateTime.parse(start);
     LocalDateTime endDate = LocalDateTime.parse(end);
 
     long distance = ChronoUnit.SECONDS.between(startDate, endDate);
+    List<String> list = new ArrayList<>((int) distance / 2 + 1);
     if (distance < 1) {
       return list;
     }
@@ -240,7 +240,7 @@ public class RegularDataEncoderLongTest {
   }
 
   private void shouldReadAndWrite(long[] data, int length) throws IOException {
-    out = new ByteArrayOutputStream();
+    out = new ByteArrayOutputStream(data.length * 16);
     writeData(data, length);
     byte[] page = out.toByteArray();
     buffer = ByteBuffer.wrap(page);

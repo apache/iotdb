@@ -24,20 +24,23 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 
 public class PullSnapshotHintService {
 
@@ -53,8 +56,8 @@ public class PullSnapshotHintService {
   }
 
   public void start() {
-    this.service = Executors.newScheduledThreadPool(1);
-    this.service.scheduleAtFixedRate(this::sendHints, 0, 1, TimeUnit.MINUTES);
+    this.service = IoTDBThreadPoolFactory.newScheduledThreadPool(1, "PullSnapshotHint");
+    this.service.scheduleAtFixedRate(this::sendHints, 0, 10, TimeUnit.MILLISECONDS);
   }
 
   public void stop() {
@@ -62,9 +65,9 @@ public class PullSnapshotHintService {
       return;
     }
 
-    service.shutdown();
+    service.shutdownNow();
     try {
-      service.awaitTermination(3, TimeUnit.MINUTES);
+      service.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("{}: PullSnapshotHintService exiting interrupted", member.getName());
@@ -74,8 +77,8 @@ public class PullSnapshotHintService {
 
   public void registerHint(PullSnapshotTaskDescriptor descriptor) {
     PullSnapshotHint hint = new PullSnapshotHint();
-    hint.receivers = new ArrayList<>(descriptor.getPreviousHolders());
-    hint.header = descriptor.getPreviousHolders().getHeader();
+    hint.partitionGroup = descriptor.getPreviousHolders();
+    hint.receivers = new PartitionGroup(hint.partitionGroup);
     hint.slots = descriptor.getSlots();
     hints.add(hint);
   }
@@ -85,16 +88,30 @@ public class PullSnapshotHintService {
       PullSnapshotHint hint = iterator.next();
       for (Iterator<Node> iter = hint.receivers.iterator(); iter.hasNext(); ) {
         Node receiver = iter.next();
-        try {
-          boolean result = sendHint(receiver, hint);
-          if (result) {
-            iter.remove();
+        // If the receiver is the removed node, ignore the hint
+        if (!member.getMetaGroupMember().getPartitionTable().getAllNodes().contains(receiver)) {
+          iter.remove();
+        } else {
+          try {
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "{}: start to send hint to target group {}, receiver {}, slot is {} and other {}",
+                  member.getName(),
+                  hint.partitionGroup,
+                  receiver,
+                  hint.slots.get(0),
+                  hint.slots.size() - 1);
+            }
+            boolean result = sendHint(receiver, hint);
+            if (result) {
+              iter.remove();
+            }
+          } catch (TException e) {
+            logger.warn("Cannot send pull snapshot hint to {}", receiver);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("Sending hint to {} interrupted", receiver);
           }
-        } catch (TException e) {
-          logger.warn("Cannot send pull snapshot hint to {}", receiver);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("Sending hint to {} interrupted", receiver);
         }
       }
       // all nodes in remote group know the hint, the hint can be removed
@@ -118,25 +135,45 @@ public class PullSnapshotHintService {
   private boolean sendHintsAsync(Node receiver, PullSnapshotHint hint)
       throws TException, InterruptedException {
     AsyncDataClient asyncDataClient = (AsyncDataClient) member.getAsyncClient(receiver);
-    return SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.header, hint.slots);
+    if (asyncDataClient == null) {
+      return false;
+    }
+    return SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.getHeader(), hint.slots);
   }
 
   private boolean sendHintSync(Node receiver, PullSnapshotHint hint) throws TException {
-    try (SyncDataClient syncDataClient = (SyncDataClient) member.getSyncClient(receiver)) {
+    SyncDataClient syncDataClient = null;
+    try {
+      syncDataClient = (SyncDataClient) member.getSyncClient(receiver);
       if (syncDataClient == null) {
         return false;
       }
-      return syncDataClient.onSnapshotApplied(hint.header, hint.slots);
+      return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.slots);
+    } catch (TException e) {
+      syncDataClient.close();
+      throw e;
+    } finally {
+      if (syncDataClient != null) {
+        syncDataClient.returnSelf();
+      }
     }
   }
 
   private static class PullSnapshotHint {
 
-    /** Nodes to send this hint; */
-    private List<Node> receivers;
+    /** Nodes to send this hint */
+    private PartitionGroup receivers;
 
-    private Node header;
+    private PartitionGroup partitionGroup;
 
     private List<Integer> slots;
+
+    public RaftNode getHeader() {
+      return partitionGroup.getHeader();
+    }
+
+    public int getRaftId() {
+      return receivers.getRaftId();
+    }
   }
 }

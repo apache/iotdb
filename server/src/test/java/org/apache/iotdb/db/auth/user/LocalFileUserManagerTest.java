@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.auth.user;
 
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -59,6 +60,22 @@ public class LocalFileUserManagerTest {
   }
 
   @Test
+  public void testIllegalInput() throws AuthException {
+    // Password contains space
+    try {
+      manager.createUser("username1", "password_ ");
+    } catch (AuthException e) {
+      assertTrue(e.getMessage().contains("cannot contain spaces"));
+    }
+    // Username contains space
+    try {
+      assertFalse(manager.createUser("username 2", "password_"));
+    } catch (AuthException e) {
+      assertTrue(e.getMessage().contains("cannot contain spaces"));
+    }
+  }
+
+  @Test
   public void test() throws AuthException {
     User[] users = new User[5];
     for (int i = 0; i < users.length; i++) {
@@ -80,7 +97,7 @@ public class LocalFileUserManagerTest {
     for (User user1 : users) {
       user = manager.getUser(user1.getName());
       assertEquals(user1.getName(), user.getName());
-      assertEquals(AuthUtils.encryptPassword(user1.getPassword()), user.getPassword());
+      assertTrue(AuthUtils.validatePassword(user1.getPassword(), user.getPassword()));
     }
 
     assertFalse(manager.createUser(users[0].getName(), users[0].getPassword()));
@@ -155,7 +172,7 @@ public class LocalFileUserManagerTest {
     assertTrue(manager.updateUserPassword(user.getName(), newPassword));
     assertFalse(manager.updateUserPassword(user.getName(), illegalPW));
     user = manager.getUser(user.getName());
-    assertEquals(AuthUtils.encryptPassword(newPassword), user.getPassword());
+    assertTrue(AuthUtils.validatePassword(newPassword, user.getPassword()));
     caught = false;
     try {
       manager.updateUserPassword("not a user", newPassword);
@@ -194,7 +211,7 @@ public class LocalFileUserManagerTest {
     // list users
     List<String> usernames = manager.listAllUsers();
     usernames.sort(null);
-    assertEquals(IoTDBConstant.ADMIN_NAME, usernames.get(0));
+    assertEquals(CommonConfig.getInstance().getAdminName(), usernames.get(0));
     for (int i = 0; i < users.length - 1; i++) {
       assertEquals(users[i].getName(), usernames.get(i + 1));
     }

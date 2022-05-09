@@ -29,7 +29,7 @@ class IoTDBOptions(
 
   val password = parameters.getOrElse("password", "root")
 
-  val sql = parameters.getOrElse("sql", sys.error("Option 'sql' not specified"))
+  val sql = parameters.getOrElse("sql", "")
 
   val numPartition = parameters.getOrElse("numPartition", "1")
 

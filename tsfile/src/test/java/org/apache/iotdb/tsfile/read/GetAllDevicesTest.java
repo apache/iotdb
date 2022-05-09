@@ -76,7 +76,7 @@ public class GetAllDevicesTest {
       List<String> devices = fileReader.getAllDevices();
       Assert.assertEquals(deviceNum, devices.size());
       for (int i = 0; i < deviceNum; i++) {
-        Assert.assertTrue(devices.contains("d" + i));
+        Assert.assertEquals("d" + FileGenerator.generateIndexString(i, deviceNum), devices.get(i));
       }
 
       FileGenerator.after();

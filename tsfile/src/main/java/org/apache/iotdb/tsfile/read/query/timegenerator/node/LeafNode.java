@@ -48,7 +48,7 @@ public class LeafNode implements Node {
       hasCached = true;
       return true;
     }
-    if (reader.hasNextBatch()) {
+    while (reader.hasNextBatch()) {
       cacheData = reader.nextBatch();
       if (cacheData.hasCurrent()) {
         cachedTime = cacheData.currentTime();

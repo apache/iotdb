@@ -26,16 +26,18 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 
 public class PageHeader {
 
   private int uncompressedSize;
   private int compressedSize;
-  private Statistics statistics;
+  private Statistics<? extends Serializable> statistics;
   private boolean modified;
 
-  public PageHeader(int uncompressedSize, int compressedSize, Statistics statistics) {
+  public PageHeader(
+      int uncompressedSize, int compressedSize, Statistics<? extends Serializable> statistics) {
     this.uncompressedSize = uncompressedSize;
     this.compressedSize = compressedSize;
     this.statistics = statistics;
@@ -52,8 +54,11 @@ public class PageHeader {
   public static PageHeader deserializeFrom(
       InputStream inputStream, TSDataType dataType, boolean hasStatistic) throws IOException {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    if (uncompressedSize == 0) { // Empty Page
+      return new PageHeader(0, 0, null);
+    }
     int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
-    Statistics statistics = null;
+    Statistics<? extends Serializable> statistics = null;
     if (hasStatistic) {
       statistics = Statistics.deserialize(inputStream, dataType);
     }
@@ -62,13 +67,20 @@ public class PageHeader {
 
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    if (uncompressedSize == 0) { // Empty Page
+      return new PageHeader(0, 0, null);
+    }
     int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
-    Statistics statistics = Statistics.deserialize(buffer, dataType);
+    Statistics<? extends Serializable> statistics = Statistics.deserialize(buffer, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
-  public static PageHeader deserializeFrom(ByteBuffer buffer, Statistics chunkStatistic) {
+  public static PageHeader deserializeFrom(
+      ByteBuffer buffer, Statistics<? extends Serializable> chunkStatistic) {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    if (uncompressedSize == 0) { // Empty Page
+      return new PageHeader(0, 0, null);
+    }
     int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     return new PageHeader(uncompressedSize, compressedSize, chunkStatistic);
   }
@@ -93,7 +105,7 @@ public class PageHeader {
     return statistics.getCount();
   }
 
-  public Statistics getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return statistics;
   }
 
@@ -133,6 +145,9 @@ public class PageHeader {
 
   /** max page header size without statistics */
   public int getSerializedPageSize() {
+    if (uncompressedSize == 0) { // Empty page
+      return ReadWriteForEncodingUtils.uVarIntSize(uncompressedSize);
+    }
     return ReadWriteForEncodingUtils.uVarIntSize(uncompressedSize)
         + ReadWriteForEncodingUtils.uVarIntSize(compressedSize)
         + (statistics == null ? 0 : statistics.getSerializedSize()) // page header

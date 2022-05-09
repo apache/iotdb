@@ -53,7 +53,7 @@ public class WatermarkDetector {
       throw new IOException("Parameter out of range.");
     }
 
-    if (!dataType.equals("int") && !dataType.equals("float") && !dataType.equals("double")) {
+    if (!"int".equals(dataType) && !"float".equals(dataType) && !"double".equals(dataType)) {
       throw new IOException("invalid parameter: supported data types are int/float/double");
     }
 
@@ -95,7 +95,7 @@ public class WatermarkDetector {
                 String.format("%s%d", secretKey, timestamp), embed_row_cycle)
             == 0) {
           String str = items[columnIndex];
-          if (str.equals("null")) {
+          if ("null".equals(str)) {
             continue;
           }
 

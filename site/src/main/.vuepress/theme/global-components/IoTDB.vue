@@ -191,7 +191,7 @@ export default {
       this.$router.push("/Download/");
     },
     addRoutes2() {
-      this.$router.push("/UserGuide/V0.10.x/Get%20Started/QuickStart.html");
+      this.$router.push("/UserGuide/Master/QuickStart/QuickStart.html");
     }
   }
 };

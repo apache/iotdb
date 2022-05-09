@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -68,7 +68,7 @@ public class AuthorPlan extends PhysicalPlan {
       String[] authorizationList,
       PartialPath nodeName)
       throws AuthException {
-    super(false, Operator.OperatorType.AUTHOR);
+    super(Operator.OperatorType.AUTHOR);
     this.authorType = authorType;
     this.userName = userName;
     this.roleName = roleName;
@@ -139,7 +139,7 @@ public class AuthorPlan extends PhysicalPlan {
   }
 
   public AuthorPlan(OperatorType operatorType) throws IOException {
-    super(false, operatorType);
+    super(operatorType);
     setAuthorType(transformOperatorTypeToAuthorType(operatorType));
   }
 
@@ -222,7 +222,7 @@ public class AuthorPlan extends PhysicalPlan {
     return userName;
   }
 
-  private Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
+  public static Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
     Set<Integer> result = new HashSet<>();
     if (authorizationList == null) {
       return result;
@@ -325,7 +325,7 @@ public class AuthorPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = this.getPlanType(super.getOperatorType());
     buffer.put((byte) type);
     buffer.putInt(authorType.ordinal());

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.tsfile.utils.BitMap;
+
 import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -35,18 +37,18 @@ public class BooleanTVListTest {
     for (int i = 50; i < 100; i++) {
       tvList.putBoolean(i, false);
     }
-    for (int i = 0; i < tvList.size / 2; i++) {
+    for (int i = 0; i < tvList.rowCount / 2; i++) {
       Assert.assertTrue(tvList.getBoolean(i));
       Assert.assertEquals(i, tvList.getTime(i));
     }
-    for (int i = tvList.size / 2 + 1; i < tvList.size; i++) {
+    for (int i = tvList.rowCount / 2 + 1; i < tvList.rowCount; i++) {
       Assert.assertFalse(tvList.getBoolean(i));
       Assert.assertEquals(i, tvList.getTime(i));
     }
   }
 
   @Test
-  public void testBooleanTVLists() {
+  public void testPutBooleansWithoutBitMap() {
     BooleanTVList tvList = new BooleanTVList();
     List<Boolean> booleanList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
@@ -57,10 +59,69 @@ public class BooleanTVListTest {
     tvList.putBooleans(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
         ArrayUtils.toPrimitive(booleanList.toArray(new Boolean[0])),
+        null,
         0,
         1000);
-    for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+    for (long i = 0; i < tvList.rowCount; i++) {
+      Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
+    }
+  }
+
+  @Test
+  public void testPutBooleansWithBitMap() {
+    BooleanTVList tvList = new BooleanTVList();
+    List<Boolean> booleanList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    BitMap bitMap = new BitMap(1001);
+    for (long i = 1000; i >= 0; i--) {
+      timeList.add((i));
+      booleanList.add(i % 2 == 0);
+      if (i % 100 == 0) {
+        bitMap.mark((int) i);
+      }
+    }
+    tvList.putBooleans(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(booleanList.toArray(new Boolean[0])),
+        bitMap,
+        0,
+        1000);
+    tvList.sort();
+    int nullCnt = 0;
+    for (long i = 1; i < booleanList.size(); i++) {
+      if (i % 100 == 0) {
+        nullCnt++;
+        continue;
+      }
+      Assert.assertEquals(i % 2 == 0, tvList.getBoolean((int) i - nullCnt - 1));
+      Assert.assertEquals(i, tvList.getTime((int) i - nullCnt - 1));
+    }
+  }
+
+  @Test
+  public void testClone() {
+    BooleanTVList tvList = new BooleanTVList();
+    List<Boolean> booleanList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    BitMap bitMap = new BitMap(1001);
+    for (long i = 1000; i >= 0; i--) {
+      timeList.add((i));
+      booleanList.add(i % 2 == 0);
+      if (i % 100 == 0) {
+        bitMap.mark((int) i);
+      }
+    }
+    tvList.putBooleans(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(booleanList.toArray(new Boolean[0])),
+        bitMap,
+        0,
+        1000);
+    tvList.sort();
+    BooleanTVList clonedTvList = tvList.clone();
+    for (long i = 0; i < tvList.rowCount; i++) {
+      Assert.assertEquals(tvList.getBoolean((int) i), clonedTvList.getBoolean((int) i));
+      Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
     }
   }
 }

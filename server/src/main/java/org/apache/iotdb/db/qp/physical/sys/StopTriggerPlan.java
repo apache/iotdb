@@ -19,20 +19,34 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
+import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
 public class StopTriggerPlan extends PhysicalPlan {
 
-  private final String triggerName;
+  private String triggerName;
+
+  private PartialPath authPath;
+
+  public StopTriggerPlan() {
+    super(OperatorType.STOP_TRIGGER);
+    canBeSplit = false;
+  }
 
   public StopTriggerPlan(String triggerName) {
-    super(false, OperatorType.STOP_TRIGGER);
+    super(OperatorType.STOP_TRIGGER);
     this.triggerName = triggerName;
+    canBeSplit = false;
   }
 
   public String getTriggerName() {
@@ -42,5 +56,47 @@ public class StopTriggerPlan extends PhysicalPlan {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeByte((byte) PhysicalPlanType.STOP_TRIGGER.ordinal());
+
+    putString(stream, triggerName);
+  }
+
+  @Override
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.STOP_TRIGGER.ordinal());
+
+    putString(buffer, triggerName);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    triggerName = readString(buffer);
+  }
+
+  @Override
+  public boolean isAuthenticationRequired() {
+    if (authPath == null) {
+      try {
+        authPath =
+            TriggerRegistrationService.getInstance()
+                .getRegistrationInformation(triggerName)
+                .getFullPath();
+      } catch (TriggerManagementException e) {
+        // The trigger does not exist.
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public List<? extends PartialPath> getAuthPaths() {
+    return isAuthenticationRequired()
+        ? Collections.singletonList(authPath)
+        : Collections.emptyList();
   }
 }

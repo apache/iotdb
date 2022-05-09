@@ -19,26 +19,43 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
 /** NodeRemovalResult stores the removed partition group. */
 public class NodeRemovalResult {
-  private PartitionGroup removedGroup;
-  // if the removed group contains the local node, the local node should join a new group to
-  // preserve the replication number
-  private PartitionGroup newGroup;
 
-  public PartitionGroup getRemovedGroup() {
-    return removedGroup;
+  private final List<PartitionGroup> removedGroupList = new ArrayList<>();
+
+  public PartitionGroup getRemovedGroup(int raftId) {
+    for (PartitionGroup group : removedGroupList) {
+      if (group.getRaftId() == raftId) {
+        return group;
+      }
+    }
+    return null;
   }
 
-  public void setRemovedGroup(PartitionGroup group) {
-    this.removedGroup = group;
+  public void addRemovedGroup(PartitionGroup group) {
+    this.removedGroupList.add(group);
   }
 
-  public PartitionGroup getNewGroup() {
-    return newGroup;
+  public void serialize(DataOutputStream dataOutputStream) throws IOException {
+    dataOutputStream.writeInt(removedGroupList.size());
+    for (PartitionGroup group : removedGroupList) {
+      group.serialize(dataOutputStream);
+    }
   }
 
-  public void setNewGroup(PartitionGroup newGroup) {
-    this.newGroup = newGroup;
+  public void deserialize(ByteBuffer buffer) {
+    int removedGroupListSize = buffer.getInt();
+    for (int i = 0; i < removedGroupListSize; i++) {
+      PartitionGroup group = new PartitionGroup();
+      group.deserialize(buffer);
+      removedGroupList.add(group);
+    }
   }
 }

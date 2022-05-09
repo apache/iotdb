@@ -70,7 +70,7 @@ public class TsFileTestHelper {
                 TSDataType.INT64,
                 TSEncoding.TS_2DIFF,
                 CompressionType.UNCOMPRESSED);
-        schema.registerTimeseries(new Path("device_1", "sensor_" + (i + 1)), measurementSchema);
+        schema.registerTimeseries(new Path("device_1"), measurementSchema);
         schemaList.add(measurementSchema);
       }
 

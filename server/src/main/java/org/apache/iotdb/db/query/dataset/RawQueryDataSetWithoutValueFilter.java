@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.concurrent.WrappedRunnable;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
+import org.apache.iotdb.db.query.pool.RawQueryReadTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
@@ -37,6 +40,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,26 +53,41 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
-    implements DirectAlignByTimeDataSet, UDFInputDataSet {
+    implements DirectAlignByTimeDataSet {
 
-  private class ReadTask extends WrappedRunnable {
+  protected class ReadTask extends WrappedRunnable {
 
     private final ManagedSeriesReader reader;
     private final String pathName;
-    private BlockingQueue<BatchData> blockingQueue;
+    private final BlockingQueue<BatchData> blockingQueue;
+    private int[] batchDataLengthList;
+    private final int seriesIndex;
+    private final int fetchLimit;
 
     public ReadTask(
-        ManagedSeriesReader reader, BlockingQueue<BatchData> blockingQueue, String pathName) {
+        ManagedSeriesReader reader,
+        BlockingQueue<BatchData> blockingQueue,
+        String pathName,
+        int[] batchDataLengthList,
+        int seriesIndex,
+        int fetchLimit) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.pathName = pathName;
+      this.batchDataLengthList = batchDataLengthList;
+      this.seriesIndex = seriesIndex;
+      this.fetchLimit = fetchLimit;
     }
 
     @Override
     public void runMayThrow() {
       try {
         // check the status of mainThread before next reading
-        QueryTimeManager.checkQueryAlive(queryId);
+        // 1. Main thread quits because of timeout
+        // 2. Main thread quits because of getting enough fetchSize result
+        if (!QueryTimeManager.checkQueryAlive(queryId)) {
+          return;
+        }
 
         synchronized (reader) {
           // if the task is submitted, there must be free space in the queue
@@ -81,6 +100,21 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
               continue;
             }
             blockingQueue.put(batchData);
+
+            // has limit clause
+            if (batchDataLengthList != null) {
+              batchDataLengthList[seriesIndex] += batchData.length();
+              if (batchDataLengthList[seriesIndex] >= fetchLimit) {
+                // the queue has enough space to hold SignalBatchData, just break the while loop
+                if (blockingQueue.remainingCapacity() > 0) {
+                  break;
+                } else { // otherwise, exit without putting SignalBatchData, main thread will submit
+                  // a new task again, then it will put SignalBatchData successfully
+                  reader.setManagedByQueryManager(false);
+                  return;
+                }
+              }
+            }
             // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
               TASK_POOL_MANAGER.submit(this);
@@ -110,12 +144,12 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             e,
             String.format(
                 "Something gets wrong while reading from the series reader %s: ", pathName));
-      } catch (Exception e) {
+      } catch (Throwable e) {
         putExceptionBatchData(e, "Something gets wrong: ");
       }
     }
 
-    private void putExceptionBatchData(Exception e, String logMessage) {
+    private void putExceptionBatchData(Throwable e, String logMessage) {
       try {
         LOGGER.error(logMessage, e);
         reader.setHasRemaining(false);
@@ -132,7 +166,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   protected TimeSelector timeHeap;
 
   // Blocking queue list for each batch reader
-  private final BlockingQueue<BatchData>[] blockingQueueArray;
+  protected final BlockingQueue<BatchData>[] blockingQueueArray;
 
   // indicate that there is no more batch data in the corresponding queue
   // in case that the consumer thread is blocked on the queue and won't get runnable any more
@@ -144,12 +178,21 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
   protected BatchData[] cachedBatchDataArray;
 
+  protected int[] batchDataLengthList;
+
+  private int bufferNum;
+
   // capacity for blocking queue
-  private static final int BLOCKING_QUEUE_CAPACITY = 5;
+  private static final int BLOCKING_QUEUE_CAPACITY =
+      IoTDBDescriptor.getInstance().getConfig().getRawQueryBlockingQueueCapacity();
 
   private final long queryId;
 
-  private static final QueryTaskPoolManager TASK_POOL_MANAGER = QueryTaskPoolManager.getInstance();
+  // this field record the original value of offset clause, won't change during the query execution
+  protected final int originalRowOffset;
+
+  private static final RawQueryReadTaskPoolManager TASK_POOL_MANAGER =
+      RawQueryReadTaskPoolManager.getInstance();
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(RawQueryDataSetWithoutValueFilter.class);
@@ -157,18 +200,24 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   /**
    * constructor of EngineDataSetWithoutValueFilter.
    *
-   * @param paths paths in List structure
-   * @param dataTypes time series data type
    * @param readers readers in List(IPointReader) structure
    */
   public RawQueryDataSetWithoutValueFilter(
-      long queryId,
-      List<PartialPath> paths,
-      List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers,
-      boolean ascending)
+      long queryId, RawDataQueryPlan queryPlan, List<ManagedSeriesReader> readers)
       throws IOException, InterruptedException {
-    super(new ArrayList<>(paths), dataTypes, ascending);
+    super(
+        new ArrayList<>(queryPlan.getDeduplicatedPaths()),
+        queryPlan.getDeduplicatedDataTypes(),
+        queryPlan.isAscending());
+    this.rowLimit = queryPlan.getRowLimit();
+    this.originalRowOffset = queryPlan.getRowOffset();
+    this.rowOffset = queryPlan.getRowOffset();
+    this.withoutAnyNull = queryPlan.isWithoutAnyNull();
+    this.withoutAllNull = queryPlan.isWithoutAllNull();
+    if (rowLimit != 0 && !withoutAllNull && !withoutAnyNull) {
+      batchDataLengthList = new int[readers.size()];
+    }
+
     this.queryId = queryId;
     this.seriesReaderList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
@@ -177,6 +226,14 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     }
     cachedBatchDataArray = new BatchData[readers.size()];
     noMoreDataInQueueArray = new boolean[readers.size()];
+    bufferNum = 0;
+    for (PartialPath path : queryPlan.getDeduplicatedPaths()) {
+      if (path instanceof AlignedPath) {
+        bufferNum += ((AlignedPath) path).getMeasurementList().size();
+      } else {
+        bufferNum += 1;
+      }
+    }
     init();
   }
 
@@ -187,6 +244,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
    */
   public RawQueryDataSetWithoutValueFilter(long queryId) {
     this.queryId = queryId;
+    this.originalRowOffset = 0;
     blockingQueueArray = new BlockingQueue[0];
     timeHeap = new TimeSelector(0, ascending);
   }
@@ -197,8 +255,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       ManagedSeriesReader reader = seriesReaderList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      TASK_POOL_MANAGER.submit(
-          new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
+      TASK_POOL_MANAGER.submit(generateReadTaskForGivenReader(reader, i));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       // check the interrupted status of query before taking next batch
@@ -210,6 +267,16 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         timeHeap.add(time);
       }
     }
+  }
+
+  protected ReadTask generateReadTaskForGivenReader(ManagedSeriesReader reader, int seriesIndex) {
+    return new ReadTask(
+        reader,
+        blockingQueueArray[seriesIndex],
+        paths.get(seriesIndex).getFullPath(),
+        batchDataLengthList,
+        seriesIndex,
+        rowLimit + originalRowOffset);
   }
 
   /**
@@ -224,16 +291,17 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
 
     PublicBAOS timeBAOS = new PublicBAOS();
-    PublicBAOS[] valueBAOSList = new PublicBAOS[seriesNum];
-    PublicBAOS[] bitmapBAOSList = new PublicBAOS[seriesNum];
 
-    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
-      valueBAOSList[seriesIndex] = new PublicBAOS();
-      bitmapBAOSList[seriesIndex] = new PublicBAOS();
+    PublicBAOS[] valueBAOSList = new PublicBAOS[bufferNum];
+    PublicBAOS[] bitmapBAOSList = new PublicBAOS[bufferNum];
+
+    for (int bufferIndex = 0; bufferIndex < bufferNum; bufferIndex++) {
+      valueBAOSList[bufferIndex] = new PublicBAOS();
+      bitmapBAOSList[bufferIndex] = new PublicBAOS();
     }
 
     // used to record a bitmap for every 8 row records
-    int[] currentBitmapList = new int[seriesNum];
+    int[] currentBitmapList = new int[bufferNum];
     int rowCount = 0;
     while (rowCount < fetchSize) {
 
@@ -243,60 +311,135 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
       long minTime = timeHeap.pollFirst();
 
+      if ((withoutAnyNull || withoutAllNull) && filterRowRecord(seriesNum, minTime)) {
+        continue;
+      }
+
       if (rowOffset == 0) {
         timeBAOS.write(BytesUtils.longToBytes(minTime));
       }
 
-      for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+      for (int seriesIndex = 0, bufferIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
 
         if (cachedBatchDataArray[seriesIndex] == null
             || !cachedBatchDataArray[seriesIndex].hasCurrent()
             || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
           if (rowOffset == 0) {
-            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1);
+            if (paths.get(seriesIndex) instanceof AlignedPath) {
+              for (int i = 0;
+                  i < ((AlignedPath) paths.get(seriesIndex)).getMeasurementList().size();
+                  i++) {
+                currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
+                bufferIndex++;
+              }
+            } else {
+              currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
+              bufferIndex++;
+            }
           }
         } else {
           // current batch has value at minTime, consume current value
           if (rowOffset == 0) {
-            currentBitmapList[seriesIndex] = (currentBitmapList[seriesIndex] << 1) | FLAG;
             TSDataType type = cachedBatchDataArray[seriesIndex].getDataType();
             switch (type) {
               case INT32:
+                currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
                 int intValue = cachedBatchDataArray[seriesIndex].getInt();
                 if (encoder != null && encoder.needEncode(minTime)) {
                   intValue = encoder.encodeInt(intValue, minTime);
                 }
-                ReadWriteIOUtils.write(intValue, valueBAOSList[seriesIndex]);
+                ReadWriteIOUtils.write(intValue, valueBAOSList[bufferIndex]);
+                bufferIndex++;
                 break;
               case INT64:
+                currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
                 long longValue = cachedBatchDataArray[seriesIndex].getLong();
                 if (encoder != null && encoder.needEncode(minTime)) {
                   longValue = encoder.encodeLong(longValue, minTime);
                 }
-                ReadWriteIOUtils.write(longValue, valueBAOSList[seriesIndex]);
+                ReadWriteIOUtils.write(longValue, valueBAOSList[bufferIndex]);
+                bufferIndex++;
                 break;
               case FLOAT:
+                currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
                 float floatValue = cachedBatchDataArray[seriesIndex].getFloat();
                 if (encoder != null && encoder.needEncode(minTime)) {
                   floatValue = encoder.encodeFloat(floatValue, minTime);
                 }
-                ReadWriteIOUtils.write(floatValue, valueBAOSList[seriesIndex]);
+                ReadWriteIOUtils.write(floatValue, valueBAOSList[bufferIndex]);
+                bufferIndex++;
                 break;
               case DOUBLE:
+                currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
                 double doubleValue = cachedBatchDataArray[seriesIndex].getDouble();
                 if (encoder != null && encoder.needEncode(minTime)) {
                   doubleValue = encoder.encodeDouble(doubleValue, minTime);
                 }
-                ReadWriteIOUtils.write(doubleValue, valueBAOSList[seriesIndex]);
+                ReadWriteIOUtils.write(doubleValue, valueBAOSList[bufferIndex]);
+                bufferIndex++;
                 break;
               case BOOLEAN:
+                currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
                 ReadWriteIOUtils.write(
-                    cachedBatchDataArray[seriesIndex].getBoolean(), valueBAOSList[seriesIndex]);
+                    cachedBatchDataArray[seriesIndex].getBoolean(), valueBAOSList[bufferIndex]);
+                bufferIndex++;
                 break;
               case TEXT:
+                currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
                 ReadWriteIOUtils.write(
-                    cachedBatchDataArray[seriesIndex].getBinary(), valueBAOSList[seriesIndex]);
+                    cachedBatchDataArray[seriesIndex].getBinary(), valueBAOSList[bufferIndex]);
+                bufferIndex++;
+                break;
+              case VECTOR:
+                for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
+                  if (primitiveVal == null) {
+                    currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
+                    bufferIndex++;
+                    continue;
+                  }
+                  currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
+                  switch (primitiveVal.getDataType()) {
+                    case INT32:
+                      int intVal = primitiveVal.getInt();
+                      if (encoder != null && encoder.needEncode(minTime)) {
+                        intVal = encoder.encodeInt(intVal, minTime);
+                      }
+                      ReadWriteIOUtils.write(intVal, valueBAOSList[bufferIndex]);
+                      break;
+                    case INT64:
+                      long longVal = primitiveVal.getLong();
+                      if (encoder != null && encoder.needEncode(minTime)) {
+                        longVal = encoder.encodeLong(longVal, minTime);
+                      }
+                      ReadWriteIOUtils.write(longVal, valueBAOSList[bufferIndex]);
+                      break;
+                    case FLOAT:
+                      float floatVal = primitiveVal.getFloat();
+                      if (encoder != null && encoder.needEncode(minTime)) {
+                        floatVal = encoder.encodeFloat(floatVal, minTime);
+                      }
+                      ReadWriteIOUtils.write(floatVal, valueBAOSList[bufferIndex]);
+                      break;
+                    case DOUBLE:
+                      double doubleVal = primitiveVal.getDouble();
+                      if (encoder != null && encoder.needEncode(minTime)) {
+                        doubleVal = encoder.encodeDouble(doubleVal, minTime);
+                      }
+                      ReadWriteIOUtils.write(doubleVal, valueBAOSList[bufferIndex]);
+                      break;
+                    case BOOLEAN:
+                      ReadWriteIOUtils.write(primitiveVal.getBoolean(), valueBAOSList[bufferIndex]);
+                      break;
+                    case TEXT:
+                      ReadWriteIOUtils.write(primitiveVal.getBinary(), valueBAOSList[bufferIndex]);
+                      break;
+                    default:
+                      throw new UnSupportedDataTypeException(
+                          String.format("Data type %s is not supported.", type));
+                  }
+                  bufferIndex++;
+                }
                 break;
               default:
                 throw new UnSupportedDataTypeException(
@@ -304,33 +447,18 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             }
           }
 
-          // move next
-          cachedBatchDataArray[seriesIndex].next();
-
-          // check the interrupted status of query before taking next batch
-          QueryTimeManager.checkQueryAlive(queryId);
-
-          // get next batch if current batch is empty and still have remaining batch data in queue
-          if (!cachedBatchDataArray[seriesIndex].hasCurrent()
-              && !noMoreDataInQueueArray[seriesIndex]) {
-            fillCache(seriesIndex);
-          }
-
-          // try to put the next timestamp into the heap
-          if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
-            timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
-          }
+          prepareForNext(seriesIndex);
         }
       }
 
       if (rowOffset == 0) {
         rowCount++;
         if (rowCount % 8 == 0) {
-          for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+          for (int bufferIndex = 0; bufferIndex < bufferNum; bufferIndex++) {
             ReadWriteIOUtils.write(
-                (byte) currentBitmapList[seriesIndex], bitmapBAOSList[seriesIndex]);
+                (byte) currentBitmapList[bufferIndex], bitmapBAOSList[bufferIndex]);
             // we should clear the bitmap every 8 row record
-            currentBitmapList[seriesIndex] = 0;
+            currentBitmapList[bufferIndex] = 0;
           }
         }
         if (rowLimit > 0) {
@@ -348,10 +476,10 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     if (rowCount > 0) {
       int remaining = rowCount % 8;
       if (remaining != 0) {
-        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+        for (int bufferIndex = 0; bufferIndex < bufferNum; bufferIndex++) {
           ReadWriteIOUtils.write(
-              (byte) (currentBitmapList[seriesIndex] << (8 - remaining)),
-              bitmapBAOSList[seriesIndex]);
+              (byte) (currentBitmapList[bufferIndex] << (8 - remaining)),
+              bitmapBAOSList[bufferIndex]);
         }
       }
     }
@@ -365,13 +493,13 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     List<ByteBuffer> valueBufferList = new ArrayList<>();
     List<ByteBuffer> bitmapBufferList = new ArrayList<>();
 
-    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+    for (int bufferIndex = 0; bufferIndex < bufferNum; bufferIndex++) {
 
       // add value buffer of current series
-      putPBOSToBuffer(valueBAOSList, valueBufferList, seriesIndex);
+      putPBOSToBuffer(valueBAOSList, valueBufferList, bufferIndex);
 
       // add bitmap buffer of current series
-      putPBOSToBuffer(bitmapBAOSList, bitmapBufferList, seriesIndex);
+      putPBOSToBuffer(bitmapBAOSList, bitmapBufferList, bufferIndex);
     }
 
     // set value buffers and bitmap buffers
@@ -379,6 +507,106 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     tsQueryDataSet.setBitmapList(bitmapBufferList);
 
     return tsQueryDataSet;
+  }
+
+  /** if columns in the row record match the condition of null value filter, we filter it. */
+  private boolean filterRowRecord(int seriesNum, long minTime)
+      throws IOException, InterruptedException {
+    boolean hasNull = false, isAllNull = true;
+    // because `cachedBatchDataArray[seriesIndex]` may be TSDataType.VECTOR type
+    // so seriesIndex may not be corresponding to `withoutNullColumnsIndex`
+    // we need the `index` to record
+    int index = 0;
+    for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+      if (withoutNullColumnsIndex != null && !withoutNullColumnsIndex.contains(index)) {
+        index++;
+        continue;
+      }
+
+      if (cachedBatchDataArray[seriesIndex] == null
+          || !cachedBatchDataArray[seriesIndex].hasCurrent()
+          || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
+        index++;
+        hasNull = true;
+      } else {
+        if (TSDataType.VECTOR == cachedBatchDataArray[seriesIndex].getDataType()) {
+          boolean nullFlag = false;
+          for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
+            if (withoutNullColumnsIndex != null && !withoutNullColumnsIndex.contains(index)) {
+              index++;
+              continue;
+            }
+            if (primitiveVal == null) {
+              hasNull = true;
+              nullFlag = true;
+            } else {
+              isAllNull = false;
+            }
+            index++;
+          }
+
+          if (!nullFlag) {
+            isAllNull = false;
+            if (isWithoutAllNull()) {
+              break;
+            }
+          }
+        } else {
+          index++;
+          isAllNull = false;
+        }
+      }
+      if (hasNull && isWithoutAnyNull()) {
+        break;
+      }
+
+      if (!hasNull) {
+        isAllNull = false;
+      }
+
+      if (!isAllNull && isWithoutAllNull()) {
+        break;
+      }
+    }
+    if (hasNull && isWithoutAnyNull()) {
+      for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+        if (cachedBatchDataArray[seriesIndex] != null
+            && cachedBatchDataArray[seriesIndex].hasCurrent()
+            && cachedBatchDataArray[seriesIndex].currentTime() == minTime) {
+          prepareForNext(seriesIndex);
+        }
+      }
+      return true;
+    }
+
+    if (isAllNull && isWithoutAllNull()) {
+      if (withoutNullColumnsIndex != null) {
+        for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
+          if (cachedBatchDataArray[seriesIndex] != null
+              && cachedBatchDataArray[seriesIndex].hasCurrent()
+              && cachedBatchDataArray[seriesIndex].currentTime() == minTime) {
+            prepareForNext(seriesIndex);
+          }
+        }
+      }
+      return true;
+    }
+    return false;
+  }
+
+  private void prepareForNext(int seriesIndex) throws IOException, InterruptedException {
+    // move next
+    cachedBatchDataArray[seriesIndex].next();
+
+    // get next batch if current batch is empty and still have remaining batch data in queue
+    if (!cachedBatchDataArray[seriesIndex].hasCurrent() && !noMoreDataInQueueArray[seriesIndex]) {
+      fillCache(seriesIndex);
+    }
+
+    // try to put the next timestamp into the heap
+    if (cachedBatchDataArray[seriesIndex].hasCurrent()) {
+      timeHeap.add(cachedBatchDataArray[seriesIndex].currentTime());
+    }
   }
 
   protected void fillCache(int seriesIndex) throws IOException, InterruptedException {
@@ -389,11 +617,13 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     } else if (batchData instanceof ExceptionBatchData) {
       // exception happened in producer thread
       ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
-      LOGGER.error("exception happened in producer thread", exceptionBatchData.getException());
-      if (exceptionBatchData.getException() instanceof IOException) {
-        throw (IOException) exceptionBatchData.getException();
-      } else if (exceptionBatchData.getException() instanceof RuntimeException) {
-        throw (RuntimeException) exceptionBatchData.getException();
+      LOGGER.error("exception happened in producer thread", exceptionBatchData.getThrowable());
+      if (exceptionBatchData.getThrowable() instanceof IOException) {
+        throw (IOException) exceptionBatchData.getThrowable();
+      } else if (exceptionBatchData.getThrowable() instanceof RuntimeException) {
+        throw (RuntimeException) exceptionBatchData.getThrowable();
+      } else {
+        throw new RuntimeException("some other unknown errors!");
       }
 
     } else { // there are more batch data in this time series queue
@@ -408,9 +638,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
           // now we should submit it again
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
-            TASK_POOL_MANAGER.submit(
-                new ReadTask(
-                    reader, blockingQueueArray[seriesIndex], paths.get(seriesIndex).getFullPath()));
+            TASK_POOL_MANAGER.submit(generateReadTaskForGivenReader(reader, seriesIndex));
           }
         }
       }
@@ -432,6 +660,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   }
 
   /** for spark/hadoop/hive integration and test */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public RowRecord nextWithoutConstraint() throws IOException {
     long minTime = timeHeap.pollFirst();
@@ -442,10 +671,28 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
-        record.addField(null);
+        if (paths.get(seriesIndex) instanceof AlignedPath) {
+          for (int i = 0;
+              i < ((AlignedPath) paths.get(seriesIndex)).getMeasurementList().size();
+              i++) {
+            record.addField(null);
+          }
+        } else {
+          record.addField(null);
+        }
       } else {
         TSDataType dataType = dataTypes.get(seriesIndex);
-        record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
+        if (dataType == TSDataType.VECTOR) {
+          for (TsPrimitiveType primitiveVal : cachedBatchDataArray[seriesIndex].getVector()) {
+            if (primitiveVal == null) {
+              record.addField(null);
+            } else {
+              record.addField(primitiveVal.getValue(), primitiveVal.getDataType());
+            }
+          }
+        } else {
+          record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
+        }
         cacheNext(seriesIndex);
       }
     }
@@ -453,32 +700,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     return record;
   }
 
-  @Override
-  public boolean hasNextRowInObjects() {
-    return !timeHeap.isEmpty();
-  }
-
-  @Override
-  public Object[] nextRowInObjects() throws IOException {
-    int seriesNumber = seriesReaderList.size();
-
-    Long minTime = timeHeap.pollFirst();
-    Object[] rowInObjects = new Object[seriesNumber + 1];
-    rowInObjects[seriesNumber] = minTime;
-
-    for (int seriesIndex = 0; seriesIndex < seriesNumber; seriesIndex++) {
-      if (cachedBatchDataArray[seriesIndex] != null
-          && cachedBatchDataArray[seriesIndex].hasCurrent()
-          && cachedBatchDataArray[seriesIndex].currentTime() == minTime) {
-        rowInObjects[seriesIndex] = cachedBatchDataArray[seriesIndex].currentValue();
-        cacheNext(seriesIndex);
-      }
-    }
-
-    return rowInObjects;
-  }
-
-  private void cacheNext(int seriesIndex) throws IOException {
+  protected void cacheNext(int seriesIndex) throws IOException {
     // move next
     cachedBatchDataArray[seriesIndex].next();
 

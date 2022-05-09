@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -88,8 +88,9 @@ public class IoTDBConnectionTest {
           }
         };
     final String timestampPrecision = "ms";
+    new ServerProperties();
     when(client.getProperties())
-        .thenReturn(new ServerProperties(version, supportedAggregationTime, timestampPrecision));
+        .thenReturn(new ServerProperties(version, supportedAggregationTime, timestampPrecision, 1));
     connection.setClient(client);
     assertEquals(connection.getServerProperties().getVersion(), version);
     for (int i = 0; i < supportedAggregationTime.size(); i++) {

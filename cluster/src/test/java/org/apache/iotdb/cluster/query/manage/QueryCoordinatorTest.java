@@ -73,14 +73,9 @@ public class QueryCoordinatorTest {
     MetaGroupMember metaGroupMember =
         new MetaGroupMember() {
           @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            return getAsyncClient(node);
-          }
-
-          @Override
           public AsyncClient getAsyncClient(Node node) {
             try {
-              return new TestAsyncMetaClient(new Factory(), null, node, null) {
+              return new TestAsyncMetaClient(new Factory(), null, node) {
                 @Override
                 public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
                   new Thread(
@@ -90,6 +85,7 @@ public class QueryCoordinatorTest {
                             } catch (InterruptedException e) {
                               // ignored
                             }
+
                             resultHandler.onComplete(nodeStatusMap.get(getNode()).getStatus());
                           })
                       .start();

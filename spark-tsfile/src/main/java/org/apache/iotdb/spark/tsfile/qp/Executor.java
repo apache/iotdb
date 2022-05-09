@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.spark.tsfile.qp;
 
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -30,7 +30,7 @@ import java.util.List;
 public class Executor {
 
   public static List<QueryDataSet> query(
-      ReadOnlyTsFile reader, List<QueryExpression> queryExpressions, long start, long end) {
+      TsFileReader reader, List<QueryExpression> queryExpressions, long start, long end) {
     List<QueryDataSet> dataSets = new ArrayList<>();
     try {
       for (QueryExpression expression : queryExpressions) {

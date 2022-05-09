@@ -28,7 +28,7 @@ public class QueryTimeoutRuntimeException extends RuntimeException {
     super(message, cause);
   }
 
-  public QueryTimeoutRuntimeException(String message) {
-    super(message);
+  public QueryTimeoutRuntimeException() {
+    super(TIMEOUT_EXCEPTION_MESSAGE);
   }
 }

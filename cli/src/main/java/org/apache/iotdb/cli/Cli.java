@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.RpcUtils;
 
-import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -31,6 +31,9 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.thrift.TException;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
+import org.jline.reader.UserInterruptException;
 
 import java.io.IOException;
 import java.sql.DriverManager;
@@ -42,6 +45,7 @@ import static org.apache.iotdb.cli.utils.IoTPrinter.println;
 public class Cli extends AbstractCli {
 
   private static CommandLine commandLine;
+  private static LineReader lineReader;
 
   /**
    * IoTDB Client main function.
@@ -49,7 +53,7 @@ public class Cli extends AbstractCli {
    * @param args launch arguments
    * @throws ClassNotFoundException ClassNotFoundException
    */
-  public static void main(String[] args) throws ClassNotFoundException {
+  public static void main(String[] args) throws ClassNotFoundException, IOException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
@@ -62,16 +66,29 @@ public class Cli extends AbstractCli {
               + "-h xxx.xxx.xxx.xxx -p xxxx -u xxx.");
       println("For more information, please check the following hint.");
       hf.printHelp(SCRIPT_HINT, options, true);
-      return;
+      System.exit(CODE_ERROR);
     }
     init();
     String[] newArgs = removePasswordArgs(args);
     String[] newArgs2 = processExecuteArgs(newArgs);
     boolean continues = parseCommandLine(options, newArgs2, hf);
     if (!continues) {
-      return;
+      System.exit(CODE_ERROR);
     }
 
+    try {
+      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
+      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
+      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
+    } catch (ArgsErrorException e) {
+      println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
+      System.exit(CODE_ERROR);
+    } catch (Exception e) {
+      println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
+      System.exit(CODE_ERROR);
+    }
+
+    lineReader = JlineUtils.getLineReader(username, host, port);
     serve();
   }
 
@@ -102,7 +119,7 @@ public class Cli extends AbstractCli {
     } catch (NumberFormatException e) {
       println(
           IOTDB_CLI_PREFIX
-              + "> error format of max print row count, it should be a number and greater than 0");
+              + "> error format of max print row count, it should be an integer number");
       return false;
     }
     return true;
@@ -110,10 +127,6 @@ public class Cli extends AbstractCli {
 
   private static void serve() {
     try {
-      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
-      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
-      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
-
       password = commandLine.getOptionValue(PASSWORD_ARGS);
       if (hasExecuteSQL && password != null) {
         try (IoTDBConnection connection =
@@ -121,28 +134,26 @@ public class Cli extends AbstractCli {
                 DriverManager.getConnection(
                     Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
           properties = connection.getServerProperties();
+          timestampPrecision = properties.getTimestampPrecision();
           AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
           processCommand(execute, connection);
-          return;
+          System.exit(lastProcessStatus);
         } catch (SQLException e) {
           println(IOTDB_CLI_PREFIX + "> can't execute sql because" + e.getMessage());
+          System.exit(CODE_ERROR);
         }
       }
-      try (ConsoleReader reader = new ConsoleReader()) {
-        reader.setExpandEvents(false);
-        if (password == null) {
-          password = reader.readLine("please input your password:", '\0');
-        }
-        receiveCommands(reader);
+      if (password == null) {
+        password = lineReader.readLine("please input your password:", '\0');
       }
-    } catch (ArgsErrorException e) {
-      println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
+      receiveCommands(lineReader);
     } catch (Exception e) {
       println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
+      System.exit(CODE_ERROR);
     }
   }
 
-  private static void receiveCommands(ConsoleReader reader) throws TException, IOException {
+  private static void receiveCommands(LineReader reader) throws TException {
     try (IoTDBConnection connection =
         (IoTDBConnection)
             DriverManager.getConnection(
@@ -156,16 +167,29 @@ public class Cli extends AbstractCli {
       displayLogo(properties.getVersion());
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {
-        s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
-        boolean continues = processCommand(s, connection);
-        if (!continues) {
-          break;
+        try {
+          s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
+          boolean continues = processCommand(s, connection);
+          if (!continues) {
+            break;
+          }
+        } catch (UserInterruptException e) {
+          // Exit on signal INT requires confirmation.
+          try {
+            reader.readLine("Press CTRL+C again to exit, or press ENTER to continue", '\0');
+          } catch (UserInterruptException | EndOfFileException e2) {
+            System.exit(CODE_OK);
+          }
+        } catch (EndOfFileException e) {
+          // Exit on EOF (usually by pressing CTRL+D).
+          System.exit(CODE_OK);
         }
       }
     } catch (SQLException e) {
       println(
           String.format(
               "%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
+      System.exit(CODE_ERROR);
     }
   }
 }

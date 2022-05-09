@@ -28,7 +28,8 @@ import java.util.Collection;
 public interface ModificationReader {
 
   /**
-   * Read all modifications from a persistent medium.
+   * Read all modifications from a persistent medium. If the mods file is crashed, the redundant
+   * modifications will be truncated until the file is correct.
    *
    * @return a list of modifications contained the medium.
    */

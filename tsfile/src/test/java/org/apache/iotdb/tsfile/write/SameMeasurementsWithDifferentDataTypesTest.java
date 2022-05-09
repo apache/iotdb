@@ -18,16 +18,16 @@
  */
 package org.apache.iotdb.tsfile.write;
 
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
@@ -54,7 +54,7 @@ public class SameMeasurementsWithDifferentDataTypesTest {
 
   private String TEMPLATE_1 = "template1";
   private String TEMPLATE_2 = "template2";
-  private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
+  private String tsfilePath = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
 
   @Before
   public void before() throws IOException, WriteProcessException {
@@ -78,8 +78,8 @@ public class SameMeasurementsWithDifferentDataTypesTest {
     pathList.add(new Path("d2", "s1"));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath);
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
-    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    TsFileReader tsFileReader = new TsFileReader(fileReader);
+    QueryDataSet dataSet = tsFileReader.query(queryExpression);
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
@@ -100,6 +100,9 @@ public class SameMeasurementsWithDifferentDataTypesTest {
       Files.deleteIfExists(f.toPath());
     } catch (IOException e) {
       fail(e.getMessage());
+    }
+    if (!f.getParentFile().exists()) {
+      Assert.assertTrue(f.getParentFile().mkdirs());
     }
 
     Schema schema = new Schema();

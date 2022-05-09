@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -49,7 +50,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   private long tagOffset = -1;
 
   public CreateTimeSeriesPlan() {
-    super(false, Operator.OperatorType.CREATE_TIMESERIES);
+    super(Operator.OperatorType.CREATE_TIMESERIES);
     canBeSplit = false;
   }
 
@@ -62,7 +63,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
       Map<String, String> tags,
       Map<String, String> attributes,
       String alias) {
-    super(false, Operator.OperatorType.CREATE_TIMESERIES);
+    super(Operator.OperatorType.CREATE_TIMESERIES);
     this.path = path;
     this.dataType = dataType;
     this.encoding = encoding;
@@ -75,6 +76,15 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
       this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       this.props.putAll(props);
     }
+  }
+
+  public CreateTimeSeriesPlan(PartialPath path, MeasurementSchema schema) {
+    super(Operator.OperatorType.CREATE_TIMESERIES);
+    this.path = path;
+    this.dataType = schema.getType();
+    this.encoding = schema.getEncodingType();
+    this.compressor = schema.getCompressor();
+    canBeSplit = false;
   }
 
   public PartialPath getPath() {
@@ -208,7 +218,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
     byte[] bytes = path.getFullPath().getBytes();
     buffer.putInt(bytes.length);

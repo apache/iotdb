@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.flush;
 
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 
 /**
@@ -29,17 +29,14 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
  */
 public interface TsFileFlushPolicy {
 
-  void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor processor, boolean isSeq);
+  void apply(DataRegion dataRegion, TsFileProcessor processor, boolean isSeq);
 
   class DirectFlushPolicy implements TsFileFlushPolicy {
 
     @Override
-    public void apply(
-        StorageGroupProcessor storageGroupProcessor,
-        TsFileProcessor tsFileProcessor,
-        boolean isSeq) {
+    public void apply(DataRegion dataRegion, TsFileProcessor tsFileProcessor, boolean isSeq) {
       if (tsFileProcessor.shouldClose()) {
-        storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
+        dataRegion.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
       } else {
         tsFileProcessor.asyncFlush();
       }

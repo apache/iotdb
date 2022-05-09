@@ -35,10 +35,11 @@ import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema}
+import org.apache.iotdb.tsfile.write.schema.{IMeasurementSchema, MeasurementSchema, Schema}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -137,7 +138,7 @@ object WideConverter extends Converter {
       requiredSchema.foreach(f => {
         if (!QueryConstant.RESERVED_TIME.equals(f.name)) {
           val path = new org.apache.iotdb.tsfile.read.common.Path(f.name, true)
-          if (devices.contains(path.getDevice) && measurementIds.contains(path.getMeasurement)) {
+          if (devices.contains(path.getDeviceIdString) && measurementIds.contains(path.getMeasurement)) {
             queriedSchema = queriedSchema.add(f)
           }
         }
@@ -472,7 +473,7 @@ object WideConverter extends Converter {
     }).foreach(f => {
       val name = f.name
       val fullPath = new Path(name, true)
-      val device = fullPath.getDevice
+      val device = fullPath.getDeviceIdString
       val measurement = fullPath.getMeasurement
 
       if (!deviceToRecord.contains(device)) {

@@ -58,7 +58,7 @@ public class IntRleDecoderTest {
       rleStart *= -3;
     }
 
-    bpList = new ArrayList<>();
+    bpList = new ArrayList<>(100000);
     int bpCount = 100000;
     int bpStart = 11;
     for (int i = 0; i < bpCount; i++) {
@@ -70,11 +70,10 @@ public class IntRleDecoderTest {
       }
     }
 
-    hybridList = new ArrayList<>();
     int hybridCount = 11;
     int hybridNum = 1000;
     int hybridStart = 20;
-
+    hybridList = new ArrayList<>(hybridCount * 2 * hybridNum);
     for (int i = 0; i < hybridNum; i++) {
       for (int j = 0; j < hybridCount; j++) {
         hybridStart += 3;
@@ -100,7 +99,7 @@ public class IntRleDecoderTest {
 
   @Test
   public void testRleReadBigInt() throws IOException {
-    List<Integer> list = new ArrayList<>();
+    List<Integer> list = new ArrayList<>(3000000);
     for (int i = 7000000; i < 10000000; i++) {
       list.add(i);
     }

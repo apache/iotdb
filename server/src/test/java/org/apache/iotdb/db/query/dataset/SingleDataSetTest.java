@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
@@ -50,7 +50,7 @@ public class SingleDataSetTest {
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d1.\"s3.xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN"
+    "CREATE TIMESERIES root.test.d1.`\"s3+xy\"` WITH DATATYPE=TEXT, ENCODING=PLAIN"
   };
 
   public SingleDataSetTest() throws QueryProcessException {}
@@ -118,7 +118,7 @@ public class SingleDataSetTest {
       throws QueryProcessException, TException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count nodes root.test level=2");
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan("count nodes root.test.** level=2");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof SingleDataSet);
     Assert.assertEquals("[count]", dataSet.getPaths().toString());

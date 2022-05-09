@@ -22,8 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * this class is used to contact String effectively.It contains a StringBuider and initialize it
- * until {@code toString} is called. Note:it's not thread safety
+ * this class is used to concatenate Strings effectively.It contains a StringBuilder and initialize
+ * it until {@code toString} is called. Note:it's not thread safety
  */
 public class StringContainer {
 
@@ -327,8 +327,12 @@ public class StringContainer {
 
   @Override
   public boolean equals(Object sc) {
-    if (sc == null) return false;
-    if (this.getClass() != sc.getClass()) return false;
+    if (sc == null) {
+      return false;
+    }
+    if (this.getClass() != sc.getClass()) {
+      return false;
+    }
     return this.equals((StringContainer) sc);
   }
 

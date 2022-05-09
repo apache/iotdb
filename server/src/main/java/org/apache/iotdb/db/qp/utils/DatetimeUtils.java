@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.qp.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.query.control.SessionManager;
 
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -31,6 +34,8 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
+import java.util.Calendar;
+import java.util.concurrent.TimeUnit;
 
 public class DatetimeUtils {
 
@@ -455,7 +460,7 @@ public class DatetimeUtils {
     try {
       ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
       Instant instant = zonedDateTime.toInstant();
-      if (timestampPrecision.equals("us")) {
+      if ("us".equals(timestampPrecision)) {
         if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
           // adjustment can reduce the loss of the division
           long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000);
@@ -465,7 +470,7 @@ public class DatetimeUtils {
           long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000);
           return Math.addExact(millis, instant.getNano() / 1000);
         }
-      } else if (timestampPrecision.equals("ns")) {
+      } else if ("ns".equals(timestampPrecision)) {
         long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000_000L);
         return Math.addExact(millis, instant.getNano());
       }
@@ -506,14 +511,24 @@ public class DatetimeUtils {
   }
 
   /**
-   * convert duration string to time value.
+   * Convert duration string to time value. CurrentTime is used to calculate the days of natural
+   * month. If it's set as -1, which means a context free situation, then '1mo' will be thought as
+   * 30 days.
    *
    * @param duration represent duration string like: 12d8m9ns, 1y1mo, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
   public static long convertDurationStrToLong(String duration) {
-    String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    return convertDurationStrToLong(duration, timestampPrecision);
+    return convertDurationStrToLong(-1, duration);
+  }
+
+  public static long convertDurationStrToLong(String duration, String timestampPrecision) {
+    return convertDurationStrToLong(-1, duration, timestampPrecision);
+  }
+
+  public static long convertDurationStrToLong(long currentTime, String duration) {
+    return convertDurationStrToLong(
+        currentTime, duration, IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   /**
@@ -522,7 +537,8 @@ public class DatetimeUtils {
    * @param duration represent duration string like: 12d8m9ns, 1y1mo, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
-  public static long convertDurationStrToLong(String duration, String timestampPrecision) {
+  public static long convertDurationStrToLong(
+      long currentTime, String duration, String timestampPrecision) {
     long total = 0;
     long temp = 0;
     for (int i = 0; i < duration.length(); i++) {
@@ -538,15 +554,26 @@ public class DatetimeUtils {
           unit += duration.charAt(i);
         }
         total +=
-            DatetimeUtils.convertDurationStrToLong(temp, unit.toLowerCase(), timestampPrecision);
+            DatetimeUtils.convertDurationStrToLong(
+                currentTime == -1 ? -1 : currentTime + total,
+                temp,
+                unit.toLowerCase(),
+                timestampPrecision);
         temp = 0;
       }
     }
     return total;
   }
 
+  @TestOnly
+  public static long convertDurationStrToLongForTest(
+      long value, String unit, String timestampPrecision) {
+    return convertDurationStrToLong(-1, value, unit, timestampPrecision);
+  }
+
   /** convert duration string to millisecond, microsecond or nanosecond. */
-  public static long convertDurationStrToLong(long value, String unit, String timestampPrecision) {
+  public static long convertDurationStrToLong(
+      long currentTime, long value, String unit, String timestampPrecision) {
     DurationUnit durationUnit = DurationUnit.valueOf(unit);
     long res = value;
     switch (durationUnit) {
@@ -554,7 +581,15 @@ public class DatetimeUtils {
         res *= 365 * 86_400_000L;
         break;
       case mo:
-        res *= 30 * 86_400_000L;
+        if (currentTime == -1) {
+          res *= 30 * 86_400_000L;
+        } else {
+          Calendar calendar = Calendar.getInstance();
+          calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+          calendar.setTimeInMillis(currentTime);
+          calendar.add(Calendar.MONTH, (int) (value));
+          res = calendar.getTimeInMillis() - currentTime;
+        }
         break;
       case w:
         res *= 7 * 86_400_000L;
@@ -575,7 +610,7 @@ public class DatetimeUtils {
         break;
     }
 
-    if (timestampPrecision.equals("us")) {
+    if ("us".equals(timestampPrecision)) {
       if (unit.equals(DurationUnit.ns.toString())) {
         return value / 1000;
       } else if (unit.equals(DurationUnit.us.toString())) {
@@ -583,7 +618,7 @@ public class DatetimeUtils {
       } else {
         return res * 1000;
       }
-    } else if (timestampPrecision.equals("ns")) {
+    } else if ("ns".equals(timestampPrecision)) {
       if (unit.equals(DurationUnit.ns.toString())) {
         return value;
       } else if (unit.equals(DurationUnit.us.toString())) {
@@ -600,6 +635,43 @@ public class DatetimeUtils {
         return res;
       }
     }
+  }
+
+  public static TimeUnit timestampPrecisionStringToTimeUnit(String timestampPrecision) {
+    if ("us".equals(timestampPrecision)) {
+      return TimeUnit.MICROSECONDS;
+    } else if ("ns".equals(timestampPrecision)) {
+      return TimeUnit.NANOSECONDS;
+    } else {
+      return TimeUnit.MILLISECONDS;
+    }
+  }
+
+  public static long currentTime() {
+    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
+      case "us":
+        return System.currentTimeMillis() * 1000 + (System.nanoTime() - startupNano) / 1000 % 1000;
+      default:
+        return System.currentTimeMillis();
+    }
+  }
+
+  public static String convertLongToDate(long timestamp) {
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        timestamp /= 1000_000_000;
+        break;
+      case "us":
+        timestamp /= 1000_000;
+        break;
+    }
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
+        .toString();
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
@@ -621,5 +693,46 @@ public class DatetimeUtils {
     ms,
     us,
     ns
+  }
+
+  public static TimeUnit toTimeUnit(String t) {
+    switch (t) {
+      case "h":
+        return TimeUnit.HOURS;
+      case "m":
+        return TimeUnit.MINUTES;
+      case "s":
+        return TimeUnit.SECONDS;
+      case "ms":
+        return TimeUnit.MILLISECONDS;
+      case "u":
+        return TimeUnit.MICROSECONDS;
+      case "n":
+        return TimeUnit.NANOSECONDS;
+      default:
+        throw new IllegalArgumentException("time precision must be one of: h,m,s,ms,u,n");
+    }
+  }
+
+  public static final long MS_TO_MONTH = 30 * 86400_000L;
+
+  /**
+   * add natural months based on the startTime to avoid edge cases, ie 2/28
+   *
+   * @param startTime current start time
+   * @param numMonths numMonths is updated in hasNextWithoutConstraint()
+   * @return nextStartTime
+   */
+  public static long calcIntervalByMonth(long startTime, long numMonths) {
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+    calendar.setTimeInMillis(startTime);
+    boolean isLastDayOfMonth =
+        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+    calendar.add(Calendar.MONTH, (int) (numMonths));
+    if (isLastDayOfMonth) {
+      calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
+    }
+    return calendar.getTimeInMillis();
   }
 }

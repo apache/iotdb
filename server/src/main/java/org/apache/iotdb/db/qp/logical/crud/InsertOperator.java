@@ -18,16 +18,39 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-/** this class extends {@code RootOperator} and process insert statement. */
-public class InsertOperator extends SFWOperator {
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-  private long time;
+import java.util.List;
+
+/** this class extends {@code RootOperator} and process insert statement. */
+public class InsertOperator extends Operator {
+
+  private PartialPath device;
+
+  private long[] times;
   private String[] measurementList;
-  private String[] valueList;
+  private List<String[]> valueLists;
+
+  private boolean isAligned;
 
   public InsertOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.INSERT;
+  }
+
+  public PartialPath getDevice() {
+    return device;
+  }
+
+  public void setDevice(PartialPath device) {
+    this.device = device;
   }
 
   public String[] getMeasurementList() {
@@ -38,19 +61,59 @@ public class InsertOperator extends SFWOperator {
     this.measurementList = measurementList;
   }
 
-  public String[] getValueList() {
-    return valueList;
+  public List<String[]> getValueLists() {
+    return valueLists;
   }
 
-  public void setValueList(String[] insertValue) {
-    this.valueList = insertValue;
+  public void setValueLists(List<String[]> valueLists) {
+    this.valueLists = valueLists;
   }
 
-  public long getTime() {
-    return time;
+  public long[] getTimes() {
+    return times;
   }
 
-  public void setTime(long time) {
-    this.time = time;
+  public void setTimes(long[] times) {
+    this.times = times;
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    int measurementsNum = measurementList.length;
+    if (times.length == 1) {
+      if (measurementsNum != valueLists.get(0).length) {
+        throw new SQLParserException(
+            String.format(
+                "the measurementList's size %d is not consistent with the valueList's size %d",
+                measurementsNum, valueLists.get(0).length));
+      }
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(device, times[0], measurementList, valueLists.get(0));
+      insertRowPlan.setAligned(isAligned);
+      return insertRowPlan;
+    }
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+    for (int i = 0; i < times.length; i++) {
+      if (measurementsNum != valueLists.get(i).length) {
+        throw new SQLParserException(
+            String.format(
+                "the measurementList's size %d is not consistent with the valueList's size %d",
+                measurementsNum, valueLists.get(i).length));
+      }
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(device, times[i], measurementList.clone(), valueLists.get(i));
+      insertRowPlan.setAligned(isAligned);
+      insertRowsPlan.addOneInsertRowPlan(insertRowPlan, i);
+    }
+    return insertRowsPlan;
   }
 }

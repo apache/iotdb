@@ -30,13 +30,14 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -45,12 +46,12 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkWriterImpl.class);
 
-  private MeasurementSchema measurementSchema;
+  private final IMeasurementSchema measurementSchema;
 
-  private ICompressor compressor;
+  private final ICompressor compressor;
 
   /** all pages of this chunk. */
-  private PublicBAOS pageBuffer;
+  private final PublicBAOS pageBuffer;
 
   private int numOfPages;
 
@@ -69,7 +70,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 1500;
 
   /** statistic of this chunk. */
-  private Statistics<?> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   /** SDT parameters */
   private boolean isSdtEncoding;
@@ -92,7 +93,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   private Statistics<?> firstPageStatistics;
 
   /** @param schema schema of this measurement */
-  public ChunkWriterImpl(MeasurementSchema schema) {
+  public ChunkWriterImpl(IMeasurementSchema schema) {
     this.measurementSchema = schema;
     this.compressor = ICompressor.getCompressor(schema.getCompressor());
     this.pageBuffer = new PublicBAOS();
@@ -115,7 +116,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkSdtEncoding();
   }
 
-  public ChunkWriterImpl(MeasurementSchema schema, boolean isMerging) {
+  public ChunkWriterImpl(IMeasurementSchema schema, boolean isMerging) {
     this(schema);
     this.isMerging = isMerging;
   }
@@ -144,7 +145,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
   }
 
-  @Override
   public void write(long time, long value) {
     // store last point for sdtEncoding, it still needs to go through encoding process
     // in case it exceeds compdev and needs to store second last point
@@ -159,7 +159,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long time, int value) {
     if (!isSdtEncoding || sdtEncoder.encodeInt(time, value)) {
       pageWriter.write(
@@ -172,13 +171,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long time, boolean value) {
     pageWriter.write(time, value);
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long time, float value) {
     if (!isSdtEncoding || sdtEncoder.encodeFloat(time, value)) {
       pageWriter.write(
@@ -192,7 +189,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long time, double value) {
     if (!isSdtEncoding || sdtEncoder.encodeDouble(time, value)) {
       pageWriter.write(
@@ -205,13 +201,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long time, Binary value) {
     pageWriter.write(time, value);
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, int[] values, int batchSize) {
     if (isSdtEncoding) {
       batchSize = sdtEncoder.encode(timestamps, values, batchSize);
@@ -220,7 +214,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, long[] values, int batchSize) {
     if (isSdtEncoding) {
       batchSize = sdtEncoder.encode(timestamps, values, batchSize);
@@ -229,13 +222,11 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, boolean[] values, int batchSize) {
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, float[] values, int batchSize) {
     if (isSdtEncoding) {
       batchSize = sdtEncoder.encode(timestamps, values, batchSize);
@@ -244,7 +235,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, double[] values, int batchSize) {
     if (isSdtEncoding) {
       batchSize = sdtEncoder.encode(timestamps, values, batchSize);
@@ -253,7 +243,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     checkPageSizeAndMayOpenANewPage();
   }
 
-  @Override
   public void write(long[] timestamps, Binary[] values, int batchSize) {
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
@@ -338,7 +327,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public long getCurrentChunkSize() {
+  public long getSerializedChunkSize() {
     if (pageBuffer.size() == 0) {
       return 0;
     }
@@ -359,12 +348,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     pageWriter = null;
   }
 
-  @Override
-  public int getNumOfPages() {
-    return numOfPages;
-  }
-
-  @Override
   public TSDataType getDataType() {
     return measurementSchema.getType();
   }
@@ -373,16 +356,32 @@ public class ChunkWriterImpl implements IChunkWriter {
    * write the page header and data into the PageWriter's output stream. @NOTE: for upgrading
    * 0.11/v2 to 0.12/v3 TsFile
    */
-  public void writePageHeaderAndDataIntoBuff(
-      ByteBuffer data, PageHeader header, boolean isOnlyOnePageChunk) throws PageException {
-
+  public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
+      throws PageException {
     // write the page header to pageBuffer
     try {
       logger.debug(
           "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
-      ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
-      ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
-      if (!isOnlyOnePageChunk) {
+      // serialize pageHeader  see writePageToPageBuffer method
+      if (numOfPages == 0) { // record the firstPageStatistics
+        this.firstPageStatistics = header.getStatistics();
+        this.sizeWithoutStatistic +=
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        this.sizeWithoutStatistic +=
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+      } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
+        byte[] b = pageBuffer.toByteArray();
+        pageBuffer.reset();
+        pageBuffer.write(b, 0, this.sizeWithoutStatistic);
+        firstPageStatistics.serialize(pageBuffer);
+        pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+        header.getStatistics().serialize(pageBuffer);
+        firstPageStatistics = null;
+      } else {
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
         header.getStatistics().serialize(pageBuffer);
       }
       logger.debug(
@@ -412,21 +411,22 @@ public class ChunkWriterImpl implements IChunkWriter {
    * @param statistics the chunk statistics
    * @throws IOException exception in IO
    */
-  public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer, Statistics<?> statistics)
-      throws IOException {
+  private void writeAllPagesOfChunkToTsFile(
+      TsFileIOWriter writer, Statistics<? extends Serializable> statistics) throws IOException {
     if (statistics.getCount() == 0) {
       return;
     }
 
     // start to write this column chunk
     writer.startFlushChunk(
-        measurementSchema,
+        measurementSchema.getMeasurementId(),
         compressor.getType(),
         measurementSchema.getType(),
         measurementSchema.getEncodingType(),
         statistics,
         pageBuffer.size(),
-        numOfPages);
+        numOfPages,
+        0);
 
     long dataOffset = writer.getPos();
 

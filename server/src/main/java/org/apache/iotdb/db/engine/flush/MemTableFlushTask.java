@@ -23,14 +23,16 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -41,7 +43,12 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
+/**
+ * flush task to flush one memtable using a pipeline model to flush, which is sort memtable ->
+ * encoding -> write to disk (io task)
+ */
 public class MemTableFlushTask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
@@ -101,19 +108,21 @@ public class MemTableFlushTask {
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    // for map do not use get(key) to iteratate
-    for (Map.Entry<String, Map<String, IWritableMemChunk>> memTableEntry :
+    // for map do not use get(key) to iterate
+    for (Map.Entry<IDeviceID, IWritableMemChunkGroup> memTableEntry :
         memTable.getMemTableMap().entrySet()) {
-      encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey()));
+      encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey().toStringID()));
 
-      final Map<String, IWritableMemChunk> value = memTableEntry.getValue();
+      final Map<String, IWritableMemChunk> value = memTableEntry.getValue().getMemChunkMap();
       for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
-        MeasurementSchema desc = series.getSchema();
-        TVList tvList = series.getSortedTVListForFlush();
+        /*
+         * sort task (first task of flush pipeline)
+         */
+        series.sortTvListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
-        encodingTaskQueue.put(new Pair<>(tvList, desc));
+        encodingTaskQueue.put(series);
       }
 
       encodingTaskQueue.put(new EndChunkGroupIoTask());
@@ -147,6 +156,18 @@ public class MemTableFlushTask {
       SystemInfo.getInstance().setEncodingFasterThanIo(ioTime >= memSerializeTime);
     }
 
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .timer(
+              System.currentTimeMillis() - start,
+              TimeUnit.MILLISECONDS,
+              Metric.COST_TASK.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              "flush");
+    }
+
     LOGGER.info(
         "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
         storageGroup,
@@ -154,49 +175,9 @@ public class MemTableFlushTask {
         System.currentTimeMillis() - start);
   }
 
+  /** encoding task (second task of pipeline) */
   private Runnable encodingTask =
       new Runnable() {
-        private void writeOneSeries(
-            TVList tvPairs, IChunkWriter seriesWriterImpl, TSDataType dataType) {
-          for (int i = 0; i < tvPairs.size(); i++) {
-            long time = tvPairs.getTime(i);
-
-            // skip duplicated data
-            if ((i + 1 < tvPairs.size() && (time == tvPairs.getTime(i + 1)))) {
-              continue;
-            }
-
-            // store last point for SDT
-            if (i + 1 == tvPairs.size()) {
-              ((ChunkWriterImpl) seriesWriterImpl).setLastPoint(true);
-            }
-
-            switch (dataType) {
-              case BOOLEAN:
-                seriesWriterImpl.write(time, tvPairs.getBoolean(i));
-                break;
-              case INT32:
-                seriesWriterImpl.write(time, tvPairs.getInt(i));
-                break;
-              case INT64:
-                seriesWriterImpl.write(time, tvPairs.getLong(i));
-                break;
-              case FLOAT:
-                seriesWriterImpl.write(time, tvPairs.getFloat(i));
-                break;
-              case DOUBLE:
-                seriesWriterImpl.write(time, tvPairs.getDouble(i));
-                break;
-              case TEXT:
-                seriesWriterImpl.write(time, tvPairs.getBinary(i));
-                break;
-              default:
-                LOGGER.error(
-                    "Storage group {} does not support data type: {}", storageGroup, dataType);
-                break;
-            }
-          }
-        }
 
         @SuppressWarnings("squid:S135")
         @Override
@@ -207,7 +188,7 @@ public class MemTableFlushTask {
               writer.getFile().getName());
           while (true) {
 
-            Object task = null;
+            Object task;
             try {
               task = encodingTaskQueue.take();
             } catch (InterruptedException e1) {
@@ -233,10 +214,9 @@ public class MemTableFlushTask {
               break;
             } else {
               long starTime = System.currentTimeMillis();
-              Pair<TVList, MeasurementSchema> encodingMessage =
-                  (Pair<TVList, MeasurementSchema>) task;
-              IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
-              writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
+              IWritableMemChunk writableMemChunk = (IWritableMemChunk) task;
+              IChunkWriter seriesWriter = writableMemChunk.createIChunkWriter();
+              writableMemChunk.encode(seriesWriter);
               seriesWriter.sealCurrentPage();
               seriesWriter.clearPageWriter();
               try {
@@ -263,6 +243,7 @@ public class MemTableFlushTask {
         }
       };
 
+  /** io task (third task of pipeline) */
   @SuppressWarnings("squid:S135")
   private Runnable ioTask =
       () -> {
@@ -285,13 +266,12 @@ public class MemTableFlushTask {
               this.writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
             } else if (ioMessage instanceof TaskEnd) {
               break;
-            } else if (ioMessage instanceof IChunkWriter) {
-              ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
-              chunkWriter.writeToFileWriter(this.writer);
-            } else {
+            } else if (ioMessage instanceof EndChunkGroupIoTask) {
               this.writer.setMinPlanIndex(memTable.getMinPlanIndex());
               this.writer.setMaxPlanIndex(memTable.getMaxPlanIndex());
               this.writer.endChunkGroup();
+            } else {
+              ((IChunkWriter) ioMessage).writeToFileWriter(this.writer);
             }
           } catch (IOException e) {
             LOGGER.error(

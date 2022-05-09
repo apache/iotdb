@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
@@ -37,8 +38,8 @@ import java.util.Map;
 
 public class RpcUtils {
 
-  /** How big should the default read and write buffers be? Defaults to 64KB */
-  public static final int THRIFT_DEFAULT_BUF_CAPACITY = 64 * 1024;
+  /** How big should the default read and write buffers be? Defaults to 1KB */
+  public static final int THRIFT_DEFAULT_BUF_CAPACITY = 1024;
   /**
    * It is used to prevent the size of the parsing package from being too large and allocating the
    * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
@@ -69,6 +70,14 @@ public class RpcUtils {
             new SynchronizedHandler(client));
   }
 
+  public static InfluxDBService.Iface newSynchronizedClient(InfluxDBService.Iface client) {
+    return (InfluxDBService.Iface)
+        Proxy.newProxyInstance(
+            RpcUtils.class.getClassLoader(),
+            new Class[] {InfluxDBService.Iface.class},
+            new InfluxDBSynchronizedHandler(client));
+  }
+
   /**
    * verify success.
    *
@@ -87,6 +96,20 @@ public class RpcUtils {
     }
   }
 
+  /**
+   * verify success.
+   *
+   * @param status -status
+   */
+  public static void verifySuccess(InfluxTSStatus status) throws StatementExecutionException {
+    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      return;
+    }
+    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new StatementExecutionException(status);
+    }
+  }
+
   public static void verifySuccessWithRedirection(TSStatus status)
       throws StatementExecutionException, RedirectException {
     verifySuccess(status);
@@ -95,17 +118,17 @@ public class RpcUtils {
     }
   }
 
-  public static void verifySuccessWithRedirectionForInsertTablets(
-      TSStatus status, TSInsertTabletsReq req)
-      throws StatementExecutionException, RedirectException {
+  public static void verifySuccessWithRedirectionForMultiDevices(
+      TSStatus status, List<String> devices) throws StatementExecutionException, RedirectException {
     verifySuccess(status);
-    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+        || status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      Map<String, TEndPoint> deviceEndPointMap = new HashMap<>();
       List<TSStatus> statusSubStatus = status.getSubStatus();
       for (int i = 0; i < statusSubStatus.size(); i++) {
         TSStatus subStatus = statusSubStatus.get(i);
         if (subStatus.isSetRedirectNode()) {
-          deviceEndPointMap.put(req.getDeviceIds().get(i), subStatus.getRedirectNode());
+          deviceEndPointMap.put(devices.get(i), subStatus.getRedirectNode());
         }
       }
       throw new RedirectException(deviceEndPointMap);
@@ -113,11 +136,12 @@ public class RpcUtils {
   }
 
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
-    StringBuilder errMsgs = new StringBuilder();
+    StringBuilder errMsgs =
+        new StringBuilder().append(TSStatusCode.MULTIPLE_ERROR.getStatusCode()).append(": ");
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-        errMsgs.append(status.getMessage()).append(";");
+        errMsgs.append(status.getMessage()).append("; ");
       }
     }
     if (errMsgs.length() > 0) {
@@ -150,6 +174,16 @@ public class RpcUtils {
 
   public static TSStatus getStatus(int code, String message) {
     TSStatus status = new TSStatus(code);
+    status.setMessage(message);
+    return status;
+  }
+
+  public static InfluxTSStatus getInfluxDBStatus(TSStatusCode tsStatusCode) {
+    return new InfluxTSStatus(tsStatusCode.getStatusCode());
+  }
+
+  public static InfluxTSStatus getInfluxDBStatus(int code, String message) {
+    InfluxTSStatus status = new InfluxTSStatus(code);
     status.setMessage(message);
     return status;
   }
@@ -245,11 +279,11 @@ public class RpcUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(
       DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
-    if (timestampPrecision.equals("ms")) {
-      long integerofDate = timestamp / 1000;
+    if ("ms".equals(timestampPrecision)) {
+      long integerOfDate = timestamp / 1000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 3) {
@@ -258,11 +292,11 @@ public class RpcUtils {
         }
       }
       return formateDatetimeStr(datetime, digits);
-    } else if (timestampPrecision.equals("us")) {
-      long integerofDate = timestamp / 1000_000;
+    } else if ("us".equals(timestampPrecision)) {
+      long integerOfDate = timestamp / 1000_000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 6) {
@@ -272,10 +306,10 @@ public class RpcUtils {
       }
       return formateDatetimeStr(datetime, digits);
     } else {
-      long integerofDate = timestamp / 1000_000_000L;
+      long integerOfDate = timestamp / 1000_000_000L;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 9) {

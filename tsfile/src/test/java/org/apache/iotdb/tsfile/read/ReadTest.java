@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -46,14 +45,14 @@ import static org.junit.Assert.assertFalse;
 
 public class ReadTest {
 
-  private static String fileName = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
-  private static ReadOnlyTsFile roTsFile = null;
+  private static final String fileName = FileGenerator.outputDataFile;
+  private static TsFileReader roTsFile = null;
 
   @Before
   public void prepare() throws IOException {
     FileGenerator.generateFile(1000, 100);
     TsFileSequenceReader reader = new TsFileSequenceReader(fileName);
-    roTsFile = new ReadOnlyTsFile(reader);
+    roTsFile = new TsFileReader(reader);
   }
 
   @After

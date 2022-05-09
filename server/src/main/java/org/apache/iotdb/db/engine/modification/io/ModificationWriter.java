@@ -31,7 +31,7 @@ public interface ModificationWriter {
 
   /**
    * Write a new modification to the persistent medium. Notice that after calling write(), a
-   * fileWriter is opened,
+   * fileWriter is opened.
    *
    * @param mod the modification to be written.
    */
@@ -40,6 +40,6 @@ public interface ModificationWriter {
   /** Release resources like streams. */
   void close() throws IOException;
 
-  /** Abort last modification. */
+  /** Abort last modification. Notice that after calling abort(), a fileWriter is opened. */
   void abort() throws IOException;
 }

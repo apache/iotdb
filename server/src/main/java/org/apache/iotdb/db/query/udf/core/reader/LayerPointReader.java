@@ -27,6 +27,8 @@ import java.io.IOException;
 
 public interface LayerPointReader {
 
+  boolean isConstantPointReader();
+
   boolean next() throws QueryProcessException, IOException;
 
   void readyForNext();
@@ -44,6 +46,8 @@ public interface LayerPointReader {
   double currentDouble() throws IOException;
 
   boolean currentBoolean() throws IOException;
+
+  boolean isCurrentNull() throws IOException;
 
   Binary currentBinary() throws IOException;
 }

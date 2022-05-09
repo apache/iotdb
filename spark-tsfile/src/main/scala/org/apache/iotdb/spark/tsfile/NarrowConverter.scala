@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.read.expression.{IExpression, QueryExpression}
 import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema}
+import org.apache.iotdb.tsfile.write.schema.{IMeasurementSchema, MeasurementSchema, Schema}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
@@ -225,7 +225,7 @@ object NarrowConverter extends Converter {
       paths.add(new Path(path, true))
     })
 
-    val deviceName = paths.get(0).getDevice
+    val deviceName = paths.get(0).getDeviceIdString
     var finalFilter: IExpression = null
     if (timeFilter != null) {
       finalFilter = transformFilterToExpression(schema, timeFilter, deviceName)

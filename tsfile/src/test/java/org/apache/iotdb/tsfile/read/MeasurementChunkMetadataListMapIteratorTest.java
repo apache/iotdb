@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.read;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 
@@ -125,7 +126,7 @@ public class MeasurementChunkMetadataListMapIteratorTest {
 
       List<String> devices = fileReader.getAllDevices();
 
-      Map<String, Map<String, List<ChunkMetadata>>> expectedDeviceMeasurementChunkMetadataListMap =
+      Map<String, Map<String, List<IChunkMetadata>>> expectedDeviceMeasurementChunkMetadataListMap =
           new HashMap<>();
       for (String device : devices) {
         for (String measurement : deviceMeasurementListMap.get(device)) {
@@ -137,10 +138,10 @@ public class MeasurementChunkMetadataListMapIteratorTest {
       }
 
       for (String device : devices) {
-        Map<String, List<ChunkMetadata>> expected =
+        Map<String, List<IChunkMetadata>> expected =
             expectedDeviceMeasurementChunkMetadataListMap.get(device);
 
-        Map<String, List<ChunkMetadata>> actual = new HashMap<>();
+        Map<String, List<IChunkMetadata>> actual = new HashMap<>();
         Iterator<Map<String, List<ChunkMetadata>>> iterator =
             fileReader.getMeasurementChunkMetadataListMapIterator(device);
         while (iterator.hasNext()) {
@@ -152,17 +153,22 @@ public class MeasurementChunkMetadataListMapIteratorTest {
 
         checkCorrectness(expected, actual);
       }
+
+      // test not exist device
+      Iterator<Map<String, List<ChunkMetadata>>> iterator =
+          fileReader.getMeasurementChunkMetadataListMapIterator("dd");
+      Assert.assertFalse(iterator.hasNext());
     }
 
     FileGenerator.after();
   }
 
   private void checkCorrectness(
-      Map<String, List<ChunkMetadata>> expected, Map<String, List<ChunkMetadata>> actual) {
+      Map<String, List<IChunkMetadata>> expected, Map<String, List<IChunkMetadata>> actual) {
     Assert.assertEquals(expected.keySet(), actual.keySet());
     for (String measurement : expected.keySet()) {
-      List<ChunkMetadata> expectedChunkMetadataList = expected.get(measurement);
-      List<ChunkMetadata> actualChunkMetadataList = actual.get(measurement);
+      List<IChunkMetadata> expectedChunkMetadataList = expected.get(measurement);
+      List<IChunkMetadata> actualChunkMetadataList = actual.get(measurement);
       Assert.assertEquals(expectedChunkMetadataList.size(), actualChunkMetadataList.size());
       final int size = expectedChunkMetadataList.size();
       for (int i = 0; i < size; ++i) {

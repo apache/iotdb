@@ -24,15 +24,16 @@ import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.EmptyReader;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -41,8 +42,9 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertTrue;
 
@@ -51,27 +53,23 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
   @Test
   public void testNoTimeFilter()
       throws QueryProcessException, IOException, StorageEngineException, IllegalPathException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       Filter timeFilter = null;
       List<Integer> aggregationTypes = new ArrayList<>();
       for (int i = 0; i < AggregationType.values().length; i++) {
         aggregationTypes.add(i);
       }
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
       List<GroupByExecutor> groupByExecutors =
           readerFactory.getGroupByExecutors(
-              path,
-              Collections.singleton(path.getMeasurement()),
-              dataType,
-              context,
-              timeFilter,
-              aggregationTypes,
-              true);
+              path, deviceMeasurements, dataType, context, timeFilter, aggregationTypes, true);
 
       for (int i = 0; i < groupByExecutors.size(); i++) {
         GroupByExecutor groupByExecutor = groupByExecutors.get(i);
@@ -79,11 +77,11 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
         if (groupByExecutors.size() == 1) {
           // a series is only managed by one group
           List<AggregateResult> aggregateResults;
-          answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0};
+          answers = new Object[] {5.0, 2.0, 10.0, 0.0, 4.0, 4.0, 0.0, 4.0, 0.0, 4.0};
           aggregateResults = groupByExecutor.calcResult(0, 5);
           checkAggregations(aggregateResults, answers);
 
-          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
+          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
           aggregateResults = groupByExecutor.calcResult(5, 10);
           checkAggregations(aggregateResults, answers);
         } else {
@@ -113,27 +111,23 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
   @Test
   public void testTimeFilter()
       throws QueryProcessException, IOException, StorageEngineException, IllegalPathException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       Filter timeFilter = TimeFilter.gtEq(3);
       List<Integer> aggregationTypes = new ArrayList<>();
       for (int i = 0; i < AggregationType.values().length; i++) {
         aggregationTypes.add(i);
       }
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
       List<GroupByExecutor> groupByExecutors =
           readerFactory.getGroupByExecutors(
-              path,
-              Collections.singleton(path.getMeasurement()),
-              dataType,
-              context,
-              timeFilter,
-              aggregationTypes,
-              true);
+              path, deviceMeasurements, dataType, context, timeFilter, aggregationTypes, true);
 
       for (int i = 0; i < groupByExecutors.size(); i++) {
         GroupByExecutor groupByExecutor = groupByExecutors.get(i);
@@ -141,11 +135,14 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
         if (groupByExecutors.size() == 1) {
           // a series is only managed by one group
           List<AggregateResult> aggregateResults;
-          answers = new Object[] {2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0};
+          answers =
+              new Object[] {
+                2.0, 3.5, 7.0, 3.0, 4.0, 4.0, 3.0, 4.0, 3.0, 4.0,
+              };
           aggregateResults = groupByExecutor.calcResult(0, 5);
           checkAggregations(aggregateResults, answers);
 
-          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0};
+          answers = new Object[] {5.0, 7.0, 35.0, 5.0, 9.0, 9.0, 5.0, 9.0, 5.0, 9.0};
           aggregateResults = groupByExecutor.calcResult(5, 10);
           checkAggregations(aggregateResults, answers);
         } else {

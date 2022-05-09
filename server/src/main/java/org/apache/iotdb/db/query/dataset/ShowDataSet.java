@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,16 +42,7 @@ public abstract class ShowDataSet extends QueryDataSet {
   }
 
   @Override
-  public boolean hasNextWithoutConstraint() throws IOException {
-    if (index == result.size() && !hasLimit && result.size() == plan.getLimit()) {
-      plan.setOffset(plan.getOffset() + plan.getLimit());
-      try {
-        result = getQueryDataSet();
-        index = 0;
-      } catch (MetadataException e) {
-        throw new IOException(e);
-      }
-    }
+  public boolean hasNextWithoutConstraint() {
     return index < result.size();
   }
 

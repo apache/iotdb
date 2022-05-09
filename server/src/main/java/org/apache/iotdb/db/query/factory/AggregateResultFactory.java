@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.ExtremeAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.FirstValueDescAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrResult;
@@ -63,6 +64,8 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
         return new MaxValueAggrResult(dataType);
+      case SQLConstant.EXTREME:
+        return new ExtremeAggrResult(dataType);
       case SQLConstant.COUNT:
         return new CountAggrResult();
       case SQLConstant.AVG:
@@ -96,6 +99,8 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
         return new MaxValueAggrResult(dataType);
+      case SQLConstant.EXTREME:
+        return new ExtremeAggrResult(dataType);
       case SQLConstant.COUNT:
         return new CountAggrResult();
       case SQLConstant.AVG:
@@ -136,6 +141,8 @@ public class AggregateResultFactory {
         return new MaxValueAggrResult(dataType);
       case MIN_VALUE:
         return new MinValueAggrResult(dataType);
+      case EXTREME:
+        return new ExtremeAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

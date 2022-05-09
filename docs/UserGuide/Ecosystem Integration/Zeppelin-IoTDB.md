@@ -35,7 +35,7 @@ Zeppelin is a web-based notebook that enables interactive data analytics. You ca
 
 | IoTDB Version | Java Version  | Zeppelin Version |
 | :-----------: | :-----------: | :--------------: |
-|  >=`0.12.0-SNAPSHOT`   | >=`1.8.0_271` |    `>=0.9.0`     |
+|  >=`0.12.0`   | >=`1.8.0_271` |    `>=0.9.0`     |
 
 Install IoTDB: Reference to [IoTDB Quick Start](../QuickStart/QuickStart.html). Suppose IoTDB is placed at `$IoTDB_HOME`.
 
@@ -50,7 +50,7 @@ Suppose Zeppelin is placed at `$Zeppelin_HOME`.
 
 ```
  cd $IoTDB_HOME
- mvn clean package -pl zeppelin-interpreter -am -DskipTests
+ mvn clean package -pl zeppelin-interpreter -am -DskipTests -P get-jar-with-dependencies
 ```
 
 The interpreter will be in the folder:
@@ -149,7 +149,7 @@ The screenshot is as follows:
 
 ![iotdb-note-snapshot2](https://user-images.githubusercontent.com/5548915/102752948-52a2d500-43a5-11eb-9156-0c55667eb4cd.png)
 
-You can also design more fantasy documents referring to [[1]](https://zeppelin.apache.org/docs/0.9.0-SNAPSHOT/usage/display_system/basic.html) and others.
+You can also design more fantasy documents referring to [[1]](https://zeppelin.apache.org/docs/0.9.0/usage/display_system/basic.html) and others.
 
 The above demo notebook can be found at  `$IoTDB_HOME/zeppelin-interpreter/Zeppelin-IoTDB-Demo.zpln`.
 

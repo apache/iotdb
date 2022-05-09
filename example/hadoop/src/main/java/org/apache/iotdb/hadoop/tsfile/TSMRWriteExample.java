@@ -59,16 +59,14 @@ public class TSMRWriteExample {
     // add measurements into file schema (all with INT64 data type)
     for (int i = 0; i < 2; i++) {
       schema.registerTimeseries(
-          new org.apache.iotdb.tsfile.read.common.Path(
-              Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)),
+          new org.apache.iotdb.tsfile.read.common.Path(Constant.DEVICE_1),
           new MeasurementSchema(
               Constant.SENSOR_PREFIX + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
     }
 
     for (int i = 2; i < sensorNum; i++) {
       schema.registerTimeseries(
-          new org.apache.iotdb.tsfile.read.common.Path(
-              Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)),
+          new org.apache.iotdb.tsfile.read.common.Path(Constant.DEVICE_1),
           new MeasurementSchema(
               Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF));
     }

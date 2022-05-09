@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.read.query.executor;
 
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -176,7 +176,7 @@ public class TsFileExecutor implements QueryExecutor {
     List<TSDataType> dataTypes = new ArrayList<>();
 
     for (Path path : selectedPathList) {
-      List<ChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(path);
+      List<IChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(path);
       AbstractFileSeriesReader seriesReader;
       if (chunkMetadataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();

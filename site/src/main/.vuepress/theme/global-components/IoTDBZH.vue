@@ -185,7 +185,7 @@ export default {
       this.$router.push("/zh/Download/");
     },
     addRoutes2() {
-      this.$router.push("/zh/UserGuide/V0.10.x/Get%20Started/QuickStart.html");
+      this.$router.push("/zh/UserGuide/Master/QuickStart/QuickStart.html");
     }
   }
 };

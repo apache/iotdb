@@ -69,11 +69,6 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
       }
 
       @Override
-      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-        return getClient(node);
-      }
-
-      @Override
       public AsyncClient getAsyncHeartbeatClient(Node node) {
         return getClient(node);
       }
@@ -97,7 +92,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
                     assertEquals(TestUtils.getNode(0), request.getLeader());
                     assertEquals(13, request.getCommitLogIndex());
                     assertEquals(10, request.getTerm());
-                    assertEquals(TestUtils.getNode(0), request.getHeader());
+                    assertEquals(TestUtils.getRaftNode(0, 0), request.getHeader());
                     synchronized (receivedNodes) {
                       receivedNodes.add(getSerialNum());
                       for (int i = 1; i < 10; i++) {
@@ -122,10 +117,8 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
                 () -> {
                   assertEquals(TestUtils.getNode(0), request.getElector());
                   assertEquals(11, request.getTerm());
-                  assertEquals(6, request.getLastLogIndex());
-                  assertEquals(6, request.getLastLogTerm());
-                  assertEquals(13, request.getDataLogLastTerm());
-                  assertEquals(13, request.getDataLogLastIndex());
+                  assertEquals(13, request.getLastLogIndex());
+                  assertEquals(13, request.getLastLogTerm());
                   if (respondToElection) {
                     resultHandler.onComplete(Response.RESPONSE_AGREE);
                   }

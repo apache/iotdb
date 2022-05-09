@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,9 +32,8 @@ public class FunctionOperator extends FilterOperator {
 
   private static final Logger logger = LoggerFactory.getLogger(FunctionOperator.class);
 
-  public FunctionOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.FUNC;
+  public FunctionOperator(FilterType filterType) {
+    super(filterType);
   }
 
   /** reverse func. */
@@ -41,8 +42,7 @@ public class FunctionOperator extends FilterOperator {
   }
 
   @Override
-  public boolean addChildOperator(FilterOperator op) {
+  public void addChildOperator(FilterOperator op) {
     logger.error("cannot add child to leaf FilterOperator, now it's FunctionOperator");
-    return false;
   }
 }

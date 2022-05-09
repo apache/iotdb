@@ -43,13 +43,13 @@ public class MemTableManager {
     return InstanceHolder.INSTANCE;
   }
 
-  /**
-   * Called when memory control is disabled
-   *
-   * @throws WriteProcessException
-   */
   public synchronized IMemTable getAvailableMemTable(String storageGroup)
       throws WriteProcessException {
+    if (CONFIG.isEnableMemControl()) {
+      currentMemtableNumber++;
+      return new PrimitiveMemTable(CONFIG.isEnableMemControl());
+    }
+
     if (!reachMaxMemtableNumber()) {
       currentMemtableNumber++;
       return new PrimitiveMemTable();
@@ -79,10 +79,6 @@ public class MemTableManager {
     return currentMemtableNumber;
   }
 
-  public synchronized void addMemtableNumber() {
-    currentMemtableNumber++;
-  }
-
   public synchronized void decreaseMemtableNumber() {
     currentMemtableNumber--;
     notifyAll();
@@ -100,6 +96,10 @@ public class MemTableManager {
         MEMTABLE_NUM_FOR_EACH_PARTITION * CONFIG.getConcurrentWritingTimePartition() * diff;
     CONFIG.setMaxMemtableNumber(maxMemTableNum);
     notifyAll();
+  }
+
+  public synchronized void close() {
+    currentMemtableNumber = 0;
   }
 
   private static class InstanceHolder {

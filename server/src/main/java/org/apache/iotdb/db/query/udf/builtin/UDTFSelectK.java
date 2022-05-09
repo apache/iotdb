@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
@@ -79,7 +79,7 @@ public abstract class UDTFSelectK implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector)
-      throws UDFInputSeriesDataTypeNotValidException {
+      throws UDFInputSeriesDataTypeNotValidException, IOException {
     switch (dataType) {
       case INT32:
         transformInt(row.getTime(), row.getInt(0));

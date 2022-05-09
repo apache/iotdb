@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -30,7 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /** used in query. */
-public class Chunk implements Accountable {
+public class Chunk {
 
   private ChunkHeader chunkHeader;
   private Statistics chunkStatistic;
@@ -68,7 +67,7 @@ public class Chunk implements Accountable {
     this.deleteIntervalList = list;
   }
 
-  public void mergeChunk(Chunk chunk) throws IOException {
+  public void mergeChunkByAppendPage(Chunk chunk) throws IOException {
     int dataSize = 0;
     // from where the page data of the merged chunk starts, if -1, it means the merged chunk has
     // more than one page
@@ -76,7 +75,8 @@ public class Chunk implements Accountable {
     // if the merged chunk has only one page, after merge with current chunk ,it will have more than
     // page
     // so we should add page statistics for it
-    if (chunk.chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+    if (((byte) (chunk.chunkHeader.getChunkType() & 0x3F))
+        == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
       // read the uncompressedSize and compressedSize of this page
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunk.chunkData);
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunk.chunkData);
@@ -96,7 +96,7 @@ public class Chunk implements Accountable {
     // if the current chunk has only one page, after merge with the merged chunk ,it will have more
     // than page
     // so we should add page statistics for it
-    if (chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+    if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
       // change the chunk type
       chunkHeader.setChunkType(MetaMarker.CHUNK_HEADER);
       // read the uncompressedSize and compressedSize of this page
@@ -145,16 +145,6 @@ public class Chunk implements Accountable {
       newChunkData.put(b, offset1, b.length - offset1);
     }
     chunkData = newChunkData;
-  }
-
-  @Override
-  public void setRamSize(long size) {
-    this.ramSize = size;
-  }
-
-  @Override
-  public long getRamSize() {
-    return ramSize;
   }
 
   public Statistics getChunkStatistic() {

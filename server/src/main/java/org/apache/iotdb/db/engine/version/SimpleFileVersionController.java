@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.version;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -117,6 +117,7 @@ public class SimpleFileVersionController implements VersionController {
     prevVersion = currVersion;
   }
 
+  /** recovery from disk */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void restore() throws IOException {
     File directory = SystemFileFactory.INSTANCE.getFile(directoryPath);

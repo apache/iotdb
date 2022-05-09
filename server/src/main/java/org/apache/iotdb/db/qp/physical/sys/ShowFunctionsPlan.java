@@ -21,14 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 public class ShowFunctionsPlan extends ShowPlan {
 
-  private final boolean showTemporary;
-
-  public ShowFunctionsPlan(boolean showTemporary) {
+  public ShowFunctionsPlan() {
     super(ShowContentType.FUNCTIONS);
-    this.showTemporary = showTemporary;
-  }
-
-  public boolean showTemporary() {
-    return showTemporary;
   }
 }

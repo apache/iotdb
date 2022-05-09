@@ -18,22 +18,23 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
@@ -46,7 +47,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class ForceAppendTsFileWriterTest {
-  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test1.tsfile");
+  private static final String FILE_NAME =
+      TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Test
@@ -57,7 +59,7 @@ public class ForceAppendTsFileWriterTest {
     }
     System.out.println(file.getAbsolutePath());
     if (!file.getParentFile().exists()) {
-      fail("folder does not exist...." + file.getParentFile().getAbsolutePath());
+      Assert.assertTrue(file.getParentFile().mkdirs());
     }
     if (!file.getParentFile().isDirectory()) {
       fail("folder is not a directory...." + file.getParentFile().getAbsolutePath());
@@ -65,9 +67,9 @@ public class ForceAppendTsFileWriterTest {
 
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(1, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
@@ -87,20 +89,20 @@ public class ForceAppendTsFileWriterTest {
     // write more data into this TsFile
     writer = new TsFileWriter(fwriter);
     writer.registerTimeseries(
-        new Path("d1", "s1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     writer.registerTimeseries(
-        new Path("d1", "s2"), new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
         new TSRecord(3, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
             .addTuple(new FloatDataPoint("s2", 4)));
     writer.close();
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(file.getPath()));
+    TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(file.getPath()));
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1", "s1"));
     pathList.add(new Path("d1", "s2"));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
-    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    QueryDataSet dataSet = tsFileReader.query(queryExpression);
     RowRecord record = dataSet.next();
     assertEquals(1, record.getTimestamp());
     assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001);
@@ -113,7 +115,7 @@ public class ForceAppendTsFileWriterTest {
     assertEquals(3, record.getTimestamp());
     assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001);
     assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001);
-    readOnlyTsFile.close();
+    tsFileReader.close();
     assertFalse(dataSet.hasNext());
 
     assertTrue(file.delete());

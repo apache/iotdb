@@ -18,15 +18,19 @@
  */
 package org.apache.iotdb.tsfile.read.reader.series;
 
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -36,16 +40,16 @@ import java.util.List;
 public class FileSeriesReaderByTimestamp {
 
   protected IChunkLoader chunkLoader;
-  protected List<ChunkMetadata> chunkMetadataList;
+  protected List<IChunkMetadata> chunkMetadataList;
   private int currentChunkIndex = 0;
 
-  private ChunkReader chunkReader;
+  private IChunkReader chunkReader;
   private long currentTimestamp;
   private BatchData data = null; // current batch data
 
   /** init with chunkLoader and chunkMetaDataList. */
   public FileSeriesReaderByTimestamp(
-      IChunkLoader chunkLoader, List<ChunkMetadata> chunkMetadataList) {
+      IChunkLoader chunkLoader, List<IChunkMetadata> chunkMetadataList) {
     this.chunkLoader = chunkLoader;
     this.chunkMetadataList = chunkMetadataList;
     currentTimestamp = Long.MIN_VALUE;
@@ -133,22 +137,32 @@ public class FileSeriesReaderByTimestamp {
 
   private boolean constructNextSatisfiedChunkReader() throws IOException {
     while (currentChunkIndex < chunkMetadataList.size()) {
-      ChunkMetadata chunkMetaData = chunkMetadataList.get(currentChunkIndex++);
+      IChunkMetadata chunkMetaData = chunkMetadataList.get(currentChunkIndex++);
       if (chunkSatisfied(chunkMetaData)) {
         initChunkReader(chunkMetaData);
-        ((ChunkReaderByTimestamp) chunkReader).setCurrentTimestamp(currentTimestamp);
         return true;
       }
     }
     return false;
   }
 
-  private void initChunkReader(ChunkMetadata chunkMetaData) throws IOException {
-    Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
-    this.chunkReader = new ChunkReaderByTimestamp(chunk);
+  private void initChunkReader(IChunkMetadata chunkMetaData) throws IOException {
+    if (chunkMetaData instanceof ChunkMetadata) {
+      Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
+      this.chunkReader = new ChunkReader(chunk, null, currentTimestamp);
+    } else {
+      AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetaData;
+      Chunk timeChunk =
+          chunkLoader.loadChunk((ChunkMetadata) (alignedChunkMetadata.getTimeChunkMetadata()));
+      List<Chunk> valueChunkList = new ArrayList<>();
+      for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+        valueChunkList.add(chunkLoader.loadChunk((ChunkMetadata) metadata));
+      }
+      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, null, currentTimestamp);
+    }
   }
 
-  private boolean chunkSatisfied(ChunkMetadata chunkMetaData) {
+  private boolean chunkSatisfied(IChunkMetadata chunkMetaData) {
     return chunkMetaData.getEndTime() >= currentTimestamp;
   }
 }

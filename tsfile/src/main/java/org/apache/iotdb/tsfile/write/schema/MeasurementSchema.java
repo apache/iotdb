@@ -33,6 +33,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -42,14 +43,8 @@ import java.util.Objects;
  * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
  * TSDataTypeConverter up to now.
  */
-public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
-
-  public static final MeasurementSchema TIME_SCHEMA =
-      new MeasurementSchema(
-          "time",
-          TSDataType.INT64,
-          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-          TSFileDescriptor.getInstance().getConfig().getCompressor());
+public class MeasurementSchema
+    implements IMeasurementSchema, Comparable<MeasurementSchema>, Serializable {
 
   private String measurementId;
   private byte type;
@@ -170,6 +165,21 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     return measurementSchema;
   }
 
+  public static MeasurementSchema partialDeserializeFrom(ByteBuffer buffer) {
+    MeasurementSchema measurementSchema = new MeasurementSchema();
+
+    measurementSchema.measurementId = ReadWriteIOUtils.readString(buffer);
+
+    measurementSchema.type = ReadWriteIOUtils.readByte(buffer);
+
+    measurementSchema.encoding = ReadWriteIOUtils.readByte(buffer);
+
+    measurementSchema.compressor = ReadWriteIOUtils.readByte(buffer);
+
+    return measurementSchema;
+  }
+
+  @Override
   public String getMeasurementId() {
     return measurementId;
   }
@@ -178,16 +188,29 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     this.measurementId = measurementId;
   }
 
+  @Override
   public Map<String, String> getProps() {
     return props;
   }
 
+  @Override
   public TSEncoding getEncodingType() {
     return TSEncoding.deserialize(encoding);
   }
 
+  @Override
   public TSDataType getType() {
     return TSDataType.deserialize(type);
+  }
+
+  @Override
+  public byte getTypeInByte() {
+    return type;
+  }
+
+  @Override
+  public TSEncoding getTimeTSEncoding() {
+    return TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
   }
 
   public void setProps(Map<String, String> props) {
@@ -195,12 +218,32 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   /** function for getting time encoder. */
+  @Override
   public Encoder getTimeEncoder() {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType =
-        TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
+  }
+
+  @Override
+  public List<String> getSubMeasurementsList() {
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
+  }
+
+  @Override
+  public List<TSDataType> getSubMeasurementsTSDataTypeList() {
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
+  }
+
+  @Override
+  public List<TSEncoding> getSubMeasurementsTSEncodingList() {
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
+  }
+
+  @Override
+  public List<Encoder> getSubMeasurementsEncoderList() {
+    throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   /**
@@ -218,11 +261,13 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     return encodingConverter.getEncoder(TSDataType.deserialize(type));
   }
 
+  @Override
   public CompressionType getCompressor() {
     return CompressionType.deserialize(compressor);
   }
 
   /** function for serializing data to output stream. */
+  @Override
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
 
@@ -247,7 +292,26 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     return byteLen;
   }
 
+  @Override
+  public int serializedSize() {
+    int byteLen = 0;
+    byteLen += ReadWriteIOUtils.sizeToWrite(measurementId);
+    byteLen += 3 * Byte.BYTES;
+    if (props == null) {
+      byteLen += Integer.BYTES;
+    } else {
+      byteLen += Integer.BYTES;
+      for (Map.Entry<String, String> entry : props.entrySet()) {
+        byteLen += ReadWriteIOUtils.sizeToWrite(entry.getKey());
+        byteLen += ReadWriteIOUtils.sizeToWrite(entry.getValue());
+      }
+    }
+
+    return byteLen;
+  }
+
   /** function for serializing data to byte buffer. */
+  @Override
   public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
 
@@ -268,6 +332,32 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
         byteLen += ReadWriteIOUtils.write(entry.getValue(), buffer);
       }
     }
+
+    return byteLen;
+  }
+
+  @Override
+  public int partialSerializeTo(OutputStream outputStream) throws IOException {
+    int byteLen = 0;
+
+    byteLen += ReadWriteIOUtils.write((byte) 0, outputStream);
+    byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
+    byteLen += ReadWriteIOUtils.write(type, outputStream);
+    byteLen += ReadWriteIOUtils.write(encoding, outputStream);
+    byteLen += ReadWriteIOUtils.write(compressor, outputStream);
+
+    return byteLen;
+  }
+
+  @Override
+  public int partialSerializeTo(ByteBuffer buffer) {
+    int byteLen = 0;
+
+    byteLen += ReadWriteIOUtils.write((byte) 0, buffer);
+    byteLen += ReadWriteIOUtils.write(measurementId, buffer);
+    byteLen += ReadWriteIOUtils.write(type, buffer);
+    byteLen += ReadWriteIOUtils.write(encoding, buffer);
+    byteLen += ReadWriteIOUtils.write(compressor, buffer);
 
     return byteLen;
   }
@@ -322,5 +412,20 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
   public void setType(TSDataType type) {
     this.type = type.serialize();
+  }
+
+  @Override
+  public int getSubMeasurementIndex(String measurementId) {
+    return this.measurementId.equals(measurementId) ? 0 : -1;
+  }
+
+  @Override
+  public int getSubMeasurementsCount() {
+    return 1;
+  }
+
+  @Override
+  public boolean containsSubMeasurement(String measurementId) {
+    return this.measurementId.equals(measurementId);
   }
 }

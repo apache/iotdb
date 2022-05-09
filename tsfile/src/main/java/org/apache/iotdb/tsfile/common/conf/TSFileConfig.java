@@ -19,12 +19,13 @@
 package org.apache.iotdb.tsfile.common.conf;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
 
-/** TSFileConfig is a configure class. Every variables is public and has default value. */
+/** TSFileConfig is a configuration class. Every variable is public and has default value. */
 public class TSFileConfig implements Serializable {
 
   /** encoding configuration */
@@ -76,8 +77,8 @@ public class TSFileConfig implements Serializable {
   private int maxNumberOfPointsInPage = 1024 * 1024;
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
-  /** Data type for input timestamp, TsFile supports INT32 or INT64. */
-  private String timeSeriesDataType = "INT64";
+  /** Data type for input timestamp, TsFile supports INT64. */
+  private TSDataType timeSeriesDataType = TSDataType.INT64;
   /** Max length limitation of input string. */
   private int maxStringLength = 128;
   /** Floating-point precision. */
@@ -106,6 +107,10 @@ public class TSFileConfig implements Serializable {
   private double sdtMaxError = 100;
   /** Default DFT satisfy rate is 0.1 */
   private double dftSatisfyRate = 0.1;
+  /** Default SNR for FREQ encoding is 40dB. */
+  private double freqEncodingSNR = 40;
+  /** Default block size for FREQ encoding is 1024. */
+  private int freqEncodingBlockSize = 1024;
   /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4. */
   private CompressionType compressor = CompressionType.SNAPPY;
   /** Line count threshold for checking page memory occupied size. */
@@ -179,13 +184,13 @@ public class TSFileConfig implements Serializable {
     this.maxDegreeOfIndexNode = maxDegreeOfIndexNode;
   }
 
-  public String getTimeSeriesDataType() {
+  public TSDataType getTimeSeriesDataType() {
     return timeSeriesDataType;
   }
 
   // TS_2DIFF configuration
 
-  public void setTimeSeriesDataType(String timeSeriesDataType) {
+  public void setTimeSeriesDataType(TSDataType timeSeriesDataType) {
     this.timeSeriesDataType = timeSeriesDataType;
   }
 
@@ -409,5 +414,21 @@ public class TSFileConfig implements Serializable {
 
   public void setBatchSize(int batchSize) {
     this.batchSize = batchSize;
+  }
+
+  public double getFreqEncodingSNR() {
+    return freqEncodingSNR;
+  }
+
+  public void setFreqEncodingSNR(double freqEncodingSNR) {
+    this.freqEncodingSNR = freqEncodingSNR;
+  }
+
+  public int getFreqEncodingBlockSize() {
+    return freqEncodingBlockSize;
+  }
+
+  public void setFreqEncodingBlockSize(int freqEncodingBlockSize) {
+    this.freqEncodingBlockSize = freqEncodingBlockSize;
   }
 }

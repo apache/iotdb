@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.compress;
 
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
+import org.apache.iotdb.tsfile.exception.compress.GZIPCompressOverflowException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 import net.jpountz.lz4.LZ4Compressor;
@@ -72,6 +73,15 @@ public interface ICompressor extends Serializable {
   byte[] compress(byte[] data) throws IOException;
 
   /**
+   * abstract method of compress. this method has an important overhead due to the fact that it
+   * needs to allocate a byte array to compress into, and then needs to resize this buffer to the
+   * actual compressed length.
+   *
+   * @return byte array of compressed data.
+   */
+  byte[] compress(byte[] data, int offset, int length) throws IOException;
+
+  /**
    * abstract method of compress.
    *
    * @return byte length of compressed data.
@@ -87,6 +97,13 @@ public interface ICompressor extends Serializable {
    */
   int compress(ByteBuffer data, ByteBuffer compressed) throws IOException;
 
+  /**
+   * Get the maximum byte size needed for compressing data of the given byte size. For GZIP, this
+   * method is insecure and may cause {@code GZIPCompressOverflowException}
+   *
+   * @param uncompressedDataSize byte size of the data to compress
+   * @return maximum byte size of the compressed data
+   */
   int getMaxBytesForCompression(int uncompressedDataSize);
 
   CompressionType getType();
@@ -97,6 +114,11 @@ public interface ICompressor extends Serializable {
     @Override
     public byte[] compress(byte[] data) {
       return data;
+    }
+
+    @Override
+    public byte[] compress(byte[] data, int offset, int length) throws IOException {
+      throw new IOException("No Compressor does not support compression function");
     }
 
     @Override
@@ -128,6 +150,20 @@ public interface ICompressor extends Serializable {
         return new byte[0];
       }
       return Snappy.compress(data);
+    }
+
+    @Override
+    public byte[] compress(byte[] data, int offset, int length) throws IOException {
+      byte[] maxCompressed = new byte[getMaxBytesForCompression(length)];
+      int compressedSize = Snappy.compress(data, offset, length, maxCompressed, 0);
+      byte[] compressed = null;
+      if (compressedSize < maxCompressed.length) {
+        compressed = new byte[compressedSize];
+        System.arraycopy(maxCompressed, 0, compressed, 0, compressedSize);
+      } else {
+        compressed = maxCompressed;
+      }
+      return compressed;
     }
 
     @Override
@@ -166,6 +202,11 @@ public interface ICompressor extends Serializable {
         return new byte[0];
       }
       return compressor.compress(data);
+    }
+
+    @Override
+    public byte[] compress(byte[] data, int offset, int length) throws IOException {
+      return compressor.compress(data, offset, length);
     }
 
     @Override
@@ -226,23 +267,36 @@ public interface ICompressor extends Serializable {
     }
 
     @Override
+    public byte[] compress(byte[] data, int offset, int length) throws IOException {
+      byte[] dataBefore = new byte[length];
+      System.arraycopy(data, offset, dataBefore, 0, length);
+      return GZIPCompress.compress(dataBefore);
+    }
+
+    /** @exception GZIPCompressOverflowException if compressed byte array is too small. */
+    @Override
     public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
       byte[] dataBefore = new byte[length];
       System.arraycopy(data, offset, dataBefore, 0, length);
       byte[] res = GZIPCompress.compress(dataBefore);
+      if (res.length > compressed.length) {
+        throw new GZIPCompressOverflowException();
+      }
       System.arraycopy(res, 0, compressed, 0, res.length);
       return res.length;
     }
 
+    /** @exception GZIPCompressOverflowException if compressed ByteBuffer is too small. */
     @Override
     public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
       int length = data.remaining();
       byte[] dataBefore = new byte[length];
       data.get(dataBefore, 0, length);
-
       byte[] res = GZIPCompress.compress(dataBefore);
+      if (res.length > compressed.capacity()) {
+        throw new GZIPCompressOverflowException();
+      }
       compressed.put(res);
-
       return res.length;
     }
 

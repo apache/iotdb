@@ -19,7 +19,10 @@
 package org.apache.iotdb.tsfile.read.controller;
 
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 
 import java.io.IOException;
 
@@ -30,4 +33,6 @@ public interface IChunkLoader {
 
   /** close the file reader. */
   void close() throws IOException;
+
+  IChunkReader getChunkReader(IChunkMetadata chunkMetaData, Filter timeFilter) throws IOException;
 }

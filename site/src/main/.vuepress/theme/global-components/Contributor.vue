@@ -95,21 +95,21 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Gaofei Cao',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'caogaofei',
           date: '2018/11/18'
         },
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Yi Xu',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'dope',
           date: '2018/11/18'
         }, 
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Dongfang Mao',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'east',
           date: '2018/11/18'
         }, 
@@ -130,14 +130,14 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Haonan Hou',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'haonan',
           date: '2020/01/30'
         },
         {
           avatar: '/img/contributor-avatar/xdh.jpg',
           name: 'Xiangdong Huang',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'hxd',
           date: '2018/11/18'
         }, 
@@ -151,89 +151,89 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Julian Feinauer',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'jfeinauer',
           date: '2019/07/15'
         },
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Tian Jiang',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'jiangtian',
           date: '2018/11/18'
         }, 
         {
           avatar: 'http://ise.thss.tsinghua.edu.cn/~wangjianmin/jimwang.jpg',
           name: 'Jianmin Wang',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'jimwang',
           date: '2018/11/18'
         }, 
         {
           avatar: 'https://avatars1.githubusercontent.com/u/22488084?s=400&u=2ef5ad52a7c4241bf88fb5e45682948b307a7d90&v=4',
           name: 'Jincheng Sun',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'jincheng',
           date: '2020/01/21'
         },
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Rong Kang',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'kangrong',
           date: '2018/11/18'
         }, 
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Lei Rui',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'leirui',
           date: '2019/06/20'
         }, 
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Dawei Liu',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'liudw',
           date: '2020/03/01'
         },
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Kun Liu',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'liukun',
           date: '2018/11/18'
         }, 
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Rui Liu',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'liurui',
           date: '2018/11/18'
         }, 
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Tianan Li',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'lta',
           date: '2018/11/18'
         }, 
         {
           avatar: '/img/contributor-avatar/jlq.png',
           name: 'Jialin Qiao',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'qiaojialin',
           date: '2018/11/18'
         }, 
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Shuo Zhang',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'shuozhang',
           date: '2018/11/18'
         }, 
         {
-          avatar: 'https://avatars1.githubusercontent.com/u/19167280?s=400&u=b7fa4acd5b6161283946c2ecb5e4837b6f137a1b&v=4',
+          avatar: '/img/contributor-avatar/zss.jpg',
           name: 'Zesong Sun',
           role: 'Committer',
           id: 'sunzesong',
@@ -242,7 +242,7 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Yue Su',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'suyue',
           date: '2018/11/18'
         }, 
@@ -256,14 +256,14 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Chen Wang',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'wangchen',
           date: '2018/11/18'
         }, 
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Jinrui Zhang',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'xingtanzjr',
           date: '2018/11/18'
         }, 
@@ -284,28 +284,28 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Jun Yuan',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'yuanjun',
           date: '2018/11/18'
         }, 
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Stefanie Zhao',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'zhaoxinyi',
           date: '2018/11/18'
         },
         {
-          avatar:'/img/contributor-avatar/user.svg',
+          avatar:'/img/contributor-avatar/cw.jpg',
           name: 'Chao Wang',
-          role: 'Committer',
+          role: 'PMC, Committer',
           id: 'chaow',
           date: '2020/09/04'
         },
         {
-          avatar:'/img/contributor-avatar/user.svg',
+          avatar:'/img/contributor-avatar/qhl.jpg',
           name: 'Houliang Qi',
-          role: 'Committer',
+          role: 'PMC, Committer',
           id: 'neuyilan',
           date: '2020/12/18'
         },
@@ -329,6 +329,27 @@
           role: 'Committer',
           id: 'JesseZhou-1',
           date: '2021/02/20'
+        },
+        {
+          avatar:'https://avatars.githubusercontent.com/u/30497621',
+          name: 'Steve Yurong Su',
+          role: 'Committer',
+          id: 'rong',
+          date: '2021/05/12'
+        },
+        {
+          avatar:'/img/contributor-avatar/user.svg',
+          name: 'Chao Wang',
+          role: 'Committer',
+          id: 'wangchao316',
+          date: '2021/06/30'
+        },
+        {
+          avatar:'/img/contributor-avatar/ericpai.jpg',
+          name: 'Jian Bai',
+          role: 'Committer',
+          id: 'ericpai',
+          date: '2021/12/24'
         },
         ]
       }

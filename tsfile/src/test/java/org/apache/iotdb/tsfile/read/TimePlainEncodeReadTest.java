@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -48,15 +47,15 @@ import static org.junit.Assert.assertFalse;
 
 public class TimePlainEncodeReadTest {
 
-  private static String fileName = TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
-  private static ReadOnlyTsFile roTsFile = null;
+  private static final String fileName = FileGenerator.outputDataFile;
+  private static TsFileReader roTsFile = null;
 
   @Before
   public void prepare() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("PLAIN");
     FileGenerator.generateFile();
     TsFileSequenceReader reader = new TsFileSequenceReader(fileName);
-    roTsFile = new ReadOnlyTsFile(reader);
+    roTsFile = new TsFileReader(reader);
   }
 
   @After

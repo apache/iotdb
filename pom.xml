@@ -28,7 +28,7 @@
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
-    <version>0.12.0-SNAPSHOT</version>
+    <version>0.14.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Apache IoTDB Project Parent POM</name>
     <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
@@ -82,15 +82,22 @@
         <module>tsfile</module>
         <module>antlr</module>
         <module>thrift</module>
+        <module>thrift-commons</module>
+        <module>thrift-confignode</module>
         <module>thrift-cluster</module>
         <module>thrift-sync</module>
+        <module>thrift-influxdb</module>
+        <module>thrift-procedure</module>
         <module>service-rpc</module>
         <module>jdbc</module>
+        <module>influxdb-protocol</module>
         <module>session</module>
         <module>cli</module>
+        <module>openapi</module>
         <module>server</module>
         <module>example</module>
-        <module>grafana</module>
+        <module>grafana-plugin</module>
+        <module>grafana-connector</module>
         <module>spark-tsfile</module>
         <module>hadoop</module>
         <module>spark-iotdb-connector</module>
@@ -98,12 +105,20 @@
         <module>flink-iotdb-connector</module>
         <module>distribution</module>
         <module>hive-connector</module>
+        <module>node-commons</module>
+        <module>confignode</module>
         <module>cluster</module>
         <module>cross-tests</module>
         <module>zeppelin-interpreter</module>
         <module>client-py</module>
         <module>compile-tools</module>
         <module>client-cpp</module>
+        <module>metrics</module>
+        <module>integration</module>
+        <module>consensus</module>
+        <module>procedure</module>
+        <module>schema-engine-rocksdb</module>
+        <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -112,33 +127,36 @@
         <maven.assembly.version>3.1.0</maven.assembly.version>
         <scala.library.version>2.11</scala.library.version>
         <scala.version>2.11.12</scala.version>
-        <hadoop2.version>2.7.3</hadoop2.version>
+        <hadoop2.version>2.10.1</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13.2</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
-        <logback.version>1.2.3</logback.version>
+        <logback.version>1.2.10</logback.version>
         <joda.version>2.9.9</joda.version>
-        <spark.version>2.4.3</spark.version>
-        <flink.version>1.11.1</flink.version>
-        <common.io.version>2.5</common.io.version>
+        <spark.version>2.4.5</spark.version>
+        <flink.version>1.14.0</flink.version>
+        <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
         <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
-        <thrift.version>0.13.0</thrift.version>
+        <thrift.version>0.14.1</thrift.version>
         <airline.version>0.8</airline.version>
-        <jackson.version>2.11.0</jackson.version>
+        <jackson.version>2.10.5</jackson.version>
         <antlr4.version>4.8-1</antlr4.version>
         <common.cli.version>1.3.1</common.cli.version>
         <common.codec.version>1.13</common.codec.version>
         <common.collections.version>3.2.2</common.collections.version>
         <common.lang3.version>3.8.1</common.lang3.version>
         <common.logging.version>1.1.3</common.logging.version>
-        <org.slf4j.version>1.7.30</org.slf4j.version>
+        <common.pool2.version>2.11.1</common.pool2.version>
+        <org.slf4j.version>1.7.36</org.slf4j.version>
         <guava.version>24.1.1</guava.version>
-        <jline.version>2.14.5</jline.version>
+        <jline.version>3.21.0</jline.version>
         <jetty.version>9.4.35.v20201120</jetty.version>
-        <metrics.version>3.2.6</metrics.version>
-        <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
-        <felix.version>5.1.1</felix.version>
+        <metrics.version>4.2.7</metrics.version>
+        <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
+        <felix.version>5.1.4</felix.version>
+        <snappy.version>1.1.8.4</snappy.version>
+        <netty.version>4.1.53.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
@@ -148,13 +166,21 @@
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <!-- By default, the argLine is empty-->
-        <gson.version>2.8.6</gson.version>
+        <gson.version>2.8.8</gson.version>
         <argLine/>
         <!-- whether enable compiling the cpp client-->
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
-        <spotless.version>2.4.2</spotless.version>
+        <spotless.version>2.22.3</spotless.version>
+        <httpclient.version>4.5.13</httpclient.version>
+        <httpcore.version>4.4.15</httpcore.version>
+        <!-- for REST service -->
+        <swagger.core.version>1.5.18</swagger.core.version>
+        <servlet.api.version>2.5</servlet.api.version>
+        <openapi.generator.version>5.0.0</openapi.generator.version>
+        <!-- JDK1.8 only support google java format 1.7-->
+        <google.java.format.version>1.7</google.java.format.version>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -235,17 +261,17 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-all</artifactId>
-                <version>4.1.27.Final</version>
+                <version>${netty.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-buffer</artifactId>
-                <version>4.1.27.Final</version>
+                <version>${netty.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-common</artifactId>
-                <version>4.1.27.Final</version>
+                <version>${netty.version}</version>
             </dependency>
             <dependency>
                 <groupId>javax.annotation</groupId>
@@ -258,7 +284,7 @@
                 <version>${javax.xml.bind.version}</version>
             </dependency>
             <dependency>
-                <groupId>jline</groupId>
+                <groupId>org.jline</groupId>
                 <artifactId>jline</artifactId>
                 <version>${jline.version}</version>
             </dependency>
@@ -273,9 +299,9 @@
                 <version>1.2.17</version>
             </dependency>
             <dependency>
-                <groupId>net.jpountz.lz4</groupId>
-                <artifactId>lz4</artifactId>
-                <version>1.3.0</version>
+                <groupId>org.lz4</groupId>
+                <artifactId>lz4-java</artifactId>
+                <version>1.8.0</version>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
@@ -288,24 +314,9 @@
                 <version>${jetty.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-core</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-jvm</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-json</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>me.tongfei</groupId>
                 <artifactId>progressbar</artifactId>
-                <version>0.7.3</version>
+                <version>0.9.2</version>
                 <exclusions>
                     <!-- This transitive dependency duplicates classes from jline:jline:jar:2.14.5:compile -->
                     <exclusion>
@@ -330,6 +341,11 @@
                 <version>${common.lang3.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-pool2</artifactId>
+                <version>${common.pool2.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-client</artifactId>
                 <version>${hadoop2.version}</version>
@@ -343,6 +359,12 @@
                 <groupId>org.apache.hive</groupId>
                 <artifactId>hive-exec</artifactId>
                 <version>${hive2.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.pentaho</groupId>
+                        <artifactId>pentaho-aggdesigner-algorithm</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.apache.spark</groupId>
@@ -367,7 +389,7 @@
             <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>3.0.0</version>
+                <version>3.0.2</version>
                 <exclusions>
                     <exclusion>
                         <groupId>jakarta.activation</groupId>
@@ -378,12 +400,7 @@
             <dependency>
                 <groupId>org.javassist</groupId>
                 <artifactId>javassist</artifactId>
-                <version>3.24.0-GA</version>
-            </dependency>
-            <dependency>
-                <groupId>org.mockito</groupId>
-                <artifactId>mockito-all</artifactId>
-                <version>1.10.19</version>
+                <version>3.24.1-GA</version>
             </dependency>
             <dependency>
                 <groupId>org.mockito</groupId>
@@ -403,7 +420,7 @@
             <dependency>
                 <groupId>org.powermock</groupId>
                 <artifactId>powermock-api-mockito2</artifactId>
-                <version>2.0.2</version>
+                <version>2.0.9</version>
             </dependency>
             <dependency>
                 <groupId>org.powermock</groupId>
@@ -448,7 +465,7 @@
             <dependency>
                 <groupId>org.xerial.snappy</groupId>
                 <artifactId>snappy-java</artifactId>
-                <version>1.1.7.2</version>
+                <version>${snappy.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.thrift</groupId>
@@ -463,12 +480,36 @@
                         <groupId>org.apache.httpcomponents</groupId>
                         <artifactId>httpcore</artifactId>
                     </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.tomcat.embed</groupId>
+                        <artifactId>tomcat-embed-core</artifactId>
+                    </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>units</artifactId>
+                <version>1.6</version>
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
                 <artifactId>airline</artifactId>
                 <version>${airline.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>slice</artifactId>
+                <version>0.41</version>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>stats</artifactId>
+                <version>200</version>
+            </dependency>
+            <dependency>
+                <groupId>org.openjdk.jol</groupId>
+                <artifactId>jol-core</artifactId>
+                <version>0.2</version>
             </dependency>
             <dependency>
                 <groupId>org.fusesource.mqtt-client</groupId>
@@ -487,6 +528,52 @@
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
             </dependency>
+            <!-- for cli and test container -->
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>5.5.0</version>
+            </dependency>
+            <!-- for hadoop connector -->
+            <dependency>
+                <groupId>org.apache.zookeeper</groupId>
+                <artifactId>zookeeper</artifactId>
+                <version>3.4.9</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-beanutils</groupId>
+                <artifactId>commons-beanutils</artifactId>
+                <version>1.9.4</version>
+            </dependency>
+            <!-- for test-container and hadoop conflict-->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.21</version>
+            </dependency>
+            <!-- for spark-iotdb-connector and hadoop connector conflict -->
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>${httpclient.version}</version>
+            </dependency>
+            <!-- for spark-iotdb conflict -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>2.7.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpcore</artifactId>
+                <version>${httpcore.version}</version>
+            </dependency>
+            <!-- for hive connector-->
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-server</artifactId>
+                <version>11.0.6</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -504,9 +591,15 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <version>1.15.2</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-jexl3</artifactId>
+            <version>3.2.1</version>
         </dependency>
     </dependencies>
     <build>
@@ -611,6 +704,14 @@
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
+                            <exclude>**/iotdb/thrift/__init__.py</exclude>
+                            <exclude>**/iotdb/thrift/rpc/__init__.py</exclude>
+                            <!-- Java SPI uses files in resources/META-INF/services-->
+                            <exclude>**/resources/META-INF/services/**</exclude>
+                            <!-- grafana plugin -->
+                            <exclude>**/yarn.lock</exclude>
+                            <!-- site-->
+                            <exclude>**/redirects</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -621,7 +722,7 @@
                     <configuration>
                         <java>
                             <googleJavaFormat>
-                                <version>1.7</version>
+                                <version>${google.java.format.version}</version>
                                 <style>GOOGLE</style>
                             </googleJavaFormat>
                             <importOrder>
@@ -629,6 +730,7 @@
                             </importOrder>
                             <removeUnusedImports/>
                         </java>
+                        <lineEndings>UNIX</lineEndings>
                     </configuration>
                     <executions>
                         <execution>
@@ -656,8 +758,13 @@
                         <!-- put all source folders not in src/main/java here-->
                         <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-commons/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-confignode/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
+                        <sourceDirectory>openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>
                         <sourceDirectory>spark-tsfile/src/main/scala</sourceDirectory>
                     </sourceDirectories>
@@ -667,7 +774,7 @@
                     <dependency>
                         <groupId>javax.xml.bind</groupId>
                         <artifactId>jaxb-api</artifactId>
-                        <version>2.3.0</version>
+                        <version>2.4.0-b180830.0359</version>
                     </dependency>
                     <dependency>
                         <groupId>com.sun.xml.bind</groupId>
@@ -677,7 +784,7 @@
                     <dependency>
                         <groupId>com.sun.xml.bind</groupId>
                         <artifactId>jaxb-impl</artifactId>
-                        <version>2.3.0</version>
+                        <version>2.3.6</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -695,6 +802,7 @@
                     <!-- Ensure we're not mixing dependency versions -->
                     <execution>
                         <id>enforce-version-convergence</id>
+                        <phase>validate</phase>
                         <configuration>
                             <rules>
                                 <dependencyConvergence/>
@@ -757,7 +865,7 @@
                     <dependency>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>extra-enforcer-rules</artifactId>
-                        <version>1.2</version>
+                        <version>1.4</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -818,6 +926,7 @@
                 </executions>
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
                 </configuration>
             </plugin>
             <!--
@@ -912,6 +1021,10 @@
                                 <!-- Include integration tests within integration-test phase. -->
                                 <include>src/test/**/*IT.java</include>
                             </includes>
+                            <excludes>
+                                <!-- Exclude unit tests within (unit) test phase. -->
+                                <exclude>src/test/**/*Test.java</exclude>
+                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -931,13 +1044,29 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>com.diffplug.spotless</groupId>
-                <artifactId>spotless-maven-plugin</artifactId>
-            </plugin>
         </plugins>
     </build>
     <profiles>
+        <!-- spotless is too slow, so we put it into a profile to skip it if needed -->
+        <!-- currently spotless cannot run on jdk16, due to JEP 396: Strongly Encapsulate JDK Internals by Default-->
+        <profile>
+            <id>spotless</id>
+            <activation>
+                <!-- activeByDefault does not take effect-->
+                <jdk>[1.8,16)</jdk>
+                <file>
+                    <exists>.</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!--
           A set of profiles defining the different properties needed to download and run thrift
           They are automatically activated depending on the OS you are using.
@@ -951,7 +1080,7 @@
             </activation>
             <properties>
                 <os.classifier>windows-x86_64</os.classifier>
-                <thrift.download-url>http://artfiles.org/apache.org/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
+                <thrift.download-url>http://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.exe</thrift.download-url>
                 <thrift.executable>thrift-${thrift.version}-win-x86_64.exe</thrift.executable>
                 <thrift.skip-making-executable>true</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>echo</thrift.exec-cmd.executable>
@@ -968,8 +1097,8 @@
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
-                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe</thrift.download-url>
-                <thrift.executable>thrift_0.12.0_0.13.0_linux.exe</thrift.executable>
+                <thrift.download-url>https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-ubuntu</thrift.download-url>
+                <thrift.executable>thrift_0.14.1_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
@@ -984,12 +1113,36 @@
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
-                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe</thrift.download-url>
-                <thrift.executable>thrift_0.12.0_0.13.0_mac.exe</thrift.executable>
+                <thrift.download-url>https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-MacOS</thrift.download-url>
+                <thrift.executable>thrift_0.14.1_mac.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
             </properties>
+        </profile>
+        <!-- for TestContainer. As it requires docker, we have to detect whether docker exists.-->
+        <profile>
+            <!-- Mac and Unix-->
+            <id>unixDockerCheck</id>
+            <activation>
+                <file>
+                    <exists>/var/run/docker.sock</exists>
+                </file>
+            </activation>
+            <modules>
+                <module>testcontainer</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>WinDockerCheck</id>
+            <activation>
+                <file>
+                    <exists>C:\Program Files\Docker\Docker\resources\bin\docker.exe</exists>
+                </file>
+            </activation>
+            <modules>
+                <module>testcontainer</module>
+            </modules>
         </profile>
         <!-- Some APIs were removed in Java 11, so we need to add replacements -->
         <profile>
@@ -1000,6 +1153,9 @@
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
+                <!-- change to 1.15.0 will modify many codes (all are javadocs), we change it to 1.15.0
+                until: 1. spotless + jdk16 is fixed; and 2. iotdb decides to do not support jdk8-->
+                <google.java.format.version>1.7</google.java.format.version>
             </properties>
             <dependencies>
                 <!-- for jdk-11 -->
@@ -1016,6 +1172,19 @@
                     <artifactId>jaxb-runtime</artifactId>
                 </dependency>
             </dependencies>
+        </profile>
+        <!-- Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
+          (https://openjdk.java.net/jeps/396) -->
+        <profile>
+            <id>java-16-and-above</id>
+            <activation>
+                <!-- This needs to be updated as soon as Java 20 is shipped -->
+                <jdk>[16,20)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
+                <argLine>--illegal-access=permit --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
+            </properties>
         </profile>
         <!--
           Self activating profile, that activates itself as soon as a "src/main/thrift" directory is found.
@@ -1041,7 +1210,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-thrift-executable</id>
@@ -1211,12 +1380,13 @@
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
-                        <version>0.8.5</version>
+                        <version>0.8.7</version>
                         <configuration>
                             <excludes>
                                 <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/cluster/rpc/thrift/*</exclude>
+                                <exclude>org/apache/iotdb/protocol/influxdb/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/db/qp/sql/*</exclude>
                             </excludes>
                             <rules>
@@ -1333,7 +1503,7 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <configuration>
-                            <argLine>@{surefire.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{surefire.jacoco.args} -Xmx1024m</argLine>
                         </configuration>
                     </plugin>
                     <!-- for IT-->
@@ -1341,12 +1511,13 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <configuration>
-                            <argLine>@{failsafe.jacoco.args} -Xmx1024m</argLine>
+                            <argLine>${argLine} @{failsafe.jacoco.args} -Xmx1024m</argLine>
                         </configuration>
                         <executions>
                             <execution>
                                 <goals>
                                     <goal>integration-test</goal>
+                                    <goal>verify</goal>
                                 </goals>
                             </execution>
                         </executions>

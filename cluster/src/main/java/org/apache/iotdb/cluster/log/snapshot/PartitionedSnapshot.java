@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.locks.Lock;
 
 /** PartitionedSnapshot stores the snapshot of each slot in a map. */
 public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
@@ -143,13 +144,13 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
     }
 
     @Override
-    public void install(PartitionedSnapshot snapshot, int slot)
+    public void install(PartitionedSnapshot snapshot, int slot, boolean isDataMigration)
         throws SnapshotInstallationException {
       installPartitionedSnapshot(snapshot);
     }
 
     @Override
-    public void install(Map<Integer, PartitionedSnapshot> snapshotMap) {
+    public void install(Map<Integer, PartitionedSnapshot> snapshotMap, boolean isDataMigration) {
       throw new IllegalStateException("Method unimplemented");
     }
 
@@ -162,24 +163,30 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
      */
     private void installPartitionedSnapshot(PartitionedSnapshot<T> snapshot)
         throws SnapshotInstallationException {
-      logger.info(
-          "{}: start to install a snapshot of {}-{}",
-          dataGroupMember.getName(),
-          snapshot.lastLogIndex,
-          snapshot.lastLogTerm);
-      synchronized (dataGroupMember.getSnapshotApplyLock()) {
-        List<Integer> slots =
-            ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-                .getNodeSlots(dataGroupMember.getHeader());
-        for (Integer slot : slots) {
-          T subSnapshot = snapshot.getSnapshot(slot);
-          if (subSnapshot != null) {
-            installSnapshot(subSnapshot, slot);
+      logger.info("{}: start to install a snapshot of {}", dataGroupMember.getName(), snapshot);
+      Lock lock = dataGroupMember.getSnapshotApplyLock();
+      if (lock.tryLock()) {
+        try {
+          List<Integer> slots =
+              ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+                  .getNodeSlots(dataGroupMember.getHeader());
+          for (Integer slot : slots) {
+            T subSnapshot = snapshot.getSnapshot(slot);
+            if (subSnapshot != null) {
+              installSnapshot(subSnapshot, slot);
+            }
           }
+          synchronized (dataGroupMember.getLogManager()) {
+            dataGroupMember.getLogManager().applySnapshot(snapshot);
+          }
+        } finally {
+          lock.unlock();
         }
-        synchronized (dataGroupMember.getLogManager()) {
-          dataGroupMember.getLogManager().applySnapshot(snapshot);
-        }
+      } else {
+        logger.info(
+            "{}: is under snapshot installation now. This request is omitted. PartitionedSnapshot: {}",
+            dataGroupMember.getName(),
+            snapshot);
       }
     }
 
@@ -203,7 +210,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
       }
       SnapshotInstaller<T> defaultInstaller =
           (SnapshotInstaller<T>) snapshot.getDefaultInstaller(dataGroupMember);
-      defaultInstaller.install(snapshot, slot);
+      defaultInstaller.install(snapshot, slot, false);
     }
   }
 

@@ -19,16 +19,19 @@
 package org.apache.iotdb.tsfile.read.filter.factory;
 
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
+import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.Eq;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.read.filter.operator.Lt;
 import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.Regexp;
 
 import java.nio.ByteBuffer;
 
@@ -78,8 +81,17 @@ public class FilterFactory {
       case LTEQ:
         filter = new LtEq<>();
         break;
+      case IN:
+        filter = new In<>();
+        break;
       case GROUP_BY:
         filter = new GroupByFilter();
+        break;
+      case GROUP_BY_MONTH:
+        filter = new GroupByMonthFilter();
+        break;
+      case REGEXP:
+        filter = new Regexp<>();
         break;
       default:
         throw new UnsupportedOperationException("Unknown filter type " + id);

@@ -47,7 +47,7 @@ public class LZ4Test {
   public void tearDown() {}
 
   @Test
-  public void testBytes() throws IOException {
+  public void testBytes1() throws IOException {
     String input = randomString(2000000);
     byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
     long time = System.currentTimeMillis();
@@ -63,6 +63,21 @@ public class LZ4Test {
     unCompressor.uncompress(compressed, 0, compressed.length, uncompressed, 0);
     System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
 
+    Assert.assertArrayEquals(uncom, uncompressed);
+  }
+
+  @Test
+  public void testBytes2() throws IOException {
+    ICompressor.IOTDBLZ4Compressor compressor = new ICompressor.IOTDBLZ4Compressor();
+    IUnCompressor.LZ4UnCompressor unCompressor = new IUnCompressor.LZ4UnCompressor();
+
+    int n = 500000;
+    String input = randomString(n);
+    byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
+    byte[] compressed = compressor.compress(uncom, 0, uncom.length);
+    // length should be same
+    Assert.assertEquals(compressor.compress(uncom).length, compressed.length);
+    byte[] uncompressed = unCompressor.uncompress(compressed);
     Assert.assertArrayEquals(uncom, uncompressed);
   }
 }

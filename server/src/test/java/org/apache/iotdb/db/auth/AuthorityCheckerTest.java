@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.auth;
 
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -73,8 +74,6 @@ public class AuthorityCheckerTest {
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal());
     authorizer.grantPrivilegeToUser(
-        user.getName(), nodeName, PrivilegeType.UPDATE_TIMESERIES.ordinal());
-    authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal());
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.GRANT_USER_PRIVILEGE.ordinal());
@@ -88,6 +87,11 @@ public class AuthorityCheckerTest {
         user.getName(), nodeName, PrivilegeType.SET_STORAGE_GROUP.ordinal());
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.CREATE_TIMESERIES.ordinal());
+    authorizer.grantPrivilegeToUser(
+        user.getName(), nodeName, PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal());
+    authorizer.grantPrivilegeToUser(
+        user.getName(), nodeName, PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal());
+
     Assert.assertTrue(
         AuthorityChecker.check(
             user.getName(),
@@ -116,13 +120,6 @@ public class AuthorityCheckerTest {
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.DROP_INDEX,
-            user.getName()));
-
-    Assert.assertFalse(
-        AuthorityChecker.check(
-            user.getName(),
-            Collections.singletonList(new PartialPath(nodeName)),
-            OperatorType.UNION,
             user.getName()));
 
     // check empty list
@@ -226,6 +223,34 @@ public class AuthorityCheckerTest {
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.DELETE_TIMESERIES,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.FILL,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.GROUP_BY_FILL,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.CREATE_CONTINUOUS_QUERY,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.DROP_CONTINUOUS_QUERY,
             user.getName()));
   }
 }

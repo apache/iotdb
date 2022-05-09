@@ -139,4 +139,9 @@ public class HDFSInput implements TsFileInput {
     fsDataInputStream.seek(srcPosition);
     return res;
   }
+
+  @Override
+  public String getFilePath() {
+    return path.toString();
+  }
 }

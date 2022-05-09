@@ -29,6 +29,8 @@ public class MQTTClient {
     mqtt.setHost("127.0.0.1", 1883);
     mqtt.setUserName("root");
     mqtt.setPassword("root");
+    mqtt.setConnectAttemptsMax(3);
+    mqtt.setReconnectDelay(10);
 
     BlockingConnection connection = mqtt.blockingConnection();
     connection.connect();
@@ -45,6 +47,7 @@ public class MQTTClient {
                   + "}",
               System.currentTimeMillis(), random.nextDouble());
 
+      Thread.sleep(1);
       connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     }
 

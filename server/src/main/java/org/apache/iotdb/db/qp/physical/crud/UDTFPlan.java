@@ -19,123 +19,131 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.udf.core.context.UDFContext;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
-import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.BitSet;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
-  protected final ZoneId zoneId;
+  protected final UDTFContext udtfContext;
 
-  protected Map<String, UDTFExecutor> columnName2Executor = new HashMap<>();
-  protected Map<Integer, UDTFExecutor> originalOutputColumnIndex2Executor = new HashMap<>();
-
-  protected List<String> datasetOutputColumnIndex2UdfColumnName = new ArrayList<>();
-  protected List<String> datasetOutputColumnIndex2RawQueryColumnName = new ArrayList<>();
-
-  protected Map<String, Integer> pathNameToReaderIndex;
+  protected final Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
+  protected final Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
 
   public UDTFPlan(ZoneId zoneId) {
     super();
-    this.zoneId = zoneId;
+    udtfContext = new UDTFContext(zoneId);
     setOperatorType(Operator.OperatorType.UDTF);
   }
 
   @Override
-  public void constructUdfExecutors(List<UDFContext> udfContexts) {
-    for (int i = 0; i < udfContexts.size(); ++i) {
-      UDFContext context = udfContexts.get(i);
-      if (context == null) {
-        continue;
+  public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
+    // sort paths by device, to accelerate the metadata read process
+    List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
+    for (int i = 0; i < resultColumns.size(); i++) {
+      for (PartialPath path : resultColumns.get(i).collectPaths()) {
+        indexedPaths.add(new Pair<>(path, i));
+      }
+    }
+    indexedPaths.sort(Comparator.comparing(pair -> pair.left));
+
+    Set<String> columnForReaderSet = new HashSet<>();
+    Set<String> columnForDisplaySet = new HashSet<>();
+
+    for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
+      PartialPath originalPath = indexedPath.left;
+      Integer originalIndex = indexedPath.right;
+
+      String columnForReader = originalPath.getFullPath();
+      if (!columnForReaderSet.contains(columnForReader)
+          && !TimestampOperand.TIMESTAMP_PARTIAL_PATH.getFullPath().equals(columnForReader)) {
+        addDeduplicatedPaths(originalPath);
+        pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
+        columnForReaderSet.add(columnForReader);
       }
 
-      String columnName = context.getColumnName();
-      if (!columnName2Executor.containsKey(columnName)) {
-        UDTFExecutor executor = new UDTFExecutor(context, zoneId);
-        columnName2Executor.put(columnName, executor);
+      String columnForDisplay = getColumnForDisplay(columnForReader, originalIndex);
+      if (!columnForDisplaySet.contains(columnForDisplay)) {
+        int datasetOutputIndex = getPathToIndex().size();
+        setColumnNameToDatasetOutputIndex(columnForDisplay, datasetOutputIndex);
+        setDatasetOutputIndexToResultColumnIndex(datasetOutputIndex, originalIndex);
+        columnForDisplaySet.add(columnForDisplay);
       }
-      originalOutputColumnIndex2Executor.put(i, columnName2Executor.get(columnName));
+    }
+
+    // Aligned timeseries is not supported in current query for now.
+    // To judge whether an aligned timeseries is used, we need to traversal all the paths in
+    // deduplicatedPaths.
+    for (PartialPath path : getDeduplicatedPaths()) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (measurementPath.isUnderAlignedEntity()) {
+        throw new MetadataException(
+            "Aligned timeseries is not supported in current query for now.");
+      }
     }
   }
 
   @Override
-  public void initializeUdfExecutors(long queryId, float collectorMemoryBudgetInMB)
-      throws QueryProcessException {
-    Collection<UDTFExecutor> executors = columnName2Executor.values();
-    collectorMemoryBudgetInMB /= executors.size();
-
-    UDFRegistrationService.getInstance().acquireRegistrationLock();
-    // This statement must be surrounded by the registration lock.
-    UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
-    try {
-      for (UDTFExecutor executor : executors) {
-        executor.beforeStart(queryId, collectorMemoryBudgetInMB);
-      }
-    } finally {
-      UDFRegistrationService.getInstance().releaseRegistrationLock();
+  public List<TSDataType> getWideQueryHeaders(
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList) {
+    List<TSDataType> seriesTypes = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      respColumns.add(resultColumns.get(i).getResultColumnName());
+      seriesTypes.add(resultColumns.get(i).getDataType());
     }
+    return seriesTypes;
+  }
+
+  protected void setDatasetOutputIndexToResultColumnIndex(
+      int datasetOutputIndex, Integer originalIndex) {
+    datasetOutputIndexToResultColumnIndex.put(datasetOutputIndex, originalIndex);
+  }
+
+  @Override
+  public List<PartialPath> getAuthPaths() {
+    Set<PartialPath> authPaths = new HashSet<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      authPaths.addAll(resultColumn.collectPaths());
+    }
+    return new ArrayList<>(authPaths);
+  }
+
+  @Override
+  public void constructUdfExecutors(List<ResultColumn> resultColumns) {
+    udtfContext.constructUdfExecutors(resultColumns);
   }
 
   @Override
   public void finalizeUDFExecutors(long queryId) {
-    try {
-      for (UDTFExecutor executor : columnName2Executor.values()) {
-        executor.beforeDestroy();
-      }
-    } finally {
-      UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
-    }
+    udtfContext.finalizeUDFExecutors(queryId);
   }
 
-  public UDTFExecutor getExecutorByOriginalOutputColumnIndex(int originalOutputColumn) {
-    return originalOutputColumnIndex2Executor.get(originalOutputColumn);
+  public ResultColumn getResultColumnByDatasetOutputIndex(int datasetOutputIndex) {
+    return resultColumns.get(datasetOutputIndexToResultColumnIndex.get(datasetOutputIndex));
   }
 
-  public UDTFExecutor getExecutorByDataSetOutputColumnIndex(int datasetOutputIndex) {
-    return columnName2Executor.get(datasetOutputColumnIndex2UdfColumnName.get(datasetOutputIndex));
+  public Integer getReaderIndexByExpressionName(String expressionName) {
+    return pathNameToReaderIndex.get(expressionName);
   }
 
-  public String getRawQueryColumnNameByDatasetOutputColumnIndex(int datasetOutputIndex) {
-    return datasetOutputColumnIndex2RawQueryColumnName.get(datasetOutputIndex);
-  }
-
-  public boolean isUdfColumn(int datasetOutputIndex) {
-    return datasetOutputColumnIndex2UdfColumnName.get(datasetOutputIndex) != null;
-  }
-
-  public int getReaderIndex(String pathName) {
-    return pathNameToReaderIndex.get(pathName);
-  }
-
-  public void addUdfOutputColumn(String udfDatasetOutputColumn) {
-    datasetOutputColumnIndex2UdfColumnName.add(udfDatasetOutputColumn);
-    datasetOutputColumnIndex2RawQueryColumnName.add(null);
-  }
-
-  public void addRawQueryOutputColumn(String rawQueryOutputColumn) {
-    datasetOutputColumnIndex2UdfColumnName.add(null);
-    datasetOutputColumnIndex2RawQueryColumnName.add(rawQueryOutputColumn);
-  }
-
-  public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
-    this.pathNameToReaderIndex = pathNameToReaderIndex;
-  }
-
-  @Override
-  public String getColumnForDisplay(String columnForReader, int pathIndex) {
-    if (paths.get(pathIndex) == null) {
-      return this.getExecutorByOriginalOutputColumnIndex(pathIndex).getContext().getColumnName();
-    }
-    return columnForReader;
+  public UDTFContext getUdtfContext() {
+    return udtfContext;
   }
 }

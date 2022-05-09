@@ -37,20 +37,25 @@ public class Response {
   public static final long RESPONSE_IDENTIFIER_CONFLICT = -5;
   // the requested node is unreachable in the network
   public static final long RESPONSE_NO_CONNECTION = -6;
-  // the meta logs of the data group leader candidate is older than the voter, so its partition
-  // table is potentially older and such a node cannot be allowed to be the leader
-  public static final long RESPONSE_META_LOG_STALE = -7;
   // the node does not give a vote because its leader does not time out. This is to avoid a
   // node which cannot connect to the leader changing the leader in the group frequently.
-  public static final long RESPONSE_LEADER_STILL_ONLINE = -8;
+  public static final long RESPONSE_LEADER_STILL_ONLINE = -7;
   // the operation is rejected because the cluster will not be able to have enough replicas after
   // this operation
-  public static final long RESPONSE_CLUSTER_TOO_SMALL = -9;
+  public static final long RESPONSE_CLUSTER_TOO_SMALL = -8;
   // the new node, which tries to join the cluster, contains conflicted parameters with the
   // cluster, so the operation is rejected.
-  public static final long RESPONSE_NEW_NODE_PARAMETER_CONFLICT = -10;
+  public static final long RESPONSE_NEW_NODE_PARAMETER_CONFLICT = -9;
+  // the data migration of previous add/remove node operations is not finished.
+  public static final long RESPONSE_DATA_MIGRATION_NOT_FINISH = -10;
+  // the node has removed from the group, so the operation is rejected.
+  public static final long RESPONSE_NODE_IS_NOT_IN_GROUP = -11;
   // the request is not executed locally anc should be forwarded
   public static final long RESPONSE_NULL = Long.MIN_VALUE;
+  // the meta engine is not ready (except for the partitionTable is ready)
+  public static final long RESPONSE_META_NOT_READY = -12;
+  // the cluster is too busy to reject new committed logs
+  public static final long RESPONSE_TOO_BUSY = -13;
 
   private Response() {
     // enum-like class

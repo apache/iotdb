@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -60,17 +61,27 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         }
 
         @Override
-        public Node routeToHeaderByTime(String storageGroupName, long timestamp) {
+        public RaftNode routeToHeaderByTime(String storageGroupName, long timestamp) {
           return null;
         }
 
         @Override
-        public NodeAdditionResult addNode(Node node) {
+        public void addNode(Node node) {
+          return;
+        }
+
+        @Override
+        public NodeAdditionResult getNodeAdditionResult(Node node) {
           return null;
         }
 
         @Override
-        public NodeRemovalResult removeNode(Node node) {
+        public void removeNode(Node node) {
+          return;
+        }
+
+        @Override
+        public NodeRemovalResult getNodeRemovalResult() {
           return null;
         }
 
@@ -80,7 +91,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         }
 
         @Override
-        public PartitionGroup getHeaderGroup(Node header) {
+        public PartitionGroup getPartitionGroup(RaftNode headerNode) {
           return null;
         }
 
@@ -90,7 +101,9 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         }
 
         @Override
-        public void deserialize(ByteBuffer buffer) {}
+        public boolean deserialize(ByteBuffer buffer) {
+          return true;
+        }
 
         @Override
         public List<Node> getAllNodes() {
@@ -101,6 +114,19 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         public List<PartitionGroup> getGlobalGroups() {
           return null;
         }
+
+        @Override
+        public List<PartitionGroup> calculateGlobalGroups(List<Node> nodeRing) {
+          return null;
+        }
+
+        @Override
+        public long getLastMetaLogIndex() {
+          return 0;
+        }
+
+        @Override
+        public void setLastMetaLogIndex(long index) {}
       };
 
   @Override
@@ -114,11 +140,6 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
       @Override
       public AsyncClient getAsyncClient(Node node) {
-        return getClient(node);
-      }
-
-      @Override
-      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
         return getClient(node);
       }
 

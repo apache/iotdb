@@ -19,7 +19,7 @@
 
 @echo off
 echo ````````````````````````
-echo Starting IoTDB
+echo Starting IoTDB (Cluster Mode)
 echo ````````````````````````
 
 PATH %PATH%;%JAVA_HOME%\bin\
@@ -54,16 +54,40 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
 
-set IOTDB_CONF=%IOTDB_HOME%\conf
-set IOTDB_LOGS=%IOTDB_HOME%\logs
+SET enable_printgc=false
+IF "%1" == "printgc" (
+  SET enable_printgc=true
+  SHIFT
+)
+
+SET IOTDB_CONF=%1
+IF "%IOTDB_CONF%" == "" (
+  SET IOTDB_CONF=%IOTDB_HOME%\conf
+) ELSE (
+  SET IOTDB_CONF="%IOTDB_CONF%"
+)
+
+SET IOTDB_LOGS=%IOTDB_HOME%\logs
 
 IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
+  IF  "%enable_printgc%" == "true" (
+    CALL "%IOTDB_CONF%\iotdb-env.bat" printgc
+  ) ELSE (
     CALL "%IOTDB_CONF%\iotdb-env.bat"
-    ) ELSE (
-    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
-    )
+  )
+) ELSE IF EXIST "%IOTDB_HOME%/conf/iotdb-env.bat" (
+  IF  "%enable_printgc%" == "true" (
+    CALL "%IOTDB_HOME%/conf/iotdb-env.bat" printgc
+  ) ELSE (
+    CALL "%IOTDB_HOME%/conf/iotdb-env.bat"
+   )
+) ELSE (
+  echo "can't find iotdb-env.bat"
+)
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterMain
+@setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
+set CONF_PARAMS=-a
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterIoTDB
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
@@ -72,6 +96,7 @@ set JAVA_OPTS=-ea^
  -Dlogback.configurationFile="%IOTDB_CONF%\logback.xml"^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
+ -DTSFILE_CONF="%IOTDB_CONF%"^
  -DIOTDB_CONF="%IOTDB_CONF%"
 
 @REM ***** CLASSPATH library setting *****
@@ -92,7 +117,7 @@ goto :eof
 
 rem echo CLASSPATH: %CLASSPATH%
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% -a
+"%JAVA_HOME%\bin\java" %ILLEGAL_ACCESS_PARAMS% %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
 goto finally
 
 :err

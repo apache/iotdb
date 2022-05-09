@@ -28,3 +28,13 @@ github:
     - big-data
     - java
     - tsdb
+  features:
+    wiki: true
+    issues: true
+  enabled_merge_buttons:
+    # enable squash button:
+    squash:  true
+    # enable merge button:
+    merge:   false
+    # disable rebase button:
+    rebase:  true

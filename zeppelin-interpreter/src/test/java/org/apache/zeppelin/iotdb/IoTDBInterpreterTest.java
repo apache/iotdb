@@ -18,7 +18,7 @@
  */
 package org.apache.zeppelin.iotdb;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -54,7 +54,6 @@ public class IoTDBInterpreterTest {
 
   @Before
   public void open() {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Properties properties = new Properties();
     properties.put(IOTDB_HOST, DEFAULT_HOST);
@@ -189,7 +188,8 @@ public class IoTDBInterpreterTest {
   public void testSelectColumnStatementWithTimeFilter() {
     InterpreterResult actual =
         interpreter.internalInterpret(
-            "select * from root.test.wf01.wt01 where time > 2 and time < 6", null);
+            "select temperature, status, hardware from root.test.wf01.wt01 where time > 2 and time < 6",
+            null);
     String gt =
         "Time\troot.test.wf01.wt01.temperature\troot.test.wf01.wt01.status\troot.test.wf01.wt01.hardware\n"
             + "3\t3.3\tfalse\t33.0\n"
@@ -209,25 +209,34 @@ public class IoTDBInterpreterTest {
     actual = interpreter.internalInterpret(wrongSql, null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
-    Assert.assertEquals(
-        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:13 missing ROOT at '<EOF>'",
-        actual.message().get(0).getData());
+    Assert.assertTrue(
+        actual
+            .message()
+            .get(0)
+            .getData()
+            .contains("SQLException: 401: Error occurred while parsing SQL to physical plan"));
 
     wrongSql = "select * from a";
     actual = interpreter.internalInterpret(wrongSql, null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
-    Assert.assertEquals(
-        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
-        actual.message().get(0).getData());
+    Assert.assertTrue(
+        actual
+            .message()
+            .get(0)
+            .getData()
+            .contains("SQLException: 401: Error occurred while parsing SQL to physical plan"));
 
     wrongSql = "select * from root a";
     actual = interpreter.internalInterpret(wrongSql, null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
-    Assert.assertEquals(
-        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:19 extraneous input 'a' expecting {<EOF>, ';'}",
-        actual.message().get(0).getData());
+    Assert.assertTrue(
+        actual
+            .message()
+            .get(0)
+            .getData()
+            .contains("SQLException: 401: Error occurred while parsing SQL to physical plan"));
   }
 
   @Test
@@ -321,7 +330,8 @@ public class IoTDBInterpreterTest {
   @Test
   public void testShowDevices() {
     InterpreterResult actual = interpreter.internalInterpret("show devices", null);
-    String gt = "devices\n" + "root.test.wf01.wt01\n" + "root.test.wf02.wt02";
+    String gt =
+        "devices\tisAligned\n" + "root.test.wf02.wt02\tfalse\n" + "root.test.wf01.wt01\tfalse";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -332,9 +342,9 @@ public class IoTDBInterpreterTest {
     InterpreterResult actual =
         interpreter.internalInterpret("show devices with storage group", null);
     String gt =
-        "devices\tstorage group\n"
-            + "root.test.wf01.wt01\troot.test.wf01\n"
-            + "root.test.wf02.wt02\troot.test.wf02";
+        "devices\tstorage group\tisAligned\n"
+            + "root.test.wf02.wt02\troot.test.wf02\tfalse\n"
+            + "root.test.wf01.wt01\troot.test.wf01\tfalse";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     System.out.println(actual.message().get(0).getData());

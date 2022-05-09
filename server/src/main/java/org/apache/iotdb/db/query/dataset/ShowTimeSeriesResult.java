@@ -39,6 +39,7 @@ public class ShowTimeSeriesResult extends ShowResult {
   private CompressionType compressor;
   private Map<String, String> tags;
   private Map<String, String> attributes;
+  private long lastTime;
 
   public ShowTimeSeriesResult(
       String name,
@@ -47,6 +48,7 @@ public class ShowTimeSeriesResult extends ShowResult {
       TSDataType dataType,
       TSEncoding encoding,
       CompressionType compressor,
+      long lastTime,
       Map<String, String> tags,
       Map<String, String> attributes) {
     super(name, sgName);
@@ -56,6 +58,7 @@ public class ShowTimeSeriesResult extends ShowResult {
     this.compressor = compressor;
     this.tags = tags;
     this.attributes = attributes;
+    this.lastTime = lastTime;
   }
 
   public ShowTimeSeriesResult() {
@@ -84,6 +87,10 @@ public class ShowTimeSeriesResult extends ShowResult {
 
   public Map<String, String> getAttribute() {
     return attributes;
+  }
+
+  public long getLastTime() {
+    return lastTime;
   }
 
   @Override
@@ -126,6 +133,9 @@ public class ShowTimeSeriesResult extends ShowResult {
     ReadWriteIOUtils.write(encoding, outputStream);
     ReadWriteIOUtils.write(compressor, outputStream);
 
+    // write last time
+    ReadWriteIOUtils.write(lastTime, outputStream);
+
     // flag for tags and attributes
     writeNullable(tags, outputStream);
     writeNullable(attributes, outputStream);
@@ -141,6 +151,9 @@ public class ShowTimeSeriesResult extends ShowResult {
     result.dataType = ReadWriteIOUtils.readDataType(buffer);
     result.encoding = ReadWriteIOUtils.readEncoding(buffer);
     result.compressor = ReadWriteIOUtils.readCompressionType(buffer);
+
+    // read last time
+    result.lastTime = ReadWriteIOUtils.readLong(buffer);
 
     // flag for tag
     if (buffer.get() == 1) {

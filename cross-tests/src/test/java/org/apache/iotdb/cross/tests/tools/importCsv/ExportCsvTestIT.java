@@ -24,40 +24,39 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class ExportCsvTestIT extends AbstractScript {
 
-  private final String SQL_FILE = "target" + File.separator + "sql.txt";
-
-  private final String EXPORT_FILE = "target" + File.separator + "dump0.csv";
-
-  private final String[] output = {
-    "------------------------------------------",
-    "Starting IoTDB Client Export Script",
-    "------------------------------------------",
-    "Start to export data from sql statement",
-    "successfully",
-  };
-
   @Before
   public void setUp() {
-    EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
+    String os = System.getProperty("os.name").toLowerCase();
+    if (os.startsWith("windows")) {
+      command =
+          new String[] {
+            "cmd.exe",
+            "/c",
+            getCliPath() + File.separator + "tools" + File.separator + "export-csv.bat"
+          };
+    } else {
+      command =
+          new String[] {
+            "sh", getCliPath() + File.separator + "tools" + File.separator + "export-csv.sh"
+          };
+    }
   }
 
   @After
@@ -65,157 +64,85 @@ public class ExportCsvTestIT extends AbstractScript {
     EnvironmentUtils.cleanEnv();
   }
 
-  @Override
-  protected void testOnWindows(String[] output) throws IOException {
-
-    String dir = getCliPath();
-    ProcessBuilder builder =
-        new ProcessBuilder(
-            "cmd.exe",
-            "/c",
-            dir + File.separator + "tools" + File.separator + "export-csv.bat",
-            "-h",
-            "127.0.0.1",
-            "-p",
-            "6667",
-            "-u",
-            "root",
-            "-pw",
-            "root",
-            "-td",
-            "./target",
-            "-s",
-            SQL_FILE);
-    testOutput(builder, output);
-  }
-
-  @Override
-  protected void testOnUnix(String[] output) throws IOException {
-
-    String dir = getCliPath();
-    ProcessBuilder builder =
-        new ProcessBuilder(
-            "sh",
-            dir + File.separator + "tools" + File.separator + "export-csv.sh",
-            "-h",
-            "127.0.0.1",
-            "-p",
-            "6667",
-            "-u",
-            "root",
-            "-pw",
-            "root",
-            "-td",
-            "./target",
-            "-s",
-            SQL_FILE);
-    testOutput(builder, output);
-  }
-
-  private boolean generateSQLFile(String[] sql) {
-    BufferedWriter writer;
-    try {
-      writer = new BufferedWriter(new FileWriter(SQL_FILE));
-      writer.write("");
-      for (String s : sql) {
-        writer.write(s);
-        writer.newLine();
-      }
-      writer.flush();
-      writer.close();
-      return true;
-    } catch (IOException e) {
-      System.out.println("failed to create test csv");
+  @Test
+  public void testExport()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String[] params = {"-td", "target/", "-q", "select c1,c2,c3 from root.test.t1"};
+    prepareData();
+    testMethod(params, null);
+    CSVParser parser = readCsvFile("target/dump0.csv");
+    String[] realRecords = {
+      "root.test.t1.c1,root.test.t1.c2,root.test.t1.c3", "1.0,\"\"abc\",aa\",\"abbe's\""
+    };
+    List<CSVRecord> records = parser.getRecords();
+    for (int i = 0; i < records.size(); i++) {
+      String record = StringUtils.join(records.get(i).toList(), ',');
+      record = record.substring(record.indexOf(',') + 1);
+      assertEquals(realRecords[i], record);
     }
-    return false;
   }
 
   @Test
-  public void testRawDataQuery()
-      throws IOException, StatementExecutionException, IoTDBConnectionException {
-    final String[] expectCsv =
-        new String[] {
-          "Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2", "abbe's,1.0,\"\\\"abc\\\",aa\""
-        };
+  public void testWithDataType()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String[] params = {
+      "-td", "target/", "-datatype", "true", "-q", "select c1,c2,c3 from root.test.t1"
+    };
     prepareData();
-    String os = System.getProperty("os.name").toLowerCase();
-    String[] sql = {"select * from root"};
-    assertTrue(generateSQLFile(sql));
-    if (os.startsWith("windows")) {
-      testOnWindows(output);
-    } else {
-      testOnUnix(output);
-    }
-    FileReader fileReader = new FileReader(EXPORT_FILE);
-    BufferedReader br = new BufferedReader(fileReader);
-    String line = br.readLine();
-    int i = 0;
-    while (line != null) {
-      if (i == 0) {
-        assertEquals(expectCsv[i], line);
-      } else {
-        String lineWithoutTime = line.substring(line.indexOf(',') + 1);
-        assertEquals(expectCsv[i], lineWithoutTime);
-      }
-      i++;
-      line = br.readLine();
-    }
-    File file = new File(EXPORT_FILE);
-    if (file.exists()) {
-      file.delete();
+    testMethod(params, null);
+    CSVParser parser = readCsvFile("target/dump0.csv");
+    String[] realRecords = {
+      "root.test.t1.c1(FLOAT),root.test.t1.c2(TEXT),root.test.t1.c3(TEXT)",
+      "1.0,\"\"abc\",aa\",\"abbe's\""
+    };
+    List<CSVRecord> records = parser.getRecords();
+    for (int i = 0; i < records.size(); i++) {
+      String record = StringUtils.join(records.get(i).toList(), ',');
+      record = record.substring(record.indexOf(',') + 1);
+      assertEquals(realRecords[i], record);
     }
   }
 
   @Test
   public void testAggregationQuery()
-      throws StatementExecutionException, IoTDBConnectionException, IOException {
-    final String[] expectCsv =
-        new String[] {
-          "Time,count(root.sg1.d1.s3),count(root.sg1.d1.s1),count(root.sg1.d1.s2)", "1,1,1"
-        };
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String[] params = {
+      "-td", "target/", "-q", "select count(c1),count(c2),count(c3) from root.test.t1"
+    };
     prepareData();
-    String os = System.getProperty("os.name").toLowerCase();
-    String[] sql = {"select count(*) from root"};
-    generateSQLFile(sql);
-    if (os.startsWith("windows")) {
-      testOnWindows(output);
-    } else {
-      testOnUnix(output);
-    }
-    FileReader fileReader = new FileReader(EXPORT_FILE);
-    BufferedReader br = new BufferedReader(fileReader);
-    String line = br.readLine();
-    int i = 0;
-    while (line != null) {
-      if (i == 0) {
-        assertEquals(expectCsv[i], line);
-      } else {
-        String lineWithoutTime = line.substring(line.indexOf(',') + 1);
-        assertEquals(expectCsv[i], lineWithoutTime);
-      }
-      i++;
-      line = br.readLine();
-    }
-    File file = new File(EXPORT_FILE);
-    if (file.exists()) {
-      file.delete();
+    testMethod(params, null);
+    CSVParser parser = readCsvFile("target/dump0.csv");
+    String[] realRecords = {
+      "count(root.test.t1.c1),count(root.test.t1.c2),count(root.test.t1.c3)", "1,1,1"
+    };
+    List<CSVRecord> records = parser.getRecords();
+    for (int i = 0; i < records.size(); i++) {
+      String record = StringUtils.join(records.get(i).toList(), ',');
+      assertEquals(realRecords[i], record);
     }
   }
 
   private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
-    Session session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
+    Session session = null;
+    try {
+      session = new Session("127.0.0.1", 6667, "root", "root");
+      session.open();
 
-    String deviceId = "root.sg1.d1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1");
-    measurements.add("s2");
-    measurements.add("s3");
+      String deviceId = "root.test.t1";
+      List<String> measurements = new ArrayList<>();
+      measurements.add("c1");
+      measurements.add("c2");
+      measurements.add("c3");
 
-    List<String> values = new ArrayList<>();
-    values.add("1.0");
-    values.add("\"abc\",aa");
-    values.add("abbe's");
-    session.insertRecord(deviceId, 1L, measurements, values);
+      List<String> values = new ArrayList<>();
+      values.add("1.0");
+      values.add("\"abc\",aa");
+      values.add("abbe's");
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } finally {
+      if (session != null) {
+        session.close();
+      }
+    }
   }
 }

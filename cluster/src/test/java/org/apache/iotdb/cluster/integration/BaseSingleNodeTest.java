@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.cluster.integration;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.server.MetaClusterServer;
+import org.apache.iotdb.cluster.server.service.DataGroupEngine;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -34,7 +35,7 @@ import java.util.List;
 
 public abstract class BaseSingleNodeTest {
 
-  private MetaClusterServer metaServer;
+  private ClusterIoTDB daemon;
 
   private boolean useAsyncServer;
   private List<String> seedNodeUrls;
@@ -44,23 +45,26 @@ public abstract class BaseSingleNodeTest {
   @Before
   public void setUp() throws Exception {
     initConfigs();
-    metaServer = new MetaClusterServer();
-    metaServer.start();
-    metaServer.buildCluster();
+    daemon = ClusterIoTDB.getInstance();
+    daemon.initLocalEngines();
+    DataGroupEngine.getInstance().resetFactory();
+    daemon.activeStartNodeMode();
   }
 
   @After
   public void tearDown() throws Exception {
-    metaServer.stop();
+    daemon.stop();
     recoverConfigs();
     EnvironmentUtils.cleanEnv();
   }
 
   private void initConfigs() {
+    // remember the original values
     useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     seedNodeUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
     replicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     autoCreateSchema = ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema();
+    // set the cluster as a single node cluster.
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     ClusterDescriptor.getInstance()
         .getConfig()

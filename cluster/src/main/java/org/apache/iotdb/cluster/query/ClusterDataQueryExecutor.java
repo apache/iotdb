@@ -28,9 +28,9 @@ import org.apache.iotdb.cluster.query.reader.mult.AbstractMultPointReader;
 import org.apache.iotdb.cluster.query.reader.mult.AssignPathManagedMergeReader;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
@@ -85,11 +85,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     try {
       List<ManagedSeriesReader> readersOfSelectedSeries = initMultSeriesReader(context);
       return new RawQueryDataSetWithoutValueFilter(
-          context.getQueryId(),
-          queryPlan.getDeduplicatedPaths(),
-          queryPlan.getDeduplicatedDataTypes(),
-          readersOfSelectedSeries,
-          queryPlan.isAscending());
+          context.getQueryId(), queryPlan, readersOfSelectedSeries);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());
@@ -129,10 +125,11 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
       PartialPath partialPath = queryPlan.getDeduplicatedPaths().get(i);
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
+      String fullPath = partialPath.getFullPath();
       AssignPathManagedMergeReader assignPathManagedMergeReader =
-          new AssignPathManagedMergeReader(partialPath.getFullPath(), dataType);
+          new AssignPathManagedMergeReader(fullPath, dataType, queryPlan.isAscending());
       for (AbstractMultPointReader multPointReader : multPointReaders) {
-        if (multPointReader.getAllPaths().contains(partialPath.getFullPath())) {
+        if (multPointReader.getAllPaths().contains(fullPath)) {
           assignPathManagedMergeReader.addReader(multPointReader, 0);
         }
       }
@@ -170,7 +167,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
         reader =
             readerFactory.getSeriesReader(
                 path,
-                queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+                queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
                 dataType,
                 timeFilter,
                 null,
@@ -195,7 +192,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       PartialPath path, Set<String> deviceMeasurements, TSDataType dataType, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(
-        path, deviceMeasurements, dataType, context, queryPlan.isAscending());
+        path, deviceMeasurements, dataType, context, queryPlan.isAscending(), null);
   }
 
   @Override
@@ -281,11 +278,12 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
               IReaderByTimestamp readerByTimestamp =
                   readerFactory.getReaderByTimestamp(
                       path,
-                      queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+                      queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
                       dataType,
                       context,
                       dataGroupMember,
-                      queryPlan.isAscending());
+                      queryPlan.isAscending(),
+                      null);
 
               if (readerByTimestamp != null) {
                 this.hasLocalReader = true;
@@ -295,13 +293,14 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
               IPointReader pointReader =
                   readerFactory.getSeriesPointReader(
                       path,
-                      queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+                      queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
                       dataType,
                       timeFilter,
                       null,
                       context,
                       dataGroupMember,
-                      queryPlan.isAscending());
+                      queryPlan.isAscending(),
+                      null);
 
               if (pointReader.hasNextTimeValuePair()) {
                 this.hasLocalReader = true;
@@ -314,8 +313,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
           } else if (endPoint == null) {
             endPoint =
                 new QueryDataSet.EndPoint(
-                    partitionGroup.getHeader().getClientIp(),
-                    partitionGroup.getHeader().getClientPort());
+                    partitionGroup.getHeader().getNode().getClientIp(),
+                    partitionGroup.getHeader().getNode().getClientPort());
           }
         }
       } catch (Exception e) {

@@ -20,13 +20,13 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** Statistics for float type. */
 public class FloatStatistics extends Statistics<Float> {
@@ -44,6 +44,10 @@ public class FloatStatistics extends Statistics<Float> {
     return TSDataType.FLOAT;
   }
 
+  /**
+   * The output of this method should be identical to the method "serializeStats(OutputStream
+   * outputStream)"
+   */
   @Override
   public int getStatsSize() {
     return 24;
@@ -95,12 +99,6 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    minValue = BytesUtils.bytesToFloat(minBytes);
-    maxValue = BytesUtils.bytesToFloat(maxBytes);
-  }
-
-  @Override
   void updateStats(float value) {
     if (this.isEmpty) {
       initializeStats(value, value, value, value, value);
@@ -149,11 +147,12 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException("Float statistics does not support: long sum");
+    throw new StatisticsClassException(
+        String.format(STATS_UNSUPPORTED_MSG, TSDataType.FLOAT, "long sum"));
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Float> stats) {
     FloatStatistics floatStats = (FloatStatistics) stats;
     if (isEmpty) {
       initializeStats(
@@ -173,56 +172,6 @@ public class FloatStatistics extends Statistics<Float> {
           stats.getStartTime(),
           stats.getEndTime());
     }
-  }
-
-  @Override
-  public byte[] getMinValueBytes() {
-    return BytesUtils.floatToBytes(minValue);
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    return BytesUtils.floatToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.floatToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.floatToBytes(lastValue);
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    return BytesUtils.doubleToBytes(sumValue);
-  }
-
-  @Override
-  public ByteBuffer getMinValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(minValue);
-  }
-
-  @Override
-  public ByteBuffer getMaxValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(maxValue);
-  }
-
-  @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
-  }
-
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sumValue);
   }
 
   @Override
@@ -252,6 +201,25 @@ public class FloatStatistics extends Statistics<Float> {
     this.firstValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    double e = 0.00001;
+    FloatStatistics that = (FloatStatistics) o;
+    return Math.abs(that.minValue - minValue) < e
+        && Math.abs(that.maxValue - maxValue) < e
+        && Math.abs(that.firstValue - firstValue) < e
+        && Math.abs(that.lastValue - lastValue) < e
+        && Math.abs(that.sumValue - sumValue) < e;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), minValue, maxValue, firstValue, lastValue, sumValue);
   }
 
   @Override

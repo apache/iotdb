@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 
 import java.util.Objects;
 
@@ -45,7 +45,7 @@ public abstract class Modification {
   }
 
   public String getDevice() {
-    return path.getDevice();
+    return path.getDeviceIdString();
   }
 
   public String getMeasurement() {

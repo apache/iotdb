@@ -26,33 +26,52 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class ShowDevicesResult extends ShowResult {
+  private boolean isAligned;
+
   public ShowDevicesResult() {
     super();
   }
 
-  public ShowDevicesResult(String name, String sgName) {
+  public ShowDevicesResult(String name, boolean isAligned, String sgName) {
     super(name, sgName);
+    this.isAligned = isAligned;
   }
 
-  public ShowDevicesResult(String name) {
+  public ShowDevicesResult(String name, boolean isAligned) {
     super(name);
+    this.isAligned = isAligned;
   }
 
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(isAligned, outputStream);
     ReadWriteIOUtils.write(sgName, outputStream);
   }
 
   public static ShowDevicesResult deserialize(ByteBuffer buffer) {
     ShowDevicesResult result = new ShowDevicesResult();
     result.name = ReadWriteIOUtils.readString(buffer);
+    result.isAligned = ReadWriteIOUtils.readBool(buffer);
     result.sgName = ReadWriteIOUtils.readString(buffer);
     return result;
   }
 
+  public boolean isAligned() {
+    return isAligned;
+  }
+
   @Override
   public String toString() {
-    return "ShowDevicesResult{" + " name='" + name + '\'' + ", sgName='" + sgName + '\'' + "}";
+    return "ShowDevicesResult{"
+        + " name='"
+        + name
+        + '\''
+        + ", isAligned = "
+        + isAligned
+        + ", sgName='"
+        + sgName
+        + '\''
+        + "}";
   }
 
   @Override
@@ -64,11 +83,13 @@ public class ShowDevicesResult extends ShowResult {
       return false;
     }
     ShowDevicesResult result = (ShowDevicesResult) o;
-    return Objects.equals(name, result.name) && Objects.equals(sgName, result.sgName);
+    return Objects.equals(name, result.name)
+        && isAligned == result.isAligned
+        && Objects.equals(sgName, result.sgName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, sgName);
+    return Objects.hash(name, isAligned, sgName);
   }
 }

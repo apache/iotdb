@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
@@ -62,7 +63,7 @@ public class CatchUpTaskTest {
 
   private List<Log> receivedLogs = new ArrayList<>();
   private long leaderCommit;
-  private Node header = new Node();
+  private RaftNode header = new RaftNode(new Node(), 0);
   private boolean prevUseAsyncServer;
 
   private RaftMember sender =
@@ -86,7 +87,7 @@ public class CatchUpTaskTest {
             }
 
             @Override
-            public boolean matchTerm(long index, long term, Node header) {
+            public boolean matchTerm(long index, long term, RaftNode header) {
               return dummyMatchTerm(index, term);
             }
 
@@ -95,11 +96,6 @@ public class CatchUpTaskTest {
               // do nothing
             }
           };
-        }
-
-        @Override
-        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-          return getAsyncClient(node);
         }
 
         @Override
@@ -119,7 +115,10 @@ public class CatchUpTaskTest {
 
             @Override
             public void matchTerm(
-                long index, long term, Node header, AsyncMethodCallback<Boolean> resultHandler) {
+                long index,
+                long term,
+                RaftNode header,
+                AsyncMethodCallback<Boolean> resultHandler) {
               new Thread(() -> resultHandler.onComplete(dummyMatchTerm(index, term))).start();
             }
 
@@ -132,7 +131,7 @@ public class CatchUpTaskTest {
         }
 
         @Override
-        public Node getHeader() {
+        public RaftNode getHeader() {
           return header;
         }
       };
@@ -186,7 +185,7 @@ public class CatchUpTaskTest {
 
   @Before
   public void setUp() {
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     receivedLogs = new ArrayList<>();
@@ -198,7 +197,7 @@ public class CatchUpTaskTest {
 
   @After
   public void tearDown() throws Exception {
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     sender.stop();
     sender.closeLogManager();
     EnvironmentUtils.cleanAllDir();
@@ -223,7 +222,7 @@ public class CatchUpTaskTest {
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
     peer.setMatchIndex(9);
-    CatchUpTask task = new CatchUpTask(receiver, peer, sender, 9);
+    CatchUpTask task = new CatchUpTask(receiver, 0, peer, sender, 9);
     task.run();
 
     assertTrue(receivedLogs.isEmpty());
@@ -248,7 +247,7 @@ public class CatchUpTaskTest {
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
     peer.setMatchIndex(0);
-    CatchUpTask task = new CatchUpTask(receiver, peer, sender, 5);
+    CatchUpTask task = new CatchUpTask(receiver, 0, peer, sender, 5);
     task.run();
 
     assertEquals(logList, receivedLogs.subList(1, receivedLogs.size()));
@@ -280,7 +279,7 @@ public class CatchUpTaskTest {
       sender.setCharacter(NodeCharacter.LEADER);
       Peer peer = new Peer(10);
       peer.setMatchIndex(0);
-      CatchUpTask task = new CatchUpTask(receiver, peer, sender, 5);
+      CatchUpTask task = new CatchUpTask(receiver, 0, peer, sender, 5);
       task.run();
 
       assertEquals(logList, receivedLogs.subList(1, receivedLogs.size()));
@@ -306,7 +305,7 @@ public class CatchUpTaskTest {
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
     peer.setNextIndex(0);
-    CatchUpTask task = new CatchUpTask(receiver, peer, sender, 0);
+    CatchUpTask task = new CatchUpTask(receiver, 0, peer, sender, 0);
     ClusterDescriptor.getInstance().getConfig().setUseBatchInLogCatchUp(false);
     task.run();
 
@@ -330,7 +329,7 @@ public class CatchUpTaskTest {
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
     peer.setNextIndex(0);
-    CatchUpTask task = new CatchUpTask(receiver, peer, sender, 0);
+    CatchUpTask task = new CatchUpTask(receiver, 0, peer, sender, 0);
     task.run();
 
     assertEquals(logList, receivedLogs.subList(1, receivedLogs.size()));
@@ -360,7 +359,7 @@ public class CatchUpTaskTest {
     peer.setMatchIndex(0);
     peer.setNextIndex(0);
 
-    CatchUpTask task = new CatchUpTask(receiver, peer, sender, 0);
+    CatchUpTask task = new CatchUpTask(receiver, 0, peer, sender, 0);
     task.setLogs(logList);
     try {
       // 1. case 1: the matched index is in the middle of the logs interval

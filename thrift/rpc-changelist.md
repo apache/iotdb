@@ -18,6 +18,35 @@
     under the License.
 
 -->
+
+# 0.12.x -> 0.13.x
+
+Last Updated on 2022.1.17 by Xin Zhao.
+
+## 1. Delete Old
+
+| Latest Changes                     | Related Committers |
+| ---------------------------------- | ------------------ |
+
+## 2. Add New
+
+| Latest Changes                                                                                                                                                                                                                                                                                                                                        | Related Committers |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------|
+| Add TSTracingInfo                                                                                                                                                                                                                                                                                                                                     | Minghui Liu        |
+| Add structs and interfaces to append, prune, query and unset Schema Template (detail: TSAppendSchemaTemplateReq, TSPruneSchemaTemplateReq, TSQueryTemplateReq, TSQueryTemplateResp, TSUnsetSchemaTemplateReq, appendSchemaTemplate, pruneSchemaTemplate, querySchemaTemplate, unsetSchemaTemplate), and serializedTemplate in TSCreateSchemaTemplateReq | Xin Zhao           |
+| Add struct TSInsertStringRecordsOfOneDeviceReq                                                                                                                                                                                                                                                                                                        | Hang Zhang         |
+| Add method TSStatus insertStringRecordsOfOneDevice(1:TSInsertStringRecordsOfOneDeviceReq req)                                                                                                                                                                                                                                                         | Hang Zhang         |
+| Add TSDropSchemaTemplateReq, TSStatus dropSchemaTemplate                                                                                                                                                                                                                                                                                              | Xin Zhao           |
+| Add TSCreateAlignedTimeseriesReq                                                                                                                                                                                                                                                                                                                        | Haonan Hou         |
+
+## 3. Update
+
+| Latest Changes                                                                       | Related Committers |
+|--------------------------------------------------------------------------------------|--------------------|
+| Add Optional field `isAligned` for all TSInsertReqs                                    | Haonan Hou         |
+| Change schemaNames from required to optional in TSCreateSchemaTemplateReq            | Xin Zhao           |
+| Change TSCreateAlignedTimeseriesReq, from `i32 compressor` to `List<i32> compressors` | Minghui Liu        |
+
 # 0.11.x(version-2) -> 0.12.x(version-1)
 
 Last Updated on 2021.01.19 by Xiangwei Wei.

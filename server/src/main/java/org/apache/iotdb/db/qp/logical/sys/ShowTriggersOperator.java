@@ -19,21 +19,20 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowTriggersOperator extends ShowOperator {
-
-  private PartialPath path;
 
   public ShowTriggersOperator(int tokenIntType) {
     super(tokenIntType);
   }
 
-  public void setPath(PartialPath path) {
-    this.path = path;
-  }
-
-  public PartialPath getPath() {
-    return path;
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new ShowTriggersPlan();
   }
 }

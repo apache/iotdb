@@ -19,15 +19,29 @@
 
 -->
 
-# 1. work process
+# IoTDB Working Process
 
 ## Main link
 
 IoTDB official website：https://iotdb.apache.org/
 
-Code library：https://github.com/apache/iotdb/tree/master
+Code library：https://github.com/apache/iotdb
 
-Get started quickly：http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html
+Code library for go language: https://github.com/apache/iotdb-client-go
+
+Library for resources (project's documents, compiler, etc): https://github.com/apache/iotdb-bin-resources
+
+Get started quickly：http://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html
+
+Jira Task Management：https://issues.apache.org/jira/projects/IOTDB/issues
+
+Wiki Document Management：https://cwiki.apache.org/confluence/display/IOTDB/Home\
+
+Mailing list: https://lists.apache.org/list.html?dev@iotdb.apache.org
+
+Everyday build: https://ci-builds.apache.org/job/IoTDB/job/IoTDB-Pipe/job/master/
+
+Slack: https://apacheiotdb.slack.com/join/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg#/shared-invite/email
 
 ## Subscribe to mailing list
 
@@ -40,24 +54,23 @@ Follow method: Send an email to dev-subscribe@iotdb.apache.org with the email yo
 
 Other mailing list:
 * notifications@iotdb.apache.org (for JIRA information notification.)
-  * If you just want to pay attention to some issues, you do not need to subscribe this mailing list.
-  Instead, you just need to click "start-watching this issue" on the jira issue webpage. 
-* commits@iotdb.apache.org (for code changes notification. Take care because this mailing list may have many emails)
-* reviews@iotdb.apache.org (for code reviews notification on Github.  Take care because this mailing list may have many emails)
+  * If you only want to receive individual Jira notifications that you are interest in, you do not need to subscribe this mailing list. Instead, you just need to click "start-watching this issue" on the jira issue webpage or just comment on this issue.
+* commits@iotdb.apache.org (Any code changes will be notified here, please note that this mailing list will be very large)
+* reviews@iotdb.apache.org (Any code review comments will be notified here, please note that this mailing list will be very large)
 
 
 
-## New features, bug feedback, improvements, and more
+## New features, bug feedback, improvements and more
 
 All features or bugs that you want IoTDB to do can be raised on Jira：https://issues.apache.org/jira/projects/IOTDB/issues
 
-You can choose issue types: bug, improvement, new feature, etc.  New issues will be automatically synchronized to the mailing list (notifications@), and subsequent discussions can be left on jira or on the mailing list.  When the issue is resolved, close the issue.
+You can choose issue types: bug, improvement, new feature, etc.  New issues will be automatically synchronized to the mailing list (notifications@), and subsequent discussions can be left on jira or on the mailing list. When the issue is resolved, close the issue.
 
 ## Email discussion content (English)
 
-* Joining the mailing list for the first time can introduce you briefly.  (Hi, I'm xxx ...)
+* Joining the mailing list for the first time can introduce youself briefly.  (Hi, I'm xxx ...)
 
-* Before developing a function, you can send an e-mail to declare the task you want to do.（Hi，I'm working on issue IOTDB-XXX，My plan is ...）
+* Before developing a new feature, you can send an e-mail to declare the task you want to do.（Hi，I'm working on issue IOTDB-XXX，My plan is ...）
 
 ## Contributing documents
 
@@ -75,20 +88,20 @@ The content of all IoTDB official websites is in the docs of the project root di
 Correspondence between versions and branches on the official website:
 
 * In progress -> master
-* major_version.x -> rel/major_version （如 0.9.x -> rel/0.9）
+* major_version.x -> rel/major_version （eg 0.9.x -> rel/0.9）
 
 Precautions:
 
-* Images in Markdown can be uploaded to https://github.com/thulab/iotdb/issues/543 for url
+* Images in Markdown can be uploaded to https://github.com/apache/iotdb-bin-resources for url
 * Do not use special Unicode chars, e.g., U+FF1A 
 * Do not use the character of dollar (as we will use Latex to generate pdf files)
 
-### Code Formatting
+## Code Formatting
 
 We use the [Spotless
 plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together with [google-java-format](https://github.com/google/google-java-format) to format our Java code. You can configure your IDE to automatically apply formatting on saving with these steps(Take idea as an example):
 
-1. Download the [google-java-format
+1. Download the  [google-java-format
    plugin v1.7.0.5](https://plugins.jetbrains.com/plugin/8527-google-java-format/versions/stable/83169), it can be installed in IDEA (Preferences -> plugins -> search google-java-format), [More detailed setup manual](https://github.com/google/google-java-format#intellij-android-studio-and-other-jetbrains-ides)
 2. Install the plugin from disk (Plugins -> little gear icon -> "Install plugin from disk" -> Navigate to downloaded zip file)
 3. In the plugin settings, enable the plugin and keep the default Google code style (2-space indents)
@@ -106,7 +119,39 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
    <blank line>
    import static all other imports
 ```
+8. Before you submit codes, you can use `mvn spotless:check` to check your codes manually,
+and use `mvn spotless:apply` to format your codes.
 
+**NOTICE (if you are using JDK16+)**: IF you are using JDK16+, you have to create a file called 
+`jvm.config`, put it under `.mvn/`, before you use `spotless:apply`. 
+The file contains the following content:
+```
+--add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+```
+
+This is [an issue of Spotless](https://github.com/diffplug/spotless/issues/834),
+Once the issue is fixed, we can remove this file.
+
+## Code Sytle
+We use the [maven-checkstyle-plugin](https://checkstyle.sourceforge.io/config_filefilters.html) to make Java codes obey a consistent ruleset defined in [checkstyle.xml](https://github.com/apache/iotdb/blob/master/checkstyle.xml) under the project root.
+
+You can reference the code style rules in the file. After development, you can use `mvn validate` to check whether your codes satisfy the style rules.
+
+Besides, when you develop in an IDE, some default code style configurations may be conflict with those rules.
+
+In IDEA, you can follow these steps to change those inconsistent style formatting rules:
+
+### Disable using wildcard import
+
+1. Navigate to Java code style configuration page (Preferences... -> Editor -> Code Style -> Java).
+2. Switch to the 'imports' tab.
+3. In the 'General' section, enable 'Use single class import' option.
+4. Change 'Class count to use import with '\*'' to 999 or another very large number.
+5. Change 'Names to count to use static import with '\*'' to 999 or another very large number.
 
 ## Contributing code
 
@@ -123,31 +168,58 @@ You can go to jira to pick up the existing issue or create your own issue and ge
 * Make changes based on other people's reviews and continue to update until merged
 * close jira issue
 
-## 2. IoTDB debugging method
+# IoTDB Debug Guide
 
-Recommended Use Intellij idea. ```mvn clean package -DskipTests``` After putting ```antlr/target/generated-sources/antlr4``` and ```thrift/target/generated-sources/thrift``` marked as ```Source Root```。 
+## Import the code
 
-* Server main function：```server/src/main/java/org/apache/iotdb/db/service/IoTDB``, Can be started in debug mode
-* Cli：```cli/src/main/java/org/apache/iotdb/cli/```，Use Cli for linux and WinCli for windows, you can start directly with the parameter "-h 127.0.0.1 -p 6667 -u root -pw root"
-* Server rpc implementation (mainly used for cli and server communication, generally start interruption point here):```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
-  * all jdbc statements：executeStatement(TSExecuteStatementReq req)
-  * jdbc query：executeQueryStatement(TSExecuteStatementReq req)	
-  * native Write interface：insertRecord(TSInsertRecordReq req)
+### Intellij idea
 
-* Storage engine org.apache.iotdb.db.engine.StorageEngine
-* Query engine org.apache.iotdb.db.qp.QueryProcessor
+It is recommended to use Intellij idea。```mvn clean package -DskipTests``` 
+
+Mark ```antlr/target/generated-sources/antlr4``` and```thrift/target/generated-sources/thrift``` as ```Source Root```。 
+
+### Eclipse
+
+If it is a version before eclipse 2019，users need to be executed in the root directory of IoTDB `mvn eclipse:eclipse -DskipTests`。
+
+import -> General -> Existing Projects into Workspace -> Select IoTDB root directory
+
+If the version after eclipse 2019
+
+import -> Maven -> Existing Maven Projects
+
+## Debugging code
 
 
-## Frequent Questions when Compiling the Source Code
+* Server main function：`server/src/main/java/org/apache/iotdb/db/service/IoTDB`, can be started in debug mode.
+* Cli：`cli/src/main/java/org/apache/iotdb/cli/`，Use Cli for linux and WinCli for windows, you can start directly with the parameter "`-h 127.0.0.1 -p 6667 -u root -pw root`"
+* Server rpc implementation (mainly used for cli and server communication, generally start interruption point here):`server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl`
+* all jdbc statements：`executeStatement(TSExecuteStatementReq req)`
+* jdbc query：`executeQueryStatement(TSExecuteStatementReq req)`	
+* native Write interface：`insertRecord(TSInsertRecordReq req)`
+`insertTablet(TSInsertTabletReq req)`
 
-1. I could not download thrift-* tools, like `Could not get content
-org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe`
+* Storage engine`org.apache.iotdb.db.engine.StorageEngine`
+* Query engine `org.apache.iotdb.db.qp.QueryProcessor`
 
-It is due to some network problems (especially in China), you can:
 
-* Download the file from the URL manually;
-  * https://github.com/jt2594838/mvn-thrift-compiler/blob/master/thrift_0.12.0_0.13.0_mac.exe
-  * https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe
-* Put the file to thrift/target/tools/
-* Re-run maven command like `mvn compile`
+# Frequent Questions When Compiling the Source Code
 
+I could not download thrift-* tools, like `Could not get content
+org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu`
+
+ It is due to some network problems (especially in China), you can:
+
+ * Download the file from the URL manually;
+      * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu
+
+      * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-MacOS
+
+ * Put the file to thrift/target/tools/
+
+ * Re-run maven command like `mvn compile`
+
+
+## Recommended Debug Tool 
+
+The initial committer of IoTDB is using this  [Java profiler](https://www.ej-technologies.com/products/jprofiler/overview.html) to debug. Welcome all IoTDB contributors to use it.

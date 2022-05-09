@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -64,8 +64,8 @@ public class IoTDBDataDirViewer {
         }
         List<File> fileList = Arrays.asList(seqAndUnseqDirs);
         fileList.sort((Comparator.comparing(File::getName)));
-        if (!seqAndUnseqDirs[0].getName().equals("sequence")
-            || !seqAndUnseqDirs[1].getName().equals("unsequence")) {
+        if (!"sequence".equals(seqAndUnseqDirs[0].getName())
+            || !"unsequence".equals(seqAndUnseqDirs[1].getName())) {
           throw new IOException(
               "Irregular data dir structure.There should be a sequence and unsequence directory "
                   + "under the data directory "

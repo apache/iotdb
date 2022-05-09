@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -38,7 +39,7 @@ public class LongTVListTest {
       tvList.putLong(i, i);
     }
     tvList.sort();
-    for (long i = 0; i < tvList.size; i++) {
+    for (long i = 0; i < tvList.rowCount; i++) {
       Assert.assertEquals(i, tvList.getLong((int) i));
       Assert.assertEquals(i, tvList.getTime((int) i));
     }
@@ -51,7 +52,7 @@ public class LongTVListTest {
       tvList.putLong(i, i);
     }
     tvList.sort();
-    for (long i = 0; i < tvList.size; i++) {
+    for (long i = 0; i < tvList.rowCount; i++) {
       Assert.assertEquals(i, tvList.getLong((int) i));
       Assert.assertEquals(i, tvList.getTime((int) i));
     }
@@ -70,14 +71,14 @@ public class LongTVListTest {
     }
     tvList.sort();
     inputs.sort(TimeValuePair::compareTo);
-    for (long i = 0; i < tvList.size; i++) {
+    for (long i = 0; i < tvList.rowCount; i++) {
       Assert.assertEquals(inputs.get((int) i).getTimestamp(), tvList.getTime((int) i));
       Assert.assertEquals(inputs.get((int) i).getValue().getLong(), tvList.getLong((int) i));
     }
   }
 
   @Test
-  public void testLongTVLists() {
+  public void testPutLongsWithoutBitMap() {
     LongTVList tvList = new LongTVList();
     List<Long> longList = new ArrayList<>();
     List<Long> timeList = new ArrayList<>();
@@ -88,11 +89,70 @@ public class LongTVListTest {
     tvList.putLongs(
         ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
         ArrayUtils.toPrimitive(longList.toArray(new Long[0])),
+        null,
         0,
         1000);
-    for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(tvList.size - i, tvList.getLong((int) i));
-      Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+    for (long i = 0; i < tvList.rowCount; i++) {
+      Assert.assertEquals(tvList.rowCount - i, tvList.getLong((int) i));
+      Assert.assertEquals(tvList.rowCount - i, tvList.getTime((int) i));
+    }
+  }
+
+  @Test
+  public void testPutIntsWithBitMap() {
+    LongTVList tvList = new LongTVList();
+    List<Long> longList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    BitMap bitMap = new BitMap(1001);
+    for (long i = 1000; i >= 0; i--) {
+      timeList.add(i);
+      longList.add(i);
+      if (i % 100 == 0) {
+        bitMap.mark((int) i);
+      }
+    }
+    tvList.putLongs(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(longList.toArray(new Long[0])),
+        bitMap,
+        0,
+        1000);
+    tvList.sort();
+    int nullCnt = 0;
+    for (long i = 1; i < longList.size(); i++) {
+      if (i % 100 == 0) {
+        nullCnt++;
+        continue;
+      }
+      Assert.assertEquals(i, tvList.getLong((int) i - nullCnt - 1));
+      Assert.assertEquals(i, tvList.getTime((int) i - nullCnt - 1));
+    }
+  }
+
+  @Test
+  public void testClone() {
+    LongTVList tvList = new LongTVList();
+    List<Long> longList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    BitMap bitMap = new BitMap(1001);
+    for (long i = 1000; i >= 0; i--) {
+      timeList.add(i);
+      longList.add(i);
+      if (i % 100 == 0) {
+        bitMap.mark((int) i);
+      }
+    }
+    tvList.putLongs(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(longList.toArray(new Long[0])),
+        bitMap,
+        0,
+        1000);
+    tvList.sort();
+    LongTVList clonedTvList = tvList.clone();
+    for (long i = 0; i < tvList.rowCount; i++) {
+      Assert.assertEquals(tvList.getLong((int) i), clonedTvList.getLong((int) i));
+      Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
     }
   }
 }

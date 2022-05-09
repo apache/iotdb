@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -30,6 +32,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
@@ -61,7 +64,8 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
-  public void testFlushMemTable() throws ExecutionException, InterruptedException {
+  public void testFlushMemTable()
+      throws ExecutionException, InterruptedException, IllegalPathException {
     MemTableTestUtils.produceData(
         memTable,
         startTime,
@@ -98,6 +102,60 @@ public class MemTableFlushTaskTest {
     assertEquals(startTime, chunkMetaData.getStartTime());
     assertEquals(endTime, chunkMetaData.getEndTime());
     assertEquals(MemTableTestUtils.dataType0, chunkMetaData.getDataType());
+    assertEquals(endTime - startTime + 1, chunkMetaData.getNumOfPoints());
+  }
+
+  @Test
+  public void testFlushVectorMemTable()
+      throws ExecutionException, InterruptedException, IllegalPathException, IOException {
+    MemTableTestUtils.produceVectorData(memTable);
+    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    assertTrue(
+        writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
+            .isEmpty());
+    memTableFlushTask.syncFlushMemTable();
+    writer.makeMetadataVisible();
+    assertEquals(
+        1,
+        writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
+            .size());
+    ChunkMetadata chunkMetaData =
+        writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
+            .get(0);
+    assertEquals("sensor0", chunkMetaData.getMeasurementUid());
+    assertEquals(startTime, chunkMetaData.getStartTime());
+    assertEquals(endTime, chunkMetaData.getEndTime());
+    assertEquals(TSDataType.BOOLEAN, chunkMetaData.getDataType());
+    assertEquals(endTime - startTime + 1, chunkMetaData.getNumOfPoints());
+  }
+
+  @Test
+  public void testFlushNullableVectorMemTable()
+      throws ExecutionException, InterruptedException, IllegalPathException, IOException {
+    MemTableTestUtils.produceNullableVectorData(memTable);
+    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    assertTrue(
+        writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
+            .isEmpty());
+    memTableFlushTask.syncFlushMemTable();
+    writer.makeMetadataVisible();
+    assertEquals(
+        1,
+        writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
+            .size());
+    ChunkMetadata chunkMetaData =
+        writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, "sensor0", TSDataType.BOOLEAN)
+            .get(0);
+    assertEquals("sensor0", chunkMetaData.getMeasurementUid());
+    assertEquals(startTime, chunkMetaData.getStartTime());
+    assertEquals(endTime, chunkMetaData.getEndTime());
+    assertEquals(TSDataType.BOOLEAN, chunkMetaData.getDataType());
     assertEquals(endTime - startTime + 1, chunkMetaData.getNumOfPoints());
   }
 }

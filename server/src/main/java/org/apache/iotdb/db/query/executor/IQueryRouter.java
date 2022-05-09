@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -41,6 +42,11 @@ public interface IQueryRouter {
 
   /** Execute aggregation query. */
   QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
+      throws QueryFilterOptimizationException, StorageEngineException, IOException,
+          QueryProcessException;
+
+  /** Execute UDAF query. */
+  QueryDataSet udafQuery(UDAFPlan udafPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, IOException,
           QueryProcessException;
 

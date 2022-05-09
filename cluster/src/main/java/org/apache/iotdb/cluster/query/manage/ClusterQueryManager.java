@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
+import org.apache.iotdb.db.query.executor.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -43,16 +43,12 @@ public class ClusterQueryManager {
   private Map<Long, IAggregateReader> aggrReaderMap = new ConcurrentHashMap<>();
   private Map<Long, GroupByExecutor> groupByExecutorMap = new ConcurrentHashMap<>();
 
-  public synchronized RemoteQueryContext getQueryContext(
-      Node node, long queryId, int fetchSize, int deduplicatedPathNum) {
+  public synchronized RemoteQueryContext getQueryContext(Node node, long queryId) {
     Map<Long, RemoteQueryContext> nodeContextMap =
         queryContextMap.computeIfAbsent(node, n -> new HashMap<>());
     return nodeContextMap.computeIfAbsent(
         queryId,
-        qId ->
-            new RemoteQueryContext(
-                QueryResourceManager.getInstance()
-                    .assignQueryId(true, fetchSize, deduplicatedPathNum)));
+        qId -> new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
   }
 
   public long registerReader(IBatchReader reader) {

@@ -56,6 +56,7 @@ public abstract class Decoder {
           case INT32:
             return new IntRleDecoder();
           case INT64:
+          case VECTOR:
             return new LongRleDecoder();
           case FLOAT:
           case DOUBLE:
@@ -68,6 +69,7 @@ public abstract class Decoder {
           case INT32:
             return new DeltaBinaryDecoder.IntDeltaDecoder();
           case INT64:
+          case VECTOR:
             return new DeltaBinaryDecoder.LongDeltaDecoder();
           case FLOAT:
           case DOUBLE:
@@ -89,6 +91,7 @@ public abstract class Decoder {
           case INT32:
             return new RegularDataDecoder.IntRegularDecoder();
           case INT64:
+          case VECTOR:
             return new RegularDataDecoder.LongRegularDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
@@ -102,10 +105,24 @@ public abstract class Decoder {
           case INT32:
             return new IntGorillaDecoder();
           case INT64:
+          case VECTOR:
             return new LongGorillaDecoder();
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
+      case DICTIONARY:
+        return new DictionaryDecoder();
+      case ZIGZAG:
+        switch (dataType) {
+          case INT32:
+            return new IntZigzagDecoder();
+          case INT64:
+            return new LongZigzagDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case FREQ:
+        return new FreqDecoder();
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

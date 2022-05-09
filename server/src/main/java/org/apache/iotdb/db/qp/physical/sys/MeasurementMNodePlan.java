@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
@@ -31,17 +32,17 @@ import java.util.List;
 import java.util.Objects;
 
 public class MeasurementMNodePlan extends MNodePlan {
-  private MeasurementSchema schema;
+  private IMeasurementSchema schema;
   private String alias;
   private long offset;
 
   public MeasurementMNodePlan() {
-    super(false, Operator.OperatorType.MEASUREMENT_MNODE);
+    super(Operator.OperatorType.MEASUREMENT_MNODE);
   }
 
   public MeasurementMNodePlan(
-      String name, String alias, long offset, int childSize, MeasurementSchema schema) {
-    super(false, Operator.OperatorType.MEASUREMENT_MNODE);
+      String name, String alias, long offset, int childSize, IMeasurementSchema schema) {
+    super(Operator.OperatorType.MEASUREMENT_MNODE);
     this.name = name;
     this.alias = alias;
     this.offset = offset;
@@ -55,7 +56,7 @@ public class MeasurementMNodePlan extends MNodePlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.MEASUREMENT_MNODE.ordinal());
 
     putString(buffer, name);
@@ -91,11 +92,11 @@ public class MeasurementMNodePlan extends MNodePlan {
     index = buffer.getLong();
   }
 
-  public MeasurementSchema getSchema() {
+  public IMeasurementSchema getSchema() {
     return schema;
   }
 
-  public void setSchema(MeasurementSchema schema) {
+  public void setSchema(IMeasurementSchema schema) {
     this.schema = schema;
   }
 

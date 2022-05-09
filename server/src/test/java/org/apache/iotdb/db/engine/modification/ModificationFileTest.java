@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
 
 import org.junit.Test;
 

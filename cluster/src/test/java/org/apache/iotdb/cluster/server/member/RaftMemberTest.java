@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -171,7 +172,7 @@ public class RaftMemberTest extends BaseMember {
 
   private DataGroupMember newDataGroupMemberWithSyncLeaderFalse(Node node, boolean syncLeader) {
     DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
+        new TestDataGroupMember(node, partitionTable.getPartitionGroup(new RaftNode(node, 0))) {
 
           @Override
           public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
@@ -208,7 +209,7 @@ public class RaftMemberTest extends BaseMember {
 
   private DataGroupMember newDataGroupMemberWithSyncLeaderTrue(Node node, boolean syncLeader) {
     DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
+        new TestDataGroupMember(node, partitionTable.getPartitionGroup(new RaftNode(node, 0))) {
 
           @Override
           public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {

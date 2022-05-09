@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.junit.After;
 import org.junit.Before;
@@ -29,6 +29,7 @@ import org.junit.Test;
 import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class UtilsTest {
@@ -85,6 +86,18 @@ public class UtilsTest {
   }
 
   @Test(expected = IoTDBURLException.class)
+  public void testParseWrongUrl3() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb//6667?rpc_compress=1", properties);
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseWrongUrl4() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb//6667?rpc_compress=true&aaa=bbb", properties);
+  }
+
+  @Test(expected = IoTDBURLException.class)
   public void testParseWrongPort() throws IoTDBURLException {
     String userName = "test";
     String userPwd = "test";
@@ -112,5 +125,12 @@ public class UtilsTest {
       return;
     }
     fail();
+  }
+
+  @Test
+  public void testRpcCompress() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb://127.0.0.1:6667?rpc_compress=true", properties);
+    assertTrue(Config.rpcThriftCompressionEnable);
   }
 }

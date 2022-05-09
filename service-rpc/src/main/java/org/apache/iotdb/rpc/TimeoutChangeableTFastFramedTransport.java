@@ -30,8 +30,9 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
 
   private TSocket underlyingSocket;
 
-  public TimeoutChangeableTFastFramedTransport(TSocket underlying) {
-    super(underlying);
+  public TimeoutChangeableTFastFramedTransport(
+      TSocket underlying, int thriftDefaultBufferSize, int thriftMaxFrameSize) {
+    super(underlying, thriftDefaultBufferSize, thriftMaxFrameSize);
     this.underlyingSocket = underlying;
   }
 
@@ -58,7 +59,8 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
     @Override
     public TTransport getTransport(TTransport trans) {
       if (trans instanceof TSocket) {
-        return new TimeoutChangeableTFastFramedTransport((TSocket) trans);
+        return new TimeoutChangeableTFastFramedTransport(
+            (TSocket) trans, thriftDefaultBufferSize, thriftMaxFrameSize);
       } else {
         return new TElasticFramedTransport(trans, thriftDefaultBufferSize, thriftMaxFrameSize);
       }

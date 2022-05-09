@@ -19,68 +19,18 @@
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
-import org.junit.Assert;
-
-import java.util.List;
-import java.util.Map;
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class Utils {
 
   private static final double maxError = 0.0001d;
-
-  public static void isListEqual(List<?> listA, List<?> listB, String name) {
-    if ((listA == null) ^ (listB == null)) {
-      System.out.println("error");
-      fail(String.format("one of %s is null", name));
-    }
-    if ((listA != null) && (listB != null)) {
-      if (listA.size() != listB.size()) {
-        fail(String.format("%s size is different", name));
-      }
-      for (int i = 0; i < listA.size(); i++) {
-        assertTrue(listA.get(i).equals(listB.get(i)));
-      }
-    }
-  }
-
-  public static void isMapStringEqual(
-      Map<String, String> mapA, Map<String, String> mapB, String name) {
-    if ((mapA == null) ^ (mapB == null)) {
-      System.out.println("error");
-      fail(String.format("one of %s is null", name));
-    }
-    if ((mapA != null) && (mapB != null)) {
-      if (mapA.size() != mapB.size()) {
-        fail(String.format("%s size is different", name));
-      }
-      for (String key : mapA.keySet()) {
-        assertTrue(mapA.get(key).equals(mapB.get(key)));
-      }
-    }
-  }
-
-  public static void isTwoTsDigestEqual(
-      Statistics statisticsA, Statistics statisticsB, String name) {
-    if ((statisticsA == null) ^ (statisticsB == null)) {
-      System.out.println("error");
-      fail(String.format("one of %s is null", name));
-    }
-    if (statisticsA != null) {
-      Assert.assertEquals(statisticsA, statisticsB);
-    }
-  }
 
   /**
    * when one of A and B is Null, A != B, so test case fails.
@@ -96,29 +46,6 @@ public class Utils {
       fail(String.format("one of %s is null", name));
     }
     return true;
-  }
-
-  public static void isStringSame(Object str1, Object str2, String name) {
-    if ((str1 == null) && (str2 == null)) {
-      return;
-    }
-    if ((str1 == null) ^ (str2 == null)) {
-      fail(String.format("one of %s string is null", name));
-    }
-    assertTrue(str1.toString().equals(str2.toString()));
-  }
-
-  public static void isTimeSeriesChunkMetadataEqual(
-      ChunkMetadata metadata1, ChunkMetadata metadata2) {
-    if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "ChunkMetaData")) {
-      assertTrue(metadata1.getOffsetOfChunkHeader() == metadata2.getOffsetOfChunkHeader());
-      assertTrue(metadata1.getNumOfPoints() == metadata2.getNumOfPoints());
-      assertTrue(metadata1.getStartTime() == metadata2.getStartTime());
-      assertTrue(metadata1.getEndTime() == metadata2.getEndTime());
-      assertNotNull(metadata1.getStatistics());
-      assertNotNull(metadata2.getStatistics());
-      Utils.isTwoTsDigestEqual(metadata1.getStatistics(), metadata2.getStatistics(), "TsDigest");
-    }
   }
 
   public static boolean isFileMetaDataEqual(TsFileMetadata metadata1, TsFileMetadata metadata2) {

@@ -27,16 +27,19 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.MB;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MB;
 
 public class SerializableLongTVList extends SerializableTVList {
 
   protected static int calculateCapacity(float memoryLimitInMB) {
     float memoryLimitInB = memoryLimitInMB * MB / 2;
+    // One time-value pair with 1 extra bit(1/8 Byte) in bitMap
     return TSFileConfig.ARRAY_CAPACITY_THRESHOLD
         * (int)
             (memoryLimitInB
-                / ((ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.LONG_LEN)
+                / ((ReadWriteIOUtils.LONG_LEN
+                        + ReadWriteIOUtils.LONG_LEN
+                        + ReadWriteIOUtils.BIT_LEN)
                     * TSFileConfig.ARRAY_CAPACITY_THRESHOLD));
   }
 

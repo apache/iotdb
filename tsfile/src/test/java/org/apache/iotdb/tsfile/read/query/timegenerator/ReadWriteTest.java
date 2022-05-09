@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -35,6 +34,7 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -54,7 +54,7 @@ import java.io.IOException;
 public class ReadWriteTest {
 
   private final String TEMPLATE_NAME = "template";
-  private String tsfilePath = TestConstant.BASE_OUTPUT_PATH.concat("TestValueFilter.tsfile");
+  private final String tsfilePath = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
 
   @Before
   public void before() throws IOException, WriteProcessException {
@@ -88,8 +88,8 @@ public class ReadWriteTest {
             .setExpression(finalExpression);
 
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath)) {
-      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
-      QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+      TsFileReader tsFileReader = new TsFileReader(fileReader);
+      QueryDataSet dataSet = tsFileReader.query(queryExpression);
       int i = 0;
       String[] expected =
           new String[] {"1\t1.2\t20", "3\t1.4\t21", "4\t1.2\t20", "6\t7.2\t10", "7\t6.2\t20"};
@@ -106,7 +106,9 @@ public class ReadWriteTest {
     if (f.exists()) {
       f.delete();
     }
-
+    if (!f.getParentFile().exists()) {
+      Assert.assertTrue(f.getParentFile().mkdirs());
+    }
     Schema schema = new Schema();
     schema.extendTemplate(
         TEMPLATE_NAME, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));

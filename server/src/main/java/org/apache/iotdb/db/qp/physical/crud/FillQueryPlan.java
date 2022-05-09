@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -29,6 +28,7 @@ public class FillQueryPlan extends RawDataQueryPlan {
 
   private long queryTime;
   private Map<TSDataType, IFill> fillType;
+  private IFill singleFill;
 
   public FillQueryPlan() {
     super();
@@ -43,19 +43,19 @@ public class FillQueryPlan extends RawDataQueryPlan {
     this.queryTime = queryTime;
   }
 
+  public IFill getSingleFill() {
+    return singleFill;
+  }
+
   public Map<TSDataType, IFill> getFillType() {
     return fillType;
   }
 
-  public void setFillType(Map<TSDataType, IFill> fillType) {
-    this.fillType = fillType;
+  public void setSingleFill(IFill singleFill) {
+    this.singleFill = singleFill;
   }
 
-  @Override
-  public void setAlignByTime(boolean align) throws QueryProcessException {
-    if (!align) {
-      throw new QueryProcessException(
-          getOperatorType().name() + " doesn't support disable align clause.");
-    }
+  public void setFillType(Map<TSDataType, IFill> fillType) {
+    this.fillType = fillType;
   }
 }
