@@ -5,6 +5,5 @@ import java.util.List;
 
 public interface CompactionEstimator {
 
-     long estimateMemory(int unseqIndex, List<Integer> seqIndexes) throws IOException;
-
+  long estimateMemory(int unseqIndex, List<Integer> seqIndexes) throws IOException;
 }

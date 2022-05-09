@@ -22,13 +22,14 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.utils.CompactionEstimator;
-import org.apache.iotdb.db.engine.compaction.cross.utils.InplaceCompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.cross.utils.RewriteCompactionEstimator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -168,8 +169,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     if (timeLimit < 0) {
       timeLimit = Long.MAX_VALUE;
     }
-    CompactionEstimator compactionEstimator =
-        new InplaceCompactionEstimator(useTightBound, resource);
+    CompactionEstimator compactionEstimator = new RewriteCompactionEstimator(resource);
     while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
