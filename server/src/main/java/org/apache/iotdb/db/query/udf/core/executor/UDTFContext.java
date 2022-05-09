@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.executor;
 
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
@@ -41,6 +42,12 @@ public class UDTFContext {
   public void constructUdfExecutors(List<ResultColumn> resultColumns) {
     for (ResultColumn resultColumn : resultColumns) {
       resultColumn.getExpression().constructUdfExecutors(expressionName2Executor, zoneId);
+    }
+  }
+
+  public void constructUdfExecutors(Expression[] outputExpressions) {
+    for (Expression expression : outputExpressions) {
+      expression.constructUdfExecutors(expressionName2Executor, zoneId);
     }
   }
 
