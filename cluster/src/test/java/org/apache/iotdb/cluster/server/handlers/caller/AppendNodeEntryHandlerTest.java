@@ -29,7 +29,7 @@ import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.PeerInfo;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -71,7 +71,7 @@ public class AppendNodeEntryHandlerTest {
       ClusterDescriptor.getInstance().getConfig().setReplicationNum(10);
       VotingLog votingLog = new VotingLog(log, 10);
       member.getVotingLogList().insert(votingLog);
-      Peer peer = new Peer(1);
+      PeerInfo peerInfo = new PeerInfo(1);
       for (int i = 0; i < 10; i++) {
         AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
         handler.setLeaderShipStale(leadershipStale);
@@ -105,7 +105,7 @@ public class AppendNodeEntryHandlerTest {
     Log log = new TestLog();
     VotingLog votingLog = new VotingLog(log, 10);
     member.getVotingLogList().insert(votingLog);
-    Peer peer = new Peer(1);
+    PeerInfo peerInfo = new PeerInfo(1);
 
     for (int i = 0; i < 3; i++) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
@@ -131,7 +131,7 @@ public class AppendNodeEntryHandlerTest {
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
     VotingLog votingLog = new VotingLog(log, 10);
-    Peer peer = new Peer(1);
+    PeerInfo peerInfo = new PeerInfo(1);
 
     synchronized (votingLog) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
@@ -158,7 +158,7 @@ public class AppendNodeEntryHandlerTest {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(10);
     try {
       VotingLog votingLog = new VotingLog(log, 10);
-      Peer peer = new Peer(1);
+      PeerInfo peerInfo = new PeerInfo(1);
 
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setLeaderShipStale(leadershipStale);

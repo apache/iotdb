@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.server.monitor;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Peer {
+public class PeerInfo {
 
   private long nextIndex;
   private long matchIndex;
@@ -29,7 +29,7 @@ public class Peer {
   // lastLogIndex from the last heartbeat
   private long lastHeartBeatIndex;
 
-  public Peer(long nextIndex) {
+  public PeerInfo(long nextIndex) {
     this.nextIndex = nextIndex;
     this.matchIndex = -1;
   }

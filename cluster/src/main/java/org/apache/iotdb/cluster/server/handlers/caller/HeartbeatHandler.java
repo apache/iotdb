@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.PeerInfo;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -100,21 +100,21 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
           localLastLogTerm);
     }
 
-    Peer peer = localMember.getPeer(follower);
+    PeerInfo peerInfo = localMember.getPeer(follower);
     if (!localMember.getLogManager().isLogUpToDate(lastLogTerm, lastLogIdx)
         || !localMember.getLogManager().matchTerm(lastLogTerm, lastLogIdx)) {
       // the follower is not up-to-date
-      if (lastLogIdx == -1 || lastLogIdx < peer.getMatchIndex()) {
+      if (lastLogIdx == -1 || lastLogIdx < peerInfo.getMatchIndex()) {
         // maybe the follower has restarted, so we need to find its match index again, because
         // some logs may be lost due to restart
-        peer.setMatchIndex(lastLogIdx);
+        peerInfo.setMatchIndex(lastLogIdx);
       }
 
       // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 5
       // heartbeats. If the follower is installing snapshot currently, we reset the counter.
-      if (lastLogIdx == peer.getLastHeartBeatIndex() && !resp.isInstallingSnapshot()) {
+      if (lastLogIdx == peerInfo.getLastHeartBeatIndex() && !resp.isInstallingSnapshot()) {
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
-        int inconsistentNum = peer.incInconsistentHeartbeatNum();
+        int inconsistentNum = peerInfo.incInconsistentHeartbeatNum();
         if (inconsistentNum >= 1000) {
           logger.info(
               "{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
@@ -124,20 +124,20 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
               lastLogTerm,
               localLastLogIdx,
               localLastLogTerm,
-              peer.getMatchIndex());
+              peerInfo.getMatchIndex());
           localMember.catchUp(follower, lastLogIdx);
         }
       } else {
         // the follower's lastLogIndex is changed, which means the follower is not down yet, we
         // reset the counter to see if it can eventually catch up by itself
-        peer.resetInconsistentHeartbeatNum();
+        peerInfo.resetInconsistentHeartbeatNum();
       }
     } else {
       // the follower is up-to-date
-      peer.setMatchIndex(Math.max(peer.getMatchIndex(), lastLogIdx));
-      peer.resetInconsistentHeartbeatNum();
+      peerInfo.setMatchIndex(Math.max(peerInfo.getMatchIndex(), lastLogIdx));
+      peerInfo.resetInconsistentHeartbeatNum();
     }
-    peer.setLastHeartBeatIndex(lastLogIdx);
+    peerInfo.setLastHeartBeatIndex(lastLogIdx);
   }
 
   @Override

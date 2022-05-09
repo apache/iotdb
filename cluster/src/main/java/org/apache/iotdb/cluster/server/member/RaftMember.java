@@ -73,7 +73,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
-import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.PeerInfo;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -143,8 +143,6 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   public static boolean USE_LOG_DISPATCHER = true;
-  private static final boolean USE_INDIRECT_LOG_DISPATCHER =
-      ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting();
   private static final boolean ENABLE_WEAK_ACCEPTANCE =
       ClusterDescriptor.getInstance().getConfig().isEnableWeakAcceptance();
   public static boolean USE_CRAFT = false;
@@ -189,7 +187,7 @@ public abstract class RaftMember implements RaftMemberMBean {
   /** to choose nodes to send request of joining cluster randomly. */
   Random random = new Random();
   /** when the node is a leader, this map is used to track log progress of each follower. */
-  Map<Node, Peer> peerMap;
+  Map<Node, PeerInfo> peerMap;
   /**
    * the current term of the node, this object also works as lock of some transactions of the member
    * like elections.
@@ -1373,12 +1371,12 @@ public abstract class RaftMember implements RaftMemberMBean {
   public void initPeerMap() {
     peerMap = new ConcurrentHashMap<>();
     for (Node entry : allNodes) {
-      peerMap.computeIfAbsent(entry, k -> new Peer(logManager.getLastLogIndex()));
+      peerMap.computeIfAbsent(entry, k -> new PeerInfo(logManager.getLastLogIndex()));
     }
   }
 
-  public Peer getPeer(Node node) {
-    return peerMap.computeIfAbsent(node, r -> new Peer(getLogManager().getLastLogIndex()));
+  public PeerInfo getPeer(Node node) {
+    return peerMap.computeIfAbsent(node, r -> new PeerInfo(getLogManager().getLastLogIndex()));
   }
 
   /** @return true if there is a log whose index is "index" and term is "term", false otherwise */
@@ -2143,8 +2141,8 @@ public abstract class RaftMember implements RaftMemberMBean {
      * too many waiting requests on the peer's side.
      */
     long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
-    Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
-    if (!waitForPrevLog(peer, log.getLog())) {
+    PeerInfo peerInfo = peerMap.computeIfAbsent(node, k -> new PeerInfo(logManager.getLastLogIndex()));
+    if (!waitForPrevLog(peerInfo, log.getLog())) {
       logger.warn("{}: node {} timed out when appending {}", name, node, log);
       return;
     }
@@ -2166,18 +2164,18 @@ public abstract class RaftMember implements RaftMemberMBean {
    * no bigger than maxLogDiff.
    */
   @SuppressWarnings("java:S2445") // safe synchronized
-  public boolean waitForPrevLog(Peer peer, Log log) {
+  public boolean waitForPrevLog(PeerInfo peerInfo, Log log) {
     final int maxLogDiff = config.getMaxNumOfLogsInMem();
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     // if the peer falls behind too much, wait until it catches up, otherwise there may be too
     // many client threads in the peer
-    while (peer.getMatchIndex() < log.getCurrLogIndex() - maxLogDiff
+    while (peerInfo.getMatchIndex() < log.getCurrLogIndex() - maxLogDiff
         && character == NodeCharacter.LEADER
         && alreadyWait <= ClusterConstant.getWriteOperationTimeoutMS()) {
-      synchronized (peer) {
+      synchronized (peerInfo) {
         try {
-          peer.wait(ClusterConstant.getWriteOperationTimeoutMS());
+          peerInfo.wait(ClusterConstant.getWriteOperationTimeoutMS());
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Waiting for peer to catch up interrupted");

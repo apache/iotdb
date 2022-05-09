@@ -32,7 +32,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.NodeStatus;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
-import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.PeerInfo;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -283,7 +283,7 @@ public class LogDispatcher {
     Node receiver;
     private BlockingQueue<SendLogRequest> logBlockingDeque;
     protected List<SendLogRequest> currBatch = new ArrayList<>();
-    private Peer peer;
+    private PeerInfo peerInfo;
     Client syncClient;
     AsyncClient asyncClient;
     private String baseName;
@@ -291,7 +291,7 @@ public class LogDispatcher {
     DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
       this.receiver = receiver;
       this.logBlockingDeque = logBlockingDeque;
-      this.peer = member.getPeer(receiver);
+      this.peerInfo = member.getPeer(receiver);
       if (!clusterConfig.isUseAsyncServer()) {
         syncClient = member.getSyncClient(receiver);
       }
@@ -356,7 +356,7 @@ public class LogDispatcher {
         List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
 
       long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
-      if (!member.waitForPrevLog(peer, currBatch.get(0).getVotingLog().getLog())) {
+      if (!member.waitForPrevLog(peerInfo, currBatch.get(0).getVotingLog().getLog())) {
         logger.warn(
             "{}: node {} timed out when appending {}",
             member.getName(),

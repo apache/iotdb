@@ -67,7 +67,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.server.monitor.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
-import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.PeerInfo;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.IOUtils;
@@ -373,7 +373,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       }
       if (insertIndex > 0) {
         allNodes.add(insertIndex, node);
-        peerMap.putIfAbsent(node, new Peer(logManager.getLastLogIndex()));
+        peerMap.putIfAbsent(node, new PeerInfo(logManager.getLastLogIndex()));
         // if the local node is the last node and the insertion succeeds, this node should leave
         // the group
         logger.debug("{}: Node {} is inserted into the data group {}", name, node, allNodes);
@@ -933,7 +933,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
         }
         Node newNodeToGroup = newGroup.get(newGroup.size() - 1);
         allNodes.add(newNodeToGroup);
-        peerMap.putIfAbsent(newNodeToGroup, new Peer(logManager.getLastLogIndex()));
+        peerMap.putIfAbsent(newNodeToGroup, new PeerInfo(logManager.getLastLogIndex()));
       }
     }
   }

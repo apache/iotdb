@@ -31,7 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.PeerInfo;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 
@@ -50,7 +50,7 @@ public class CatchUpTask implements Runnable {
   private static final Logger logger = LoggerFactory.getLogger(CatchUpTask.class);
 
   private Node node;
-  private Peer peer;
+  private PeerInfo peerInfo;
   private RaftMember raftMember;
   private Snapshot snapshot;
   private List<Log> logs;
@@ -61,10 +61,10 @@ public class CatchUpTask implements Runnable {
 
   private long startTime;
 
-  public CatchUpTask(Node node, int raftId, Peer peer, RaftMember raftMember, long lastLogIdx) {
+  public CatchUpTask(Node node, int raftId, PeerInfo peerInfo, RaftMember raftMember, long lastLogIdx) {
     this.node = node;
     this.raftId = raftId;
-    this.peer = peer;
+    this.peerInfo = peerInfo;
     this.raftMember = raftMember;
     this.logs = Collections.emptyList();
     this.snapshot = null;
@@ -88,7 +88,7 @@ public class CatchUpTask implements Runnable {
     try {
       // to avoid snapshot catch up when index is volatile
       localFirstIndex = raftMember.getLogManager().getFirstIndex();
-      lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
+      lo = Math.max(localFirstIndex, peerInfo.getMatchIndex() + 1);
       hi = raftMember.getLogManager().getLastLogIndex() + 1;
       logs = raftMember.getLogManager().getEntries(lo, hi);
 
@@ -121,7 +121,7 @@ public class CatchUpTask implements Runnable {
       if (!judgeUseLogsInDiskToCatchUp()) {
         return false;
       }
-      long startIndex = peer.getMatchIndex() + 1;
+      long startIndex = peerInfo.getMatchIndex() + 1;
       long endIndex = raftMember.getLogManager().getCommitLogIndex();
       List<Log> logsInDisk = getLogsInStableEntryManager(startIndex, endIndex);
       if (!logsInDisk.isEmpty()) {
@@ -162,7 +162,7 @@ public class CatchUpTask implements Runnable {
     }
     logger.info("{}: {} matches at {}", name, node, newMatchedIndex);
 
-    peer.setMatchIndex(newMatchedIndex);
+    peerInfo.setMatchIndex(newMatchedIndex);
     // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from
     // index.
     logs.subList(0, index).clear();
@@ -322,7 +322,7 @@ public class CatchUpTask implements Runnable {
     } catch (IOException e) {
       logger.error("Unexpected error when taking snapshot.", e);
     }
-    snapshot = raftMember.getLogManager().getSnapshot(peer.getMatchIndex());
+    snapshot = raftMember.getLogManager().getSnapshot(peerInfo.getMatchIndex());
     if (logger.isInfoEnabled()) {
       logger.info("{}: Logs in {} are too old, catch up with snapshot", raftMember.getName(), node);
     }
@@ -351,7 +351,7 @@ public class CatchUpTask implements Runnable {
     try {
       boolean findMatchedIndex = checkMatchIndex();
       if (abort) {
-        peer.resetInconsistentHeartbeatNum();
+        peerInfo.resetInconsistentHeartbeatNum();
         raftMember.getLastCatchUpResponseTime().remove(node);
         return;
       }
@@ -377,17 +377,17 @@ public class CatchUpTask implements Runnable {
               !logs.isEmpty()
                   ? logs.get(logs.size() - 1).getCurrLogIndex()
                   : snapshot.getLastLogIndex();
-          peer.setMatchIndex(lastIndex);
+          peerInfo.setMatchIndex(lastIndex);
         }
         if (logger.isInfoEnabled()) {
           logger.info(
               "{}: Catch up {} finished, update it's matchIndex to {}, time consumption: {}ms",
               raftMember.getName(),
               node,
-              peer.getMatchIndex(),
+              peerInfo.getMatchIndex(),
               System.currentTimeMillis() - startTime);
         }
-        peer.resetInconsistentHeartbeatNum();
+        peerInfo.resetInconsistentHeartbeatNum();
       }
 
     } catch (LeaderUnknownException e) {
