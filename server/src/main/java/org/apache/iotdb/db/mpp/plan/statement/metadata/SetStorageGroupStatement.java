@@ -31,6 +31,10 @@ import java.util.List;
 
 public class SetStorageGroupStatement extends Statement implements IConfigStatement {
   private PartialPath storageGroupPath;
+  private Long ttl = null;
+  private Integer schemaReplicationFactor = null;
+  private Integer dataReplicationFactor = null;
+  private Long timePartitionInterval = null;
 
   public SetStorageGroupStatement() {
     super();
@@ -50,6 +54,22 @@ public class SetStorageGroupStatement extends Statement implements IConfigStatem
     this.storageGroupPath = storageGroupPath;
   }
 
+  public void setTtl(Long ttl) {
+    this.ttl = ttl;
+  }
+
+  public void setSchemaReplicationFactor(Integer schemaReplicationFactor) {
+    this.schemaReplicationFactor = schemaReplicationFactor;
+  }
+
+  public void setDataReplicationFactor(Integer dataReplicationFactor) {
+    this.dataReplicationFactor = dataReplicationFactor;
+  }
+
+  public void setTimePartitionInterval(Long timePartitionInterval) {
+    this.timePartitionInterval = timePartitionInterval;
+  }
+
   @Override
   public QueryType getQueryType() {
     return QueryType.WRITE;
@@ -60,5 +80,21 @@ public class SetStorageGroupStatement extends Statement implements IConfigStatem
     return storageGroupPath != null
         ? Collections.singletonList(storageGroupPath)
         : Collections.emptyList();
+  }
+
+  public Long getTtl() {
+    return ttl;
+  }
+
+  public Integer getSchemaReplicationFactor() {
+    return schemaReplicationFactor;
+  }
+
+  public Integer getDataReplicationFactor() {
+    return dataReplicationFactor;
+  }
+
+  public Long getTimePartitionInterval() {
+    return timePartitionInterval;
   }
 }
