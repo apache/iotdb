@@ -207,9 +207,11 @@ export class QueryEditor extends PureComponent<Props, State> {
                   if (value === selectRaw[0]) {
                     this.props.query.aggregated = selectRaw[0];
                     this.props.query.aggregateFun = '';
-                    const nextTimeSeries = this.props.query.paths.filter((_, i) => i < 0);
-                    const nextOptions = this.props.query.options.filter((_, i) => i < 0);
-                    this.onTimeSeriesChange(nextTimeSeries, nextOptions, true);
+                    if (this.props.query.paths) {
+                      const nextTimeSeries = this.props.query.paths.filter((_, i) => i < 0);
+                      const nextOptions = this.props.query.options.filter((_, i) => i < 0);
+                      this.onTimeSeriesChange(nextTimeSeries, nextOptions, true);
+                    }
                     if (this.props.query.groupBy?.samplingInterval) {
                       this.props.query.groupBy.samplingInterval = '';
                     }
