@@ -255,7 +255,7 @@ public abstract class SchemaBasicTest {
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.laptop.d1.`\"1.2.3\"`")));
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.`1`.`2`.`3`")));
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.`1`.`2`")));
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.1")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.`1`")));
 
     try {
       schemaProcessor.deleteStorageGroups(Collections.singletonList(new PartialPath("root.`1`")));
@@ -265,12 +265,12 @@ public abstract class SchemaBasicTest {
     }
     assertFalse(schemaProcessor.isPathExist(new PartialPath("root.`1`")));
 
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template")));
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template.d1")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template0")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template0.d1")));
 
     try {
       schemaProcessor.createTimeseries(
-          new PartialPath("root.template.d2"),
+          new PartialPath("root.template0.d2"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
@@ -282,19 +282,19 @@ public abstract class SchemaBasicTest {
 
     try {
       schemaProcessor.createSchemaTemplate(getCreateTemplatePlan());
-      schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.template"));
+      schemaProcessor.setSchemaTemplate(new SetTemplatePlan("template1", "root.template0"));
       schemaProcessor.setUsingSchemaTemplate(
-          new ActivateTemplatePlan(new PartialPath("root.template.d1")));
+          new ActivateTemplatePlan(new PartialPath("root.template0.d1")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template.d1")));
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template.d1.s11")));
-    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template.d2.s11")));
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template.d1.vector")));
-    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template.d1.vector.s0")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template0.d1")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template0.d1.s11")));
+    assertFalse(schemaProcessor.isPathExist(new PartialPath("root.template0.d2.s11")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template0.d1.vector")));
+    assertTrue(schemaProcessor.isPathExist(new PartialPath("root.template0.d1.vector.s0")));
   }
 
   /**
@@ -1724,18 +1724,6 @@ public abstract class SchemaBasicTest {
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-
-    // show timeseries root.laptop.d1.(s0,s1)
-    try {
-      ShowTimeSeriesPlan showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.(s0,s1)"), false, null, null, 0, 0, false);
-      schemaProcessor.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    } catch (MetadataException e) {
-      assertEquals(
-          "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
-          e.getMessage());
     }
   }
 

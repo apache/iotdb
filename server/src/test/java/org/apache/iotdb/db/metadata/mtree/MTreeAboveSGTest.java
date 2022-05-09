@@ -211,15 +211,15 @@ public class MTreeAboveSGTest {
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0")).isEmpty());
       assertTrue(
-          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
 
       root.setStorageGroup(new PartialPath("root.vehicle"));
       assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
       assertFalse(root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0")).isEmpty());
       assertFalse(
-          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device.sensor")).isEmpty());
+          root.getBelongedStorageGroups(new PartialPath("root.vehicle.device0.sensor")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1")).isEmpty());
-      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device")).isEmpty());
+      assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device0")).isEmpty());
 
       root.setStorageGroup(new PartialPath("root.vehicle1.device0"));
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle1.device1")).isEmpty());

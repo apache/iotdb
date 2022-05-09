@@ -36,7 +36,7 @@ public class PartialPathTest {
     // empty path
     PartialPath a = new PartialPath("");
     Assert.assertEquals("", a.getFullPath());
-    Assert.assertEquals("", a.getNodes()[0]);
+    Assert.assertEquals(0, a.getNodes().length);
 
     // suffix path
     PartialPath b = new PartialPath("s1");
@@ -157,10 +157,154 @@ public class PartialPathTest {
   }
 
   @Test
-  public void testLegalDeviceAndMeasurement() {}
+  public void testLegalDeviceAndMeasurement() throws IllegalPathException {
+    String[] nodes;
+    // empty path
+    PartialPath a = new PartialPath("", "");
+    Assert.assertEquals("", a.getFullPath());
+    Assert.assertEquals(0, a.getNodes().length);
+
+    // normal node
+    PartialPath b = new PartialPath("root.sg", "s1");
+    Assert.assertEquals("root.sg.s1", b.getFullPath());
+    nodes = new String[] {"root", "sg", "s1"};
+    checkNodes(nodes, b.getNodes());
+
+    PartialPath c = new PartialPath("root.sg", "a");
+    Assert.assertEquals("root.sg.a", c.getFullPath());
+    nodes = new String[] {"root", "sg", "a"};
+    checkNodes(nodes, c.getNodes());
+
+    // quoted node
+    PartialPath d = new PartialPath("root.sg", "`a.b`");
+    Assert.assertEquals("root.sg.`a.b`", d.getFullPath());
+    nodes = new String[] {"root", "sg", "`a.b`"};
+    checkNodes(nodes, d.getNodes());
+
+    PartialPath e = new PartialPath("root.sg", "`a.``b`");
+    Assert.assertEquals("root.sg.`a.``b`", e.getFullPath());
+    nodes = new String[] {"root", "sg", "`a.``b`"};
+    checkNodes(nodes, e.getNodes());
+
+    PartialPath f = new PartialPath("root.`sg\"`", "`a.``b`");
+    Assert.assertEquals("root.`sg\"`.`a.``b`", f.getFullPath());
+    nodes = new String[] {"root", "`sg\"`", "`a.``b`"};
+    checkNodes(nodes, f.getNodes());
+
+    PartialPath g = new PartialPath("root.sg", "`a.b\\\\`");
+    Assert.assertEquals("root.sg.`a.b\\\\`", g.getFullPath());
+    nodes = new String[] {"root", "sg", "`a.b\\\\`"};
+    checkNodes(nodes, g.getNodes());
+
+    // quoted node of digits
+    PartialPath h = new PartialPath("root.sg", "`111`");
+    Assert.assertEquals("root.sg.`111`", h.getFullPath());
+    nodes = new String[] {"root", "sg", "`111`"};
+    checkNodes(nodes, h.getNodes());
+
+    // quoted node of key word
+    PartialPath i = new PartialPath("root.sg", "`select`");
+    Assert.assertEquals("root.sg.`select`", i.getFullPath());
+    nodes = new String[] {"root", "sg", "`select`"};
+    checkNodes(nodes, i.getNodes());
+
+    // wildcard
+    PartialPath j = new PartialPath("root.sg", "`a*b`");
+    Assert.assertEquals("root.sg.`a*b`", j.getFullPath());
+    nodes = new String[] {"root", "sg", "`a*b`"};
+    checkNodes(nodes, j.getNodes());
+
+    PartialPath k = new PartialPath("root.sg", "*");
+    Assert.assertEquals("root.sg.*", k.getFullPath());
+    nodes = new String[] {"root", "sg", "*"};
+    checkNodes(nodes, k.getNodes());
+
+    PartialPath l = new PartialPath("root.sg", "**");
+    Assert.assertEquals("root.sg.**", l.getFullPath());
+    nodes = new String[] {"root", "sg", "**"};
+    checkNodes(nodes, l.getNodes());
+
+    // other
+    PartialPath m = new PartialPath("root.sg", "`to`.be.prefix.s");
+    Assert.assertEquals("root.sg.`to`.be.prefix.s", m.getFullPath());
+    nodes = new String[] {"root", "sg", "`to`", "be", "prefix", "s"};
+    checkNodes(nodes, m.getNodes());
+  }
 
   @Test
-  public void testIllegalDeviceAndMeasurement() {}
+  public void testIllegalDeviceAndMeasurement() {
+    try {
+      new PartialPath("root.sg.d1", "```");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1.```", "s1");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.`d1`..a", "`aa``b`");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.`d1`.a", "s..`aa``b`");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1", "`s+`-1\"`");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1.`s+`-1\"`", "s1");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg", "111");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.111", "s1");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg", "select");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.select", "a");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1", "device");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1.device", "s1");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+  }
 
   @Test
   public void testConcatPath() {

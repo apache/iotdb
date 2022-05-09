@@ -427,9 +427,9 @@ public class IoTDBSessionComplexIT {
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`1+2+3`"));
     Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.`1+2+4`"));
 
-    session.setStorageGroup("root.1");
+    session.setStorageGroup("root.`1`");
     session.createTimeseries(
-        "root.1.2.3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.`1`.`2`.`3`", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.setStorageGroup("root.sg2");
     session.createTimeseries(
         "root.sg2.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
