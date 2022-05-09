@@ -122,6 +122,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   private R consumeNextMatchedNode() {
     R result = generateResult();
 
+    // after the node be consumed, the subTree should be considered.
     if (patternIndexOfMatchedNode == nodes.length) {
       pushChildrenWhilePrefixMatch(
           nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
@@ -180,8 +181,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         shouldVisitSubtree = processFullMatchedNode(node) && isInternalNode(node);
 
         if (nextMatchedNode != null) {
-          patternIndexOfMatchedNode = patternIndex;
-          lastMultiLevelWildcardIndexOfMatchedNode = lastMultiLevelWildcardIndex;
+          saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
           return;
         }
 
@@ -197,8 +197,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           shouldVisitSubtree = processFullMatchedNode(node) && isInternalNode(node);
 
           if (nextMatchedNode != null) {
-            patternIndexOfMatchedNode = patternIndex;
-            lastMultiLevelWildcardIndexOfMatchedNode = lastMultiLevelWildcardIndex;
+            saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
             return;
           }
 
@@ -209,8 +208,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
           shouldVisitSubtree = processInternalMatchedNode(node) && isInternalNode(node);
 
           if (nextMatchedNode != null) {
-            patternIndexOfMatchedNode = patternIndex;
-            lastMultiLevelWildcardIndexOfMatchedNode = lastMultiLevelWildcardIndex;
+            saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
             return;
           }
 
@@ -228,8 +226,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         shouldVisitSubtree = processInternalMatchedNode(node) && isInternalNode(node);
 
         if (nextMatchedNode != null) {
-          patternIndexOfMatchedNode = lastMatchIndex;
-          lastMultiLevelWildcardIndexOfMatchedNode = lastMultiLevelWildcardIndex;
+          saveNextMatchedNodeContext(lastMatchIndex, lastMultiLevelWildcardIndex);
           return;
         }
 
@@ -238,6 +235,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         }
       }
     }
+  }
+
+  /**
+   * The context, mainly the matching info, of nextedMatchedNode should be saved. When the
+   * nextedMatchedNode is consumed, the saved info will be used to process its subtree.
+   */
+  private void saveNextMatchedNodeContext(
+      int patternIndexOfMatchedNode, int lastMultiLevelWildcardIndexOfMatchedNode) {
+    this.patternIndexOfMatchedNode = patternIndexOfMatchedNode;
+    this.lastMultiLevelWildcardIndexOfMatchedNode = lastMultiLevelWildcardIndexOfMatchedNode;
   }
 
   /**
