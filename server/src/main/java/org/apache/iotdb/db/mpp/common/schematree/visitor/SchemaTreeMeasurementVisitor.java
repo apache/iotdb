@@ -69,7 +69,7 @@ public class SchemaTreeMeasurementVisitor extends SchemaTreeVisitor<MeasurementP
         new MeasurementPath(
             generateFullPathNodes(nextMatchedNode),
             nextMatchedNode.getAsMeasurementNode().getSchema());
-    result.setUnderAlignedEntity(ancestorStack.peek().getAsEntityNode().isAligned());
+    result.setUnderAlignedEntity(ancestorStack.peek().getNode().getAsEntityNode().isAligned());
     String alias = nextMatchedNode.getAsMeasurementNode().getAlias();
     if (nodes[nodes.length - 1].equals(alias)) {
       result.setMeasurementAlias(alias);

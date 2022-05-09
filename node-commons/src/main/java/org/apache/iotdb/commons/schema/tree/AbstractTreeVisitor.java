@@ -66,7 +66,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   protected final boolean isPrefixMatch;
 
   protected final Deque<VisitorStackEntry<N>> visitorStack = new ArrayDeque<>();
-  protected final Deque<N> ancestorStack = new ArrayDeque<>();
+  protected final Deque<AncestorStackEntry<N>> ancestorStack = new ArrayDeque<>();
 
   protected N nextMatchedNode;
 
@@ -244,16 +244,34 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
         continue;
       }
 
-      Iterator<N> ancestors = ancestorStack.iterator();
+      Iterator<AncestorStackEntry<N>> ancestors = ancestorStack.iterator();
       boolean allMatch = true;
+      AncestorStackEntry<N> ancestor;
       for (int j = i - 1; j > lastMultiLevelWildcardIndex; j--) {
-        if (!checkIsMatch(j, ancestors.next())) {
+        ancestor = ancestors.next();
+        if (ancestor.isMatched(j)) {
+          break;
+        }
+
+        if (ancestor.hasBeenChecked(j) || !checkIsMatch(j, ancestor.node)) {
+          ancestors = ancestorStack.iterator();
+          for (int k = i - 1; k >= j; k--) {
+            ancestors.next().setNotMatched(k);
+          }
           allMatch = false;
           break;
         }
       }
 
       if (allMatch) {
+        ancestors = ancestorStack.iterator();
+        for (int k = i - 1; k > lastMultiLevelWildcardIndex; k--) {
+          ancestor = ancestors.next();
+          if (ancestor.isMatched(k)) {
+            break;
+          }
+          ancestor.setMatched(k);
+        }
         return i;
       }
     }
@@ -281,7 +299,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       N parent, String childName, int patternIndex, int lastMultiLevelWildcardIndex) {
     N child = getChild(parent, childName);
     if (child != null) {
-      ancestorStack.push(parent);
+      ancestorStack.push(
+          new AncestorStackEntry<>(
+              parent,
+              visitorStack.peek().patternIndex,
+              visitorStack.peek().lastMultiLevelWildcardIndex));
       visitorStack.push(
           new VisitorStackEntry<>(
               Collections.singletonList(child).iterator(),
@@ -292,7 +314,11 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   }
 
   protected void pushAllChildren(N parent, int patternIndex, int lastMultiLevelWildcardIndex) {
-    ancestorStack.push(parent);
+    ancestorStack.push(
+        new AncestorStackEntry<>(
+            parent,
+            visitorStack.peek().patternIndex,
+            visitorStack.peek().lastMultiLevelWildcardIndex));
     visitorStack.push(
         new VisitorStackEntry<>(
             getChildrenIterator(parent),
@@ -321,9 +347,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   protected String[] generateFullPathNodes(N node) {
     List<String> nodeNames = new ArrayList<>();
-    Iterator<N> iterator = ancestorStack.descendingIterator();
+    Iterator<AncestorStackEntry<N>> iterator = ancestorStack.descendingIterator();
     while (iterator.hasNext()) {
-      nodeNames.add(iterator.next().getName());
+      nodeNames.add(iterator.next().node.getName());
     }
     nodeNames.add(node.getName());
     return nodeNames.toArray(new String[0]);
@@ -375,6 +401,41 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       this.patternIndex = patternIndex;
       this.level = level;
       this.lastMultiLevelWildcardIndex = lastMultiLevelWildcardIndex;
+    }
+  }
+
+  protected static class AncestorStackEntry<N> {
+    private final N node;
+    private final int matchedIndex;
+    // status record as dp info to reduce repeating check
+    private final byte[] matchStatus;
+
+    AncestorStackEntry(N node, int matchedIndex, int lastMultiLevelWildcardIndex) {
+      this.node = node;
+      this.matchedIndex = matchedIndex;
+      matchStatus = new byte[matchedIndex - lastMultiLevelWildcardIndex + 1];
+      matchStatus[0] = 1;
+      matchStatus[matchStatus.length - 1] = 1;
+    }
+
+    public N getNode() {
+      return node;
+    }
+
+    boolean hasBeenChecked(int index) {
+      return matchStatus[matchedIndex - index] != 0;
+    }
+
+    boolean isMatched(int index) {
+      return matchStatus[matchedIndex - index] == 1;
+    }
+
+    void setMatched(int index) {
+      matchStatus[matchedIndex - index] = 1;
+    }
+
+    void setNotMatched(int index) {
+      matchStatus[matchedIndex - index] = -1;
     }
   }
 }
