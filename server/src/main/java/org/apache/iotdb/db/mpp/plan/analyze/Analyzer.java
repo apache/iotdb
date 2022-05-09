@@ -60,6 +60,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
@@ -1070,6 +1071,20 @@ public class Analyzer {
               new PathPatternTree(showChildPathsStatement.getPartialPath()));
       analysis.setSchemaPartitionInfo(schemaPartition);
       analysis.setRespDatasetHeader(HeaderConstant.showChildPathsHeader);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowChildNodes(
+        ShowChildNodesStatement showChildNodesStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showChildNodesStatement);
+
+      SchemaPartition schemaPartition =
+          partitionFetcher.getSchemaPartition(
+              new PathPatternTree(showChildNodesStatement.getPartialPath()));
+      analysis.setSchemaPartitionInfo(schemaPartition);
+      analysis.setRespDatasetHeader(HeaderConstant.showChildNodesHeader);
       return analysis;
     }
   }

@@ -43,6 +43,7 @@ public class HeaderConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TTL = "ttl";
   public static final String COLUMN_CHILDPATHS = "child paths";
+  public static final String COLUMN_CHILDNODES = "child nodes";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -58,6 +59,7 @@ public class HeaderConstant {
   public static final DatasetHeader showStorageGroupHeader;
   public static final DatasetHeader showTTLHeader;
   public static final DatasetHeader showChildPathsHeader;
+  public static final DatasetHeader showChildNodesHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -131,5 +133,8 @@ public class HeaderConstant {
     showChildPathsHeader =
         new DatasetHeader(
             Arrays.asList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
+    showChildNodesHeader =
+        new DatasetHeader(
+            Arrays.asList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
   }
 }

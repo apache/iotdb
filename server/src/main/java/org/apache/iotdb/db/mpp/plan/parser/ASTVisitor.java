@@ -57,6 +57,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
@@ -482,6 +483,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       return new ShowChildPathsStatement(parsePrefixPath(ctx.prefixPath()));
     } else {
       return new ShowChildPathsStatement(new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
+  // Show Child Nodes =====================================================================
+  @Override
+  public Statement visitShowChildNodes(IoTDBSqlParser.ShowChildNodesContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowChildNodesStatement(parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowChildNodesStatement(new PartialPath(SQLConstant.getSingleRootArray()));
     }
   }
 

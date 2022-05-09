@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
@@ -252,6 +253,11 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planChildPathsSchemaSource(PartialPath partialPath) {
     this.root = new ChildPathsSchemaScanNode(context.getQueryId().genPlanNodeId(), partialPath);
+    return this;
+  }
+
+  public LogicalPlanBuilder planChildNodesSchemaSource(PartialPath partialPath) {
+    this.root = new ChildNodesSchemaScanNode(context.getQueryId().genPlanNodeId(), partialPath);
     return this;
   }
 }

@@ -469,6 +469,21 @@ public class LogicalPlannerTest {
     }
   }
 
+  @Test
+  public void testShowChildNodes() {
+    String sql = "SHOW CHILD NODES root.ln";
+    try {
+      SchemaQueryMergeNode schemaQueryMergeNode = (SchemaQueryMergeNode) parseSQLToPlanNode(sql);
+      ChildPathsSchemaScanNode childPathsSchemaScanNode =
+          (ChildPathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
+      Assert.assertNotNull(childPathsSchemaScanNode);
+      Assert.assertEquals(new PartialPath("root.ln"), childPathsSchemaScanNode.getPrefixPath());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   private PlanNode parseSQLToPlanNode(String sql) {
     PlanNode planNode = null;
     try {

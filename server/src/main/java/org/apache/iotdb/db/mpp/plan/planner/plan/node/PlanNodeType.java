@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
@@ -100,7 +101,8 @@ public enum PlanNodeType {
   DEVICE_MERGE((short) 35),
   SCHEMA_FETCH_MERGE((short) 36),
   TRANSFORM((short) 37),
-  CHILD_PATHS_SCAN((short) 38);
+  CHILD_PATHS_SCAN((short) 38),
+  CHILD_NODES_SCAN((short) 39);
 
   private final short nodeType;
 
@@ -202,6 +204,8 @@ public enum PlanNodeType {
         return TransformNode.deserialize(buffer);
       case 38:
         return ChildPathsSchemaScanNode.deserialize(buffer);
+      case 39:
+        return ChildNodesSchemaScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
