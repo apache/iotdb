@@ -163,6 +163,10 @@ public class WALManager implements IService {
       return;
     }
 
+    if (walDeleteThread == null) {
+      return;
+    }
+
     Future<?> future = walDeleteThread.submit(this::deleteOutdatedFiles);
     try {
       future.get();
@@ -203,6 +207,7 @@ public class WALManager implements IService {
 
     if (walDeleteThread != null) {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
+      walDeleteThread = null;
     }
     clear();
   }

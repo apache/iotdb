@@ -38,18 +38,20 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.apache.commons.compress.utils.Sets;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -136,8 +138,7 @@ public class QueryLogicalPlanUtil {
 
     GreaterThanExpression timeFilter =
         new GreaterThanExpression(
-            new TimeSeriesOperand(SQLConstant.TIME_PATH),
-            new ConstantOperand(TSDataType.INT64, "100"));
+            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -152,7 +153,17 @@ public class QueryLogicalPlanUtil {
             new LogicAndExpression(timeFilter, valueFilter2));
 
     FilterNode filterNode =
-        new FilterNode(new PlanNodeId("test_query_4"), timeJoinNode, expression);
+        new FilterNode(
+            new PlanNodeId("test_query_4"),
+            timeJoinNode,
+            new Expression[] {
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
+            },
+            expression,
+            false,
+            ZoneId.systemDefault());
 
     ProjectNode projectNode =
         new ProjectNode(
@@ -212,8 +223,7 @@ public class QueryLogicalPlanUtil {
 
     GreaterThanExpression timeFilter =
         new GreaterThanExpression(
-            new TimeSeriesOperand(SQLConstant.TIME_PATH),
-            new ConstantOperand(TSDataType.INT64, "100"));
+            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -228,9 +238,27 @@ public class QueryLogicalPlanUtil {
             new LogicAndExpression(timeFilter, valueFilter2));
 
     FilterNode filterNode1 =
-        new FilterNode(new PlanNodeId("test_query_6"), timeJoinNode1, expression);
+        new FilterNode(
+            new PlanNodeId("test_query_6"),
+            timeJoinNode1,
+            new Expression[] {
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+            },
+            expression,
+            false,
+            ZoneId.systemDefault());
     FilterNode filterNode2 =
-        new FilterNode(new PlanNodeId("test_query_7"), timeJoinNode2, expression);
+        new FilterNode(
+            new PlanNodeId("test_query_7"),
+            timeJoinNode2,
+            new Expression[] {
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
+            },
+            expression,
+            false,
+            ZoneId.systemDefault());
 
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
@@ -496,8 +524,7 @@ public class QueryLogicalPlanUtil {
 
     GreaterThanExpression timeFilter =
         new GreaterThanExpression(
-            new TimeSeriesOperand(SQLConstant.TIME_PATH),
-            new ConstantOperand(TSDataType.INT64, "100"));
+            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -511,7 +538,18 @@ public class QueryLogicalPlanUtil {
             new LogicAndExpression(timeFilter, valueFilter1),
             new LogicAndExpression(timeFilter, valueFilter2));
     FilterNode filterNode =
-        new FilterNode(new PlanNodeId("test_query_5"), timeJoinNode, expression);
+        new FilterNode(
+            new PlanNodeId("test_query_5"),
+            timeJoinNode,
+            new Expression[] {
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
+            },
+            expression,
+            false,
+            ZoneId.systemDefault());
 
     AggregationNode aggregationNode =
         new AggregationNode(
@@ -629,8 +667,7 @@ public class QueryLogicalPlanUtil {
 
     GreaterThanExpression timeFilter =
         new GreaterThanExpression(
-            new TimeSeriesOperand(SQLConstant.TIME_PATH),
-            new ConstantOperand(TSDataType.INT64, "100"));
+            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -645,9 +682,27 @@ public class QueryLogicalPlanUtil {
             new LogicAndExpression(timeFilter, valueFilter2));
 
     FilterNode filterNode1 =
-        new FilterNode(new PlanNodeId("test_query_6"), timeJoinNode1, expression);
+        new FilterNode(
+            new PlanNodeId("test_query_6"),
+            timeJoinNode1,
+            new Expression[] {
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
+            },
+            expression,
+            false,
+            ZoneId.systemDefault());
     FilterNode filterNode2 =
-        new FilterNode(new PlanNodeId("test_query_7"), timeJoinNode2, expression);
+        new FilterNode(
+            new PlanNodeId("test_query_7"),
+            timeJoinNode2,
+            new Expression[] {
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
+            },
+            expression,
+            false,
+            ZoneId.systemDefault());
 
     AggregationNode aggregationNode1 =
         new AggregationNode(
