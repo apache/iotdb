@@ -61,17 +61,17 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  */
 public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Iterator<R> {
 
-  // command parameter
+  // command parameters
   protected final N root;
   protected final String[] nodes;
   protected final boolean isPrefixMatch;
 
-  // run time parameter
+  // run time parameters
   protected final Deque<VisitorStackEntry<N>> visitorStack = new ArrayDeque<>();
   protected final Deque<AncestorStackEntry<N>> ancestorStack = new ArrayDeque<>();
   protected boolean shouldVisitSubtree;
 
-  // result parameter
+  // result parameters
   protected N nextMatchedNode;
   protected int patternIndexOfMatchedNode;
   protected int lastMultiLevelWildcardIndexOfMatchedNode;
