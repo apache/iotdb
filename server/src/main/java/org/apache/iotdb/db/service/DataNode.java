@@ -139,8 +139,7 @@ public class DataNode implements DataNodeMBean {
 
     while (retry > 0) {
       logger.info("start joining the cluster.");
-      try {
-        ConfigNodeClient configNodeClient = new ConfigNodeClient();
+      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         TDataNodeLocation location = new TDataNodeLocation();

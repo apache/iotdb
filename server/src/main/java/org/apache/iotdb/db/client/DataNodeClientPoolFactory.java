@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeDataBlockServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -148,10 +148,10 @@ public class DataNodeClientPoolFactory {
   }
 
   public static class ConfigNodeClientPoolFactory
-      implements IClientPoolFactory<ConsensusGroupId, ConfigNodeClient> {
+      implements IClientPoolFactory<PartitionRegionId, ConfigNodeClient> {
     @Override
-    public KeyedObjectPool<ConsensusGroupId, ConfigNodeClient> createClientPool(
-        ClientManager<ConsensusGroupId, ConfigNodeClient> manager) {
+    public KeyedObjectPool<PartitionRegionId, ConfigNodeClient> createClientPool(
+        ClientManager<PartitionRegionId, ConfigNodeClient> manager) {
       return new GenericKeyedObjectPool<>(
           new ConfigNodeClient.Factory(
               manager,

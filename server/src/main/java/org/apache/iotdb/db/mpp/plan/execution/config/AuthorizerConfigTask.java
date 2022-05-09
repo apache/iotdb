@@ -21,9 +21,12 @@ package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -42,6 +45,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -58,9 +62,11 @@ public class AuthorizerConfigTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute() {
+  public ListenableFuture<ConfigTaskResult> execute(
+      IClientManager<PartitionRegionId, ConfigNodeClient> clientManager) {
     SettableFuture<ConfigTaskResult> future = null;
-    try {
+    try (ConfigNodeClient configNodeClient =
+        clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Construct request using statement
       TAuthorizerReq req =
           new TAuthorizerReq(
@@ -76,12 +82,15 @@ public class AuthorizerConfigTask implements IConfigTask {
 
       // Send request to some API server
       if (authorStatement.getQueryType() == QueryType.WRITE) {
-        future = operatePermission(req);
+        future = operatePermission(req, configNodeClient);
       } else {
-        future = queryPermission(req);
+        future = queryPermission(req, configNodeClient);
       }
     } catch (AuthException e) {
       LOGGER.error("No such privilege {}.", authorStatement.getAuthorType());
+      future.setException(e);
+    } catch (IOException e) {
+      LOGGER.error("can't connect to all config nodes", e);
       future.setException(e);
     }
     // If the action is executed successfully, return the Future.
@@ -89,11 +98,10 @@ public class AuthorizerConfigTask implements IConfigTask {
     return future;
   }
 
-  private SettableFuture<ConfigTaskResult> operatePermission(TAuthorizerReq authorizerReq) {
+  private SettableFuture<ConfigTaskResult> operatePermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    ConfigNodeClient configNodeClient = null;
     try {
-      configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       TSStatus tsStatus = configNodeClient.operatePermission(authorizerReq);
       // Get response or throw exception
@@ -111,22 +119,17 @@ public class AuthorizerConfigTask implements IConfigTask {
     } catch (TException e) {
       LOGGER.error("Failed to connect to config node.");
       future.setException(e);
-    } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
     }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     return future;
   }
 
-  private SettableFuture<ConfigTaskResult> queryPermission(TAuthorizerReq authorizerReq) {
+  private SettableFuture<ConfigTaskResult> queryPermission(
+      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    ConfigNodeClient configNodeClient = null;
     TAuthorizerResp authorizerResp;
     try {
-      configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       authorizerResp = configNodeClient.queryPermission(authorizerReq);
       // Get response or throw exception

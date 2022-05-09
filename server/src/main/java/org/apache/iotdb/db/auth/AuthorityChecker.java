@@ -22,12 +22,16 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -42,6 +46,7 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,6 +59,10 @@ public class AuthorityChecker {
 
   private static AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
   private static SessionManager sessionManager = SessionManager.getInstance();
+
+  private static final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
+      new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
+          .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
   private AuthorityChecker() {}
 
@@ -157,17 +166,13 @@ public class AuthorityChecker {
   public static TSStatus checkUser(String username, String password) {
     TLoginReq req = new TLoginReq(username, password);
     TSStatus status = null;
-    ConfigNodeClient configNodeClient = null;
-    try {
-      configNodeClient = new ConfigNodeClient();
+    try (ConfigNodeClient configNodeClient =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
       status = configNodeClient.login(req);
-    } catch (TException e) {
+    } catch (TException | IOException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
       if (status == null) {
         status = new TSStatus();
       }
@@ -209,18 +214,14 @@ public class AuthorityChecker {
 
   public static TSStatus checkPath(String username, List<String> allPath, int permission) {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
-    ConfigNodeClient configNodeClient = null;
     TSStatus status = null;
-    try {
-      configNodeClient = new ConfigNodeClient();
+    try (ConfigNodeClient configNodeClient =
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
       status = configNodeClient.checkUserPrivileges(req);
-    } catch (TException e) {
+    } catch (TException | IOException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
-      if (configNodeClient != null) {
-        configNodeClient.close();
-      }
       if (status == null) {
         status = new TSStatus();
       }

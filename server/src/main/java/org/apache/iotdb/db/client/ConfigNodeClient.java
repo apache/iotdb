@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.sync.SyncThriftClient;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -530,22 +531,22 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
-  public static class Factory extends BaseClientFactory<ConsensusGroupId, ConfigNodeClient> {
+  public static class Factory extends BaseClientFactory<PartitionRegionId, ConfigNodeClient> {
 
     public Factory(
-        ClientManager<ConsensusGroupId, ConfigNodeClient> clientManager,
+        ClientManager<PartitionRegionId, ConfigNodeClient> clientManager,
         ClientFactoryProperty clientFactoryProperty) {
       super(clientManager, clientFactoryProperty);
     }
 
     @Override
     public void destroyObject(
-        ConsensusGroupId consensusGroupId, PooledObject<ConfigNodeClient> pooledObject) {
+        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       pooledObject.getObject().invalidate();
     }
 
     @Override
-    public PooledObject<ConfigNodeClient> makeObject(ConsensusGroupId consensusGroupId)
+    public PooledObject<ConfigNodeClient> makeObject(PartitionRegionId partitionRegionId)
         throws Exception {
       Constructor<ConfigNodeClient> constructor =
           ConfigNodeClient.class.getConstructor(
@@ -563,7 +564,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
     @Override
     public boolean validateObject(
-        ConsensusGroupId consensusGroupId, PooledObject<ConfigNodeClient> pooledObject) {
+        PartitionRegionId partitionRegionId, PooledObject<ConfigNodeClient> pooledObject) {
       return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
     }
   }
