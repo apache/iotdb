@@ -35,6 +35,7 @@ public class AvgAccumulator implements Accumulator {
   private TSDataType seriesDataType;
   private long countValue;
   private double sumValue;
+  private boolean initResult = false;
 
   public AvgAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
@@ -67,6 +68,9 @@ public class AvgAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 2, "partialResult of Avg should be 2");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     countValue += partialResult[0].getLong(0);
     sumValue += partialResult[1].getDouble(0);
   }
@@ -130,6 +134,7 @@ public class AvgAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         countValue++;
         sumValue += column[1].getInt(i);
       }
@@ -144,6 +149,7 @@ public class AvgAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         countValue++;
         sumValue += column[1].getLong(i);
       }
@@ -158,6 +164,7 @@ public class AvgAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         countValue++;
         sumValue += column[1].getFloat(i);
       }

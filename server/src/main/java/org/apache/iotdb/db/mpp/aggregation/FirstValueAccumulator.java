@@ -73,6 +73,9 @@ public class FirstValueAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 2, "partialResult of FirstValue should be 2");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         updateIntFirstValue(partialResult[0].getInt(0), partialResult[1].getLong(0));

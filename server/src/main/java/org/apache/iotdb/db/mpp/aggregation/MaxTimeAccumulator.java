@@ -30,6 +30,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class MaxTimeAccumulator implements Accumulator {
 
   protected long maxTime = Long.MIN_VALUE;
+  private boolean initResult = false;
 
   public MaxTimeAccumulator() {}
 
@@ -49,6 +50,9 @@ public class MaxTimeAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of MaxTime should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     updateMaxTime(partialResult[0].getLong(0));
   }
 

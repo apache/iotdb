@@ -69,6 +69,9 @@ public class MaxValueAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of MaxValue should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         updateIntResult(partialResult[0].getInt(0));

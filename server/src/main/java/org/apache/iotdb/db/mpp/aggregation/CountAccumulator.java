@@ -31,6 +31,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class CountAccumulator implements Accumulator {
 
   private long countValue = 0;
+  private boolean initResult = false;
 
   public CountAccumulator() {}
 
@@ -53,6 +54,9 @@ public class CountAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of Count should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     countValue += partialResult[0].getLong(0);
   }
 

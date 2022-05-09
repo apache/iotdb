@@ -34,6 +34,7 @@ public class SumAccumulator implements Accumulator {
 
   private TSDataType seriesDataType;
   private double sumValue = 0;
+  private boolean initResult = false;
 
   public SumAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
@@ -67,6 +68,9 @@ public class SumAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of Sum should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     sumValue += partialResult[0].getDouble(0);
   }
 
@@ -83,6 +87,9 @@ public class SumAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
+    if (finalResult.isNull(0)) {
+      return;
+    }
     sumValue = finalResult.getDouble(0);
   }
 
@@ -90,11 +97,17 @@ public class SumAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of Sum should be 1");
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+    }
     columnBuilders[0].writeDouble(sumValue);
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+    }
     columnBuilder.writeDouble(sumValue);
   }
 
@@ -126,6 +139,7 @@ public class SumAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         sumValue += column[1].getInt(i);
       }
     }
@@ -139,6 +153,7 @@ public class SumAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         sumValue += column[1].getLong(i);
       }
     }
@@ -152,6 +167,7 @@ public class SumAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         sumValue += column[1].getFloat(i);
       }
     }
@@ -165,6 +181,7 @@ public class SumAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         sumValue += column[1].getDouble(i);
       }
     }

@@ -51,6 +51,9 @@ public class MinTimeAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of MinTime should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     updateMinTime(partialResult[0].getLong(0));
   }
 
