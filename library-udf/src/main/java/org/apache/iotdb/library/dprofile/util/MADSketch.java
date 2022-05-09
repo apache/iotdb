@@ -20,7 +20,10 @@ package org.apache.iotdb.library.dprofile.util;
 
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 public class MADSketch {
 
