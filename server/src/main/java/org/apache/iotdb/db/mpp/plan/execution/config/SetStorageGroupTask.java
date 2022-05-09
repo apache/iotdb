@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -74,7 +73,7 @@ public class SetStorageGroupTask implements IConfigTask {
         } else {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         }
-      } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      } catch (IoTDBConnectionException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
       } finally {

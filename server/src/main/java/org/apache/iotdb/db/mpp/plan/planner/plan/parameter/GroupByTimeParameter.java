@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -66,6 +67,16 @@ public class GroupByTimeParameter {
     this.isIntervalByMonth = isIntervalByMonth;
     this.isSlidingStepByMonth = isSlidingStepByMonth;
     this.leftCRightO = leftCRightO;
+  }
+
+  public GroupByTimeParameter(GroupByTimeComponent groupByTimeComponent) {
+    this.startTime = groupByTimeComponent.getStartTime();
+    this.endTime = groupByTimeComponent.getEndTime();
+    this.interval = groupByTimeComponent.getInterval();
+    this.slidingStep = groupByTimeComponent.getSlidingStep();
+    this.isIntervalByMonth = groupByTimeComponent.isIntervalByMonth();
+    this.isSlidingStepByMonth = groupByTimeComponent.isSlidingStepByMonth();
+    this.leftCRightO = groupByTimeComponent.isLeftCRightO();
   }
 
   public long getStartTime() {

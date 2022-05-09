@@ -65,7 +65,7 @@ public class OutputColumn {
     return sourceLocations.size() == 1;
   }
 
-  public InputLocation getInputLocation(int index) {
+  public InputLocation getSourceLocation(int index) {
     checkArgument(index < sourceLocations.size(), "index is not valid");
     return sourceLocations.get(index);
   }
