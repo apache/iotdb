@@ -22,7 +22,7 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.library.util.Util;
 
-import java.util.*;
+import java.util.ArrayList;
 
 public class TimestampRepair {
 
