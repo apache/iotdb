@@ -22,17 +22,55 @@
 set current_dir=%~dp0
 set superior_dir=%current_dir%\..\
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "rpc_port"
+for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^[\s]*rpc_port"
 %superior_dir%\conf\iotdb-engine.properties') do (
   set rpc_port=%%i
 )
 
-for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "rpc_address"
+for /f  "eol=; tokens=2,2 delims==" %%i in ('findstr /i "^[\s]*rpc_address"
 %superior_dir%\conf\iotdb-engine.properties') do (
   set rpc_address=%%i
 )
 
-for /f "tokens=5" %%a in ('netstat /ano ^| findstr %rpc_address%:%rpc_port%') do (
-  taskkill /f /pid %%a
+rem Try to gracefully stop server, at first.
+
+set pid=''
+call:findPid
+if not %pid% == '' (
+  if "%PROCESSOR_ARCHITECTURE%"=="x86" (
+    start %current_dir%\win32-kill.exe -2 %pid% >nul
+  ) else (
+    start %current_dir%\win64-kill.exe -2 %pid% >nul
+  )
+) else (
+  echo No IoTDB server to stop
+  exit /b 1
 )
-rem ps ax | grep -i 'iotdb.IoTDB' | grep -v grep | awk '{print $1}' | xargs kill -SIGTERM
+
+echo|set /p="Begin to stop IoTDB ..."
+
+set oldPid=%pid%
+set i=0
+:continue
+  call:findPid
+  if %pid% == '' (
+    echo. closed gracefully.
+    exit /b 0
+  )
+  echo|set /p="."
+  choice /t 1 /c q  /d q /n >nul
+  set /a i+=1
+if %i% lss 10 goto continue
+
+rem Force to shutdown server.
+taskkill /f /pid %oldPid% >nul
+echo. forced to kill.
+exit /b 0
+
+
+:findPid
+  set pid=''
+  for /f "tokens=5" %%a in ('netstat /ano ^| findstr %rpc_address%:%rpc_port%') do (
+    set pid=%%a
+  )
+goto:eof
