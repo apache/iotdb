@@ -22,15 +22,19 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.CompareBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.CompareEqualToTransformer;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareEqualToTransformer;
 
 import java.nio.ByteBuffer;
 
 public class EqualToExpression extends BinaryExpression {
+
   public EqualToExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public EqualToExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -44,18 +48,8 @@ public class EqualToExpression extends BinaryExpression {
     return "=";
   }
 
-  public static EqualToExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    EqualToExpression equalToExpression =
-        new EqualToExpression(
-            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
-    equalToExpression.isConstantOperandCache = isConstantOperandCache;
-    return equalToExpression;
-  }
-
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.EqualTo.serialize(byteBuffer);
-    super.serialize(byteBuffer);
+  public ExpressionType getExpressionType() {
+    return ExpressionType.EQUAL_TO;
   }
 }

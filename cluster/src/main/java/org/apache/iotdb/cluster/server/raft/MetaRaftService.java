@@ -22,17 +22,11 @@ package org.apache.iotdb.cluster.server.raft;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 
 public class MetaRaftService extends AbstractMetaRaftService implements MetaRaftServiceMBean {
 
   private MetaRaftService() {}
-
-  @Override
-  public ThriftService getImplementation() {
-    return MetaRaftServiceHolder.INSTANCE;
-  }
 
   @Override
   public ServiceType getID() {

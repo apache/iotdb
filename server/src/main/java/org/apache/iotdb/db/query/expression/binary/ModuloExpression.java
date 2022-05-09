@@ -22,9 +22,8 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticModuloTransformer;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticModuloTransformer;
 
 import java.nio.ByteBuffer;
 
@@ -32,6 +31,10 @@ public class ModuloExpression extends BinaryExpression {
 
   public ModuloExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public ModuloExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -45,18 +48,8 @@ public class ModuloExpression extends BinaryExpression {
     return "%";
   }
 
-  public static ModuloExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    ModuloExpression moduloExpression =
-        new ModuloExpression(
-            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
-    moduloExpression.isConstantOperandCache = isConstantOperandCache;
-    return moduloExpression;
-  }
-
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Modulo.serialize(byteBuffer);
-    super.serialize(byteBuffer);
+  public ExpressionType getExpressionType() {
+    return ExpressionType.MODULO;
   }
 }

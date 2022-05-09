@@ -38,8 +38,9 @@ struct TGlobalConfig {
 
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
-  2: optional i32 dataNodeId
-  3: optional TGlobalConfig globalConfig
+  2: required list<TConfigNodeLocation> configNodeList
+  3: optional i32 dataNodeId
+  4: optional TGlobalConfig globalConfig
 }
 
 struct TDataNodeLocationResp {
@@ -62,9 +63,25 @@ struct TSetTTLReq {
   2: required i64 TTL
 }
 
+
+struct TSetSchemaReplicationFactorReq {
+  1: required string storageGroup
+  2: required i32 schemaReplicationFactor
+}
+
+struct TSetDataReplicationFactorReq {
+  1: required string storageGroup
+  2: required i32 dataReplicationFactor
+}
+
 struct TSetTimePartitionIntervalReq {
   1: required string storageGroup
   2: required i64 timePartitionInterval
+}
+
+struct TCountStorageGroupResp {
+  1: required common.TSStatus status
+  2: optional i32 count
 }
 
 struct TStorageGroupSchemaResp {
@@ -118,8 +135,42 @@ struct TAuthorizerReq {
 }
 
 struct TAuthorizerResp {
-    1: required common.TSStatus status
-    2: required map<string, list<string>> authorizerInfo
+  1: required common.TSStatus status
+  2: required map<string, list<string>> authorizerInfo
+}
+
+struct TLoginReq {
+  1: required string userrname
+  2: required string password
+}
+
+struct TCheckUserPrivilegesReq{
+  1: required string username;
+  2: required list<string> paths
+  3: required i32 permission
+}
+
+// ConfigNode
+struct TConfigNodeLocation {
+  1: required common.TEndPoint internalEndPoint
+  2: required common.TEndPoint consensusEndPoint
+}
+
+struct TConfigNodeRegisterReq {
+  1: required TConfigNodeLocation configNodeLocation
+  2: required string dataNodeConsensusProtocolClass
+  3: required i32 seriesPartitionSlotNum
+  4: required string seriesPartitionExecutorClass
+  5: required i64 defaultTTL
+  6: required i64 timePartitionInterval
+  7: required i32 schemaReplicationFactor
+  8: required i32 dataReplicationFactor
+}
+
+struct TConfigNodeRegisterResp {
+  1: required common.TSStatus status
+  2: optional common.TConsensusGroupId partitionRegionId
+  3: optional list<TConfigNodeLocation> configNodeList
 }
 
 service ConfigIService {
@@ -138,9 +189,15 @@ service ConfigIService {
 
   common.TSStatus setTTL(TSetTTLReq req)
 
+  common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
+
+  common.TSStatus setDataReplicationFactor(TSetDataReplicationFactorReq req)
+
   common.TSStatus setTimePartitionInterval(TSetTimePartitionIntervalReq req)
 
-  TStorageGroupSchemaResp getStorageGroupsSchema()
+  TCountStorageGroupResp countMatchedStorageGroups(list<string> storageGroupPathPattern)
+
+  TStorageGroupSchemaResp getMatchedStorageGroupSchemas(list<string> storageGroupPathPattern)
 
   /* Schema */
 
@@ -159,4 +216,14 @@ service ConfigIService {
   common.TSStatus operatePermission(TAuthorizerReq req)
 
   TAuthorizerResp queryPermission(TAuthorizerReq req)
+
+  common.TSStatus login(TLoginReq req)
+
+  common.TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req)
+
+  /* ConfigNode */
+
+  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
+
+  common.TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation)
 }

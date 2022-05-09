@@ -22,9 +22,8 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticDivisionTransformer;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticDivisionTransformer;
 
 import java.nio.ByteBuffer;
 
@@ -32,6 +31,10 @@ public class DivisionExpression extends BinaryExpression {
 
   public DivisionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public DivisionExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -46,18 +49,8 @@ public class DivisionExpression extends BinaryExpression {
     return "/";
   }
 
-  public static DivisionExpression deserialize(ByteBuffer buffer) {
-    boolean isConstantOperandCache = ReadWriteIOUtils.readBool(buffer);
-    DivisionExpression divisionExpression =
-        new DivisionExpression(
-            ExpressionType.deserialize(buffer), ExpressionType.deserialize(buffer));
-    divisionExpression.isConstantOperandCache = isConstantOperandCache;
-    return divisionExpression;
-  }
-
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    ExpressionType.Division.serialize(byteBuffer);
-    super.serialize(byteBuffer);
+  public ExpressionType getExpressionType() {
+    return ExpressionType.DIVISION;
   }
 }

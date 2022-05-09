@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -292,7 +292,8 @@ public interface IMTreeBelowSG {
    * @return index on full path of the node which matches all measurements path with its
    *     upperTemplate.
    */
-  int getMountedNodeIndexOnMeasurementPath(PartialPath measurementPath) throws MetadataException;
+  int getMountedNodeIndexOnMeasurementPath(PartialPath devicePath, String[] measurements)
+      throws MetadataException;
 
   List<String> getPathsSetOnTemplate(String templateName) throws MetadataException;
 

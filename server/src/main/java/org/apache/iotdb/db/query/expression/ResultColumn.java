@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.query.expression;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -39,15 +39,15 @@ import java.util.Set;
  *
  * <ul>
  *   Example 1: select a, a + b, udf(udf(b)) from root.sg.d, root.sg.e;
- *   <li>Step 1: constructed by sql visitor in logical operator: <br>
+ *   <li>Step 1: constructed by ASTVisitor in StatementGenerator: <br>
  *       result columns: <br>
  *       [a, a + b, udf(udf(b))]
- *   <li>Step 2: concatenated with prefix paths in logical optimizer:<br>
+ *   <li>Step 2: concatenated with prefix paths:<br>
  *       result columns: <br>
  *       [root.sg.d.a, root.sg.e.a, root.sg.d.a + root.sg.d.b, root.sg.d.a + root.sg.e.b,
  *       root.sg.e.a + root.sg.d.b, root.sg.e.a + root.sg.e.b, udf(udf(root.sg.d.b)),
  *       udf(udf(root.sg.e.b))]
- *   <li>Step 3: remove wildcards in logical optimizer:<br>
+ *   <li>Step 3: remove wildcards:<br>
  *       result columns: <br>
  *       [root.sg.d.a, root.sg.e.a, root.sg.d.a + root.sg.d.b, root.sg.d.a + root.sg.e.b,
  *       root.sg.e.a + root.sg.d.b, root.sg.e.a + root.sg.e.b, udf(udf(root.sg.d.b)),
@@ -56,13 +56,13 @@ import java.util.Set;
  *
  * <ul>
  *   Example 2: select *, a + *, udf(udf(*)) from root.sg.d;
- *   <li>Step 1: constructed by sql visitor in logical operator: <br>
+ *   <li>Step 1: constructed by ASTVisitor in StatementGenerator: <br>
  *       result columns: <br>
  *       [*, a + * , udf(udf(*))]
- *   <li>Step 2: concatenated with prefix paths in logical optimizer:<br>
+ *   <li>Step 2: concatenated with prefix paths:<br>
  *       result columns: <br>
  *       [root.sg.d.*, root.sg.d.a + root.sg.d.*, udf(udf(root.sg.d.*))]
- *   <li>Step 3: remove wildcards in logical optimizer:<br>
+ *   <li>Step 3: remove wildcards:<br>
  *       result columns: <br>
  *       [root.sg.d.a, root.sg.d.b, root.sg.d.a + root.sg.d.a, root.sg.d.a + root.sg.d.b,
  *       udf(udf(root.sg.d.a)), udf(udf(root.sg.d.b))]
@@ -85,6 +85,12 @@ public class ResultColumn {
   public ResultColumn(Expression expression) {
     this.expression = expression;
     alias = null;
+  }
+
+  public ResultColumn(ByteBuffer byteBuffer) {
+    expression = Expression.deserialize(byteBuffer);
+    alias = ReadWriteIOUtils.readString(byteBuffer);
+    dataType = TSDataType.deserializeFrom(byteBuffer);
   }
 
   /**
@@ -189,18 +195,13 @@ public class ResultColumn {
     return getResultColumnName().equals(((ResultColumn) o).getResultColumnName());
   }
 
-  public void serialize(ByteBuffer byteBuffer) {
-    expression.serialize(byteBuffer);
-    ReadWriteIOUtils.write(alias, byteBuffer);
-    dataType.serializeTo(byteBuffer);
+  public static void serialize(ResultColumn resultColumn, ByteBuffer byteBuffer) {
+    Expression.serialize(resultColumn.expression, byteBuffer);
+    ReadWriteIOUtils.write(resultColumn.alias, byteBuffer);
+    resultColumn.dataType.serializeTo(byteBuffer);
   }
 
   public static ResultColumn deserialize(ByteBuffer byteBuffer) {
-    Expression expression = ExpressionType.deserialize(byteBuffer);
-    String alias = ReadWriteIOUtils.readString(byteBuffer);
-    TSDataType tsDataType = TSDataType.deserializeFrom(byteBuffer);
-    ResultColumn resultColumn = new ResultColumn(expression, alias);
-    resultColumn.dataType = tsDataType;
-    return resultColumn;
+    return new ResultColumn(byteBuffer);
   }
 }

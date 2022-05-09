@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup.dataregion;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 
 public class HashVirtualPartitioner implements VirtualPartitioner {
 

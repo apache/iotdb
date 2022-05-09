@@ -19,15 +19,14 @@
 package org.apache.iotdb.confignode.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
-import org.apache.iotdb.confignode.physical.PhysicalPlan;
-import org.apache.iotdb.confignode.service.executor.PlanExecutor;
+import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
+import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.SnapshotMeta;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.statemachine.IStateMachine;
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -35,31 +34,30 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /** Statemachine for PartitionRegion */
-public class PartitionRegionStateMachine implements IStateMachine {
+public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
 
-  private final PlanExecutor executor;
+  private final ConfigRequestExecutor executor;
 
   public PartitionRegionStateMachine() {
-    this.executor = new PlanExecutor();
+    this.executor = new ConfigRequestExecutor();
   }
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    PhysicalPlan plan;
+    ConfigRequest plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = PhysicalPlan.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+        plan = ConfigRequest.Factory.create(((ByteBufferConsensusRequest) request).getContent());
       } catch (IOException e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
-    } else if (request instanceof PhysicalPlan) {
-      plan = (PhysicalPlan) request;
+    } else if (request instanceof ConfigRequest) {
+      plan = (ConfigRequest) request;
     } else {
       LOGGER.error("Unexpected write plan : {}", request);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -68,7 +66,7 @@ public class PartitionRegionStateMachine implements IStateMachine {
   }
 
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
-  protected TSStatus write(PhysicalPlan plan) {
+  protected TSStatus write(ConfigRequest plan) {
     TSStatus result;
     try {
       result = executor.executorNonQueryPlan(plan);
@@ -81,16 +79,16 @@ public class PartitionRegionStateMachine implements IStateMachine {
 
   @Override
   public DataSet read(IConsensusRequest request) {
-    PhysicalPlan plan;
+    ConfigRequest plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = PhysicalPlan.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+        plan = ConfigRequest.Factory.create(((ByteBufferConsensusRequest) request).getContent());
       } catch (IOException e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return null;
       }
-    } else if (request instanceof PhysicalPlan) {
-      plan = (PhysicalPlan) request;
+    } else if (request instanceof ConfigRequest) {
+      plan = (ConfigRequest) request;
     } else {
       LOGGER.error("Unexpected read plan : {}", request);
       return null;
@@ -99,21 +97,17 @@ public class PartitionRegionStateMachine implements IStateMachine {
   }
 
   @Override
-  public void takeSnapshot(ByteBuffer metadata, File snapshotDir) {}
-
-  @Override
-  public SnapshotMeta getLatestSnapshot(File snapshotDir) {
-    return null;
+  public boolean takeSnapshot(File snapshotDir) {
+    return executor.takeSnapshot(snapshotDir);
   }
 
   @Override
-  public void loadSnapshot(SnapshotMeta latest) {}
-
-  @Override
-  public void cleanUpOldSnapshots(File snapshotDir) {}
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    executor.loadSnapshot(latestSnapshotRootDir);
+  }
 
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
-  protected DataSet read(PhysicalPlan plan) {
+  protected DataSet read(ConfigRequest plan) {
     DataSet result;
     try {
       result = executor.executorQueryPlan(plan);

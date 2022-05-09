@@ -577,4 +577,462 @@ public class IoTDBUDTFBuiltinFunctionIT {
       assertTrue(e.getMessage().contains("Upper can not be smaller than lower."));
     }
   }
+
+  @Test
+  public void testEqualBucketSampleForRandom() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.d5.s1 with datatype=INT32,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+    String[] SQL_FOR_SAMPLE_S1 = new String[100];
+    for (int i = 0; i < 100; i++) {
+      SQL_FOR_SAMPLE_S1[i] =
+          String.format("insert into root.sg.d5(time, s1) values (%d, %d)", i, i);
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < 100; i++) {
+        statement.execute(SQL_FOR_SAMPLE_S1[i]);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String functionName = "EQUAL_SIZE_BUCKET_RANDOM_SAMPLE";
+      double proportionValue = 0.1;
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select " + "%s(s1, 'proportion'='%f') from root.sg.d5",
+                  functionName, proportionValue));
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount);
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(10, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testEqualBucketSampleForAgg() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.d4.s1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d4.s2 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d4.s3 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d4.s4 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d4.s5 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d4.s6 with datatype=DOUBLE,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+    String[] SQL_FOR_SAMPLE_S1 = new String[100];
+    String[] SQL_FOR_SAMPLE_S2 = new String[100];
+    String[] SQL_FOR_SAMPLE_S3 = new String[100];
+    String[] SQL_FOR_SAMPLE_S4 = new String[100];
+    String[] SQL_FOR_SAMPLE_S5 = new String[100];
+    String[] SQL_FOR_SAMPLE_S6 = new String[100];
+
+    for (int i = 0; i < 100; i++) {
+      SQL_FOR_SAMPLE_S1[i] =
+          String.format("insert into root.sg.d4(time, s1) values (%d, %f)", i, i * 1.0);
+      SQL_FOR_SAMPLE_S2[i] =
+          String.format("insert into root.sg.d4(time, s2) values (%d, %f)", i, i * 1.0);
+      SQL_FOR_SAMPLE_S3[i] =
+          String.format("insert into root.sg.d4(time, s3) values (%d, %d)", i, i);
+      SQL_FOR_SAMPLE_S4[i] =
+          String.format("insert into root.sg.d4(time, s4) values (%d, %d)", i, i);
+      SQL_FOR_SAMPLE_S5[i] =
+          String.format("insert into root.sg.d4(time, s5) values (%d, %d)", i, -i);
+      SQL_FOR_SAMPLE_S6[i] =
+          String.format("insert into root.sg.d4(time, s6) values (%d, %f)", i, i * 1.0);
+    }
+    float[] ANSWER1 =
+        new float[] {4.5F, 14.5F, 24.5F, 34.5F, 44.5F, 54.5F, 64.5F, 74.5F, 84.5F, 94.5F};
+    double[] ANSWER2 = new double[] {0, 10, 20, 30, 40, 50, 60, 70, 80, 90};
+    long[] ANSWER3 = new long[] {9, 19, 29, 39, 49, 59, 69, 79, 89, 99};
+    long[] ANSWER4 = new long[] {45, 145, 245, 345, 445, 545, 645, 745, 845, 945};
+    int[] ANSWER5 = new int[] {-9, -19, -29, -39, -49, -59, -69, -79, -89, -99};
+    double[] ANSWER6 = new double[] {8.25, 8.25, 8.25, 8.25, 8.25, 8.25, 8.25, 8.25, 8.25, 8.25};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < 100; i++) {
+        statement.execute(SQL_FOR_SAMPLE_S1[i]);
+        statement.execute(SQL_FOR_SAMPLE_S2[i]);
+        statement.execute(SQL_FOR_SAMPLE_S3[i]);
+        statement.execute(SQL_FOR_SAMPLE_S4[i]);
+        statement.execute(SQL_FOR_SAMPLE_S5[i]);
+        statement.execute(SQL_FOR_SAMPLE_S6[i]);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String functionName = "EQUAL_SIZE_BUCKET_AGG_SAMPLE";
+      double proportionValue = 0.1;
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select "
+                      + "%s(s1, 'proportion'='%f'), "
+                      + "%s(s2, 'type'='%s', 'proportion'='%f'), "
+                      + "%s(s3, 'type'='%s', 'proportion'='%f'), "
+                      + "%s(s4, 'type'='%s', 'proportion'='%f'), "
+                      + "%s(s5, 'type'='%s', 'proportion'='%f'), "
+                      + "%s(s6, 'type'='%s', 'proportion'='%f')"
+                      + "from root.sg.d4",
+                  functionName,
+                  proportionValue,
+                  functionName,
+                  "min",
+                  proportionValue,
+                  functionName,
+                  "max",
+                  proportionValue,
+                  functionName,
+                  "sum",
+                  proportionValue,
+                  functionName,
+                  "extreme",
+                  proportionValue,
+                  functionName,
+                  "variance",
+                  proportionValue));
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 6, columnCount);
+      for (int i = 0; i < 10; i++) {
+        resultSet.next();
+        assertEquals(ANSWER1[i], resultSet.getDouble(2), 0.01);
+        assertEquals(ANSWER2[i], resultSet.getDouble(3), 0.01);
+        assertEquals(ANSWER3[i], resultSet.getLong(4));
+        assertEquals(ANSWER4[i], resultSet.getLong(5));
+        assertEquals(ANSWER5[i], resultSet.getInt(6));
+        assertEquals(ANSWER6[i], resultSet.getDouble(7), 0.01);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testEqualBucketSampleForM4() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.d3.s1 with datatype=INT32,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+    String[] SQL_FOR_SAMPLE = new String[100];
+    for (int i = 0; i < 100; i++) {
+      SQL_FOR_SAMPLE[i] =
+          String.format("insert into root.sg.d3(time, s1) values (%d, %d)", i, i + 1);
+    }
+    int[] ANSWER1 = new int[] {1, 2, 39, 40, 41, 42, 79, 80, 81, 82, 99, 100};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String dataGenerationSql : SQL_FOR_SAMPLE) {
+        statement.execute(dataGenerationSql);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String functionName = "EQUAL_SIZE_BUCKET_M4_SAMPLE";
+      String methodName = "m4";
+      double proportionValue = 0.1;
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1, 'method'='%s', 'proportion'='%f') from root.sg.d3",
+                  functionName, methodName, proportionValue));
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount);
+      for (int j : ANSWER1) {
+        resultSet.next();
+        assertEquals(j, resultSet.getInt(2));
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testEqualBucketSampleForOutlier() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.d6.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d6.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d6.s3 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d6.s4 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d6.s5 with datatype=FLOAT,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+    String[] SQL_FOR_SAMPLE_S1 = new String[100];
+    String[] SQL_FOR_SAMPLE_S2 = new String[100];
+    String[] SQL_FOR_SAMPLE_S3 = new String[100];
+    String[] SQL_FOR_SAMPLE_S4 = new String[100];
+    String[] SQL_FOR_SAMPLE_S5 = new String[20];
+    for (int i = 0; i < 100; i++) {
+      SQL_FOR_SAMPLE_S1[i] =
+          String.format(
+              "insert into root.sg.d6(time, s1) values (%d, %d)",
+              i, i % 5 == 0 && i % 10 != 0 ? i + 100 : i);
+      SQL_FOR_SAMPLE_S2[i] =
+          String.format(
+              "insert into root.sg.d6(time, s2) values (%d, %d)", i, i % 10 == 6 ? i + 100 : i);
+      if (i % 10 == 9 || i % 20 == 0) {
+        SQL_FOR_SAMPLE_S2[i] = String.format("insert into root.sg.d6(time, s2) values (%d, 0)", i);
+      }
+      SQL_FOR_SAMPLE_S3[i] =
+          String.format(
+              "insert into root.sg.d6(time, s3) values (%d, %d)", i, i % 10 == 7 ? i + 100 : i);
+      SQL_FOR_SAMPLE_S4[i] =
+          String.format(
+              "insert into root.sg.d6(time, s4) values (%d, %d)", i, i % 10 == 8 ? i + 100 : i);
+    }
+    for (int i = 0; i < 20; i++) {
+      SQL_FOR_SAMPLE_S5[i] =
+          String.format("insert into root.sg.d6(time, s5) values (%d, %d)", i, i);
+    }
+    int[] ANSWER1 = new int[] {105, 115, 125, 135, 145, 155, 165, 175, 185, 195};
+    long[] ANSWER2 = new long[] {106, 116, 126, 136, 146, 156, 166, 176, 186, 196};
+    double[] ANSWER3 = new double[] {107, 117, 127, 137, 147, 157, 167, 177, 187, 197};
+    float[] ANSWER4 = new float[] {108, 118, 128, 138, 148, 158, 168, 178, 188, 198};
+    float[] ANSWER5 = new float[] {0, 2, 4, 6, 8, 10, 12, 14, 16, 18};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < 100; i++) {
+        statement.execute(SQL_FOR_SAMPLE_S1[i]);
+        statement.execute(SQL_FOR_SAMPLE_S2[i]);
+        statement.execute(SQL_FOR_SAMPLE_S3[i]);
+        statement.execute(SQL_FOR_SAMPLE_S4[i]);
+      }
+      for (int i = 0; i < 20; i++) {
+        statement.execute(SQL_FOR_SAMPLE_S5[i]);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String functionName = "EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE";
+      double proportionValue = 0.1;
+
+      ResultSet resultSet0 =
+          statement.executeQuery(
+              String.format(
+                  "select "
+                      + "%s(s1, 'proportion'='%f', 'type'='%s', 'number'='%d') "
+                      + "from root.sg.d6",
+                  functionName, proportionValue, "avg", 2));
+      int columnCount0 = resultSet0.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount0);
+      for (int i = 0; i < 10; i++) {
+        resultSet0.next();
+        assertEquals(ANSWER1[i], resultSet0.getInt(2));
+      }
+
+      ResultSet resultSet1 =
+          statement.executeQuery(
+              String.format(
+                  "select "
+                      + "%s(s2, 'proportion'='%f', 'type'='%s', 'number'='%d') "
+                      + "from root.sg.d6",
+                  functionName, proportionValue, "stendis", 2));
+      int columnCount1 = resultSet1.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount1);
+      for (int i = 0; i < 10; i++) {
+        resultSet1.next();
+        assertEquals(ANSWER2[i], resultSet1.getLong(2));
+      }
+
+      ResultSet resultSet2 =
+          statement.executeQuery(
+              String.format(
+                  "select "
+                      + "%s(s3, 'proportion'='%f', 'type'='%s', 'number'='%d') "
+                      + "from root.sg.d6",
+                  functionName, proportionValue, "cos", 2));
+      int columnCount2 = resultSet2.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount2);
+      for (int i = 0; i < 10; i++) {
+        resultSet2.next();
+        assertEquals(ANSWER3[i], resultSet2.getDouble(2), 0.01);
+      }
+
+      ResultSet resultSet3 =
+          statement.executeQuery(
+              String.format(
+                  "select "
+                      + "%s(s4, 'proportion'='%f', 'type'='%s', 'number'='%d') "
+                      + "from root.sg.d6",
+                  functionName, proportionValue, "prenextdis", 2));
+      int columnCount3 = resultSet3.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount3);
+      for (int i = 0; i < 10; i++) {
+        resultSet3.next();
+        assertEquals(ANSWER4[i], resultSet3.getFloat(2), 0.01);
+      }
+
+      ResultSet resultSet4 =
+          statement.executeQuery(
+              String.format(
+                  "select "
+                      + "%s(s5, 'proportion'='%f', 'type'='%s', 'number'='%d') "
+                      + "from root.sg.d6",
+                  functionName, 0.5, "cos", 1));
+      int columnCount4 = resultSet4.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount4);
+      for (int i = 0; i < 10; i++) {
+        resultSet4.next();
+        assertEquals(ANSWER5[i], resultSet4.getFloat(2), 0.01);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testUDTFJexl() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.d7.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s2 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s3 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s4 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s5 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s6 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s7 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s8 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s9 with datatype=TEXT,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+    String[] SQL_FOR_SAMPLE_1 = new String[5];
+    String[] SQL_FOR_SAMPLE_2 = new String[5];
+    String[] SQL_FOR_SAMPLE_3 = new String[5];
+    String[] SQL_FOR_SAMPLE_4 = new String[5];
+    String[] SQL_FOR_SAMPLE_5 = new String[5];
+    String[] SQL_FOR_SAMPLE_6 = new String[5];
+    String[] SQL_FOR_SAMPLE_7 = new String[5];
+    String[] SQL_FOR_SAMPLE_8 = new String[5];
+    String[] SQL_FOR_SAMPLE_9 = new String[5];
+    for (int i = 0; i < 5; i++) {
+      SQL_FOR_SAMPLE_1[i] =
+          String.format("insert into root.sg.d7(time, s1) values (%d, %d)", i, i + 1);
+      SQL_FOR_SAMPLE_2[i] =
+          String.format("insert into root.sg.d7(time, s2) values (%d, %f)", i, i + 1.0);
+      SQL_FOR_SAMPLE_3[i] =
+          String.format("insert into root.sg.d7(time, s3) values (%d, %f)", i, i + 1.0);
+      SQL_FOR_SAMPLE_4[i] =
+          String.format("insert into root.sg.d7(time, s4) values (%d, '%s')", i, "string");
+      SQL_FOR_SAMPLE_5[i] = String.format("insert into root.sg.d7(time, s5) values (%d, true)", i);
+      SQL_FOR_SAMPLE_6[i] =
+          String.format("insert into root.sg.d7(time, s6) values (%d, %d)", i, i + 8);
+      SQL_FOR_SAMPLE_7[i] =
+          String.format("insert into root.sg.d7(time, s7) values (%d, %d)", i, i + 1);
+      SQL_FOR_SAMPLE_8[i] =
+          String.format("insert into root.sg.d7(time, s8) values (%d, %f)", i, i + 1.0);
+      SQL_FOR_SAMPLE_9[i] =
+          String.format("insert into root.sg.d7(time, s9) values (%d, '%s')", i, "string");
+    }
+    double[] ANSWER1 = new double[] {2, 4, 6, 8, 10};
+    double[] ANSWER2 = new double[] {2, 4, 6, 8, 10};
+    double[] ANSWER3 = new double[] {4, 7, 10, 13, 16};
+    String[] ANSWER4 = new String[] {"string2", "string2", "string2", "string2", "string2"};
+    double[] ANSWER7 = new double[] {1, 4, 9, 16, 25};
+    String[] ANSWER8 = new String[] {"string1", "string4", "string9", "string16", "string25"};
+    double[] ANSWER9 = new double[] {2, 9, 28, 65, 126};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < 5; i++) {
+        statement.execute(SQL_FOR_SAMPLE_1[i]);
+        statement.execute(SQL_FOR_SAMPLE_2[i]);
+        statement.execute(SQL_FOR_SAMPLE_3[i]);
+        statement.execute(SQL_FOR_SAMPLE_4[i]);
+        statement.execute(SQL_FOR_SAMPLE_5[i]);
+        statement.execute(SQL_FOR_SAMPLE_6[i]);
+        statement.execute(SQL_FOR_SAMPLE_7[i]);
+        statement.execute(SQL_FOR_SAMPLE_8[i]);
+        statement.execute(SQL_FOR_SAMPLE_9[i]);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String functionName = "JEXL";
+      String expr1 = "x -> {2 * x}";
+      String expr2 = "x -> {x + x}";
+      String expr3 = "x -> {x * 3 + 1}";
+      String expr4 = "x -> {x + 2}";
+      String expr5 = "x -> {x == true}";
+      String expr6 = "x -> {x == x}";
+      String expr7 = "(x, y) -> {x * y}";
+      String expr8 = "(x, y, z) -> {x + y * z}";
+      String expr9 = "(x, y, z, a) -> {x * y * z + (a ? 1 : -1)}";
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1, 'expr'='%s'), "
+                      + "%s(s2, 'expr'='%s'), "
+                      + "%s(s3, 'expr'='%s'), "
+                      + "%s(s4, 'expr'='%s'), "
+                      + "%s(s5, 'expr'='%s'), "
+                      + "%s(s6, 'expr'='%s'), "
+                      + "%s(s7, s8, 'expr'='%s'), "
+                      + "%s(s4, s7, s1, 'expr'='%s'), "
+                      + "%s(s1, s7, s8, s5, 'expr'='%s') "
+                      + "from root.sg.d7",
+                  functionName,
+                  expr1,
+                  functionName,
+                  expr2,
+                  functionName,
+                  expr3,
+                  functionName,
+                  expr4,
+                  functionName,
+                  expr5,
+                  functionName,
+                  expr6,
+                  functionName,
+                  expr7,
+                  functionName,
+                  expr8,
+                  functionName,
+                  expr9));
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 9, columnCount);
+      for (int i = 0; i < 5; i++) {
+        resultSet.next();
+        assertEquals(ANSWER1[i], resultSet.getDouble(2), 0.01);
+        assertEquals(ANSWER2[i], resultSet.getDouble(3), 0.01);
+        assertEquals(ANSWER3[i], resultSet.getDouble(4), 0.01);
+        assertEquals(ANSWER4[i], resultSet.getString(5));
+        assertTrue(resultSet.getBoolean(6));
+        assertTrue(resultSet.getBoolean(7));
+        assertEquals(ANSWER7[i], resultSet.getDouble(8), 0.01);
+        assertEquals(ANSWER8[i], resultSet.getString(9));
+        assertEquals(ANSWER9[i], resultSet.getDouble(10), 0.01);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }

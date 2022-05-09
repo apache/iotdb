@@ -45,7 +45,7 @@ public class GroupByDataSetTest {
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d1.\"s3+xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.test.d1.`\"s3+xy\"` WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "insert into root.vehicle.d0(timestamp,s0) values(10,100)",
     "insert into root.vehicle.d0(timestamp,s0,s1) values(12,101,'102')",
     "insert into root.vehicle.d0(timestamp,s1) values(19,'103')",
@@ -79,7 +79,7 @@ public class GroupByDataSetTest {
     "insert into root.test.d0(timestamp,s0) values(1900,1316)",
     "insert into root.test.d0(timestamp,s0,s1) values(700,1307,'1038')",
     "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
-    "insert into root.test.d1(timestamp, \"s3+xy\") values(10, 'text')"
+    "insert into root.test.d1(timestamp, `\"s3+xy\"`) values(10, 'text')"
   };
 
   static {

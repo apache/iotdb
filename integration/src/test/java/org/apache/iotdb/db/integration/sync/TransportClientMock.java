@@ -30,9 +30,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TransportClientMock implements ITransportClient {
-  private final Pipe pipe;
-  private final String ipAddress;
-  private final int port;
+  private Pipe pipe;
+  private String ipAddress;
+  private int port;
 
   private List<PipeData> pipeDataList;
 
@@ -47,6 +47,12 @@ public class TransportClientMock implements ITransportClient {
   @Override
   public SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException {
     return new SyncResponse(ResponseType.INFO, "");
+  }
+
+  public void resetInfo(Pipe pipe, String ipAddress, int port) {
+    this.pipe = pipe;
+    this.ipAddress = ipAddress;
+    this.port = port;
   }
 
   @Override

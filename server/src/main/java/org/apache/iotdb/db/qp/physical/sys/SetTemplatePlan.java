@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -43,7 +43,7 @@ public class SetTemplatePlan extends PhysicalPlan {
   public SetTemplatePlan(String templateName, String prefixPath) throws IllegalPathException {
     super(OperatorType.SET_TEMPLATE);
 
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(prefixPath);
+    String[] pathNodes = PathUtils.splitPathToDetachedPath(prefixPath);
     for (String s : pathNodes) {
       if (s.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
           || s.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {

@@ -19,18 +19,20 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
+import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
@@ -46,7 +48,6 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -420,9 +421,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      throw new SeriesOverflowException();
     }
 
     try {
@@ -532,9 +531,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      throw new SeriesOverflowException();
     }
 
     try {
@@ -718,14 +715,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    *
    * @param path path
    */
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema)
+  private IMNode getDeviceNodeWithAutoCreate(PartialPath path)
       throws IOException, MetadataException {
     IMNode node;
     try {
       return mNodeCache.get(path);
     } catch (Exception e) {
       if (e.getCause() instanceof MetadataException) {
-        if (!autoCreateSchema) {
+        if (!config.isAutoCreateSchemaEnabled()) {
           throw new PathNotExistException(path.getFullPath());
         }
       } else {
@@ -740,13 +737,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return node;
   }
 
-  public IMNode getDeviceNodeWithAutoCreate(PartialPath path)
-      throws MetadataException, IOException {
-    return getDeviceNodeWithAutoCreate(path, config.isAutoCreateSchemaEnabled());
-  }
-
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
-    IMNode node = mtree.getDeviceNodeWithAutoCreating(plan.getPath());
+    mtree.getDeviceNodeWithAutoCreating(plan.getPath());
     if (!isRecovering) {
       try {
         logWriter.autoCreateDeviceMNode(plan);
@@ -1134,8 +1126,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
-    return measurementMNode;
+    return mtree.getMeasurementMNode(fullPath);
   }
 
   /**
@@ -1370,37 +1361,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
-    IMNode deviceMNode = null;
+    IMNode deviceMNode;
 
     // 1. get device node, set using template if accessed.
-    boolean mountedNodeFound = false;
-    boolean isDeviceInTemplate = false;
-    // check every measurement path
-    for (String measurementId : measurementList) {
-      PartialPath fullPath = devicePath.concatNode(measurementId);
-      int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
-      if ((index != fullPath.getNodeLength() - 1) && !mountedNodeFound) {
-        // this measurement is in template, need to assure mounted node exists and set using
-        // template.
-        // Without allowing overlap of template and MTree, this block run only once
-        String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
-        IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
-        if (!mountedNode.isUseTemplate()) {
-          mountedNode = setUsingSchemaTemplate(mountedNode);
-        }
-        mountedNodeFound = true;
-        if (index < devicePath.getNodeLength() - 1) {
-          deviceMNode =
-              mountedNode
-                  .getUpperTemplate()
-                  .getPathNodeInTemplate(
-                      new PartialPath(
-                          Arrays.copyOfRange(
-                              devicePath.getNodes(), index + 1, devicePath.getNodeLength())));
-          isDeviceInTemplate = true;
-        }
-      }
-    }
+    deviceMNode = getDeviceInTemplateIfUsingTemplate(devicePath, measurementList);
+    boolean isDeviceInTemplate = deviceMNode != null;
+
     // get logical device node, may be in template. will be multiple if overlap is allowed.
     if (!isDeviceInTemplate) {
       deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
@@ -1479,6 +1445,38 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return deviceMNode;
   }
 
+  private IMNode getDeviceInTemplateIfUsingTemplate(
+      PartialPath devicePath, String[] measurementList) throws MetadataException, IOException {
+    // 1. get device node, set using template if accessed.
+    IMNode deviceMNode = null;
+
+    // check every measurement path
+    int index = mtree.getMountedNodeIndexOnMeasurementPath(devicePath, measurementList);
+    if (index == devicePath.getNodeLength()) {
+      return null;
+    }
+
+    // this measurement is in template, need to assure mounted node exists and set using
+    // template.
+    // Without allowing overlap of template and MTree, this block run only once
+    String[] mountedPathNodes = Arrays.copyOfRange(devicePath.getNodes(), 0, index + 1);
+    IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+    if (!mountedNode.isUseTemplate()) {
+      mountedNode = setUsingSchemaTemplate(mountedNode);
+    }
+    if (index < devicePath.getNodeLength() - 1) {
+      deviceMNode =
+          mountedNode
+              .getUpperTemplate()
+              .getPathNodeInTemplate(
+                  new PartialPath(
+                      Arrays.copyOfRange(
+                          devicePath.getNodes(), index + 1, devicePath.getNodeLength())));
+    }
+
+    return deviceMNode;
+  }
+
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
       InsertPlan plan, int loc, IMNode deviceMNode, boolean isDeviceInTemplate)
       throws MetadataException {
@@ -1524,19 +1522,23 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private IMeasurementMNode findMeasurementInTemplate(IMNode deviceMNode, String measurement)
       throws MetadataException {
     Template curTemplate = deviceMNode.getUpperTemplate();
-    if (curTemplate != null) {
-      IMeasurementSchema schema = curTemplate.getSchema(measurement);
-      if (!deviceMNode.isUseTemplate()) {
-        deviceMNode = setUsingSchemaTemplate(deviceMNode);
-      }
 
-      if (schema != null) {
-        return MeasurementMNode.getMeasurementMNode(
-            deviceMNode.getAsEntityMNode(), measurement, schema, null);
-      }
+    if (curTemplate == null) {
       return null;
     }
-    return null;
+
+    IMeasurementSchema schema = curTemplate.getSchema(measurement);
+
+    if (schema == null) {
+      return null;
+    }
+
+    if (!deviceMNode.isUseTemplate()) {
+      deviceMNode = setUsingSchemaTemplate(deviceMNode);
+    }
+
+    return MeasurementMNode.getMeasurementMNode(
+        deviceMNode.getAsEntityMNode(), measurement, schema, null);
   }
 
   /** create timeseries ignoring PathAlreadyExistException */

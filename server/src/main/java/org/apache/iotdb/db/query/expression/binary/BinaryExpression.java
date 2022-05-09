@@ -19,12 +19,9 @@
 
 package org.apache.iotdb.db.query.expression.binary;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
@@ -35,8 +32,8 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.BinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.BinaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
@@ -50,12 +47,17 @@ import java.util.Set;
 
 public abstract class BinaryExpression extends Expression {
 
-  protected final Expression leftExpression;
-  protected final Expression rightExpression;
+  protected Expression leftExpression;
+  protected Expression rightExpression;
 
   protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
     this.leftExpression = leftExpression;
     this.rightExpression = rightExpression;
+  }
+
+  protected BinaryExpression(ByteBuffer byteBuffer) {
+    this.leftExpression = Expression.deserialize(byteBuffer);
+    this.rightExpression = Expression.deserialize(byteBuffer);
   }
 
   public Expression getLeftExpression() {
@@ -64,6 +66,14 @@ public abstract class BinaryExpression extends Expression {
 
   public Expression getRightExpression() {
     return rightExpression;
+  }
+
+  public void setLeftExpression(Expression leftExpression) {
+    this.leftExpression = leftExpression;
+  }
+
+  public void setRightExpression(Expression rightExpression) {
+    this.rightExpression = rightExpression;
   }
 
   @Override
@@ -90,39 +100,12 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public final void concat(
-      List<PartialPath> prefixPaths,
-      List<Expression> resultExpressions,
-      PathPatternTree patternTree) {
-    List<Expression> leftExpressions = new ArrayList<>();
-    leftExpression.concat(prefixPaths, leftExpressions, patternTree);
-
-    List<Expression> rightExpressions = new ArrayList<>();
-    rightExpression.concat(prefixPaths, rightExpressions, patternTree);
-
-    reconstruct(leftExpressions, rightExpressions, resultExpressions);
-  }
-
-  @Override
   public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     List<Expression> leftExpressions = new ArrayList<>();
     leftExpression.concat(prefixPaths, leftExpressions);
 
     List<Expression> rightExpressions = new ArrayList<>();
     rightExpression.concat(prefixPaths, rightExpressions);
-
-    reconstruct(leftExpressions, rightExpressions, resultExpressions);
-  }
-
-  @Override
-  public final void removeWildcards(
-      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws StatementAnalyzeException {
-    List<Expression> leftExpressions = new ArrayList<>();
-    leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
-
-    List<Expression> rightExpressions = new ArrayList<>();
-    rightExpression.removeWildcards(wildcardsRemover, rightExpressions);
 
     reconstruct(leftExpressions, rightExpressions, resultExpressions);
   }
@@ -276,13 +259,14 @@ public abstract class BinaryExpression extends Expression {
   @Override
   public final String getExpressionStringInternal() {
     StringBuilder builder = new StringBuilder();
-    if (leftExpression instanceof BinaryExpression) {
+    if (leftExpression.getExpressionType().getPriority() < this.getExpressionType().getPriority()) {
       builder.append("(").append(leftExpression.getExpressionString()).append(")");
     } else {
       builder.append(leftExpression.getExpressionString());
     }
     builder.append(" ").append(operator()).append(" ");
-    if (rightExpression instanceof BinaryExpression) {
+    if (rightExpression.getExpressionType().getPriority()
+        < this.getExpressionType().getPriority()) {
       builder.append("(").append(rightExpression.getExpressionString()).append(")");
     } else {
       builder.append(rightExpression.getExpressionString());
@@ -294,9 +278,8 @@ public abstract class BinaryExpression extends Expression {
   protected abstract String operator();
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    super.serialize(byteBuffer);
-    leftExpression.serialize(byteBuffer);
-    rightExpression.serialize(byteBuffer);
+  protected void serialize(ByteBuffer byteBuffer) {
+    Expression.serialize(leftExpression, byteBuffer);
+    Expression.serialize(rightExpression, byteBuffer);
   }
 }

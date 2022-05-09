@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.junit.Assert;
@@ -164,8 +164,8 @@ public class PathPatternTreeTest {
 
     PublicBAOS outputStream = new PublicBAOS();
     resultPatternTree.serialize(outputStream);
-    ByteBuffer buffer = ByteBuffer.allocate(outputStream.size() * 8);
-    buffer.put(outputStream.getBuf());
+    ByteBuffer buffer = ByteBuffer.allocate(outputStream.size());
+    buffer.put(outputStream.getBuf(), 0, outputStream.size());
     buffer.flip();
     PathPatternTree tmpPathPatternTree = PathPatternTree.deserialize(buffer);
     Assert.assertTrue(resultPatternTree.equalWith(tmpPathPatternTree));

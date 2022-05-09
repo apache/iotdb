@@ -28,9 +28,9 @@ import org.apache.iotdb.cluster.query.reader.mult.AbstractMultPointReader;
 import org.apache.iotdb.cluster.query.reader.mult.AssignPathManagedMergeReader;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
@@ -167,7 +167,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
         reader =
             readerFactory.getSeriesReader(
                 path,
-                queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+                queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
                 dataType,
                 timeFilter,
                 null,
@@ -278,7 +278,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
               IReaderByTimestamp readerByTimestamp =
                   readerFactory.getReaderByTimestamp(
                       path,
-                      queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+                      queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
                       dataType,
                       context,
                       dataGroupMember,
@@ -293,7 +293,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
               IPointReader pointReader =
                   readerFactory.getSeriesPointReader(
                       path,
-                      queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+                      queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
                       dataType,
                       timeFilter,
                       null,

@@ -56,6 +56,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> targetTsfileResourceList;
   protected List<TsFileResource> holdReadLockList = new ArrayList<>();
   protected List<TsFileResource> holdWriteLockList = new ArrayList<>();
+  protected long selectedFileSize = 0;
 
   public CrossSpaceCompactionTask(
       long timePartition,
@@ -95,11 +96,19 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         return;
       }
 
+      for (TsFileResource resource : selectedSequenceFiles) {
+        selectedFileSize += resource.getTsFileSize();
+      }
+      for (TsFileResource resource : selectedUnsequenceFiles) {
+        selectedFileSize += resource.getTsFileSize();
+      }
+
       LOGGER.info(
-          "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}",
+          "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}, total size is {} MB",
           fullStorageGroupName,
           selectedSequenceFiles,
-          selectedUnsequenceFiles);
+          selectedUnsequenceFiles,
+          ((double) selectedFileSize) / 1024.0 / 1024.0);
       logFile =
           new File(
               selectedSequenceFiles.get(0).getTsFile().getParent()
@@ -142,14 +151,16 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         if (logFile.exists()) {
           FileUtils.delete(logFile);
         }
+        long costTime = (System.currentTimeMillis() - startTime) / 1000;
         LOGGER.info(
-            "{} [Compaction] CrossSpaceCompactionTask Costs {} s",
+            "{} [Compaction] CrossSpaceCompactionTask Costs {} s, compaction speed is {} MB/s",
             fullStorageGroupName,
-            (System.currentTimeMillis() - startTime) / 1000);
+            costTime,
+            ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
       }
     } catch (Throwable throwable) {
       // catch throwable instead of exception to handle OOM errors
-      LOGGER.error("Meet errors in cross space compaction, {}", throwable.getMessage());
+      LOGGER.error("Meet errors in cross space compaction.");
       CompactionExceptionHandler.handleException(
           fullStorageGroupName,
           logFile,

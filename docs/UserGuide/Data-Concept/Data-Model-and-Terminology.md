@@ -59,48 +59,39 @@ A `path` is an expression that conforms to the following constraints:
 
 ```sql
 path       
-    : layer_name ('.' layer_name)*
+    : nodeName ('.' nodeName)*
     ;
-layer_name
-    : wildcard? id wildcard?
+    
+nodeName
+    : wildcard? identifier wildcard?
     | wildcard
     ;
+    
 wildcard 
     : '*' 
     | '**'
     ;
 ```
 
-You can refer to the definition of `id` in [Syntax-Conventions](../Reference/Syntax-Conventions.md).
+We call the part of a path divided by `'.'` as a  `node` or `nodeName`. For example: `root.a.b.c` is a path with 4 nodes.
 
-We call the part of a path divided by `'.'` as a layer (`layer_name`). For example: `root.a.b.c` is a path with 4 layers.
-
-The following are the constraints on the layer (`layer_name`):
+The following are the constraints on the `nodeName`:
 
 * `root` is a reserved character, and it is only allowed to appear at the beginning layer of the time series mentioned below. If `root` appears in other layers, it cannot be parsed and an error will be reported.
-
 * Except for the beginning layer (`root`) of the time series, the characters supported in other layers are as follows:
 
-  * Chinese characters:  `"\u2E80"` to `"\u9FFF"`
-  * `"_"，"@"，"#"，"$"`
-  * `"A"` to `"Z"`, `"a"` to `"z"`, `"0"` to `"9"`
-
-* In addition to the beginning layer (`root`) of the time series and the storage group layer, other layers also support the use of special strings referenced by \` or `" ` as its name. It should be noted that the quoted string cannot contain `.` characters. Here are some legal examples:
-
-  * root.sg."select"."+-from="."where""where"""."\$", which contains 6 layers: root, sg, select, +-from, where"where", \$
-  * root.sg.\`\`\`\`.\`select\`.\`+="from"\`.\`\$\`, which contains 6 layers: root, sg, \`, select, +-"from", \$
-
-* Layer (`layer_name`) cannot start with a digit unless the layer(`layer_name`) is quoted with \` or `"`.
-
+  * [ 0-9 a-z A-Z _ : @ # $ { } ] （letters, numbers, a few special characters)
+  * ['\u2E80'..'\u9FFF'] （Chinese characters）
 * In particular, if the system is deployed on a Windows machine, the storage group layer name will be case-insensitive. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
+* If you want to use special characters in `nodeName`, you can quote it with back quote, detailed information can be found here: [Syntax-Conventions](https://iotdb.apache.org/UserGuide/Master/Reference/Syntax-Conventions.html).
 
 ### Path Pattern
 
-In order to make it easier and faster to express multiple timeseries paths, IoTDB provides users with the path pattern. Users can construct a path pattern by using wildcard `*` and `**`. Wildcard can appear in any layer of the path. 
+In order to make it easier and faster to express multiple timeseries paths, IoTDB provides users with the path pattern. Users can construct a path pattern by using wildcard `*` and `**`. Wildcard can appear in any node of the path. 
 
-`*` represents one layer. For example, `root.vehicle.*.sensor1` represents a 4-layer path which is prefixed with `root.vehicle` and suffixed with `sensor1`.
+`*` represents one node. For example, `root.vehicle.*.sensor1` represents a 4-node path which is prefixed with `root.vehicle` and suffixed with `sensor1`.
 
-`**` represents (`*`)+, which is one or more layers of `*`. For example, `root.vehicle.device1.*` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc; `root.vehicle.**.sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 4 layers.
+`**` represents (`*`)+, which is one or more nodes of `*`. For example, `root.vehicle.device1.**` represents all paths prefixed by `root.vehicle.device1` with nodes num greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc; `root.vehicle.**.sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 4 nodes.
 
 > Note1: Wildcard `*` and `**` cannot be placed at the beginning of the path.
 

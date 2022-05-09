@@ -20,26 +20,50 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.consensus.response.PermissionInfoDataSet;
-import org.apache.iotdb.confignode.physical.sys.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.persistence.AuthorInfo;
 
+import java.util.List;
+
+/** manager permission query and operation */
 public class PermissionManager {
 
-  private Manager configNodeManager;
+  private final Manager configManager;
 
   public PermissionManager(Manager configManager) {
-    this.configNodeManager = configManager;
+    this.configManager = configManager;
   }
 
-  public TSStatus operatePermission(AuthorPlan authorPlan) {
-    return getConsensusManager().write(authorPlan).getStatus();
+  /**
+   * write permission
+   *
+   * @param authorReq AuthorReq
+   * @return TSStatus
+   */
+  public TSStatus operatePermission(AuthorReq authorReq) {
+    return getConsensusManager().write(authorReq).getStatus();
   }
 
-  public PermissionInfoDataSet queryPermission(AuthorPlan authorPlan) {
-    return (PermissionInfoDataSet) getConsensusManager().read(authorPlan).getDataset();
+  /**
+   * Query for permissions
+   *
+   * @param authorReq AuthorReq
+   * @return PermissionInfoResp
+   */
+  public PermissionInfoResp queryPermission(AuthorReq authorReq) {
+    return (PermissionInfoResp) getConsensusManager().read(authorReq).getDataset();
   }
 
   private ConsensusManager getConsensusManager() {
-    return configNodeManager.getConsensusManager();
+    return configManager.getConsensusManager();
+  }
+
+  public TSStatus login(String username, String password) {
+    return AuthorInfo.getInstance().login(username, password);
+  }
+
+  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+    return AuthorInfo.getInstance().checkUserPrivileges(username, paths, permission);
   }
 }

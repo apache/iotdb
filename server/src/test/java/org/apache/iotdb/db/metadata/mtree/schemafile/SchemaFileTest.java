@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mtree.schemafile;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaPage;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.Segment;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -292,12 +292,15 @@ public class SchemaFileTest {
         }
       }
 
-      ICachedMNodeContainer.getCachedMNodeContainer(sgNode).getNewChildBuffer().clear();
+      // update to entity
       i = 1000;
       while (i >= 0) {
+        long addr = getSegAddrInContainer(sgNode.getChild("dev_" + i));
         IMNode aDevice = new EntityMNode(sgNode, "dev_" + i);
+        sgNode.deleteChild(aDevice.getName());
         sgNode.addChild(aDevice);
-        ICachedMNodeContainer.getCachedMNodeContainer(sgNode).updateMNode(aDevice.getName());
+        moveToUpdateBuffer(sgNode, "dev_" + i);
+        ICachedMNodeContainer.getCachedMNodeContainer(aDevice).setSegmentAddress(addr);
         i--;
       }
 
@@ -637,7 +640,7 @@ public class SchemaFileTest {
   }
 
   private IMNode getNode(IMNode root, String path) throws MetadataException {
-    String[] pathNodes = MetaUtils.splitPathToDetachedPath(path);
+    String[] pathNodes = PathUtils.splitPathToDetachedPath(path);
     IMNode cur = root;
     for (String node : pathNodes) {
       if (!node.equals("root")) {
@@ -682,7 +685,7 @@ public class SchemaFileTest {
   // region Tree Constructor
 
   private IMNode virtualTriangleMTree(int size, String sgPath) throws MetadataException {
-    String[] sgPathNodes = MetaUtils.splitPathToDetachedPath(sgPath);
+    String[] sgPathNodes = PathUtils.splitPathToDetachedPath(sgPath);
     IMNode upperNode = null;
     for (String name : sgPathNodes) {
       IMNode child = new InternalMNode(upperNode, name);

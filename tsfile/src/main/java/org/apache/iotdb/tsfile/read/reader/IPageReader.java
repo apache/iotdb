@@ -33,7 +33,7 @@ public interface IPageReader {
 
   BatchData getAllSatisfiedPageData(boolean ascending) throws IOException;
 
-  TsBlock getAllSatisfiedData(boolean ascending) throws IOException;
+  TsBlock getAllSatisfiedData() throws IOException;
 
   Statistics getStatistics();
 
