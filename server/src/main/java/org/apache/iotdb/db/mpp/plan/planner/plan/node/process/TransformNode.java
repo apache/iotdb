@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.process;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -25,72 +26,115 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import com.google.common.collect.ImmutableList;
+
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
-public class FilterNode extends TransformNode {
+public class TransformNode extends ProcessNode {
 
-  private final Expression predicate;
+  protected PlanNode childPlanNode;
 
-  public FilterNode(
+  protected final Expression[] outputExpressions;
+  protected final boolean keepNull;
+  protected final ZoneId zoneId;
+
+  private List<String> outputColumnNames;
+
+  public TransformNode(
       PlanNodeId id,
       PlanNode childPlanNode,
       Expression[] outputExpressions,
-      Expression predicate,
       boolean keepNull,
       ZoneId zoneId) {
-    super(id, childPlanNode, outputExpressions, keepNull, zoneId);
-    this.predicate = predicate;
+    super(id);
+    this.childPlanNode = childPlanNode;
+    this.outputExpressions = outputExpressions;
+    this.keepNull = keepNull;
+    this.zoneId = zoneId;
   }
 
-  public FilterNode(
-      PlanNodeId id,
-      Expression[] outputExpressions,
-      Expression predicate,
-      boolean keepNull,
-      ZoneId zoneId) {
-    super(id, outputExpressions, keepNull, zoneId);
-    this.predicate = predicate;
+  public TransformNode(
+      PlanNodeId id, Expression[] outputExpressions, boolean keepNull, ZoneId zoneId) {
+    super(id);
+    this.outputExpressions = outputExpressions;
+    this.keepNull = keepNull;
+    this.zoneId = zoneId;
+  }
+
+  @Override
+  public final List<PlanNode> getChildren() {
+    return ImmutableList.of(childPlanNode);
+  }
+
+  @Override
+  public final void addChild(PlanNode childPlanNode) {
+    this.childPlanNode = childPlanNode;
+  }
+
+  @Override
+  public final int allowedChildCount() {
+    return ONE_CHILD;
+  }
+
+  @Override
+  public final List<String> getOutputColumnNames() {
+    if (outputColumnNames == null) {
+      outputColumnNames = new ArrayList<>();
+      for (Expression expression : outputExpressions) {
+        outputColumnNames.add(expression.toString());
+      }
+    }
+    return outputColumnNames;
   }
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitFilter(this, context);
+    return visitor.visitTransform(this, context);
   }
 
   @Override
   public PlanNode clone() {
-    return new FilterNode(getPlanNodeId(), outputExpressions, predicate, keepNull, zoneId);
+    return new TransformNode(getPlanNodeId(), outputExpressions, keepNull, zoneId);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.FILTER.serialize(byteBuffer);
+    PlanNodeType.TRANSFORM.serialize(byteBuffer);
     ReadWriteIOUtils.write(outputExpressions.length, byteBuffer);
     for (Expression expression : outputExpressions) {
       Expression.serialize(expression, byteBuffer);
     }
-    Expression.serialize(predicate, byteBuffer);
     ReadWriteIOUtils.write(keepNull, byteBuffer);
     ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
   }
 
-  public static FilterNode deserialize(ByteBuffer byteBuffer) {
+  public static TransformNode deserialize(ByteBuffer byteBuffer) {
     int outputExpressionsLength = ReadWriteIOUtils.readInt(byteBuffer);
     Expression[] outputExpressions = new Expression[outputExpressionsLength];
     for (int i = 0; i < outputExpressionsLength; ++i) {
       outputExpressions[i] = Expression.deserialize(byteBuffer);
     }
-    Expression predicate = Expression.deserialize(byteBuffer);
     boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, zoneId);
+    return new TransformNode(planNodeId, outputExpressions, keepNull, zoneId);
   }
 
-  public Expression getPredicate() {
-    return predicate;
+  public final Expression[] getOutputExpressions() {
+    return outputExpressions;
+  }
+
+  public final boolean isKeepNull() {
+    return keepNull;
+  }
+
+  public final ZoneId getZoneId() {
+    return zoneId;
   }
 
   @Override
@@ -98,18 +142,23 @@ public class FilterNode extends TransformNode {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof FilterNode)) {
+    if (!(o instanceof TransformNode)) {
       return false;
     }
     if (!super.equals(o)) {
       return false;
     }
-    FilterNode that = (FilterNode) o;
-    return predicate.equals(that.predicate);
+    TransformNode that = (TransformNode) o;
+    return keepNull == that.keepNull
+        && childPlanNode.equals(that.childPlanNode)
+        && Arrays.equals(outputExpressions, that.outputExpressions)
+        && zoneId.equals(that.zoneId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), predicate);
+    int result = Objects.hash(super.hashCode(), childPlanNode, keepNull, zoneId);
+    result = 31 * result + Arrays.hashCode(outputExpressions);
+    return result;
   }
 }
