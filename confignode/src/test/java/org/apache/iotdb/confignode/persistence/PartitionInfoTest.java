@@ -111,9 +111,9 @@ public class PartitionInfoTest {
     partitionInfo.createDataPartition(createDataPartitionReq);
     int nextId = partitionInfo.getNextRegionGroupId();
 
-    partitionInfo.takeSnapshot(snapshotDir);
+    partitionInfo.processTakeSnapshot(snapshotDir);
     partitionInfo.clear();
-    partitionInfo.loadSnapshot(snapshotDir);
+    partitionInfo.processLoadSnapshot(snapshotDir);
 
     Assert.assertEquals(nextId, (int) partitionInfo.getNextRegionGroupId());
 

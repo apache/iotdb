@@ -64,7 +64,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** manage data partition and schema partition */
-public class PartitionInfo {
+public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
   // Region read write lock
@@ -321,7 +321,7 @@ public class PartitionInfo {
     return result;
   }
 
-  public boolean takeSnapshot(File snapshotDir) throws TException, IOException {
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
@@ -336,13 +336,13 @@ public class PartitionInfo {
     lockAllRead();
     ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
     try {
-      // first, put nextRegionGroupId
+      // serialize nextRegionGroupId
       byteBuffer.putInt(nextRegionGroupId.get());
-      // second, put regionMap
+      // serialize regionMap
       serializeRegionMap(byteBuffer);
-      // third, put schemaPartition
+      // serialize schemaPartition
       schemaPartition.serialize(byteBuffer);
-      // then, put dataPartition
+      // serialize dataPartition
       dataPartition.serialize(byteBuffer);
       // write to file
       try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
@@ -360,7 +360,7 @@ public class PartitionInfo {
     }
   }
 
-  public void loadSnapshot(File snapshotDir) throws TException, IOException {
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
