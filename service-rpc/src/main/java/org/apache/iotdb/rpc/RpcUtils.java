@@ -263,7 +263,7 @@ public class RpcUtils {
     }
   }
 
-  public static String formateDatetimeStr(String datetime, StringBuilder digits) {
+  public static String formatDatetimeStr(String datetime, StringBuilder digits) {
     if (datetime.contains("+")) {
       String timeZoneStr = datetime.substring(datetime.length() - 6);
       return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
@@ -271,7 +271,7 @@ public class RpcUtils {
       String timeZoneStr = datetime.substring(datetime.length() - 1);
       return datetime.substring(0, datetime.length() - 1) + "." + digits + timeZoneStr;
     } else {
-      String timeZoneStr = datetime.substring(datetime.length());
+      String timeZoneStr = "";
       return datetime + "." + digits + timeZoneStr;
     }
   }
@@ -291,7 +291,7 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return formateDatetimeStr(datetime, digits);
+      return formatDatetimeStr(datetime, digits);
     } else if ("us".equals(timestampPrecision)) {
       long integerOfDate = timestamp / 1000_000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
@@ -304,7 +304,7 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return formateDatetimeStr(datetime, digits);
+      return formatDatetimeStr(datetime, digits);
     } else {
       long integerOfDate = timestamp / 1000_000_000L;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
@@ -317,7 +317,7 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return formateDatetimeStr(datetime, digits);
+      return formatDatetimeStr(datetime, digits);
     }
   }
 }
