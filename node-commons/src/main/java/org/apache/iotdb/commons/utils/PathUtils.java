@@ -52,6 +52,17 @@ public class PathUtils {
     }
   }
 
+  public static void isLegalPath(String path) throws IllegalPathException {
+    if (isInnerKeyWord(path) || "".equals(path)) {
+      return;
+    }
+    try {
+      PathNodesGenerator.splitPathToNodes(path);
+    } catch (PathParseException e) {
+      throw new IllegalPathException(path);
+    }
+  }
+
   private static boolean isInnerKeyWord(String path) {
     return KEY_WORDS.contains(path);
   }

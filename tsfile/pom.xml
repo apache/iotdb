@@ -93,6 +93,7 @@
             <version>4.0.3</version>
             <scope>test</scope>
         </dependency>
+        <!-- antlr -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-antlr</artifactId>

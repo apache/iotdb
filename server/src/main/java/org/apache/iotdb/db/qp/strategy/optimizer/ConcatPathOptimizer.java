@@ -242,11 +242,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         String groupedPath =
             groupByLevelController.getGroupedPath(expression.getExpressionString());
         if (groupedPath != null) {
-          try {
-            resultExpressions.add(new TimeSeriesOperand(new PartialPath(groupedPath)));
-          } catch (IllegalPathException e) {
-            throw new LogicalOptimizeException(e.getMessage());
-          }
+          resultExpressions.add(new TimeSeriesOperand(new PartialPath(groupedPath, false)));
         } else {
           resultExpressions.add(expression);
         }

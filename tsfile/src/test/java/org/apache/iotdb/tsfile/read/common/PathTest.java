@@ -87,7 +87,7 @@ public class PathTest {
   @Test
   public void tesIllegalPath() {
     try {
-      Path path = new Path("root.sg`", true);
+      new Path("root.sg`", true);
       fail();
     } catch (PathParseException ignored) {
 
@@ -95,40 +95,40 @@ public class PathTest {
 
     try {
       // key word with out `
-      Path path = new Path("root.select", true);
+     new Path("root.select", true);
       fail();
     } catch (PathParseException ignored) {
     }
 
     try {
       // pure digits
-      Path path = new Path("root.111", true);
+      new Path("root.111", true);
       fail();
     } catch (PathParseException ignored) {
     }
 
     try {
       // single ` in quoted node
-      Path path = new Path("root.`a``", true);
+      new Path("root.`a``", true);
       fail();
     } catch (PathParseException ignored) {
     }
 
     try {
       // single ` in quoted node
-      Path path = new Path("root.``a`", true);
+      new Path("root.``a`", true);
       fail();
     } catch (PathParseException ignored) {
     }
 
     try {
-      Path path = new Path("root.a*%", true);
+      new Path("root.a*%", true);
       fail();
     } catch (PathParseException ignored) {
     }
 
     try {
-      Path path = new Path("root.a*b", true);
+      new Path("root.a*b", true);
       fail();
     } catch (PathParseException ignored) {
     }

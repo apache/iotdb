@@ -90,11 +90,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   /**
    * @param path path
-   * @param needSplit needSplit is basically false, whether need to be split to device and
-   *     measurement, doesn't support escape character yet.
+   * @param needSplit whether to split path to nodes.
    */
   public PartialPath(String path, boolean needSplit) {
     super(path, needSplit);
+    if (!needSplit) {
+      this.nodes = new String[] {path};
+    }
   }
 
   /**

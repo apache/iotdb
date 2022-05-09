@@ -26,6 +26,8 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.junit.Assert.fail;
+
 public class PartialPathTest {
 
   @Test
@@ -95,10 +97,64 @@ public class PartialPathTest {
     Assert.assertEquals("root.sg.**", l.getFullPath());
     nodes = new String[] {"root", "sg", "**"};
     checkNodes(nodes, l.getNodes());
+
+    // other
+    PartialPath m = new PartialPath("`to`.be.prefix.s");
+    Assert.assertEquals("`to`.be.prefix.s", m.getFullPath());
+    nodes = new String[] {"`to`", "be", "prefix", "s"};
+    checkNodes(nodes, m.getNodes());
   }
 
   @Test
-  public void testIllegalPath() {}
+  public void testIllegalPath() {
+    try {
+      new PartialPath("root.sg.d1.```");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.`d1`..`aa``b`");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1.`s+`-1\"`");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root..a");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1.");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.111");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.select");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1.device");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+  }
 
   @Test
   public void testLegalDeviceAndMeasurement() {}
