@@ -55,32 +55,38 @@ public class Aggregator {
     this.inputLocationList = inputLocationList;
   }
 
-  // Used for SeriesAggregateScanOperator
+  // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
   public void processTsBlock(TsBlock tsBlock) {
     checkArgument(
-        step.isInputRaw(), "Step in SeriesAggregateScanOperator can only process raw input");
+        step.isInputRaw(),
+        "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
     // TODO Aligned TimeSeries
-    accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
+    if (inputLocationList == null) {
+      accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
+    } else {
+      for (InputLocation[] inputLocations : inputLocationList) {
+        checkArgument(
+            inputLocations[0].getTsBlockIndex() == 1,
+            "RawDataAggregateOperator can only process one tsBlock input.");
+        Column[] timeValueColumn = new Column[2];
+        timeValueColumn[0] = tsBlock.getTimeColumn();
+        timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
+        accumulator.addInput(timeValueColumn, timeRange);
+      }
+    }
   }
 
-  // Used for aggregateOperator
+  // Used for AggregateOperator
   public void processTsBlocks(TsBlock[] tsBlock) {
+    checkArgument(!step.isInputRaw(), "Step in AggregateOperator cannot process raw input");
     for (InputLocation[] inputLocations : inputLocationList) {
-      if (step.isInputRaw()) {
-        TsBlock rawTsBlock = tsBlock[inputLocations[0].getTsBlockIndex()];
-        Column[] timeValueColumn = new Column[2];
-        timeValueColumn[0] = rawTsBlock.getTimeColumn();
-        timeValueColumn[1] = rawTsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        accumulator.addInput(timeValueColumn, timeRange);
-      } else {
-        Column[] columns = new Column[inputLocations.length];
-        for (int i = 0; i < inputLocations.length; i++) {
-          columns[i] =
-              tsBlock[inputLocations[i].getTsBlockIndex()].getColumn(
-                  inputLocations[i].getValueColumnIndex());
-        }
-        accumulator.addIntermediate(columns);
+      Column[] columns = new Column[inputLocations.length];
+      for (int i = 0; i < inputLocations.length; i++) {
+        columns[i] =
+            tsBlock[inputLocations[i].getTsBlockIndex()].getColumn(
+                inputLocations[i].getValueColumnIndex());
       }
+      accumulator.addIntermediate(columns);
     }
   }
 

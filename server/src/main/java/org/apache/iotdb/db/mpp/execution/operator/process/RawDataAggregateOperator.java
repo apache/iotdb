@@ -27,6 +27,7 @@ import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -41,33 +42,38 @@ import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateS
  * RawDataAggregateOperator is used to process raw data tsBlock input calculating using value
  * filter. It's possible that there is more than one tsBlock input in one time interval. And it's
  * also possible that one tsBlock can cover multiple time intervals too.
+ *
+ * <p>Since raw data query with value filter is processed by FilterOperator above TimeJoinOperator,
+ * there we can see RawDataAggregateOperator as a one-to-one(one input, ont output) operator.
+ *
+ * <p>Return aggregation result in one time interval once.
  */
 public class RawDataAggregateOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final List<Aggregator> aggregators;
-  private final List<Operator> children;
-
-  private final int inputOperatorsCount;
-  private final TsBlock[] inputTsBlocks;
-  private final TsBlockBuilder tsBlockBuilder;
-
+  private final Operator child;
+  private final boolean ascending;
   private ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
+  private TsBlock preCachedData;
+
+  // Using for building result tsBlock
+  private final TsBlockBuilder tsBlockBuilder;
+
   public RawDataAggregateOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
-      List<Operator> children,
+      Operator child,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
     this.operatorContext = operatorContext;
     this.aggregators = aggregators;
-    this.children = children;
+    this.child = child;
+    this.ascending = ascending;
 
-    this.inputOperatorsCount = children.size();
-    this.inputTsBlocks = new TsBlock[inputOperatorsCount];
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
@@ -83,26 +89,105 @@ public class RawDataAggregateOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    return ProcessOperator.super.isBlocked();
+    return child.isBlocked();
   }
 
   @Override
   public TsBlock next() {
-    return null;
+    // 1. Clear previous aggregation result
+    for (Aggregator aggregator : aggregators) {
+      aggregator.reset();
+      aggregator.setTimeRange(curTimeRange);
+    }
+
+    // 2. Calculate aggregation result based on current time window
+    while (!calcFromCacheData(curTimeRange)) {
+      preCachedData = child.next();
+    }
+
+    // 3. Update result using aggregators
+    return AggregateOperator.updateResultTsBlockFromAggregators(
+        tsBlockBuilder, aggregators, curTimeRange);
   }
 
   @Override
   public boolean hasNext() {
-    return false;
+    if (!timeRangeIterator.hasNextTimeRange()) {
+      return false;
+    }
+    curTimeRange = timeRangeIterator.nextTimeRange();
+    return true;
   }
 
   @Override
   public void close() throws Exception {
-    ProcessOperator.super.close();
+    child.close();
   }
 
   @Override
   public boolean isFinished() {
-    return false;
+    return !this.hasNext();
+  }
+
+  /** @return if already get the result */
+  private boolean calcFromCacheData(TimeRange curTimeRange) {
+    // check if the batchData does not contain points in current interval
+    if (preCachedData != null && satisfied(preCachedData, curTimeRange, ascending)) {
+      // skip points that cannot be calculated
+      preCachedData = skipOutOfTimeRangePoints(preCachedData, curTimeRange, ascending);
+
+      for (Aggregator aggregator : aggregators) {
+        // current agg method has been calculated
+        if (aggregator.hasFinalResult()) {
+          continue;
+        }
+
+        aggregator.processTsBlock(preCachedData);
+      }
+    }
+    // The result is calculated from the cache
+    return (preCachedData != null
+            && (ascending
+                ? preCachedData.getEndTime() >= curTimeRange.getMax()
+                : preCachedData.getStartTime() < curTimeRange.getMin()))
+        || isEndCalc(aggregators);
+  }
+
+  // skip points that cannot be calculated
+  public static TsBlock skipOutOfTimeRangePoints(
+      TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
+    TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
+    if (ascending) {
+      while (tsBlockIterator.hasNext() && tsBlockIterator.currentTime() < curTimeRange.getMin()) {
+        tsBlockIterator.next();
+      }
+    } else {
+      while (tsBlockIterator.hasNext() && tsBlockIterator.currentTime() >= curTimeRange.getMax()) {
+        tsBlockIterator.next();
+      }
+    }
+    return tsBlock.subTsBlock(tsBlockIterator.getRowIndex());
+  }
+
+  private boolean satisfied(TsBlock tsBlock, TimeRange timeRange, boolean ascending) {
+    TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
+    if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
+      return false;
+    }
+
+    return ascending
+        ? (tsBlockIterator.getEndTime() >= timeRange.getMin()
+            && tsBlockIterator.currentTime() < timeRange.getMax())
+        : (tsBlockIterator.getStartTime() < timeRange.getMax()
+            && tsBlockIterator.currentTime() >= timeRange.getMin());
+  }
+
+  public static boolean isEndCalc(List<Aggregator> aggregators) {
+    for (Aggregator aggregator : aggregators) {
+      if (!aggregator.hasFinalResult()) {
+        return false;
+      }
+    }
+    return true;
   }
 }
