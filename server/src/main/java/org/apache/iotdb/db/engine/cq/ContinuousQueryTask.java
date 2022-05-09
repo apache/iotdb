@@ -174,7 +174,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
     if (indexOfLeftBracket != -1) {
       fullPath = fullPath.substring(indexOfLeftBracket + 1);
     }
-    int indexOfRightBracket = fullPath.indexOf(")");
+    int indexOfRightBracket = fullPath.lastIndexOf(")");
     if (indexOfRightBracket != -1) {
       fullPath = fullPath.substring(0, indexOfRightBracket);
     }
