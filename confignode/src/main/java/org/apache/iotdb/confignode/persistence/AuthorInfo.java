@@ -180,6 +180,7 @@ public class AuthorInfo implements SnapshotProcessor {
           throw new AuthException("unknown type: " + authorReq.getAuthorType());
       }
     } catch (AuthException e) {
+      logger.error(e.getMessage());
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_EXCEPTION_ERROR, e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
