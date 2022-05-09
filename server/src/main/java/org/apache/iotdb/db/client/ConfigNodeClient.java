@@ -21,6 +21,12 @@ package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.BaseClientFactory;
+import org.apache.iotdb.commons.client.ClientFactoryProperty;
+import org.apache.iotdb.commons.client.ClientManager;
+import org.apache.iotdb.commons.client.sync.SyncThriftClient;
+import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -48,26 +54,30 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ConfigNodeClient implements ConfigIService.Iface {
+public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient, AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
-
-  private static final int TIMEOUT_MS = 10000;
 
   private static final int RETRY_NUM = 5;
 
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check server it";
+
+  private int connectionTimeout = 10000;
 
   private ConfigIService.Iface client;
 
@@ -79,20 +89,33 @@ public class ConfigNodeClient implements ConfigIService.Iface {
 
   private int cursor = 0;
 
+  ClientManager<ConsensusGroupId, ConfigNodeClient> clientManager;
+
+  ConsensusGroupId consensusGroupId;
+
+  TProtocolFactory protocolFactory;
+
   public ConfigNodeClient() throws TException {
     // Read config nodes from configuration
     configNodes = IoTDBDescriptor.getInstance().getConfig().getConfigNodeList();
+    protocolFactory =
+        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
+            ? new TCompactProtocol.Factory()
+            : new TBinaryProtocol.Factory();
+
     init();
   }
 
-  public ConfigNodeClient(List<TEndPoint> configNodes) throws TException {
-    this.configNodes = configNodes;
-    init();
-  }
+  public ConfigNodeClient(
+      TProtocolFactory protocolFactory,
+      int connectionTimeout,
+      ClientManager<ConsensusGroupId, ConfigNodeClient> clientManager)
+      throws TException {
+    configNodes = IoTDBDescriptor.getInstance().getConfig().getConfigNodeList();
+    this.protocolFactory = protocolFactory;
+    this.connectionTimeout = connectionTimeout;
+    this.clientManager = clientManager;
 
-  public ConfigNodeClient(List<TEndPoint> configNodes, TEndPoint configLeader) throws TException {
-    this.configNodes = configNodes;
-    this.configLeader = configLeader;
     init();
   }
 
@@ -105,17 +128,13 @@ public class ConfigNodeClient implements ConfigIService.Iface {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), TIMEOUT_MS);
+              endpoint.getIp(), endpoint.getPort(), connectionTimeout);
       transport.open();
     } catch (TTransportException e) {
       throw new TException(e);
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
-      client = new ConfigIService.Client(new TCompactProtocol(transport));
-    } else {
-      client = new ConfigIService.Client(new TBinaryProtocol(transport));
-    }
+    client = new ConfigIService.Client(protocolFactory.getProtocol(transport));
   }
 
   private void reconnect() throws TException {
@@ -148,7 +167,21 @@ public class ConfigNodeClient implements ConfigIService.Iface {
     throw new TException(MSG_RECONNECTION_FAIL);
   }
 
+  public TTransport getTransport() {
+    return transport;
+  }
+
+  @Override
   public void close() {
+    if (clientManager != null) {
+      clientManager.returnClient(consensusGroupId, this);
+    } else {
+      invalidate();
+    }
+  }
+
+  @Override
+  public void invalidate() {
     transport.close();
   }
 
@@ -495,5 +528,43 @@ public class ConfigNodeClient implements ConfigIService.Iface {
       reconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  public static class Factory extends BaseClientFactory<ConsensusGroupId, ConfigNodeClient> {
+
+    public Factory(
+        ClientManager<ConsensusGroupId, ConfigNodeClient> clientManager,
+        ClientFactoryProperty clientFactoryProperty) {
+      super(clientManager, clientFactoryProperty);
+    }
+
+    @Override
+    public void destroyObject(
+        ConsensusGroupId consensusGroupId, PooledObject<ConfigNodeClient> pooledObject) {
+      pooledObject.getObject().invalidate();
+    }
+
+    @Override
+    public PooledObject<ConfigNodeClient> makeObject(ConsensusGroupId consensusGroupId)
+        throws Exception {
+      Constructor<ConfigNodeClient> constructor =
+          ConfigNodeClient.class.getConstructor(
+              clientFactoryProperty.getProtocolFactory().getClass(),
+              int.class,
+              clientManager.getClass());
+      return new DefaultPooledObject<>(
+          SyncThriftClientWithErrorHandler.newErrorHandler(
+              ConfigNodeClient.class,
+              constructor,
+              clientFactoryProperty.getProtocolFactory(),
+              clientFactoryProperty.getConnectionTimeoutMs(),
+              clientManager));
+    }
+
+    @Override
+    public boolean validateObject(
+        ConsensusGroupId consensusGroupId, PooledObject<ConfigNodeClient> pooledObject) {
+      return pooledObject.getObject() != null && pooledObject.getObject().getTransport().isOpen();
+    }
   }
 }
