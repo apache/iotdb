@@ -130,6 +130,7 @@ public class FirstValueAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
+    hasCandidateResult = true;
     firstValue.setObject(finalResult.getObject(0));
   }
 
@@ -137,6 +138,10 @@ public class FirstValueAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 2, "partialResult of FirstValue should be 2");
+    if (!hasCandidateResult) {
+      columnBuilders[0].appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilders[0].writeInt(firstValue.getInt());
@@ -165,6 +170,10 @@ public class FirstValueAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
+    if (!hasCandidateResult) {
+      columnBuilder.appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilder.writeInt(firstValue.getInt());

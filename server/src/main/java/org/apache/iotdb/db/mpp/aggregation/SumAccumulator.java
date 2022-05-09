@@ -71,11 +71,13 @@ public class SumAccumulator implements Accumulator {
     if (partialResult[0].isNull(0)) {
       return;
     }
+    initResult = true;
     sumValue += partialResult[0].getDouble(0);
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
+    initResult = true;
     if (statistics instanceof IntegerStatistics) {
       sumValue += statistics.getSumLongValue();
     } else {
@@ -99,20 +101,23 @@ public class SumAccumulator implements Accumulator {
     checkArgument(columnBuilders.length == 1, "partialResult of Sum should be 1");
     if (!initResult) {
       columnBuilders[0].appendNull();
+    } else {
+      columnBuilders[0].writeDouble(sumValue);
     }
-    columnBuilders[0].writeDouble(sumValue);
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
     if (!initResult) {
       columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeDouble(sumValue);
     }
-    columnBuilder.writeDouble(sumValue);
   }
 
   @Override
   public void reset() {
+    initResult = false;
     this.sumValue = 0;
   }
 

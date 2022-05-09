@@ -119,6 +119,9 @@ public class MaxValueAccumulator implements Accumulator {
   // finalResult should be single column, like: | finalCountValue |
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
     maxResult.setObject(finalResult.getObject(0));
   }
 
@@ -126,6 +129,10 @@ public class MaxValueAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of MaxValue should be 1");
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilders[0].writeInt(maxResult.getInt());
@@ -149,6 +156,10 @@ public class MaxValueAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilder.writeInt(maxResult.getInt());

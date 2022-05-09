@@ -45,6 +45,7 @@ public class CountAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         countValue++;
       }
     }
@@ -57,17 +58,23 @@ public class CountAccumulator implements Accumulator {
     if (partialResult[0].isNull(0)) {
       return;
     }
+    initResult = true;
     countValue += partialResult[0].getLong(0);
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
+    initResult = true;
     countValue += statistics.getCount();
   }
 
   // finalResult should be single column, like: | finalCountValue |
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
+    initResult = true;
     countValue = finalResult.getLong(0);
   }
 
@@ -75,16 +82,25 @@ public class CountAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of Count should be 1");
-    columnBuilders[0].writeLong(countValue);
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+    } else {
+      columnBuilders[0].writeLong(countValue);
+    }
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeLong(countValue);
+    if (!initResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeLong(countValue);
+    }
   }
 
   @Override
   public void reset() {
+    initResult = false;
     this.countValue = 0;
   }
 

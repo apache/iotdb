@@ -24,8 +24,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
 
-  private boolean hasCandidateResult = false;
-
   // Column should be like: | Time | Value |
   // Value is used to judge isNull()
   @Override
@@ -41,17 +39,6 @@ public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
 
   @Override
   public boolean hasFinalResult() {
-    return hasCandidateResult;
-  }
-
-  @Override
-  public void reset() {
-    hasCandidateResult = false;
-    super.reset();
-  }
-
-  protected void updateMaxTime(long curTime) {
-    hasCandidateResult = true;
-    super.updateMaxTime(curTime);
+    return initResult;
   }
 }

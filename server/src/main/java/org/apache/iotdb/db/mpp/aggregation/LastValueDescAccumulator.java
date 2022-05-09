@@ -22,11 +22,8 @@ package org.apache.iotdb.db.mpp.aggregation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public class LastValueDescAccumulator extends LastValueAccumulator {
-
-  private boolean hasCandidateResult = false;
 
   public LastValueDescAccumulator(TSDataType seriesDataType) {
     super(seriesDataType);
@@ -34,12 +31,11 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
 
   @Override
   public boolean hasFinalResult() {
-    return hasCandidateResult;
+    return initResult;
   }
 
   @Override
   public void reset() {
-    hasCandidateResult = false;
     super.reset();
   }
 
@@ -101,35 +97,5 @@ public class LastValueDescAccumulator extends LastValueAccumulator {
         break;
       }
     }
-  }
-
-  protected void updateIntLastValue(int value, long curTime) {
-    hasCandidateResult = true;
-    super.updateIntLastValue(value, curTime);
-  }
-
-  protected void updateLongLastValue(long value, long curTime) {
-    hasCandidateResult = true;
-    super.updateLongLastValue(value, curTime);
-  }
-
-  protected void updateFloatLastValue(float value, long curTime) {
-    hasCandidateResult = true;
-    super.updateFloatLastValue(value, curTime);
-  }
-
-  protected void updateDoubleLastValue(double value, long curTime) {
-    hasCandidateResult = true;
-    super.updateDoubleLastValue(value, curTime);
-  }
-
-  protected void updateBooleanLastValue(boolean value, long curTime) {
-    hasCandidateResult = true;
-    super.updateBooleanLastValue(value, curTime);
-  }
-
-  protected void updateBinaryLastValue(Binary value, long curTime) {
-    hasCandidateResult = true;
-    super.updateBinaryLastValue(value, curTime);
   }
 }

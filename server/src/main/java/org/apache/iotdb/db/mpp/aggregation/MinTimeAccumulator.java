@@ -65,6 +65,9 @@ public class MinTimeAccumulator implements Accumulator {
   // finalResult should be single column, like: | finalMinTime |
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
     minTime = finalResult.getLong(0);
   }
 
@@ -72,12 +75,20 @@ public class MinTimeAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of MinTime should be 1");
-    columnBuilders[0].writeLong(minTime);
+    if (!hasCandidateResult) {
+      columnBuilders[0].appendNull();
+    } else {
+      columnBuilders[0].writeLong(minTime);
+    }
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeLong(minTime);
+    if (!hasCandidateResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeLong(minTime);
+    }
   }
 
   @Override

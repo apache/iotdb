@@ -35,6 +35,7 @@ public class LastValueAccumulator implements Accumulator {
   protected final TSDataType seriesDataType;
   protected TsPrimitiveType lastValue;
   protected long maxTime = Long.MIN_VALUE;
+  protected boolean initResult = false;
 
   public LastValueAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
@@ -136,6 +137,10 @@ public class LastValueAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 2, "partialResult of LastValue should be 2");
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilders[0].writeInt(lastValue.getInt());
@@ -164,6 +169,10 @@ public class LastValueAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilder.writeInt(lastValue.getInt());
@@ -191,6 +200,7 @@ public class LastValueAccumulator implements Accumulator {
 
   @Override
   public void reset() {
+    initResult = false;
     this.maxTime = Long.MIN_VALUE;
     this.lastValue.reset();
   }
@@ -220,6 +230,7 @@ public class LastValueAccumulator implements Accumulator {
   }
 
   protected void updateIntLastValue(int value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setInt(value);
@@ -236,6 +247,7 @@ public class LastValueAccumulator implements Accumulator {
   }
 
   protected void updateLongLastValue(long value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setLong(value);
@@ -252,6 +264,7 @@ public class LastValueAccumulator implements Accumulator {
   }
 
   protected void updateFloatLastValue(float value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setFloat(value);
@@ -268,6 +281,7 @@ public class LastValueAccumulator implements Accumulator {
   }
 
   protected void updateDoubleLastValue(double value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setDouble(value);
@@ -284,6 +298,7 @@ public class LastValueAccumulator implements Accumulator {
   }
 
   protected void updateBooleanLastValue(boolean value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setBoolean(value);
@@ -300,6 +315,7 @@ public class LastValueAccumulator implements Accumulator {
   }
 
   protected void updateBinaryLastValue(Binary value, long curTime) {
+    initResult = true;
     if (curTime > maxTime) {
       maxTime = curTime;
       lastValue.setBinary(value);

@@ -121,6 +121,10 @@ public class ExtremeAccumulator implements Accumulator {
 
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
+    initResult = true;
     extremeResult.setObject(finalResult.getObject(0));
   }
 
@@ -128,6 +132,10 @@ public class ExtremeAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of ExtremeValue should be 1");
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilders[0].writeInt(extremeResult.getInt());
@@ -151,6 +159,10 @@ public class ExtremeAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilder.writeInt(extremeResult.getInt());
