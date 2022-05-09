@@ -31,7 +31,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
@@ -453,9 +452,13 @@ public class AuthorInfo implements SnapshotProcessor {
 
   @TestOnly
   public void clear() throws AuthException {
-    File file = new File(ConfigNodeDescriptor.getInstance().getConf().getSystemDir());
-    if (file.exists()) {
-      FileUtils.deleteDirectory(file);
+    File userFolder = new File(commonConfig.getUserFolder());
+    if (userFolder.exists()) {
+      FileUtils.deleteDirectory(userFolder);
+    }
+    File roleFolder = new File(commonConfig.getRoleFolder());
+    if (roleFolder.exists()) {
+      FileUtils.deleteDirectory(roleFolder);
     }
     authorizer.reset();
   }

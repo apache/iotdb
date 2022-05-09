@@ -62,9 +62,13 @@ public class AuthorInfoTest {
       FileUtils.deleteDirectory(snapshotDir);
     }
     // remove system dir
-    File file = new File(ConfigNodeDescriptor.getInstance().getConf().getSystemDir());
-    if (file.exists()) {
-      FileUtils.deleteDirectory(file);
+    File userFolder = new File(commonConfig.getUserFolder());
+    if (userFolder.exists()) {
+      FileUtils.deleteDirectory(userFolder);
+    }
+    File roleFolder = new File(commonConfig.getRoleFolder());
+    if (roleFolder.exists()) {
+      FileUtils.deleteDirectory(roleFolder);
     }
   }
 
