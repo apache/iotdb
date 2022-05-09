@@ -105,6 +105,7 @@ public class Aggregator {
   }
 
   public void reset() {
+    timeRange = new TimeRange(0, Long.MAX_VALUE);
     accumulator.reset();
   }
 

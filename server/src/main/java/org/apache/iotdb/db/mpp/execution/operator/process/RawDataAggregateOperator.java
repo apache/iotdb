@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
@@ -27,8 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -39,11 +38,11 @@ import java.util.List;
 import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregateScanOperator.initTimeRangeIterator;
 
 /**
- * AggregateOperator can process the situation: aggregation of intermediate aggregate result, it
- * will output one result based on time interval too. One intermediate tsBlock input will only
- * contain the result of one time interval exactly.
+ * RawDataAggregateOperator is used to process raw data tsBlock input calculating using value
+ * filter. It's possible that there is more than one tsBlock input in one time interval. And it's
+ * also possible that one tsBlock can cover multiple time intervals too.
  */
-public class AggregateOperator implements ProcessOperator {
+public class RawDataAggregateOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final List<Aggregator> aggregators;
@@ -57,7 +56,7 @@ public class AggregateOperator implements ProcessOperator {
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
-  public AggregateOperator(
+  public RawDataAggregateOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
       List<Operator> children,
@@ -84,68 +83,26 @@ public class AggregateOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<Void> isBlocked() {
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      ListenableFuture<Void> blocked = children.get(i).isBlocked();
-      if (!blocked.isDone()) {
-        return blocked;
-      }
-    }
-    return NOT_BLOCKED;
+    return ProcessOperator.super.isBlocked();
   }
 
   @Override
   public TsBlock next() {
-    // update input tsBlock
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      inputTsBlocks[i] = children.get(i).next();
-    }
-    // consume current input tsBlocks
-    for (Aggregator aggregator : aggregators) {
-      aggregator.reset();
-      aggregator.processTsBlocks(inputTsBlocks);
-    }
-    // output result from aggregator
-    return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, curTimeRange);
+    return null;
   }
 
   @Override
   public boolean hasNext() {
-    if (!timeRangeIterator.hasNextTimeRange()) {
-      return false;
-    }
-    curTimeRange = timeRangeIterator.nextTimeRange();
-    return true;
+    return false;
   }
 
   @Override
   public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
+    ProcessOperator.super.close();
   }
 
   @Override
   public boolean isFinished() {
-    return !this.hasNext();
-  }
-
-  public static TsBlock updateResultTsBlockFromAggregators(
-      TsBlockBuilder tsBlockBuilder, List<Aggregator> aggregators, TimeRange curTimeRange) {
-    tsBlockBuilder.reset();
-    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(curTimeRange.getMin());
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    for (Aggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
-    }
-    tsBlockBuilder.declarePosition();
-    return tsBlockBuilder.build();
+    return false;
   }
 }
