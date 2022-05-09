@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.tree.AbstractTreeVisitorWithLimitOffset;
+import org.apache.iotdb.commons.schema.tree.AbstractTreeVisitorWithLimitOffset;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 
 import java.util.ArrayList;
