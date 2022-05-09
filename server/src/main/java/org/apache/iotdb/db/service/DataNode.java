@@ -57,9 +57,9 @@ import org.apache.iotdb.db.service.thrift.impl.DataNodeTSIServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -180,7 +180,7 @@ public class DataNode implements DataNodeMBean {
         }
       } catch (IOException e) {
         logger.warn("Cannot join the cluster, because: {}", e.getMessage());
-      } catch (IoTDBConnectionException e) {
+      } catch (TException e) {
         // read config nodes from system.properties
         logger.warn("Cannot join the cluster, because: {}", e.getMessage());
         IoTDBStartCheck.getInstance().loadConfigNodeList();

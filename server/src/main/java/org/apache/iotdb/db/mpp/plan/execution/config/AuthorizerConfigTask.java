@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,6 +38,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,7 +108,7 @@ public class AuthorizerConfigTask implements IConfigTask {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     } finally {
@@ -168,7 +168,7 @@ public class AuthorizerConfigTask implements IConfigTask {
         future.set(
             new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
       }
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     } finally {

@@ -40,12 +40,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +85,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private ClusterPartitionFetcher() {
     try {
       client = new ConfigNodeClient();
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       throw new StatementAnalyzeException("Couldn't connect config node");
     }
     this.partitionExecutor =
@@ -113,7 +113,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
@@ -136,7 +136,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return schemaPartition;
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
@@ -151,7 +151,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       if (dataPartitionResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return parseDataPartitionResp(dataPartitionResp);
       }
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getDataPartition():" + e.getMessage());
     }
@@ -174,7 +174,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return dataPartition;
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getDataPartition():" + e.getMessage());
     }
@@ -190,7 +190,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       if (dataPartitionResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return parseDataPartitionResp(dataPartitionResp);
       }
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
@@ -215,7 +215,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
       }
       return dataPartition;
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
@@ -276,7 +276,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             }
           }
         }
-      } catch (IoTDBConnectionException | MetadataException e) {
+      } catch (TException | MetadataException e) {
         throw new StatementAnalyzeException(
             "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
       }

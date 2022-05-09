@@ -35,10 +35,10 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -162,7 +162,7 @@ public class AuthorityChecker {
       configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       status = configNodeClient.login(req);
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
       if (configNodeClient != null) {
@@ -215,7 +215,7 @@ public class AuthorityChecker {
       configNodeClient = new ConfigNodeClient();
       // Send request to some API server
       status = configNodeClient.checkUserPrivileges(req);
-    } catch (IoTDBConnectionException e) {
+    } catch (TException e) {
       throw new ConfigNodeConnectionException("Couldn't connect config node");
     } finally {
       if (configNodeClient != null) {
