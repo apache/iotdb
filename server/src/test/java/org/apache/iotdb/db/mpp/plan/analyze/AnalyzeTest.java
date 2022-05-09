@@ -35,6 +35,8 @@ public class AnalyzeTest {
   @Test
   public void testRawDataQuery() {
     // TODO: @lmh add UTs
+    Analysis analysis = analyzeSQL("select * from root.** align by device");
+    System.out.println(analysis);
   }
 
   private Analysis analyzeSQL(String sql) {

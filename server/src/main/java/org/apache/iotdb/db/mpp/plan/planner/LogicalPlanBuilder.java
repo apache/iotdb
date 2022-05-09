@@ -317,7 +317,19 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planGroupByLevel(
-      Map<Expression, Set<Expression>> groupByLevelExpressions) {
+      Map<Expression, Set<Expression>> groupByLevelExpressions, AggregationStep curStep) {
+    return this;
+  }
+
+  public LogicalPlanBuilder planGroupByTime(
+          Map<String, Set<Expression>> aggregationExpressions,
+          GroupByTimeParameter groupByTimeParameter,
+          AggregationStep curStep) {
+    return this;
+  }
+
+  public LogicalPlanBuilder planFilterAndTransform(
+          Expression queryFilter, Set<Expression> selectExpressions) {
     return this;
   }
 
@@ -440,11 +452,6 @@ public class LogicalPlanBuilder {
     this.root =
         new LevelTimeSeriesCountNode(
             context.getQueryId().genPlanNodeId(), partialPath, prefixPath, level);
-    return this;
-  }
-
-  public LogicalPlanBuilder planGroupByTime(
-      Map<String, Set<Expression>> aggregationExpressions, AggregationStep step) {
     return this;
   }
 }

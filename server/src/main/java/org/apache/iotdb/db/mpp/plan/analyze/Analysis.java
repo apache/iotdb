@@ -204,7 +204,7 @@ public class Analysis {
     this.fillDescriptor = fillDescriptor;
   }
 
-  public boolean isHasValueFilter() {
+  public boolean hasValueFilter() {
     return hasValueFilter;
   }
 
