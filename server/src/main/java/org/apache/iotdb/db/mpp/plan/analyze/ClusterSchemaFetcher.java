@@ -103,10 +103,15 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
     // TODO: (xingtanzjr) throw exception
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException("cannot fetch schema, status is: " + executionResult.status);
+      throw new RuntimeException(
+          String.format(
+              "cannot fetch schema, status is: %s, msg is: %s",
+              executionResult.status.getCode(), executionResult.status.getMessage()));
     }
     SchemaTree result = new SchemaTree();
     while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+      // The query will be transited to FINISHED when invoking getBatchResult() at the last time
+      // So we don't need to clean up it manually
       Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
       if (!tsBlock.isPresent()) {
         break;
@@ -121,8 +126,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         result.mergeSchemaTree(fetchedSchemaTree);
       }
     }
-    // TODO: (xingtanzjr) need to release this query's resource here. This is a temporary way
-    coordinator.getQueryExecution(queryId).stopAndCleanup();
     return result;
   }
 

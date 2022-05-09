@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.consensus.ratis;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
@@ -33,6 +36,7 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -61,9 +65,11 @@ public class TestUtils {
     }
   }
 
-  static class IntegerCounter implements IStateMachine {
+  static class IntegerCounter implements IStateMachine, IStateMachine.EventApi {
     private AtomicInteger integer;
     private final Logger logger = LoggerFactory.getLogger(IntegerCounter.class);
+    private TEndPoint leaderEndpoint;
+    private List<Peer> configuration;
 
     @Override
     public void start() {
@@ -113,6 +119,27 @@ public class TestUtils {
       }
     }
 
+    @Override
+    public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
+      this.leaderEndpoint = newLeader;
+      System.out.println("---------newLeader-----------");
+      System.out.println(groupId);
+      System.out.println(newLeader);
+      System.out.println("----------------------");
+    }
+
+    @Override
+    public void notifyConfigurationChanged(long term, long index, List<Peer> newConfiguration) {
+      this.configuration = newConfiguration;
+      System.out.println("----------newConfiguration------------");
+      System.out.println("term : " + term);
+      System.out.println("index : " + index);
+      for (Peer peer : newConfiguration) {
+        System.out.println(peer);
+      }
+      System.out.println("----------------------");
+    }
+
     @TestOnly
     public static synchronized String ensureSnapshotFileName(File snapshotDir, String metadata) {
       File dir = new File(snapshotDir + File.separator + metadata);
@@ -120,6 +147,14 @@ public class TestUtils {
         dir.mkdirs();
       }
       return dir.getPath() + File.separator + "snapshot";
+    }
+
+    public TEndPoint getLeaderEndpoint() {
+      return leaderEndpoint;
+    }
+
+    public List<Peer> getConfiguration() {
+      return configuration;
     }
   }
 }

@@ -44,6 +44,8 @@ import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.DescTimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.merge.MultiColumnMerger;
+import org.apache.iotdb.db.mpp.execution.operator.process.merge.NonOverlappedMultiColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.SingleColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
@@ -506,6 +508,7 @@ public class LocalExecutionPlanner {
     }
 
     private List<OutputColumn> generateOutputColumns(TimeJoinNode node) {
+      // TODO we should also sort the InputLocation for each column if they are not overlapped
       return makeLayout(node).values().stream()
           .map(inputLocations -> new OutputColumn(inputLocations, inputLocations.size() > 1))
           .collect(Collectors.toList());
@@ -518,15 +521,14 @@ public class LocalExecutionPlanner {
         ColumnMerger merger;
         // only has one input column
         if (outputColumn.isSingleInputColumn()) {
-          merger = new SingleColumnMerger(outputColumn.getInputLocation(0), timeComparator);
-        } else if (!outputColumn.isOverlapped()) {
-          // has more than one input columns but time of these input columns is not overlapped
-          throw new UnsupportedOperationException(
-              "has more than one input columns but time of these input columns is not overlapped is not supported");
+          merger = new SingleColumnMerger(outputColumn.getSourceLocation(0), timeComparator);
+        } else if (outputColumn.isOverlapped()) {
+          // has more than one input columns but time of these input columns is overlapped
+          merger = new MultiColumnMerger(outputColumn.getSourceLocations());
         } else {
-          // has more than one input columns and time of these input columns is overlapped
-          throw new UnsupportedOperationException(
-              "has more than one input columns and time of these input columns is overlapped is not supported");
+          // has more than one input columns and time of these input columns is not overlapped
+          merger =
+              new NonOverlappedMultiColumnMerger(outputColumn.getSourceLocations(), timeComparator);
         }
         mergers.add(merger);
       }

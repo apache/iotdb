@@ -23,8 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.Peer;
 
+import org.apache.ratis.proto.RaftProtos.RaftPeerProto;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
+import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
 import org.apache.thrift.TException;
@@ -33,6 +35,8 @@ import org.apache.thrift.transport.TByteBuffer;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class Utils {
   private static final int tempBufferSize = 1024;
@@ -42,7 +46,7 @@ public class Utils {
     return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
   }
 
-  /** Encode the ConsensusGroupId into 6 bytes 2 Bytes for Group Type 4 Bytes for Group ID */
+  /** Encode the ConsensusGroupId into 6 bytes: 2 Bytes for Group Type and 4 Bytes for Group ID */
   public static long groupEncode(ConsensusGroupId consensusGroupId) {
     // use abbreviations to prevent overflow
     long groupType = consensusGroupId.getType().getValue();
@@ -51,36 +55,49 @@ public class Utils {
     return groupCode;
   }
 
-  public static String RatisPeerId(TEndPoint endpoint) {
-    return String.format("%s-%d", endpoint.getIp(), endpoint.getPort());
+  public static RaftPeerId fromTEndPointToRaftPeerId(TEndPoint endpoint) {
+    return RaftPeerId.valueOf(String.format("%s-%d", endpoint.getIp(), endpoint.getPort()));
   }
 
-  public static TEndPoint parseFromRatisId(String ratisId) {
-    String[] items = ratisId.split("-");
+  public static TEndPoint formRaftPeerIdToTEndPoint(RaftPeerId id) {
+    String[] items = id.toString().split("-");
+    return new TEndPoint(items[0], Integer.parseInt(items[1]));
+  }
+
+  public static TEndPoint formRaftPeerProtoToTEndPoint(RaftPeerProto proto) {
+    String[] items = proto.getAddress().split(":");
     return new TEndPoint(items[0], Integer.parseInt(items[1]));
   }
 
   // priority is used as ordinal of leader election
-  public static RaftPeer toRaftPeer(TEndPoint endpoint, int priority) {
+  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(TEndPoint endpoint, int priority) {
     return RaftPeer.newBuilder()
-        .setId(RatisPeerId(endpoint))
+        .setId(fromTEndPointToRaftPeerId(endpoint))
         .setAddress(IPAddress(endpoint))
         .setPriority(priority)
         .build();
   }
 
-  public static RaftPeer toRaftPeer(Peer peer, int priority) {
-    return toRaftPeer(peer.getEndpoint(), priority);
+  public static RaftPeer fromTEndPointAndPriorityToRaftPeer(Peer peer, int priority) {
+    return fromTEndPointAndPriorityToRaftPeer(peer.getEndpoint(), priority);
   }
 
-  public static TEndPoint getEndpoint(RaftPeer raftPeer) {
-    String address = raftPeer.getAddress(); // ip:port
-    String[] split = address.split(":");
-    return new TEndPoint(split[0], Integer.parseInt(split[1]));
+  public static List<RaftPeer> fromPeersAndPriorityToRaftPeers(List<Peer> peers, int priority) {
+    return peers.stream()
+        .map(peer -> Utils.fromTEndPointAndPriorityToRaftPeer(peer, priority))
+        .collect(Collectors.toList());
+  }
+
+  public static List<Peer> fromRaftProtoListAndRaftGroupIdToPeers(
+      List<RaftPeerProto> raftProtoList, RaftGroupId id) {
+    ConsensusGroupId consensusGroupId = Utils.fromRaftGroupIdToConsensusGroupId(id);
+    return raftProtoList.stream()
+        .map(peer -> new Peer(consensusGroupId, Utils.formRaftPeerProtoToTEndPoint(peer)))
+        .collect(Collectors.toList());
   }
 
   /** Given ConsensusGroupId, generate a deterministic RaftGroupId current scheme: */
-  public static RaftGroupId toRatisGroupId(ConsensusGroupId consensusGroupId) {
+  public static RaftGroupId fromConsensusGroupIdToRaftGroupId(ConsensusGroupId consensusGroupId) {
     long groupCode = groupEncode(consensusGroupId);
     byte[] bGroupCode = ByteBuffer.allocate(Long.BYTES).putLong(groupCode).array();
     byte[] bPaddedGroupName = new byte[16];
@@ -93,7 +110,7 @@ public class Utils {
   }
 
   /** Given raftGroupId, decrypt ConsensusGroupId out of it */
-  public static ConsensusGroupId toConsensusGroupId(RaftGroupId raftGroupId) {
+  public static ConsensusGroupId fromRaftGroupIdToConsensusGroupId(RaftGroupId raftGroupId) {
     byte[] padded = raftGroupId.toByteString().toByteArray();
     long type = (padded[10] << 8) + padded[11];
     ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);

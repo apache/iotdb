@@ -18,18 +18,18 @@
  */
 package org.apache.iotdb.db.sync.receiver.load;
 
-import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadBearableException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadUnbearableException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 /**
  * This loader is used to PhysicalPlan. Support four types of physical plans: CREATE_TIMESERIES |
@@ -37,8 +37,17 @@ import java.io.IOException;
  */
 public class SchemaLoader implements ILoader {
   private static final Logger logger = LoggerFactory.getLogger(SchemaLoader.class);
+  private static PlanExecutor planExecutor;
 
-  private PhysicalPlan plan;
+  static {
+    try {
+      planExecutor = new PlanExecutor();
+    } catch (QueryProcessException e) {
+      logger.error(e.getMessage());
+    }
+  }
+
+  private final PhysicalPlan plan;
 
   public SchemaLoader(PhysicalPlan plan) {
     this.plan = plan;
@@ -47,13 +56,17 @@ public class SchemaLoader implements ILoader {
   @Override
   public void load() throws PipeDataLoadException {
     try {
-      LocalSchemaProcessor.getInstance().operation(plan);
-    } catch (StorageGroupAlreadySetException e) {
-      throw new PipeDataLoadBearableException(
-          "Sync receiver try to set storage group "
-              + e.getStorageGroupPath()
-              + " that has already been set");
-    } catch (IOException | MetadataException e) {
+      planExecutor.processNonQuery(plan);
+    } catch (QueryProcessException e) {
+      if (e.getCause() instanceof StorageGroupAlreadySetException) {
+        throw new PipeDataLoadBearableException(
+            "Sync receiver try to set storage group "
+                + ((StorageGroupAlreadySetException) e.getCause()).getStorageGroupPath()
+                + " that has already been set");
+      } else {
+        throw new PipeDataLoadUnbearableException(e.getMessage());
+      }
+    } catch (StorageEngineException | StorageGroupNotSetException e) {
       throw new PipeDataLoadUnbearableException(e.getMessage());
     }
   }

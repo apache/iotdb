@@ -21,12 +21,14 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -34,6 +36,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -94,9 +97,9 @@ public abstract class TVList implements WALEntryValue {
     // value array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
     // two array headers mem size
-    size += NUM_BYTES_ARRAY_HEADER * 2;
+    size += NUM_BYTES_ARRAY_HEADER * 2L;
     // Object references size in ArrayList
-    size += NUM_BYTES_OBJECT_REF * 2;
+    size += NUM_BYTES_OBJECT_REF * 2L;
     return size;
   }
 
@@ -210,11 +213,8 @@ public abstract class TVList implements WALEntryValue {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
-  public Object getAlignedValue(int index, Integer floatPrecision, TSEncoding encoding) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public TVList getTvListByColumnIndex(List<Integer> columnIndexList) {
+  public TVList getTvListByColumnIndex(
+      List<Integer> columnIndexList, List<TSDataType> dataTypeList) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -489,10 +489,6 @@ public abstract class TVList implements WALEntryValue {
     }
   }
 
-  void updateMinTimeAndSorted(long[] time) {
-    updateMinTimeAndSorted(time, 0, time.length);
-  }
-
   void updateMinTimeAndSorted(long[] time, int start, int end) {
     int length = time.length;
     long inPutMinTime = Long.MAX_VALUE;
@@ -513,107 +509,52 @@ public abstract class TVList implements WALEntryValue {
   protected abstract TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding);
 
-  public TimeValuePair getTimeValuePairForTimeDuplicatedRows(
-      List<Integer> timeDuplicatedVectorRowIndexList,
-      long time,
-      Integer floatPrecision,
-      TSEncoding encoding) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
   @TestOnly
-  public IPointReader getIterator() {
-    return new Ite();
+  public TsBlock buildTsBlock() {
+    return buildTsBlock(0, TSEncoding.PLAIN, null);
   }
 
-  public IPointReader getIterator(
-      int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
-    return new Ite(floatPrecision, encoding, size, deletionList);
+  public TsBlock buildTsBlock(
+      int floatPrecision, TSEncoding encoding, List<TimeRange> deletionList) {
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(this.getDataType()));
+    writeValidValuesIntoTsBlock(builder, floatPrecision, encoding, deletionList);
+    return builder.build();
   }
 
-  protected class Ite implements IPointReader {
+  protected abstract void writeValidValuesIntoTsBlock(
+      TsBlockBuilder builder,
+      int floatPrecision,
+      TSEncoding encoding,
+      List<TimeRange> deletionList);
 
-    protected TimeValuePair cachedTimeValuePair;
-    protected boolean hasCachedPair;
-    protected int cur;
-    protected Integer floatPrecision;
-    private TSEncoding encoding;
-    private int deleteCursor = 0;
-    /**
-     * because TV list may be share with different query, each iterator has to record it's own size
-     */
-    protected int iteSize = 0;
-    /** this field is effective only in the Tvlist in a RealOnlyMemChunk. */
-    private List<TimeRange> deletionList;
-
-    public Ite() {
-      this.iteSize = TVList.this.rowCount;
-    }
-
-    public Ite(int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
-      this.floatPrecision = floatPrecision;
-      this.encoding = encoding;
-      this.iteSize = size;
-      this.deletionList = deletionList;
-    }
-
-    @Override
-    public boolean hasNextTimeValuePair() {
-      if (hasCachedPair) {
+  protected boolean isPointDeleted(
+      long timestamp, List<TimeRange> deletionList, Integer deleteCursor) {
+    while (deletionList != null && deleteCursor < deletionList.size()) {
+      if (deletionList.get(deleteCursor).contains(timestamp)) {
         return true;
-      }
-
-      while (cur < iteSize) {
-        long time = getTime(cur);
-        if (isPointDeleted(time) || (cur + 1 < rowCount() && (time == getTime(cur + 1)))) {
-          cur++;
-          continue;
-        }
-        TimeValuePair tvPair;
-        tvPair = getTimeValuePair(cur, time, floatPrecision, encoding);
-        cur++;
-        if (tvPair.getValue() != null) {
-          cachedTimeValuePair = tvPair;
-          hasCachedPair = true;
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    protected boolean isPointDeleted(long timestamp) {
-      while (deletionList != null && deleteCursor < deletionList.size()) {
-        if (deletionList.get(deleteCursor).contains(timestamp)) {
-          return true;
-        } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
-          deleteCursor++;
-        } else {
-          return false;
-        }
-      }
-      return false;
-    }
-
-    @Override
-    public TimeValuePair nextTimeValuePair() throws IOException {
-      if (hasCachedPair || hasNextTimeValuePair()) {
-        hasCachedPair = false;
-        return cachedTimeValuePair;
+      } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
+        deleteCursor++;
       } else {
-        throw new IOException("no next time value pair");
+        return false;
       }
     }
+    return false;
+  }
 
-    @Override
-    public TimeValuePair currentTimeValuePair() {
-      return cachedTimeValuePair;
+  protected float roundValueWithGivenPrecision(
+      float value, int floatPrecision, TSEncoding encoding) {
+    if (!Float.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+      return MathUtils.roundWithGivenPrecision(value, floatPrecision);
     }
+    return value;
+  }
 
-    @Override
-    public void close() throws IOException {
-      // Do nothing because of this is an in memory object
+  protected double roundValueWithGivenPrecision(
+      double value, int floatPrecision, TSEncoding encoding) {
+    if (!Double.isNaN(value) && (encoding == TSEncoding.RLE || encoding == TSEncoding.TS_2DIFF)) {
+      return MathUtils.roundWithGivenPrecision(value, floatPrecision);
     }
+    return value;
   }
 
   public abstract TSDataType getDataType();

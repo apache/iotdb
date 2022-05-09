@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -57,9 +60,6 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Properties;
 
 public class IoTDBDescriptor {
@@ -947,27 +947,19 @@ public class IoTDBDescriptor {
       conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
     }
 
-    List<String> newConfigNodeUrls = new ArrayList<>();
-    for (String nodeUrl : conf.getConfigNodeUrls()) {
-      String[] splits = nodeUrl.split(":");
-      if (splits.length != 2) {
-        throw new BadNodeUrlFormatException(nodeUrl);
-      }
-      String nodeIP = splits[0];
-      boolean isInvalidNodeIp = InetAddresses.isInetAddress(nodeIP);
+    for (TEndPoint configNode : conf.getConfigNodeList()) {
+      boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
       if (!isInvalidNodeIp) {
-        String newNodeIP = InetAddress.getByName(nodeIP).getHostAddress();
-        newConfigNodeUrls.add(newNodeIP + ":" + splits[1]);
-      } else {
-        newConfigNodeUrls.add(nodeUrl);
+        String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
+        configNode.setIp(newNodeIP);
       }
     }
-    conf.setConfigNodeUrls(newConfigNodeUrls);
+
     logger.debug(
         "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
         conf.getRpcAddress(),
         conf.getInternalIp(),
-        conf.getConfigNodeUrls());
+        conf.getConfigNodeList());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1576,8 +1568,12 @@ public class IoTDBDescriptor {
   public void loadClusterProps(Properties properties) {
     String configNodeUrls = properties.getProperty("config_nodes");
     if (configNodeUrls != null) {
-      List<String> urlList = getNodeUrlList(configNodeUrls);
-      conf.setConfigNodeUrls(urlList);
+      try {
+        conf.setConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+      } catch (BadNodeUrlException e) {
+        logger.error(
+            "Config nodes are set in wrong format, please set them like 0.0.0.0:22277,0.0.0.0:22281");
+      }
     }
 
     conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
@@ -1634,28 +1630,6 @@ public class IoTDBDescriptor {
       default:
         return conf.getDefaultTextEncoding();
     }
-  }
-
-  /**
-   * Split the node urls as one list.
-   *
-   * @param nodeUrls the config node urls.
-   * @return the node urls as a list.
-   */
-  public static List<String> getNodeUrlList(String nodeUrls) {
-    if (nodeUrls == null) {
-      return Collections.emptyList();
-    }
-    List<String> urlList = new ArrayList<>();
-    String[] split = nodeUrls.split(",");
-    for (String nodeUrl : split) {
-      nodeUrl = nodeUrl.trim();
-      if ("".equals(nodeUrl)) {
-        continue;
-      }
-      urlList.add(nodeUrl);
-    }
-    return urlList;
   }
 
   // These configurations are received from config node when registering
