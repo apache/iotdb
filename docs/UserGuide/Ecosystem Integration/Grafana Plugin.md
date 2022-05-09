@@ -194,6 +194,12 @@ Click the `New Dashboard` icon on the top right, and select `Add an empty panel`
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/add%20empty%20panel.png?raw=true">
 
+Grafana plugin supports Raw mode and Aggregation mode, and the default mode is Raw mode.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input_style.png?raw=true">
+
+##### Raw input method
+
 Enter content in the SELECT, FROM , WHERE and CONTROL input box, where the WHERE and CONTROL input boxes are optional.
 
 If a query involves multiple expressions, we can click `+` on the right side of the SELECT input box to add expressions in the SELECT clause, or click `+` on the right side of the FROM input box to add a path prefix:
@@ -232,9 +238,15 @@ Here are some examples of valid CONTROL content:
 
 Tip: Statements like `select * from root.xx.**` are not recommended because those statements may cause OOM.
 
+##### Aggregation input method
+
+Select a time series in the TIME-SERIES selection box, select a function in the FUNCTION option, and enter the contents in the SAMPLING INTERVAL、SLIDING STEP、LEVEL、FILL input boxes, where TIME-SERIES is a required item and the rest are non required items.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input2.png?raw=true">
+
 #### Support for variables and template functions
 
-This plugin supports Grafana's variables and templates (https://grafana.com/docs/grafana/v7.0/variables/) feature.
+Both raw and aggregation input methods support the variable and template functions of grafana. In the following example, raw input method is used, and aggregation is similar.
 
 After creating a new Panel, click the Settings button in the upper right corner:
 
