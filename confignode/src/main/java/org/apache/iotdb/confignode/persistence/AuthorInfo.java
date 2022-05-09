@@ -453,8 +453,10 @@ public class AuthorInfo implements SnapshotProcessor {
 
   @TestOnly
   public void clear() throws AuthException {
-    FileUtils.deleteDirectory(
-        new File(ConfigNodeDescriptor.getInstance().getConf().getSystemDir()));
+    File file = new File(ConfigNodeDescriptor.getInstance().getConf().getSystemDir());
+    if (file.exists()) {
+      FileUtils.deleteDirectory(file);
+    }
     authorizer.reset();
   }
 
