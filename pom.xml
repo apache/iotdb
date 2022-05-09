@@ -204,7 +204,7 @@
         <jackson-core-asl.version>1.9.13</jackson-core-asl.version>
         <mqtt-client.version>1.12</mqtt-client.version>
         <google.code.findbugs.jsr305.version>3.0.2</google.code.findbugs.jsr305.version>
-        <jna.version>5.5.0</jna.version>
+        <jna.version>5.8.0</jna.version>
         <zookeeper.version>3.4.9</zookeeper.version>
         <commons-beanutils.version>1.9.4</commons-beanutils.version>
         <commons-compress.version>1.21</commons-compress.version>
