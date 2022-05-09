@@ -75,10 +75,10 @@ syncStatement
 
 // Create Storage Group
 setStorageGroup
-    : SET STORAGE GROUP TO prefixPath (WITH sgAttributeClause (COMMA sgAttributeClause)*)?
+    : SET STORAGE GROUP TO prefixPath (WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*)?
     ;
 
-sgAttributeClause
+storageGroupAttributeClause
     : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL) '=' INTEGER_LITERAL
     ;
 
