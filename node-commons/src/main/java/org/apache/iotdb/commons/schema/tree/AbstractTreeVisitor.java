@@ -121,18 +121,18 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   private R consumeNextMatchedNode() {
     R result = generateResult();
-    if (nextMatchedNode != null && shouldVisitSubtree) {
-      if (patternIndexOfMatchedNode == nodes.length) {
-        pushChildrenWhilePrefixMatch(
-            nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
-      } else if (patternIndexOfMatchedNode == nodes.length - 1) {
-        pushChildrenWhileTail(
-            nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
-      } else {
-        pushChildrenWhileInternal(
-            nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
-      }
+
+    if (patternIndexOfMatchedNode == nodes.length) {
+      pushChildrenWhilePrefixMatch(
+          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
+    } else if (patternIndexOfMatchedNode == nodes.length - 1) {
+      pushChildrenWhileTail(
+          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
+    } else {
+      pushChildrenWhileInternal(
+          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
     }
+
     nextMatchedNode = null;
     return result;
   }
