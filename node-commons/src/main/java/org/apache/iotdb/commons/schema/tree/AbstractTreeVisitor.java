@@ -66,12 +66,12 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
   protected final String[] nodes;
   protected final boolean isPrefixMatch;
 
-  // run time parameters
+  // run time variables
   protected final Deque<VisitorStackEntry<N>> visitorStack = new ArrayDeque<>();
   protected final Deque<AncestorStackEntry<N>> ancestorStack = new ArrayDeque<>();
   protected boolean shouldVisitSubtree;
 
-  // result parameters
+  // result variables
   protected N nextMatchedNode;
   protected int patternIndexOfMatchedNode;
   protected int lastMultiLevelWildcardIndexOfMatchedNode;
