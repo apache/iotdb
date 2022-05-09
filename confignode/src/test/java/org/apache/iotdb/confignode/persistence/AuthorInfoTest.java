@@ -73,6 +73,7 @@ public class AuthorInfoTest {
     createUserReq.setUserName("testUser");
     createUserReq.setPassword("testPassword");
     status = authorInfo.authorNonQuery(createUserReq);
+    Assert.assertNull(status.message);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
     Assert.assertEquals(1, authorInfo.executeListRole().getPermissionInfo().get("role").size());
     Assert.assertEquals(2, authorInfo.executeListUser().getPermissionInfo().get("user").size());
