@@ -68,6 +68,7 @@ public class AuthorInfoTest {
     AuthorReq createRoleReq = new AuthorReq(ConfigRequestType.CreateRole);
     createRoleReq.setRoleName("testRole");
     TSStatus status = authorInfo.authorNonQuery(createRoleReq);
+    Assert.assertNull(status.message);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
     AuthorReq createUserReq = new AuthorReq(ConfigRequestType.CreateUser);
     createUserReq.setUserName("testUser");

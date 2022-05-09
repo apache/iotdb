@@ -171,6 +171,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void createRole(String roleName) throws AuthException {
     if (!roleManager.createRole(roleName)) {
+      logger.error("Role {} already exists", roleName);
       throw new AuthException(String.format("Role %s already exists", roleName));
     }
   }
