@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.wal.WALManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +35,11 @@ public class IoTDBShutdownHook extends Thread {
     CompactionTaskManager.getInstance().stop();
     // close rocksdb if possible to avoid lose data
     IoTDB.configManager.clear();
+
+    // == flush data to Tsfile and remove WAL log files
+    StorageEngine.getInstance().syncCloseAllProcessor();
+    WALManager.getInstance().deleteOutdatedWALFiles();
+
     if (logger.isInfoEnabled()) {
       logger.info(
           "IoTDB exits. Jvm memory usage: {}",

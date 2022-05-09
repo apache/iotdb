@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -56,9 +60,6 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Properties;
 
 public class IoTDBDescriptor {
@@ -66,6 +67,8 @@ public class IoTDBDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
   private final IoTDBConfig conf = new IoTDBConfig();
+
+  private final CommonConfig commonConfig = CommonConfig.getInstance();
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -126,9 +129,17 @@ public class IoTDBDescriptor {
     }
   }
 
+  /** init common config according to iotdb config */
+  private void initCommonConfig() {
+    // first init the user and role folder in common config
+    commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
+    commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
+  }
+
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
+    initCommonConfig();
     URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
@@ -225,11 +236,6 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))));
-
-      conf.setEnableLastCache(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
 
       initMemoryAllocate(properties);
 
@@ -760,16 +766,20 @@ public class IoTDBDescriptor {
       conf.setSchemaEngineMode(
           properties.getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode())));
 
+      conf.setEnableLastCache(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
+
+      if (conf.getSchemaEngineMode().equals("Rocksdb_based")) {
+        conf.setEnableLastCache(false);
+      }
+
       conf.setCachedMNodeSizeInSchemaFileMode(
           Integer.parseInt(
               properties.getProperty(
                   "cached_mnode_size_in_schema_file_mode",
                   String.valueOf(conf.getCachedMNodeSizeInSchemaFileMode()))));
-
-      conf.setMaxSchemaFlushThreadNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_schema_flush_thread", String.valueOf(conf.getMaxSchemaFlushThreadNum()))));
 
       conf.setMinimumSegmentInSchemaFile(
           Short.parseShort(
@@ -786,11 +796,6 @@ public class IoTDBDescriptor {
       // mqtt
       loadMqttProps(properties);
 
-      conf.setAuthorizerProvider(
-          properties.getProperty("authorizer_provider_class", conf.getAuthorizerProvider()));
-      // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-      conf.setOpenIdProviderUrl(properties.getProperty("openID_url", conf.getOpenIdProviderUrl()));
-
       conf.setEnablePartition(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -800,10 +805,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "partition_interval", String.valueOf(conf.getPartitionInterval()))));
-
-      conf.setAdminName(properties.getProperty("admin_name", conf.getAdminName()));
-
-      conf.setAdminPassword(properties.getProperty("admin_password", conf.getAdminPassword()));
 
       conf.setSelectIntoInsertTabletPlanRowLimit(
           Integer.parseInt(
@@ -816,15 +817,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
-
-      conf.setEncryptDecryptProvider(
-          properties.getProperty(
-              "iotdb_server_encrypt_decrypt_provider", conf.getEncryptDecryptProvider()));
-
-      conf.setEncryptDecryptProviderParameter(
-          properties.getProperty(
-              "iotdb_server_encrypt_decrypt_provider_parameter",
-              conf.getEncryptDecryptProviderParameter()));
 
       conf.setDataNodeSchemaCacheSize(
           Integer.parseInt(
@@ -887,6 +879,27 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
+      commonConfig.setAuthorizerProvider(
+          properties.getProperty(
+              "authorizer_provider_class", commonConfig.getAuthorizerProvider()));
+      // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
+      commonConfig.setOpenIdProviderUrl(
+          properties.getProperty("openID_url", commonConfig.getOpenIdProviderUrl()));
+      commonConfig.setAdminName(properties.getProperty("admin_name", commonConfig.getAdminName()));
+
+      commonConfig.setAdminPassword(
+          properties.getProperty("admin_password", commonConfig.getAdminPassword()));
+      commonConfig.setEncryptDecryptProvider(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider", commonConfig.getEncryptDecryptProvider()));
+
+      commonConfig.setEncryptDecryptProviderParameter(
+          properties.getProperty(
+              "iotdb_server_encrypt_decrypt_provider_parameter",
+              commonConfig.getEncryptDecryptProviderParameter()));
+      commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
+      commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
+
       // timed flush memtable
       loadTimedService(properties);
 
@@ -934,27 +947,19 @@ public class IoTDBDescriptor {
       conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
     }
 
-    List<String> newConfigNodeUrls = new ArrayList<>();
-    for (String nodeUrl : conf.getConfigNodeUrls()) {
-      String[] splits = nodeUrl.split(":");
-      if (splits.length != 2) {
-        throw new BadNodeUrlFormatException(nodeUrl);
-      }
-      String nodeIP = splits[0];
-      boolean isInvalidNodeIp = InetAddresses.isInetAddress(nodeIP);
+    for (TEndPoint configNode : conf.getConfigNodeList()) {
+      boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
       if (!isInvalidNodeIp) {
-        String newNodeIP = InetAddress.getByName(nodeIP).getHostAddress();
-        newConfigNodeUrls.add(newNodeIP + ":" + splits[1]);
-      } else {
-        newConfigNodeUrls.add(nodeUrl);
+        String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
+        configNode.setIp(newNodeIP);
       }
     }
-    conf.setConfigNodeUrls(newConfigNodeUrls);
+
     logger.debug(
         "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
         conf.getRpcAddress(),
         conf.getInternalIp(),
-        conf.getConfigNodeUrls());
+        conf.getConfigNodeList());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1563,8 +1568,12 @@ public class IoTDBDescriptor {
   public void loadClusterProps(Properties properties) {
     String configNodeUrls = properties.getProperty("config_nodes");
     if (configNodeUrls != null) {
-      List<String> urlList = getNodeUrlList(configNodeUrls);
-      conf.setConfigNodeUrls(urlList);
+      try {
+        conf.setConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+      } catch (BadNodeUrlException e) {
+        logger.error(
+            "Config nodes are set in wrong format, please set them like 0.0.0.0:22277,0.0.0.0:22281");
+      }
     }
 
     conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
@@ -1621,28 +1630,6 @@ public class IoTDBDescriptor {
       default:
         return conf.getDefaultTextEncoding();
     }
-  }
-
-  /**
-   * Split the node urls as one list.
-   *
-   * @param nodeUrls the config node urls.
-   * @return the node urls as a list.
-   */
-  public static List<String> getNodeUrlList(String nodeUrls) {
-    if (nodeUrls == null) {
-      return Collections.emptyList();
-    }
-    List<String> urlList = new ArrayList<>();
-    String[] split = nodeUrls.split(",");
-    for (String nodeUrl : split) {
-      nodeUrl = nodeUrl.trim();
-      if ("".equals(nodeUrl)) {
-        continue;
-      }
-      urlList.add(nodeUrl);
-    }
-    return urlList;
   }
 
   // These configurations are received from config node when registering

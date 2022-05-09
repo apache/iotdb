@@ -18,23 +18,42 @@
  */
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.AuthorizerManager;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.db.client.ConfigNodeClient;
+import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.rpc.ConfigNodeConnectionException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
+
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
 public class AuthorityChecker {
 
-  private static final String SUPER_USER = IoTDBDescriptor.getInstance().getConfig().getAdminName();
+  private static final String SUPER_USER = CommonConfig.getInstance().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
+
+  private static AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  private static SessionManager sessionManager = SessionManager.getInstance();
 
   private AuthorityChecker() {}
 
@@ -79,21 +98,222 @@ public class AuthorityChecker {
     return true;
   }
 
+  /**
+   * check permission(datanode to confignode).
+   *
+   * @param username username
+   * @param paths paths in List structure
+   * @param type Statement Type
+   * @param targetUser target user
+   * @return if permission-check is passed
+   */
+  public static boolean checkPermission(
+      String username, List<? extends PartialPath> paths, StatementType type, String targetUser) {
+    if (SUPER_USER.equals(username)) {
+      return true;
+    }
+
+    int permission = translateToPermissionId(type);
+    if (permission == -1) {
+      return false;
+    } else if (permission == PrivilegeType.MODIFY_PASSWORD.ordinal()
+        && username.equals(targetUser)) {
+      // a user can modify his own password
+      return true;
+    }
+
+    List<String> allPath = new ArrayList<>();
+    if (paths != null && !paths.isEmpty()) {
+      for (PartialPath path : paths) {
+        allPath.add(path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath());
+      }
+    } else {
+      allPath.add(IoTDBConstant.PATH_ROOT);
+    }
+
+    TSStatus status = checkPath(username, allPath, permission);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   private static boolean checkOnePath(String username, PartialPath path, int permission)
       throws AuthException {
-    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     try {
       String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
-      if (authorizer.checkUserPrivileges(username, fullPath, permission)) {
+      if (authorizerManager.checkUserPrivileges(username, fullPath, permission)) {
         return true;
       }
     } catch (AuthException e) {
       logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
+      throw new AuthException(e);
     }
     return false;
   }
 
+  /** Check the user */
+  public static TSStatus checkUser(String username, String password) {
+    TLoginReq req = new TLoginReq(username, password);
+    TSStatus status = null;
+    ConfigNodeClient configNodeClient = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      status = configNodeClient.login(req);
+    } catch (IoTDBConnectionException e) {
+      throw new ConfigNodeConnectionException("Couldn't connect config node");
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+      if (status == null) {
+        status = new TSStatus();
+      }
+    }
+    return status;
+  }
+
+  /** Check whether specific Session has the authorization to given plan. */
+  public static TSStatus checkAuthority(Statement statement, long sessionId) {
+    try {
+      if (!checkAuthorization(statement, sessionManager.getUsername(sessionId))) {
+        return RpcUtils.getStatus(
+            TSStatusCode.NO_PERMISSION_ERROR,
+            "No permissions for this operation " + statement.getType());
+      }
+    } catch (AuthException e) {
+      logger.warn("meet error while checking authorization.", e);
+      return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CHECK_AUTHORITY, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  /** Check whether specific user has the authorization to given plan. */
+  public static boolean checkAuthorization(Statement statement, String username)
+      throws AuthException {
+    if (!statement.isAuthenticationRequired()) {
+      return true;
+    }
+    String targetUser = null;
+    if (statement instanceof AuthorStatement) {
+      targetUser = ((AuthorStatement) statement).getUserName();
+    }
+    return AuthorityChecker.checkPermission(
+        username, statement.getPaths(), statement.getType(), targetUser);
+  }
+
+  public static TSStatus checkPath(String username, List<String> allPath, int permission) {
+    TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
+    ConfigNodeClient configNodeClient = null;
+    TSStatus status = null;
+    try {
+      configNodeClient = new ConfigNodeClient();
+      // Send request to some API server
+      status = configNodeClient.checkUserPrivileges(req);
+    } catch (IoTDBConnectionException e) {
+      throw new ConfigNodeConnectionException("Couldn't connect config node");
+    } finally {
+      if (configNodeClient != null) {
+        configNodeClient.close();
+      }
+      if (status == null) {
+        status = new TSStatus();
+      }
+    }
+    return status;
+  }
+
   private static int translateToPermissionId(Operator.OperatorType type) {
+    switch (type) {
+      case GRANT_ROLE_PRIVILEGE:
+        return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();
+      case CREATE_ROLE:
+        return PrivilegeType.CREATE_ROLE.ordinal();
+      case CREATE_USER:
+        return PrivilegeType.CREATE_USER.ordinal();
+      case MODIFY_PASSWORD:
+        return PrivilegeType.MODIFY_PASSWORD.ordinal();
+      case GRANT_USER_PRIVILEGE:
+        return PrivilegeType.GRANT_USER_PRIVILEGE.ordinal();
+      case REVOKE_ROLE_PRIVILEGE:
+        return PrivilegeType.REVOKE_ROLE_PRIVILEGE.ordinal();
+      case REVOKE_USER_PRIVILEGE:
+        return PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal();
+      case GRANT_USER_ROLE:
+        return PrivilegeType.GRANT_USER_ROLE.ordinal();
+      case DELETE_USER:
+        return PrivilegeType.DELETE_USER.ordinal();
+      case DELETE_ROLE:
+        return PrivilegeType.DELETE_ROLE.ordinal();
+      case REVOKE_USER_ROLE:
+        return PrivilegeType.REVOKE_USER_ROLE.ordinal();
+      case SET_STORAGE_GROUP:
+        return PrivilegeType.SET_STORAGE_GROUP.ordinal();
+      case DELETE_STORAGE_GROUP:
+        return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
+      case CREATE_TIMESERIES:
+      case CREATE_ALIGNED_TIMESERIES:
+        return PrivilegeType.CREATE_TIMESERIES.ordinal();
+      case DELETE_TIMESERIES:
+      case DELETE:
+      case DROP_INDEX:
+        return PrivilegeType.DELETE_TIMESERIES.ordinal();
+      case SHOW:
+      case QUERY:
+      case GROUP_BY_TIME:
+      case QUERY_INDEX:
+      case AGGREGATION:
+      case UDAF:
+      case UDTF:
+      case LAST:
+      case FILL:
+      case GROUP_BY_FILL:
+      case SELECT_INTO:
+        return PrivilegeType.READ_TIMESERIES.ordinal();
+      case INSERT:
+      case LOAD_DATA:
+      case CREATE_INDEX:
+      case BATCH_INSERT:
+      case BATCH_INSERT_ONE_DEVICE:
+      case BATCH_INSERT_ROWS:
+      case MULTI_BATCH_INSERT:
+        return PrivilegeType.INSERT_TIMESERIES.ordinal();
+      case LIST_ROLE:
+      case LIST_ROLE_USERS:
+      case LIST_ROLE_PRIVILEGE:
+        return PrivilegeType.LIST_ROLE.ordinal();
+      case LIST_USER:
+      case LIST_USER_ROLES:
+      case LIST_USER_PRIVILEGE:
+        return PrivilegeType.LIST_USER.ordinal();
+      case CREATE_FUNCTION:
+        return PrivilegeType.CREATE_FUNCTION.ordinal();
+      case DROP_FUNCTION:
+        return PrivilegeType.DROP_FUNCTION.ordinal();
+      case CREATE_TRIGGER:
+        return PrivilegeType.CREATE_TRIGGER.ordinal();
+      case DROP_TRIGGER:
+        return PrivilegeType.DROP_TRIGGER.ordinal();
+      case START_TRIGGER:
+        return PrivilegeType.START_TRIGGER.ordinal();
+      case STOP_TRIGGER:
+        return PrivilegeType.STOP_TRIGGER.ordinal();
+      case CREATE_CONTINUOUS_QUERY:
+        return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
+      case DROP_CONTINUOUS_QUERY:
+        return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
+      default:
+        logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
+        return -1;
+    }
+  }
+
+  private static int translateToPermissionId(StatementType type) {
     switch (type) {
       case GRANT_ROLE_PRIVILEGE:
         return PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal();

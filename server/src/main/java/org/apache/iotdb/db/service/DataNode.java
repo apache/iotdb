@@ -22,18 +22,18 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -43,8 +43,8 @@ import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.mpp.buffer.DataBlockService;
-import org.apache.iotdb.db.mpp.schedule.DriverScheduler;
+import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
+import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -64,6 +64,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -98,7 +100,7 @@ public class DataNode implements DataNodeMBean {
   }
 
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
-    IoTDBConfigCheck.getInstance().checkConfig();
+    IoTDBStartCheck.getInstance().checkConfig();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     // TODO: check configuration for data node
 
@@ -134,16 +136,11 @@ public class DataNode implements DataNodeMBean {
 
   public void joinCluster() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
-    ConfigNodeClient configNodeClient = null;
-    try {
-      configNodeClient = new ConfigNodeClient();
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
-      throw new StartupException(e.getMessage());
-    }
 
     while (retry > 0) {
       logger.info("start joining the cluster.");
       try {
+        ConfigNodeClient configNodeClient = new ConfigNodeClient();
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
         TDataNodeLocation location = new TDataNodeLocation();
@@ -158,21 +155,35 @@ public class DataNode implements DataNodeMBean {
         req.setDataNodeLocation(location);
 
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
+
+        // store config node lists from resp
+        List<TEndPoint> configNodeList = new ArrayList<>();
+        for (TConfigNodeLocation configNodeLocation : dataNodeRegisterResp.getConfigNodeList()) {
+          configNodeList.add(configNodeLocation.getInternalEndPoint());
+        }
+        config.setConfigNodeList(configNodeList);
+        IoTDBStartCheck.getInstance().serializeConfigNodeList(configNodeList);
+
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
+          logger.info(dataNodeRegisterResp.getStatus().getMessage());
           int dataNodeID = dataNodeRegisterResp.getDataNodeId();
           if (dataNodeID != config.getDataNodeId()) {
-            IoTDBConfigCheck.getInstance().serializeDataNodeId(dataNodeID);
+            IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
             config.setDataNodeId(dataNodeID);
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
           logger.info("Joined the cluster successfully");
           return;
         }
-      } catch (IOException | IoTDBConnectionException e) {
+      } catch (IOException e) {
         logger.warn("Cannot join the cluster, because: {}", e.getMessage());
+      } catch (IoTDBConnectionException e) {
+        // read config nodes from system.properties
+        logger.warn("Cannot join the cluster, because: {}", e.getMessage());
+        IoTDBStartCheck.getInstance().loadConfigNodeList();
       }
 
       try {

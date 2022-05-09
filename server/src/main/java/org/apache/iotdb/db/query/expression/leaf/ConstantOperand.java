@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.query.expression.leaf;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
@@ -61,6 +59,10 @@ public class ConstantOperand extends LeafOperand {
     return dataType;
   }
 
+  public String getValueString() {
+    return valueString;
+  }
+
   public boolean isNegativeNumber() {
     return !dataType.equals(TSDataType.TEXT)
         && !dataType.equals(TSDataType.BOOLEAN)
@@ -73,21 +75,7 @@ public class ConstantOperand extends LeafOperand {
   }
 
   @Override
-  public void concat(
-      List<PartialPath> prefixPaths,
-      List<Expression> resultExpressions,
-      PathPatternTree patternTree) {
-    resultExpressions.add(this);
-  }
-
-  @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    resultExpressions.add(this);
-  }
-
-  @Override
-  public void removeWildcards(
-      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions) {
     resultExpressions.add(this);
   }
 

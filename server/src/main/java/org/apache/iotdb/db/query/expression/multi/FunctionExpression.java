@@ -20,12 +20,9 @@
 package org.apache.iotdb.db.query.expression.multi;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -42,10 +39,10 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
-import org.apache.iotdb.db.query.udf.core.transformer.TransparentTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryRowTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryRowWindowTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.unary.TransparentTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -191,28 +188,6 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public void concat(
-      List<PartialPath> prefixPaths,
-      List<Expression> resultExpressions,
-      PathPatternTree patternTree) {
-    List<List<Expression>> resultExpressionsForRecursionList = new ArrayList<>();
-
-    for (Expression suffixExpression : expressions) {
-      List<Expression> resultExpressionsForRecursion = new ArrayList<>();
-      suffixExpression.concat(prefixPaths, resultExpressionsForRecursion, patternTree);
-      resultExpressionsForRecursionList.add(resultExpressionsForRecursion);
-    }
-
-    List<List<Expression>> functionExpressions = new ArrayList<>();
-    ConcatPathOptimizer.cartesianProduct(
-        resultExpressionsForRecursionList, functionExpressions, 0, new ArrayList<>());
-    for (List<Expression> functionExpression : functionExpressions) {
-      resultExpressions.add(
-          new FunctionExpression(functionName, functionAttributes, functionExpression));
-    }
-  }
-
-  @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     List<List<Expression>> resultExpressionsForRecursionList = new ArrayList<>();
 
@@ -226,16 +201,6 @@ public class FunctionExpression extends Expression {
     ConcatPathOptimizer.cartesianProduct(
         resultExpressionsForRecursionList, functionExpressions, 0, new ArrayList<>());
     for (List<Expression> functionExpression : functionExpressions) {
-      resultExpressions.add(
-          new FunctionExpression(functionName, functionAttributes, functionExpression));
-    }
-  }
-
-  @Override
-  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws StatementAnalyzeException {
-    for (List<Expression> functionExpression :
-        wildcardsRemover.removeWildcardsInExpressions(expressions)) {
       resultExpressions.add(
           new FunctionExpression(functionName, functionAttributes, functionExpression));
     }
@@ -304,7 +269,7 @@ public class FunctionExpression extends Expression {
       if (isBuiltInAggregationFunctionExpression) {
         transformer =
             new TransparentTransformer(
-                rawTimeSeriesInputLayer.constructPointReader(inputColumnIndex));
+                rawTimeSeriesInputLayer.constructValuePointReader(inputColumnIndex));
       } else {
         IntermediateLayer udfInputIntermediateLayer =
             constructUdfInputIntermediateLayer(

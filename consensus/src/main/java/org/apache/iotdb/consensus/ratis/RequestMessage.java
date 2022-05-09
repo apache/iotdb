@@ -23,14 +23,10 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.apache.ratis.protocol.Message;
 import org.apache.ratis.thirdparty.com.google.protobuf.ByteString;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 
 public class RequestMessage implements Message {
-
-  private final Logger logger = LoggerFactory.getLogger(RequestMessage.class);
 
   private final IConsensusRequest actualRequest;
   private volatile ByteString serializedContent;

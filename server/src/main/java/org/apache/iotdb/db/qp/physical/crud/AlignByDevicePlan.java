@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -124,7 +124,7 @@ public class AlignByDevicePlan extends QueryPlan {
           deduplicatedAggregations.add(this.aggregations.get(i));
         }
         deviceToPathIndex
-            .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
+            .computeIfAbsent(path.getDeviceIdString(), k -> new ArrayList<>())
             .add(deduplicatePaths.size() - 1);
       }
     }

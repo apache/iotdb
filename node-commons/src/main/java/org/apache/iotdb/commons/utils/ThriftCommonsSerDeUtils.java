@@ -53,7 +53,7 @@ public class ThriftCommonsSerDeUtils {
     return new TBinaryProtocol(transport);
   }
 
-  public static void writeTEndPoint(TEndPoint endPoint, ByteBuffer buffer) {
+  public static void serializeTEndPoint(TEndPoint endPoint, ByteBuffer buffer) {
     try {
       endPoint.write(generateWriteProtocol(buffer));
     } catch (TException e) {
@@ -61,7 +61,7 @@ public class ThriftCommonsSerDeUtils {
     }
   }
 
-  public static TEndPoint readTEndPoint(ByteBuffer buffer) {
+  public static TEndPoint deserializeTEndPoint(ByteBuffer buffer) {
     TEndPoint endPoint = new TEndPoint();
     try {
       endPoint.read(generateReadProtocol(buffer));
@@ -71,7 +71,8 @@ public class ThriftCommonsSerDeUtils {
     return endPoint;
   }
 
-  public static void writeTDataNodeLocation(TDataNodeLocation dataNodeLocation, ByteBuffer buffer) {
+  public static void serializeTDataNodeLocation(
+      TDataNodeLocation dataNodeLocation, ByteBuffer buffer) {
     try {
       dataNodeLocation.write(generateWriteProtocol(buffer));
     } catch (TException e) {
@@ -79,7 +80,7 @@ public class ThriftCommonsSerDeUtils {
     }
   }
 
-  public static TDataNodeLocation readTDataNodeLocation(ByteBuffer buffer) {
+  public static TDataNodeLocation deserializeTDataNodeLocation(ByteBuffer buffer) {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     try {
       dataNodeLocation.read(generateReadProtocol(buffer));
@@ -89,7 +90,7 @@ public class ThriftCommonsSerDeUtils {
     return dataNodeLocation;
   }
 
-  public static void writeTSeriesPartitionSlot(
+  public static void serializeTSeriesPartitionSlot(
       TSeriesPartitionSlot seriesPartitionSlot, ByteBuffer buffer) {
     try {
       seriesPartitionSlot.write(generateWriteProtocol(buffer));
@@ -98,7 +99,7 @@ public class ThriftCommonsSerDeUtils {
     }
   }
 
-  public static TSeriesPartitionSlot readTSeriesPartitionSlot(ByteBuffer buffer) {
+  public static TSeriesPartitionSlot deserializeTSeriesPartitionSlot(ByteBuffer buffer) {
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot();
     try {
       seriesPartitionSlot.read(generateReadProtocol(buffer));
@@ -108,7 +109,7 @@ public class ThriftCommonsSerDeUtils {
     return seriesPartitionSlot;
   }
 
-  public static void writeTTimePartitionSlot(
+  public static void serializeTTimePartitionSlot(
       TTimePartitionSlot timePartitionSlot, ByteBuffer buffer) {
     try {
       timePartitionSlot.write(generateWriteProtocol(buffer));
@@ -117,7 +118,7 @@ public class ThriftCommonsSerDeUtils {
     }
   }
 
-  public static TTimePartitionSlot readTTimePartitionSlot(ByteBuffer buffer) {
+  public static TTimePartitionSlot deserializeTTimePartitionSlot(ByteBuffer buffer) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
     try {
       timePartitionSlot.read(generateReadProtocol(buffer));
@@ -127,7 +128,8 @@ public class ThriftCommonsSerDeUtils {
     return timePartitionSlot;
   }
 
-  public static void writeTConsensusGroupId(TConsensusGroupId consensusGroupId, ByteBuffer buffer) {
+  public static void serializeTConsensusGroupId(
+      TConsensusGroupId consensusGroupId, ByteBuffer buffer) {
     try {
       consensusGroupId.write(generateWriteProtocol(buffer));
     } catch (TException e) {
@@ -135,7 +137,7 @@ public class ThriftCommonsSerDeUtils {
     }
   }
 
-  public static TConsensusGroupId readTConsensusGroupId(ByteBuffer buffer) {
+  public static TConsensusGroupId deserializeTConsensusGroupId(ByteBuffer buffer) {
     TConsensusGroupId consensusGroupId = new TConsensusGroupId();
     try {
       consensusGroupId.read(generateReadProtocol(buffer));
@@ -145,7 +147,8 @@ public class ThriftCommonsSerDeUtils {
     return consensusGroupId;
   }
 
-  public static void writeTRegionReplicaSet(TRegionReplicaSet regionReplicaSet, ByteBuffer buffer) {
+  public static void serializeTRegionReplicaSet(
+      TRegionReplicaSet regionReplicaSet, ByteBuffer buffer) {
     try {
       regionReplicaSet.write(generateWriteProtocol(buffer));
     } catch (TException e) {
@@ -153,7 +156,7 @@ public class ThriftCommonsSerDeUtils {
     }
   }
 
-  public static TRegionReplicaSet readTRegionReplicaSet(ByteBuffer buffer) {
+  public static TRegionReplicaSet deserializeTRegionReplicaSet(ByteBuffer buffer) {
     TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
     try {
       regionReplicaSet.read(generateReadProtocol(buffer));

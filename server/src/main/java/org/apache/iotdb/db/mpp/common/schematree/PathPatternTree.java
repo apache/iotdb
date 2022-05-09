@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.mpp.common.schematree;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -37,6 +37,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class PathPatternTree {
 
@@ -54,10 +56,10 @@ public class PathPatternTree {
     appendPaths(devicePath, Arrays.asList(measurements));
   }
 
-  public PathPatternTree(PartialPath deivcePath, List<String> measurements) {
+  public PathPatternTree(PartialPath devicePath, List<String> measurements) {
     this.root = new PathPatternNode(SQLConstant.ROOT);
     this.pathList = new ArrayList<>();
-    appendPaths(deivcePath, measurements);
+    appendPaths(devicePath, measurements);
   }
 
   public PathPatternTree(Map<PartialPath, List<String>> deviceToMeasurementsMap) {
@@ -65,6 +67,14 @@ public class PathPatternTree {
     this.pathList = new ArrayList<>();
     for (Map.Entry<PartialPath, List<String>> entry : deviceToMeasurementsMap.entrySet()) {
       appendPaths(entry.getKey(), entry.getValue());
+    }
+  }
+
+  public PathPatternTree(List<PartialPath> pathList) {
+    this.root = new PathPatternNode(SQLConstant.ROOT);
+    this.pathList = new ArrayList<>();
+    for (PartialPath path : pathList) {
+      appendPath(path);
     }
   }
 
@@ -162,7 +172,7 @@ public class PathPatternTree {
     pathList.clear();
   }
 
-  public void searchAndConstruct(PathPatternNode curNode, String[] pathNodes, int pos) {
+  private void searchAndConstruct(PathPatternNode curNode, String[] pathNodes, int pos) {
     if (pos == pathNodes.length - 1) {
       return;
     }
@@ -241,6 +251,20 @@ public class PathPatternTree {
     return new PartialPath(nodeList.toArray(new String[0]));
   }
 
+  public PathPatternTree extractInvolvedPartByPrefix(PartialPath prefixPath) {
+    if (pathList.isEmpty()) {
+      pathList = splitToPathList();
+    }
+    PartialPath pattern = prefixPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
+    List<PartialPath> involvedPath = new ArrayList<>();
+    for (PartialPath path : pathList) {
+      if (pattern.matchFullPath(path) || path.matchFullPath(pattern)) {
+        involvedPath.add(path);
+      }
+    }
+    return new PathPatternTree(involvedPath);
+  }
+
   @TestOnly
   public boolean equalWith(PathPatternTree that) {
     if (this == that) {
@@ -250,5 +274,10 @@ public class PathPatternTree {
       return false;
     }
     return this.getRoot().equalWith(that.getRoot());
+  }
+
+  public boolean isEmpty() {
+    return (root.getChildren() == null || root.getChildren().isEmpty())
+        && (pathList == null || pathList.isEmpty());
   }
 }

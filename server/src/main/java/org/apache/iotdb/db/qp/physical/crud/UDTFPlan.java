@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -71,7 +72,8 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
       Integer originalIndex = indexedPath.right;
 
       String columnForReader = originalPath.getFullPath();
-      if (!columnForReaderSet.contains(columnForReader)) {
+      if (!columnForReaderSet.contains(columnForReader)
+          && !TimestampOperand.TIMESTAMP_PARTIAL_PATH.getFullPath().equals(columnForReader)) {
         addDeduplicatedPaths(originalPath);
         pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         columnForReaderSet.add(columnForReader);

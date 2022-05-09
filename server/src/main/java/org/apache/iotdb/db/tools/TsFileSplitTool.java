@@ -118,7 +118,7 @@ public class TsFileSplitTool {
 
       while (pathIterator.hasNext()) {
         for (Path path : pathIterator.next()) {
-          String deviceId = path.getDevice();
+          String deviceId = path.getDeviceIdString();
           if (devices.add(deviceId)) {
             if (writer != null && writer.getPos() < targetSplitFileSize) {
               writer.endChunkGroup();

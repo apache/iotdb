@@ -23,27 +23,101 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.transformer.unary.RegularTransformer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.regex.Pattern;
 
 public class LikeExpression extends UnaryExpression {
 
-  private final String pattern;
+  private final String patternString;
+  private final Pattern pattern;
 
-  public LikeExpression(Expression expression, String pattern) {
+  public LikeExpression(Expression expression, String patternString) {
     super(expression);
+    this.patternString = patternString;
+    pattern = compile();
+  }
+
+  public LikeExpression(Expression expression, String patternString, Pattern pattern) {
+    super(expression);
+    this.patternString = patternString;
     this.pattern = pattern;
   }
 
   public LikeExpression(ByteBuffer byteBuffer) {
     super(Expression.deserialize(byteBuffer));
-    pattern = ReadWriteIOUtils.readString(byteBuffer);
+    patternString = ReadWriteIOUtils.readString(byteBuffer);
+    pattern = compile();
+  }
+
+  public String getPatternString() {
+    return patternString;
+  }
+
+  public Pattern getPattern() {
+    return pattern;
+  }
+
+  /**
+   * The main idea of this part comes from
+   * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
+   */
+  private Pattern compile() {
+    String unescapeValue = unescapeString(patternString);
+    String specialRegexString = ".^$*+?{}[]|()";
+    StringBuilder patternBuilder = new StringBuilder();
+    patternBuilder.append("^");
+    for (int i = 0; i < unescapeValue.length(); i++) {
+      String ch = String.valueOf(unescapeValue.charAt(i));
+      if (specialRegexString.contains(ch)) {
+        ch = "\\" + unescapeValue.charAt(i);
+      }
+      if (i == 0
+          || !"\\".equals(String.valueOf(unescapeValue.charAt(i - 1)))
+          || i >= 2
+              && "\\\\"
+                  .equals(
+                      patternBuilder.substring(
+                          patternBuilder.length() - 2, patternBuilder.length()))) {
+        patternBuilder.append(ch.replace("%", ".*?").replace("_", "."));
+      } else {
+        patternBuilder.append(ch);
+      }
+    }
+    patternBuilder.append("$");
+    return Pattern.compile(patternBuilder.toString());
+  }
+
+  /**
+   * This Method is for un-escaping strings except '\' before special string '%', '_', '\', because
+   * we need to use '\' to judge whether to replace this to regexp string
+   */
+  private String unescapeString(String value) {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (int i = 0; i < value.length(); i++) {
+      String ch = String.valueOf(value.charAt(i));
+      if ("\\".equals(ch)) {
+        if (i < value.length() - 1) {
+          String nextChar = String.valueOf(value.charAt(i + 1));
+          if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
+            stringBuilder.append(ch);
+          }
+          if ("\\".equals(nextChar)) {
+            i++;
+          }
+        }
+      } else {
+        stringBuilder.append(ch);
+      }
+    }
+    return stringBuilder.toString();
   }
 
   @Override
   protected String getExpressionStringInternal() {
-    return expression + " LIKE " + pattern;
+    return expression + " LIKE '" + pattern + "'";
   }
 
   @Override
@@ -53,17 +127,17 @@ public class LikeExpression extends UnaryExpression {
 
   @Override
   protected Transformer constructTransformer(LayerPointReader pointReader) {
-    throw new UnsupportedOperationException();
+    return new RegularTransformer(pointReader, pattern);
   }
 
   @Override
   protected Expression constructExpression(Expression childExpression) {
-    return new LikeExpression(childExpression, pattern);
+    return new LikeExpression(childExpression, patternString, pattern);
   }
 
   @Override
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
-    ReadWriteIOUtils.write(pattern, byteBuffer);
+    ReadWriteIOUtils.write(patternString, byteBuffer);
   }
 }
