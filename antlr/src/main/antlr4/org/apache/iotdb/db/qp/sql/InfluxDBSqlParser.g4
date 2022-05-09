@@ -35,7 +35,7 @@ selectClause
    ;
 
 resultColumn
-   : expression (AS identifier)?
+   : expression (AS IDENTIFIER)?
    ;
 
 expression
@@ -71,18 +71,10 @@ fromClause
 
 nodeName
     : STAR
-    | ID
-    | QUOTED_ID
+    | IDENTIFIER
     | LAST
     | COUNT
     | DEVICE
-    ;
-
-// Identifier
-
-identifier
-    : ID
-    | QUOTED_ID
     ;
 
 

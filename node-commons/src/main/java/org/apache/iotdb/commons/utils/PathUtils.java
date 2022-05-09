@@ -43,7 +43,7 @@ public class PathUtils {
       return new String[] {path};
     }
     if ("".equals(path)) {
-      return new String[] {""};
+      return new String[] {};
     }
     try {
       return PathNodesGenerator.splitPathToNodes(path);

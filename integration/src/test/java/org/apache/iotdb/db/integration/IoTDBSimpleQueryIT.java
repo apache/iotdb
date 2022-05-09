@@ -1164,7 +1164,7 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.`group-with-hyphen`");
+      statement.execute("SET STORAGE GROUP TO root.group_with_hyphen");
     } catch (SQLException e) {
       fail();
     }
@@ -1180,7 +1180,7 @@ public class IoTDBSimpleQueryIT {
             for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
               builder.append(resultSet.getString(i));
             }
-            Assert.assertEquals(builder.toString(), "root.group-with-hyphen");
+            Assert.assertEquals(builder.toString(), "root.group_with_hyphen");
           }
         }
       }

@@ -70,7 +70,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath(String device, String measurement) throws IllegalPathException {
     if ("".equals(device) && "".equals(measurement)) {
       this.fullPath = device;
-      this.nodes = new String[] {""};
+      this.nodes = new String[] {};
       return;
     }
     String fullPath;

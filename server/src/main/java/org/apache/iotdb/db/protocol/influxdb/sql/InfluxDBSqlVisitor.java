@@ -157,7 +157,7 @@ public class InfluxDBSqlVisitor extends InfluxDBSqlParserBaseVisitor<Operator> {
       InfluxDBSqlParser.ResultColumnContext resultColumnContext) {
     return new ResultColumn(
         parseExpression(resultColumnContext.expression()),
-        resultColumnContext.AS() == null ? null : resultColumnContext.identifier().getText());
+        resultColumnContext.AS() == null ? null : resultColumnContext.IDENTIFIER().getText());
   }
 
   private Expression parseExpression(InfluxDBSqlParser.ExpressionContext context) {

@@ -3016,9 +3016,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private String parseIdentifier(String src) {
     if (2 <= src.length() && src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-      String unWrapped = src.substring(1, src.length() - 1);
+      String unescaped = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
       // replace `` with `
-      return unWrapped.replace("``", "`");
+      return unescaped.replace("``", "`");
     }
     return src;
   }
