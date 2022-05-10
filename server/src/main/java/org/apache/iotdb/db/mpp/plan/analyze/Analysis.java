@@ -57,7 +57,7 @@ public class Analysis {
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> sourceExpressions;
 
-  //
+  // expression of output column to be calculated
   private Set<Expression> selectExpressions;
 
   // all aggregations that need to be calculated
@@ -77,12 +77,13 @@ public class Analysis {
 
   private Expression queryFilter;
 
+  // map from device name to query filter under this device (used in ALIGN BY DEVICE)
   private Map<String, Expression> deviceToQueryFilter;
 
   // indicate is there a value filter
   private boolean hasValueFilter = false;
 
-  // a global time filter used in `initQueryDataSource`
+  // a global time filter used in `initQueryDataSource` and filter push down
   private Filter globalTimeFilter;
 
   // header of result dataset
