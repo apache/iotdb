@@ -19,14 +19,11 @@
 
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -65,23 +62,14 @@ public class AuthorInfoTest {
 
   @Test
   public void takeSnapshot() throws TException, IOException, AuthException {
-    AuthorReq createRoleReq = new AuthorReq(ConfigRequestType.CreateRole);
-    createRoleReq.setRoleName("testRole");
-    TSStatus status = authorInfo.authorNonQuery(createRoleReq);
-    Assert.assertNull(status.message);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-    AuthorReq createUserReq = new AuthorReq(ConfigRequestType.CreateUser);
-    createUserReq.setUserName("testUser");
-    createUserReq.setPassword("testPassword");
-    status = authorInfo.authorNonQuery(createUserReq);
-    Assert.assertNull(status.message);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-    Assert.assertEquals(1, authorInfo.executeListRole().getPermissionInfo().get("role").size());
-    Assert.assertEquals(2, authorInfo.executeListUser().getPermissionInfo().get("user").size());
+    AuthorizerManager.getInstance().createRole("testRole");
+    AuthorizerManager.getInstance().createUser("testUser", "testPassword");
+    Assert.assertEquals(1, AuthorizerManager.getInstance().listAllRoles().size());
+    Assert.assertEquals(2, AuthorizerManager.getInstance().listAllUsers().size());
     Assert.assertTrue(authorInfo.processTakeSnapshot(snapshotDir));
     authorInfo.clear();
     authorInfo.processLoadSnapshot(snapshotDir);
-    Assert.assertEquals(1, authorInfo.executeListRole().getPermissionInfo().get("role").size());
-    Assert.assertEquals(2, authorInfo.executeListUser().getPermissionInfo().get("user").size());
+    Assert.assertEquals(1, AuthorizerManager.getInstance().listAllRoles().size());
+    Assert.assertEquals(2, AuthorizerManager.getInstance().listAllUsers().size());
   }
 }
