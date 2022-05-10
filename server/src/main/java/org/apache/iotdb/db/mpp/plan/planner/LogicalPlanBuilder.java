@@ -97,17 +97,12 @@ public class LogicalPlanBuilder {
           sourceExpressionList.stream()
               .map(expression -> ((TimeSeriesOperand) expression).getPath())
               .collect(Collectors.toList());
-      Set<String> allSensors =
-          selectedPaths.stream().map(PartialPath::getMeasurement).collect(Collectors.toSet());
       List<PartialPath> groupedPaths = MetaUtils.groupAlignedPaths(selectedPaths);
       for (PartialPath path : groupedPaths) {
         if (path instanceof MeasurementPath) { // non-aligned series
           SeriesScanNode seriesScanNode =
               new SeriesScanNode(
-                  context.getQueryId().genPlanNodeId(),
-                  (MeasurementPath) path,
-                  allSensors,
-                  scanOrder);
+                  context.getQueryId().genPlanNodeId(), (MeasurementPath) path, scanOrder);
           seriesScanNode.setTimeFilter(timeFilter);
           sourceNodeList.add(seriesScanNode);
         } else if (path instanceof AlignedPath) { // aligned series
@@ -163,14 +158,6 @@ public class LogicalPlanBuilder {
               .add(aggregationDescriptor);
         }
       }
-      Set<String> ascendingAllSensors =
-          ascendingAggregations.keySet().stream()
-              .map(PartialPath::getMeasurement)
-              .collect(Collectors.toSet());
-      Set<String> descendingAllSensors =
-          descendingAggregations.keySet().stream()
-              .map(PartialPath::getMeasurement)
-              .collect(Collectors.toSet());
 
       //
       Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations =
@@ -183,7 +170,6 @@ public class LogicalPlanBuilder {
             createAggregationScanNode(
                 pathAggregationsEntry.getKey(),
                 pathAggregationsEntry.getValue(),
-                ascendingAllSensors,
                 scanOrder,
                 groupByTimeParameter,
                 timeFilter));
@@ -194,7 +180,6 @@ public class LogicalPlanBuilder {
             createAggregationScanNode(
                 pathAggregationsEntry.getKey(),
                 pathAggregationsEntry.getValue(),
-                descendingAllSensors,
                 scanOrder,
                 groupByTimeParameter,
                 timeFilter));
@@ -253,7 +238,6 @@ public class LogicalPlanBuilder {
   private PlanNode createAggregationScanNode(
       PartialPath selectPath,
       List<AggregationDescriptor> aggregationDescriptorList,
-      Set<String> allSensors,
       OrderBy scanOrder,
       GroupByTimeParameter groupByTimeParameter,
       Filter timeFilter) {
@@ -263,7 +247,6 @@ public class LogicalPlanBuilder {
               context.getQueryId().genPlanNodeId(),
               (MeasurementPath) selectPath,
               aggregationDescriptorList,
-              allSensors,
               scanOrder,
               groupByTimeParameter);
       seriesAggregationScanNode.setTimeFilter(timeFilter);
@@ -322,14 +305,14 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planGroupByTime(
-          Map<String, Set<Expression>> aggregationExpressions,
-          GroupByTimeParameter groupByTimeParameter,
-          AggregationStep curStep) {
+      Map<String, Set<Expression>> aggregationExpressions,
+      GroupByTimeParameter groupByTimeParameter,
+      AggregationStep curStep) {
     return this;
   }
 
   public LogicalPlanBuilder planFilterAndTransform(
-          Expression queryFilter, Set<Expression> selectExpressions) {
+      Expression queryFilter, Set<Expression> selectExpressions) {
     return this;
   }
 

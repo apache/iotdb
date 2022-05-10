@@ -33,14 +33,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * SeriesScanNode is responsible for read data a specific series. When reading data, the
@@ -53,9 +50,6 @@ public class SeriesScanNode extends SourceNode {
 
   // The path of the target series which will be scanned.
   private final MeasurementPath seriesPath;
-
-  // all the sensors in seriesPath's device of current query
-  @Nonnull private final Set<String> allSensors;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
@@ -77,30 +71,26 @@ public class SeriesScanNode extends SourceNode {
   // The id of DataRegion where the node will run
   private TRegionReplicaSet regionReplicaSet;
 
-  public SeriesScanNode(
-      PlanNodeId id, MeasurementPath seriesPath, @Nonnull Set<String> allSensors) {
+  public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath) {
     super(id);
     this.seriesPath = seriesPath;
-    this.allSensors = allSensors;
   }
 
-  public SeriesScanNode(
-      PlanNodeId id, MeasurementPath seriesPath, Set<String> allSensors, OrderBy scanOrder) {
-    this(id, seriesPath, allSensors);
+  public SeriesScanNode(PlanNodeId id, MeasurementPath seriesPath, OrderBy scanOrder) {
+    this(id, seriesPath);
     this.scanOrder = scanOrder;
   }
 
   public SeriesScanNode(
       PlanNodeId id,
       MeasurementPath seriesPath,
-      Set<String> allSensors,
       OrderBy scanOrder,
       @Nullable Filter timeFilter,
       @Nullable Filter valueFilter,
       int limit,
       int offset,
       TRegionReplicaSet dataRegionReplicaSet) {
-    this(id, seriesPath, allSensors, scanOrder);
+    this(id, seriesPath, scanOrder);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
     this.limit = limit;
@@ -138,11 +128,6 @@ public class SeriesScanNode extends SourceNode {
 
   public void setOffset(int offset) {
     this.offset = offset;
-  }
-
-  @Nonnull
-  public Set<String> getAllSensors() {
-    return allSensors;
   }
 
   public OrderBy getScanOrder() {
@@ -191,7 +176,6 @@ public class SeriesScanNode extends SourceNode {
     return new SeriesScanNode(
         getPlanNodeId(),
         getSeriesPath(),
-        getAllSensors(),
         getScanOrder(),
         getTimeFilter(),
         getValueFilter(),
@@ -214,10 +198,6 @@ public class SeriesScanNode extends SourceNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SERIES_SCAN.serialize(byteBuffer);
     seriesPath.serialize(byteBuffer);
-    ReadWriteIOUtils.write(allSensors.size(), byteBuffer);
-    for (String sensor : allSensors) {
-      ReadWriteIOUtils.write(sensor, byteBuffer);
-    }
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
     if (timeFilter == null) {
       ReadWriteIOUtils.write((byte) 0, byteBuffer);
@@ -238,11 +218,6 @@ public class SeriesScanNode extends SourceNode {
 
   public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
     MeasurementPath partialPath = (MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer);
-    int allSensorSize = ReadWriteIOUtils.readInt(byteBuffer);
-    Set<String> allSensors = new HashSet<>();
-    for (int i = 0; i < allSensorSize; i++) {
-      allSensors.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
     Filter timeFilter = null;
@@ -262,7 +237,6 @@ public class SeriesScanNode extends SourceNode {
     return new SeriesScanNode(
         planNodeId,
         partialPath,
-        allSensors,
         scanOrder,
         timeFilter,
         valueFilter,
@@ -293,7 +267,6 @@ public class SeriesScanNode extends SourceNode {
     return limit == that.limit
         && offset == that.offset
         && seriesPath.equals(that.seriesPath)
-        && allSensors.equals(that.allSensors)
         && scanOrder == that.scanOrder
         && Objects.equals(timeFilter, that.timeFilter)
         && Objects.equals(valueFilter, that.valueFilter)
@@ -305,7 +278,6 @@ public class SeriesScanNode extends SourceNode {
     return Objects.hash(
         super.hashCode(),
         seriesPath,
-        allSensors,
         scanOrder,
         timeFilter,
         valueFilter,

@@ -49,8 +49,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import org.apache.commons.compress.utils.Sets;
-
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -88,16 +86,10 @@ public class QueryLogicalPlanUtil {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("0"),
-            schemaMap.get("root.sg.d1.s1"),
-            Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_ASC));
+            new PlanNodeId("0"), schemaMap.get("root.sg.d1.s1"), OrderBy.TIMESTAMP_ASC));
     sourceNodeList.add(
         new SeriesScanNode(
-            new PlanNodeId("1"),
-            schemaMap.get("root.sg.d1.s2"),
-            Sets.newHashSet("s1", "s2"),
-            OrderBy.TIMESTAMP_ASC));
+            new PlanNodeId("1"), schemaMap.get("root.sg.d1.s2"), OrderBy.TIMESTAMP_ASC));
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("2"), OrderBy.TIMESTAMP_ASC, sourceNodeList);
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("3"), timeJoinNode, 10);
@@ -118,19 +110,16 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s2"),
-            Sets.newHashSet("s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d2.s1"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s2"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode =
@@ -195,25 +184,21 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode1 =
@@ -305,7 +290,6 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList.add(
@@ -318,7 +302,6 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList.add(
@@ -336,7 +319,6 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList.add(
@@ -349,7 +331,6 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList.forEach(node -> ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter));
@@ -418,7 +399,6 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList1.add(
@@ -431,7 +411,6 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList2.add(
@@ -449,7 +428,6 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList2.add(
@@ -462,7 +440,6 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             null));
     sourceNodeList1.forEach(node -> ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter));
@@ -506,25 +483,21 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode =
@@ -647,25 +620,21 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             new PlanNodeId("test_query_0"),
             schemaMap.get("root.sg.d1.s1"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_1"),
             schemaMap.get("root.sg.d1.s2"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_2"),
             schemaMap.get("root.sg.d2.s1"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("test_query_3"),
             schemaMap.get("root.sg.d2.s2"),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC));
 
     TimeJoinNode timeJoinNode1 =

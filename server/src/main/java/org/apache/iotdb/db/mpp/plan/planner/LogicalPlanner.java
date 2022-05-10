@@ -144,8 +144,8 @@ public class LogicalPlanner {
       planBuilder =
           planBuilder
               .planFill(analysis.getFillDescriptor())
-              .planOffset(queryStatement.getSeriesOffset())
-              .planLimit(queryStatement.getSeriesOffset());
+              .planOffset(queryStatement.getRowOffset())
+              .planLimit(queryStatement.getRowLimit());
 
       return planBuilder.getRoot();
     }
