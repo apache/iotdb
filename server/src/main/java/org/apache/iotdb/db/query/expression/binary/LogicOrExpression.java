@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.expression.binary;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
@@ -39,7 +40,8 @@ public class LogicOrExpression extends BinaryExpression {
 
   @Override
   protected LogicBinaryTransformer constructTransformer(
-      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
+      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader)
+      throws QueryProcessException {
     return new LogicOrTransformer(leftParentLayerPointReader, rightParentLayerPointReader);
   }
 

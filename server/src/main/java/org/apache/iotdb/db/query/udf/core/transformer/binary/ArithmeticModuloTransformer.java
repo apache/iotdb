@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
 public class ArithmeticModuloTransformer extends ArithmeticBinaryTransformer {
 
   public ArithmeticModuloTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader)
+      throws QueryProcessException {
     super(leftPointReader, rightPointReader);
   }
 

@@ -254,7 +254,8 @@ public abstract class BinaryExpression extends Expression {
   }
 
   protected abstract BinaryTransformer constructTransformer(
-      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
+      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader)
+      throws QueryProcessException;
 
   @Override
   public final String getExpressionStringInternal() {

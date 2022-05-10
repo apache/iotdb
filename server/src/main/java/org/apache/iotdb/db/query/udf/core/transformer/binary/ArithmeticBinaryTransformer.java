@@ -28,8 +28,21 @@ import java.io.IOException;
 public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
 
   protected ArithmeticBinaryTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader)
+      throws QueryProcessException {
     super(leftPointReader, rightPointReader);
+  }
+
+  @Override
+  protected void checkType() throws QueryProcessException {
+    if (leftPointReaderDataType == TSDataType.BOOLEAN) {
+      throw new QueryProcessException(
+          "Unsupported data type: " + leftPointReader.getDataType().toString());
+    }
+    if (rightPointReaderDataType == TSDataType.BOOLEAN) {
+      throw new QueryProcessException(
+          "Unsupported data type: " + rightPointReader.getDataType().toString());
+    }
   }
 
   @Override

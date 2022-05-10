@@ -39,7 +39,8 @@ public abstract class BinaryTransformer extends Transformer {
 
   protected final boolean isCurrentConstant;
 
-  protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+  protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader)
+      throws QueryProcessException {
     this.leftPointReader = leftPointReader;
     this.rightPointReader = rightPointReader;
     leftPointReaderDataType = leftPointReader.getDataType();
@@ -47,6 +48,7 @@ public abstract class BinaryTransformer extends Transformer {
     isLeftPointReaderConstant = leftPointReader.isConstantPointReader();
     isRightPointReaderConstant = rightPointReader.isConstantPointReader();
     isCurrentConstant = isLeftPointReaderConstant && isRightPointReaderConstant;
+    checkType();
   }
 
   @Override
@@ -77,6 +79,7 @@ public abstract class BinaryTransformer extends Transformer {
 
   protected abstract void transformAndCache() throws QueryProcessException, IOException;
 
+  protected abstract void checkType() throws QueryProcessException;
   /**
    * finds the smallest, unconsumed timestamp that exists in both {@code leftPointReader} and {@code
    * rightPointReader} and then caches the timestamp in {@code cachedTime}.

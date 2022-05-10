@@ -29,9 +29,13 @@ import java.io.IOException;
 public abstract class LogicBinaryTransformer extends BinaryTransformer {
 
   protected LogicBinaryTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader)
+      throws QueryProcessException {
     super(leftPointReader, rightPointReader);
+  }
 
+  @Override
+  protected void checkType() throws QueryProcessException {
     if (leftPointReaderDataType != TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException(
           "Unsupported data type: " + leftPointReader.getDataType().toString());
