@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -152,8 +152,8 @@ public class RawDataAggregateOperator implements ProcessOperator {
     // The result is calculated from the cache
     return (preCachedData != null
             && (ascending
-                ? preCachedData.getEndTime() >= curTimeRange.getMax()
-                : preCachedData.getStartTime() < curTimeRange.getMin()))
+                ? preCachedData.getEndTime() > curTimeRange.getMax()
+                : preCachedData.getEndTime() < curTimeRange.getMin()))
         || isEndCalc(aggregators);
   }
 
@@ -166,7 +166,7 @@ public class RawDataAggregateOperator implements ProcessOperator {
         tsBlockIterator.next();
       }
     } else {
-      while (tsBlockIterator.hasNext() && tsBlockIterator.currentTime() >= curTimeRange.getMax()) {
+      while (tsBlockIterator.hasNext() && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
         tsBlockIterator.next();
       }
     }
@@ -181,8 +181,8 @@ public class RawDataAggregateOperator implements ProcessOperator {
 
     return ascending
         ? (tsBlockIterator.getEndTime() >= timeRange.getMin()
-            && tsBlockIterator.currentTime() < timeRange.getMax())
-        : (tsBlockIterator.getStartTime() < timeRange.getMax()
+            && tsBlockIterator.currentTime() <= timeRange.getMax())
+        : (tsBlockIterator.getEndTime() <= timeRange.getMax()
             && tsBlockIterator.currentTime() >= timeRange.getMin());
   }
 

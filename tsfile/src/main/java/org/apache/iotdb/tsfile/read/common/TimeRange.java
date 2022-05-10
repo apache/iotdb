@@ -110,7 +110,15 @@ public class TimeRange implements Comparable<TimeRange> {
   }
 
   public boolean contains(long time) {
-    return this.min <= time && time <= this.max;
+    if (leftClose && rightClose) {
+      return time >= this.min && time <= this.max;
+    } else if (leftClose) {
+      return time >= this.min && time < this.max;
+    } else if (rightClose) {
+      return time > this.min && time <= this.max;
+    } else {
+      return time > this.min && time < this.max;
+    }
   }
 
   /**

@@ -224,7 +224,7 @@ public class LastValueAccumulator implements Accumulator {
   protected void addIntInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateIntLastValue(column[1].getInt(i), curTime);
       }
     }
@@ -241,7 +241,7 @@ public class LastValueAccumulator implements Accumulator {
   protected void addLongInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateLongLastValue(column[1].getLong(i), curTime);
       }
     }
@@ -258,7 +258,7 @@ public class LastValueAccumulator implements Accumulator {
   protected void addFloatInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateFloatLastValue(column[1].getFloat(i), curTime);
       }
     }
@@ -275,7 +275,7 @@ public class LastValueAccumulator implements Accumulator {
   protected void addDoubleInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateDoubleLastValue(column[1].getDouble(i), curTime);
       }
     }
@@ -292,7 +292,7 @@ public class LastValueAccumulator implements Accumulator {
   protected void addBooleanInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateBooleanLastValue(column[1].getBoolean(i), curTime);
       }
     }
@@ -309,7 +309,7 @@ public class LastValueAccumulator implements Accumulator {
   protected void addBinaryInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateBinaryLastValue(column[1].getBinary(i), curTime);
       }
     }

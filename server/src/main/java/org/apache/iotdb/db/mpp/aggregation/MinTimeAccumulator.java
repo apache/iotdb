@@ -40,7 +40,7 @@ public class MinTimeAccumulator implements Accumulator {
   public void addInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateMinTime(curTime);
         break;
       }

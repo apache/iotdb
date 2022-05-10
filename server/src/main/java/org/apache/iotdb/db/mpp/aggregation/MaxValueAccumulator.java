@@ -206,7 +206,7 @@ public class MaxValueAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
@@ -226,7 +226,7 @@ public class MaxValueAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
@@ -246,7 +246,7 @@ public class MaxValueAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
@@ -266,7 +266,7 @@ public class MaxValueAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {

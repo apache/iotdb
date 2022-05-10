@@ -21,13 +21,13 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.AggregateOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.utils.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.db.utils.timerangeiterator.SingleTimeWindowIterator;
-import org.apache.iotdb.db.utils.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -124,6 +124,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
           ascending,
           groupByTimeParameter.isIntervalByMonth(),
           groupByTimeParameter.isSlidingStepByMonth(),
+          groupByTimeParameter.isLeftCRightO(),
           groupByTimeParameter.getInterval() > groupByTimeParameter.getSlidingStep());
     }
   }
@@ -186,7 +187,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       // read from file first
       while (seriesScanUtil.hasNextFile()) {
         Statistics fileStatistics = seriesScanUtil.currentFileStatistics();
-        if (fileStatistics.getStartTime() >= curTimeRange.getMax()) {
+        if (fileStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
             updateResultTsBlockFromAggregators();
             return true;
@@ -251,8 +252,8 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
     // The result is calculated from the cache
     return (preCachedData != null
             && (ascending
-                ? preCachedData.getEndTime() >= curTimeRange.getMax()
-                : preCachedData.getStartTime() < curTimeRange.getMin()))
+                ? preCachedData.getEndTime() > curTimeRange.getMax()
+                : preCachedData.getEndTime() < curTimeRange.getMin()))
         || isEndCalc(aggregators);
   }
 
@@ -289,11 +290,11 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
 
     if (ascending
         && (tsBlockIterator.getEndTime() < timeRange.getMin()
-            || tsBlockIterator.currentTime() >= timeRange.getMax())) {
+            || tsBlockIterator.currentTime() > timeRange.getMax())) {
       return false;
     }
     if (!ascending
-        && (tsBlockIterator.getStartTime() >= timeRange.getMax()
+        && (tsBlockIterator.getEndTime() > timeRange.getMax()
             || tsBlockIterator.currentTime() < timeRange.getMin())) {
       preCachedData = tsBlock;
       return false;
@@ -308,7 +309,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       // must be non overlapped page
       if (pageStatistics != null) {
         // There is no more eligible points in current time range
-        if (pageStatistics.getStartTime() >= curTimeRange.getMax()) {
+        if (pageStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
             return true;
           } else {
@@ -339,7 +340,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       // lastReadIndex = tsBlockIterator.getRowIndex();
 
       // stop calc and cached current batchData
-      if (ascending && tsBlockIterator.currentTime() >= curTimeRange.getMax()) {
+      if (ascending && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
         preCachedData = tsBlock;
         return true;
       }
@@ -351,7 +352,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
       if (isEndCalc(aggregators)
           || (tsBlockIterator.hasNext()
               && (ascending
-                  ? tsBlockIterator.currentTime() >= curTimeRange.getMax()
+                  ? tsBlockIterator.currentTime() > curTimeRange.getMax()
                   : tsBlockIterator.currentTime() < curTimeRange.getMin()))) {
         return true;
       }
@@ -362,7 +363,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   private boolean readAndCalcFromChunk(TimeRange curTimeRange) throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       Statistics chunkStatistics = seriesScanUtil.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curTimeRange.getMax()) {
+      if (chunkStatistics.getStartTime() > curTimeRange.getMax()) {
         if (ascending) {
           return true;
         } else {

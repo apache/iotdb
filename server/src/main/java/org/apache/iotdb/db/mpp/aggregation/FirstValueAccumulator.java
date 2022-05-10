@@ -225,7 +225,7 @@ public class FirstValueAccumulator implements Accumulator {
   protected void addIntInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateIntFirstValue(column[1].getInt(i), curTime);
         break;
       }
@@ -243,7 +243,7 @@ public class FirstValueAccumulator implements Accumulator {
   protected void addLongInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateLongFirstValue(column[1].getLong(i), curTime);
         break;
       }
@@ -261,7 +261,7 @@ public class FirstValueAccumulator implements Accumulator {
   protected void addFloatInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateFloatFirstValue(column[1].getFloat(i), curTime);
         break;
       }
@@ -279,7 +279,7 @@ public class FirstValueAccumulator implements Accumulator {
   protected void addDoubleInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateDoubleFirstValue(column[1].getDouble(i), curTime);
         break;
       }
@@ -297,7 +297,7 @@ public class FirstValueAccumulator implements Accumulator {
   protected void addBooleanInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateBooleanFirstValue(column[1].getBoolean(i), curTime);
         break;
       }
@@ -315,7 +315,7 @@ public class FirstValueAccumulator implements Accumulator {
   protected void addBinaryInput(Column[] column, TimeRange timeRange) {
     for (int i = 0; i < column[0].getPositionCount(); i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
         updateBinaryFirstValue(column[1].getBinary(i), curTime);
         break;
       }

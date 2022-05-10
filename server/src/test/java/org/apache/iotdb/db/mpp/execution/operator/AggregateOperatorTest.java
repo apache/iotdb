@@ -150,10 +150,10 @@ public class AggregateOperatorTest {
   public void testGroupByIntermediateResult1() throws IllegalPathException {
     int[][] result =
         new int[][] {
-          {100, 100, 100, 100},
-          {2004950, 2014950, 624950, 834950},
+          {100, 100, 100, 99},
+          {2004950, 2014950, 624950, 834551},
           {0, 100, 200, 300},
-          {99, 199, 299, 399},
+          {99, 199, 299, 398},
           {20099, 20199, 10259, 10379},
           {20000, 20100, 260, 380}
         };
@@ -193,9 +193,9 @@ public class AggregateOperatorTest {
   public void testGroupByIntermediateResult2() throws IllegalPathException {
     double[][] result =
         new double[][] {
-          {20049.5, 20149.5, 6249.5, 8349.5},
+          {20049.5, 20149.5, 6249.5, 8429.808},
           {20000, 20100, 10200, 10300},
-          {20099, 20199, 299, 399},
+          {20099, 20199, 299, 398},
         };
     List<AggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(AggregationType.AVG);
