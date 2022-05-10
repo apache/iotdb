@@ -68,15 +68,21 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
     d1.addChild("s1", s1);
     SchemaMeasurementNode s2 =
         new SchemaMeasurementNode("s2", new MeasurementSchema("s1", TSDataType.INT32));
+    SchemaMeasurementNode s3 =
+        new SchemaMeasurementNode("s3", new MeasurementSchema("s3", TSDataType.INT32));
+    SchemaMeasurementNode s4 =
+        new SchemaMeasurementNode("s4", new MeasurementSchema("s4", TSDataType.INT32));
     s2.setAlias("status");
     d1.addChild("s2", s2);
     d1.addAliasChild("status", s2);
+    d1.addChild("s3", s3);
 
     SchemaEntityNode d2 = new SchemaEntityNode("d2");
     sg.addChild("d2", d2);
     d2.addChild("s1", s1);
     d2.addChild("s2", s2);
     d2.addAliasChild("status", s2);
+    d2.addChild("s4", s4);
 
     SchemaEntityNode a = new SchemaEntityNode("a");
     a.setAligned(true);

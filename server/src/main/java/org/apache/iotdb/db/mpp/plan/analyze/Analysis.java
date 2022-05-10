@@ -89,6 +89,8 @@ public class Analysis {
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
+  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
+  // not 0 because device is the first column
   private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
   public Analysis() {}

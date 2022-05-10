@@ -59,6 +59,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -131,7 +132,9 @@ public class LogicalPlanner {
         planBuilder =
             planBuilder.planDeviceView(
                 deviceToSubPlanMap,
-                analysis.getRespDatasetHeader().getRespColumns(),
+                analysis.getRespDatasetHeader().getRespColumns().stream()
+                    .distinct()
+                    .collect(Collectors.toList()),
                 queryStatement.getResultOrder());
       } else {
         planBuilder =
