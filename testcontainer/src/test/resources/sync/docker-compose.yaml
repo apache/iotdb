@@ -16,14 +16,37 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+version: '3.8'
 
-rpc_address=0.0.0.0
-rpc_port=22277
-consensus_port=22278
-target_confignode=0.0.0.0:22277
-config_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
-data_node_consensus_protocol_class=org.apache.iotdb.consensus.ratis.RatisConsensus
+services:
+  iotdb-sender:
+    image: apache/iotdb:sync-maven-development
+    networks:
+      - iotdb
+    cap_add:
+      - NET_ADMIN
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/6667" ]
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    volumes:
+    - ../logback-container.xml:/iotdb/conf/logback.xml
+  iotdb-receiver:
+    image: apache/iotdb:sync-maven-development
+    networks:
+      - iotdb
+    cap_add:
+      - NET_ADMIN
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/6667" ]
+      interval: 5s
+      timeout: 60s
+      retries: 120
+    volumes:
+      - ../logback-container.xml:/iotdb/conf/logback.xml
 
-system_dir=target/confignode1/system
-data_dirs=target/confignode1/data
-consensus_dir=target/confignode1/consensus
+
+networks:
+  iotdb:
+    driver: bridge
