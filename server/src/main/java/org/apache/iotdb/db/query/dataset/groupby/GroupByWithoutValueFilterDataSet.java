@@ -140,7 +140,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByTimeEngineDataSet {
             path,
             getGroupByExecutor(
                 path,
-                groupByTimePlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
+                groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
                 context,
                 timeFilter.copy(),
                 null,
