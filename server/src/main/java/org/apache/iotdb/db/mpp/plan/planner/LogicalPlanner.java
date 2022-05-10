@@ -200,7 +200,10 @@ public class LogicalPlanner {
               outputPartial ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
           planBuilder =
               planBuilder.planAggregation(
-                  aggregationExpressions, analysis.getGroupByTimeParameter(), curStep);
+                  aggregationExpressions,
+                  analysis.getGroupByTimeParameter(),
+                  curStep,
+                  analysis.getTypeProvider());
 
           if (curStep.isOutputPartial()) {
             if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
@@ -228,7 +231,8 @@ public class LogicalPlanner {
                 analysis.getGlobalTimeFilter(),
                 analysis.getGroupByTimeParameter(),
                 aggregationExpressions,
-                analysis.getGroupByLevelExpressions());
+                analysis.getGroupByLevelExpressions(),
+                analysis.getTypeProvider());
       }
 
       return planBuilder.getRoot();

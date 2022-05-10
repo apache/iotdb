@@ -67,6 +67,10 @@ public class AggregationDescriptor {
     this.step = step;
   }
 
+  public List<Expression> getInputExpressions() {
+    return inputExpressions;
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(aggregationType.ordinal(), byteBuffer);
     step.serialize(byteBuffer);

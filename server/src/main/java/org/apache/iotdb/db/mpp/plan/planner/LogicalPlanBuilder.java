@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
@@ -135,7 +136,8 @@ public class LogicalPlanBuilder {
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
       Map<String, Set<Expression>> aggregationExpressions,
-      Map<Expression, Set<Expression>> groupByLevelExpressions) {
+      Map<Expression, Set<Expression>> groupByLevelExpressions,
+      TypeProvider typeProvider) {
     AggregationStep curStep =
         (groupByLevelExpressions != null
                 || (groupByTimeParameter != null && groupByTimeParameter.hasOverlap()))
@@ -154,6 +156,9 @@ public class LogicalPlanBuilder {
         AggregationDescriptor aggregationDescriptor =
             new AggregationDescriptor(
                 aggregationFunction, curStep, sourceExpression.getExpressions());
+        if (curStep.isOutputPartial()) {
+          updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider);
+        }
         PartialPath selectPath =
             ((TimeSeriesOperand) sourceExpression.getExpressions().get(0)).getPath();
         if (SchemaUtils.isConsistentWithScanOrder(aggregationFunction, scanOrder)) {
@@ -218,6 +223,22 @@ public class LogicalPlanBuilder {
     return this;
   }
 
+  private void updateTypeProviderByPartialAggregation(
+      AggregationDescriptor aggregationDescriptor, TypeProvider typeProvider) {
+    List<AggregationType> splitAggregations =
+        SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
+    PartialPath path =
+        ((TimeSeriesOperand)
+                aggregationDescriptor.getInputExpressions().get(0).getExpressions().get(0))
+            .getPath();
+    for (AggregationType aggregationType : splitAggregations) {
+      String functionName = aggregationType.toString().toLowerCase();
+      typeProvider.setType(
+          String.format("%s(%s)", functionName, path.getFullPath()),
+          SchemaUtils.getSeriesTypeByPath(path, functionName));
+    }
+  }
+
   private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, OrderBy mergeOrder) {
     PlanNode tmpNode;
     if (sourceNodes.size() == 1) {
@@ -262,13 +283,20 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planAggregation(
       Map<String, Set<Expression>> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
-      AggregationStep curStep) {
+      AggregationStep curStep,
+      TypeProvider typeProvider) {
     if (aggregationExpressions == null) {
       return this;
     }
 
     List<AggregationDescriptor> aggregationDescriptorList =
         constructAggregationDescriptorList(aggregationExpressions, curStep);
+    if (curStep.isOutputPartial()) {
+      aggregationDescriptorList.forEach(
+          aggregationDescriptor -> {
+            updateTypeProviderByPartialAggregation(aggregationDescriptor, typeProvider);
+          });
+    }
     this.root =
         new AggregationNode(
             context.getQueryId().genPlanNodeId(),

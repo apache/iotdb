@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -260,6 +261,28 @@ public class SchemaUtils {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(
           String.format("encoding %s does not support %s", encoding, dataType), true);
+    }
+  }
+
+  public static List<AggregationType> splitPartialAggregation(AggregationType aggregationType) {
+    switch (aggregationType) {
+      case FIRST_VALUE:
+        return Collections.singletonList(AggregationType.MIN_TIME);
+      case LAST_VALUE:
+        return Collections.singletonList(AggregationType.MAX_TIME);
+      case AVG:
+        return Arrays.asList(AggregationType.COUNT, AggregationType.SUM);
+      case SUM:
+      case MIN_VALUE:
+      case MAX_VALUE:
+      case EXTREME:
+      case COUNT:
+      case MIN_TIME:
+      case MAX_TIME:
+        return Collections.emptyList();
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid Aggregation function: %s", aggregationType));
     }
   }
 }
