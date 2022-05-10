@@ -56,6 +56,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * The ClusterSchemaInfo stores cluster schema.
+ * The cluster schema including:
+ *   1. StorageGroupSchema
+ *   2. Template (Not implement yet)
+ */
 public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaInfo.class);
@@ -84,7 +90,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Persistence new StorageGroupSchema
    *
    * @param req SetStorageGroupReq
-   * @return SUCCESS_STATUS
+   * @return SUCCESS_STATUS if the StorageGroup is set successfully.
+   *         PERSISTENCE_FAILURE if fail to set StorageGroup in MTreeAboveSG.
    */
   public TSStatus setStorageGroup(SetStorageGroupReq req) {
     TSStatus result = new TSStatus();
@@ -106,7 +113,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.PERSISTENCE_FAILURE.getStatusCode())
           .setMessage("Error StorageGroup name");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();

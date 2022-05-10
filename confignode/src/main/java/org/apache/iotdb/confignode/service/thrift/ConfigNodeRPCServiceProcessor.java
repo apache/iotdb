@@ -142,7 +142,14 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       storageGroupSchema.setTimePartitionInterval(
           ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
+    if (!storageGroupSchema.isSetMaximumSchemaRegionCount()) {
+      storageGroupSchema.setMaximumSchemaRegionCount(ConfigNodeDescriptor.getInstance().getConf().getMaximumSchemaRegionCount());
+    }
+    if (!storageGroupSchema.isSetMaximumDataRegionCount()) {
+      storageGroupSchema.setMaximumDataRegionCount(ConfigNodeDescriptor.getInstance().getConf().getMaximumDataRegionCount());
+    }
 
+    // Initialize RegionGroupId List
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 

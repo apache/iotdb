@@ -63,7 +63,13 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/** manage data partition and schema partition */
+/**
+ * The PartitionInfo stores cluster PartitionTable.
+ * The PartitionTable including:
+ *   1. regionMap: location of Region member
+ *   2. schemaPartition: location of schema
+ *   3. dataPartition: location of data
+ */
 public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
@@ -315,6 +321,18 @@ public class PartitionInfo implements SnapshotProcessor {
       for (TConsensusGroupId groupId : groupIds) {
         result.add(regionMap.get(groupId));
       }
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  /** Get all allocated RegionReplicaSets */
+  public List<TRegionReplicaSet> getAllocatedRegions() {
+    List<TRegionReplicaSet> result;
+    regionReadWriteLock.readLock().lock();
+    try {
+      result = new ArrayList<>(regionMap.values());
     } finally {
       regionReadWriteLock.readLock().unlock();
     }

@@ -99,11 +99,6 @@ public class ConfigNodeConf {
   private String systemDir =
       ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
-  /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
-  private String[] dataDirs = {
-    ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.DATA_DIR
-  };
-
   /** Consensus directory, storage consensus protocol logs */
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
@@ -120,11 +115,11 @@ public class ConfigNodeConf {
   /** Default number of DataRegion replicas */
   private int dataReplicationFactor = 3;
 
-  /** The initial number of SchemaRegions of each StorageGroup */
-  private int initialSchemaRegionCount = 1;
+  /** The maximum number of SchemaRegions of each StorageGroup */
+  private int maximumSchemaRegionCount = 4;
 
-  /** The initial number of DataRegions of each StorageGroup */
-  private int initialDataRegionCount = 1;
+  /** The maximum number of DataRegions of each StorageGroup */
+  private int maximumDataRegionCount = 20;
 
   public ConfigNodeConf() {
     // empty constructor
@@ -136,9 +131,6 @@ public class ConfigNodeConf {
 
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
-    for (int i = 0; i < dataDirs.length; i++) {
-      dataDirs[i] = addHomeDir(dataDirs[i]);
-    }
     consensusDir = addHomeDir(consensusDir);
   }
 
@@ -327,14 +319,6 @@ public class ConfigNodeConf {
     this.systemDir = systemDir;
   }
 
-  public String[] getDataDirs() {
-    return dataDirs;
-  }
-
-  public void setDataDirs(String[] dataDirs) {
-    this.dataDirs = dataDirs;
-  }
-
   public long getDefaultTTL() {
     return defaultTTL;
   }
@@ -359,19 +343,19 @@ public class ConfigNodeConf {
     this.dataReplicationFactor = dataReplicationFactor;
   }
 
-  public int getInitialSchemaRegionCount() {
-    return initialSchemaRegionCount;
+  public int getMaximumSchemaRegionCount() {
+    return maximumSchemaRegionCount;
   }
 
-  public void setInitialSchemaRegionCount(int initialSchemaRegionCount) {
-    this.initialSchemaRegionCount = initialSchemaRegionCount;
+  public void setMaximumSchemaRegionCount(int maximumSchemaRegionCount) {
+    this.maximumSchemaRegionCount = maximumSchemaRegionCount;
   }
 
-  public int getInitialDataRegionCount() {
-    return initialDataRegionCount;
+  public int getMaximumDataRegionCount() {
+    return maximumDataRegionCount;
   }
 
-  public void setInitialDataRegionCount(int initialDataRegionCount) {
-    this.initialDataRegionCount = initialDataRegionCount;
+  public void setMaximumDataRegionCount(int maximumDataRegionCount) {
+    this.maximumDataRegionCount = maximumDataRegionCount;
   }
 }

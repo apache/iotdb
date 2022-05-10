@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -47,7 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-/** manage data partition and schema partition */
+/** The ClusterSchemaManager Manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
@@ -55,17 +56,13 @@ public class PartitionManager {
   private static final ClusterSchemaInfo clusterSchemaInfo = ClusterSchemaInfo.getInstance();
   private static final PartitionInfo partitionInfo = PartitionInfo.getInstance();
 
-  private final Manager configNodeManager;
+  private final Manager configManager;
 
   private SeriesPartitionExecutor executor;
 
-  public PartitionManager(Manager configNodeManager) {
-    this.configNodeManager = configNodeManager;
+  public PartitionManager(Manager configManager) {
+    this.configManager = configManager;
     setSeriesPartitionExecutor();
-  }
-
-  private ConsensusManager getConsensusManager() {
-    return configNodeManager.getConsensusManager();
   }
 
   /**
@@ -92,6 +89,10 @@ public class PartitionManager {
         partitionInfo.filterNoAssignedSchemaPartitionSlots(physicalPlan.getPartitionSlotsMap());
 
     if (noAssignedSchemaPartitionSlots.size() > 0) {
+
+      // Make sure each StorageGroup has at least one SchemaRegion
+      checkAndAllocateRegionsIfNecessary(new ArrayList<>(noAssignedSchemaPartitionSlots.keySet()), TConsensusGroupType.SchemaRegion);
+
       // Allocate SchemaPartition
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition =
           allocateSchemaPartition(noAssignedSchemaPartitionSlots);
@@ -162,6 +163,10 @@ public class PartitionManager {
         partitionInfo.filterNoAssignedDataPartitionSlots(physicalPlan.getPartitionSlotsMap());
 
     if (noAssignedDataPartitionSlots.size() > 0) {
+
+      // Make sure each StorageGroup has at least one DataRegion
+      checkAndAllocateRegionsIfNecessary(new ArrayList<>(noAssignedDataPartitionSlots.keySet()), TConsensusGroupType.DataRegion);
+
       // Allocate DataPartition
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           assignedDataPartition = allocateDataPartition(noAssignedDataPartitionSlots);
@@ -217,6 +222,22 @@ public class PartitionManager {
     return result;
   }
 
+  private void checkAndAllocateRegionsIfNecessary(List<String> storageGroups, TConsensusGroupType consensusGroupType) {
+    List<String> storageGroupWithoutRegion = new ArrayList<>();
+    for (String storageGroup : storageGroups) {
+      List<TConsensusGroupId> groupIds = clusterSchemaInfo.getRegionGroupIds(storageGroup, consensusGroupType);
+      if (groupIds.size() == 0) {
+        storageGroupWithoutRegion.add(storageGroup);
+      }
+    }
+    getLoadManager().allocateAndCreateRegions(storageGroupWithoutRegion, consensusGroupType);
+  }
+
+  /** Get all allocated RegionReplicaSets */
+  public List<TRegionReplicaSet> getAllocatedRegions() {
+    return partitionInfo.getAllocatedRegions();
+  }
+
   /** Construct SeriesPartitionExecutor by iotdb-confignode.propertis */
   private void setSeriesPartitionExecutor() {
     ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
@@ -233,5 +254,22 @@ public class PartitionManager {
    */
   public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
     return executor.getSeriesPartitionSlot(devicePath);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @return the next RegionGroupId
+   */
+  public int generateNextRegionGroupId() {
+    return partitionInfo.generateNextRegionGroupId();
+  }
+
+  private ConsensusManager getConsensusManager() {
+    return configManager.getConsensusManager();
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 }

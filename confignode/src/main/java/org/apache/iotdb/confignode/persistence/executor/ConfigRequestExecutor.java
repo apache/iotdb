@@ -125,7 +125,7 @@ public class ConfigRequestExecutor {
         return clusterSchemaInfo.setDataReplicationFactor((SetDataReplicationFactorReq) req);
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
-      case CreateRegions:
+      case CreateRegion:
         return partitionInfo.createRegions((CreateRegionsReq) req);
       case DeleteRegions:
         return partitionInfo.deleteRegions((DeleteRegionsReq) req);

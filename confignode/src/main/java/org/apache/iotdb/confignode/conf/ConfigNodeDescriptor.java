@@ -180,8 +180,6 @@ public class ConfigNodeDescriptor {
 
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
-      conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
-
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
       conf.setDefaultTTL(
@@ -203,16 +201,16 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-      conf.setInitialSchemaRegionCount(
+      conf.setMaximumSchemaRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "initial_schema_region_count",
-                  String.valueOf(conf.getInitialSchemaRegionCount()))));
+                  "max_schema_region_number",
+                  String.valueOf(conf.getMaximumSchemaRegionCount()))));
 
-      conf.setInitialDataRegionCount(
+      conf.setMaximumDataRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
+                  "maximum_data_region_count", String.valueOf(conf.getMaximumDataRegionCount()))));
       commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
       commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
 
