@@ -197,7 +197,9 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       result = FileUtils.copyDir(roleFolder, roleTmpSnapshotDir);
       result &= roleTmpSnapshotDir.renameTo(roleSnapshotDir);
     } finally {
-      roleTmpSnapshotDir.delete();
+      if (roleTmpSnapshotDir.exists() && !roleTmpSnapshotDir.delete()) {
+        FileUtils.deleteDirectory(roleTmpSnapshotDir);
+      }
     }
     return result;
   }
@@ -211,12 +213,12 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
     File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, roleSnapshotFileName);
 
     try {
-      roleFolder.renameTo(roleTmpFolder);
+      org.apache.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
       if (!FileUtils.copyDir(roleSnapshotDir, roleFolder)) {
         logger.error("Failed to load role folder snapshot and rollback.");
         // rollback if failed to copy
         FileUtils.deleteDirectory(roleFolder);
-        roleTmpFolder.renameTo(roleFolder);
+        org.apache.commons.io.FileUtils.moveDirectory(roleTmpFolder, roleFolder);
       }
     } finally {
       FileUtils.deleteDirectory(roleTmpFolder);

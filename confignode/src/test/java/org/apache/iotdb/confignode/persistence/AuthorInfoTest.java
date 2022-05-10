@@ -78,7 +78,7 @@ public class AuthorInfoTest {
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
     Assert.assertEquals(1, authorInfo.executeListRole().getPermissionInfo().get("role").size());
     Assert.assertEquals(2, authorInfo.executeListUser().getPermissionInfo().get("user").size());
-    authorInfo.processTakeSnapshot(snapshotDir);
+    Assert.assertTrue(authorInfo.processTakeSnapshot(snapshotDir));
     authorInfo.clear();
     authorInfo.processLoadSnapshot(snapshotDir);
     Assert.assertEquals(1, authorInfo.executeListRole().getPermissionInfo().get("role").size());
