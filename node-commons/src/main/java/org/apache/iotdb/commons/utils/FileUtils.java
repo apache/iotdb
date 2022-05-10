@@ -82,6 +82,9 @@ public class FileUtils {
     }
     boolean result = true;
     for (File file : files) {
+      if (!file.exists()) {
+        continue;
+      }
       File targetFile = new File(targetDir, file.getName());
       if (file.isDirectory()) {
         result &= copyDir(file.getAbsoluteFile(), targetFile);
