@@ -75,7 +75,7 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
       isSuccess = true;
     } catch (InterruptedException e) {
       LOGGER.warn("Current task is interrupted");
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOGGER.error("Running compaction task failed", e);
     } finally {
       this.currentTaskNum.decrementAndGet();

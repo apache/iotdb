@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.utils.CompactionEstimator;
@@ -48,7 +49,8 @@ import java.util.Map;
  */
 public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelector {
 
-  private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
   RewriteCrossSpaceCompactionResource resource;
@@ -185,7 +187,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
 
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost =
-          compactionEstimator.estimateMemory(unseqIndex, (List<Integer>) tmpSelectedSeqFiles);
+          compactionEstimator.estimateMemory(unseqIndex, new ArrayList<>(tmpSelectedSeqFiles));
       if (!updateSelectedFiles(newCost, unseqFile)) {
         // older unseq files must be merged before newer ones
         break;

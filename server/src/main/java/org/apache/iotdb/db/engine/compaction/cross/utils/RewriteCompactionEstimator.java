@@ -57,7 +57,9 @@ public class RewriteCompactionEstimator implements CompactionEstimator {
     // else is sub compaction task num.
     int concurrentSeriesNum = fileInfo[2] == -1 ? subCompactionTaskNum : fileInfo[2];
     maxUnseqChunkNumInDevice = new Pair<>(fileInfo[3], fileInfo[0]);
-    return concurrentSeriesNum * (unseqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
+    // not only reading chunk into chunk cache, but also need to deserialize data point into merge
+    // reader, so we have to double the cost here.
+    return 2 * concurrentSeriesNum * (unseqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
   }
 
   private long calculateReadingSeqFiles(List<Integer> seqIndexes) throws IOException {
@@ -72,8 +74,10 @@ public class RewriteCompactionEstimator implements CompactionEstimator {
       long seqFileCost =
           concurrentSeriesNum * (seqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
       if (seqFileCost > maxCostOfReadingSeqFile) {
-        cost -= maxCostOfReadingSeqFile;
-        cost += seqFileCost;
+        // not only reading chunk into chunk cache, but also need to deserialize data point into
+        // merge reader, so we have to double the cost here.
+        cost -= 2 * maxCostOfReadingSeqFile;
+        cost += 2 * seqFileCost;
         maxCostOfReadingSeqFile = seqFileCost;
       }
       maxSeqChunkNumInDeviceList.add(new Pair<>(fileInfo[3], fileInfo[0]));

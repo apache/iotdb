@@ -101,8 +101,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
-    assertEquals(seqResources.subList(0, 4), seqSelected);
-    assertEquals(unseqResources.subList(0, 4), unseqSelected);
+    assertEquals(seqResources.subList(0, 5), seqSelected);
+    assertEquals(unseqResources.subList(0, 6), unseqSelected);
     resource.clear();
   }
 
