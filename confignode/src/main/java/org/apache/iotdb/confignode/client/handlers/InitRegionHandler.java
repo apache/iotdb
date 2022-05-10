@@ -22,12 +22,16 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.BitSet;
 import java.util.concurrent.CountDownLatch;
 
 /** Only use this handler when initialize Region to set StorageGroup */
 public class InitRegionHandler implements AsyncMethodCallback<TSStatus> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(InitRegionHandler.class);
 
   private final int index;
   private final BitSet bitSet;
@@ -45,12 +49,15 @@ public class InitRegionHandler implements AsyncMethodCallback<TSStatus> {
       synchronized (bitSet) {
         bitSet.set(index);
       }
+    } else {
+      LOGGER.error(tsStatus.toString());
     }
     latch.countDown();
   }
 
   @Override
   public void onError(Exception e) {
+    LOGGER.error(e.getMessage());
     latch.countDown();
   }
 }
