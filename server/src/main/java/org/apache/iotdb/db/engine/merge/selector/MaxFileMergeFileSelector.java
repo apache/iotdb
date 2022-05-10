@@ -145,10 +145,14 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     long startTime = System.currentTimeMillis();
     long timeConsumption = 0;
     long timeLimit = IoTDBDescriptor.getInstance().getConfig().getMergeFileSelectionTimeBudget();
+    int maxSelectedUnseqFileNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxSelectUnseqFileNumInEachUnseqCompaction();
     if (timeLimit < 0) {
       timeLimit = Long.MAX_VALUE;
     }
-    while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
+    while (unseqIndex < resource.getUnseqFiles().size()
+        && timeConsumption < timeLimit
+        && unseqIndex < maxSelectedUnseqFileNum) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
 
