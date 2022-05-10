@@ -144,7 +144,6 @@ public class LogicalPlanBuilder {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     for (Set<Expression> sourceExpressionList :
         deviceNameToSourceExpressions.values()) { // for each device
-      //
       Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations = new HashMap<>();
       Map<PartialPath, List<AggregationDescriptor>> descendingAggregations = new HashMap<>();
       for (Expression sourceExpression : sourceExpressionList) {
@@ -167,7 +166,6 @@ public class LogicalPlanBuilder {
         }
       }
 
-      //
       Map<PartialPath, List<AggregationDescriptor>> groupedAscendingAggregations =
           MetaUtils.groupAlignedAggregations(ascendingAggregations);
       Map<PartialPath, List<AggregationDescriptor>> groupedDescendingAggregations =

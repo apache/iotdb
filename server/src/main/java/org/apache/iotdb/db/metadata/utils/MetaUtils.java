@@ -192,7 +192,30 @@ public class MetaUtils {
   }
 
   public static Map<PartialPath, List<AggregationDescriptor>> groupAlignedAggregations(
-      Map<PartialPath, List<AggregationDescriptor>> descendingAggregations) {
-    return new HashMap<>();
+      Map<PartialPath, List<AggregationDescriptor>> pathToAggregations) {
+    Map<PartialPath, List<AggregationDescriptor>> result = new HashMap<>();
+    List<AggregationDescriptor> alignedPathAggregations = new ArrayList<>();
+    AlignedPath alignedPath = null;
+    for (PartialPath path : pathToAggregations.keySet()) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result
+            .computeIfAbsent(measurementPath, key -> new ArrayList<>())
+            .addAll(pathToAggregations.get(path));
+        alignedPath = null;
+        alignedPathAggregations.clear();
+      } else {
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getDeviceIdString())) {
+          alignedPath = new AlignedPath(measurementPath);
+          result
+              .computeIfAbsent(alignedPath, key -> new ArrayList<>())
+              .addAll(alignedPathAggregations);
+        } else {
+          alignedPath.addMeasurement(measurementPath);
+          alignedPathAggregations.addAll(pathToAggregations.get(path));
+        }
+      }
+    }
+    return result;
   }
 }
