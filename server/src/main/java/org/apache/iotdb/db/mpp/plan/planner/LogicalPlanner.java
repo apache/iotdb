@@ -120,6 +120,7 @@ public class LogicalPlanner {
                       Maps.asMap(
                           Sets.newHashSet(deviceName),
                           (key) -> analysis.getAggregationExpressions().get(key)),
+                      analysis.getSourceExpressions().get(deviceName),
                       analysis.getDeviceToQueryFilter() != null
                           ? analysis.getDeviceToQueryFilter().get(deviceName)
                           : null,
@@ -136,6 +137,7 @@ public class LogicalPlanner {
                     queryStatement,
                     analysis.getSourceExpressions(),
                     analysis.getAggregationExpressions(),
+                    analysis.getSelectExpressions(),
                     analysis.getQueryFilter(),
                     context));
       }
@@ -154,6 +156,7 @@ public class LogicalPlanner {
         QueryStatement queryStatement,
         Map<String, Set<Expression>> sourceExpressions,
         Map<String, Set<Expression>> aggregationExpressions,
+        Set<Expression> selectExpressions,
         Expression queryFilter,
         MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
@@ -171,13 +174,13 @@ public class LogicalPlanner {
           planBuilder =
               planBuilder.planFilterAndTransform(
                   queryFilter,
-                  analysis.getSelectExpressions(),
+                  selectExpressions,
                   queryStatement.isGroupByTime(),
                   queryStatement.getSelectComponent().getZoneId());
         } else {
           planBuilder =
               planBuilder.planTransform(
-                  analysis.getSelectExpressions(),
+                  selectExpressions,
                   queryStatement.isGroupByTime(),
                   queryStatement.getSelectComponent().getZoneId());
         }
