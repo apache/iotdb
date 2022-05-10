@@ -329,19 +329,36 @@ public class MTreeAboveSG {
   }
 
   /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
-   * device], throw exception Get storage group node, if the give path is not a storage group, throw
+   * E.g., root.sg is storage group given [root, sg], if the give path is not a storage group, throw
    * exception
    */
-  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
+  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath storageGroupPath)
       throws MetadataException {
-    IStorageGroupMNode node = getStorageGroupNodeByPath(path);
-    if (!node.getPartialPath().equals(path)) {
-      throw new MNodeTypeMismatchException(
-          path.getFullPath(), MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
+    String[] nodes = storageGroupPath.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(storageGroupPath.getFullPath());
+    }
+    IMNode cur = root;
+    for (int i = 1; i < nodes.length - 1; i++) {
+      cur = cur.getChild(nodes[i]);
+      if (cur == null) {
+        throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+      }
+      if (cur.isStorageGroup()) {
+        throw new StorageGroupAlreadySetException(cur.getFullPath());
+      }
     }
 
-    return node;
+    cur = cur.getChild(nodes[nodes.length - 1]);
+    if (cur == null) {
+      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+    }
+    if (cur.isStorageGroup()) {
+      return cur.getAsStorageGroupMNode();
+    } else {
+      throw new MNodeTypeMismatchException(
+          storageGroupPath.getFullPath(), MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
+    }
   }
 
   /**

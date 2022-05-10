@@ -86,7 +86,7 @@ public class SetStorageGroupTask implements IConfigTask {
         LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
         localConfigNode.setStorageGroup(setStorageGroupStatement.getStorageGroupPath());
         localConfigNode.setTTL(
-            setStorageGroupStatement.getStorageGroupPath(), setStorageGroupStatement.getTtl());
+            setStorageGroupStatement.getStorageGroupPath(), setStorageGroupStatement.getTTL());
         // schemaReplicationFactor, dataReplicationFactor, timePartitionInterval are ignored
       } catch (MetadataException | IOException e) {
         future.setException(e);
@@ -102,8 +102,8 @@ public class SetStorageGroupTask implements IConfigTask {
   private TStorageGroupSchema constructStorageGroupSchema() {
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
     storageGroupSchema.setName(setStorageGroupStatement.getStorageGroupPath().getFullPath());
-    if (setStorageGroupStatement.getTtl() != null) {
-      storageGroupSchema.setTTL(setStorageGroupStatement.getTtl());
+    if (setStorageGroupStatement.getTTL() != null) {
+      storageGroupSchema.setTTL(setStorageGroupStatement.getTTL());
     }
     if (setStorageGroupStatement.getSchemaReplicationFactor() != null) {
       storageGroupSchema.setSchemaReplicationFactor(
