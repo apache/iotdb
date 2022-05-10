@@ -83,11 +83,11 @@
         <!--            <outputDirectory>conf</outputDirectory>-->
         <!--            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/conf</directory>-->
         <!--        </fileSet>-->
-        <fileSet>
-            <outputDirectory>sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/sbin</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
+        <!--        <fileSet>-->
+        <!--            <outputDirectory>sbin</outputDirectory>-->
+        <!--            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/sbin</directory>-->
+        <!--            <fileMode>0755</fileMode>-->
+        <!--        </fileSet>-->
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/docs</directory>
             <outputDirectory>docs</outputDirectory>
