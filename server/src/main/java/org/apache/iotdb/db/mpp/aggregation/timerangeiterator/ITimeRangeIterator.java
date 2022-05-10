@@ -47,4 +47,12 @@ public interface ITimeRangeIterator {
         ? new TimeRange(timeRange.getMin(), timeRange.getMax() - 1)
         : new TimeRange(timeRange.getMin() + 1, timeRange.getMax());
   }
+
+  /**
+   * As there is only one timestamp can be output for a time range, this method will return the
+   * output time based on leftCloseRightOpen or not.
+   *
+   * @return minTime if leftCloseRightOpen, else maxTime.
+   */
+  long currentOutputTime();
 }

@@ -135,4 +135,9 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
   public boolean isAscending() {
     return isAscending;
   }
+
+  @Override
+  public long currentOutputTime() {
+    return leftCRightO ? curTimeRange.getMin() : curTimeRange.getMax();
+  }
 }

@@ -221,7 +221,7 @@ public class SeriesAggregateScanOperator implements DataSourceOperator {
   private void updateResultTsBlockFromAggregators() {
     resultTsBlock =
         AggregateOperator.updateResultTsBlockFromAggregators(
-            tsBlockBuilder, aggregators, curTimeRange);
+            tsBlockBuilder, aggregators, timeRangeIterator);
     hasCachedTsBlock = true;
   }
 

@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
  */
 public class PreAggrWindowIterator implements ITimeRangeIterator {
 
-  // total query [startTime, endTime)
   private final long startTime;
   private final long endTime;
   private final long interval;
@@ -161,5 +160,10 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   @Override
   public boolean isAscending() {
     return isAscending;
+  }
+
+  @Override
+  public long currentOutputTime() {
+    return leftCRightO ? curTimeRange.getMin() : curTimeRange.getMax();
   }
 }

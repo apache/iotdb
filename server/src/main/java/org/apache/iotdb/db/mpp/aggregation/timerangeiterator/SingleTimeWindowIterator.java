@@ -62,4 +62,9 @@ public class SingleTimeWindowIterator implements ITimeRangeIterator {
   public boolean isAscending() {
     return false;
   }
+
+  @Override
+  public long currentOutputTime() {
+    return curTimeRange.getMin();
+  }
 }

@@ -105,7 +105,7 @@ public class AggregateOperator implements ProcessOperator {
       aggregator.processTsBlocks(inputTsBlocks);
     }
     // output result from aggregator
-    return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, curTimeRange);
+    return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
   @Override
@@ -130,11 +130,13 @@ public class AggregateOperator implements ProcessOperator {
   }
 
   public static TsBlock updateResultTsBlockFromAggregators(
-      TsBlockBuilder tsBlockBuilder, List<Aggregator> aggregators, TimeRange curTimeRange) {
+      TsBlockBuilder tsBlockBuilder,
+      List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator) {
     tsBlockBuilder.reset();
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(curTimeRange.getMin());
+    timeColumnBuilder.writeLong(timeRangeIterator.currentOutputTime());
     ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
     int columnIndex = 0;
     for (Aggregator aggregator : aggregators) {

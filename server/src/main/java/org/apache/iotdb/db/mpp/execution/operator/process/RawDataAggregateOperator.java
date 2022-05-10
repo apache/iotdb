@@ -111,7 +111,7 @@ public class RawDataAggregateOperator implements ProcessOperator {
 
     // 3. Update result using aggregators
     return AggregateOperator.updateResultTsBlockFromAggregators(
-        tsBlockBuilder, aggregators, curTimeRange);
+        tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
   @Override

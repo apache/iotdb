@@ -32,7 +32,6 @@ import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
  */
 public class AggrWindowIterator implements ITimeRangeIterator {
 
-  // total query [startTime, endTime]
   private final long startTime;
   private final long endTime;
   private final long interval;
@@ -164,5 +163,10 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   @Override
   public boolean isAscending() {
     return isAscending;
+  }
+
+  @Override
+  public long currentOutputTime() {
+    return leftCRightO ? curTimeRange.getMin() : curTimeRange.getMax();
   }
 }
