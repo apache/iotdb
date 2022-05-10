@@ -46,7 +46,7 @@ public class InTransformer extends UnaryTransformer {
   }
 
   private void initTypedSet(Set<String> values) {
-    switch (dataType) {
+    switch (layerPointReaderDataType) {
       case INT32:
         intSet = new HashSet<>();
         for (String value : values) {
@@ -88,12 +88,12 @@ public class InTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType getDataType() {
-    return dataType;
+    return layerPointReaderDataType;
   }
 
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
-    switch (dataType) {
+    switch (layerPointReaderDataType) {
       case INT32:
         int intValue = layerPointReader.currentInt();
         if (satisfy.of(intValue)) {

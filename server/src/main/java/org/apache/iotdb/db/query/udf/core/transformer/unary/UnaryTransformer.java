@@ -30,11 +30,11 @@ public abstract class UnaryTransformer extends Transformer {
 
   protected final LayerPointReader layerPointReader;
 
-  protected final TSDataType dataType;
+  protected final TSDataType layerPointReaderDataType;
 
   public UnaryTransformer(LayerPointReader layerPointReader) {
     this.layerPointReader = layerPointReader;
-    this.dataType = layerPointReader.getDataType();
+    this.layerPointReaderDataType = layerPointReader.getDataType();
   }
 
   @Override

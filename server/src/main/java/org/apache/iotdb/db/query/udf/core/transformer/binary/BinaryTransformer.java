@@ -113,9 +113,9 @@ public abstract class BinaryTransformer extends Transformer {
   }
 
   protected static double castCurrentValueToDoubleOperand(
-      LayerPointReader layerPointReader, TSDataType dataType)
+      LayerPointReader layerPointReader, TSDataType layerPointReaderDataType)
       throws IOException, QueryProcessException {
-    switch (dataType) {
+    switch (layerPointReaderDataType) {
       case INT32:
         return layerPointReader.currentInt();
       case INT64:
