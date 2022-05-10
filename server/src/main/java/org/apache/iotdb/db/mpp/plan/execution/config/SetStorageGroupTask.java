@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -37,6 +36,8 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class SetStorageGroupTask implements IConfigTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SetStorageGroupTask.class);
@@ -55,8 +56,7 @@ public class SetStorageGroupTask implements IConfigTask {
     // TODO:(this judgement needs to be integrated in a high level framework)
     if (config.isClusterMode()) {
       // Construct request using statement
-      TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-      storageGroupSchema.setName(setStorageGroupStatement.getStorageGroupPath().getFullPath());
+      TStorageGroupSchema storageGroupSchema = constructStorageGroupSchema();
       TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
       ConfigNodeClient configNodeClient = null;
       try {
@@ -73,7 +73,7 @@ public class SetStorageGroupTask implements IConfigTask {
         } else {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         }
-      } catch (IoTDBConnectionException | BadNodeUrlException e) {
+      } catch (IoTDBConnectionException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
       } finally {
@@ -83,9 +83,12 @@ public class SetStorageGroupTask implements IConfigTask {
       }
     } else {
       try {
-        LocalConfigNode.getInstance()
-            .setStorageGroup(setStorageGroupStatement.getStorageGroupPath());
-      } catch (MetadataException e) {
+        LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+        localConfigNode.setStorageGroup(setStorageGroupStatement.getStorageGroupPath());
+        localConfigNode.setTTL(
+            setStorageGroupStatement.getStorageGroupPath(), setStorageGroupStatement.getTtl());
+        // schemaReplicationFactor, dataReplicationFactor, timePartitionInterval are ignored
+      } catch (MetadataException | IOException e) {
         future.setException(e);
       }
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -93,5 +96,27 @@ public class SetStorageGroupTask implements IConfigTask {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
     return future;
+  }
+
+  /** construct set storage group schema according to statement */
+  private TStorageGroupSchema constructStorageGroupSchema() {
+    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+    storageGroupSchema.setName(setStorageGroupStatement.getStorageGroupPath().getFullPath());
+    if (setStorageGroupStatement.getTtl() != null) {
+      storageGroupSchema.setTTL(setStorageGroupStatement.getTtl());
+    }
+    if (setStorageGroupStatement.getSchemaReplicationFactor() != null) {
+      storageGroupSchema.setSchemaReplicationFactor(
+          setStorageGroupStatement.getSchemaReplicationFactor());
+    }
+    if (setStorageGroupStatement.getDataReplicationFactor() != null) {
+      storageGroupSchema.setDataReplicationFactor(
+          setStorageGroupStatement.getDataReplicationFactor());
+    }
+    if (setStorageGroupStatement.getTimePartitionInterval() != null) {
+      storageGroupSchema.setTimePartitionInterval(
+          setStorageGroupStatement.getTimePartitionInterval());
+    }
+    return storageGroupSchema;
   }
 }

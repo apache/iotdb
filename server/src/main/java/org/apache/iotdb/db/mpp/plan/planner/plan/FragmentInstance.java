@@ -116,12 +116,12 @@ public class FragmentInstance implements IConsensusRequest {
     ret.append(String.format("FragmentInstance-%s:", getId()));
     ret.append(
         String.format(
-            "Host: %s", getHostDataNode() == null ? "Not set" : getHostDataNode().dataNodeId));
+            "Host: %s ", getHostDataNode() == null ? "Not set" : getHostDataNode().dataNodeId));
     ret.append(
         String.format(
-            "Region: %s",
+            "Region: %s ",
             getRegionReplicaSet() == null ? "Not set" : getRegionReplicaSet().getRegionId()));
-    ret.append("---- Plan Node Tree ----\n");
+    ret.append("\n---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
     return ret.toString();
   }
@@ -134,8 +134,9 @@ public class FragmentInstance implements IConsensusRequest {
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType);
-    fragmentInstance.regionReplicaSet = ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer);
-    fragmentInstance.hostDataNode = ThriftCommonsSerDeUtils.readTDataNodeLocation(buffer);
+    fragmentInstance.regionReplicaSet =
+        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
+    fragmentInstance.hostDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
 
     return fragmentInstance;
   }
@@ -149,8 +150,8 @@ public class FragmentInstance implements IConsensusRequest {
       timeFilter.serialize(buffer);
     }
     ReadWriteIOUtils.write(type.ordinal(), buffer);
-    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
-    ThriftCommonsSerDeUtils.writeTDataNodeLocation(hostDataNode, buffer);
+    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, buffer);
   }
 
   @Override

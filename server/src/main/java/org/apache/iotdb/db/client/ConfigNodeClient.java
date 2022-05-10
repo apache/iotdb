@@ -21,12 +21,11 @@ package org.apache.iotdb.db.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.CommonUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -53,6 +52,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ConfigNodeClient {
@@ -75,10 +75,9 @@ public class ConfigNodeClient {
 
   private int cursor = 0;
 
-  public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
+  public ConfigNodeClient() throws IoTDBConnectionException {
     // Read config nodes from configuration
-    configNodes =
-        CommonUtils.parseNodeUrls(IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
+    configNodes = IoTDBDescriptor.getInstance().getConfig().getConfigNodeList();
     init();
   }
 
@@ -168,10 +167,17 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
+
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
-        logger.info("Register current node using request {} with response {}", req, resp);
+
+        // set latest config node list
+        List<TEndPoint> newConfigNodes = new ArrayList<>();
+        for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
+          newConfigNodes.add(configNodeLocation.getInternalEndPoint());
+        }
+        configNodes = newConfigNodes;
       } catch (TException e) {
         configLeader = null;
       }
