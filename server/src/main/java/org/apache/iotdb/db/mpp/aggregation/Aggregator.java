@@ -79,14 +79,23 @@ public class Aggregator {
   // Used for AggregateOperator
   public void processTsBlocks(TsBlock[] tsBlock) {
     checkArgument(!step.isInputRaw(), "Step in AggregateOperator cannot process raw input");
-    for (InputLocation[] inputLocations : inputLocationList) {
-      Column[] columns = new Column[inputLocations.length];
-      for (int i = 0; i < inputLocations.length; i++) {
-        columns[i] =
-            tsBlock[inputLocations[i].getTsBlockIndex()].getColumn(
-                inputLocations[i].getValueColumnIndex());
+    if (step.isInputFinal()) {
+      checkArgument(
+          inputLocationList.size() == 1, "Step in AggregateOperator cannot process raw input");
+      Column finalResult =
+          tsBlock[inputLocationList.get(0)[0].getTsBlockIndex()].getColumn(
+              inputLocationList.get(0)[0].getValueColumnIndex());
+      accumulator.setFinal(finalResult);
+    } else {
+      for (InputLocation[] inputLocations : inputLocationList) {
+        Column[] columns = new Column[inputLocations.length];
+        for (int i = 0; i < inputLocations.length; i++) {
+          columns[i] =
+              tsBlock[inputLocations[i].getTsBlockIndex()].getColumn(
+                  inputLocations[i].getValueColumnIndex());
+        }
+        accumulator.addIntermediate(columns);
       }
-      accumulator.addIntermediate(columns);
     }
   }
 
