@@ -29,17 +29,18 @@ import java.io.IOException;
 public abstract class UnaryTransformer extends Transformer {
 
   protected final LayerPointReader layerPointReader;
-
   protected final TSDataType layerPointReaderDataType;
+  protected final boolean isLayerPointReaderConstant;
 
   public UnaryTransformer(LayerPointReader layerPointReader) {
     this.layerPointReader = layerPointReader;
-    this.layerPointReaderDataType = layerPointReader.getDataType();
+    layerPointReaderDataType = layerPointReader.getDataType();
+    isLayerPointReaderConstant = layerPointReader.isConstantPointReader();
   }
 
   @Override
   public final boolean isConstantPointReader() {
-    return layerPointReader.isConstantPointReader();
+    return isLayerPointReaderConstant;
   }
 
   @Override
@@ -48,7 +49,7 @@ public abstract class UnaryTransformer extends Transformer {
       return false;
     }
 
-    if (!isConstantPointReader()) {
+    if (!isLayerPointReaderConstant) {
       cachedTime = layerPointReader.currentTime();
     }
 

@@ -34,16 +34,24 @@ public abstract class BinaryTransformer extends Transformer {
   protected final TSDataType leftPointReaderDataType;
   protected final TSDataType rightPointReaderDataType;
 
+  protected final boolean isLeftPointReaderConstant;
+  protected final boolean isRightPointReaderConstant;
+
+  protected final boolean isCurrentConstant;
+
   protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     this.leftPointReader = leftPointReader;
     this.rightPointReader = rightPointReader;
     leftPointReaderDataType = leftPointReader.getDataType();
     rightPointReaderDataType = rightPointReader.getDataType();
+    isLeftPointReaderConstant = leftPointReader.isConstantPointReader();
+    isRightPointReaderConstant = rightPointReader.isConstantPointReader();
+    isCurrentConstant = isLeftPointReaderConstant && isRightPointReaderConstant;
   }
 
   @Override
   public boolean isConstantPointReader() {
-    return leftPointReader.isConstantPointReader() && rightPointReader.isConstantPointReader();
+    return isCurrentConstant;
   }
 
   @Override
@@ -76,14 +84,14 @@ public abstract class BinaryTransformer extends Transformer {
    * @return true if there has a timestamp that meets the requirements
    */
   private boolean cacheTime() throws IOException, QueryProcessException {
-    if (leftPointReader.isConstantPointReader() && rightPointReader.isConstantPointReader()) {
+    if (isCurrentConstant) {
       return true;
     }
-    if (leftPointReader.isConstantPointReader()) {
+    if (isLeftPointReaderConstant) {
       cachedTime = rightPointReader.currentTime();
       return true;
     }
-    if (rightPointReader.isConstantPointReader()) {
+    if (isRightPointReaderConstant) {
       cachedTime = leftPointReader.currentTime();
       return true;
     }
