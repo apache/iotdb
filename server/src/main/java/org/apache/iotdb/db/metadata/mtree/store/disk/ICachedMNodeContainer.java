@@ -68,13 +68,18 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
   static ICachedMNodeContainer getCachedMNodeContainer(IMNode node) {
     IMNodeContainer container = node.getChildren();
     if (container.equals(MNodeContainers.emptyMNodeContainer())) {
-      container = new CachedMNodeContainer();
-      node.setChildren(container);
+      synchronized (node) {
+        container = node.getChildren();
+        if (container.equals(MNodeContainers.emptyMNodeContainer())) {
+          container = new CachedMNodeContainer();
+          node.setChildren(container);
+        }
+      }
     }
     return (ICachedMNodeContainer) container;
   }
 
   static ICachedMNodeContainer getBelongedContainer(IMNode node) {
-    return (ICachedMNodeContainer) node.getParent().getChildren();
+    return getCachedMNodeContainer(node.getParent());
   }
 }
