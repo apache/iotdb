@@ -48,7 +48,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: IT/UT Test
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean compile post-integration-test -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!influxdb-protocol'
+        run: mvn -B clean compile post-integration-test -Dcluster.skip.test=true -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer,!influxdb-protocol'
       - name: Code Coverage (Coveralls)
         if: ${{ success() }}
         run: |
@@ -70,5 +70,4 @@ jobs:
           -Dsonar.projectKey=apache_incubator-iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
-          -DskipTests \
-          -Dcluster.skip.test=true -pl '!distribution'  -P '!testcontainer' -am
+          -DskipTests -pl '!distribution'  -P '!testcontainer' -am
