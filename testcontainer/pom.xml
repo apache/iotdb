@@ -35,6 +35,8 @@
         <docker.clean.single.argument>image rm apache/iotdb:maven-development</docker.clean.single.argument>
         <docker.build.cluster.argument>build -t apache/iotdb:cluster-maven-development -f ${basedir}/../docker/src/main/Dockerfile-cluster ${basedir}/../.</docker.build.cluster.argument>
         <docker.clean.cluster.argument>image rm apache/iotdb:cluster-maven-development</docker.clean.cluster.argument>
+        <docker.build.sync.argument>build -t apache/iotdb:sync-maven-development -f ${basedir}/../docker/src/main/Dockerfile-single-tc ${basedir}/../.</docker.build.sync.argument>
+        <docker.clean.sync.argument>image rm apache/iotdb:sync-maven-development</docker.clean.sync.argument>
     </properties>
     <dependencies>
         <dependency>
@@ -101,6 +103,18 @@
                                 </configuration>
                             </execution>
                             <execution>
+                                <id>build-sync-docker-image</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${docker.test.skip}</skip>
+                                    <executable>${docker.build.executable}</executable>
+                                    <commandlineArgs>${docker.build.sync.argument}</commandlineArgs>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>clean-docker-image</id>
                                 <phase>post-integration-test</phase>
                                 <goals>
@@ -122,6 +136,18 @@
                                     <skip>${docker.test.skip}</skip>
                                     <executable>${docker.build.executable}</executable>
                                     <commandlineArgs>${docker.clean.cluster.argument}</commandlineArgs>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>clean-sync-docker-image</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${docker.test.skip}</skip>
+                                    <executable>${docker.build.executable}</executable>
+                                    <commandlineArgs>${docker.clean.sync.argument}</commandlineArgs>
                                 </configuration>
                             </execution>
                         </executions>
@@ -158,6 +184,83 @@
                                 </goals>
                             </execution>
                         </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>test-sync</id>
+            <build>
+                <plugins>
+                    <!-- before integration test, we build the docker image -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>build-sync-docker-image</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${docker.test.skip}</skip>
+                                    <executable>${docker.build.executable}</executable>
+                                    <commandlineArgs>${docker.build.sync.argument}</commandlineArgs>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>clean-sync-docker-image</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${docker.test.skip}</skip>
+                                    <executable>${docker.build.executable}</executable>
+                                    <commandlineArgs>${docker.clean.sync.argument}</commandlineArgs>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <version>3.2.0</version>
+                        <executions>
+                            <execution>
+                                <id>add-test-container-source</id>
+                                <phase>generate-test-sources</phase>
+                                <goals>
+                                    <goal>add-test-source</goal>
+                                </goals>
+                                <configuration>
+                                    <sources>
+                                        <source>${basedir}/src/test/java</source>
+                                    </sources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>run-integration-tests</id>
+                                <phase>integration-test</phase>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <includes>
+                                <include>**/org/apache/iotdb/db/sync/**</include>
+                            </includes>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
