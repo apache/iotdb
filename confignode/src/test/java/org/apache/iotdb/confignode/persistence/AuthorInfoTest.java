@@ -74,8 +74,8 @@ public class AuthorInfoTest {
 
     Map<String, List<String>> permissionInfo;
     List<String> privilege = new ArrayList<>();
-    privilege.add("root : CREATE_USER");
-    privilege.add("root : CREATE_USER");
+    privilege.add("root.** : CREATE_USER");
+    privilege.add("root.** : CREATE_USER");
 
     List<String> paths = new ArrayList<>();
     paths.add("root.ln");
