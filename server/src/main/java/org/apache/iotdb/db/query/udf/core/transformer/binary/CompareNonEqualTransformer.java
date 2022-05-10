@@ -19,26 +19,26 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class CompareNonEqualTransformer extends CompareBinaryTransformer {
 
   public CompareNonEqualTransformer(
       LayerPointReader leftPointReader, LayerPointReader rightPointReader)
-      throws QueryProcessException {
+      throws UnSupportedDataTypeException {
     super(leftPointReader, rightPointReader);
   }
 
   @Override
-  protected void checkType() throws QueryProcessException {
+  protected void checkType() throws UnSupportedDataTypeException {
     if ((leftPointReaderDataType == TSDataType.BOOLEAN
             && rightPointReaderDataType != TSDataType.BOOLEAN)
         || (leftPointReaderDataType != TSDataType.BOOLEAN
             && rightPointReaderDataType == TSDataType.BOOLEAN)) {
-      throw new QueryProcessException(
-          "Data type doesn't match on both sides of '=', left: "
+      throw new UnSupportedDataTypeException(
+          "left: "
               + leftPointReaderDataType.toString()
               + ", right: "
               + rightPointReaderDataType.toString());
