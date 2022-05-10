@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
@@ -36,13 +37,16 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTimeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
@@ -59,8 +63,12 @@ import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.apache.commons.lang.Validate;
+
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -294,13 +302,50 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planAggregation(
-      Map<String, Set<Expression>> aggregationExpressions, AggregationStep step) {
+  public LogicalPlanBuilder planGroupByLevel(
+      Map<Expression, Set<Expression>> groupByLevelExpressions, AggregationStep curStep) {
+    if (groupByLevelExpressions == null) {
+      return this;
+    }
+
+    List<String> outputColumnNames = new ArrayList<>();
+    List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+    for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
+      AggregationType aggregationFunction =
+          AggregationType.valueOf(
+              ((FunctionExpression) groupedExpression).getFunctionName().toUpperCase());
+      outputColumnNames.add(groupedExpression.getExpressionString());
+      aggregationDescriptorList.add(
+          new AggregationDescriptor(
+              aggregationFunction,
+              curStep,
+              new ArrayList<>(groupByLevelExpressions.get(groupedExpression))));
+    }
+    this.root =
+        new GroupByLevelNode(
+            context.getQueryId().genPlanNodeId(),
+            Collections.singletonList(this.getRoot()),
+            aggregationDescriptorList,
+            outputColumnNames);
     return this;
   }
 
-  public LogicalPlanBuilder planGroupByLevel(
-      Map<Expression, Set<Expression>> groupByLevelExpressions, AggregationStep curStep) {
+  public LogicalPlanBuilder planAggregation(
+      Map<String, Set<Expression>> aggregationExpressions,
+      GroupByTimeParameter groupByTimeParameter,
+      AggregationStep curStep) {
+    if (aggregationExpressions == null) {
+      return this;
+    }
+
+    List<AggregationDescriptor> aggregationDescriptorList =
+        constructAggregationDescriptorList(aggregationExpressions, curStep);
+    this.root =
+        new AggregationNode(
+            context.getQueryId().genPlanNodeId(),
+            Collections.singletonList(this.getRoot()),
+            aggregationDescriptorList,
+            groupByTimeParameter);
     return this;
   }
 
@@ -308,15 +353,77 @@ public class LogicalPlanBuilder {
       Map<String, Set<Expression>> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep) {
+    if (aggregationExpressions == null) {
+      return this;
+    }
+
+    List<AggregationDescriptor> aggregationDescriptorList =
+        constructAggregationDescriptorList(aggregationExpressions, curStep);
+    this.root =
+        new GroupByTimeNode(
+            context.getQueryId().genPlanNodeId(),
+            Collections.singletonList(this.getRoot()),
+            aggregationDescriptorList,
+            groupByTimeParameter);
     return this;
+  }
+
+  private List<AggregationDescriptor> constructAggregationDescriptorList(
+      Map<String, Set<Expression>> aggregationExpressions, AggregationStep curStep) {
+    return aggregationExpressions.values().stream()
+        .flatMap(Set::stream)
+        .map(
+            expression -> {
+              Validate.isTrue(expression instanceof FunctionExpression);
+              AggregationType aggregationFunction =
+                  AggregationType.valueOf(
+                      ((FunctionExpression) expression).getFunctionName().toUpperCase());
+              return new AggregationDescriptor(
+                  aggregationFunction, curStep, expression.getExpressions());
+            })
+        .collect(Collectors.toList());
   }
 
   public LogicalPlanBuilder planFilterAndTransform(
-      Expression queryFilter, Set<Expression> selectExpressions) {
+      Expression queryFilter,
+      Set<Expression> selectExpressions,
+      boolean isGroupByTime,
+      ZoneId zoneId) {
+    if (queryFilter == null) {
+      return this;
+    }
+
+    this.root =
+        new FilterNode(
+            context.getQueryId().genPlanNodeId(),
+            this.getRoot(),
+            selectExpressions.toArray(new Expression[0]),
+            queryFilter,
+            isGroupByTime,
+            zoneId);
     return this;
   }
 
-  public LogicalPlanBuilder planTransform(Set<Expression> selectExpressions) {
+  public LogicalPlanBuilder planTransform(
+      Set<Expression> selectExpressions, boolean isGroupByTime, ZoneId zoneId) {
+    boolean needTransform = false;
+    for (Expression expression : selectExpressions) {
+      if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
+        needTransform = true;
+        break;
+      }
+    }
+    if (!needTransform) {
+      return this;
+    }
+
+    this.root =
+        new TransformNode(
+            context.getQueryId().genPlanNodeId(),
+            this.getRoot(),
+            selectExpressions.toArray(new Expression[0]),
+            isGroupByTime,
+            zoneId);
     return this;
   }
 

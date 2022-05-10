@@ -762,6 +762,22 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /** Check for arithmetic expression, logical expression, UDF. Returns true if it exists. */
+  public static boolean checkIsNeedTransform(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      return true;
+    } else if (expression instanceof UnaryExpression) {
+      return true;
+    } else if (expression instanceof FunctionExpression) {
+      return !expression.isBuiltInAggregationFunctionExpression();
+    } else if (expression instanceof TimeSeriesOperand) {
+      return false;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Method can only be used in source expression
   /////////////////////////////////////////////////////////////////////////////////////////////////

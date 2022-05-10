@@ -169,9 +169,17 @@ public class LogicalPlanner {
 
         if (analysis.hasValueFilter()) {
           planBuilder =
-              planBuilder.planFilterAndTransform(queryFilter, analysis.getSelectExpressions());
+              planBuilder.planFilterAndTransform(
+                  queryFilter,
+                  analysis.getSelectExpressions(),
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId());
         } else {
-          planBuilder = planBuilder.planTransform(analysis.getSelectExpressions());
+          planBuilder =
+              planBuilder.planTransform(
+                  analysis.getSelectExpressions(),
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId());
         }
 
         if (queryStatement.isAggregationQuery()) {
@@ -181,7 +189,9 @@ public class LogicalPlanner {
                       && analysis.getGroupByTimeParameter().hasOverlap());
           AggregationStep curStep =
               outputPartial ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
-          planBuilder = planBuilder.planAggregation(aggregationExpressions, curStep);
+          planBuilder =
+              planBuilder.planAggregation(
+                  aggregationExpressions, analysis.getGroupByTimeParameter(), curStep);
 
           if (curStep.isOutputPartial()) {
             if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
