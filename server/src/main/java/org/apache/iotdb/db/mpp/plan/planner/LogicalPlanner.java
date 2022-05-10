@@ -224,6 +224,7 @@ public class LogicalPlanner {
                 queryStatement.getResultOrder(),
                 analysis.getGlobalTimeFilter(),
                 analysis.getGroupByTimeParameter(),
+                aggregationExpressions,
                 analysis.getGroupByLevelExpressions());
       }
 
