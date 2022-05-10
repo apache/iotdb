@@ -47,14 +47,6 @@ public interface IStorageGroupSchemaManager {
   void setStorageGroup(PartialPath path) throws MetadataException;
 
   /**
-   * different with LocalConfigNode.ensureStorageGroup, this method won't init storageGroup
-   * resources.
-   *
-   * @param path storage group path
-   */
-  void ensureStorageGroup(PartialPath path) throws MetadataException;
-
-  /**
    * Delete storage groups of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3"
    */
   void deleteStorageGroup(PartialPath storageGroup) throws MetadataException;
@@ -155,6 +147,15 @@ public interface IStorageGroupSchemaManager {
 
   /** Get all storage group MNodes */
   List<IStorageGroupMNode> getAllStorageGroupNodes();
+
+  /**
+   * Different with LocalConfigNode.ensureStorageGroup, this method won't init storageGroup
+   * resources and the input is the target storage group path.
+   *
+   * @param storageGroup storage group path
+   */
+  IStorageGroupMNode ensureStorageGroupByStorageGroupPath(PartialPath storageGroup)
+      throws MetadataException;
 
   /**
    * Check whether the storage group of given path is set. The path may be a prefix path of some

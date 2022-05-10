@@ -28,7 +28,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -151,17 +150,13 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   }
 
   @Override
-  public void ensureStorageGroup(PartialPath path) throws MetadataException {
+  public IStorageGroupMNode ensureStorageGroupByStorageGroupPath(PartialPath storageGroup)
+      throws MetadataException {
     try {
-      getBelongedStorageGroup(path);
+      return getStorageGroupNodeByStorageGroupPath(storageGroup);
     } catch (StorageGroupNotSetException e) {
-      if (!config.isAutoCreateSchemaEnabled()) {
-        throw e;
-      }
-      PartialPath storageGroupPath =
-          MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
       try {
-        setStorageGroup(storageGroupPath);
+        setStorageGroup(storageGroup);
       } catch (StorageGroupAlreadySetException storageGroupAlreadySetException) {
         // do nothing
         // concurrent timeseries creation may result concurrent ensureStorageGroup
@@ -173,6 +168,8 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
           throw storageGroupAlreadySetException;
         }
       }
+
+      return getStorageGroupNodeByStorageGroupPath(storageGroup);
     }
   }
 
