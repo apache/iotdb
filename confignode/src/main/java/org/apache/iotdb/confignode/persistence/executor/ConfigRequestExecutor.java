@@ -44,9 +44,22 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.persistence.SnapshotProcessor;
 import org.apache.iotdb.consensus.common.DataSet;
 
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class ConfigRequestExecutor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigRequestExecutor.class);
 
   private final NodeInfo nodeInfo;
 
@@ -137,5 +150,68 @@ public class ConfigRequestExecutor {
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
+  }
+
+  public boolean takeSnapshot(File snapshotDir) {
+
+    if (!snapshotDir.exists() && !snapshotDir.mkdirs()) {
+      LOGGER.error("snapshot directory [{}] can not be created.", snapshotDir.getAbsolutePath());
+      return false;
+    }
+
+    File[] fileList = snapshotDir.listFiles();
+    if (fileList != null && fileList.length > 0) {
+      LOGGER.error("snapshot directory [{}] is not empty.", snapshotDir.getAbsolutePath());
+      return false;
+    }
+
+    AtomicBoolean result = new AtomicBoolean(true);
+    getAllAttributes()
+        .parallelStream()
+        .forEach(
+            x -> {
+              boolean takeSnapshotResult = true;
+              try {
+                takeSnapshotResult = x.processTakeSnapshot(snapshotDir);
+              } catch (TException | IOException e) {
+                LOGGER.error(e.getMessage());
+                takeSnapshotResult = false;
+              } finally {
+                // If any snapshot fails, the whole fails
+                // So this is just going to be false
+                if (!takeSnapshotResult) {
+                  result.set(false);
+                }
+              }
+            });
+    return result.get();
+  }
+
+  public void loadSnapshot(File latestSnapshotRootDir) {
+
+    if (!latestSnapshotRootDir.exists()) {
+      LOGGER.error(
+          "snapshot directory [{}] is not exist, can not load snapshot with this directory.",
+          latestSnapshotRootDir.getAbsolutePath());
+      return;
+    }
+
+    getAllAttributes()
+        .parallelStream()
+        .forEach(
+            x -> {
+              try {
+                x.processLoadSnapshot(latestSnapshotRootDir);
+              } catch (TException | IOException e) {
+                LOGGER.error(e.getMessage());
+              }
+            });
+  }
+
+  private List<SnapshotProcessor> getAllAttributes() {
+    List<SnapshotProcessor> allAttributes = new ArrayList<>();
+    allAttributes.add(clusterSchemaInfo);
+    allAttributes.add(partitionInfo);
+    return allAttributes;
   }
 }

@@ -198,6 +198,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1336,6 +1337,8 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     ReceiverService.getInstance().showPipe(plan, listDataSet);
+    // sort by create time
+    listDataSet.sort(Comparator.comparing(o -> o.getFields().get(0).getStringValue()));
     return listDataSet;
   }
 
