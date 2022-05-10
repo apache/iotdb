@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -49,7 +49,8 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedExce
 
 public class AuthorityChecker {
 
-  private static final String SUPER_USER = CommonConfig.getInstance().getAdminName();
+  private static final String SUPER_USER =
+      CommonDescriptor.getInstance().getConfig().getAdminName();
   private static final Logger logger = LoggerFactory.getLogger(AuthorityChecker.class);
 
   private static AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
