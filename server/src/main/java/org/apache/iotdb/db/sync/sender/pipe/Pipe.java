@@ -111,6 +111,7 @@ public interface Pipe {
   enum PipeStatus {
     RUNNING,
     STOP,
-    DROP
+    DROP,
+    PENDING // use for receiver recovery
   }
 }

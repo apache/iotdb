@@ -75,14 +75,6 @@ public class ReceiverService implements IService {
       TransportServerManager.getInstance().startService();
       receiverManager.startServer();
       collector.startCollect();
-      // recover started pipe
-      List<PipeInfo> pipeInfos = receiverManager.getAllPipeInfos();
-      for (PipeInfo pipeInfo : pipeInfos) {
-        if (pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
-          collector.startPipe(
-              pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime());
-        }
-      }
     } catch (IOException | StartupException e) {
       throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
     }
@@ -109,12 +101,20 @@ public class ReceiverService implements IService {
     }
   }
 
+  private void checkPipe(String pipeName, String remoteIp, long createTime) throws IOException {
+    PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
+    if (pipeName != null && pipeInfo.getStatus().equals(PipeStatus.PENDING)) {
+      startPipe(pipeName, remoteIp, createTime);
+    }
+  }
+
   /** heartbeat RPC handle */
   public synchronized SyncResponse receiveMsg(SyncRequest request) {
     SyncResponse response = new SyncResponse(ResponseType.INFO, "");
     try {
       switch (request.getType()) {
         case HEARTBEAT:
+          checkPipe(request.getPipeName(), request.getRemoteIp(), request.getCreateTime());
           PipeMessage message =
               receiverManager.getPipeMessage(
                   request.getPipeName(), request.getRemoteIp(), request.getCreateTime(), true);
@@ -164,7 +164,9 @@ public class ReceiverService implements IService {
   /** start an existed pipe named pipeName */
   private void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.STOP)) {
+    if (pipeInfo != null
+        && (pipeInfo.getStatus().equals(PipeStatus.STOP)
+            || pipeInfo.getStatus().equals(PipeStatus.PENDING))) {
       logger.info("start Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       receiverManager.startPipe(pipeName, remoteIp, createTime);
       collector.startPipe(pipeName, remoteIp, createTime);
@@ -174,7 +176,9 @@ public class ReceiverService implements IService {
   /** stop an existed pipe named pipeName */
   private void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
+    if (pipeInfo != null
+        && (pipeInfo.getStatus().equals(PipeStatus.RUNNING)
+            || pipeInfo.getStatus().equals(PipeStatus.PENDING))) {
       logger.info("stop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       receiverManager.stopPipe(pipeName, remoteIp, createTime);
       collector.stopPipe(pipeName, remoteIp, createTime);
@@ -184,7 +188,9 @@ public class ReceiverService implements IService {
   /** drop an existed pipe named pipeName */
   private void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo != null && !pipeInfo.getStatus().equals(PipeStatus.DROP)) {
+    if (pipeInfo != null
+        && (!pipeInfo.getStatus().equals(PipeStatus.DROP)
+            || pipeInfo.getStatus().equals(PipeStatus.PENDING))) {
       logger.info("drop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       receiverManager.dropPipe(pipeName, remoteIp, createTime);
       collector.stopPipe(pipeName, remoteIp, createTime);
@@ -245,7 +251,12 @@ public class ReceiverService implements IService {
     record.addField(Binary.valueOf(pipeInfo.getPipeName()), TSDataType.TEXT);
     record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
     record.addField(Binary.valueOf(pipeInfo.getRemoteIp()), TSDataType.TEXT);
-    record.addField(Binary.valueOf(pipeInfo.getStatus().name()), TSDataType.TEXT);
+    record.addField(
+        Binary.valueOf(
+            pipeInfo.getStatus().equals(PipeStatus.PENDING)
+                ? PipeStatus.STOP.name()
+                : pipeInfo.getStatus().name()),
+        TSDataType.TEXT);
     record.addField(
         Binary.valueOf(
             receiverManager
