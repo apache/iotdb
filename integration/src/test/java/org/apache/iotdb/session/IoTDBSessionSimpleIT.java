@@ -530,7 +530,7 @@ public class IoTDBSessionSimpleIT {
     session.setStorageGroup(storageGroup);
 
     session.createTimeseries(
-        "root.sg.\"my.device.with.colon:\".s",
+        "root.sg.`my.device.with.colon:`.s",
         TSDataType.INT64,
         TSEncoding.RLE,
         CompressionType.SNAPPY);
