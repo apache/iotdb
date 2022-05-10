@@ -82,7 +82,7 @@ public class SetStorageGroupStatement extends Statement implements IConfigStatem
         : Collections.emptyList();
   }
 
-  public Long getTtl() {
+  public Long getTTL() {
     return ttl;
   }
 
