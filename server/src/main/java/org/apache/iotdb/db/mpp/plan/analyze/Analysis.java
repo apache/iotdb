@@ -89,6 +89,8 @@ public class Analysis {
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
+  private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+
   public Analysis() {}
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
@@ -235,5 +237,14 @@ public class Analysis {
 
   public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
     this.groupByTimeParameter = groupByTimeParameter;
+  }
+
+  public void setDeviceToMeasurementIndexesMap(
+      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
+    this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
+  }
+
+  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
+    return deviceToMeasurementIndexesMap;
   }
 }

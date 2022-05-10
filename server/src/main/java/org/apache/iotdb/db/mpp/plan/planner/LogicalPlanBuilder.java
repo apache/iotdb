@@ -285,8 +285,9 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planDeviceView(
-      Map<String, PlanNode> deviceNameToSourceNodesMap, OrderBy mergeOrder) {
-    List<String> measurements = new ArrayList<>();
+      Map<String, PlanNode> deviceNameToSourceNodesMap,
+      List<String> measurements,
+      OrderBy mergeOrder) {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             context.getQueryId().genPlanNodeId(),

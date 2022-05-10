@@ -138,10 +138,12 @@ public class LocalExecutionPlanner {
   public DataDriver plan(
       PlanNode plan,
       TypeProvider types,
+      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
       DataRegion dataRegion) {
-    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
+    LocalExecutionPlanContext context =
+        new LocalExecutionPlanContext(types, deviceToMeasurementIndexesMap, instanceContext);
 
     Operator root = plan.accept(new Visitor(), context);
 
@@ -402,7 +404,13 @@ public class LocalExecutionPlanner {
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
               .collect(Collectors.toList());
-      return new DeviceViewOperator(operatorContext, node.getDevices(), children, null, null);
+      List<List<Integer>> deviceColumnIndex =
+          node.getDevices().stream()
+              .map(deviceName -> context.getDeviceToMeasurementIndexesMap().get(deviceName))
+              .collect(Collectors.toList());
+      List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      return new DeviceViewOperator(
+          operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
     }
 
     @Override
@@ -705,10 +713,14 @@ public class LocalExecutionPlanner {
     private int nextOperatorId = 0;
 
     private TypeProvider typeProvider;
+    private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
     public LocalExecutionPlanContext(
-        TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
+        TypeProvider typeProvider,
+        Map<String, List<Integer>> deviceToMeasurementIndexesMap,
+        FragmentInstanceContext instanceContext) {
       this.typeProvider = typeProvider;
+      this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
       this.instanceContext = instanceContext;
       this.paths = new ArrayList<>();
       this.allSensorsMap = new HashMap<>();
@@ -761,6 +773,10 @@ public class LocalExecutionPlanner {
 
     public TypeProvider getTypeProvider() {
       return typeProvider;
+    }
+
+    public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
+      return deviceToMeasurementIndexesMap;
     }
   }
 }

@@ -110,6 +110,7 @@ public class FragmentInstanceManager {
                     planner.plan(
                         instance.getFragment().getRoot(),
                         instance.getFragment().getTypeProvider(),
+                        instance.getFragment().getDeviceToMeasurementIndexesMap(),
                         context,
                         instance.getTimeFilter(),
                         dataRegion);

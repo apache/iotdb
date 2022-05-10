@@ -129,7 +129,10 @@ public class LogicalPlanner {
         }
         // convert to ALIGN BY DEVICE view
         planBuilder =
-            planBuilder.planDeviceView(deviceToSubPlanMap, queryStatement.getResultOrder());
+            planBuilder.planDeviceView(
+                deviceToSubPlanMap,
+                analysis.getRespDatasetHeader().getRespColumns(),
+                queryStatement.getResultOrder());
       } else {
         planBuilder =
             planBuilder.withNewRoot(
