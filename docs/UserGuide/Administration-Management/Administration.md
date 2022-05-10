@@ -34,7 +34,7 @@ The user is the legal user of the database. A user corresponds to a unique usern
 
 ### Privilege
 
-The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node. Note: the path wildcard is not allowed in granting privileges.
+The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range. It is flexible that using [path pattern](../Data-Concept/Data-Model-and-Terminology.md) to manage privileges.
 
 ### Role
 
@@ -50,7 +50,7 @@ According to the [sample data](https://github.com/thulab/iotdb/files/4438687/Oth
 
 ### Create User
 
-We use `CREATE USER <userName> <password>` to create users. For example, we can create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. The SQL statement is:
+We use `CREATE USER <userName> <password>` to create users. For example, we can use root user who has all privileges to create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. The SQL statement is:
 
 ```
 CREATE USER ln_write_user 'write_pwd'
@@ -64,6 +64,11 @@ LIST USER
 As can be seen from the result shown below, the two users have been created:
 
 ```
+IoTDB> CREATE USER ln_write_user 'write_pwd'
+Msg: The statement is executed successfully.
+IoTDB> CREATE USER sgcc_write_user 'write_pwd'
+Msg: The statement is executed successfully.
+IoTDB> LIST USER
 +---------------+
 |           user|
 +---------------+
@@ -72,7 +77,7 @@ As can be seen from the result shown below, the two users have been created:
 |sgcc_write_user|
 +---------------+
 Total line number = 3
-It costs 0.004s
+It costs 0.157s
 ```
 
 ### Grant User Privilege
@@ -85,46 +90,53 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Msg: 602: No permissions for this operation INSERT
 ```
 
-Now, we grant the two users write privileges to the corresponding storage groups, and try to write data again.
+Now, we use root user to grant the two users write privileges to the corresponding storage groups.
 
 We use `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` to grant user privileges. For example:
 
 ```
-GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
-GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
+GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 ```
 The execution result is as follows:
 
 ```
-IoTDB> GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
+IoTDB> GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-IoTDB> GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
+IoTDB> GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 Msg: The statement is executed successfully.
+```
+
+Next, use ln_write_user to try to write data again.
+```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 Msg: The statement is executed successfully.
 ```
 
 ### Revoker User Privilege
 
-After granting user privileges, we could use `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` to revoke the granted user privileges. For example:
+After granting user privileges, we could use `REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>` to revoke the granted user privileges. For example, use root user to revoke the privilege of ln_write_user and sgcc_write_user:
 
 ```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
-INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
+REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 ```
 
 The execution result is as follows:
 
 ```
-REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
+REVOKE USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
+REVOKE USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
 Msg: The statement is executed successfully.
+```
+
+After revoking, ln_write_user has no permission to writing data to root.ln.**
+```
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 Msg: 602: No permissions for this operation INSERT
 ```
@@ -165,14 +177,14 @@ Eg: IoTDB > DROP ROLE admin;
 
 ```
 GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
+Eg: IoTDB > GRANT USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
 * Grant Role Privileges
 
 ```
 GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
+Eg: IoTDB > GRANT ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
 ```
 
 * Grant User Role
@@ -186,14 +198,14 @@ Eg: IoTDB > GRANT temprole TO tempuser;
 
 ```
 REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;   
-Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln;
+Eg: IoTDB > REVOKE USER tempuser PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
 * Revoke Role Privileges
 
 ```
 REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln;
+Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
 ```
 
 * Revoke Role From User
@@ -221,7 +233,7 @@ Eg: IoTDB > LIST ROLE
 
 ```
 LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES USER sgcc_write_user ON root.sgcc.**;
 ```
 
 * List Privileges of Roles
@@ -235,7 +247,7 @@ Eg: IoTDB > LIST ROLE PRIVILEGES actor;
 
 ```
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES ROLE write_role ON root.sgcc.**;
 ```
 
 * List Privileges of Users
@@ -317,9 +329,18 @@ At the same time, changes to roles are immediately reflected on all users who ow
 ### Username Restrictions
 
 IoTDB specifies that the character length of a username should not be less than 4, and the username cannot contain spaces.
+
 ### Password Restrictions
 
 IoTDB specifies that the character length of a password should have no less than 4 character length, and no spaces. The password is encrypted with MD5.
+
 ### Role Name Restrictions
 
 IoTDB specifies that the character length of a role name should have no less than 4 character length, and no spaces.
+
+### Path pattern in Administration Management
+
+A path pattern's result set contains all the elements of its sub pattern's
+result set. For example, `root.sg.d.*` is a sub pattern of
+`root.sg.*.*`, while `root.sg.**` is not a sub pattern of
+`root.sg.*.*`. When a user is granted privilege on a pattern, the pattern used in his DDL or DML must be a sub pattern of the privilege pattern, which guarantees that the user won't access the timeseries exceed his privilege scope.
