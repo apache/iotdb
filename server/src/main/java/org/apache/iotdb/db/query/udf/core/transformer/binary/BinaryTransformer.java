@@ -31,14 +31,14 @@ public abstract class BinaryTransformer extends Transformer {
   protected final LayerPointReader leftPointReader;
   protected final LayerPointReader rightPointReader;
 
-  protected final TSDataType leftTSDataType;
-  protected final TSDataType rightTSDataType;
+  protected final TSDataType leftPointReaderDataType;
+  protected final TSDataType rightPointReaderDataType;
 
   protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     this.leftPointReader = leftPointReader;
     this.rightPointReader = rightPointReader;
-    leftTSDataType = leftPointReader.getDataType();
-    rightTSDataType = rightPointReader.getDataType();
+    leftPointReaderDataType = leftPointReader.getDataType();
+    rightPointReaderDataType = rightPointReader.getDataType();
   }
 
   @Override
@@ -124,6 +124,8 @@ public abstract class BinaryTransformer extends Transformer {
         return layerPointReader.currentFloat();
       case DOUBLE:
         return layerPointReader.currentDouble();
+      case BOOLEAN:
+        return layerPointReader.currentBoolean() ? 1.0d : 0.0d;
       default:
         throw new QueryProcessException(
             "Unsupported data type: " + layerPointReader.getDataType().toString());

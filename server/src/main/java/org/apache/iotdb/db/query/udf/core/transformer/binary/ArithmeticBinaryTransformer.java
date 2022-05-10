@@ -36,14 +36,14 @@ public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
   protected void transformAndCache() throws QueryProcessException, IOException {
     cachedDouble =
         evaluate(
-            castCurrentValueToDoubleOperand(leftPointReader, leftTSDataType),
-            castCurrentValueToDoubleOperand(rightPointReader, rightTSDataType));
+            castCurrentValueToDoubleOperand(leftPointReader, leftPointReaderDataType),
+            castCurrentValueToDoubleOperand(rightPointReader, rightPointReaderDataType));
   }
+
+  protected abstract double evaluate(double leftOperand, double rightOperand);
 
   @Override
   public TSDataType getDataType() {
     return TSDataType.DOUBLE;
   }
-
-  protected abstract double evaluate(double leftOperand, double rightOperand);
 }
