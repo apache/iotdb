@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.tree;
+package org.apache.iotdb.commons.schema.tree;
 
 public interface ITreeNode {
 
