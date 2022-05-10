@@ -329,8 +329,7 @@ public class MTreeAboveSG {
   }
 
   /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
-   * device], throw exception Get storage group node, if the give path is not a storage group, throw
+   * E.g., root.sg is storage group given [root, sg], if the give path is not a storage group, throw
    * exception
    */
   public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath storageGroupPath)

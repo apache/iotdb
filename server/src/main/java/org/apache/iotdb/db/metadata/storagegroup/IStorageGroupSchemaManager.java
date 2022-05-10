@@ -133,15 +133,6 @@ public interface IStorageGroupSchemaManager {
    */
   int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
 
-  /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg],
-   * return the MNode of root.sg Get storage group node by path. Give path like [root, sg, device],
-   * MNodeTypeMismatchException will be thrown. If storage group is not set,
-   * StorageGroupNotSetException will be thrown.
-   */
-  IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
-      throws MetadataException;
-
   /** Get storage group node by path. the give path don't need to be storage group path. */
   IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException;
 

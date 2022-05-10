@@ -153,7 +153,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   public IStorageGroupMNode ensureStorageGroupByStorageGroupPath(PartialPath storageGroup)
       throws MetadataException {
     try {
-      return getStorageGroupNodeByStorageGroupPath(storageGroup);
+      return mtree.getStorageGroupNodeByStorageGroupPath(storageGroup);
     } catch (StorageGroupNotSetException e) {
       try {
         setStorageGroup(storageGroup);
@@ -169,7 +169,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
         }
       }
 
-      return getStorageGroupNodeByStorageGroupPath(storageGroup);
+      return mtree.getStorageGroupNodeByStorageGroupPath(storageGroup);
     }
   }
 
@@ -241,12 +241,6 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getStorageGroupNum(pathPattern, isPrefixMatch);
-  }
-
-  @Override
-  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
-      throws MetadataException {
-    return mtree.getStorageGroupNodeByStorageGroupPath(path);
   }
 
   @Override
