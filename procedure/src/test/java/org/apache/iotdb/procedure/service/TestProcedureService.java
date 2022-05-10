@@ -23,6 +23,7 @@ import org.apache.iotdb.procedure.NoopProcedureStore;
 import org.apache.iotdb.procedure.ProcedureExecutor;
 import org.apache.iotdb.procedure.TestProcEnv;
 import org.apache.iotdb.procedure.entity.IncProcedure;
+import org.apache.iotdb.procedure.entity.TestProcedureFactory;
 import org.apache.iotdb.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.procedure.store.IProcedureStore;
@@ -55,6 +56,7 @@ public class TestProcedureService {
     store = new NoopProcedureStore();
     executor = new ProcedureExecutor(env, store, scheduler);
     client = new ProcedureServerProcessor(executor);
+    client.setProcedureFactory(new TestProcedureFactory());
     executor.init(4);
     store.start();
     scheduler.start();

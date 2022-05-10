@@ -42,6 +42,7 @@ public class ConfigNodeConstant {
   public static final String DATA_DIR = "data";
   public static final String CONF_DIR = "conf";
   public static final String CONSENSUS_FOLDER = "consensus";
+  public static final String PROCEDURE_FOLDER = "proc";
 
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 

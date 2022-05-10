@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -59,6 +60,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
@@ -79,6 +81,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -166,9 +169,19 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
-    // TODO: delete StorageGroup
-    return null;
+  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq tDeleteReq) throws TException {
+    String prefixPath = tDeleteReq.getPrefixPath();
+    DeleteStorageGroupsReq deleteStorageGroupsReq = new DeleteStorageGroupsReq();
+    deleteStorageGroupsReq.setStorageGroups(Collections.singletonList(prefixPath));
+    return configManager.deleteStorageGroups(deleteStorageGroupsReq);
+  }
+
+  @Override
+  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq tDeleteReq) throws TException {
+    List<String> prefixList = tDeleteReq.getPrefixPathList();
+    DeleteStorageGroupsReq deleteStorageGroupsReq = new DeleteStorageGroupsReq();
+    deleteStorageGroupsReq.setStorageGroups(prefixList);
+    return configManager.deleteStorageGroups(deleteStorageGroupsReq);
   }
 
   @Override

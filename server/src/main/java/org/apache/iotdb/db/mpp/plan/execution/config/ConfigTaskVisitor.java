@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
@@ -48,6 +49,11 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitSetStorageGroup(SetStorageGroupStatement statement, TaskContext context) {
     return new SetStorageGroupTask(statement);
+  }
+
+  public IConfigTask visitDeleteStorageGroup(
+      DeleteStorageGroupStatement statement, TaskContext context) {
+    return new DeleteStorageGroupTask(statement);
   }
 
   @Override

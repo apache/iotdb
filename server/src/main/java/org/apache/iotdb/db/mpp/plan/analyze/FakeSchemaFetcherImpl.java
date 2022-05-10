@@ -96,4 +96,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       List<Boolean> aligned) {
     return null;
   }
+
+  @Override
+  public void invalidAllCache() {}
 }

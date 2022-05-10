@@ -118,6 +118,20 @@ public class ConfigNodeConf {
   /** The maximum number of DataRegions of each StorageGroup */
   private int maximumDataRegionCount = 20;
 
+  /** Procedure directory, storage procedure wal */
+  private String procedureWalDir =
+          ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.PROCEDURE_FOLDER;
+
+  /** Procedure Evict ttl */
+  private int completedEvictTTL = 800;
+
+  /** Procedure completed clean interval */
+  private int completedCleanInterval = 30;
+
+  /** Procedure core worker threads size */
+  private int coreWorkerThreadsSize = Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
+
+
   ConfigNodeConf() {
     // empty constructor
   }
@@ -129,6 +143,7 @@ public class ConfigNodeConf {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     consensusDir = addHomeDir(consensusDir);
+    procedureWalDir = addHomeDir(procedureWalDir);
   }
 
   private String addHomeDir(String dir) {
@@ -346,5 +361,37 @@ public class ConfigNodeConf {
 
   public void setMaximumDataRegionCount(int maximumDataRegionCount) {
     this.maximumDataRegionCount = maximumDataRegionCount;
+  }
+
+  public String getProcedureWalDir() {
+    return procedureWalDir;
+  }
+
+  public void setProcedureWalDir(String procedureWalDir) {
+    this.procedureWalDir = procedureWalDir;
+  }
+
+  public int getCompletedEvictTTL() {
+    return completedEvictTTL;
+  }
+
+  public void setCompletedEvictTTL(int completedEvictTTL) {
+    this.completedEvictTTL = completedEvictTTL;
+  }
+
+  public int getCompletedCleanInterval() {
+    return completedCleanInterval;
+  }
+
+  public void setCompletedCleanInterval(int completedCleanInterval) {
+    this.completedCleanInterval = completedCleanInterval;
+  }
+
+  public int getCoreWorkerThreadsSize() {
+    return coreWorkerThreadsSize;
+  }
+
+  public void setCoreWorkerThreadsSize(int coreWorkerThreadsSize) {
+    this.coreWorkerThreadsSize = coreWorkerThreadsSize;
   }
 }

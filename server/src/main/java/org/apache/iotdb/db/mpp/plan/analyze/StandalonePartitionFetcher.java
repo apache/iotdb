@@ -124,4 +124,7 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
     return null;
   }
+
+  @Override
+  public void invalidAllCache() {}
 }
