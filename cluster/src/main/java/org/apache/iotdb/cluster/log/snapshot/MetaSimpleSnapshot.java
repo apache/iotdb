@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
@@ -31,6 +30,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -251,14 +251,9 @@ public class MetaSimpleSnapshot extends Snapshot {
           }
 
           // 3. replace all users and roles
-          try {
-            IAuthorizer authorizer = BasicAuthorizer.getInstance();
-            installSnapshotUsers(authorizer, snapshot);
-            installSnapshotRoles(authorizer, snapshot);
-          } catch (AuthException e) {
-            logger.error(
-                "{}: Cannot get authorizer instance, error is: ", metaGroupMember.getName(), e);
-          }
+          IAuthorizer authorizer = AuthorizerManager.getInstance();
+          installSnapshotUsers(authorizer, snapshot);
+          installSnapshotRoles(authorizer, snapshot);
           // 4. accept template map
           TemplateManager.getInstance().setTemplateMap(snapshot.templateMap);
 
