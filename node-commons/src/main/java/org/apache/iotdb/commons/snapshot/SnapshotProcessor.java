@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.persistence;
+package org.apache.iotdb.commons.snapshot;
 
 import org.apache.thrift.TException;
 

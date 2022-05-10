@@ -16,14 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.utils;
+package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -31,6 +36,8 @@ import java.util.Arrays;
 
 public class FileUtils {
   private static Logger logger = LoggerFactory.getLogger(FileUtils.class);
+
+  private static final int bufferSize = 1024;
 
   private FileUtils() {}
 
@@ -47,6 +54,50 @@ public class FileUtils {
     } catch (Exception e) {
       logger.warn("{}: {}", e.getMessage(), folder.getName(), e);
     }
+  }
+
+  public static boolean copyDir(File sourceDir, File targetDir) throws IOException {
+    if (!sourceDir.exists() || !sourceDir.isDirectory()) {
+      logger.error(
+          "Failed to copy folder, because source folder [{}] doesn't exist.",
+          sourceDir.getAbsolutePath());
+      return false;
+    }
+    if (!targetDir.exists()) {
+      if (!targetDir.mkdirs()) {
+        logger.error(
+            "Failed to copy folder, because failed to create target folder[{}].",
+            targetDir.getAbsolutePath());
+        return false;
+      }
+    } else if (!targetDir.isDirectory()) {
+      logger.error(
+          "Failed to copy folder, because target folder [{}] already exist.",
+          targetDir.getAbsolutePath());
+      return false;
+    }
+    File[] files = sourceDir.listFiles();
+    if (files == null || files.length == 0) {
+      return true;
+    }
+    boolean result = true;
+    for (File file : files) {
+      File targetFile = new File(targetDir, file.getName());
+      if (file.isDirectory()) {
+        result &= copyDir(file.getAbsoluteFile(), targetFile);
+      } else {
+        // copy file
+        try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file));
+            BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(targetFile))) {
+          byte[] bytes = new byte[bufferSize];
+          int size = 0;
+          while ((size = in.read(bytes)) > 0) {
+            out.write(bytes, 0, size);
+          }
+        }
+      }
+    }
+    return result;
   }
 
   /**

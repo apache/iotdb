@@ -28,13 +28,13 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -42,18 +42,13 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 public class AuthorInfo implements SnapshotProcessor {
 
@@ -61,10 +56,6 @@ public class AuthorInfo implements SnapshotProcessor {
   private static final CommonConfig commonConfig = CommonConfig.getInstance();
 
   private IAuthorizer authorizer;
-
-  private final int bufferSize = 1024;
-  private final String userSnapshotFileName = "system" + File.separator + "users";
-  private final String roleSnapshotFileName = "system" + File.separator + "roles";
 
   {
     try {
@@ -350,100 +341,12 @@ public class AuthorInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
-    File userFolder = systemFileFactory.getFile(commonConfig.getUserFolder());
-    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, userSnapshotFileName);
-    File userTmpSnapshotDir =
-        systemFileFactory.getFile(userSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
-    File roleFolder = systemFileFactory.getFile(commonConfig.getRoleFolder());
-    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, roleSnapshotFileName);
-    File roleTmpSnapshotDir =
-        systemFileFactory.getFile(roleSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
-
-    boolean result = true;
-    try {
-      result &= copyDir(userFolder, userTmpSnapshotDir);
-      result &= copyDir(roleFolder, roleTmpSnapshotDir);
-      result &= userTmpSnapshotDir.renameTo(userSnapshotDir);
-      result &= roleTmpSnapshotDir.renameTo(roleSnapshotDir);
-    } finally {
-      userTmpSnapshotDir.delete();
-      roleTmpSnapshotDir.delete();
-    }
-    return result;
+    return authorizer.processTakeSnapshot(snapshotDir);
   }
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-    SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
-    File userFolder = systemFileFactory.getFile(commonConfig.getUserFolder());
-    File userTmpFolder =
-        systemFileFactory.getFile(userFolder.getAbsolutePath() + "-" + UUID.randomUUID());
-    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, userSnapshotFileName);
-    File roleFolder = systemFileFactory.getFile(commonConfig.getRoleFolder());
-    File roleTmpFolder =
-        systemFileFactory.getFile(roleFolder.getAbsolutePath() + "-" + UUID.randomUUID());
-    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, roleSnapshotFileName);
-
-    try {
-      userFolder.renameTo(userTmpFolder);
-      roleFolder.renameTo(roleTmpFolder);
-      if (!(copyDir(userSnapshotDir, userFolder) & copyDir(roleSnapshotDir, roleFolder))) {
-        logger.error("Failed to load snapshot and rollback.");
-        // rollback if failed to copy
-        FileUtils.deleteDirectory(userFolder);
-        FileUtils.deleteDirectory(roleFolder);
-        userTmpFolder.renameTo(userFolder);
-        roleTmpFolder.renameTo(roleFolder);
-      }
-    } finally {
-      FileUtils.deleteDirectory(userTmpFolder);
-      FileUtils.deleteDirectory(roleTmpFolder);
-    }
-  }
-
-  private boolean copyDir(File sourceDir, File targetDir) throws IOException {
-    if (!sourceDir.exists() || !sourceDir.isDirectory()) {
-      logger.error(
-          "Failed to copy folder, because source folder [{}] doesn't exist.",
-          sourceDir.getAbsolutePath());
-      return false;
-    }
-    if (!targetDir.exists()) {
-      if (!targetDir.mkdirs()) {
-        logger.error(
-            "Failed to copy folder, because failed to create target folder[{}].",
-            targetDir.getAbsolutePath());
-        return false;
-      }
-    } else if (!targetDir.isDirectory()) {
-      logger.error(
-          "Failed to copy folder, because target folder [{}] already exist.",
-          targetDir.getAbsolutePath());
-      return false;
-    }
-    File[] files = sourceDir.listFiles();
-    if (files == null || files.length == 0) {
-      return true;
-    }
-    boolean result = true;
-    for (File file : files) {
-      File targetFile = new File(targetDir, file.getName());
-      if (file.isDirectory()) {
-        result &= copyDir(file.getAbsoluteFile(), targetFile);
-      } else {
-        // copy file
-        try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file));
-            BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(targetFile))) {
-          byte[] bytes = new byte[bufferSize];
-          int size = 0;
-          while ((size = in.read(bytes)) > 0) {
-            out.write(bytes, 0, size);
-          }
-        }
-      }
-    }
-    return result;
+    authorizer.processLoadSnapshot(snapshotDir);
   }
 
   @TestOnly
