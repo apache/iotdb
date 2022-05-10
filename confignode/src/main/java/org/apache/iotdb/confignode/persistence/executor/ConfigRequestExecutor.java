@@ -211,6 +211,7 @@ public class ConfigRequestExecutor {
   private List<SnapshotProcessor> getAllAttributes() {
     List<SnapshotProcessor> allAttributes = new ArrayList<>();
     allAttributes.add(clusterSchemaInfo);
+    allAttributes.add(partitionInfo);
     return allAttributes;
   }
 }

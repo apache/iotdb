@@ -29,7 +29,6 @@ import org.apache.iotdb.library.dprofile.util.YuleWalker;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.stat.StatUtils;
 
 import java.util.ArrayList;
