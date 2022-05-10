@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.example;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -48,36 +49,36 @@ public class Accumulator implements Trigger {
   }
 
   @Override
-  public Integer fire(long timestamp, Integer value) {
+  public Integer fire(long timestamp, Integer value, PartialPath path) {
     accumulator += value;
     return value;
   }
 
   @Override
-  public Long fire(long timestamp, Long value) {
+  public Long fire(long timestamp, Long value, PartialPath path) {
     accumulator += value;
     return value;
   }
 
   @Override
-  public Float fire(long timestamp, Float value) {
+  public Float fire(long timestamp, Float value, PartialPath path) {
     accumulator += value;
     return value;
   }
 
   @Override
-  public Double fire(long timestamp, Double value) {
+  public Double fire(long timestamp, Double value, PartialPath path) {
     accumulator += value;
     return value;
   }
 
   @Override
-  public Boolean fire(long timestamp, Boolean value) {
+  public Boolean fire(long timestamp, Boolean value, PartialPath path) {
     throw new NotImplementedException();
   }
 
   @Override
-  public Binary fire(long timestamp, Binary value) {
+  public Binary fire(long timestamp, Binary value, PartialPath path) {
     throw new NotImplementedException();
   }
 

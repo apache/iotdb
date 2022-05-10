@@ -56,7 +56,12 @@ public class TriggerEngine {
         continue;
       }
       for (TriggerExecutor executor : mNode.getUpperTriggerExecutorList()) {
-        executor.fireIfActivated(event, timestamp, values[i], mNode.getSchema().getType());
+        executor.fireIfActivated(
+            event,
+            timestamp,
+            values[i],
+            mNode.getSchema().getType(),
+            insertRowPlan.getDevicePath());
       }
     }
   }
@@ -83,7 +88,12 @@ public class TriggerEngine {
         continue;
       }
       for (TriggerExecutor executor : mNode.getUpperTriggerExecutorList()) {
-        executor.fireIfActivated(event, timestamps, columns[i], mNode.getSchema().getType());
+        executor.fireIfActivated(
+            event,
+            timestamps,
+            columns[i],
+            mNode.getSchema().getType(),
+            insertTabletPlan.getDevicePath());
       }
     }
   }
