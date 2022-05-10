@@ -115,7 +115,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
       mergeReader =
           readerFactory.getSeriesReader(
               path,
-              queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
+              queryPlan.getAllMeasurementsInDevice(path.getDevice()),
               dataType,
               timeFilter,
               filter,
@@ -187,7 +187,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
           IPointReader pointReader =
               readerFactory.getSeriesPointReader(
                   path,
-                  queryPlan.getAllMeasurementsInDevice(path.getDeviceIdString()),
+                  queryPlan.getAllMeasurementsInDevice(path.getDevice()),
                   dataType,
                   timeFilter,
                   filter,

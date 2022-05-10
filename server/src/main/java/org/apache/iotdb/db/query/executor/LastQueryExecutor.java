@@ -288,7 +288,7 @@ public class LastQueryExecutor {
               .createLastPointReader(
                   dataTypes.get(i),
                   deviceMeasurementsMap.getOrDefault(
-                      seriesPaths.get(i).getDeviceIdString(), new HashSet<>()),
+                      seriesPaths.get(i).getDevice(), new HashSet<>()),
                   context,
                   dataSource,
                   Long.MAX_VALUE,

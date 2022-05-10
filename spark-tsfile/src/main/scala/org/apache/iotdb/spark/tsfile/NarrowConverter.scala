@@ -225,7 +225,7 @@ object NarrowConverter extends Converter {
       paths.add(new Path(path, true))
     })
 
-    val deviceName = paths.get(0).getDeviceIdString
+    val deviceName = paths.get(0).getDevice
     var finalFilter: IExpression = null
     if (timeFilter != null) {
       finalFilter = transformFilterToExpression(schema, timeFilter, deviceName)
