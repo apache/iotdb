@@ -194,8 +194,4 @@ public class RawDataAggregateOperator implements ProcessOperator {
     }
     return true;
   }
-
-  private boolean isTsBlockEmpty(TsBlock tsBlock) {
-    return tsBlock == null || tsBlock.getPositionCount() == 0;
-  }
 }

@@ -67,7 +67,8 @@ public class AggregateOperatorTest {
 
   private final List<TsFileResource> seqResources = new ArrayList<>();
   private final List<TsFileResource> unSeqResources = new ArrayList<>();
-  private ExecutorService instanceNotificationExecutor;
+  private ExecutorService instanceNotificationExecutor =
+      IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");;
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
@@ -234,8 +235,6 @@ public class AggregateOperatorTest {
       GroupByTimeParameter groupByTimeParameter,
       List<List<InputLocation[]>> inputLocations)
       throws IllegalPathException {
-    ExecutorService instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     // Construct operator tree
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
