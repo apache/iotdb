@@ -40,6 +40,9 @@ public class LinearRegression {
     if (x.length != y.length) {
       throw new Exception("Different input array length.");
     }
+    if (x.length == 1) { // cannot do regression
+      throw new Exception("Input series should be longer than 1.");
+    }
     e = new double[n];
     yhead = new double[n];
     sumx = Arrays.stream(x).sum();
@@ -54,6 +57,12 @@ public class LinearRegression {
       xxbar += (x[i] - xbar) * (x[i] - xbar);
       yybar += (y[i] - ybar) * (y[i] - ybar);
       xybar += (x[i] - xbar) * (y[i] - ybar);
+    }
+    try {
+      // this won't happen
+      assert xxbar > 0d;
+    } catch (AssertionError e) {
+      throw new Exception("All input x are same.");
     }
     beta1 = xybar / xxbar;
     beta0 = ybar - beta1 * xbar;

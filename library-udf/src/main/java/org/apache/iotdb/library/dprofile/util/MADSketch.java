@@ -86,7 +86,7 @@ public class MADSketch {
       buckets[i++] =
           new Bucket(
               e.getKey(),
-              Math.pow(gamma, e.getKey() - 1),
+              Math.pow(gamma, (double) e.getKey() - 1.0),
               Math.pow(gamma, e.getKey()),
               e.getValue());
     }
@@ -95,7 +95,7 @@ public class MADSketch {
           new Bucket(
               e.getKey(),
               -Math.pow(gamma, e.getKey()),
-              -Math.pow(gamma, e.getKey() - 1),
+              -Math.pow(gamma, (double) e.getKey() - 1.0),
               e.getValue());
     }
     if (zero_count > 0) {

@@ -68,7 +68,7 @@ public class TimestampRepair {
       noRepair();
       return;
     }
-    int n_ = (int) Math.ceil((time[n - 1] - start0) / deltaT + 1);
+    int n_ = (int) Math.ceil((time[n - 1] - start0) / (double) deltaT + 1.0);
     repaired = new long[n_];
     repairedValue = new double[n_];
     int m_ = this.n;
@@ -121,7 +121,7 @@ public class TimestampRepair {
       if (steps[i][j] == 0) {
         repaired[i - 1] = ps;
         repairedValue[i - 1] = original[j - 1];
-        System.out.println(time[j - 1] + "," + ps + "," + original[j - 1]);
+        // System.out.println(time[j - 1] + "," + ps + "," + original[j - 1]);
         unionSet += 1;
         joinSet += 1;
         i--;
@@ -131,17 +131,17 @@ public class TimestampRepair {
         repaired[i - 1] = ps;
         repairedValue[i - 1] = Double.NaN;
         unionSet += 1;
-        System.out.println("add, " + ps + "," + original[j - 1]);
+        // System.out.println("add, " + ps + "," + original[j - 1]);
         i--;
       } else {
         // delete points
         unionSet += 1;
-        System.out.println(time[j - 1] + ",delete" + "," + original[j - 1]);
+        // System.out.println(time[j - 1] + ",delete" + "," + original[j - 1]);
         j--;
       }
     }
-    System.out.println(joinSet / unionSet);
-    System.out.println(f[n_][m_] / n_);
+    // System.out.println(joinSet / unionSet);
+    // System.out.println(f[n_][m_] / n_);
   }
 
   public double[] getRepairedValue() {
