@@ -103,20 +103,13 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   public void addChild(PlanNode child) {}
 
   @Override
-  public boolean validateSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(SchemaTree schemaTree) {
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      if (!insertRowNode.validateSchema(schemaTree)) {
+      if (!insertRowNode.validateAndSetSchema(schemaTree)) {
         return false;
       }
     }
     return true;
-  }
-
-  @Override
-  public void setMeasurementSchemas(SchemaTree schemaTree) {
-    for (InsertRowNode insertRowNode : insertRowNodeList) {
-      insertRowNode.setMeasurementSchemas(schemaTree);
-    }
   }
 
   @Override

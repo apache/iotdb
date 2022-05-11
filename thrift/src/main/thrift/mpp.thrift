@@ -105,6 +105,7 @@ struct TFragmentInstanceStateResp {
 
 struct TCancelQueryReq {
   1: required string queryId
+  2: required list<TFragmentInstanceId> fragmentInstanceIds
 }
 
 struct TCancelPlanFragmentReq {

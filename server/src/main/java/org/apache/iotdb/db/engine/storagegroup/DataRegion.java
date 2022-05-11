@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -890,6 +890,13 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
+
+    if (insertRowNode.hasFailedMeasurements()) {
+      logger.warn(
+          "Fail to insert measurements {} caused by {}",
+          insertRowNode.getFailedMeasurements(),
+          insertRowNode.getFailedMessages());
+    }
   }
 
   /**
@@ -1104,6 +1111,13 @@ public class DataRegion {
       //      TriggerEngine.fire(TriggerEvent.AFTER_INSERT, insertTabletPlan, firePosition);
     } finally {
       writeUnlock();
+    }
+
+    if (insertTabletNode.hasFailedMeasurements()) {
+      logger.warn(
+          "Fail to insert measurements {} caused by {}",
+          insertTabletNode.getFailedMeasurements(),
+          insertTabletNode.getFailedMessages());
     }
   }
 

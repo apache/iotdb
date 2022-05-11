@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -157,8 +158,7 @@ public class SeriesScanUtil {
   }
 
   public void initQueryDataSource(QueryDataSource dataSource) {
-    QueryUtils.fillOrderIndexes(
-        dataSource, seriesPath.getDeviceIdString(), orderUtils.getAscending());
+    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
     this.dataSource = dataSource;
     orderUtils.setCurSeqFileIndex(dataSource);
   }
@@ -712,9 +712,8 @@ public class SeriesScanUtil {
               // current timeValuePair is overlapped with firstPageReader, add it to merged reader
               // and update endTime to the max end time
               mergeReader.addReader(
-                  firstPageReader
-                      .getAllSatisfiedPageData(orderUtils.getAscending())
-                      .getTsBlockSingleColumnIterator(),
+                  getPointReader(
+                      firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
                   firstPageReader.version,
                   orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()),
                   context);
@@ -739,9 +738,7 @@ public class SeriesScanUtil {
                 timeValuePair.getTimestamp(), seqPageReaders.get(0).getStatistics())) {
               VersionPageReader pageReader = seqPageReaders.remove(0);
               mergeReader.addReader(
-                  pageReader
-                      .getAllSatisfiedPageData(orderUtils.getAscending())
-                      .getTsBlockSingleColumnIterator(),
+                  getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
                   pageReader.version,
                   orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
                   context);
@@ -922,9 +919,7 @@ public class SeriesScanUtil {
 
   private void putPageReaderToMergeReader(VersionPageReader pageReader) throws IOException {
     mergeReader.addReader(
-        pageReader
-            .getAllSatisfiedPageData(orderUtils.getAscending())
-            .getTsBlockSingleColumnIterator(),
+        getPointReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())),
         pageReader.version,
         orderUtils.getOverlapCheckTime(pageReader.getStatistics()),
         context);
@@ -1076,7 +1071,11 @@ public class SeriesScanUtil {
     return Collections.singletonList(dataType);
   }
 
-  protected Filter getAnyFilter() {
+  protected IPointReader getPointReader(TsBlock tsBlock) {
+    return tsBlock.getTsBlockSingleColumnIterator();
+  }
+
+  private Filter getAnyFilter() {
     return timeFilter != null ? timeFilter : valueFilter;
   }
 
@@ -1197,7 +1196,7 @@ public class SeriesScanUtil {
 
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getEndTime(seriesPath.getDeviceIdString());
+      return fileResource.getEndTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1217,7 +1216,7 @@ public class SeriesScanUtil {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getEndTime(seriesPath.getDeviceIdString());
+      return time <= right.getEndTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1259,8 +1258,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getDeviceIdString(), timeFilter, null, true, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, true, false)) {
           break;
         }
         curSeqFileIndex--;
@@ -1273,8 +1271,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getDeviceIdString(), timeFilter, null, false, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, false, false)) {
           break;
         }
         curUnseqFileIndex++;
@@ -1315,7 +1312,7 @@ public class SeriesScanUtil {
 
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getStartTime(seriesPath.getDeviceIdString());
+      return fileResource.getStartTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1335,7 +1332,7 @@ public class SeriesScanUtil {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time >= right.getStartTime(seriesPath.getDeviceIdString());
+      return time >= right.getStartTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1377,8 +1374,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getDeviceIdString(), timeFilter, null, true, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, true, false)) {
           break;
         }
         curSeqFileIndex++;
@@ -1391,8 +1387,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getDeviceIdString(), timeFilter, null, false, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, false, false)) {
           break;
         }
         curUnseqFileIndex++;

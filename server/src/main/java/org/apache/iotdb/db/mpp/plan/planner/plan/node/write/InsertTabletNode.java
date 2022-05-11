@@ -23,9 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -164,38 +162,17 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean validateSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(SchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
-
-    // todo partial insert
     if (deviceSchemaInfo.isAligned() != isAligned) {
       return false;
     }
+    measurementSchemas =
+        deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
 
-    List<MeasurementSchema> measurementSchemas = deviceSchemaInfo.getMeasurementSchemaList();
-    for (int i = 0; i < measurementSchemas.size(); i++) {
-      if (dataTypes[i] != measurementSchemas.get(i).getType()) {
-        if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          return false;
-        } else {
-          markFailedMeasurementInsertion(
-              i,
-              new DataTypeMismatchException(
-                  devicePath.getFullPath(),
-                  measurements[i],
-                  measurementSchemas.get(i).getType(),
-                  dataTypes[i]));
-        }
-      }
-    }
-
-    // filter failed measurements
-    measurements = Arrays.stream(measurements).filter(Objects::nonNull).toArray(String[]::new);
-    dataTypes = Arrays.stream(dataTypes).filter(Objects::nonNull).toArray(TSDataType[]::new);
-    columns = Arrays.stream(columns).filter(Objects::nonNull).toArray(Object[]::new);
-
-    return true;
+    // validate whether data types are matched
+    return selfCheckDataTypes();
   }
 
   @Override
@@ -316,91 +293,58 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return result;
   }
 
+  private Object[] initTabletValues(int columnSize, int rowSize, TSDataType[] dataTypes) {
+    Object[] values = new Object[columnSize];
+    for (int i = 0; i < values.length; i++) {
+      switch (dataTypes[i]) {
+        case TEXT:
+          values[i] = new Binary[rowSize];
+          break;
+        case FLOAT:
+          values[i] = new float[rowSize];
+          break;
+        case INT32:
+          values[i] = new int[rowSize];
+          break;
+        case INT64:
+          values[i] = new long[rowSize];
+          break;
+        case DOUBLE:
+          values[i] = new double[rowSize];
+          break;
+        case BOOLEAN:
+          values[i] = new boolean[rowSize];
+          break;
+      }
+    }
+    return values;
+  }
+
+  private BitMap[] initBitmaps(int columnSize, int rowSize) {
+    BitMap[] bitMaps = new BitMap[columnSize];
+    for (int i = 0; i < columnSize; i++) {
+      bitMaps[i] = new BitMap(rowSize);
+    }
+    return bitMaps;
+  }
+
   @Override
-  public void markFailedMeasurementInsertion(int index, Exception e) {
+  public void markFailedMeasurement(int index, Exception cause) {
     if (measurements[index] == null) {
       return;
     }
-    super.markFailedMeasurementInsertion(index, e);
+
+    if (failedMeasurementIndex2Info == null) {
+      failedMeasurementIndex2Info = new HashMap<>();
+    }
+
+    FailedMeasurementInfo failedMeasurementInfo =
+        new FailedMeasurementInfo(measurements[index], dataTypes[index], columns[index], cause);
+    failedMeasurementIndex2Info.putIfAbsent(index, failedMeasurementInfo);
+
+    measurements[index] = null;
     dataTypes[index] = null;
     columns[index] = null;
-    bitMaps[index] = null;
-  }
-
-  @Override
-  public int serializedSize() {
-    return serializedSize(0, rowCount);
-  }
-
-  public int serializedSize(int start, int end) {
-    int size = 0;
-    size += Short.BYTES;
-    return size + subSerializeSize(start, end);
-  }
-
-  int subSerializeSize(int start, int end) {
-    int size = 0;
-    size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
-    // measurements size
-    size += Integer.BYTES;
-
-    size += serializeMeasurementSchemaSize();
-
-    size += Byte.BYTES * dataTypes.length;
-
-    // times size
-    size += Integer.BYTES;
-    size += Long.BYTES * (end - start);
-    // bitmaps size
-    size += Byte.BYTES;
-    if (bitMaps != null) {
-      for (BitMap bitMap : bitMaps) {
-        size += Byte.BYTES;
-        if (bitMap != null) {
-          int len = end - start;
-          BitMap partBitMap = new BitMap(len);
-          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
-          size += partBitMap.getByteArray().length;
-        }
-      }
-    }
-    // values size
-    for (int i = 0; i < dataTypes.length; i++) {
-      if (columns[i] != null) {
-        size += getColumnSize(dataTypes[i], columns[i], start, end);
-      }
-    }
-
-    size += Byte.BYTES;
-    return size;
-  }
-
-  private int getColumnSize(TSDataType dataType, Object column, int start, int end) {
-    int size = 0;
-    switch (dataType) {
-      case INT32:
-        size += Integer.BYTES * (end - start);
-        break;
-      case INT64:
-        size += Long.BYTES * (end - start);
-        break;
-      case FLOAT:
-        size += Float.BYTES * (end - start);
-        break;
-      case DOUBLE:
-        size += Double.BYTES * (end - start);
-        break;
-      case BOOLEAN:
-        size += Byte.BYTES * (end - start);
-        break;
-      case TEXT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int j = start; j < end; j++) {
-          size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
-        }
-        break;
-    }
-    return size;
   }
 
   @Override
@@ -411,7 +355,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   void subSerialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
-    writeMeasurements(buffer);
+    writeMeasurementsOrSchemas(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
     writeBitMaps(buffer);
@@ -419,26 +363,33 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
-  private void writeMeasurements(ByteBuffer buffer) {
-    buffer.putInt(measurements.length);
+  /** Serialize measurements or measurement schemas, ignoring failed time series */
+  private void writeMeasurementsOrSchemas(ByteBuffer buffer) {
+    buffer.putInt(measurements.length - getFailedMeasurementNumber());
 
-    // check whether has measurement schemas or not
     buffer.put((byte) (measurementSchemas != null ? 1 : 0));
-
-    if (measurementSchemas != null) {
-      for (MeasurementSchema measurement : measurementSchemas) {
-        measurement.serializeTo(buffer);
+    for (int i = 0; i < measurements.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
       }
-    } else {
-      for (String measurement : measurements) {
-        ReadWriteIOUtils.write(measurement, buffer);
+      // serialize measurement schemas when exist
+      if (measurementSchemas != null) {
+        measurementSchemas[i].serializeTo(buffer);
+      } else {
+        ReadWriteIOUtils.write(measurements[i], buffer);
       }
     }
   }
 
+  /** Serialize data types, ignoring failed time series */
   private void writeDataTypes(ByteBuffer buffer) {
-    for (TSDataType dataType : dataTypes) {
-      dataType.serializeTo(buffer);
+    for (int i = 0; i < dataTypes.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
+      }
+      dataTypes[i].serializeTo(buffer);
     }
   }
 
@@ -449,23 +400,33 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  /** Serialize bitmaps, ignoring failed time series */
   private void writeBitMaps(ByteBuffer buffer) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
-      for (int i = 0; i < measurements.length; i++) {
-        BitMap bitMap = bitMaps[i];
-        if (bitMap == null) {
+      for (int i = 0; i < bitMaps.length; i++) {
+        // ignore failed partial insert
+        if (measurements[i] == null) {
+          continue;
+        }
+
+        if (bitMaps[i] == null) {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
-          buffer.put(bitMap.getByteArray());
+          buffer.put(bitMaps[i].getByteArray());
         }
       }
     }
   }
 
+  /** Serialize values, ignoring failed time series */
   private void writeValues(ByteBuffer buffer) {
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; i < columns.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
+      }
       serializeColumn(dataTypes[i], columns[i], buffer);
     }
   }
@@ -514,6 +475,132 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
+    InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
+    insertNode.subDeserialize(byteBuffer);
+    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    return insertNode;
+  }
+
+  public void subDeserialize(ByteBuffer buffer) {
+    try {
+      devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+    }
+
+    int measurementSize = buffer.getInt();
+    measurements = new String[measurementSize];
+
+    boolean hasSchema = buffer.get() == 1;
+    if (hasSchema) {
+      this.measurementSchemas = new MeasurementSchema[measurementSize];
+      for (int i = 0; i < measurementSize; i++) {
+        measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+        measurements[i] = measurementSchemas[i].getMeasurementId();
+      }
+    } else {
+      for (int i = 0; i < measurementSize; i++) {
+        measurements[i] = ReadWriteIOUtils.readString(buffer);
+      }
+    }
+
+    dataTypes = new TSDataType[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      dataTypes[i] = TSDataType.deserialize(buffer.get());
+    }
+
+    rowCount = buffer.getInt();
+    times = new long[rowCount];
+    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount);
+
+    boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
+    if (hasBitMaps) {
+      bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount);
+    }
+    columns =
+        QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
+    isAligned = buffer.get() == 1;
+  }
+
+  // region serialize & deserialize methods for WAL
+  /** Serialized size for wal */
+  @Override
+  public int serializedSize() {
+    return serializedSize(0, rowCount);
+  }
+
+  /** Serialized size for wal */
+  public int serializedSize(int start, int end) {
+    return Short.BYTES + subSerializeSize(start, end);
+  }
+
+  int subSerializeSize(int start, int end) {
+    int size = 0;
+    size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
+    // measurements size
+    size += Integer.BYTES;
+    size += serializeMeasurementSchemasSize();
+    // times size
+    size += Integer.BYTES;
+    size += Long.BYTES * (end - start);
+    // bitmaps size
+    size += Byte.BYTES;
+    if (bitMaps != null) {
+      for (int i = 0; i < bitMaps.length; i++) {
+        // ignore failed partial insert
+        if (measurements[i] == null) {
+          continue;
+        }
+
+        size += Byte.BYTES;
+        if (bitMaps[i] != null) {
+          int len = end - start;
+          BitMap partBitMap = new BitMap(len);
+          BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
+          size += partBitMap.getByteArray().length;
+        }
+      }
+    }
+    // values size
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (columns[i] != null) {
+        size += getColumnSize(dataTypes[i], columns[i], start, end);
+      }
+    }
+
+    size += Byte.BYTES;
+    return size;
+  }
+
+  private int getColumnSize(TSDataType dataType, Object column, int start, int end) {
+    int size = 0;
+    switch (dataType) {
+      case INT32:
+        size += Integer.BYTES * (end - start);
+        break;
+      case INT64:
+        size += Long.BYTES * (end - start);
+        break;
+      case FLOAT:
+        size += Float.BYTES * (end - start);
+        break;
+      case DOUBLE:
+        size += Double.BYTES * (end - start);
+        break;
+      case BOOLEAN:
+        size += Byte.BYTES * (end - start);
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) column;
+        for (int j = start; j < end; j++) {
+          size += ReadWriteIOUtils.sizeToWrite(binaryValues[j]);
+        }
+        break;
+    }
+    return size;
+  }
+
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     serializeToWAL(buffer, 0, rowCount);
@@ -526,23 +613,18 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   void subSerialize(IWALByteBufferView buffer, int start, int end) {
     WALWriteUtils.write(devicePath.getFullPath(), buffer);
-    writeMeasurements(buffer);
-    writeDataTypes(buffer);
+    // data types are serialized in measurement schemas
+    writeMeasurementSchemas(buffer);
     writeTimes(buffer, start, end);
     writeBitMaps(buffer, start, end);
     writeValues(buffer, start, end);
     buffer.put((byte) (isAligned ? 1 : 0));
   }
 
-  private void writeMeasurements(IWALByteBufferView buffer) {
-    buffer.putInt(measurementSchemas.length);
-    serializeMeasurementSchemaToWAL(buffer);
-  }
-
-  private void writeDataTypes(IWALByteBufferView buffer) {
-    for (TSDataType dataType : dataTypes) {
-      WALWriteUtils.write(dataType, buffer);
-    }
+  /** Serialize measurement schemas, ignoring failed time series */
+  private void writeMeasurementSchemas(IWALByteBufferView buffer) {
+    buffer.putInt(measurements.length - getFailedMeasurementNumber());
+    serializeMeasurementSchemasToWAL(buffer);
   }
 
   private void writeTimes(IWALByteBufferView buffer, int start, int end) {
@@ -552,26 +634,36 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
+  /** Serialize bitmaps, ignoring failed time series */
   private void writeBitMaps(IWALByteBufferView buffer, int start, int end) {
     buffer.put(BytesUtils.boolToByte(bitMaps != null));
     if (bitMaps != null) {
-      for (int i = 0; i < measurements.length; i++) {
-        BitMap bitMap = bitMaps[i];
-        if (bitMap == null) {
+      for (int i = 0; i < bitMaps.length; i++) {
+        // ignore failed partial insert
+        if (measurements[i] == null) {
+          continue;
+        }
+
+        if (bitMaps[i] == null) {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
           int len = end - start;
           BitMap partBitMap = new BitMap(len);
-          BitMap.copyOfRange(bitMap, start, partBitMap, 0, len);
+          BitMap.copyOfRange(bitMaps[i], start, partBitMap, 0, len);
           buffer.put(partBitMap.getByteArray());
         }
       }
     }
   }
 
+  /** Serialize values, ignoring failed time series */
   private void writeValues(IWALByteBufferView buffer, int start, int end) {
-    for (int i = 0; i < dataTypes.length; i++) {
+    for (int i = 0; i < columns.length; i++) {
+      // ignore failed partial insert
+      if (measurements[i] == null) {
+        continue;
+      }
       serializeColumn(dataTypes[i], columns[i], buffer, start, end);
     }
   }
@@ -621,94 +713,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     }
   }
 
-  private Object[] initTabletValues(int columnSize, int rowSize, TSDataType[] dataTypes) {
-    Object[] values = new Object[columnSize];
-    for (int i = 0; i < values.length; i++) {
-      switch (dataTypes[i]) {
-        case TEXT:
-          values[i] = new Binary[rowSize];
-          break;
-        case FLOAT:
-          values[i] = new float[rowSize];
-          break;
-        case INT32:
-          values[i] = new int[rowSize];
-          break;
-        case INT64:
-          values[i] = new long[rowSize];
-          break;
-        case DOUBLE:
-          values[i] = new double[rowSize];
-          break;
-        case BOOLEAN:
-          values[i] = new boolean[rowSize];
-          break;
-      }
-    }
-    return values;
-  }
-
-  private BitMap[] initBitmaps(int columnSize, int rowSize) {
-    BitMap[] bitMaps = new BitMap[columnSize];
-    for (int i = 0; i < columnSize; i++) {
-      bitMaps[i] = new BitMap(rowSize);
-    }
-    return bitMaps;
-  }
-
-  public static InsertTabletNode deserialize(ByteBuffer byteBuffer) {
-    InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
-    insertNode.subDeserialize(byteBuffer);
-    insertNode.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
-    return insertNode;
-  }
-
-  public void subDeserialize(ByteBuffer buffer) {
-    try {
-      this.devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
-    } catch (IllegalPathException e) {
-      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
-    }
-
-    int measurementSize = buffer.getInt();
-    this.measurements = new String[measurementSize];
-
-    boolean hasSchema = buffer.get() == 1;
-
-    if (hasSchema) {
-      this.measurementSchemas = new MeasurementSchema[measurementSize];
-      for (int i = 0; i < measurementSize; i++) {
-        measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
-        measurements[i] = measurementSchemas[i].getMeasurementId();
-      }
-    } else {
-      for (int i = 0; i < measurementSize; i++) {
-        measurements[i] = ReadWriteIOUtils.readString(buffer);
-      }
-    }
-
-    this.dataTypes = new TSDataType[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      dataTypes[i] = TSDataType.deserialize(buffer.get());
-    }
-
-    int rows = buffer.getInt();
-    rowCount = rows;
-    this.times = new long[rows];
-    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
-
-    boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
-    if (hasBitMaps) {
-      bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rows);
-    }
-    columns =
-        QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
-    this.isAligned = buffer.get() == 1;
-  }
-
+  /** Deserialize from wal */
   public static InsertTabletNode deserialize(DataInputStream stream)
       throws IllegalPathException, IOException {
-    // This method is used for deserialize from wal
     // we do not store plan node id in wal entry
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     insertNode.subDeserialize(stream);
@@ -716,31 +723,32 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   private void subDeserialize(DataInputStream stream) throws IllegalPathException, IOException {
-    this.devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
+    devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
 
     int measurementSize = stream.readInt();
-    this.measurements = new String[measurementSize];
-    this.measurementSchemas = new MeasurementSchema[measurementSize];
-    deserializeMeasurementSchema(stream);
+    measurements = new String[measurementSize];
+    measurementSchemas = new MeasurementSchema[measurementSize];
+    deserializeMeasurementSchemas(stream);
 
-    this.dataTypes = new TSDataType[measurementSize];
+    // data types are serialized in measurement schemas
+    dataTypes = new TSDataType[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
-      dataTypes[i] = TSDataType.deserialize(stream.readByte());
+      dataTypes[i] = measurementSchemas[i].getType();
     }
 
-    int rows = stream.readInt();
-    rowCount = rows;
-    this.times = new long[rows];
-    times = QueryDataSetUtils.readTimesFromStream(stream, rows);
+    rowCount = stream.readInt();
+    times = new long[rowCount];
+    times = QueryDataSetUtils.readTimesFromStream(stream, rowCount);
 
     boolean hasBitMaps = BytesUtils.byteToBool(stream.readByte());
     if (hasBitMaps) {
-      bitMaps = QueryDataSetUtils.readBitMapsFromStream(stream, measurementSize, rows);
+      bitMaps = QueryDataSetUtils.readBitMapsFromStream(stream, measurementSize, rowCount);
     }
     columns =
-        QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, measurementSize, rows);
-    this.isAligned = stream.readByte() == 1;
+        QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, measurementSize, rowCount);
+    isAligned = stream.readByte() == 1;
   }
+  // endregion
 
   @Override
   public int hashCode() {

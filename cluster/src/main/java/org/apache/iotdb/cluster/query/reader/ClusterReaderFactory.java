@@ -50,6 +50,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -68,7 +69,6 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -277,8 +277,7 @@ public class ClusterReaderFactory {
       partialPaths.forEach(
           partialPath -> {
             Set<String> measurements =
-                deviceMeasurements.getOrDefault(
-                    partialPath.getDeviceIdString(), Collections.emptySet());
+                deviceMeasurements.getOrDefault(partialPath.getDevice(), Collections.emptySet());
             partitionGroupDeviceMeasurements.put(partialPath.getFullPath(), measurements);
             partitionGroupTSDataType.add(dataTypes.get(paths.lastIndexOf(partialPath)));
           });

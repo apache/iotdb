@@ -165,7 +165,7 @@ public class AlignedSeriesScanNode extends SourceNode {
   @Override
   public List<String> getOutputColumnNames() {
     List<String> outputColumnNames = new ArrayList<>();
-    String deviceName = alignedPath.getDeviceIdString();
+    String deviceName = alignedPath.getDevice();
     for (String measurement : alignedPath.getMeasurementList()) {
       outputColumnNames.add(deviceName.concat(TsFileConstant.PATH_SEPARATOR + measurement));
     }
@@ -196,7 +196,7 @@ public class AlignedSeriesScanNode extends SourceNode {
     }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
-    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
+    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public static AlignedSeriesScanNode deserialize(ByteBuffer byteBuffer) {
@@ -215,7 +215,7 @@ public class AlignedSeriesScanNode extends SourceNode {
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     TRegionReplicaSet dataRegionReplicaSet =
-        ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
+        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AlignedSeriesScanNode(
         planNodeId,

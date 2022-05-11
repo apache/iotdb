@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
@@ -28,8 +29,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.LevelTimeSeriesCountNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -38,6 +40,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,16 +66,20 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planRawDataQuerySource(
-      Map<String, Set<PartialPath>> deviceNameToPathsMap,
+      Map<String, Set<Expression>> deviceNameToPathsMap,
       OrderBy scanOrder,
       boolean isAlignByDevice) {
     Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
 
-    for (Map.Entry<String, Set<PartialPath>> entry : deviceNameToPathsMap.entrySet()) {
+    for (Map.Entry<String, Set<Expression>> entry : deviceNameToPathsMap.entrySet()) {
       String deviceName = entry.getKey();
       Set<String> allSensors =
-          entry.getValue().stream().map(PartialPath::getMeasurement).collect(Collectors.toSet());
-      for (PartialPath path : entry.getValue()) {
+          entry.getValue().stream()
+              .map(expression -> ((TimeSeriesOperand) expression).getPath())
+              .map(PartialPath::getMeasurement)
+              .collect(Collectors.toSet());
+      for (Expression expression : entry.getValue()) {
+        PartialPath path = ((TimeSeriesOperand) expression).getPath();
         deviceNameToSourceNodesMap
             .computeIfAbsent(deviceName, k -> new ArrayList<>())
             .add(
@@ -151,7 +159,7 @@ public class LogicalPlanBuilder {
   }
 
   /** Meta Query* */
-  public LogicalPlanBuilder planTimeSeriesMetaSource(
+  public LogicalPlanBuilder planTimeSeriesSchemaSource(
       PartialPath pathPattern,
       String key,
       String value,
@@ -177,23 +185,40 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planDeviceSchemaSource(
       PartialPath pathPattern, int limit, int offset, boolean prefixPath, boolean hasSgCol) {
-    DevicesSchemaScanNode devicesSchemaScanNode =
+    this.root =
         new DevicesSchemaScanNode(
             context.getQueryId().genPlanNodeId(), pathPattern, limit, offset, prefixPath, hasSgCol);
-    this.root = devicesSchemaScanNode;
     return this;
   }
 
-  public LogicalPlanBuilder planSchemaMerge(boolean orderByHeat) {
-    SeriesSchemaMergeNode schemaMergeNode =
-        new SeriesSchemaMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
+  public LogicalPlanBuilder planSchemaQueryMerge(boolean orderByHeat) {
+    SchemaQueryMergeNode schemaMergeNode =
+        new SchemaQueryMergeNode(context.getQueryId().genPlanNodeId(), orderByHeat);
     schemaMergeNode.addChild(this.getRoot());
     this.root = schemaMergeNode;
     return this;
   }
 
-  public LogicalPlanBuilder planSchemaFetchSource(PathPatternTree patternTree) {
-    this.root = new SchemaFetchNode(context.getQueryId().genPlanNodeId(), patternTree);
+  public LogicalPlanBuilder planSchemaFetchMerge() {
+    this.root = new SchemaFetchMergeNode(context.getQueryId().genPlanNodeId());
+    return this;
+  }
+
+  public LogicalPlanBuilder planSchemaFetchSource(
+      List<String> storageGroupList, PathPatternTree patternTree) {
+    PartialPath storageGroupPath;
+    for (String storageGroup : storageGroupList) {
+      try {
+        storageGroupPath = new PartialPath(storageGroup);
+        this.root.addChild(
+            new SchemaFetchScanNode(
+                context.getQueryId().genPlanNodeId(),
+                storageGroupPath,
+                patternTree.extractInvolvedPartByPrefix(storageGroupPath)));
+      } catch (IllegalPathException e) {
+        throw new RuntimeException(e);
+      }
+    }
     return this;
   }
 

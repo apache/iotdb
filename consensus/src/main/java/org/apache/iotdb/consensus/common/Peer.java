@@ -59,4 +59,9 @@ public class Peer {
   public int hashCode() {
     return Objects.hash(groupId, endpoint);
   }
+
+  @Override
+  public String toString() {
+    return "Peer{" + "groupId=" + groupId + ", endpoint=" + endpoint + '}';
+  }
 }

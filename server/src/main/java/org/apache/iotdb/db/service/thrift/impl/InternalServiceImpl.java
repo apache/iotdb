@@ -41,7 +41,6 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
@@ -73,6 +72,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class InternalServiceImpl implements InternalService.Iface {
 
@@ -106,8 +106,7 @@ public class InternalServiceImpl implements InternalService.Iface {
         PlanNode planNode = fragmentInstance.getFragment().getRoot();
         if (planNode instanceof InsertNode) {
           try {
-            SchemaTree schemaTree = SchemaValidator.validate((InsertNode) planNode);
-            ((InsertNode) planNode).setMeasurementSchemas(schemaTree);
+            SchemaValidator.validate((InsertNode) planNode);
           } catch (SemanticException e) {
             response.setAccepted(false);
             response.setMessage(e.getMessage());
@@ -134,11 +133,14 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) throws TException {
-
-    // TODO need to be implemented and currently in order not to print NotImplementedException log,
-    // we simply return null
+    List<FragmentInstanceId> taskIds =
+        req.getFragmentInstanceIds().stream()
+            .map(FragmentInstanceId::fromThrift)
+            .collect(Collectors.toList());
+    for (FragmentInstanceId taskId : taskIds) {
+      FragmentInstanceManager.getInstance().cancelTask(taskId);
+    }
     return new TCancelResp(true);
-    //    throw new NotImplementedException();
   }
 
   @Override

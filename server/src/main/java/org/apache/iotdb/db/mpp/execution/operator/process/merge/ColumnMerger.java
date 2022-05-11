@@ -32,7 +32,7 @@ public interface ColumnMerger {
    * @return true if TsBlock at tsBlockIndex is null or its current read index is larger than its
    *     size
    */
-  default boolean empty(int tsBlockIndex, TsBlock[] inputTsBlocks, int[] inputIndex) {
+  static boolean empty(int tsBlockIndex, TsBlock[] inputTsBlocks, int[] inputIndex) {
     return inputTsBlocks[tsBlockIndex] == null
         || inputTsBlocks[tsBlockIndex].getPositionCount() == inputIndex[tsBlockIndex];
   }
@@ -40,7 +40,7 @@ public interface ColumnMerger {
   /**
    * merge columns belonging to same series into one column
    *
-   * @param inputTsBlocks all source TsBlocks, some of which will cantain source column
+   * @param inputTsBlocks all source TsBlocks, some of which will contain source column
    * @param inputIndex start index for each source TsBlock and size of it is equal to inputTsBlocks,
    *     we should only read from this array and not update it because others will use the start
    *     index value in inputIndex array

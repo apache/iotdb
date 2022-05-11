@@ -52,6 +52,14 @@ public class LikeExpression extends UnaryExpression {
     pattern = compile();
   }
 
+  public String getPatternString() {
+    return patternString;
+  }
+
+  public Pattern getPattern() {
+    return pattern;
+  }
+
   /**
    * The main idea of this part comes from
    * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864

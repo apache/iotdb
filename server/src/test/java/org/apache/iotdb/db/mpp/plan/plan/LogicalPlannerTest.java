@@ -33,7 +33,7 @@ import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SeriesSchemaMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -381,14 +381,14 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      SeriesSchemaMergeNode metaMergeNode = (SeriesSchemaMergeNode) offsetNode.getChild();
+      SchemaQueryMergeNode metaMergeNode = (SchemaQueryMergeNode) offsetNode.getChild();
       metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
       TimeSeriesSchemaScanNode showTimeSeriesNode =
           (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);
       Assert.assertNotNull(showTimeSeriesNode);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDeviceIdString());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode.isOrderByHeat());
       Assert.assertFalse(showTimeSeriesNode.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
@@ -406,7 +406,7 @@ public class LogicalPlannerTest {
       Assert.assertNotNull(showTimeSeriesNode2);
       Assert.assertEquals(
           new PartialPath("root.ln.wf01.wt01.status"), showTimeSeriesNode2.getPath());
-      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDeviceIdString());
+      Assert.assertEquals("root.ln.wf01.wt01", showTimeSeriesNode2.getPath().getDevice());
       Assert.assertTrue(showTimeSeriesNode2.isOrderByHeat());
       Assert.assertFalse(showTimeSeriesNode2.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());
@@ -426,7 +426,7 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      SeriesSchemaMergeNode metaMergeNode = (SeriesSchemaMergeNode) offsetNode.getChild();
+      SchemaQueryMergeNode metaMergeNode = (SchemaQueryMergeNode) offsetNode.getChild();
       DevicesSchemaScanNode showDevicesNode =
           (DevicesSchemaScanNode) metaMergeNode.getChildren().get(0);
       Assert.assertNotNull(showDevicesNode);

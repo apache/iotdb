@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
@@ -114,18 +114,19 @@ public class SessionManager {
       } else {
         long sessionId = requestSessionId(username, zoneId, clientVersion);
 
-        LOGGER.info(
-            "{}: Login status: {}. User : {}, opens Session-{}",
-            IoTDBConstant.GLOBAL_DB_NAME,
-            openSessionResp.getMessage(),
-            username,
-            sessionId);
         SessionTimeoutManager.getInstance().register(sessionId);
 
         openSessionResp
             .sessionId(sessionId)
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
             .setMessage("Login successfully");
+
+        LOGGER.info(
+            "{}: Login status: {}. User : {}, opens Session-{}",
+            IoTDBConstant.GLOBAL_DB_NAME,
+            openSessionResp.getMessage(),
+            username,
+            sessionId);
       }
     } else {
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
