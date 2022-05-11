@@ -82,18 +82,14 @@ public class PlanFragmentId {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
     PlanFragmentId that = (PlanFragmentId) o;
     return id == that.id && Objects.equals(queryId, that.queryId);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(queryId, id, nextFragmentInstanceId);
+    return Objects.hash(queryId, id);
   }
 }
