@@ -33,6 +33,71 @@
     <build>
         <plugins>
             <plugin>
+                <artifactId>exec-maven-plugin</artifactId>
+                <groupId>org.codehaus.mojo</groupId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <id>make dir for datanode</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>mkdir</executable>
+                            <arguments>
+                                <argument>-p</argument>
+                                <argument>target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/datanode</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>link datanode lib directory</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>ln</executable>
+                            <arguments>
+                                <argument>-sv</argument>
+                                <argument>../lib</argument>
+                                <argument>target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/datanode</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>make dir for confignode</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>mkdir</executable>
+                            <arguments>
+                                <argument>-p</argument>
+                                <argument>target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>link confignode lib directory</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>ln</executable>
+                            <arguments>
+                                <argument>-sv</argument>
+                                <argument>../lib</argument>
+                                <argument>target/apache-iotdb-${project.version}-all-bin/apache-iotdb-${project.version}-all-bin/confignode</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>${maven.assembly.version}</version>
@@ -48,7 +113,6 @@
                             <descriptors>
                                 <descriptor>src/assembly/all.xml</descriptor>
                                 <descriptor>src/assembly/server.xml</descriptor>
-                                <!--descriptor>src/assembly/cluster.xml</descriptor-->
                                 <descriptor>src/assembly/confignode.xml</descriptor>
                                 <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/grafana-connector.xml</descriptor>
@@ -86,7 +150,6 @@
                                         <include>apache-iotdb-${project.version}-all-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-server-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
-                                        <!--include>apache-iotdb-${project.version}-cluster-bin.zip</include-->
                                         <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-grafana-connector-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin.zip</include>
@@ -125,12 +188,6 @@
             <version>${project.version}</version>
             <type>pom</type>
         </dependency>
-        <!--        <dependency>-->
-        <!--            <groupId>org.apache.iotdb</groupId>-->
-        <!--            <artifactId>iotdb-cluster</artifactId>-->
-        <!--            <version>${project.version}</version>-->
-        <!--            <type>zip</type>-->
-        <!--        </dependency>-->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-confignode</artifactId>
