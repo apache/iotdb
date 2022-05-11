@@ -331,16 +331,20 @@ public class AuthorInfo {
     }
   }
 
-  private static class AuthorInfoPersistenceHolder {
+  public void reset() throws AuthException {
+    authorizer.reset();
+  }
+
+  private static class AuthorInfoHolder {
 
     private static final AuthorInfo INSTANCE = new AuthorInfo();
 
-    private AuthorInfoPersistenceHolder() {
+    private AuthorInfoHolder() {
       // empty constructor
     }
   }
 
   public static AuthorInfo getInstance() {
-    return AuthorInfo.AuthorInfoPersistenceHolder.INSTANCE;
+    return AuthorInfo.AuthorInfoHolder.INSTANCE;
   }
 }
