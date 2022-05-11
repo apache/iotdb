@@ -19,4 +19,8 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.api;
 
-public interface Event {}
+public interface Event {
+  default String getFullPath() {
+    return null;
+  }
+}
