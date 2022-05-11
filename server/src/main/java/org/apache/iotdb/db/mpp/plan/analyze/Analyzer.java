@@ -707,6 +707,7 @@ public class Analyzer {
       List<ColumnHeader> columnHeaders = new ArrayList<>();
       if (queryStatement.isAlignByDevice()) {
         columnHeaders.add(new ColumnHeader(HeaderConstant.COLUMN_DEVICE, TSDataType.TEXT, null));
+        typeProvider.setType(HeaderConstant.COLUMN_DEVICE, TSDataType.TEXT);
       }
       columnHeaders.addAll(
           outputExpressions.stream()
