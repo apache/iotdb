@@ -80,8 +80,7 @@ public class Aggregator {
   public void processTsBlocks(TsBlock[] tsBlock) {
     checkArgument(!step.isInputRaw(), "Step in AggregateOperator cannot process raw input");
     if (step.isInputFinal()) {
-      checkArgument(
-          inputLocationList.size() == 1, "Step in AggregateOperator cannot process raw input");
+      checkArgument(inputLocationList.size() == 1, "Final output can only be single column");
       Column finalResult =
           tsBlock[inputLocationList.get(0)[0].getTsBlockIndex()].getColumn(
               inputLocationList.get(0)[0].getValueColumnIndex());
