@@ -41,13 +41,13 @@ import java.net.SocketException;
 public class SyncDataNodeInternalServiceClient extends InternalService.Client
     implements SyncThriftClient, AutoCloseable {
 
-  private final TEndPoint endpoint;
+  private final TEndPoint endPoint;
   private final ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
   public SyncDataNodeInternalServiceClient(
       TProtocolFactory protocolFactory,
       int connectionTimeout,
-      TEndPoint endpoint,
+      TEndPoint endPoint,
       ClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager)
       throws TTransportException {
     super(
@@ -55,17 +55,17 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
                     TConfigurationConst.defaultTConfiguration,
-                    endpoint.getIp(),
-                    endpoint.getPort(),
+                    endPoint.getIp(),
+                    endPoint.getPort(),
                     connectionTimeout))));
-    this.endpoint = endpoint;
+    this.endPoint = endPoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
   }
 
   @TestOnly
   public TEndPoint getTEndpoint() {
-    return endpoint;
+    return endPoint;
   }
 
   @TestOnly
@@ -75,7 +75,7 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client
 
   public void close() {
     if (clientManager != null) {
-      clientManager.returnClient(endpoint, this);
+      clientManager.returnClient(endPoint, this);
     }
   }
 
@@ -88,13 +88,18 @@ public class SyncDataNodeInternalServiceClient extends InternalService.Client
     getInputProtocol().getTransport().close();
   }
 
+  @Override
+  public void invalidateAll() {
+    clientManager.clear(endPoint);
+  }
+
   public int getTimeout() throws SocketException {
     return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
   @Override
   public String toString() {
-    return String.format("SyncDataNodeInternalServiceClient{%s}", endpoint);
+    return String.format("SyncDataNodeInternalServiceClient{%s}", endPoint);
   }
 
   public static class Factory

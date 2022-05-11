@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.client.sync;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.SocketException;
 
 public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
 
@@ -52,9 +54,22 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
       return methodProxy.invokeSuper(o, objects);
     } catch (InvocationTargetException e) {
       if (e.getTargetException() instanceof TException) {
-        LOGGER.error(
-            "Error in calling method {}, err: {}", method.getName(), e.getTargetException());
-        ((SyncThriftClient) o).invalidate();
+        Throwable rootCause = ExceptionUtils.getRootCause(e);
+        // if the exception is SocketException and its error message is Broken pipe, it means that
+        // the remote node may restart and all the connection we cached before should be cleared.
+        if (rootCause instanceof SocketException
+            && rootCause.getMessage().contains("Broken pipe")) {
+          LOGGER.error(
+              "Broken pipe error happened in calling method {}, we need to clear all previous cached connection, err: {}",
+              method.getName(),
+              e.getTargetException());
+          ((SyncThriftClient) o).invalidate();
+          ((SyncThriftClient) o).invalidateAll();
+        } else {
+          LOGGER.error(
+              "Error in calling method {}, err: {}", method.getName(), e.getTargetException());
+          ((SyncThriftClient) o).invalidate();
+        }
       }
       throw new TException("Error in calling method " + method.getName(), e.getTargetException());
     } catch (Exception e) {
