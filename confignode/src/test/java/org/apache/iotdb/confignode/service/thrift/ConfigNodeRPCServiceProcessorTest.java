@@ -550,6 +550,7 @@ public class ConfigNodeRPCServiceProcessorTest {
         dataPartitionResp.getDataPartitionMap());
   }
 
+  @Test
   public void permissionTest() throws TException {
     TSStatus status;
 

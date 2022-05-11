@@ -152,17 +152,12 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + user.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
-    logger.info(String.valueOf(userProfile.exists()));
-    logger.info("userDirPath" + userDirPath);
+    logger.info("userDirPath: " + new File(userDirPath).exists());
     logger.info(
         String.valueOf(
             SystemFileFactory.INSTANCE
-                .getFile(userDirPath + File.separator + "root" + IoTDBConstant.PROFILE_SUFFIX)
+                .getFile(userDirPath + File.separator + "tempuser0" + IoTDBConstant.PROFILE_SUFFIX)
                 .exists()));
-    logger.info(
-        SystemFileFactory.INSTANCE
-            .getFile(userDirPath + File.separator + "root" + IoTDBConstant.PROFILE_SUFFIX)
-            .toString());
     if (!userProfile.exists()) {
       userProfile.createNewFile();
     }
