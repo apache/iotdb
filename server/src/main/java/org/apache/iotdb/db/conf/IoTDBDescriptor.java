@@ -895,7 +895,6 @@ public class IoTDBDescriptor {
 
       // shuffle
       loadShuffleProps(properties);
-
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
