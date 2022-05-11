@@ -152,10 +152,6 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + user.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
-    File userDir = new File(userDirPath);
-    if (!userDir.exists()) {
-      userProfile.getParentFile().mkdirs();
-    }
     try (BufferedOutputStream outputStream =
         new BufferedOutputStream(new FileOutputStream(userProfile))) {
       try {
