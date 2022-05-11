@@ -904,7 +904,7 @@ public class IoTDBDescriptor {
     } finally {
       // update all data seriesPath
       conf.updatePath();
-      commonConfig.updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
+      commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
     }
   }
 
