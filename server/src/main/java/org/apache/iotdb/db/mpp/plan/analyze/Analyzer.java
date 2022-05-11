@@ -198,7 +198,8 @@ public class Analyzer {
                 new ArrayList<>(deviceToMeasurementsMap.get(deviceName));
             List<Integer> indexes = new ArrayList<>();
             for (String measurement : measurementsUnderDeivce) {
-              indexes.add(allMeasurements.indexOf(measurement));
+              indexes.add(
+                  allMeasurements.indexOf(measurement) + 1); // add 1 to skip the device column
             }
             deviceToMeasurementIndexesMap.put(deviceName, indexes);
           }
@@ -426,8 +427,7 @@ public class Analyzer {
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
               selectExpressions.add(tmpExpression);
               deviceToMeasurementsMap
-                  .computeIfAbsent(
-                      measurementPath.getDeviceIdString(), key -> new LinkedHashSet<>())
+                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
                   .add(measurementAliasPair.left.getExpressionString());
             }
             paginationController.consumeLimit();
@@ -462,8 +462,7 @@ public class Analyzer {
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
               selectExpressions.add(tmpExpression);
               deviceToMeasurementsMap
-                  .computeIfAbsent(
-                      measurementPath.getDeviceIdString(), key -> new LinkedHashSet<>())
+                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
                   .add(expressionWithoutAlias.getExpressionString());
             }
             paginationController.consumeLimit();
@@ -494,8 +493,7 @@ public class Analyzer {
                 typeProvider.setType(tmpExpression.getExpressionString(), dataType);
                 selectExpressions.add(tmpExpression);
                 deviceToMeasurementsMap
-                    .computeIfAbsent(
-                        measurementPath.getDeviceIdString(), key -> new LinkedHashSet<>())
+                    .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
                     .add(replacedMeasurement.getExpressionString());
               }
               paginationController.consumeLimit();
@@ -706,7 +704,11 @@ public class Analyzer {
         QueryStatement queryStatement, List<Pair<Expression, String>> outputExpressions) {
       boolean isIgnoreTimestamp =
           queryStatement.isAggregationQuery() && !queryStatement.isGroupByTime();
-      List<ColumnHeader> columnHeaders =
+      List<ColumnHeader> columnHeaders = new ArrayList<>();
+      if (queryStatement.isAlignByDevice()) {
+        columnHeaders.add(new ColumnHeader(HeaderConstant.COLUMN_DEVICE, TSDataType.TEXT, null));
+      }
+      columnHeaders.addAll(
           outputExpressions.stream()
               .map(
                   expressionWithAlias -> {
@@ -714,7 +716,7 @@ public class Analyzer {
                     String alias = expressionWithAlias.right;
                     return new ColumnHeader(columnName, typeProvider.getType(columnName), alias);
                   })
-              .collect(Collectors.toList());
+              .collect(Collectors.toList()));
       return new DatasetHeader(columnHeaders, isIgnoreTimestamp);
     }
 

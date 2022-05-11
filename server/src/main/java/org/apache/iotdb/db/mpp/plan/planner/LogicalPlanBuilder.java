@@ -251,13 +251,13 @@ public class LogicalPlanBuilder {
 
   public LogicalPlanBuilder planDeviceView(
       Map<String, PlanNode> deviceNameToSourceNodesMap,
-      List<String> measurements,
+      List<String> outputColumnNames,
       OrderBy mergeOrder) {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             context.getQueryId().genPlanNodeId(),
             Arrays.asList(OrderBy.DEVICE_ASC, mergeOrder),
-            measurements);
+            outputColumnNames);
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
       String deviceName = entry.getKey();
       PlanNode subPlan = entry.getValue();

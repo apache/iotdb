@@ -50,20 +50,23 @@ public class DeviceViewNode extends ProcessNode {
   // each child node whose output TsBlock contains the data belonged to one device.
   private final List<PlanNode> children = new ArrayList<>();
 
-  // measurement columns in result output
-  private final List<String> measurements;
+  // Device column and measurement columns in result output
+  private final List<String> outputColumnNames;
 
-  public DeviceViewNode(PlanNodeId id, List<OrderBy> mergeOrders, List<String> measurements) {
+  public DeviceViewNode(PlanNodeId id, List<OrderBy> mergeOrders, List<String> outputColumnNames) {
     super(id);
     this.mergeOrders = mergeOrders;
-    this.measurements = measurements;
+    this.outputColumnNames = outputColumnNames;
   }
 
   public DeviceViewNode(
-      PlanNodeId id, List<OrderBy> mergeOrders, List<String> measurements, List<String> devices) {
+      PlanNodeId id,
+      List<OrderBy> mergeOrders,
+      List<String> outputColumnNames,
+      List<String> devices) {
     super(id);
     this.mergeOrders = mergeOrders;
-    this.measurements = measurements;
+    this.outputColumnNames = outputColumnNames;
     this.devices.addAll(devices);
   }
 
@@ -93,12 +96,12 @@ public class DeviceViewNode extends ProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new DeviceViewNode(getPlanNodeId(), mergeOrders, measurements, devices);
+    return new DeviceViewNode(getPlanNodeId(), mergeOrders, outputColumnNames, devices);
   }
 
   @Override
   public List<String> getOutputColumnNames() {
-    return measurements;
+    return outputColumnNames;
   }
 
   @Override
@@ -111,9 +114,9 @@ public class DeviceViewNode extends ProcessNode {
     PlanNodeType.DEVICE_VIEW.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), byteBuffer);
     ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(measurements.size(), byteBuffer);
-    for (String measurement : measurements) {
-      ReadWriteIOUtils.write(measurement, byteBuffer);
+    ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
+    for (String column : outputColumnNames) {
+      ReadWriteIOUtils.write(column, byteBuffer);
     }
     ReadWriteIOUtils.write(devices.size(), byteBuffer);
     for (String deviceName : devices) {
@@ -125,11 +128,11 @@ public class DeviceViewNode extends ProcessNode {
     List<OrderBy> mergeOrders = new ArrayList<>();
     mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
     mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
-    int measurementsSize = ReadWriteIOUtils.readInt(byteBuffer);
-    List<String> measurements = new ArrayList<>();
-    while (measurementsSize > 0) {
-      measurements.add(ReadWriteIOUtils.readString(byteBuffer));
-      measurementsSize--;
+    int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<String> outputColumnNames = new ArrayList<>();
+    while (columnSize > 0) {
+      outputColumnNames.add(ReadWriteIOUtils.readString(byteBuffer));
+      columnSize--;
     }
     int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> devices = new ArrayList<>();
@@ -138,7 +141,7 @@ public class DeviceViewNode extends ProcessNode {
       devicesSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DeviceViewNode(planNodeId, mergeOrders, measurements, devices);
+    return new DeviceViewNode(planNodeId, mergeOrders, outputColumnNames, devices);
   }
 
   @Override
@@ -156,11 +159,11 @@ public class DeviceViewNode extends ProcessNode {
     return mergeOrders.equals(that.mergeOrders)
         && devices.equals(that.devices)
         && children.equals(that.children)
-        && measurements.equals(that.measurements);
+        && outputColumnNames.equals(that.outputColumnNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), mergeOrders, devices, children, measurements);
+    return Objects.hash(super.hashCode(), mergeOrders, devices, children, outputColumnNames);
   }
 }

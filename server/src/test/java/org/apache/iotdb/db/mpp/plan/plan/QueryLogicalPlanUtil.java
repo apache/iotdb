@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
@@ -294,7 +295,7 @@ public class QueryLogicalPlanUtil {
         new DeviceViewNode(
             new PlanNodeId("10"),
             Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
-            Arrays.asList("s3", "s4", "s1", "s2"));
+            Arrays.asList(HeaderConstant.COLUMN_DEVICE, "s3", "s4", "s1", "s2"));
     deviceViewNode.addChildDeviceNode("root.sg.d1", filterNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", filterNode2);
 
@@ -698,7 +699,8 @@ public class QueryLogicalPlanUtil {
         new DeviceViewNode(
             new PlanNodeId("6"),
             Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
-            Arrays.asList("count(s1)", "max_value(s2)", "last_value(s1)"));
+            Arrays.asList(
+                HeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"));
     deviceViewNode.addChildDeviceNode("root.sg.d1", timeJoinNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", timeJoinNode2);
 
@@ -991,7 +993,8 @@ public class QueryLogicalPlanUtil {
         new DeviceViewNode(
             new PlanNodeId("10"),
             Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
-            Arrays.asList("count(s1)", "max_value(s2)", "last_value(s1)"));
+            Arrays.asList(
+                HeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"));
     deviceViewNode.addChildDeviceNode("root.sg.d1", aggregationNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", aggregationNode2);
 

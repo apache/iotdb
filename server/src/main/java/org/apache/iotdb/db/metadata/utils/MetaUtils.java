@@ -205,7 +205,7 @@ public class MetaUtils {
         alignedPath = null;
         alignedPathAggregations.clear();
       } else {
-        if (alignedPath == null || !alignedPath.equals(measurementPath.getDeviceIdString())) {
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
           alignedPath = new AlignedPath(measurementPath);
           alignedPathAggregations.addAll(pathToAggregations.get(path));
         } else {
