@@ -220,6 +220,7 @@ public class ConfigNodeDescriptor {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
       conf.updatePath();
+      commonConfig.updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
     }
   }
 
