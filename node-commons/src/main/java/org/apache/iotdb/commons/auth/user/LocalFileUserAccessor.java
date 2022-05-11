@@ -152,7 +152,6 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + user.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
-    logger.info("userDir: " + new File(userDirPath).exists());
     try (BufferedOutputStream outputStream =
         new BufferedOutputStream(new FileOutputStream(userProfile))) {
       try {
@@ -237,8 +236,6 @@ public class LocalFileUserAccessor implements IUserAccessor {
 
   @Override
   public void reset() {
-    logger.info(SystemFileFactory.INSTANCE.getFile(userDirPath).mkdirs() + ":reset");
-    logger.info(SystemFileFactory.INSTANCE.getFile(userDirPath).exists() + ":reset");
     if (SystemFileFactory.INSTANCE.getFile(userDirPath).mkdirs()) {
       logger.info("user info dir {} is created", userDirPath);
     } else if (!SystemFileFactory.INSTANCE.getFile(userDirPath).exists()) {
