@@ -175,7 +175,9 @@ public class SchemaFile implements ISchemaFile {
 
     if (channel.size() <= 0) {
       channel.close();
-      throw new SchemaFileNotExists(file.getAbsolutePath());
+      throw new MetadataException(
+          String.format(
+              "Schema File [%s] is empty and cannot be sketched.", file.getAbsolutePath()));
     }
 
     initFileHeader();
