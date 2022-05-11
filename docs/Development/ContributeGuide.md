@@ -101,7 +101,7 @@ Precautions:
 We use the [Spotless
 plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together with [google-java-format](https://github.com/google/google-java-format) to format our Java code. You can configure your IDE to automatically apply formatting on saving with these steps(Take idea as an example):
 
-1. Download the [google-java-format
+1. Download the  [google-java-format
    plugin v1.7.0.5](https://plugins.jetbrains.com/plugin/8527-google-java-format/versions/stable/83169), it can be installed in IDEA (Preferences -> plugins -> search google-java-format), [More detailed setup manual](https://github.com/google/google-java-format#intellij-android-studio-and-other-jetbrains-ides)
 2. Install the plugin from disk (Plugins -> little gear icon -> "Install plugin from disk" -> Navigate to downloaded zip file)
 3. In the plugin settings, enable the plugin and keep the default Google code style (2-space indents)
@@ -119,7 +119,39 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
    <blank line>
    import static all other imports
 ```
+8. Before you submit codes, you can use `mvn spotless:check` to check your codes manually,
+and use `mvn spotless:apply` to format your codes.
 
+**NOTICE (if you are using JDK16+)**: IF you are using JDK16+, you have to create a file called 
+`jvm.config`, put it under `.mvn/`, before you use `spotless:apply`. 
+The file contains the following content:
+```
+--add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+```
+
+This is [an issue of Spotless](https://github.com/diffplug/spotless/issues/834),
+Once the issue is fixed, we can remove this file.
+
+## Code Sytle
+We use the [maven-checkstyle-plugin](https://checkstyle.sourceforge.io/config_filefilters.html) to make Java codes obey a consistent ruleset defined in [checkstyle.xml](https://github.com/apache/iotdb/blob/master/checkstyle.xml) under the project root.
+
+You can reference the code style rules in the file. After development, you can use `mvn validate` to check whether your codes satisfy the style rules.
+
+Besides, when you develop in an IDE, some default code style configurations may be conflict with those rules.
+
+In IDEA, you can follow these steps to change those inconsistent style formatting rules:
+
+### Disable using wildcard import
+
+1. Navigate to Java code style configuration page (Preferences... -> Editor -> Code Style -> Java).
+2. Switch to the 'imports' tab.
+3. In the 'General' section, enable 'Use single class import' option.
+4. Change 'Class count to use import with '\*'' to 999 or another very large number.
+5. Change 'Names to count to use static import with '\*'' to 999 or another very large number.
 
 ## Contributing code
 

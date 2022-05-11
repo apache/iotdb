@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -24,11 +25,9 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.metrics.MetricService;
-import org.apache.iotdb.metrics.config.MetricConfig;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
@@ -40,7 +39,6 @@ import java.util.stream.Stream;
 
 public class MetricsService extends MetricService implements MetricsServiceMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
-  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
@@ -81,12 +79,12 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   @Override
   public void collectFileSystemInfo() {
     logger.info("start collecting fileSize and fileCount of wal/seq/unseq");
-    String walDir = DirectoryManager.getInstance().getWALFolder();
+    String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        walDir,
-        FileUtils::getDirSize,
+        walDirs,
+        value -> Stream.of(value).mapToLong(dir -> FileUtils.getDirSize(dir)).sum(),
         Tag.NAME.toString(),
         "wal");
 
@@ -122,14 +120,23 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        walDir,
-        value -> {
-          File walFolder = new File(value);
-          if (walFolder.exists() && walFolder.isDirectory()) {
-            return org.apache.commons.io.FileUtils.listFiles(new File(value), null, true).size();
-          }
-          return 0L;
-        },
+        walDirs,
+        value ->
+            Stream.of(value)
+                .mapToLong(
+                    dir -> {
+                      File walFolder = new File(dir);
+                      File[] walNodeFolders = walFolder.listFiles(WALNode::walNodeFolderNameFilter);
+                      for (File walNodeFolder : walNodeFolders) {
+                        if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
+                          return org.apache.commons.io.FileUtils.listFiles(
+                                  walNodeFolder, null, true)
+                              .size();
+                        }
+                      }
+                      return 0L;
+                    })
+                .sum(),
         Tag.NAME.toString(),
         "wal");
     metricManager.getOrCreateAutoGauge(
@@ -186,7 +193,9 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
             start();
             break;
           case RESTART_REPORTER:
-            compositeReporter.restartAll();
+            compositeReporter.stopAll();
+            loadReporter();
+            compositeReporter.startAll();
             logger.info("Finish restart metric reporters.");
             break;
           case NOTHING:

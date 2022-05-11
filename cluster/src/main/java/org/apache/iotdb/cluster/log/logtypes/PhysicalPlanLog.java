@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.log.logtypes;
 
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import org.slf4j.Logger;

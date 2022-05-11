@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -26,18 +28,20 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Generated entity implements IMeasurementMNode interface to unify insert logic through id table
- * and schemaEngine
+ * and SchemaProcessor
  */
 public class InsertMeasurementMNode implements IMeasurementMNode {
   SchemaEntry schemaEntry;
@@ -63,6 +67,22 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   // region support methods
+
+  @Override
+  public List<TriggerExecutor> getUpperTriggerExecutorList() {
+    IMNode currentNode = this;
+    List<TriggerExecutor> results = new ArrayList<>();
+    while (currentNode != null && !IoTDBConstant.PATH_ROOT.equals(currentNode.getName())) {
+      TriggerExecutor executor = currentNode.getTriggerExecutor();
+      currentNode = currentNode.getParent();
+      if (executor == null) {
+        continue;
+      }
+      results.add(executor);
+    }
+    return results;
+  }
+
   @Override
   public TriggerExecutor getTriggerExecutor() {
     return triggerExecutor;
@@ -150,7 +170,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public void deleteChild(String name) {
+  public IMNode deleteChild(String name) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
@@ -165,12 +185,12 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public Map<String, IMNode> getChildren() {
+  public IMNodeContainer getChildren() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
   @Override
-  public void setChildren(Map<String, IMNode> children) {
+  public void setChildren(IMNodeContainer children) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
@@ -196,11 +216,6 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
 
   @Override
   public void setSchemaTemplate(Template schemaTemplate) {
-    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
-  }
-
-  @Override
-  public boolean isEmptyInternal() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
@@ -238,6 +253,14 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   public void serializeTo(MLogWriter logWriter) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
+
+  @Override
+  public CacheEntry getCacheEntry() {
+    return null;
+  }
+
+  @Override
+  public void setCacheEntry(CacheEntry cacheEntry) {}
 
   @Override
   public MeasurementPath getMeasurementPath() {

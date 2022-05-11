@@ -72,19 +72,17 @@ fromClause
 nodeName
     : STAR
     | ID
-    | QUTOED_ID
-    | QUTOED_ID_IN_NODE_NAME
+    | QUOTED_ID
     | LAST
     | COUNT
+    | DEVICE
     ;
 
 // Identifier
 
 identifier
     : ID
-    | QUTOED_ID
-    | QUTOED_ID_IN_NODE_NAME
-    | INTEGER_LITERAL
+    | QUOTED_ID
     ;
 
 
@@ -101,7 +99,7 @@ constant
     ;
 
 functionAttribute
-    : COMMA functionAttributeKey=STRING_LITERAL OPERATOR_EQ functionAttributeValue=STRING_LITERAL
+    : COMMA functionAttributeKey=STRING_LITERAL OPERATOR_SEQ functionAttributeValue=STRING_LITERAL
     ;
 
 comparisonOperator
@@ -109,7 +107,7 @@ comparisonOperator
     | type = OPERATOR_GTE
     | type = OPERATOR_LT
     | type = OPERATOR_LTE
-    | type = OPERATOR_EQ
+    | type = OPERATOR_SEQ
     | type = OPERATOR_NEQ
     ;
 

@@ -31,7 +31,7 @@
             <includes>
                 <include>*:iotdb-server:zip:*</include>
                 <include>*:iotdb-cli:zip:*</include>
-                <include>*:iotdb-cluster:zip:*</include>
+                <!--                <include>*:iotdb-cluster:zip:*</include>-->
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
@@ -54,6 +54,10 @@
         <fileSet>
             <outputDirectory>conf</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>grafana-metrics-example</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/grafana-metrics-example</directory>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
@@ -79,11 +83,11 @@
         <!--            <outputDirectory>conf</outputDirectory>-->
         <!--            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/conf</directory>-->
         <!--        </fileSet>-->
-        <fileSet>
-            <outputDirectory>sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/sbin</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
+        <!--        <fileSet>-->
+        <!--            <outputDirectory>sbin</outputDirectory>-->
+        <!--            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/sbin</directory>-->
+        <!--            <fileMode>0755</fileMode>-->
+        <!--        </fileSet>-->
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/docs</directory>
             <outputDirectory>docs</outputDirectory>

@@ -26,15 +26,15 @@ import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.CreateTemplatePlanUtil;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
@@ -199,7 +199,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     SnapshotInstaller defaultInstaller = metaSimpleSnapshot.getDefaultInstaller(metaGroupMember);
     defaultInstaller.install(metaSimpleSnapshot, -1, false);
 
-    Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaEngine.getStorageGroupsTTL();
+    Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaProcessor.getStorageGroupsTTL();
     for (int i = 0; i < 10; i++) {
       PartialPath partialPath = new PartialPath("root.ln.sg" + i);
       assertEquals(i, (long) storageGroupsTTL.get(partialPath));
@@ -307,7 +307,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       SnapshotInstaller defaultInstaller = metaSimpleSnapshot.getDefaultInstaller(metaGroupMember);
       defaultInstaller.install(metaSimpleSnapshot, -1, false);
 
-      Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaEngine.getStorageGroupsTTL();
+      Map<PartialPath, Long> storageGroupsTTL = IoTDB.schemaProcessor.getStorageGroupsTTL();
       for (int i = 0; i < 10; i++) {
         PartialPath partialPath = new PartialPath("root.ln.sg" + i);
         assertNull(storageGroupsTTL.get(partialPath));

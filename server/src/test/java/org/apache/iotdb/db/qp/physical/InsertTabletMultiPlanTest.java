@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -89,9 +89,10 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
     }
     PlanExecutor executor = new PlanExecutor();
 
-    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(insertTabletPlanList);
+    InsertMultiTabletsPlan insertMultiTabletsPlan =
+        new InsertMultiTabletsPlan(insertTabletPlanList);
 
-    executor.insertTablet(insertMultiTabletPlan);
+    executor.insertTablet(insertMultiTabletsPlan);
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.multi.**");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -183,9 +184,10 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
     }
     PlanExecutor executor = new PlanExecutor();
 
-    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(insertTabletPlanList);
-    Assert.assertTrue(insertMultiTabletPlan.isEnableMultiThreading());
-    executor.insertTablet(insertMultiTabletPlan);
+    InsertMultiTabletsPlan insertMultiTabletsPlan =
+        new InsertMultiTabletsPlan(insertTabletPlanList);
+    Assert.assertTrue(insertMultiTabletsPlan.isEnableMultiThreading());
+    executor.insertTablet(insertMultiTabletsPlan);
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.**");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -278,9 +280,10 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
     }
     PlanExecutor executor = new PlanExecutor();
 
-    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(insertTabletPlanList);
+    InsertMultiTabletsPlan insertMultiTabletsPlan =
+        new InsertMultiTabletsPlan(insertTabletPlanList);
 
-    executor.insertTablet(insertMultiTabletPlan);
+    executor.insertTablet(insertMultiTabletsPlan);
 
     for (int i = 0; i < 1000; i++) {
       QueryPlan queryPlan =

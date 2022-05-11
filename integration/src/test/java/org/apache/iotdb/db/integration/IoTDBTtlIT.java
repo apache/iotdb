@@ -217,7 +217,7 @@ public class IoTDBTtlIT {
       String result = doQuery(statement, "SHOW ALL TTL");
       assertTrue(
           result.equals("root.group1,null\n" + "root.group2.sgroup1,10000\n")
-              || result.equals("root.group2.sgroup1 10000\n" + "root.group1,null\n"));
+              || result.equals("root.group2.sgroup1,10000\n" + "root.group1,null\n"));
     }
   }
 }

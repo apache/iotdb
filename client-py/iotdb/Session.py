@@ -34,13 +34,19 @@ from .thrift.rpc.TSIService import (
     TSExecuteStatementReq,
     TSOpenSessionReq,
     TSCreateMultiTimeseriesReq,
-    TSCreateSchemaTemplateReq,
     TSCloseSessionReq,
     TSInsertTabletsReq,
     TSInsertRecordsReq,
     TSInsertRecordsOfOneDeviceReq,
 )
-from .thrift.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
+from .thrift.rpc.ttypes import (
+    TSDeleteDataReq,
+    TSProtocolVersion,
+    TSSetTimeZoneReq,
+    TSRawDataQueryReq,
+    TSLastDataQueryReq,
+    TSInsertStringRecordsOfOneDeviceReq,
+)
 
 # for debug
 # from IoTDBConstants import *
@@ -110,7 +116,7 @@ class Session(object):
             username=self.__user,
             password=self.__password,
             zoneId=self.__zone_id,
-            configuration={"version": "V_0_13"}
+            configuration={"version": "V_0_13"},
         )
 
         try:
@@ -193,8 +199,17 @@ class Session(object):
 
         return Session.verify_success(status)
 
-    def create_time_series(self, ts_path, data_type, encoding, compressor,
-                           props=None, tags=None, attributes=None, alias=None):
+    def create_time_series(
+        self,
+        ts_path,
+        data_type,
+        encoding,
+        compressor,
+        props=None,
+        tags=None,
+        attributes=None,
+        alias=None,
+    ):
         """
         create single time series
         :param ts_path: String, complete time series path (starts from root)
@@ -210,7 +225,15 @@ class Session(object):
         encoding = encoding.value
         compressor = compressor.value
         request = TSCreateTimeseriesReq(
-            self.__session_id, ts_path, data_type, encoding, compressor, props, tags, attributes, alias
+            self.__session_id,
+            ts_path,
+            data_type,
+            encoding,
+            compressor,
+            props,
+            tags,
+            attributes,
+            alias,
         )
         status = self.__client.createTimeseries(request)
         logger.debug(
@@ -220,7 +243,7 @@ class Session(object):
         return Session.verify_success(status)
 
     def create_aligned_time_series(
-            self, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+        self, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
     ):
         """
         create aligned time series
@@ -235,7 +258,12 @@ class Session(object):
         compressor_lst = [compressor.value for compressor in compressor_lst]
 
         request = TSCreateAlignedTimeseriesReq(
-            self.__session_id, device_id, measurements_lst, data_type_lst, encoding_lst, compressor_lst
+            self.__session_id,
+            device_id,
+            measurements_lst,
+            data_type_lst,
+            encoding_lst,
+            compressor_lst,
         )
         status = self.__client.createAlignedTimeseries(request)
         logger.debug(
@@ -247,8 +275,15 @@ class Session(object):
         return Session.verify_success(status)
 
     def create_multi_time_series(
-            self, ts_path_lst, data_type_lst, encoding_lst, compressor_lst,
-            props_lst=None, tags_lst=None, attributes_lst=None, alias_lst=None
+        self,
+        ts_path_lst,
+        data_type_lst,
+        encoding_lst,
+        compressor_lst,
+        props_lst=None,
+        tags_lst=None,
+        attributes_lst=None,
+        alias_lst=None,
     ):
         """
         create multiple time series
@@ -266,8 +301,15 @@ class Session(object):
         compressor_lst = [compressor.value for compressor in compressor_lst]
 
         request = TSCreateMultiTimeseriesReq(
-            self.__session_id, ts_path_lst, data_type_lst, encoding_lst, compressor_lst, props_lst, tags_lst,
-            attributes_lst, alias_lst
+            self.__session_id,
+            ts_path_lst,
+            data_type_lst,
+            encoding_lst,
+            compressor_lst,
+            props_lst,
+            tags_lst,
+            attributes_lst,
+            alias_lst,
         )
         status = self.__client.createMultiTimeseries(request)
         logger.debug(
@@ -319,7 +361,7 @@ class Session(object):
             logger.exception("data deletion fails because: ", e)
 
     def insert_str_record(self, device_id, timestamp, measurements, string_values):
-        """ special case for inserting one row of String (TEXT) value """
+        """special case for inserting one row of String (TEXT) value"""
         if type(string_values) == str:
             string_values = [string_values]
         if type(measurements) == str:
@@ -337,8 +379,10 @@ class Session(object):
 
         return Session.verify_success(status)
 
-    def insert_aligned_str_record(self, device_id, timestamp, measurements, string_values):
-        """ special case for inserting one row of String (TEXT) value """
+    def insert_aligned_str_record(
+        self, device_id, timestamp, measurements, string_values
+    ):
+        """special case for inserting one row of String (TEXT) value"""
         if type(string_values) == str:
             string_values = [string_values]
         if type(measurements) == str:
@@ -409,7 +453,9 @@ class Session(object):
 
         return Session.verify_success(status)
 
-    def insert_aligned_record(self, device_id, timestamp, measurements, data_types, values):
+    def insert_aligned_record(
+        self, device_id, timestamp, measurements, data_types, values
+    ):
         """
         insert one row of aligned record into database, if you want improve your performance, please use insertTablet method
             for example a record at time=10086 with three measurements is:
@@ -522,7 +568,12 @@ class Session(object):
             )
         values_in_bytes = Session.value_to_bytes(data_types, values)
         return TSInsertRecordReq(
-            self.__session_id, device_id, measurements, values_in_bytes, timestamp, is_aligned
+            self.__session_id,
+            device_id,
+            measurements,
+            values_in_bytes,
+            timestamp,
+            is_aligned,
         )
 
     def gen_insert_str_record_req(
@@ -537,7 +588,13 @@ class Session(object):
         )
 
     def gen_insert_records_req(
-        self, device_ids, times, measurements_lst, types_lst, values_lst, is_aligned=False
+        self,
+        device_ids,
+        times,
+        measurements_lst,
+        types_lst,
+        values_lst,
+        is_aligned=False,
     ):
         if (
             (len(device_ids) != len(measurements_lst))
@@ -561,7 +618,12 @@ class Session(object):
             value_lst.append(values_in_bytes)
 
         return TSInsertRecordsReq(
-            self.__session_id, device_ids, measurements_lst, value_lst, times, is_aligned
+            self.__session_id,
+            device_ids,
+            measurements_lst,
+            value_lst,
+            times,
+            is_aligned,
         )
 
     def insert_tablet(self, tablet):
@@ -621,7 +683,9 @@ class Session(object):
         insert multiple aligned tablets, tablets are independent to each other
         :param tablet_lst: List of tablets
         """
-        status = self.__client.insertTablets(self.gen_insert_tablets_req(tablet_lst, True))
+        status = self.__client.insertTablets(
+            self.gen_insert_tablets_req(tablet_lst, True)
+        )
         logger.debug("insert multiple tablets, message: {}".format(status.message))
 
         return Session.verify_success(status)
@@ -742,7 +806,13 @@ class Session(object):
         return Session.verify_success(status)
 
     def gen_insert_records_of_one_device_request(
-        self, device_id, times_list, measurements_list, values_list, types_list, is_aligned=False
+        self,
+        device_id,
+        times_list,
+        measurements_list,
+        values_list,
+        types_list,
+        is_aligned=False,
     ):
         binary_value_list = []
         for values, data_types, measurements in zip(
@@ -762,7 +832,7 @@ class Session(object):
             measurements_list,
             binary_value_list,
             times_list,
-            is_aligned
+            is_aligned,
         )
 
     def test_insert_tablet(self, tablet):
@@ -959,3 +1029,125 @@ class Session(object):
 
         logger.error("error status is", status)
         return -1
+
+    def execute_raw_data_query(
+        self, paths: list, start_time: int, end_time: int
+    ) -> SessionDataSet:
+        request = TSRawDataQueryReq(
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            startTime=start_time,
+            endTime=end_time,
+            statementId=self.__statement_id,
+            enableRedirectQuery=False,
+        )
+        resp = self.__client.executeRawDataQuery(request)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
+
+    def execute_last_data_query(self, paths: list, last_time: int) -> SessionDataSet:
+        request = TSLastDataQueryReq(
+            self.__session_id,
+            paths,
+            self.__fetch_size,
+            last_time,
+            self.__statement_id,
+            enableRedirectQuery=False,
+        )
+
+        resp = self.__client.executeLastDataQuery(request)
+        return SessionDataSet(
+            "",
+            resp.columns,
+            resp.dataTypeList,
+            resp.columnNameIndexMap,
+            resp.queryId,
+            self.__client,
+            self.__statement_id,
+            self.__session_id,
+            resp.queryDataSet,
+            resp.ignoreTimeStamp,
+        )
+
+    def insert_string_records_of_one_device(
+        self,
+        device_id: str,
+        times: list,
+        measurements_list: list,
+        values_list: list,
+        have_sorted: bool = False,
+    ):
+        if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
+            raise RuntimeError(
+                "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
+            )
+        request = self.gen_insert_string_records_of_one_device_request(
+            device_id, times, measurements_list, values_list, have_sorted, False
+        )
+        status = self.__client.insertStringRecordsOfOneDevice(request)
+        logger.debug(
+            "insert one device {} message: {}".format(device_id, status.message)
+        )
+
+        return Session.verify_success(status)
+
+    def insert_aligned_string_records_of_one_device(
+        self,
+        device_id: str,
+        times: list,
+        measurements_list: list,
+        values: list,
+        have_sorted: bool = False,
+    ):
+        if (len(times) != len(measurements_list)) or (len(times) != len(values)):
+            raise RuntimeError(
+                "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
+            )
+        request = self.gen_insert_string_records_of_one_device_request(
+            device_id, times, measurements_list, values, have_sorted, True
+        )
+        status = self.__client.insertStringRecordsOfOneDevice(request)
+        logger.debug(
+            "insert one device {} message: {}".format(device_id, status.message)
+        )
+
+        return Session.verify_success(status)
+
+    def gen_insert_string_records_of_one_device_request(
+        self,
+        device_id,
+        times,
+        measurements_list,
+        values_list,
+        have_sorted,
+        is_aligned=False,
+    ):
+        if (len(times) != len(measurements_list)) or (len(times) != len(values_list)):
+            raise RuntimeError(
+                "insert records of one device error: times, measurementsList and valuesList's size should be equal!"
+            )
+        if not Session.check_sorted(times):
+            # sort by timestamp
+            sorted_zipped = sorted(zip(times, measurements_list, values_list))
+            result = zip(*sorted_zipped)
+            times_list, measurements_list, values_list = [list(x) for x in result]
+        request = TSInsertStringRecordsOfOneDeviceReq(
+            self.__session_id,
+            device_id,
+            measurements_list,
+            values_list,
+            times,
+            is_aligned,
+        )
+        return request

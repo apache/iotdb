@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.metadata.logfile;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
+import org.apache.iotdb.db.utils.writelog.SingleFileLogReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

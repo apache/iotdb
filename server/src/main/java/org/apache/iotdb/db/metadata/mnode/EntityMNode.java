@@ -39,6 +39,14 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
 
   private volatile Map<String, ILastCacheContainer> lastCacheMap = null;
 
+  @Override
+  public String getFullPath() {
+    if (fullPath == null) {
+      fullPath = concatFullPath().intern();
+    }
+    return fullPath;
+  }
+
   /**
    * Constructor of MNode.
    *

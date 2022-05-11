@@ -20,14 +20,21 @@
 package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticSubtractionTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticSubtractionTransformer;
+
+import java.nio.ByteBuffer;
 
 public class SubtractionExpression extends BinaryExpression {
 
   public SubtractionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
+  }
+
+  public SubtractionExpression(ByteBuffer byteBuffer) {
+    super(byteBuffer);
   }
 
   @Override
@@ -40,5 +47,10 @@ public class SubtractionExpression extends BinaryExpression {
   @Override
   protected String operator() {
     return "-";
+  }
+
+  @Override
+  public ExpressionType getExpressionType() {
+    return ExpressionType.SUBTRACTION;
   }
 }
