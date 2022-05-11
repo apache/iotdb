@@ -155,8 +155,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
     logger.info("saveUser : " + userProfile);
     logger.info(String.valueOf(userProfile.isFile()));
     logger.info(String.valueOf(userProfile.exists()));
-    try (BufferedOutputStream outputStream =
-        new BufferedOutputStream(new FileOutputStream(userProfile))) {
+    FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
+    logger.info(String.valueOf(fileOutputStream));
+    try (BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
       logger.info("1");
       try {
         logger.info("2");
