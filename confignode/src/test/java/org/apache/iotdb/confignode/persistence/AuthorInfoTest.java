@@ -54,7 +54,6 @@ public class AuthorInfoTest {
     TSStatus status;
 
     List<String> userList = new ArrayList<>();
-    userList.add("root");
     userList.add("user0");
     userList.add("user1");
 
