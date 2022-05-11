@@ -40,8 +40,7 @@ public abstract class BinaryTransformer extends Transformer {
 
   protected final boolean isCurrentConstant;
 
-  protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader)
-      throws UnSupportedDataTypeException {
+  protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     this.leftPointReader = leftPointReader;
     this.rightPointReader = rightPointReader;
     leftPointReaderDataType = leftPointReader.getDataType();
