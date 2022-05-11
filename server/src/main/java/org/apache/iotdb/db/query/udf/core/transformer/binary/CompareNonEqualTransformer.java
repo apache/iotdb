@@ -32,7 +32,7 @@ public class CompareNonEqualTransformer extends CompareBinaryTransformer {
   }
 
   @Override
-  protected void checkType() throws UnSupportedDataTypeException {
+  protected void checkType() {
     if ((leftPointReaderDataType == TSDataType.BOOLEAN
             && rightPointReaderDataType != TSDataType.BOOLEAN)
         || (leftPointReaderDataType != TSDataType.BOOLEAN

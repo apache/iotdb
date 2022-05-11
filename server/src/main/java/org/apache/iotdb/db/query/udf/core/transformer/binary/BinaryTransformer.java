@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.udf.core.transformer.binary;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
@@ -79,7 +78,8 @@ public abstract class BinaryTransformer extends Transformer {
 
   protected abstract void transformAndCache() throws QueryProcessException, IOException;
 
-  protected abstract void checkType() throws UnSupportedDataTypeException;
+  protected abstract void checkType();
+
   /**
    * finds the smallest, unconsumed timestamp that exists in both {@code leftPointReader} and {@code
    * rightPointReader} and then caches the timestamp in {@code cachedTime}.

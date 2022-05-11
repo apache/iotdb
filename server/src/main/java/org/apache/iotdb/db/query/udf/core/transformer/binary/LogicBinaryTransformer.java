@@ -34,7 +34,7 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
-  protected void checkType() throws UnSupportedDataTypeException {
+  protected void checkType() {
     if (leftPointReaderDataType != TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException(
           "Unsupported data type: " + leftPointReader.getDataType().toString());

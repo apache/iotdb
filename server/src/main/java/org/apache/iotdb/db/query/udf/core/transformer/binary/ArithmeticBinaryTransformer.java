@@ -34,7 +34,7 @@ public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
-  protected void checkType() throws UnSupportedDataTypeException {
+  protected void checkType() {
     if (leftPointReaderDataType == TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException(leftPointReader.getDataType().toString());
     }
