@@ -116,6 +116,7 @@ public class AuthorInfo {
     String newPassword = authorReq.getNewPassword();
     Set<Integer> permissions = authorReq.getPermissions();
     String nodeName = authorReq.getNodeName();
+    logger.info(userName);
     try {
       switch (authorType) {
         case UpdateUser:

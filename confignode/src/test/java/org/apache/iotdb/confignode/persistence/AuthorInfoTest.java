@@ -87,6 +87,7 @@ public class AuthorInfoTest {
         new AuthorReq(
             ConfigRequestType.CreateUser, "tempuser0", "", "passwd", "", new HashSet<>(), "");
     status = authorInfo.authorNonQuery(authorReq);
+    Assert.assertNull(status.getMessage());
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     authorReq.setUserName("tempuser1");
     status = authorInfo.authorNonQuery(authorReq);

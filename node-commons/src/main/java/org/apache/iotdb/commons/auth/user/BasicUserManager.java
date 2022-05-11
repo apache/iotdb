@@ -86,6 +86,7 @@ public abstract class BasicUserManager implements IUserManager {
     User user = userMap.get(username);
     try {
       if (user == null) {
+        logger.debug("null");
         user = accessor.loadUser(username);
         if (user != null) {
           userMap.put(username, user);

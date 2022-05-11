@@ -84,6 +84,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
     File userProfile =
         SystemFileFactory.INSTANCE.getFile(
             userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX);
+    logger.debug(userProfile + ": file path");
     if (!userProfile.exists() || !userProfile.isFile()) {
       // System may crush before a newer file is renamed.
       File newProfile =
@@ -94,7 +95,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
           logger.error("New profile renaming not succeed.");
         }
         userProfile = newProfile;
+        logger.debug(userProfile + ": temp path exist");
       } else {
+        logger.debug(userProfile + ": temp path not exist");
         return null;
       }
     }
