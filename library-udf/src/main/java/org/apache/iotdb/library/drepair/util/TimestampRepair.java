@@ -22,6 +22,8 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.library.util.Util;
 
+import org.apache.log4j.Logger;
+
 import java.util.ArrayList;
 
 public class TimestampRepair {
@@ -116,12 +118,13 @@ public class TimestampRepair {
     int j = m_;
     double unionSet = 0;
     double joinSet = 0;
+    Logger logger = Logger.getLogger(getClass());
     while (i >= 1 && j >= 1) {
       long ps = start0 + (i - 1) * deltaT;
       if (steps[i][j] == 0) {
         repaired[i - 1] = ps;
         repairedValue[i - 1] = original[j - 1];
-        // System.out.println(time[j - 1] + "," + ps + "," + original[j - 1]);
+        // logger.debug(time[j - 1] + "," + ps + "," + original[j - 1]);
         unionSet += 1;
         joinSet += 1;
         i--;
@@ -131,17 +134,17 @@ public class TimestampRepair {
         repaired[i - 1] = ps;
         repairedValue[i - 1] = Double.NaN;
         unionSet += 1;
-        // System.out.println("add, " + ps + "," + original[j - 1]);
+        // logger.debug("add, " + ps + "," + original[j - 1]);
         i--;
       } else {
         // delete points
         unionSet += 1;
-        // System.out.println(time[j - 1] + ",delete" + "," + original[j - 1]);
+        // logger.debug(time[j - 1] + ",delete" + "," + original[j - 1]);
         j--;
       }
     }
-    // System.out.println(joinSet / unionSet);
-    // System.out.println(f[n_][m_] / n_);
+    // logger.debug(joinSet / unionSet);
+    // logger.debug(f[n_][m_] / n_);
   }
 
   public double[] getRepairedValue() {

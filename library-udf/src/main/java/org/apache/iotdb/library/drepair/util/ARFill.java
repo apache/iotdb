@@ -19,6 +19,7 @@
 package org.apache.iotdb.library.drepair.util;
 
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
+import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 
 public class ARFill extends ValueFill {
   // TODO Higer order AR regression
@@ -35,7 +36,7 @@ public class ARFill extends ValueFill {
   }
 
   @Override
-  public void fill() {
+  public void fill() throws UDFException {
     // compute \sum x_t * x_{t-1}
     double acf = 0;
     double factor = 0;
@@ -52,16 +53,12 @@ public class ARFill extends ValueFill {
       factor += left * left;
       acf_cnt += 1;
     }
-    try {
-      assert factor > 0d;
-      assert this.theta < 1;
-    } catch (AssertionError e) {
-      System.out.println("Cannot fit AR(1) model. Please try another method.");
+    if (factor == 0d || this.theta >= 1) {
       this.time = new long[] {0};
       this.repaired = new double[] {0D};
-      return;
+      throw new UDFException("Cannot fit AR(1) model. Please try another method.");
     }
-    //        acf /= acf_cnt;
+    // acf /= acf_cnt;
     this.theta = acf / factor;
     double mean_epsilon = 0;
     double var_epsilon = 0;
@@ -76,13 +73,10 @@ public class ARFill extends ValueFill {
       mean_epsilon += epsilon;
       var_epsilon += epsilon * epsilon;
     }
-    try {
-      assert cnt_epsilon > 0d;
-    } catch (AssertionError e) {
-      System.out.println("Cannot fit AR(1) model. Please try another method.");
+    if (cnt_epsilon == 0d) {
       this.time = new long[] {0};
       this.repaired = new double[] {0D};
-      return;
+      throw new UDFException("Cannot fit AR(1) model. Please try another method.");
     }
     mean_epsilon /= cnt_epsilon;
     var_epsilon /= cnt_epsilon;

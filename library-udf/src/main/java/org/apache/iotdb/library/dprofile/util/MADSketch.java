@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.library.dprofile.util;
 
+import org.apache.log4j.Logger;
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 
 import java.util.Arrays;
@@ -261,7 +262,8 @@ public class MADSketch {
 
   public void show(Bucket[] buckets) {
     for (Bucket bucket : buckets) {
-      System.out.println(bucket.index + ": " + bucket.count);
+      Logger logger = Logger.getLogger(getClass());
+      logger.debug(bucket.index + ": " + bucket.count);
     }
   }
 
