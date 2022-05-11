@@ -120,7 +120,7 @@ public class ConfigNodeConf {
 
   /** Procedure directory, storage procedure wal */
   private String procedureWalDir =
-          ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.PROCEDURE_FOLDER;
+      ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.PROCEDURE_FOLDER;
 
   /** Procedure Evict ttl */
   private int completedEvictTTL = 800;
@@ -130,7 +130,6 @@ public class ConfigNodeConf {
 
   /** Procedure core worker threads size */
   private int coreWorkerThreadsSize = Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
-
 
   ConfigNodeConf() {
     // empty constructor
