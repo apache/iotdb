@@ -62,8 +62,7 @@ public class IoTDBTagAlterIT {
     };
     String sql =
         "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT,"
-            + " encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2') "
-            + "attributes('attr1'='v1', 'attr2'='v2')";
+            + " encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
@@ -98,7 +97,7 @@ public class IoTDBTagAlterIT {
       assertEquals(ret1.length, count);
 
       try {
-        statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME 'tag3' TO 'tagNew3'");
+        statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME tag3 TO tagNew3");
         fail();
       } catch (Exception e) {
         assertTrue(
@@ -107,7 +106,7 @@ public class IoTDBTagAlterIT {
       }
 
       try {
-        statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'tag2'");
+        statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO tag2");
         fail();
       } catch (Exception e) {
         assertTrue(
@@ -116,7 +115,7 @@ public class IoTDBTagAlterIT {
                     "TimeSeries [root.turbine.d1.s1] already has a tag/attribute named [tag2]."));
       }
 
-      statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'tagNew1'");
+      statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO tagNew1");
       hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
@@ -165,7 +164,7 @@ public class IoTDBTagAlterIT {
 
     String sql =
         "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('tag1'='v1', 'tag2'='v2') attributes('attr1'='v1', 'attr2'='v2')";
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
@@ -200,7 +199,7 @@ public class IoTDBTagAlterIT {
       assertEquals(ret.length, count);
 
       try {
-        statement.execute("ALTER timeseries root.turbine.d1.s1 SET 'tag3'='v3'");
+        statement.execute("ALTER timeseries root.turbine.d1.s1 SET tag3=v3");
         fail();
       } catch (Exception e) {
         assertTrue(
@@ -208,7 +207,7 @@ public class IoTDBTagAlterIT {
                 .contains("TimeSeries [root.turbine.d1.s1] does not have tag/attribute [tag3]."));
       }
 
-      statement.execute("ALTER timeseries root.turbine.d1.s1 SET 'tag1'='newV1', 'attr2'='newV2'");
+      statement.execute("ALTER timeseries root.turbine.d1.s1 SET tag1=newV1, attr2=newV2");
       hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
@@ -256,7 +255,7 @@ public class IoTDBTagAlterIT {
 
     String sql =
         "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('tag1'='v1', 'tag2'='v2') attributes('attr1'='v1', 'attr2'='v2')";
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
@@ -290,7 +289,7 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret.length, count);
 
-      statement.execute("ALTER timeseries root.turbine.d1.s1 DROP 'attr1','tag1'");
+      statement.execute("ALTER timeseries root.turbine.d1.s1 DROP attr1,tag1");
       hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
@@ -321,7 +320,7 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret2.length, count);
 
-      try (ResultSet rs = statement.executeQuery("show timeseries where 'tag1'='v1'")) {
+      try (ResultSet rs = statement.executeQuery("show timeseries where tag1=v1")) {
         assertFalse(rs.next());
       }
     } catch (Exception e) {
@@ -343,7 +342,7 @@ public class IoTDBTagAlterIT {
 
     String sql =
         "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('tag1'='v1', 'tag2'='v2') attributes('attr1'='v1', 'attr2'='v2')";
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
@@ -377,8 +376,8 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret.length, count);
 
-      statement.execute("ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3'='v3', 'tag4'='v4'");
-      hasResult = statement.execute("show timeseries where 'tag3'='v3'");
+      statement.execute("ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4");
+      hasResult = statement.execute("show timeseries where tag3=v3");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
@@ -426,7 +425,7 @@ public class IoTDBTagAlterIT {
 
     String sql =
         "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('tag1'='v1', 'tag2'='v2') attributes('attr1'='v1', 'attr2'='v2')";
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
@@ -460,8 +459,7 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret.length, count);
 
-      statement.execute(
-          "ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3'='v3', 'attr4'='v4'");
+      statement.execute("ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4");
       hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
@@ -514,7 +512,7 @@ public class IoTDBTagAlterIT {
 
     String sql =
         "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
-            + "tags('tag1'='v1', 'tag2'='v2') attributes('attr1'='v1', 'attr2'='v2')";
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
@@ -548,9 +546,8 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret.length, count);
 
-      statement.execute(
-          "ALTER timeseries root.turbine.d1.s1 UPSERT TAGS('tag3'='v3', 'tag2'='newV2')");
-      hasResult = statement.execute("show timeseries where 'tag3'='v3'");
+      statement.execute("ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag3=v3, tag2=newV2)");
+      hasResult = statement.execute("show timeseries where tag3=v3");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
@@ -581,9 +578,8 @@ public class IoTDBTagAlterIT {
       assertEquals(ret2.length, count);
 
       statement.execute(
-          "ALTER timeseries root.turbine.d1.s1 UPSERT TAGS('tag1'='newV1', 'tag3'='newV3') "
-              + "ATTRIBUTES('attr1'='newA1', 'attr3'='v3')");
-      hasResult = statement.execute("show timeseries where 'tag3'='newV3'");
+          "ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag1=newV1, tag3=newV3) ATTRIBUTES(attr1=newA1, attr3=v3)");
+      hasResult = statement.execute("show timeseries where tag3=newV3");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();
       count = 0;
@@ -610,7 +606,7 @@ public class IoTDBTagAlterIT {
         }
         assertEquals(ret3.length, count);
 
-        statement.execute("show timeseries where 'tag3'='v3'");
+        statement.execute("show timeseries where tag3=v3");
         resultSet = statement.getResultSet();
         assertFalse(resultSet.next());
       } finally {

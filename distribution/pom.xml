@@ -48,7 +48,7 @@
                             <descriptors>
                                 <descriptor>src/assembly/all.xml</descriptor>
                                 <descriptor>src/assembly/server.xml</descriptor>
-                                <!--descriptor>src/assembly/cluster.xml</descriptor-->
+                                <descriptor>src/assembly/cluster.xml</descriptor>
                                 <descriptor>src/assembly/cli.xml</descriptor>
                                 <descriptor>src/assembly/grafana-connector.xml</descriptor>
                                 <descriptor>src/assembly/client-cpp.xml</descriptor>
@@ -85,7 +85,7 @@
                                         <include>apache-iotdb-${project.version}-all-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-server-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
-                                        <!--include>apache-iotdb-${project.version}-cluster-bin.zip</include-->
+                                        <include>apache-iotdb-${project.version}-cluster-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-grafana-connector-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-grafana-plugin-bin.zip</include>
@@ -123,24 +123,18 @@
             <version>${project.version}</version>
             <type>pom</type>
         </dependency>
-        <!--        <dependency>-->
-        <!--            <groupId>org.apache.iotdb</groupId>-->
-        <!--            <artifactId>iotdb-cluster</artifactId>-->
-        <!--            <version>${project.version}</version>-->
-        <!--            <type>zip</type>-->
-        <!--        </dependency>-->
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-cluster</artifactId>
+            <version>${project.version}</version>
+            <type>zip</type>
+        </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>client-cpp</artifactId>
             <version>${project.version}</version>
             <type>pom</type>
             <!--            <classifier>${os.classifier}</classifier>-->
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>influxdb-protocol</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
         </dependency>
     </dependencies>
 </project>

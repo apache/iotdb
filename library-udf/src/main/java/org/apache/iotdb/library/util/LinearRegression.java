@@ -30,16 +30,10 @@ public class LinearRegression {
   double sumx, sumy, xbar, ybar, xxbar, yybar, xybar;
   double beta1, beta0, rss, ssr, R2, svar, svar1, svar0;
 
-  public LinearRegression(double[] a, double[] b) throws Exception {
+  public LinearRegression(double[] a, double[] b) {
     x = a.clone();
     y = b.clone();
     n = x.length;
-    if (x.length == 0 || y.length == 0) {
-      throw new Exception("Empty input array(s).");
-    }
-    if (x.length != y.length) {
-      throw new Exception("Different input array length.");
-    }
     e = new double[n];
     yhead = new double[n];
     sumx = Arrays.stream(x).sum();

@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-
 public class SchemaDirCreationFailureException extends MetadataException {
 
   public SchemaDirCreationFailureException(String dirPath) {

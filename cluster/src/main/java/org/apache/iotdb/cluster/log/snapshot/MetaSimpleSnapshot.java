@@ -22,20 +22,20 @@ package org.apache.iotdb.cluster.log.snapshot;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.commons.auth.entity.Role;
-import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.auth.entity.Role;
+import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -226,7 +226,7 @@ public class MetaSimpleSnapshot extends Snapshot {
           for (Map.Entry<PartialPath, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
             PartialPath sgPath = entry.getKey();
             try {
-              IoTDB.schemaProcessor.setStorageGroup(sgPath);
+              IoTDB.schemaEngine.setStorageGroup(sgPath);
             } catch (StorageGroupAlreadySetException e) {
               // ignore
             } catch (MetadataException e) {
@@ -239,7 +239,7 @@ public class MetaSimpleSnapshot extends Snapshot {
 
             // 2. register ttl in the snapshot
             try {
-              IoTDB.schemaProcessor.setTTL(sgPath, entry.getValue());
+              IoTDB.schemaEngine.setTTL(sgPath, entry.getValue());
               StorageEngine.getInstance().setTTL(sgPath, entry.getValue());
             } catch (MetadataException | IOException e) {
               logger.error(

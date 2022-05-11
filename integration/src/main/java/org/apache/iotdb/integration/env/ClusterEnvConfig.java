@@ -65,8 +65,9 @@ public class ClusterEnvConfig implements BaseConfig {
     return this;
   }
 
-  public BaseConfig setDataRegionNum(int dataRegionNum) {
-    engineProperties.setProperty("data_region_num", String.valueOf(dataRegionNum));
+  public BaseConfig setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    engineProperties.setProperty(
+        "virtual_storage_group_num", String.valueOf(virtualStorageGroupNum));
     return this;
   }
 

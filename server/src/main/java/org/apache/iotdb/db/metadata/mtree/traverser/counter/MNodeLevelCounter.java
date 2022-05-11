@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 
 //
@@ -41,15 +39,15 @@ public class MNodeLevelCounter extends CounterTraverser {
 
   private Set<IMNode> processedNodes = new HashSet<>();
 
-  public MNodeLevelCounter(IMNode startNode, PartialPath path, IMTreeStore store, int targetLevel)
+  public MNodeLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
       throws MetadataException {
-    super(startNode, path, store);
+    super(startNode, path);
     this.targetLevel = targetLevel;
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
+    return processLevelMatchedMNode(node, level);
   }
 
   @Override
@@ -63,21 +61,10 @@ public class MNodeLevelCounter extends CounterTraverser {
       return false;
     }
     // record processed node so they will not be processed twice
-    IMNode levelMatchedAncestor = getLevelMatchedAncestor(node, level);
-    if (!processedNodes.contains(levelMatchedAncestor)) {
-      processedNodes.add(levelMatchedAncestor);
+    if (!processedNodes.contains(node)) {
+      processedNodes.add(node);
       count++;
     }
     return true;
-  }
-
-  private IMNode getLevelMatchedAncestor(IMNode node, int level) {
-    Iterator<IMNode> iterator = traverseContext.iterator();
-    while (level > targetLevel && iterator.hasNext()) {
-      node = iterator.next();
-      level--;
-    }
-
-    return node;
   }
 }

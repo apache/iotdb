@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -222,7 +222,7 @@ public class AuthorPlan extends PhysicalPlan {
     return userName;
   }
 
-  public static Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
+  private Set<Integer> strToPermissions(String[] authorizationList) throws AuthException {
     Set<Integer> result = new HashSet<>();
     if (authorizationList == null) {
       return result;

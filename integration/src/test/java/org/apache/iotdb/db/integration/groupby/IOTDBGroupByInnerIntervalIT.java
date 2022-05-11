@@ -29,17 +29,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 
-import static org.apache.iotdb.db.constant.TestConstant.avg;
-import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.sum;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.apache.iotdb.db.constant.TestConstant.*;
+import static org.junit.Assert.*;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IOTDBGroupByInnerIntervalIT {

@@ -38,14 +38,6 @@ public class Pair<L, R> implements Serializable {
     right = r;
   }
 
-  public L getLeft() {
-    return left;
-  }
-
-  public R getRight() {
-    return right;
-  }
-
   @Override
   public int hashCode() {
     final int prime = 31;

@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { MetricFindValue, SelectableValue } from '@grafana/data';
+import { MetricFindValue } from '@grafana/data';
 
-export const toOption = (value: string) => ({ label: value, value } as SelectableValue<string>);
 export const toMetricFindValue = (data: any) => ({ text: data } as MetricFindValue);

@@ -26,7 +26,6 @@ import org.apache.thrift.TProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CountDownLatch;
 
 public abstract class ThriftService implements IService {
@@ -63,9 +62,11 @@ public abstract class ThriftService implements IService {
     }
   }
 
+  public abstract ThriftService getImplementation();
+
   @Override
   public void start() throws StartupException {
-    JMXService.registerMBean(this, mbeanName);
+    JMXService.registerMBean(getImplementation(), mbeanName);
     startService();
   }
 
@@ -87,8 +88,7 @@ public abstract class ThriftService implements IService {
   }
 
   public abstract void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException,
-          NoSuchMethodException, InvocationTargetException;
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException;
 
   public abstract void initThriftServiceThread()
       throws IllegalAccessException, InstantiationException, ClassNotFoundException;
@@ -125,9 +125,7 @@ public abstract class ThriftService implements IService {
     } catch (InterruptedException
         | ClassNotFoundException
         | IllegalAccessException
-        | InstantiationException
-        | NoSuchMethodException
-        | InvocationTargetException e) {
+        | InstantiationException e) {
       Thread.currentThread().interrupt();
       throw new StartupException(this.getID().getName(), e.getMessage());
     }

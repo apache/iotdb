@@ -24,9 +24,9 @@ import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMemberTest;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.thrift.TException;
@@ -54,7 +54,7 @@ public class ClusterInfoServiceImplTest {
 
     ClusterIoTDB.getInstance()
         .getIotdb()
-        .schemaProcessor
+        .schemaEngine
         .setStorageGroup(new PartialPath("root", "sg"));
     // metaClusterServer.getMember()
     impl = new ClusterInfoServiceImpl();
@@ -64,7 +64,7 @@ public class ClusterInfoServiceImplTest {
   public void tearDown() throws MetadataException, IOException, StorageEngineException {
     ClusterIoTDB.getInstance()
         .getIotdb()
-        .schemaProcessor
+        .schemaEngine
         .deleteStorageGroups(Collections.singletonList(new PartialPath("root", "sg")));
     ClusterIoTDB.getInstance().getMetaGroupMember().stop();
     EnvironmentUtils.cleanEnv();

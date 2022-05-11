@@ -37,8 +37,10 @@ public class JMXService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(JMXService.class);
 
-  public JMXService() {
-    // Empty constructor
+  private JMXService() {}
+
+  public static JMXService getInstance() {
+    return JMXServerHolder.INSTANCE;
   }
 
   /** function for registering MBean. */
@@ -88,5 +90,12 @@ public class JMXService implements IService {
   @Override
   public void stop() {
     // do nothing.
+  }
+
+  private static class JMXServerHolder {
+
+    private static final JMXService INSTANCE = new JMXService();
+
+    private JMXServerHolder() {}
   }
 }

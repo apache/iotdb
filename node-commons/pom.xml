@@ -27,24 +27,19 @@
         <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>node-commons</artifactId>
+    <artifactId>iotdb-commons</artifactId>
     <name>Node Commons</name>
     <description>Common modules of the server and config node</description>
     <properties>
         <commons.test.skip>false</commons.test.skip>
         <commons.it.skip>${commons.test.skip}</commons.it.skip>
         <commons.ut.skip>${commons.test.skip}</commons.ut.skip>
-        <cglib.version>3.1</cglib.version>
     </properties>
     <dependencies>
         <dependency>
-            <groupId>cglib</groupId>
-            <artifactId>cglib-nodep</artifactId>
-            <version>${cglib.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>
+            <version>${thrift.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -52,61 +47,9 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-pool2</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.6</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <!--        compile group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'-->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-            <version>0.10.7</version>
-        </dependency>
-        <!-- Impl -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <version>0.10.8</version>
-            <scope>runtime</scope>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-jackson -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <version>0.10.8</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>oauth2-oidc-sdk</artifactId>
-            <version>8.3</version>
+            <version>[${guava.version},)</version>
         </dependency>
     </dependencies>
     <build>
@@ -178,7 +121,7 @@
     </build>
     <profiles>
         <profile>
-            <id>skipCommonsTests</id>
+            <id>skipTsfileTests</id>
             <activation>
                 <property>
                     <name>skipTests</name>
@@ -186,13 +129,13 @@
                 </property>
             </activation>
             <properties>
-                <commons.test.skip>true</commons.test.skip>
-                <commons.ut.skip>true</commons.ut.skip>
-                <commons.it.skip>true</commons.it.skip>
+                <tsfile.test.skip>true</tsfile.test.skip>
+                <tsfile.ut.skip>true</tsfile.ut.skip>
+                <tsfile.it.skip>true</tsfile.it.skip>
             </properties>
         </profile>
         <profile>
-            <id>skipUT_CommonsTests</id>
+            <id>skipUT_TsFileTests</id>
             <activation>
                 <property>
                     <name>skipUTs</name>
@@ -200,7 +143,7 @@
                 </property>
             </activation>
             <properties>
-                <commons.ut.skip>true</commons.ut.skip>
+                <tsfile.ut.skip>true</tsfile.ut.skip>
             </properties>
         </profile>
         <profile>

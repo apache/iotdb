@@ -24,8 +24,4 @@ public class ConsensusException extends Exception {
   public ConsensusException(String message) {
     super(message);
   }
-
-  public ConsensusException(String message, Throwable cause) {
-    super(message, cause);
-  }
 }

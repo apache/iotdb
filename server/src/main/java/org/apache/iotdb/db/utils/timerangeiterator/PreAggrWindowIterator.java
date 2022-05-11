@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils.timerangeiterator;
 
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * This class iteratively generates pre-aggregated time windows.
@@ -32,6 +32,7 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   // total query [startTime, endTime)
   private final long startTime;
   private final long endTime;
+
   private final long interval;
   private final long slidingStep;
 
@@ -41,8 +42,6 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   private long curSlidingStep;
   private boolean isIntervalCyclicChange = false;
   private int intervalCnt = 0;
-
-  private TimeRange curTimeRange;
 
   public PreAggrWindowIterator(
       long startTime, long endTime, long interval, long slidingStep, boolean isAscending) {
@@ -55,7 +54,7 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   }
 
   @Override
-  public TimeRange getFirstTimeRange() {
+  public Pair<Long, Long> getFirstTimeRange() {
     if (isAscending) {
       return getLeftmostTimeRange();
     } else {
@@ -63,13 +62,13 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
     }
   }
 
-  private TimeRange getLeftmostTimeRange() {
+  private Pair<Long, Long> getLeftmostTimeRange() {
     long retEndTime = Math.min(startTime + curInterval, endTime);
     updateIntervalAndStep();
-    return new TimeRange(startTime, retEndTime);
+    return new Pair<>(startTime, retEndTime);
   }
 
-  private TimeRange getRightmostTimeRange() {
+  private Pair<Long, Long> getRightmostTimeRange() {
     long retStartTime;
     long retEndTime;
     long intervalNum = (long) Math.ceil((endTime - startTime) / (double) slidingStep);
@@ -80,42 +79,27 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
     }
     retEndTime = Math.min(retStartTime + curInterval, endTime);
     updateIntervalAndStep();
-    return new TimeRange(retStartTime, retEndTime);
+    return new Pair<>(retStartTime, retEndTime);
   }
 
   @Override
-  public boolean hasNextTimeRange() {
-    if (curTimeRange == null) {
-      curTimeRange = getFirstTimeRange();
-      return true;
-    }
-
+  public Pair<Long, Long> getNextTimeRange(long curStartTime) {
     long retStartTime, retEndTime;
-    long curStartTime = curTimeRange.getMin();
     if (isAscending) {
       retStartTime = curStartTime + curSlidingStep;
       // This is an open interval , [0-100)
       if (retStartTime >= endTime) {
-        return false;
+        return null;
       }
     } else {
       retStartTime = curStartTime - curSlidingStep;
       if (retStartTime < startTime) {
-        return false;
+        return null;
       }
     }
     retEndTime = Math.min(retStartTime + curInterval, endTime);
     updateIntervalAndStep();
-    curTimeRange = new TimeRange(retStartTime, retEndTime);
-    return true;
-  }
-
-  @Override
-  public TimeRange nextTimeRange() {
-    if (curTimeRange != null || hasNextTimeRange()) {
-      return curTimeRange;
-    }
-    return null;
+    return new Pair<>(retStartTime, retEndTime);
   }
 
   private void initIntervalAndStep() {

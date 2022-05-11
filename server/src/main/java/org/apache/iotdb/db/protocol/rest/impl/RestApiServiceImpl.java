@@ -57,7 +57,7 @@ public class RestApiServiceImpl extends RestApiService {
 
   public RestApiServiceImpl() throws QueryProcessException {
     planner = serviceProvider.getPlanner();
-    authorizationHandler = new AuthorizationHandler();
+    authorizationHandler = new AuthorizationHandler(serviceProvider);
 
     defaultQueryRowLimit =
         IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();

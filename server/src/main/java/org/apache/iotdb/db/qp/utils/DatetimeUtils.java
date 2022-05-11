@@ -25,7 +25,6 @@ import org.apache.iotdb.db.query.control.SessionManager;
 
 import java.time.DateTimeException;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -48,7 +47,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WIDTH_1_2 =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
+            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
             .appendLiteral('-')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('-')
@@ -62,7 +61,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WITH_SLASH =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
+            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
             .appendLiteral('/')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('/')
@@ -76,7 +75,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WITH_DOT =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
+            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
             .appendLiteral('.')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('.')
@@ -463,11 +462,11 @@ public class DatetimeUtils {
       if ("us".equals(timestampPrecision)) {
         if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
           // adjustment can reduce the loss of the division
-          long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000L);
+          long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000);
           long adjustment = instant.getNano() / 1000 - 1L;
           return Math.addExact(millis, adjustment);
         } else {
-          long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000L);
+          long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000);
           return Math.addExact(millis, instant.getNano() / 1000);
         }
       } else if ("ns".equals(timestampPrecision)) {
@@ -658,20 +657,6 @@ public class DatetimeUtils {
       default:
         return System.currentTimeMillis();
     }
-  }
-
-  public static String convertLongToDate(long timestamp) {
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        timestamp /= 1000_000_000;
-        break;
-      case "us":
-        timestamp /= 1000_000;
-        break;
-    }
-    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
-        .toString();
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {

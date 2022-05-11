@@ -34,9 +34,6 @@
         <jdbc.test.skip>false</jdbc.test.skip>
         <jdbc.it.skip>${jdbc.test.skip}</jdbc.it.skip>
         <jdbc.ut.skip>${jdbc.test.skip}</jdbc.ut.skip>
-        <osgi.cmpn.version>6.0.0</osgi.cmpn.version>
-        <pax-jdbc-common.version>1.4.5</pax-jdbc-common.version>
-        <org.osgi.core.version>6.0.0</org.osgi.core.version>
     </properties>
     <dependencies>
         <dependency>
@@ -47,17 +44,17 @@
         <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>osgi.cmpn</artifactId>
-            <version>${osgi.cmpn.version}</version>
+            <version>6.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.ops4j.pax.jdbc</groupId>
             <artifactId>pax-jdbc-common</artifactId>
-            <version>${pax-jdbc-common.version}</version>
+            <version>1.4.5</version>
         </dependency>
         <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>org.osgi.core</artifactId>
-            <version>${org.osgi.core.version}</version>
+            <version>6.0.0</version>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

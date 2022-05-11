@@ -20,9 +20,9 @@
 package org.apache.iotdb.influxdb.protocol.impl;
 
 import org.apache.iotdb.influxdb.session.InfluxDBSession;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCreateDatabaseReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxQueryReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxWritePointsReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSCreateDatabaseReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSQueryReq;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
@@ -51,7 +51,7 @@ public class IoTDBInfluxDBService {
       String precision,
       String consistency,
       String lineProtocol) {
-    InfluxWritePointsReq tsWritePointsReq = new InfluxWritePointsReq();
+    TSWritePointsReq tsWritePointsReq = new TSWritePointsReq();
     if (database == null) {
       tsWritePointsReq.setDatabase(currentDatabase);
     } else {
@@ -74,7 +74,7 @@ public class IoTDBInfluxDBService {
   }
 
   public void createDatabase(String database) {
-    InfluxCreateDatabaseReq tsCreateDatabaseReq = new InfluxCreateDatabaseReq();
+    TSCreateDatabaseReq tsCreateDatabaseReq = new TSCreateDatabaseReq();
     tsCreateDatabaseReq.setDatabase(database);
     try {
       influxDBSession.createDatabase(tsCreateDatabaseReq);
@@ -84,7 +84,7 @@ public class IoTDBInfluxDBService {
   }
 
   public QueryResult query(Query queryReq) {
-    InfluxQueryReq tsQueryReq = new InfluxQueryReq();
+    TSQueryReq tsQueryReq = new TSQueryReq();
     tsQueryReq.setDatabase(queryReq.getDatabase()).setCommand(queryReq.getCommand());
     try {
       return influxDBSession.query(tsQueryReq);

@@ -37,14 +37,11 @@ public class MNodeUtils {
         entityMNode =
             new StorageGroupEntityMNode(
                 node.getParent(), node.getName(), node.getAsStorageGroupMNode().getDataTTL());
-        node.moveDataToNewMNode(entityMNode);
       } else {
         entityMNode = new EntityMNode(node.getParent(), node.getName());
-        if (node.getParent() != null) {
-          node.getParent().replaceChild(node.getName(), entityMNode);
-        } else {
-          node.moveDataToNewMNode(entityMNode);
-        }
+      }
+      if (node.getParent() != null) {
+        node.getParent().replaceChild(node.getName(), entityMNode);
       }
     }
     return entityMNode;
@@ -68,7 +65,6 @@ public class MNodeUtils {
     } else {
       node = new InternalMNode(parent, entityMNode.getName());
     }
-
     if (parent != null) {
       parent.replaceChild(entityMNode.getName(), node);
     }

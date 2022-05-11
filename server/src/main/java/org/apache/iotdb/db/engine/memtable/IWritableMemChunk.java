@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.db.wal.buffer.WALEntryValue;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
@@ -28,7 +27,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 
-public interface IWritableMemChunk extends WALEntryValue {
+public interface IWritableMemChunk {
 
   void putLong(long t, long v);
 
@@ -95,8 +94,6 @@ public interface IWritableMemChunk extends WALEntryValue {
    *
    * <p>the mechanism is just like copy on write
    *
-   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
-   *
    * @return sorted tv list
    */
   TVList getSortedTvListForQuery();
@@ -106,8 +103,6 @@ public interface IWritableMemChunk extends WALEntryValue {
    *
    * <p>the mechanism is just like copy on write
    *
-   * <p>This interface should be synchronized for concurrent with sortTvListForFlush
-   *
    * @return sorted tv list
    */
   TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList);
@@ -115,8 +110,6 @@ public interface IWritableMemChunk extends WALEntryValue {
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add
    * reference count
-   *
-   * <p>This interface should be synchronized for concurrent with getSortedTvListForQuery
    */
   void sortTvListForFlush();
 

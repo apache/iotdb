@@ -71,7 +71,6 @@ public class ClusterSessionManager extends SessionManager {
     queryContextMap.put(queryId, context);
   }
 
-  @Override
   public void releaseQueryResource(long queryId) throws StorageEngineException {
     super.releaseQueryResource(queryId);
     this.releaseRemoteQueryResource(queryId);

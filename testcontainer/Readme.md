@@ -58,8 +58,6 @@ For testing a cluster, we use `docker-compose` and `testcontainer`.
 The docker-compose file is located at  `src/test/resources/1nodes`,  `src/test/resources/3nodes` and `src/test/resources/5nodes`, 
 in which one is for 1 node with replica number =1 , 3 nodes with replica number=3, and the last one is for 5 nodes with replica number =3.
 
-For testing sync module only, we use `mvn integration-test -P sync`.
-
 TestContainer can start the docker (or docker compose) automatically.
 
 But these docker compose files can also be used independently.

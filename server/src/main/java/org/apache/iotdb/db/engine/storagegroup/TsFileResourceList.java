@@ -47,9 +47,6 @@ public class TsFileResourceList implements List<TsFileResource> {
    * @param newNode the file to insert
    */
   public void insertBefore(TsFileResource node, TsFileResource newNode) {
-    if (newNode.equals(node)) {
-      return;
-    }
     newNode.prev = node.prev;
     newNode.next = node;
     if (node.prev == null) {
@@ -138,7 +135,7 @@ public class TsFileResourceList implements List<TsFileResource> {
    * node's, the new node will be inserted to the tail of the list.
    */
   public boolean keepOrderInsert(TsFileResource newNode) throws IOException {
-    if (newNode.prev != null || newNode.next != null || (count == 1 && header == newNode)) {
+    if (newNode.prev != null || newNode.next != null) {
       // this node already in a list
       return false;
     }

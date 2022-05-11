@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -122,12 +122,13 @@ public class QueryResourceManager {
    *     under the virtual storage group
    */
   public void initQueryDataSourceCache(
-      Map<DataRegion, List<PartialPath>> processorToSeriesMap,
+      Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
       QueryContext context,
       Filter timeFilter)
       throws QueryProcessException {
-    for (Map.Entry<DataRegion, List<PartialPath>> entry : processorToSeriesMap.entrySet()) {
-      DataRegion processor = entry.getKey();
+    for (Map.Entry<VirtualStorageGroupProcessor, List<PartialPath>> entry :
+        processorToSeriesMap.entrySet()) {
+      VirtualStorageGroupProcessor processor = entry.getKey();
       List<PartialPath> pathList =
           entry.getValue().stream().map(IDTable::translateQueryPath).collect(Collectors.toList());
 
@@ -171,7 +172,8 @@ public class QueryResourceManager {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
       // QueryDataSource is never cached in cluster mode
-      DataRegion processor = StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
+      VirtualStorageGroupProcessor processor =
+          StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
       PartialPath translatedPath = IDTable.translateQueryPath(selectedPath);
       cachedQueryDataSource =
           processor.query(

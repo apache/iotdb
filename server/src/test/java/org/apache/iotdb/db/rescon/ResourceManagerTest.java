@@ -19,8 +19,6 @@
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -30,6 +28,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -81,7 +81,7 @@ public class ResourceManagerTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    IoTDB.configManager.init();
+    IoTDB.schemaEngine.init();
     prevTimeIndexMemoryProportion = CONFIG.getTimeIndexMemoryProportion();
     timeIndexLevel = CONFIG.getTimeIndexLevel();
     prepareSeries();
@@ -99,7 +99,7 @@ public class ResourceManagerTest {
     tsFileResourceManager.setTimeIndexMemoryThreshold(prevTimeIndexMemoryThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.configManager.clear();
+    IoTDB.schemaEngine.clear();
     TsFileResourceManager.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
   }
@@ -115,11 +115,11 @@ public class ResourceManagerTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = RESOURCE_MANAGER_TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(RESOURCE_MANAGER_TEST_SG));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(RESOURCE_MANAGER_TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaProcessor.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),

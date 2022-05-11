@@ -19,17 +19,18 @@
 package org.apache.iotdb.db.engine.compaction.recover;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.compaction.utils.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -119,7 +120,9 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     mergeMods.close();
 
     TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
-    new CompactionRecoverTask(TEST_SG, "0", tsFileManager, logFile, false).doCompaction();
+    new RewriteCrossCompactionRecoverTask(
+            TEST_SG, "0", 0, logFile, CompactionTaskManager.currentTaskNum, tsFileManager)
+        .call();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -198,7 +201,9 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     mergeMods.close();
 
     TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
-    new CompactionRecoverTask(TEST_SG, "0", tsFileManager, logFile, false).doCompaction();
+    new RewriteCrossCompactionRecoverTask(
+            TEST_SG, "0", 0, logFile, CompactionTaskManager.currentTaskNum, tsFileManager)
+        .call();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
@@ -286,7 +291,9 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     mergeMods.close();
 
     TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
-    new CompactionRecoverTask(TEST_SG, "0", tsFileManager, logFile, false).doCompaction();
+    new RewriteCrossCompactionRecoverTask(
+            TEST_SG, "0", 0, logFile, CompactionTaskManager.currentTaskNum, tsFileManager)
+        .call();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -368,7 +375,9 @@ public class RewriteCrossSpaceCompactionRecoverCompatibleTest extends AbstractCo
     mergeMods.close();
 
     TsFileManager tsFileManager = new TsFileManager(TEST_SG, "0", SEQ_DIRS.getPath());
-    new CompactionRecoverTask(TEST_SG, "0", tsFileManager, logFile, false).doCompaction();
+    new RewriteCrossCompactionRecoverTask(
+            TEST_SG, "0", 0, logFile, CompactionTaskManager.currentTaskNum, tsFileManager)
+        .call();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());

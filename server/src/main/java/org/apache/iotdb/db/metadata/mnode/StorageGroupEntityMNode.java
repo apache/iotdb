@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.metadata.SchemaRegion;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 
 import java.io.IOException;
@@ -30,17 +30,11 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
    */
   private long dataTTL;
 
+  private SchemaRegion schemaRegion;
+
   public StorageGroupEntityMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
-  }
-
-  @Override
-  public String getFullPath() {
-    if (fullPath == null) {
-      fullPath = concatFullPath().intern();
-    }
-    return fullPath;
   }
 
   @Override
@@ -54,25 +48,23 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   }
 
   @Override
-  public void setSchemaReplicationFactor(int schemaReplicationFactor) {}
+  public SchemaRegion getSchemaRegion() {
+    return schemaRegion;
+  }
 
   @Override
-  public void setDataReplicationFactor(int dataReplicationFactor) {}
-
-  @Override
-  public void setTimePartitionInterval(long timePartitionInterval) {}
-
-  @Override
-  public void setStorageGroupSchema(TStorageGroupSchema schema) {}
-
-  @Override
-  public TStorageGroupSchema getStorageGroupSchema() {
-    return null;
+  public void setSchemaRegion(SchemaRegion schemaRegion) {
+    if (this.schemaRegion == null) {
+      this.schemaRegion = schemaRegion;
+    }
   }
 
   @Override
   public void moveDataToNewMNode(IMNode newMNode) {
     super.moveDataToNewMNode(newMNode);
+    if (newMNode.isStorageGroup()) {
+      newMNode.getAsStorageGroupMNode().setSchemaRegion(this.schemaRegion);
+    }
   }
 
   @Override

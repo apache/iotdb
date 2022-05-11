@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
-
 import org.junit.Assert;
 import org.junit.Test;
 

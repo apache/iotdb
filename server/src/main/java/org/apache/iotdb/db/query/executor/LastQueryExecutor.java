@@ -19,19 +19,18 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -169,7 +168,7 @@ public class LastQueryExecutor {
         if (ID_TABLE_ENABLED) {
           cacheAccessors.add(new IDTableLastCacheAccessor(path));
         } else {
-          cacheAccessors.add(new SchemaProcessorLastCacheAccessor(path));
+          cacheAccessors.add(new SchemaEngineLastCacheAccessor(path));
         }
       }
 
@@ -261,10 +260,10 @@ public class LastQueryExecutor {
       Map<String, Set<String>> deviceMeasurementsMap)
       throws StorageEngineException, QueryProcessException, IOException {
     // Acquire query resources for the rest series paths
-    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
-        StorageEngine.getInstance().mergeLock(seriesPaths);
-    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(seriesPaths);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {
@@ -284,7 +283,8 @@ public class LastQueryExecutor {
           QueryResourceManager.getInstance()
               .getQueryDataSource(seriesPaths.get(i), context, filter, ascending);
       LastPointReader lastReader =
-          ResourceByPathUtils.getResourceInstance(seriesPaths.get(i))
+          seriesPaths
+              .get(i)
               .createLastPointReader(
                   dataTypes.get(i),
                   deviceMeasurementsMap.getOrDefault(
@@ -309,22 +309,22 @@ public class LastQueryExecutor {
     void write(TimeValuePair pair);
   }
 
-  private static class SchemaProcessorLastCacheAccessor implements LastCacheAccessor {
+  private static class SchemaEngineLastCacheAccessor implements LastCacheAccessor {
 
     private final MeasurementPath path;
     private IMeasurementMNode node;
 
-    SchemaProcessorLastCacheAccessor(PartialPath seriesPath) {
+    SchemaEngineLastCacheAccessor(PartialPath seriesPath) {
       this.path = (MeasurementPath) seriesPath;
     }
 
     public TimeValuePair read() {
       try {
-        node = IoTDB.schemaProcessor.getMeasurementMNode(path);
+        node = IoTDB.schemaEngine.getMeasurementMNode(path);
       } catch (MetadataException e) {
         // cluster mode may not get remote node
         TimeValuePair timeValuePair;
-        timeValuePair = IoTDB.schemaProcessor.getLastCache(path);
+        timeValuePair = IoTDB.schemaEngine.getLastCache(path);
         if (timeValuePair != null) {
           return timeValuePair;
         }
@@ -334,14 +334,14 @@ public class LastQueryExecutor {
         return null;
       }
 
-      return IoTDB.schemaProcessor.getLastCache(node);
+      return IoTDB.schemaEngine.getLastCache(node);
     }
 
     public void write(TimeValuePair pair) {
       if (node == null) {
-        IoTDB.schemaProcessor.updateLastCache(path, pair, false, Long.MIN_VALUE);
+        IoTDB.schemaEngine.updateLastCache(path, pair, false, Long.MIN_VALUE);
       } else {
-        IoTDB.schemaProcessor.updateLastCache(node, pair, false, Long.MIN_VALUE);
+        IoTDB.schemaEngine.updateLastCache(node, pair, false, Long.MIN_VALUE);
       }
     }
   }

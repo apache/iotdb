@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class DataTypeMismatchException extends MetadataException {
   public DataTypeMismatchException(
-      String deviceName, String measurementName, TSDataType insertType, TSDataType realType) {
+      String measurementName, TSDataType insertType, TSDataType realType) {
     super(
         String.format(
-            "DataType mismatch, Insert timeseries %s.%s type %s, metadata tree type %s",
-            deviceName, measurementName, insertType, realType));
+            "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
+            measurementName, insertType, realType));
   }
 }

@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.write.chunk;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -89,23 +88,22 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public int write(Tablet tablet) throws WriteProcessException {
-    int maxPointCount = 0, pointCount;
+    int pointCount = 0;
     List<MeasurementSchema> timeseries = tablet.getSchemas();
-    for (int column = 0; column < timeseries.size(); column++) {
-      String measurementId = timeseries.get(column).getMeasurementId();
-      TSDataType tsDataType = timeseries.get(column).getType();
-      pointCount = 0;
-      for (int row = 0; row < tablet.rowSize; row++) {
+    for (int row = 0; row < tablet.rowSize; row++) {
+      long time = tablet.timestamps[row];
+      boolean hasOneColumnWritten = false;
+      for (int column = 0; column < timeseries.size(); column++) {
         // check isNull in tablet
         if (tablet.bitMaps != null
             && tablet.bitMaps[column] != null
             && tablet.bitMaps[column].isMarked(row)) {
           continue;
         }
-        long time = tablet.timestamps[row];
+        String measurementId = timeseries.get(column).getMeasurementId();
         checkIsHistoryData(measurementId, time);
-        pointCount++;
-        switch (tsDataType) {
+        hasOneColumnWritten = true;
+        switch (timeseries.get(column).getType()) {
           case INT32:
             chunkWriters.get(measurementId).write(time, ((int[]) tablet.values[column])[row]);
             break;
@@ -126,13 +124,15 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format("Data type %s is not supported.", tsDataType));
+                String.format("Data type %s is not supported.", timeseries.get(column).getType()));
         }
         lastTimeMap.put(measurementId, time);
       }
-      maxPointCount = Math.max(pointCount, maxPointCount);
+      if (hasOneColumnWritten) {
+        pointCount++;
+      }
     }
-    return maxPointCount;
+    return pointCount;
   }
 
   @Override

@@ -19,12 +19,14 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
-import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -41,7 +43,7 @@ public class InternalMNode extends MNode {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile IMNodeContainer children = null;
+  protected transient volatile Map<String, IMNode> children = null;
 
   // schema template
   protected Template schemaTemplate = null;
@@ -86,7 +88,7 @@ public class InternalMNode extends MNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = MNodeContainers.getNewMNodeContainer();
+          children = new ConcurrentHashMap<>();
         }
       }
     }
@@ -116,7 +118,7 @@ public class InternalMNode extends MNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = MNodeContainers.getNewMNodeContainer();
+          children = new ConcurrentHashMap<>();
         }
       }
     }
@@ -128,11 +130,10 @@ public class InternalMNode extends MNode {
 
   /** delete a child */
   @Override
-  public IMNode deleteChild(String name) {
+  public void deleteChild(String name) {
     if (children != null) {
-      return children.remove(name);
+      children.remove(name);
     }
-    return null;
   }
 
   /**
@@ -153,7 +154,7 @@ public class InternalMNode extends MNode {
 
     oldChildNode.moveDataToNewMNode(newChildNode);
 
-    children.replace(newChildNode.getName(), newChildNode);
+    children.replace(oldChildName, newChildNode);
   }
 
   @Override
@@ -170,15 +171,15 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public IMNodeContainer getChildren() {
+  public Map<String, IMNode> getChildren() {
     if (children == null) {
-      return MNodeContainers.emptyMNodeContainer();
+      return Collections.emptyMap();
     }
     return children;
   }
 
   @Override
-  public void setChildren(IMNodeContainer children) {
+  public void setChildren(Map<String, IMNode> children) {
     this.children = children;
   }
 
@@ -231,8 +232,8 @@ public class InternalMNode extends MNode {
     if (children == null) {
       return;
     }
-    for (IMNode child : children.values()) {
-      child.serializeTo(logWriter);
+    for (Entry<String, IMNode> entry : children.entrySet()) {
+      entry.getValue().serializeTo(logWriter);
     }
   }
 

@@ -25,7 +25,6 @@ public class IoTDBConstant {
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
-
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
   public static final String VERSION =
@@ -127,23 +126,9 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
-  // sync module
-  public static final String COLUMN_PIPESERVER_STATUS = "enable";
-  public static final String COLUMN_PIPESINK_NAME = "name";
-  public static final String COLUMN_PIPESINK_TYPE = "type";
-  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
-  public static final String COLUMN_PIPE_NAME = "name";
-  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
-  public static final String COLUMN_PIPE_ROLE = "role";
-  public static final String COLUMN_PIPE_REMOTE = "remote";
-  public static final String COLUMN_PIPE_STATUS = "status";
-  public static final String COLUMN_PIPE_MSG = "message";
-
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
-  public static final String SYNC_SENDER_ROLE = "sender";
-  public static final String SYNC_RECEIVER_ROLE = "receiver";
 
   // sdt parameters
   public static final String LOSS = "loss";
@@ -153,12 +138,10 @@ public class IoTDBConstant {
   public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // data folder name
-  public static final String DATA_FOLDER_NAME = "data";
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String UPGRADE_FOLDER_NAME = "upgrade";
-  public static final String CONSENSUS_FOLDER_NAME = "consensus";
 
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";
@@ -170,8 +153,6 @@ public class IoTDBConstant {
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
-  public static final String MQTT_FOLDER_NAME = "mqtt";
-  public static final String WAL_FOLDER_NAME = "wal";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -205,10 +186,6 @@ public class IoTDBConstant {
 
   // compaction mods of previous version (<0.13)
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
-
-  // write ahead log
-  public static final String WAL_FILE_SUFFIX = ".wal";
-  public static final String WAL_CHECKPOINT_FILE_SUFFIX = ".checkpoint";
 
   // client version number
   public enum ClientVersion {

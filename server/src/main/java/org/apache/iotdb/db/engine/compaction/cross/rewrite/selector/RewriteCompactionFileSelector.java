@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -46,7 +46,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
-  RewriteCrossSpaceCompactionResource resource;
+  CrossSpaceCompactionResource resource;
 
   long totalCost;
   private long memoryBudget;
@@ -70,8 +70,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
-  public RewriteCompactionFileSelector(
-      RewriteCrossSpaceCompactionResource resource, long memoryBudget) {
+  public RewriteCompactionFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
     this.resource = resource;
     this.memoryBudget = memoryBudget;
     this.maxCrossCompactionFileNum =
@@ -104,7 +103,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   public List[] select() throws MergeException {
     long startTime = System.currentTimeMillis();
     try {
-      logger.debug(
+      logger.info(
           "Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(),
           resource.getUnseqFiles().size());
@@ -116,7 +115,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       resource.setUnseqFiles(selectedUnseqFiles);
       resource.removeOutdatedSeqReaders();
       if (selectedUnseqFiles.isEmpty()) {
-        logger.debug("No merge candidates are found");
+        logger.info("No merge candidates are found");
         return new List[0];
       }
     } catch (IOException e) {
@@ -199,10 +198,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   }
 
   private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {
-    if (selectedUnseqFiles.size() == 0
-        || (seqSelectedNum + selectedUnseqFiles.size() + 1 + tmpSelectedSeqFiles.size()
-                <= maxCrossCompactionFileNum
-            && totalCost + newCost < memoryBudget)) {
+    if (seqSelectedNum + selectedUnseqFiles.size() + 1 + tmpSelectedSeqFiles.size()
+            <= maxCrossCompactionFileNum
+        && totalCost + newCost < memoryBudget) {
       selectedUnseqFiles.add(unseqFile);
       maxSeqFileCost = tempMaxSeqFileCost;
 
@@ -228,8 +226,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   /**
    * To avoid redundant data in seq files, cross space compaction should select all the seq files
    * which have overlap with unseq files whether they are compacting or not. Therefore, before
-   * adding task into the queue, cross space compaction task should check whether source seq files
-   * are being compacted or not to speed up compaction.
+   * adding task into the queue, cross space compaction task should be check whether source seq
+   * files are being compacted or not to speed up compaction.
    */
   private boolean checkIsSeqFilesValid() {
     for (Integer seqIdx : tmpSelectedSeqFiles) {
@@ -392,5 +390,10 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
     long maxCost = unseqFile.getTsFileSize();
     return Math.min(multiSeriesCost, maxCost);
+  }
+
+  @Override
+  public int getConcurrentMergeNum() {
+    return concurrentMergeNum;
   }
 }

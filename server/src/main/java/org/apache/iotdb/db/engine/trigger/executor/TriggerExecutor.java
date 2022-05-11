@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationInformation;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -39,21 +39,23 @@ public class TriggerExecutor {
 
   private final TriggerClassLoader classLoader;
 
-  private final IMNode imNode;
+  private final IMeasurementMNode measurementMNode;
+  private final TSDataType seriesDataType;
 
   private final Trigger trigger;
 
   public TriggerExecutor(
       TriggerRegistrationInformation registrationInformation,
       TriggerClassLoader classLoader,
-      IMNode imNode)
+      IMeasurementMNode measurementMNode)
       throws TriggerManagementException {
     this.registrationInformation = registrationInformation;
     attributes = new TriggerAttributes(registrationInformation.getAttributes());
 
     this.classLoader = classLoader;
 
-    this.imNode = imNode;
+    this.measurementMNode = measurementMNode;
+    seriesDataType = measurementMNode.getSchema().getType();
 
     trigger = constructTriggerInstance();
   }
@@ -135,16 +137,14 @@ public class TriggerExecutor {
     }
   }
 
-  public void fireIfActivated(
-      TriggerEvent event, long timestamp, Object value, TSDataType seriesDataType)
+  public void fireIfActivated(TriggerEvent event, long timestamp, Object value)
       throws TriggerExecutionException {
     if (!registrationInformation.isStopped() && event.equals(registrationInformation.getEvent())) {
-      fire(timestamp, value, seriesDataType);
+      fire(timestamp, value);
     }
   }
 
-  private synchronized void fire(long timestamp, Object value, TSDataType seriesDataType)
-      throws TriggerExecutionException {
+  private synchronized void fire(long timestamp, Object value) throws TriggerExecutionException {
     Thread.currentThread().setContextClassLoader(classLoader);
 
     try {
@@ -177,15 +177,14 @@ public class TriggerExecutor {
     }
   }
 
-  public void fireIfActivated(
-      TriggerEvent event, long[] timestamps, Object values, TSDataType seriesDataType)
+  public void fireIfActivated(TriggerEvent event, long[] timestamps, Object values)
       throws TriggerExecutionException {
     if (!registrationInformation.isStopped() && event.equals(registrationInformation.getEvent())) {
-      fire(timestamps, values, seriesDataType);
+      fire(timestamps, values);
     }
   }
 
-  private synchronized void fire(long[] timestamps, Object values, TSDataType seriesDataType)
+  private synchronized void fire(long[] timestamps, Object values)
       throws TriggerExecutionException {
     Thread.currentThread().setContextClassLoader(classLoader);
 
@@ -232,8 +231,8 @@ public class TriggerExecutor {
     return registrationInformation;
   }
 
-  public IMNode getIMNode() {
-    return imNode;
+  public IMeasurementMNode getMeasurementMNode() {
+    return measurementMNode;
   }
 
   @TestOnly

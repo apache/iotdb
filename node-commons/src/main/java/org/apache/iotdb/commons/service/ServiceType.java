@@ -36,8 +36,6 @@ public enum ServiceType {
   SYNC_SERVICE("SYNC ServerService", ""),
   UPGRADE_SERVICE("UPGRADE DataService", ""),
   SETTLE_SERVICE("SETTLE DataService", ""),
-  SENDER_SERVICE("Sync Sender service", ""),
-  RECEIVER_SERVICE("Sync Receiver service", ""),
   MERGE_SERVICE("Merge Manager", "Merge Manager"),
   COMPACTION_SERVICE("Compaction Manager", "Compaction Manager"),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
@@ -68,11 +66,8 @@ public enum ServiceType {
   CLUSTER_DATA_ENGINE("Cluster Data Engine", "ClusterDataEngine"),
   REST_SERVICE("REST Service", "REST Service"),
   CONFIG_NODE_SERVICE("Config Node service", "ConfigNodeRPCServer"),
-  DATA_NODE_MANAGEMENT_SERVICE("Data Node management service", "DataNodeManagementServer"),
   FRAGMENT_INSTANCE_MANAGER_SERVICE("Fragment instance manager", "FragmentInstanceManager"),
-  DATA_BLOCK_MANAGER_SERVICE("Data block manager", "DataBlockManager"),
-  INTERNAL_SERVICE("Internal Service", "InternalService"),
-  PROCEDURE_SERVICE("Procedure  Service", "ProcedureService");
+  DATA_BLOCK_MANAGER_SERVICE("Data block manager", "DataBlockManager");
 
   private final String name;
   private final String jmxName;

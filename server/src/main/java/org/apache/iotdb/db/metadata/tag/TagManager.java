@@ -18,18 +18,18 @@
  */
 package org.apache.iotdb.db.metadata.tag;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -73,14 +73,8 @@ public class TagManager {
     tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
   }
 
-  public boolean recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
-    Map<String, String> tags = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
-    if (tags == null || tags.isEmpty()) {
-      return false;
-    } else {
-      addIndex(tags, measurementMNode);
-      return true;
-    }
+  public void recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
+    addIndex(tagLogFile.readTag(config.getTagAttributeTotalSize(), offset), measurementMNode);
   }
 
   public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
@@ -144,9 +138,11 @@ public class TagManager {
     // if ordered by heat, we sort all the timeseries by the descending order of the last insert
     // timestamp
     if (plan.isOrderByHeat()) {
-      List<DataRegion> list;
+      List<VirtualStorageGroupProcessor> list;
       try {
-        Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>>
+        Pair<
+                List<VirtualStorageGroupProcessor>,
+                Map<VirtualStorageGroupProcessor, List<PartialPath>>>
             lockListAndProcessorToSeriesMapPair =
                 StorageEngine.getInstance()
                     .mergeLock(
@@ -154,7 +150,7 @@ public class TagManager {
                             .map(IMeasurementMNode::getMeasurementPath)
                             .collect(toList()));
         list = lockListAndProcessorToSeriesMapPair.left;
-        Map<DataRegion, List<PartialPath>> processorToSeriesMap =
+        Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
             lockListAndProcessorToSeriesMapPair.right;
 
         try {

@@ -29,9 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_TOO_BUSY;
+import static org.apache.iotdb.cluster.server.Response.*;
 
 /**
  * LogCatchUpHandler checks the result of appending a log in a catch-up task and decides to abort

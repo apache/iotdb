@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.consensus.standalone;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-
-import java.io.File;
+import org.apache.iotdb.consensus.statemachine.IStateMachine;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class StandAloneServerImpl implements IStateMachine {
 
@@ -63,15 +61,5 @@ public class StandAloneServerImpl implements IStateMachine {
   @Override
   public DataSet read(IConsensusRequest request) {
     return stateMachine.read(request);
-  }
-
-  @Override
-  public boolean takeSnapshot(File snapshotDir) {
-    return stateMachine.takeSnapshot(snapshotDir);
-  }
-
-  @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
-    stateMachine.loadSnapshot(latestSnapshotRootDir);
   }
 }

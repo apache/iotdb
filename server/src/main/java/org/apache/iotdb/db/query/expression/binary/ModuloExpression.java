@@ -20,21 +20,14 @@
 package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticBinaryTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticModuloTransformer;
-
-import java.nio.ByteBuffer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticModuloTransformer;
 
 public class ModuloExpression extends BinaryExpression {
 
   public ModuloExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
-  }
-
-  public ModuloExpression(ByteBuffer byteBuffer) {
-    super(byteBuffer);
   }
 
   @Override
@@ -46,10 +39,5 @@ public class ModuloExpression extends BinaryExpression {
   @Override
   protected String operator() {
     return "%";
-  }
-
-  @Override
-  public ExpressionType getExpressionType() {
-    return ExpressionType.MODULO;
   }
 }

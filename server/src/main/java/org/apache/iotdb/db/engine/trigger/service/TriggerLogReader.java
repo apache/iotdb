@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.writelog.SingleFileLogReader;
+import org.apache.iotdb.db.writelog.io.SingleFileLogReader;
 
 import java.io.File;
 import java.io.IOException;

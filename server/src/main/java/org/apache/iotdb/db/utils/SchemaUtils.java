@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -79,7 +79,6 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.TS_2DIFF);
     floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
-    floatSet.add(TSEncoding.FREQ);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 
@@ -98,7 +97,7 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      IoTDB.schemaProcessor.createTimeseries(
+      IoTDB.schemaEngine.createTimeseries(
           path, dataType, encoding, compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
@@ -126,7 +125,7 @@ public class SchemaUtils {
 
     IMeasurementMNode measurementMNode =
         MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
-    IoTDB.schemaProcessor.cacheMeta(path, measurementMNode, true);
+    IoTDB.schemaEngine.cacheMeta(path, measurementMNode, true);
   }
 
   public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {
@@ -171,7 +170,7 @@ public class SchemaUtils {
     return tsDataTypes;
   }
 
-  public static TSDataType getSeriesTypeByPath(PartialPath path, String aggregation) {
+  public static TSDataType getSeriesTypeByPath(MeasurementPath path, String aggregation) {
     TSDataType dataType = getAggregationType(aggregation);
     if (dataType != null) {
       return dataType;

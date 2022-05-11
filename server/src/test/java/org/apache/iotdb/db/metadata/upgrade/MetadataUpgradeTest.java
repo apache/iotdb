@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.upgrade;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.SchemaEngine;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -33,6 +32,7 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagLogFile;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -44,7 +44,7 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.writelog.LogWriter;
+import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -90,19 +90,18 @@ public class MetadataUpgradeTest {
     prepareTagFile();
     prepareMLog();
 
-    IoTDB.configManager.clear();
+    SchemaEngine schemaEngine = IoTDB.schemaEngine;
+    schemaEngine.clear();
     MetadataUpgrader.upgrade();
-    IoTDB.configManager.init();
+    schemaEngine.init();
 
-    LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
-    Assert.assertEquals(8, schemaProcessor.getStorageGroupNum(new PartialPath("root.**"), false));
-    Assert.assertEquals(10, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.**")));
+    Assert.assertEquals(8, schemaEngine.getStorageGroupNum(new PartialPath("root.**"), false));
+    Assert.assertEquals(10, schemaEngine.getAllTimeseriesCount(new PartialPath("root.**")));
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
         new ShowTimeSeriesPlan(
             new PartialPath("root.**"), false, "t-k-0", "t-k-0-v-0", 0, 0, false);
-    List<ShowTimeSeriesResult> resultList =
-        schemaProcessor.showTimeseries(showTimeSeriesPlan, null);
+    List<ShowTimeSeriesResult> resultList = schemaEngine.showTimeseries(showTimeSeriesPlan, null);
     Assert.assertEquals(1, resultList.size());
     ShowTimeSeriesResult result = resultList.get(0);
     Assert.assertEquals("root.test.sg1.d1.s1", result.getName());
@@ -110,7 +109,7 @@ public class MetadataUpgradeTest {
     showTimeSeriesPlan =
         new ShowTimeSeriesPlan(
             new PartialPath("root.**"), false, "t-k-1", "t-k-1-v-1", 0, 0, false);
-    resultList = schemaProcessor.showTimeseries(showTimeSeriesPlan, null);
+    resultList = schemaEngine.showTimeseries(showTimeSeriesPlan, null);
     resultList =
         resultList.stream()
             .sorted(Comparator.comparing(ShowTimeSeriesResult::getName))
@@ -121,19 +120,11 @@ public class MetadataUpgradeTest {
     result = resultList.get(1);
     Assert.assertEquals("root.test.sg2.d1.s1", result.getName());
 
-    Assert.assertEquals(4, schemaProcessor.getPathsSetTemplate("template").size());
-    Assert.assertEquals(0, schemaProcessor.getPathsSetTemplate("unsetTemplate").size());
+    Assert.assertEquals(4, schemaEngine.getPathsSetTemplate("template").size());
+    Assert.assertEquals(0, schemaEngine.getPathsSetTemplate("unsetTemplate").size());
 
     Assert.assertEquals(
-        "root.test.sg3.d3",
-        new ArrayList<>(schemaProcessor.getPathsUsingTemplate("template")).get(0));
-    Assert.assertTrue(
-        new File(schemaDirPath + File.separator + MetadataConstant.METADATA_LOG + ".bak").exists());
-    Assert.assertTrue(
-        new File(schemaDirPath + File.separator + MetadataConstant.TAG_LOG + ".bak").exists());
-    Assert.assertTrue(
-        new File(schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT + ".bak")
-            .exists());
+        "root.test.sg3.d3", new ArrayList<>(schemaEngine.getPathsUsingTemplate("template")).get(0));
   }
 
   private void prepareMLog() throws Exception {

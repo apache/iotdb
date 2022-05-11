@@ -18,28 +18,27 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public class MNodeAboveSGLevelCounter extends MNodeLevelCounter {
 
-  protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
+  protected Set<IStorageGroupMNode> involvedStorageGroupMNodes = new HashSet<>();
 
-  public MNodeAboveSGLevelCounter(
-      IMNode startNode, PartialPath path, IMTreeStore store, int targetLevel)
+  public MNodeAboveSGLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
       throws MetadataException {
-    super(startNode, path, store, targetLevel);
+    super(startNode, path, targetLevel);
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
     if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(node.getPartialPath());
+      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
       return true;
     }
     return super.processInternalMatchedMNode(node, idx, level);
@@ -48,13 +47,13 @@ public class MNodeAboveSGLevelCounter extends MNodeLevelCounter {
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
     if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(node.getPartialPath());
+      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
       return true;
     }
     return super.processFullMatchedMNode(node, idx, level);
   }
 
-  public Set<PartialPath> getInvolvedStorageGroupMNodes() {
+  public Set<IStorageGroupMNode> getInvolvedStorageGroupMNodes() {
     return involvedStorageGroupMNodes;
   }
 }

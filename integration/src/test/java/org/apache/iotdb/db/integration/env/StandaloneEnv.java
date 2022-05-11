@@ -23,9 +23,6 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -35,7 +32,8 @@ import static org.junit.Assert.fail;
 
 /** This class is used by org.apache.iotdb.integration.env.EnvFactory with using reflection. */
 public class StandaloneEnv implements BaseEnv {
-  Logger logger = LoggerFactory.getLogger(StandaloneEnv.class);
+
+  private Connection connection;
 
   @Override
   public void initBeforeClass() {
@@ -44,7 +42,12 @@ public class StandaloneEnv implements BaseEnv {
 
   @Override
   public void cleanAfterClass() {
-    cleanAfterTest();
+    try {
+      EnvironmentUtils.cleanEnv();
+    } catch (Exception e) {
+      e.printStackTrace();
+      System.exit(-1);
+    }
   }
 
   @Override
@@ -67,27 +70,28 @@ public class StandaloneEnv implements BaseEnv {
   public Connection getConnection() throws SQLException {
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
-      return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+      connection =
+          DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();
     }
-    return null;
+    return connection;
   }
 
   @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
     try {
       Class.forName(Config.JDBC_DRIVER_NAME);
-      return DriverManager.getConnection(
-          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667" + "?" + VERSION + "=" + version.toString(),
-          "root",
-          "root");
+      connection =
+          DriverManager.getConnection(
+              Config.IOTDB_URL_PREFIX + "127.0.0.1:6667" + "?" + VERSION + "=" + version.toString(),
+              "root",
+              "root");
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       fail();
     }
-    return null;
+    return connection;
   }
 }

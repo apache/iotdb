@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.mpp.common.filter;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.mpp.plan.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
@@ -32,17 +32,9 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /** operator 'in' & 'not in' */
 public class InFilter extends FunctionFilter {
@@ -83,7 +75,7 @@ public class InFilter extends FunctionFilter {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
-      throws StatementAnalyzeException, MetadataException {
+      throws LogicalOperatorException, MetadataException {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
       throw new MetadataException(
@@ -139,7 +131,7 @@ public class InFilter extends FunctionFilter {
         ret = In.getUnaryExpression(singlePath, binaryValues, not);
         break;
       default:
-        throw new StatementAnalyzeException(type.toString(), "");
+        throw new LogicalOperatorException(type.toString(), "");
     }
 
     return new Pair<>(ret, singlePath.getFullPath());
@@ -205,26 +197,5 @@ public class InFilter extends FunctionFilter {
     public <T extends Comparable<T>> Filter getValueFilter(T value) {
       return ValueFilter.notEq(value);
     }
-  }
-
-  public void serialize(ByteBuffer byteBuffer) {
-    FilterTypes.In.serialize(byteBuffer);
-    super.serializeWithoutType(byteBuffer);
-    ReadWriteIOUtils.write(not, byteBuffer);
-    ReadWriteIOUtils.write(values.size(), byteBuffer);
-    for (String value : values) {
-      ReadWriteIOUtils.write(value, byteBuffer);
-    }
-  }
-
-  public static InFilter deserialize(ByteBuffer byteBuffer) {
-    QueryFilter queryFilter = QueryFilter.deserialize(byteBuffer);
-    boolean not = ReadWriteIOUtils.readBool(byteBuffer);
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    Set<String> values = new HashSet<>();
-    for (int i = 0; i < size; i++) {
-      values.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
-    return new InFilter(queryFilter.filterType, queryFilter.singlePath, not, values);
   }
 }

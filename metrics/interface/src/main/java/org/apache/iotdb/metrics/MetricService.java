@@ -32,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ServiceLoader;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * MetricService is the entry to manage all Metric system, include MetricManager and MetricReporter.
@@ -48,11 +47,9 @@ public abstract class MetricService {
 
   protected boolean isEnableMetric = metricConfig.getEnableMetric();
 
-  private AtomicBoolean firstInit = new AtomicBoolean(true);
-
   public MetricService() {}
 
-  /** Start metric service without start reporter. if is disabled, do nothing */
+  /** Start all reporter. if is disabled, do nothing */
   public void startService() {
     // load manager
     loadManager();
@@ -60,10 +57,8 @@ public abstract class MetricService {
     loadReporter();
     // do some init work
     metricManager.init();
-    // do start all reporter without first time
-    if (!firstInit.getAndSet(false)) {
-      startAllReporter();
-    }
+    // start reporter
+    compositeReporter.startAll();
 
     logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
@@ -82,7 +77,7 @@ public abstract class MetricService {
     compositeReporter = new CompositeReporter();
   }
 
-  protected void loadManager() {
+  private void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
@@ -106,9 +101,9 @@ public abstract class MetricService {
     }
   }
 
-  protected void loadReporter() {
+  private void loadReporter() {
     logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
-    compositeReporter.clearReporter();
+
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
     for (Reporter reporter : reporters) {
       if (metricConfig.getMetricReporterList() != null
@@ -122,11 +117,6 @@ public abstract class MetricService {
         compositeReporter.addReporter(reporter);
       }
     }
-  }
-
-  public void startAllReporter() {
-    // start reporter
-    compositeReporter.startAll();
   }
 
   /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */

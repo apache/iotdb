@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -109,7 +109,7 @@ public class AbstractCompactionTest {
     }
 
     EnvironmentUtils.envSetUp();
-    IoTDB.configManager.init();
+    IoTDB.schemaEngine.init();
   }
 
   /**
@@ -227,14 +227,14 @@ public class AbstractCompactionTest {
           dataTypes.add(TSDataType.INT64);
           encodings.add(TSEncoding.PLAIN);
           compressionTypes.add(CompressionType.UNCOMPRESSED);
-          IoTDB.schemaProcessor.createTimeseries(
+          IoTDB.schemaEngine.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
               TSDataType.INT64,
               TSEncoding.PLAIN,
               CompressionType.UNCOMPRESSED,
               Collections.emptyMap());
         }
-        IoTDB.schemaProcessor.createAlignedTimeSeries(
+        IoTDB.schemaEngine.createAlignedTimeSeries(
             new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (i + 10000)),
             measurements,
             dataTypes,
@@ -242,7 +242,7 @@ public class AbstractCompactionTest {
             compressionTypes);
       } else {
         for (int j = 0; j < measurementNum; j++) {
-          IoTDB.schemaProcessor.createTimeseries(
+          IoTDB.schemaEngine.createTimeseries(
               new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
               TSDataType.INT64,
               TSEncoding.PLAIN,
@@ -258,7 +258,7 @@ public class AbstractCompactionTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDB.configManager.clear();
+    IoTDB.schemaEngine.clear();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);

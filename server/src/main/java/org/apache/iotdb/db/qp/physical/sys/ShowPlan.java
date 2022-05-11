@@ -19,7 +19,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -126,10 +126,6 @@ public class ShowPlan extends PhysicalPlan {
     SCHEMA_TEMPLATE,
     NODES_IN_SCHEMA_TEMPLATE,
     PATHS_SET_SCHEMA_TEMPLATE,
-    PATHS_USING_SCHEMA_TEMPLATE,
-    PIPESINK,
-    PIPESINKTYPE,
-    PIPE,
-    PIPESERVER
+    PATHS_USING_SCHEMA_TEMPLATE
   }
 }

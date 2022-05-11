@@ -109,22 +109,4 @@ public class IoTDBDatetimeFormatIT {
       fail();
     }
   }
-
-  @Test
-  public void testBigDateTime() {
-    try (IoTDBConnection connection = (IoTDBConnection) EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.sg");
-
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=DOUBLE, ENCODING=PLAIN;");
-
-      statement.execute("insert into root.sg.d1(time,s2) values (1618283005586000, 8.76);");
-      statement.execute("select * from root.sg.d1;");
-      statement.execute("select * from root.sg.d1 where time=53251-05-07T17:06:26.000+08:00");
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
-    }
-  }
 }

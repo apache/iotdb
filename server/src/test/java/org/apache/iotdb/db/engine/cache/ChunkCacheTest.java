@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.engine.cache;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -83,7 +83,7 @@ public class ChunkCacheTest {
     if (!tempSGDir.exists()) {
       Assert.assertTrue(tempSGDir.mkdirs());
     }
-    IoTDB.configManager.init();
+    IoTDB.schemaEngine.init();
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
   }
@@ -95,7 +95,7 @@ public class ChunkCacheTest {
     unseqResources.clear();
     chunkCache.clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    IoTDB.configManager.clear();
+    IoTDB.schemaEngine.clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -146,11 +146,11 @@ public class ChunkCacheTest {
     for (int i = 0; i < deviceNum; i++) {
       deviceIds[i] = TEST_SG + PATH_SEPARATOR + "device" + i;
     }
-    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(TEST_SG));
+    IoTDB.schemaEngine.setStorageGroup(new PartialPath(TEST_SG));
     for (String device : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
-        IoTDB.schemaProcessor.createTimeseries(
+        IoTDB.schemaEngine.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
             measurementSchema.getType(),
             measurementSchema.getEncodingType(),

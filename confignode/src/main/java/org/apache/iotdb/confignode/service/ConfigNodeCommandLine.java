@@ -21,8 +21,7 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfCheck;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,16 +31,20 @@ import java.io.IOException;
 public class ConfigNodeCommandLine extends ServerCommandLine {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeCommandLine.class);
 
-  // Start ConfigNode
+  // establish the cluster as a seed
   private static final String MODE_START = "-s";
-  // Remove ConfigNode
+  // join an established cluster
+  private static final String MODE_ADD = "-a";
+  // send a request to remove a node, more arguments: ip-of-removed-node
+  // metaport-of-removed-node
   private static final String MODE_REMOVE = "-r";
 
   private static final String USAGE =
-      "Usage: <-s|-r> "
+      "Usage: <-s|-a|-r> "
           + "[-D{} <configure folder>] \n"
-          + "-s: Start the ConfigNode and join to the cluster\n"
-          + "-r: Remove the ConfigNode out of the cluster\n";
+          + "-s: start the node as a seed\n"
+          + "-a: start the node as a new node\n"
+          + "-r: remove the node out of the cluster\n";
 
   @Override
   protected String getUsage() {
@@ -50,28 +53,25 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
 
   @Override
   protected int run(String[] args) {
-    String mode;
     if (args.length < 1) {
-      mode = MODE_START;
-      LOGGER.warn(
-          "ConfigNode does not specify a startup mode. The default startup mode {} will be used",
-          MODE_START);
-    } else {
-      mode = args[0];
+      usage(null);
+      return -1;
     }
 
+    String mode = args[0];
     LOGGER.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
       try {
-        // Startup environment check
-        StartupChecks checks = new StartupChecks().withDefaultTest();
-        checks.verify();
-        ConfigNodeStartupCheck.getInstance().startUpCheck();
+        // Check parameters
+        ConfigNodeConfCheck.getInstance().checkConfig();
       } catch (IOException | ConfigurationException | StartupException e) {
         LOGGER.error("Meet error when doing start checking", e);
         return -1;
       }
-      ConfigNode.getInstance().active();
+      ConfigNode configNode = ConfigNode.getInstance();
+      configNode.active();
+    } else if (MODE_ADD.equals(mode)) {
+      // TODO: add node
     } else if (MODE_REMOVE.equals(mode)) {
       // TODO: remove node
     }

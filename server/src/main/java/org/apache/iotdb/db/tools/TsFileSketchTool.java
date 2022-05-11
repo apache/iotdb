@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -86,10 +85,7 @@ public class TsFileSketchTool {
       // get metadata information
       tsFileMetaData = reader.readFileMetadata();
       allChunkGroupMetadata = new ArrayList<>();
-      if (reader.selfCheck(null, allChunkGroupMetadata, false) != TsFileCheckStatus.COMPLETE_FILE) {
-        throw new IOException(
-            String.format("Cannot load file %s because the file has crashed.", filename));
-      }
+      reader.selfCheck(null, allChunkGroupMetadata, false);
     } catch (IOException e) {
       e.printStackTrace();
     }

@@ -50,7 +50,7 @@ public interface BaseConfig {
     return this;
   }
 
-  default BaseConfig setDataRegionNum(int dataRegionNum) {
+  default BaseConfig setVirtualStorageGroupNum(int virtualStorageGroupNum) {
     return this;
   }
 

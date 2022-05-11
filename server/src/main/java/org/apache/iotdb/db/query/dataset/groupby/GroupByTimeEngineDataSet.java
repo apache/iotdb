@@ -23,7 +23,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 
@@ -51,9 +51,9 @@ public abstract class GroupByTimeEngineDataSet extends GroupByTimeDataSet {
   protected RowRecord constructRowRecord(AggregateResult[] aggregateResultList) {
     RowRecord record;
     if (leftCRightO) {
-      record = new RowRecord(curAggrTimeRange.getMin());
+      record = new RowRecord(curStartTime);
     } else {
-      record = new RowRecord(curAggrTimeRange.getMax() - 1);
+      record = new RowRecord(curEndTime - 1);
     }
     for (AggregateResult res : aggregateResultList) {
       if (res == null) {
@@ -66,24 +66,22 @@ public abstract class GroupByTimeEngineDataSet extends GroupByTimeDataSet {
   }
 
   protected boolean isEndCal() {
-    if (curPreAggrTimeRange.getMin() == -1) {
+    if (curPreAggrStartTime == -1) {
       return true;
     }
-    return ascending
-        ? curPreAggrTimeRange.getMin() >= curAggrTimeRange.getMax()
-        : curPreAggrTimeRange.getMax() <= curAggrTimeRange.getMin();
+    return ascending ? curPreAggrStartTime >= curEndTime : curPreAggrEndTime <= curStartTime;
   }
 
   // find the next pre-aggregation interval
   protected void updatePreAggrInterval() {
-    TimeRange retPerAggrTimeRange = null;
-    if (preAggrWindowIterator.hasNextTimeRange()) {
-      retPerAggrTimeRange = preAggrWindowIterator.nextTimeRange();
-    }
+    Pair<Long, Long> retPerAggrTimeRange;
+    retPerAggrTimeRange = preAggrWindowIterator.getNextTimeRange(curPreAggrStartTime);
     if (retPerAggrTimeRange != null) {
-      curPreAggrTimeRange = retPerAggrTimeRange;
+      curPreAggrStartTime = retPerAggrTimeRange.left;
+      curPreAggrEndTime = retPerAggrTimeRange.right;
     } else {
-      curPreAggrTimeRange = new TimeRange(-1, -1);
+      curPreAggrStartTime = -1;
+      curPreAggrEndTime = -1;
     }
   }
 

@@ -36,11 +36,6 @@
             <artifactId>iotdb-thrift</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-commons</artifactId>
-            <version>${project.version}</version>
-        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -96,9 +91,6 @@
                             <resources>
                                 <resource>
                                     <directory>${basedir}/../thrift/target/generated-sources-python/iotdb/thrift/</directory>
-                                </resource>
-                                <resource>
-                                    <directory>${basedir}/../thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>
                                 </resource>
                             </resources>
                         </configuration>

@@ -18,15 +18,10 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeConf {
 
@@ -36,46 +31,17 @@ public class ConfigNodeConf {
   /** used for communication between data node and config node */
   private int rpcPort = 22277;
 
-  /** used for communication between config node and config node */
-  private int consensusPort = 22278;
+  /** used for communication between data node and data node */
+  private int internalPort = 22278;
 
-  /** Used for connecting to the ConfigNodeGroup */
-  private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
+  /** every node should have the same config_node_address_lists */
+  private String addressLists;
 
-  /** Mark if the ConfigNode needs to apply */
-  private boolean needApply = false;
+  /** Number of DeviceGroups per StorageGroup */
+  private int deviceGroupCount = 10000;
 
-  // TODO: Read from iotdb-confignode.properties
-  private int partitionRegionId = 0;
-
-  /** Used for building the PartitionRegion */
-  private List<TConfigNodeLocation> configNodeList = new ArrayList<>();
-
-  /** Thrift socket and connection timeout between nodes */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
-
-  /** ConfigNodeGroup consensus protocol */
-  private final String configNodeConsensusProtocolClass =
-      "org.apache.iotdb.consensus.ratis.RatisConsensus";
-
-  /** DataNode Regions consensus protocol */
-  private String dataNodeConsensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
-
-  /**
-   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
-   * clients.
-   */
-  private int selectorNumOfClientManager =
-      Runtime.getRuntime().availableProcessors() / 4 > 0
-          ? Runtime.getRuntime().availableProcessors() / 4
-          : 1;
-
-  /** Number of SeriesPartitionSlots per StorageGroup */
-  private int seriesPartitionSlotNum = 10000;
-
-  /** SeriesPartitionSlot executor class */
-  private String seriesPartitionExecutorClass =
-      "org.apache.iotdb.commons.partition.executor.hash.BKDRHashExecutor";
+  /** DeviceGroup hash executor class */
+  private String deviceGroupHashExecutorClass = "org.apache.iotdb.commons.hash.BKDRHashExecutor";
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -104,138 +70,24 @@ public class ConfigNodeConf {
     ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.DATA_DIR
   };
 
-  /** Consensus directory, storage consensus protocol logs */
-  private String consensusDir =
-      ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
-
-  /** Default TTL for storage groups that are not set TTL by statements, in ms. */
-  private long defaultTTL = Long.MAX_VALUE;
-
-  /** Time partition interval in seconds */
-  private long timePartitionInterval = 604800;
-
-  /** Default number of SchemaRegion replicas */
-  private int schemaReplicationFactor = 3;
-
-  /** Default number of DataRegion replicas */
-  private int dataReplicationFactor = 3;
-
-  /** The initial number of SchemaRegions of each StorageGroup */
-  private int initialSchemaRegionCount = 1;
-
-  /** The initial number of DataRegions of each StorageGroup */
-  private int initialDataRegionCount = 1;
-
   public ConfigNodeConf() {
     // empty constructor
   }
 
-  public void updatePath() {
-    formulateFolders();
+  public int getDeviceGroupCount() {
+    return deviceGroupCount;
   }
 
-  private void formulateFolders() {
-    systemDir = addHomeDir(systemDir);
-    for (int i = 0; i < dataDirs.length; i++) {
-      dataDirs[i] = addHomeDir(dataDirs[i]);
-    }
-    consensusDir = addHomeDir(consensusDir);
+  public void setDeviceGroupCount(int deviceGroupCount) {
+    this.deviceGroupCount = deviceGroupCount;
   }
 
-  private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
-    }
-    return dir;
+  public String getDeviceGroupHashExecutorClass() {
+    return deviceGroupHashExecutorClass;
   }
 
-  public String getRpcAddress() {
-    return rpcAddress;
-  }
-
-  public void setRpcAddress(String rpcAddress) {
-    this.rpcAddress = rpcAddress;
-  }
-
-  public int getRpcPort() {
-    return rpcPort;
-  }
-
-  public void setRpcPort(int rpcPort) {
-    this.rpcPort = rpcPort;
-  }
-
-  public int getConsensusPort() {
-    return consensusPort;
-  }
-
-  public void setConsensusPort(int consensusPort) {
-    this.consensusPort = consensusPort;
-  }
-
-  public boolean isNeedApply() {
-    return needApply;
-  }
-
-  public void setNeedApply(boolean needApply) {
-    this.needApply = needApply;
-  }
-
-  public TEndPoint getTargetConfigNode() {
-    return targetConfigNode;
-  }
-
-  public void setTargetConfigNode(TEndPoint targetConfigNode) {
-    this.targetConfigNode = targetConfigNode;
-  }
-
-  public int getPartitionRegionId() {
-    return partitionRegionId;
-  }
-
-  public void setPartitionRegionId(int partitionRegionId) {
-    this.partitionRegionId = partitionRegionId;
-  }
-
-  public List<TConfigNodeLocation> getConfigNodeList() {
-    return configNodeList;
-  }
-
-  public void setConfigNodeList(List<TConfigNodeLocation> configNodeList) {
-    this.configNodeList = configNodeList;
-  }
-
-  public int getSeriesPartitionSlotNum() {
-    return seriesPartitionSlotNum;
-  }
-
-  public void setSeriesPartitionSlotNum(int seriesPartitionSlotNum) {
-    this.seriesPartitionSlotNum = seriesPartitionSlotNum;
-  }
-
-  public String getSeriesPartitionExecutorClass() {
-    return seriesPartitionExecutorClass;
-  }
-
-  public void setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
-    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
-  }
-
-  public int getSelectorNumOfClientManager() {
-    return selectorNumOfClientManager;
-  }
-
-  public long getTimePartitionInterval() {
-    return timePartitionInterval;
-  }
-
-  public void setTimePartitionInterval(long timePartitionInterval) {
-    this.timePartitionInterval = timePartitionInterval;
+  public void setDeviceGroupHashExecutorClass(String deviceGroupHashExecutorClass) {
+    this.deviceGroupHashExecutorClass = deviceGroupHashExecutorClass;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -278,37 +130,36 @@ public class ConfigNodeConf {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
   }
 
-  public int getConnectionTimeoutInMS() {
-    return connectionTimeoutInMS;
+  public String getRpcAddress() {
+    return rpcAddress;
   }
 
-  public ConfigNodeConf setConnectionTimeoutInMS(int connectionTimeoutInMS) {
-    this.connectionTimeoutInMS = connectionTimeoutInMS;
-    return this;
+  public void setRpcAddress(String rpcAddress) {
+    this.rpcAddress = rpcAddress;
   }
 
-  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
-    this.selectorNumOfClientManager = selectorNumOfClientManager;
+  public int getRpcPort() {
+    return rpcPort;
   }
 
-  public String getConsensusDir() {
-    return consensusDir;
+  public void setRpcPort(int rpcPort) {
+    this.rpcPort = rpcPort;
   }
 
-  public void setConsensusDir(String consensusDir) {
-    this.consensusDir = consensusDir;
+  public int getInternalPort() {
+    return internalPort;
   }
 
-  public String getConfigNodeConsensusProtocolClass() {
-    return configNodeConsensusProtocolClass;
+  public void setInternalPort(int internalPort) {
+    this.internalPort = internalPort;
   }
 
-  public String getDataNodeConsensusProtocolClass() {
-    return dataNodeConsensusProtocolClass;
+  public String getAddressLists() {
+    return addressLists;
   }
 
-  public void setDataNodeConsensusProtocolClass(String dataNodeConsensusProtocolClass) {
-    this.dataNodeConsensusProtocolClass = dataNodeConsensusProtocolClass;
+  public void setAddressLists(String addressLists) {
+    this.addressLists = addressLists;
   }
 
   public int getThriftServerAwaitTimeForStopService() {
@@ -333,45 +184,5 @@ public class ConfigNodeConf {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
-  }
-
-  public long getDefaultTTL() {
-    return defaultTTL;
-  }
-
-  public void setDefaultTTL(long defaultTTL) {
-    this.defaultTTL = defaultTTL;
-  }
-
-  public int getSchemaReplicationFactor() {
-    return schemaReplicationFactor;
-  }
-
-  public void setSchemaReplicationFactor(int schemaReplicationFactor) {
-    this.schemaReplicationFactor = schemaReplicationFactor;
-  }
-
-  public int getDataReplicationFactor() {
-    return dataReplicationFactor;
-  }
-
-  public void setDataReplicationFactor(int dataReplicationFactor) {
-    this.dataReplicationFactor = dataReplicationFactor;
-  }
-
-  public int getInitialSchemaRegionCount() {
-    return initialSchemaRegionCount;
-  }
-
-  public void setInitialSchemaRegionCount(int initialSchemaRegionCount) {
-    this.initialSchemaRegionCount = initialSchemaRegionCount;
-  }
-
-  public int getInitialDataRegionCount() {
-    return initialDataRegionCount;
-  }
-
-  public void setInitialDataRegionCount(int initialDataRegionCount) {
-    this.initialDataRegionCount = initialDataRegionCount;
   }
 }

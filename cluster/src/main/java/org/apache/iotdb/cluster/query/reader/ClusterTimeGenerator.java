@@ -23,9 +23,9 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -111,7 +111,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     TSDataType dataType;
     ManagedSeriesReader mergeReader;
     try {
-      dataType = IoTDB.schemaProcessor.getSeriesType(path);
+      dataType = IoTDB.schemaEngine.getSeriesType(path);
       mergeReader =
           readerFactory.getSeriesReader(
               path,
@@ -173,7 +173,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
     try {
-      dataType = IoTDB.schemaProcessor.getSeriesType(path);
+      dataType = IoTDB.schemaEngine.getSeriesType(path);
 
       List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(null, path);
       for (PartitionGroup partitionGroup : partitionGroups) {

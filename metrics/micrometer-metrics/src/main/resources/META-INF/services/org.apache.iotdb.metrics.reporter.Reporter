@@ -17,4 +17,3 @@
 #
 org.apache.iotdb.metrics.micrometer.reporter.MicrometerJmxReporter
 org.apache.iotdb.metrics.micrometer.reporter.MicrometerPrometheusReporter
-org.apache.iotdb.metrics.micrometer.reporter.MicrometerIoTDBReporter

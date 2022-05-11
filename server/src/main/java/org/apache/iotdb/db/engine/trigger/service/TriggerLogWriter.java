@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.engine.trigger.service;
 
-import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.writelog.ILogWriter;
-import org.apache.iotdb.db.utils.writelog.LogWriter;
+import org.apache.iotdb.db.writelog.io.ILogWriter;
+import org.apache.iotdb.db.writelog.io.LogWriter;
 
 import org.apache.commons.io.FileUtils;
 

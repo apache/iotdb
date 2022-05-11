@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
-import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
+import org.apache.iotdb.cluster.metadata.CSchemaEngine;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
@@ -43,9 +43,9 @@ import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 
@@ -297,8 +297,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      resultHandler.onComplete(
-          ((CSchemaProcessor) IoTDB.schemaProcessor).getAllPaths(paths, withAlias));
+      resultHandler.onComplete(((CSchemaEngine) IoTDB.schemaEngine).getAllPaths(paths, withAlias));
     } catch (MetadataException | CheckConsistencyException e) {
       resultHandler.onError(e);
     }
@@ -313,7 +312,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(
-          ((CSchemaProcessor) IoTDB.schemaProcessor).getAllDevices(path, isPrefixMatch));
+          ((CSchemaEngine) IoTDB.schemaEngine).getAllDevices(path, isPrefixMatch));
     } catch (MetadataException | CheckConsistencyException e) {
       resultHandler.onError(e);
     }
@@ -337,8 +336,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       AsyncMethodCallback<List<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      resultHandler.onComplete(
-          ((CSchemaProcessor) IoTDB.schemaProcessor).getNodeList(path, nodeLevel));
+      resultHandler.onComplete(((CSchemaEngine) IoTDB.schemaEngine).getNodeList(path, nodeLevel));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }
@@ -349,8 +347,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      resultHandler.onComplete(
-          ((CSchemaProcessor) IoTDB.schemaProcessor).getChildNodeInNextLevel(path));
+      resultHandler.onComplete(((CSchemaEngine) IoTDB.schemaEngine).getChildNodeInNextLevel(path));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }
@@ -362,7 +359,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(
-          ((CSchemaProcessor) IoTDB.schemaProcessor).getChildNodePathInNextLevel(path));
+          ((CSchemaEngine) IoTDB.schemaEngine).getChildNodePathInNextLevel(path));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }

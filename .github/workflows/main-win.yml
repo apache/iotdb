@@ -44,7 +44,8 @@ jobs:
         #   -pl cluster -am -DskipTests=true -Dcluster.test.only=true
         # but we just add labels here to make the action name more graceful
         it_task: [ 'others',
-                   'server'
+                   'server',
+                   'cluster'
         ]
     runs-on: windows-latest
 
@@ -112,5 +113,6 @@ jobs:
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        run: source ~/.bash_profile && mvn -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: source ~/.bash_profile && mvn -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true -P '!influxdb-protocol'
 

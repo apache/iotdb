@@ -27,8 +27,8 @@ import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.junit.After;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
+import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -37,35 +37,35 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public class IoTDBInfluxDBIT {
 
-  private static String host;
-  private static Integer port;
-  private static String username;
-  private static String password;
-  private static InfluxDB influxDB;
+  private String host;
+  private Integer port;
+  private String username;
+  private String password;
+  private InfluxDB influxDB;
 
-  @ClassRule
-  public static GenericContainer<?> iotdb =
-      new GenericContainer(DockerImageName.parse("apache/iotdb:influxdb-protocol-on"))
+  @Rule
+  public GenericContainer<?> iotdb =
+      new GenericContainer(DockerImageName.parse("apache/iotdb:maven-development"))
           .withExposedPorts(8086);
 
-  @BeforeClass
-  public static void setUp() {
+  @Before
+  public void setUp() {
     host = iotdb.getContainerIpAddress();
     port = iotdb.getMappedPort(8086);
     username = "root";
     password = "root";
     influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);
-    influxDB.createDatabase("database");
-    influxDB.setDatabase("database");
+    influxDB.createDatabase("monitor");
+    influxDB.setDatabase("monitor");
 
     insertData();
   }
 
-  private static void insertData() {
+  private void insertData() {
     // insert the build parameter to construct the influxdb
     Point.Builder builder = Point.measurement("student");
     Map<String, String> tags = new HashMap<>();
@@ -178,7 +178,7 @@ public class IoTDBInfluxDBIT {
     QueryResult result = influxDB.query(query);
     QueryResult.Series series = result.getResults().get(0).getSeries().get(0);
 
-    Object[] retArray = new Object[] {0, 99.0, 87.0, 186.0, 2, 12.0, 93.0, 87, 99};
+    Object[] retArray = new Object[] {0, 99.0, 87.0, 186, 2, 12.0, 93, 87, 99};
     for (int i = 0; i < series.getColumns().size(); i++) {
       assertEquals(retArray[i], series.getValues().get(0).get(i));
     }

@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
@@ -51,7 +51,7 @@ public class FileLoaderUtils {
 
   private FileLoaderUtils() {}
 
-  public static void loadOrGenerateResource(TsFileResource tsFileResource) throws IOException {
+  public static void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
     if (!tsFileResource.resourceFileExists()) {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader =

@@ -21,17 +21,16 @@ package org.apache.iotdb.db.engine.compaction.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
-import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 
 public class CompactionConfigRestorer {
   private boolean enableSeqSpaceCompaction = true;
   private boolean enableUnseqSpaceCompaction = false;
   private boolean enableCrossSpaceCompaction = true;
-  private CrossCompactionSelector crossStrategy = CrossCompactionSelector.REWRITE;
-  private InnerSequenceCompactionSelector innerStrategy =
-      InnerSequenceCompactionSelector.SIZE_TIERED;
+  private CrossCompactionStrategy crossStrategy = CrossCompactionStrategy.REWRITE_COMPACTION;
+  private InnerCompactionStrategy innerStrategy = InnerCompactionStrategy.SIZE_TIERED_COMPACTION;
   private CompactionPriority priority = CompactionPriority.BALANCE;
   private long targetFileSize = 1073741824L;
   private long targetChunkSize = 1048576L;
@@ -52,8 +51,8 @@ public class CompactionConfigRestorer {
     config.setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     config.setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     config.setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    config.setCrossCompactionSelector(crossStrategy);
-    config.setInnerSequenceCompactionSelector(innerStrategy);
+    config.setCrossCompactionStrategy(crossStrategy);
+    config.setInnerCompactionStrategy(innerStrategy);
     config.setCompactionPriority(priority);
     config.setTargetCompactionFileSize(targetFileSize);
     config.setTargetChunkSize(targetChunkSize);

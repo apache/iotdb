@@ -31,11 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
+import java.sql.*;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -43,20 +39,21 @@ import java.sql.Statement;
  */
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBCompleteIT {
-  private int prevDataRegionNum;
+  private int prevVirtualStorageGroupNum;
 
   @Before
   public void setUp() throws InterruptedException {
     // test different partition
-    prevDataRegionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
-    ConfigFactory.getConfig().setDataRegionNum(16);
+    prevVirtualStorageGroupNum =
+        IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    ConfigFactory.getConfig().setVirtualStorageGroupNum(16);
     EnvFactory.getEnv().initBeforeClass();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setDataRegionNum(prevDataRegionNum);
+    ConfigFactory.getConfig().setVirtualStorageGroupNum(prevVirtualStorageGroupNum);
   }
 
   @Test

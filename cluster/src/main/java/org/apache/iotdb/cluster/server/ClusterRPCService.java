@@ -39,6 +39,11 @@ public class ClusterRPCService extends ThriftService implements ClusterRPCServic
   private ClusterRPCService() {}
 
   @Override
+  public ThriftService getImplementation() {
+    return ClusterRPCServiceHolder.INSTANCE;
+  }
+
+  @Override
   public ServiceType getID() {
     return ServiceType.CLUSTER_RPC_SERVICE;
   }

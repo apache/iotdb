@@ -33,14 +33,14 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -410,7 +410,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           new PartialPath(
               FilePathUtils.getLogicalStorageGroupName(resource.getTsFile().getAbsolutePath()));
       try {
-        StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource, true);
+        StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
         if (resource.isPlanRangeUnique()) {
           // only when a file has a unique range can we remove other files that over lap with it,
           // otherwise we may remove data that is not contained in the file

@@ -19,22 +19,21 @@
 
 package org.apache.iotdb.db.exception.sql;
 
-import org.apache.iotdb.db.mpp.plan.constant.FilterConstant;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.db.mpp.sql.constant.FilterConstant;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class StatementAnalyzeException extends RuntimeException {
+public class StatementAnalyzeException extends IoTDBException {
 
   public StatementAnalyzeException(String message) {
-    super(message);
+    super(message, TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
   }
 
   public StatementAnalyzeException(String filterOperator, FilterConstant.FilterType filterType) {
     super(
         String.format(
             "Unknown token in [%s]: [%s], [%s].",
-            filterOperator, filterType, FilterConstant.filterNames.get(filterType)));
-  }
-
-  public StatementAnalyzeException(String type, String message) {
-    super(String.format("Unsupported type: [%s]. %s", type, message));
+            filterOperator, filterType, FilterConstant.filterNames.get(filterType)),
+        TSStatusCode.LOGICAL_OPTIMIZE_ERROR.getStatusCode());
   }
 }

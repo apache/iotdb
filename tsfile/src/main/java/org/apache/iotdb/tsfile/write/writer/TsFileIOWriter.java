@@ -142,14 +142,14 @@ public class TsFileIOWriter implements AutoCloseable {
     out.write(VERSION_NUMBER_BYTE);
   }
 
-  public int startChunkGroup(String deviceId) throws IOException {
+  public void startChunkGroup(String deviceId) throws IOException {
     this.currentChunkGroupDeviceId = deviceId;
     if (logger.isDebugEnabled()) {
       logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     }
     chunkMetadataList = new ArrayList<>();
     ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId);
-    return chunkGroupHeader.serializeTo(out.wrapAsStream());
+    chunkGroupHeader.serializeTo(out.wrapAsStream());
   }
 
   /**
@@ -456,10 +456,6 @@ public class TsFileIOWriter implements AutoCloseable {
     ReadWriteIOUtils.write(minPlanIndex, out.wrapAsStream());
     ReadWriteIOUtils.write(maxPlanIndex, out.wrapAsStream());
     out.flush();
-  }
-
-  public void truncate(long offset) throws IOException {
-    out.truncate(offset);
   }
 
   /**

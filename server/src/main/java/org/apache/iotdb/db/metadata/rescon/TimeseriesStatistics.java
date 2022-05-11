@@ -18,21 +18,35 @@
  */
 package org.apache.iotdb.db.metadata.rescon;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 public class TimeseriesStatistics {
 
-  private final AtomicLong totalSeriesNumber = new AtomicLong();
+  private static final Logger logger = LoggerFactory.getLogger(TimeseriesStatistics.class);
 
-  private static class TimeseriesStatisticsHolder {
+  /** threshold total size of MTree */
+  private static final long MTREE_SIZE_THRESHOLD =
+      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchema();
 
-    private TimeseriesStatisticsHolder() {
+  private static final int ESTIMATED_SERIES_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getEstimatedSeriesSize();
+
+  private boolean allowToCreateNewSeries = true;
+  private AtomicLong totalSeriesNumber = new AtomicLong();
+
+  private static class TimeseriesManagerHolder {
+
+    private TimeseriesManagerHolder() {
       // allowed to do nothing
     }
 
@@ -41,7 +55,7 @@ public class TimeseriesStatistics {
 
   /** we should not use this function in other place, but only in IoTDB class */
   public static TimeseriesStatistics getInstance() {
-    return TimeseriesStatisticsHolder.INSTANCE;
+    return TimeseriesStatistics.TimeseriesManagerHolder.INSTANCE;
   }
 
   public void init() {
@@ -58,19 +72,33 @@ public class TimeseriesStatistics {
     }
   }
 
+  public boolean isAllowToCreateNewSeries() {
+    return allowToCreateNewSeries;
+  }
+
   public long getTotalSeriesNumber() {
     return totalSeriesNumber.get();
   }
 
   public void addTimeseries(int addedNum) {
     totalSeriesNumber.addAndGet(addedNum);
+    if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+      logger.warn("Current series number {} is too large...", totalSeriesNumber);
+      allowToCreateNewSeries = false;
+    }
   }
 
   public void deleteTimeseries(int deletedNum) {
     totalSeriesNumber.addAndGet(-deletedNum);
+    if (!allowToCreateNewSeries
+        && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+      logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+      allowToCreateNewSeries = true;
+    }
   }
 
   public void clear() {
-    this.totalSeriesNumber.getAndSet(0);
+    this.totalSeriesNumber.set(0);
+    allowToCreateNewSeries = true;
   }
 }

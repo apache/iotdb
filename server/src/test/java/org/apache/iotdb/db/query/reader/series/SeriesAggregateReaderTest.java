@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -60,8 +60,7 @@ public class SeriesAggregateReaderTest {
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     EnvironmentUtils.envSetUp();
-    SeriesReaderTestUtil.setUp(
-        measurementSchemas, deviceIds, seqResources, unseqResources, SERIES_READER_TEST_SG);
+    SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After

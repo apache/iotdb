@@ -19,24 +19,19 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.dropwizard.MetricName;
-
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.Metered;
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Snapshot;
-import com.codahale.metrics.Timer;
+import com.codahale.metrics.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 class DropwizardMetricsExporter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DropwizardMetricsExporter.class);
+
   private final MetricRegistry metricRegistry;
   private final PrometheusTextWriter writer;
 
@@ -63,12 +58,11 @@ class DropwizardMetricsExporter {
     }
   }
 
-  /** Export Gauge as Prometheus Gauge */
-  public void writeGauge(String dropwizardName, Gauge<?> gauge) throws IOException {
-    MetricName metricName = new MetricName(dropwizardName);
-    String sanitizeName = metricName.getName();
-    writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, gauge));
-    writer.writeType(sanitizeName, MetricType.GAUGE);
+  /** Export Gauge as Prometheus Guage */
+  public void writeGauge(String name, Gauge<?> gauge) throws IOException {
+    final String sanitizedName = sanitizeMetricName(name);
+    writer.writeHelp(sanitizedName, getHelpMessage(name, gauge));
+    writer.writeType(sanitizedName, MetricType.GAUGE);
 
     Object obj = gauge.getValue();
     double value;
@@ -80,98 +74,143 @@ class DropwizardMetricsExporter {
       return;
     }
 
-    writer.writeSample(sanitizeName, metricName.getTags(), value);
+    writer.writeSample(sanitizedName, emptyMap(), value);
   }
 
-  /** Export counter as Prometheus Gauge */
+  /**
+   * Export counter as Prometheus GAUGE
+   *
+   * @param dropwizardName need to transform
+   * @param counter
+   * @throws IOException
+   */
   public void writeCounter(String dropwizardName, Counter counter) throws IOException {
-    MetricName metricName = new MetricName(dropwizardName);
-    String sanitizeName = metricName.getName();
-    writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, counter));
-    writer.writeType(sanitizeName, MetricType.GAUGE);
-    writer.writeSample(sanitizeName, metricName.getTags(), counter.getCount());
+    String name = sanitizeMetricName(dropwizardName);
+    writer.writeHelp(name, getHelpMessage(dropwizardName, counter));
+    writer.writeType(name, MetricType.GAUGE);
+    writer.writeSample(name, emptyMap(), counter.getCount());
   }
 
-  /** Export histogram snapshot as Prometheus SUMMARY */
+  /**
+   * Export histogram snapshot as Prometheus SUMMARY
+   *
+   * @param dropwizardName
+   * @param histogram
+   * @throws IOException
+   */
   public void writeHistogram(String dropwizardName, Histogram histogram) throws IOException {
     writeSnapshotAndCount(
-        new MetricName(dropwizardName),
+        dropwizardName,
         histogram.getSnapshot(),
         histogram.getCount(),
         1.0,
+        MetricType.SUMMARY,
         getHelpMessage(dropwizardName, histogram));
   }
 
-  /** Export histogram snapshot */
+  /**
+   * Export histogram snapshot
+   *
+   * @param dropwizardName
+   * @param snapshot
+   * @param count
+   * @param factor
+   * @param type
+   * @param helpMessage
+   * @throws IOException
+   */
   private void writeSnapshotAndCount(
-      MetricName metricName, Snapshot snapshot, long count, double factor, String helpMessage)
+      String dropwizardName,
+      Snapshot snapshot,
+      long count,
+      double factor,
+      MetricType type,
+      String helpMessage)
       throws IOException {
-    String sanitizeName = metricName.getName();
-    writer.writeHelp(sanitizeName, helpMessage);
-    writer.writeType(sanitizeName, MetricType.SUMMARY);
-    Map<String, String> tags = metricName.getTags();
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.5"), snapshot.getMedian() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.75"), snapshot.get75thPercentile() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.95"), snapshot.get95thPercentile() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.98"), snapshot.get98thPercentile() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.99"), snapshot.get99thPercentile() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.999"), snapshot.get999thPercentile() * factor);
-    writer.writeSample(sanitizeName + "_min", tags, snapshot.getMin());
-    writer.writeSample(sanitizeName + "_max", tags, snapshot.getMax());
-    writer.writeSample(sanitizeName + "_median", tags, snapshot.getMedian());
-    writer.writeSample(sanitizeName + "_mean", tags, snapshot.getMean());
-    writer.writeSample(sanitizeName + "_stddev", tags, snapshot.getStdDev());
-    writer.writeSample(sanitizeName + "_count", tags, count);
+    String name = sanitizeMetricName(dropwizardName);
+    writer.writeHelp(name, helpMessage);
+    writer.writeType(name, type);
+    writer.writeSample(name, mapOf("quantile", "0.5"), snapshot.getMedian() * factor);
+    writer.writeSample(name, mapOf("quantile", "0.75"), snapshot.get75thPercentile() * factor);
+    writer.writeSample(name, mapOf("quantile", "0.95"), snapshot.get95thPercentile() * factor);
+    writer.writeSample(name, mapOf("quantile", "0.98"), snapshot.get98thPercentile() * factor);
+    writer.writeSample(name, mapOf("quantile", "0.99"), snapshot.get99thPercentile() * factor);
+    writer.writeSample(name, mapOf("quantile", "0.999"), snapshot.get999thPercentile() * factor);
+    writer.writeSample(name + "_min", emptyMap(), snapshot.getMin());
+    writer.writeSample(name + "_max", emptyMap(), snapshot.getMax());
+    writer.writeSample(name + "_median", emptyMap(), snapshot.getMedian());
+    writer.writeSample(name + "_mean", emptyMap(), snapshot.getMean());
+    writer.writeSample(name + "_stddev", emptyMap(), snapshot.getStdDev());
+    writer.writeSample(name + "_count", emptyMap(), count);
   }
 
-  /** Export Timer as Prometheus Summary */
+  /**
+   * Export Timer as Prometheus SUMMARY
+   *
+   * @param dropwizardName
+   * @param timer
+   * @throws IOException
+   */
   public void writeTimer(String dropwizardName, Timer timer) throws IOException {
     writeSnapshotAndCount(
-        new MetricName(dropwizardName),
+        dropwizardName,
         timer.getSnapshot(),
         timer.getCount(),
         1.0D / TimeUnit.SECONDS.toNanos(1L),
+        MetricType.SUMMARY,
         getHelpMessage(dropwizardName, timer));
-    writeMetered(new MetricName(dropwizardName), timer);
+    writeMetered(dropwizardName, timer);
   }
 
-  /** Export Meter as Prometheus Counter */
+  /**
+   * Export Meter as Prometheus Counter
+   *
+   * @param dropwizardName
+   * @param meter
+   * @throws IOException
+   */
   public void writeMeter(String dropwizardName, Meter meter) throws IOException {
-    MetricName metricName = new MetricName(dropwizardName);
-    String sanitizeName = metricName.getName() + "_total";
+    String name = sanitizeMetricName(dropwizardName) + "_total";
 
-    writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, meter));
-    writer.writeType(sanitizeName, MetricType.COUNTER);
-    writer.writeSample(sanitizeName, metricName.getTags(), meter.getCount());
+    writer.writeHelp(name, getHelpMessage(dropwizardName, meter));
+    writer.writeType(name, MetricType.COUNTER);
+    writer.writeSample(name, emptyMap(), meter.getCount());
 
-    writeMetered(new MetricName(dropwizardName), meter);
+    writeMetered(dropwizardName, meter);
   }
 
-  /** Export meter for multi type */
-  private void writeMetered(MetricName metricName, Metered metered) throws IOException {
-    String sanitizeName = metricName.getName();
-    Map<String, String> tags = metricName.getTags();
-    writer.writeSample(sanitizeName, addTags(tags, "rate", "m1"), metered.getOneMinuteRate());
-    writer.writeSample(sanitizeName, addTags(tags, "rate", "m5"), metered.getFiveMinuteRate());
-    writer.writeSample(sanitizeName, addTags(tags, "rate", "m15"), metered.getFifteenMinuteRate());
-    writer.writeSample(sanitizeName, addTags(tags, "rate", "mean"), metered.getMeanRate());
+  /**
+   * Export meter for multi type
+   *
+   * @param dropwizardName
+   * @param metered
+   * @throws IOException
+   */
+  private void writeMetered(String dropwizardName, Metered metered) throws IOException {
+    String name = sanitizeMetricName(dropwizardName);
+    writer.writeSample(name, mapOf("rate", "m1"), metered.getOneMinuteRate());
+    writer.writeSample(name, mapOf("rate", "m5"), metered.getFiveMinuteRate());
+    writer.writeSample(name, mapOf("rate", "m15"), metered.getFifteenMinuteRate());
+    writer.writeSample(name, mapOf("rate", "mean"), metered.getMeanRate());
   }
 
-  private Map<String, String> addTags(Map<String, String> tags, String key, String value) {
-    HashMap<String, String> result = new HashMap<>(tags);
+  private Map<String, String> mapOf(String key, String value) {
+    HashMap<String, String> result = new HashMap<>();
     result.put(key, value);
     return result;
+  }
+
+  private Map<String, String> emptyMap() {
+    return Collections.emptyMap();
   }
 
   private static String getHelpMessage(String metricName, Metric metric) {
     return String.format(
         "Generated from Dropwizard metric import (metric=%s, type=%s)",
         metricName, metric.getClass().getName());
+  }
+
+  static String sanitizeMetricName(String dropwizardName) {
+    return dropwizardName.replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
   }
 }

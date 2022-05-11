@@ -63,19 +63,19 @@ public abstract class DataPoint {
     try {
       switch (dataType) {
         case INT32:
-          dataPoint = new IntDataPoint(measurementId, Integer.parseInt(value));
+          dataPoint = new IntDataPoint(measurementId, Integer.valueOf(value));
           break;
         case INT64:
-          dataPoint = new LongDataPoint(measurementId, Long.parseLong(value));
+          dataPoint = new LongDataPoint(measurementId, Long.valueOf(value));
           break;
         case FLOAT:
-          dataPoint = new FloatDataPoint(measurementId, Float.parseFloat(value));
+          dataPoint = new FloatDataPoint(measurementId, Float.valueOf(value));
           break;
         case DOUBLE:
-          dataPoint = new DoubleDataPoint(measurementId, Double.parseDouble(value));
+          dataPoint = new DoubleDataPoint(measurementId, Double.valueOf(value));
           break;
         case BOOLEAN:
-          dataPoint = new BooleanDataPoint(measurementId, Boolean.parseBoolean(value));
+          dataPoint = new BooleanDataPoint(measurementId, Boolean.valueOf(value));
           break;
         case TEXT:
           dataPoint = new StringDataPoint(measurementId, new Binary(value));

@@ -18,27 +18,26 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.HashSet;
 import java.util.Set;
 
 public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
 
-  protected Set<PartialPath> involvedStorageGroupMNodes = new HashSet<>();
+  protected Set<IStorageGroupMNode> involvedStorageGroupMNodes = new HashSet<>();
 
-  public MNodeAboveSGCollector(IMNode startNode, PartialPath path, IMTreeStore store)
-      throws MetadataException {
-    super(startNode, path, store);
+  public MNodeAboveSGCollector(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
     if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(node.getPartialPath());
+      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
       return true;
     }
     return super.processInternalMatchedMNode(node, idx, level);
@@ -47,13 +46,13 @@ public abstract class MNodeAboveSGCollector<T> extends MNodeCollector<T> {
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
     if (node.isStorageGroup()) {
-      involvedStorageGroupMNodes.add(node.getPartialPath());
+      involvedStorageGroupMNodes.add(node.getAsStorageGroupMNode());
       return true;
     }
     return super.processFullMatchedMNode(node, idx, level);
   }
 
-  public Set<PartialPath> getInvolvedStorageGroupMNodes() {
+  public Set<IStorageGroupMNode> getInvolvedStorageGroupMNodes() {
     return involvedStorageGroupMNodes;
   }
 }

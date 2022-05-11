@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -121,37 +121,20 @@ public class Session {
   protected int thriftDefaultBufferSize;
   protected int thriftMaxFrameSize;
 
-  protected TEndPoint defaultEndPoint;
+  protected EndPoint defaultEndPoint;
   protected SessionConnection defaultSessionConnection;
   private boolean isClosed = true;
 
   // Cluster version cache
   protected boolean enableCacheLeader;
   protected SessionConnection metaSessionConnection;
-  protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
-  protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
+  protected volatile Map<String, EndPoint> deviceIdToEndpoint;
+  protected volatile Map<EndPoint, SessionConnection> endPointToSessionConnection;
 
   protected boolean enableQueryRedirection = false;
 
   // The version number of the client which used for compatibility in the server
   protected Version version;
-
-  public static void main(String args[])
-      throws IoTDBConnectionException, StatementExecutionException {
-    Session session = new Session("127.0.0.1", 6667);
-    session.open();
-
-    long timestamp = 1649949302008L;
-    for (int i = 0; i < 10000; i++) {
-      String sql =
-          String.format(
-              "insert into root.sg.d1(time,s1,s2,s3,s4) values(%d,%d,%d,%d,%d);",
-              timestamp, i * 10 + 1, i * 10 + 2, i * 10 + 3, i * 10 + 4);
-      session.executeNonQueryStatement(sql);
-      timestamp++;
-    }
-    session.close();
-  }
 
   public Session(String host, int rpcPort) {
     this(
@@ -292,7 +275,7 @@ public class Session {
       int thriftMaxFrameSize,
       boolean enableCacheLeader,
       Version version) {
-    this.defaultEndPoint = new TEndPoint(host, rpcPort);
+    this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
@@ -429,7 +412,7 @@ public class Session {
   }
 
   public SessionConnection constructSessionConnection(
-      Session session, TEndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+      Session session, EndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
     if (endpoint == null) {
       return new SessionConnection(session, zoneId);
     }
@@ -834,7 +817,7 @@ public class Session {
   }
 
   private SessionConnection getSessionConnection(String deviceId) {
-    TEndPoint endPoint;
+    EndPoint endPoint;
     if (enableCacheLeader
         && !deviceIdToEndpoint.isEmpty()
         && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
@@ -852,11 +835,11 @@ public class Session {
   private void removeBrokenSessionConnection(SessionConnection sessionConnection) {
     // remove the cached broken leader session
     if (enableCacheLeader) {
-      TEndPoint endPoint = null;
-      for (Iterator<Entry<TEndPoint, SessionConnection>> it =
+      EndPoint endPoint = null;
+      for (Iterator<Entry<EndPoint, SessionConnection>> it =
               endPointToSessionConnection.entrySet().iterator();
           it.hasNext(); ) {
-        Map.Entry<TEndPoint, SessionConnection> entry = it.next();
+        Map.Entry<EndPoint, SessionConnection> entry = it.next();
         if (entry.getValue().equals(sessionConnection)) {
           endPoint = entry.getKey();
           it.remove();
@@ -864,9 +847,9 @@ public class Session {
         }
       }
 
-      for (Iterator<Entry<String, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
+      for (Iterator<Entry<String, EndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
           it.hasNext(); ) {
-        Map.Entry<String, TEndPoint> entry = it.next();
+        Map.Entry<String, EndPoint> entry = it.next();
         if (entry.getValue().equals(endPoint)) {
           it.remove();
         }
@@ -897,7 +880,7 @@ public class Session {
     }
   }
 
-  private void handleRedirection(String deviceId, TEndPoint endpoint)
+  private void handleRedirection(String deviceId, EndPoint endpoint)
       throws IoTDBConnectionException {
     if (enableCacheLeader) {
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
@@ -920,7 +903,7 @@ public class Session {
     }
   }
 
-  private void handleQueryRedirection(TEndPoint endPoint) throws IoTDBConnectionException {
+  private void handleQueryRedirection(EndPoint endPoint) throws IoTDBConnectionException {
     if (enableQueryRedirection) {
       AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       SessionConnection connection =
@@ -1074,8 +1057,8 @@ public class Session {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1111,8 +1094,8 @@ public class Session {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1197,8 +1180,8 @@ public class Session {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1235,8 +1218,8 @@ public class Session {
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1721,8 +1704,8 @@ public class Session {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -1759,8 +1742,8 @@ public class Session {
       try {
         defaultSessionConnection.insertTablets(request);
       } catch (RedirectException e) {
-        Map<String, TEndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
-        for (Map.Entry<String, TEndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
+        Map<String, EndPoint> deviceEndPointMap = e.getDeviceEndPointMap();
+        for (Map.Entry<String, EndPoint> deviceEndPointEntry : deviceEndPointMap.entrySet()) {
           handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
         }
       }
@@ -2151,12 +2134,12 @@ public class Session {
    * Create a template with flat measurements, not tree structured. Need to specify datatype,
    * encoding and compressor of each measurement, and alignment of these measurements at once.
    *
+   * @oaram templateName name of template to create
    * @param measurements flat measurements of the template, cannot contain character dot
    * @param dataTypes datatype of each measurement in the template
    * @param encodings encodings of each measurement in the template
    * @param compressors compression type of each measurement in the template
    * @param isAligned specify whether these flat measurements are aligned
-   * @oaram templateName name of template to create
    */
   public void createSchemaTemplate(
       String templateName,

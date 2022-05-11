@@ -34,9 +34,10 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -148,7 +149,7 @@ public class MetaPuller {
       }
       int preSize = results.size();
       for (PartialPath prefixPath : prefixPaths) {
-        //        IoTDB.schemaProcessor.collectMeasurementSchema(prefixPath, results);
+        IoTDB.schemaEngine.collectMeasurementSchema(prefixPath, results);
       }
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -265,7 +266,7 @@ public class MetaPuller {
 
   /**
    * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
-   * contain a storage group. The pulled schemas will be cache in CSchemaProcessor.
+   * contain a storage group. The pulled schemas will be cache in CSchemaEngine.
    *
    * @param ignoredGroup do not pull schema from the group to avoid backward dependency. If a user
    *     send an insert request before registering schemas, then this method may pull schemas from
@@ -318,7 +319,7 @@ public class MetaPuller {
    * Pull timeseries schemas of "prefixPaths" from "partitionGroup". If this node is a member of
    * "partitionGroup", synchronize with the group leader and collect local schemas. Otherwise pull
    * schemas from one node in the group. If "timeseriesSchemas" is null, the pulled schemas will be
-   * cached in CSchemaProcessor.
+   * cached in CSchemaEngine.
    */
   public void pullTimeSeriesSchemas(
       PartitionGroup partitionGroup,
@@ -351,8 +352,8 @@ public class MetaPuller {
   }
 
   /**
-   * send the PullSchemaRequest to "node" and cache the results in CSchemaProcessor or add the
-   * results to "timeseriesSchemas" if they are successfully returned.
+   * send the PullSchemaRequest to "node" and cache the results in CSchemaEngine or add the results
+   * to "timeseriesSchemas" if they are successfully returned.
    *
    * @return true if the pull succeeded, false otherwise
    */

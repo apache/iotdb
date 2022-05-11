@@ -31,7 +31,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
-import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

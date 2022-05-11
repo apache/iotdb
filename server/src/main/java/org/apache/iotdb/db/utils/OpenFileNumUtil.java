@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -265,7 +264,7 @@ public class OpenFileNumUtil {
     TOTAL_OPEN_FILE_NUM(null),
     SEQUENCE_FILE_OPEN_NUM(directoryManager.getAllSequenceFileFolders()),
     UNSEQUENCE_FILE_OPEN_NUM(directoryManager.getAllUnSequenceFileFolders()),
-    WAL_OPEN_FILE_NUM(Arrays.asList(config.getWalDirs())),
+    WAL_OPEN_FILE_NUM(Collections.singletonList(config.getWalDir())),
     DIGEST_OPEN_FILE_NUM(Collections.singletonList(config.getSystemDir())),
     SOCKET_OPEN_FILE_NUM(null);
 

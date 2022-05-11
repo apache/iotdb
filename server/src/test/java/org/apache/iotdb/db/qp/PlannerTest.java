@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.qp;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -60,85 +60,85 @@ public class PlannerTest {
 
   private CompressionType compressionType =
       TSFileDescriptor.getInstance().getConfig().getCompressor();
-  private LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
+  private SchemaEngine schemaEngine = IoTDB.schemaEngine;
   private Planner processor = new Planner();
 
   static {
-    IoTDB.configManager.init();
+    IoTDB.schemaEngine.init();
   }
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    schemaProcessor.setStorageGroup(new PartialPath("root.vehicle"));
-    schemaProcessor.setStorageGroup(new PartialPath("root.vehicle1"));
-    schemaProcessor.createTimeseries(
+    schemaEngine.setStorageGroup(new PartialPath("root.vehicle"));
+    schemaEngine.setStorageGroup(new PartialPath("root.vehicle1"));
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device1.sensor1"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device1.sensor2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device1.sensor3"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device2.sensor1"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device2.sensor2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle.device2.sensor3"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device1.sensor1"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device1.sensor2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device1.sensor3"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device2.sensor1"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device2.sensor2"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),
         compressionType,
         Collections.emptyMap());
-    schemaProcessor.createTimeseries(
+    schemaEngine.createTimeseries(
         new PartialPath("root.vehicle1.device2.sensor3"),
         TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"),

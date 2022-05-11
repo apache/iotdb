@@ -52,8 +52,3 @@ jobs:
           cd ./grafana-plugin
           yarn install --frozen-lockfile
           yarn build
-
-      - name: Install dependencies and Build backend
-        run: |
-          cd ./grafana-plugin
-          ./backend-compile.sh

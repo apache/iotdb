@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.utils.timerangeiterator;
 
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
 
@@ -35,14 +35,13 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   // total query [startTime, endTime)
   private final long startTime;
   private final long endTime;
+
   private final long interval;
   private final long slidingStep;
 
   private final boolean isAscending;
   private final boolean isSlidingStepByMonth;
   private final boolean isIntervalByMonth;
-
-  private TimeRange curTimeRange;
 
   public AggrWindowIterator(
       long startTime,
@@ -62,7 +61,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   }
 
   @Override
-  public TimeRange getFirstTimeRange() {
+  public Pair<Long, Long> getFirstTimeRange() {
     if (isAscending) {
       return getLeftmostTimeRange();
     } else {
@@ -70,7 +69,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     }
   }
 
-  private TimeRange getLeftmostTimeRange() {
+  private Pair<Long, Long> getLeftmostTimeRange() {
     long retEndTime;
     if (isIntervalByMonth) {
       // calculate interval length by natural month based on startTime
@@ -79,10 +78,10 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     } else {
       retEndTime = Math.min(startTime + interval, endTime);
     }
-    return new TimeRange(startTime, retEndTime);
+    return new Pair<>(startTime, retEndTime);
   }
 
-  private TimeRange getRightmostTimeRange() {
+  private Pair<Long, Long> getRightmostTimeRange() {
     long retStartTime;
     long retEndTime;
     long queryRange = endTime - startTime;
@@ -107,18 +106,12 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     } else {
       retEndTime = Math.min(retStartTime + interval, endTime);
     }
-    return new TimeRange(retStartTime, retEndTime);
+    return new Pair<>(retStartTime, retEndTime);
   }
 
   @Override
-  public boolean hasNextTimeRange() {
-    if (curTimeRange == null) {
-      curTimeRange = getFirstTimeRange();
-      return true;
-    }
-
+  public Pair<Long, Long> getNextTimeRange(long curStartTime) {
     long retStartTime, retEndTime;
-    long curStartTime = curTimeRange.getMin();
     if (isAscending) {
       if (isSlidingStepByMonth) {
         retStartTime = DatetimeUtils.calcIntervalByMonth(curStartTime, (int) (slidingStep));
@@ -127,7 +120,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       }
       // This is an open interval , [0-100)
       if (retStartTime >= endTime) {
-        return false;
+        return null;
       }
     } else {
       if (isSlidingStepByMonth) {
@@ -136,7 +129,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
         retStartTime = curStartTime - slidingStep;
       }
       if (retStartTime < startTime) {
-        return false;
+        return null;
       }
     }
 
@@ -146,16 +139,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       retEndTime = retStartTime + interval;
     }
     retEndTime = Math.min(retEndTime, endTime);
-    curTimeRange = new TimeRange(retStartTime, retEndTime);
-    return true;
-  }
-
-  @Override
-  public TimeRange nextTimeRange() {
-    if (curTimeRange != null || hasNextTimeRange()) {
-      return curTimeRange;
-    }
-    return null;
+    return new Pair<>(retStartTime, retEndTime);
   }
 
   @Override

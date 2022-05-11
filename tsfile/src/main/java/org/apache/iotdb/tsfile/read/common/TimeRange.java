@@ -23,11 +23,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * interval [min,max] of long data type
@@ -88,11 +84,7 @@ public class TimeRange implements Comparable<TimeRange> {
     this.max = max;
   }
 
-  /**
-   * Check whether this TimeRange contains r.
-   *
-   * @return true if the given range lies in this range, inclusively
-   */
+  /** @return true if the given range lies in this range, inclusively */
   public boolean contains(TimeRange r) {
     return min <= r.min && max >= r.max;
   }
@@ -119,20 +111,12 @@ public class TimeRange implements Comparable<TimeRange> {
     this.max = max;
   }
 
-  /**
-   * Get the lower range bundary.
-   *
-   * @return The lower range boundary.
-   */
+  /** @return The lower range boundary */
   public long getMin() {
     return min;
   }
 
-  /**
-   * Get the upper range boundary.
-   *
-   * @return The upper range boundary.
-   */
+  /** @return The upper range boundary */
   public long getMax() {
     return max;
   }

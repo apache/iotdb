@@ -18,20 +18,18 @@
  */
 package org.apache.iotdb.db.mpp.common.filter;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.mpp.plan.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.mpp.sql.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 
@@ -53,7 +51,7 @@ public class LikeFilter extends FunctionFilter {
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
-      throws StatementAnalyzeException, MetadataException {
+      throws LogicalOperatorException, MetadataException {
     TSDataType type = pathTSDataTypeHashMap.get(singlePath);
     if (type == null) {
       throw new MetadataException(
@@ -61,9 +59,9 @@ public class LikeFilter extends FunctionFilter {
     }
     IUnaryExpression ret;
     if (type != TEXT) {
-      throw new StatementAnalyzeException(type.toString(), "Only TEXT is supported in 'Like'");
+      throw new LogicalOperatorException(type.toString(), "Only TEXT is supported in 'Like'");
     } else if (value.startsWith("\"") && value.endsWith("\"")) {
-      throw new StatementAnalyzeException(value, "Please use single quotation marks");
+      throw new LogicalOperatorException(value, "Please use single quotation marks");
     } else {
       ret =
           Like.getUnaryExpression(
@@ -132,21 +130,5 @@ public class LikeFilter extends FunctionFilter {
 
   public String getValue() {
     return value;
-  }
-
-  public void serialize(ByteBuffer byteBuffer) {
-    FilterTypes.Like.serialize(byteBuffer);
-    super.serializeWithoutType(byteBuffer);
-    ReadWriteIOUtils.write(value, byteBuffer);
-  }
-
-  public static LikeFilter deserialize(ByteBuffer byteBuffer) {
-    QueryFilter queryFilter = QueryFilter.deserialize(byteBuffer);
-    LikeFilter likeFilter =
-        new LikeFilter(
-            queryFilter.filterType,
-            queryFilter.singlePath,
-            ReadWriteIOUtils.readString(byteBuffer));
-    return likeFilter;
   }
 }

@@ -26,7 +26,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public class ClusterPlanner extends Planner {
 
-  @Override
   protected PhysicalPlan generatePhysicalPlanFromOperator(Operator operator)
       throws QueryProcessException {
     // from logical operator to physical plan

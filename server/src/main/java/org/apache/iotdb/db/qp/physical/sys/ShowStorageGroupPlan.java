@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 public class ShowStorageGroupPlan extends ShowPlan {
 

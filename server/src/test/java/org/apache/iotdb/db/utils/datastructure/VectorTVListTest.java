@@ -201,7 +201,7 @@ public class VectorTVListTest {
           clonedTvList.getAlignedValue((int) i).toString());
       for (int column = 0; i < 5; i++) {
         Assert.assertEquals(
-            tvList.isNullValue((int) i, column), clonedTvList.isNullValue((int) i, column));
+            tvList.isValueMarked((int) i, column), clonedTvList.isValueMarked((int) i, column));
       }
     }
   }

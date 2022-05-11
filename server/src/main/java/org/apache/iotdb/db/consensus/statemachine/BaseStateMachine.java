@@ -19,56 +19,56 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.consensus.statemachine.IStateMachine;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class BaseStateMachine implements IStateMachine, IStateMachine.EventApi {
+import java.io.IOException;
+
+public abstract class BaseStateMachine implements IStateMachine {
 
   private static final Logger logger = LoggerFactory.getLogger(BaseStateMachine.class);
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    try {
-      return write(getFragmentInstance(request));
-    } catch (IllegalArgumentException e) {
-      logger.error(e.getMessage());
+    PhysicalPlan plan;
+    if (request instanceof ByteBufferConsensusRequest) {
+      try {
+        plan = PhysicalPlan.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+      } catch (IOException | IllegalPathException e) {
+        logger.error("Deserialization error for write plan : {}", request);
+        return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
+    } else if (request instanceof PhysicalPlan) {
+      plan = (PhysicalPlan) request;
+    } else {
+      logger.error("Unexpected write plan : {}", request);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
+    return write(plan);
   }
 
-  protected abstract TSStatus write(FragmentInstance fragmentInstance);
+  protected abstract TSStatus write(PhysicalPlan plan);
 
   @Override
   public DataSet read(IConsensusRequest request) {
-    try {
-      return read(getFragmentInstance(request));
-    } catch (IllegalArgumentException e) {
-      logger.error(e.getMessage());
+    PhysicalPlan plan;
+    if (request instanceof PhysicalPlan) {
+      plan = (PhysicalPlan) request;
+    } else {
+      logger.error("Unexpected read plan : {}", request);
       return null;
     }
+    return read(plan);
   }
 
-  protected abstract DataSet read(FragmentInstance fragmentInstance);
-
-  private FragmentInstance getFragmentInstance(IConsensusRequest request) {
-    FragmentInstance instance;
-    if (request instanceof ByteBufferConsensusRequest) {
-      instance =
-          FragmentInstance.deserializeFrom(((ByteBufferConsensusRequest) request).getContent());
-    } else if (request instanceof FragmentInstance) {
-      instance = (FragmentInstance) request;
-    } else {
-      logger.error("Unexpected IConsensusRequest : {}", request);
-      throw new IllegalArgumentException("Unexpected IConsensusRequest!");
-    }
-    return instance;
-  }
+  protected abstract DataSet read(PhysicalPlan plan);
 }
