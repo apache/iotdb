@@ -84,8 +84,7 @@ public abstract class BasicUserManager implements IUserManager {
   public User getUser(String username) throws AuthException {
     lock.readLock(username);
     User user = userMap.get(username);
-    logger.info(userMap.get("root").toString());
-    logger.info("getUser: " + user.getName());
+    logger.info("getUser");
     try {
       if (user == null) {
         logger.info("null");
