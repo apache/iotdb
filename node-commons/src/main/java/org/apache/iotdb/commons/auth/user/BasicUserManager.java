@@ -27,8 +27,8 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -116,8 +116,8 @@ public abstract class BasicUserManager implements IUserManager {
     lock.writeLock(username);
     try {
       user = new User(username, AuthUtils.encryptPassword(password));
-      logger.info(String.valueOf(Arrays.asList(userMap.keySet().toArray())));
-      if (userMap.size() == 0) {
+      File userDirPath = new File(accessor.getDirPath());
+      if (!userDirPath.exists()) {
         reset();
       }
       accessor.saveUser(user);
