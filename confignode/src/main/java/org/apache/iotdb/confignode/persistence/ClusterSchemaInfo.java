@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -27,6 +28,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -56,6 +58,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * The ClusterSchemaInfo stores cluster schema. The cluster schema including: 1. StorageGroupSchema
+ * 2. Template (Not implement yet)
+ */
 public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaInfo.class);
@@ -84,7 +90,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * Persistence new StorageGroupSchema
    *
    * @param req SetStorageGroupReq
-   * @return SUCCESS_STATUS
+   * @return SUCCESS_STATUS if the StorageGroup is set successfully. PERSISTENCE_FAILURE if fail to
+   *     set StorageGroup in MTreeAboveSG.
    */
   public TSStatus setStorageGroup(SetStorageGroupReq req) {
     TSStatus result = new TSStatus();
@@ -106,7 +113,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.PERSISTENCE_FAILURE.getStatusCode())
           .setMessage("Error StorageGroup name");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -137,6 +144,42 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
+    return result;
+  }
+
+  /**
+   * Persistence new RegionGroupIds on specific StorageGroupSchema
+   *
+   * @param req CreateRegionsReq
+   * @return SUCCESS_STATUS if the new RegionGroupIds is persistence successfully.
+   *     PERSISTENCE_FAILURE if fail to find StorageGroup in MTreeAboveSG.
+   */
+  public TSStatus createRegions(CreateRegionsReq req) {
+    TSStatus result = new TSStatus();
+    storageGroupReadWriteLock.writeLock().lock();
+
+    try {
+      for (Map.Entry<String, TRegionReplicaSet> reqEntry : req.getRegionMap().entrySet()) {
+        PartialPath partialPathName = new PartialPath(reqEntry.getKey());
+        TStorageGroupSchema storageGroupSchema =
+            mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
+        switch (reqEntry.getValue().getRegionId().getType()) {
+          case SchemaRegion:
+            storageGroupSchema.getSchemaRegionGroupIds().add(reqEntry.getValue().getRegionId());
+            break;
+          case DataRegion:
+            storageGroupSchema.getDataRegionGroupIds().add(reqEntry.getValue().getRegionId());
+            break;
+        }
+      }
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      result.setCode(TSStatusCode.PERSISTENCE_FAILURE.getStatusCode());
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+
     return result;
   }
 
@@ -316,7 +359,26 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /**
-   * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup
+   * Get the specific StorageGroupSchema
+   *
+   * @param storageGroup StorageGroupName
+   * @return The specific StorageGroupSchema
+   * @throws MetadataException from MTree
+   */
+  public TStorageGroupSchema getMatchedStorageGroupSchemaByName(String storageGroup)
+      throws MetadataException {
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      return mTree
+          .getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup))
+          .getStorageGroupSchema();
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup.
    *
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
