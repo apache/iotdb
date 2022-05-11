@@ -54,6 +54,7 @@ public class RatisConsensusTest {
   private List<Peer> peers;
   private List<File> peersStorage;
   private List<IConsensus> servers;
+  private List<TestUtils.IntegerCounter> stateMachines;
   private ConsensusGroup group;
   private Peer peer0;
   private Peer peer1;
@@ -62,12 +63,14 @@ public class RatisConsensusTest {
 
   private void makeServers() throws IOException {
     for (int i = 0; i < 3; i++) {
+      stateMachines.add(new TestUtils.IntegerCounter());
+      int finalI = i;
       servers.add(
           ConsensusFactory.getConsensusImpl(
                   RATIS_CLASS_NAME,
                   peers.get(i).getEndpoint(),
                   peersStorage.get(i),
-                  groupId -> new TestUtils.IntegerCounter())
+                  groupId -> stateMachines.get(finalI))
               .orElseThrow(
                   () ->
                       new IllegalArgumentException(
@@ -95,6 +98,7 @@ public class RatisConsensusTest {
     }
     group = new ConsensusGroup(gid, peers);
     servers = new ArrayList<>();
+    stateMachines = new ArrayList<>();
     makeServers();
   }
 
@@ -130,6 +134,9 @@ public class RatisConsensusTest {
     servers.get(0).removeConsensusGroup(gid);
     servers.get(2).removeConsensusGroup(gid);
     Assert.assertEquals(servers.get(1).getLeader(gid).getEndpoint(), peers.get(1).getEndpoint());
+    Assert.assertEquals(stateMachines.get(1).getLeaderEndpoint(), peers.get(1).getEndpoint());
+    Assert.assertEquals(stateMachines.get(1).getConfiguration().size(), 1);
+    Assert.assertEquals(stateMachines.get(1).getConfiguration().get(0), peers.get(1));
 
     // 4. try consensus again with one peer
     doConsensus(servers.get(1), gid, 10, 20);
@@ -141,6 +148,7 @@ public class RatisConsensusTest {
     // then use addPeer to inform the group leader of configuration change
     servers.get(1).addPeer(gid, peer0);
     servers.get(1).addPeer(gid, peer2);
+    Assert.assertEquals(stateMachines.get(1).getConfiguration().size(), 3);
 
     // 6. try consensus with all 3 peers
     doConsensus(servers.get(2), gid, 10, 30);
@@ -150,6 +158,9 @@ public class RatisConsensusTest {
     servers.get(0).changePeer(group.getGroupId(), Collections.singletonList(peer0));
     servers.get(1).removeConsensusGroup(group.getGroupId());
     servers.get(2).removeConsensusGroup(group.getGroupId());
+    Assert.assertEquals(stateMachines.get(0).getLeaderEndpoint(), peers.get(0).getEndpoint());
+    Assert.assertEquals(stateMachines.get(0).getConfiguration().size(), 1);
+    Assert.assertEquals(stateMachines.get(0).getConfiguration().get(0), peers.get(0));
 
     // 8. try consensus with only peer0
     doConsensus(servers.get(0), gid, 10, 40);

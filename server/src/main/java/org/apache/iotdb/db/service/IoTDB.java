@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -39,8 +39,8 @@ import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.mpp.buffer.DataBlockService;
-import org.apache.iotdb.db.mpp.schedule.FragmentInstanceScheduler;
+import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
+import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
@@ -78,7 +78,7 @@ public class IoTDB implements IoTDBMBean {
 
   public static void main(String[] args) {
     try {
-      IoTDBConfigCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkConfig();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
@@ -147,7 +147,7 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(StorageEngineV2.getInstance());
       registerManager.register(DataBlockService.getInstance());
       registerManager.register(InternalService.getInstance());
-      registerManager.register(FragmentInstanceScheduler.getInstance());
+      registerManager.register(DriverScheduler.getInstance());
       IoTDBDescriptor.getInstance()
           .getConfig()
           .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());

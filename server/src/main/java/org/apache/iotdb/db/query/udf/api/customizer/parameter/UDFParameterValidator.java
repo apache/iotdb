@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFAttributeNotProvidedException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;

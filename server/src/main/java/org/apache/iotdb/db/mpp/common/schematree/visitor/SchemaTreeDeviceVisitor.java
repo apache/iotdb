@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.common.schematree.visitor;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
@@ -35,11 +35,16 @@ public class SchemaTreeDeviceVisitor extends SchemaTreeVisitor<DeviceSchemaInfo>
   }
 
   @Override
+  protected boolean processInternalMatchedNode(SchemaNode node) {
+    return true;
+  }
+
+  @Override
   protected boolean processFullMatchedNode(SchemaNode node) {
     if (node.isEntity()) {
       nextMatchedNode = node;
     }
-    return false;
+    return true;
   }
 
   @Override

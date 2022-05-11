@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -69,10 +71,12 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = schema;
   }
 
+  @Override
   public IMeasurementSchema getMeasurementSchema() {
     return measurementSchema;
   }
 
+  @Override
   public TSDataType getSeriesType() {
     return getMeasurementSchema().getType();
   }
@@ -85,16 +89,23 @@ public class MeasurementPath extends PartialPath {
     this.measurementSchema = measurementSchema;
   }
 
+  @Override
   public String getMeasurementAlias() {
     return measurementAlias;
   }
 
+  @Override
   public void setMeasurementAlias(String measurementAlias) {
     if (measurementAlias != null) {
       this.measurementAlias = measurementAlias;
     }
   }
 
+  public void removeMeasurementAlias() {
+    this.measurementAlias = null;
+  }
+
+  @Override
   public boolean isMeasurementAliasExists() {
     return measurementAlias != null && !measurementAlias.isEmpty();
   }
@@ -145,6 +156,7 @@ public class MeasurementPath extends PartialPath {
     return newMeasurementPath;
   }
 
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PathType.Measurement.serialize(byteBuffer);
     super.serializeWithoutType(byteBuffer);
@@ -177,7 +189,7 @@ public class MeasurementPath extends PartialPath {
     }
     measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBool(byteBuffer);
     measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
-    measurementPath.nodes = partialPath.nodes;
+    measurementPath.nodes = partialPath.getNodes();
     measurementPath.device = partialPath.getDevice();
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;

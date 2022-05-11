@@ -21,8 +21,13 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -31,23 +36,27 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class ClusterSchemaInfo {
+public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaInfo.class);
 
@@ -55,6 +64,11 @@ public class ClusterSchemaInfo {
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
 
   private MTreeAboveSG mTree;
+
+  // The size of the buffer used for snapshot(temporary value)
+  private final int bufferSize = 10 * 1024 * 1024;
+
+  private final String snapshotFileName = "cluster_schema.bin";
 
   private ClusterSchemaInfo() {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
@@ -82,8 +96,38 @@ public class ClusterSchemaInfo {
       mTree.setStorageGroup(partialPathName);
 
       // Set StorageGroupSchema
-      mTree.getStorageGroupNodeByPath(partialPathName).setStorageGroupSchema(storageGroupSchema);
+      mTree
+          .getStorageGroupNodeByStorageGroupPath(partialPathName)
+          .setStorageGroupSchema(storageGroupSchema);
 
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+      LOGGER.info("Successfully set StorageGroup: {}", storageGroupSchema);
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      result
+          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setMessage("Error StorageGroup name");
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+    return result;
+  }
+
+  /**
+   * Delete StorageGroup
+   *
+   * @param req DeleteStorageGroupReq
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) {
+    TSStatus result = new TSStatus();
+    storageGroupReadWriteLock.writeLock().lock();
+    try {
+      // Delete StorageGroup
+      PartialPath partialPathName = new PartialPath(req.getStorageGroup());
+      mTree.setStorageGroup(partialPathName);
+      mTree.deleteStorageGroup(partialPathName);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
@@ -102,7 +146,10 @@ public class ClusterSchemaInfo {
     try {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
-        mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema().setTTL(req.getTTL());
+        mTree
+            .getStorageGroupNodeByStorageGroupPath(path)
+            .getStorageGroupSchema()
+            .setTTL(req.getTTL());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
@@ -125,7 +172,7 @@ public class ClusterSchemaInfo {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByPath(path)
+            .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setSchemaReplicationFactor(req.getSchemaReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -150,7 +197,7 @@ public class ClusterSchemaInfo {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByPath(path)
+            .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setDataReplicationFactor(req.getDataReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -175,7 +222,7 @@ public class ClusterSchemaInfo {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByPath(path)
+            .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setTimePartitionInterval(req.getTimePartitionInterval());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -209,7 +256,7 @@ public class ClusterSchemaInfo {
   }
 
   /** @return The number of matched StorageGroups by the specific StorageGroup pattern */
-  public CountStorageGroupResp countMatchedStorageGroups(GetOrCountStorageGroupReq req) {
+  public CountStorageGroupResp countMatchedStorageGroups(CountStorageGroupReq req) {
     CountStorageGroupResp result = new CountStorageGroupResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
@@ -228,7 +275,7 @@ public class ClusterSchemaInfo {
   }
 
   /** @return All StorageGroupSchemas that matches to the specific StorageGroup pattern */
-  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetOrCountStorageGroupReq req) {
+  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetStorageGroupReq req) {
     StorageGroupSchemaResp result = new StorageGroupSchemaResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
@@ -237,7 +284,8 @@ public class ClusterSchemaInfo {
       List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
-            path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+            path.getFullPath(),
+            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -280,7 +328,8 @@ public class ClusterSchemaInfo {
     storageGroupReadWriteLock.readLock().lock();
     try {
       StorageGroupMNode mNode =
-          (StorageGroupMNode) mTree.getStorageGroupNodeByPath(new PartialPath(storageGroup));
+          (StorageGroupMNode)
+              mTree.getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup));
       switch (type) {
         case SchemaRegion:
           result = mNode.getStorageGroupSchema().getSchemaRegionGroupIds();
@@ -298,6 +347,61 @@ public class ClusterSchemaInfo {
       storageGroupReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
+
+    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
+    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+          FileChannel fileChannel = fileOutputStream.getChannel()) {
+        mTree.serialize(buffer);
+        buffer.flip();
+        fileChannel.write(buffer);
+      }
+      return tmpFile.renameTo(snapshotFile);
+    } finally {
+      buffer.clear();
+      tmpFile.delete();
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws IOException {
+
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          snapshotFile.getAbsolutePath());
+      return;
+    }
+    storageGroupReadWriteLock.writeLock().lock();
+    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+        FileChannel fileChannel = fileInputStream.getChannel()) {
+      // get buffer from fileChannel
+      fileChannel.read(buffer);
+      mTree.clear();
+      buffer.flip();
+      mTree.deserialize(buffer);
+    } finally {
+      buffer.clear();
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
   }
 
   @TestOnly

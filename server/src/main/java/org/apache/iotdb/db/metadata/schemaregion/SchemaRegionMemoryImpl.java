@@ -19,18 +19,20 @@
 package org.apache.iotdb.db.metadata.schemaregion;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
+import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
@@ -46,7 +48,6 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTreeBelowSGMemoryImpl;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -420,9 +421,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      throw new SeriesOverflowException();
     }
 
     try {
@@ -532,9 +531,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     if (!memoryStatistics.isAllowToCreateNewSeries()) {
-      throw new MetadataException(
-          "IoTDB system load is too large to create timeseries, "
-              + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+      throw new SeriesOverflowException();
     }
 
     try {

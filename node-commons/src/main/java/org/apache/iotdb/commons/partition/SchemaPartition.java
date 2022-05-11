@@ -20,11 +20,23 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TByteBuffer;
+import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransport;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class SchemaPartition extends Partition {
 
@@ -33,6 +45,11 @@ public class SchemaPartition extends Partition {
 
   public SchemaPartition(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
     super(seriesSlotExecutorName, seriesPartitionSlotNum);
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return schemaPartitionMap == null || schemaPartitionMap.isEmpty();
   }
 
   public SchemaPartition(
@@ -63,7 +80,7 @@ public class SchemaPartition extends Partition {
 
   private String getStorageGroupByDevice(String deviceName) {
     for (String storageGroup : schemaPartitionMap.keySet()) {
-      if (deviceName.startsWith(storageGroup)) {
+      if (deviceName.startsWith(storageGroup + ".")) {
         return storageGroup;
       }
     }
@@ -120,7 +137,7 @@ public class SchemaPartition extends Partition {
    * Filter out unassigned PartitionSlots
    *
    * @param partitionSlotsMap Map<StorageGroupName, List<SeriesPartitionSlot>>
-   * @return Map<String, List<SeriesPartitionSlot>>, unassigned PartitionSlots
+   * @return Map<String, List < SeriesPartitionSlot>>, unassigned PartitionSlots
    */
   public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlot(
       Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
@@ -155,5 +172,57 @@ public class SchemaPartition extends Partition {
     schemaPartitionMap
         .computeIfAbsent(storageGroup, key -> new HashMap<>())
         .put(seriesPartitionSlot, regionReplicaSet);
+  }
+
+  public void serialize(ByteBuffer buffer) throws IOException, TException {
+    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+      for (Entry<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> entry :
+          schemaPartitionMap.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), byteArrayOutputStream);
+        writeMap(entry.getValue(), byteArrayOutputStream);
+      }
+      byte[] toArray = byteArrayOutputStream.toByteArray();
+      buffer.putInt(toArray.length);
+      buffer.put(toArray);
+    }
+  }
+
+  public void deserialize(ByteBuffer buffer) throws TException, IOException {
+    int length = buffer.getInt();
+    byte[] result = new byte[length];
+    buffer.get(result);
+    ByteBuffer byteBuffer = ByteBuffer.wrap(result);
+    while (byteBuffer.hasRemaining()) {
+      String key = ReadWriteIOUtils.readString(byteBuffer);
+      Map<TSeriesPartitionSlot, TRegionReplicaSet> value = readMap(byteBuffer);
+      schemaPartitionMap.put(key, value);
+    }
+  }
+
+  private Map<TSeriesPartitionSlot, TRegionReplicaSet> readMap(ByteBuffer buffer)
+      throws TException {
+    Map<TSeriesPartitionSlot, TRegionReplicaSet> result = new HashMap<>();
+    try (TTransport transport = new TByteBuffer(buffer)) {
+      TProtocol protocol = new TBinaryProtocol(transport);
+      TSeriesPartitionSlot tSeriesPartitionSlot = new TSeriesPartitionSlot();
+      tSeriesPartitionSlot.read(protocol);
+      TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+      tRegionReplicaSet.read(protocol);
+      result.put(tSeriesPartitionSlot, tRegionReplicaSet);
+    }
+    return result;
+  }
+
+  private void writeMap(
+      Map<TSeriesPartitionSlot, TRegionReplicaSet> valueMap,
+      ByteArrayOutputStream byteArrayOutputStream)
+      throws TException {
+    try (TIOStreamTransport tioStreamTransport = new TIOStreamTransport(byteArrayOutputStream)) {
+      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+      for (Entry<TSeriesPartitionSlot, TRegionReplicaSet> entry : valueMap.entrySet()) {
+        entry.getKey().write(protocol);
+        entry.getValue().write(protocol);
+      }
+    }
   }
 }

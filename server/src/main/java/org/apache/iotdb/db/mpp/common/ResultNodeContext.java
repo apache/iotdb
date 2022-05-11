@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.common;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.db.mpp.sql.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
 public class ResultNodeContext {
 

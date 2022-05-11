@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
@@ -33,21 +32,11 @@ import java.util.Objects;
 /** Create regions for specific StorageGroup */
 public class CreateRegionsReq extends ConfigRequest {
 
-  private String storageGroup;
-
   private final List<TRegionReplicaSet> regionReplicaSets;
 
   public CreateRegionsReq() {
     super(ConfigRequestType.CreateRegions);
     this.regionReplicaSets = new ArrayList<>();
-  }
-
-  public String getStorageGroup() {
-    return storageGroup;
-  }
-
-  public void setStorageGroup(String storageGroup) {
-    this.storageGroup = storageGroup;
   }
 
   public void addRegion(TRegionReplicaSet regionReplicaSet) {
@@ -62,21 +51,17 @@ public class CreateRegionsReq extends ConfigRequest {
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(ConfigRequestType.CreateRegions.ordinal());
 
-    BasicStructureSerDeUtil.write(storageGroup, buffer);
-
     buffer.putInt(regionReplicaSets.size());
     for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-      ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, buffer);
+      ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
     }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
-
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
-      regionReplicaSets.add(ThriftCommonsSerDeUtils.readTRegionReplicaSet(buffer));
+      regionReplicaSets.add(ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer));
     }
   }
 
@@ -85,12 +70,11 @@ public class CreateRegionsReq extends ConfigRequest {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     CreateRegionsReq that = (CreateRegionsReq) o;
-    return storageGroup.equals(that.storageGroup)
-        && regionReplicaSets.equals(that.regionReplicaSets);
+    return regionReplicaSets.equals(that.regionReplicaSets);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup, regionReplicaSets);
+    return Objects.hash(regionReplicaSets);
   }
 }

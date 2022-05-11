@@ -19,18 +19,19 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.commons.auth.entity.PathPrivilege;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.entity.PathPrivilege;
-import org.apache.iotdb.db.auth.entity.PrivilegeType;
-import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.utils.AuthUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -77,7 +78,37 @@ public class AuthorInfo {
     return tsStatus;
   }
 
-  public TSStatus authorNonQuery(AuthorReq authorReq) throws AuthException {
+  public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
+    boolean status = true;
+    try {
+      for (String path : paths) {
+        if (!checkOnePath(username, path, permission)) {
+          status = false;
+        }
+      }
+    } catch (AuthException e) {
+      status = false;
+    }
+    if (status) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
+    }
+  }
+
+  private boolean checkOnePath(String username, String path, int permission) throws AuthException {
+    try {
+      if (authorizer.checkUserPrivileges(username, path, permission)) {
+        return true;
+      }
+    } catch (AuthException e) {
+      logger.error("Error occurs when checking the seriesPath {} for user {}", path, username, e);
+      throw new AuthException(e);
+    }
+    return false;
+  }
+
+  public TSStatus authorNonQuery(AuthorReq authorReq) {
     ConfigRequestType authorType = authorReq.getAuthorType();
     String userName = authorReq.getUserName();
     String roleName = authorReq.getRoleName();
@@ -87,81 +118,91 @@ public class AuthorInfo {
     String nodeName = authorReq.getNodeName();
     try {
       switch (authorType) {
-        case UPDATE_USER:
+        case UpdateUser:
           authorizer.updateUserPassword(userName, newPassword);
           break;
-        case CREATE_USER:
+        case CreateUser:
           authorizer.createUser(userName, password);
           break;
-        case CREATE_ROLE:
+        case CreateRole:
           authorizer.createRole(roleName);
           break;
-        case DROP_USER:
+        case DropUser:
           authorizer.deleteUser(userName);
           break;
-        case DROP_ROLE:
+        case DropRole:
           authorizer.deleteRole(roleName);
           break;
-        case GRANT_ROLE:
+        case GrantRole:
           for (int i : permissions) {
             authorizer.grantPrivilegeToRole(roleName, nodeName, i);
           }
           break;
-        case GRANT_USER:
+        case GrantUser:
           for (int i : permissions) {
             authorizer.grantPrivilegeToUser(userName, nodeName, i);
           }
           break;
-        case GRANT_ROLE_TO_USER:
+        case GrantRoleToUser:
           authorizer.grantRoleToUser(roleName, userName);
           break;
-        case REVOKE_USER:
+        case RevokeUser:
           for (int i : permissions) {
             authorizer.revokePrivilegeFromUser(userName, nodeName, i);
           }
           break;
-        case REVOKE_ROLE:
+        case RevokeRole:
           for (int i : permissions) {
             authorizer.revokePrivilegeFromRole(roleName, nodeName, i);
           }
           break;
-        case REVOKE_ROLE_FROM_USER:
+        case RevokeRoleFromUser:
           authorizer.revokeRoleFromUser(roleName, userName);
           break;
         default:
-          throw new AuthException("execute " + authorReq + " failed");
+          throw new AuthException("unknown type: " + authorReq.getAuthorType());
       }
     } catch (AuthException e) {
-      throw new AuthException("execute " + authorReq + " failed: ", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_PERMISSION_EXCEPTION_ERROR, e.getMessage());
     }
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public PermissionInfoResp executeListRole() throws AuthException {
+  public PermissionInfoResp executeListRole() {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> roleList = authorizer.listAllRoles();
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
 
-  public PermissionInfoResp executeListUser() throws AuthException {
+  public PermissionInfoResp executeListUser() {
     PermissionInfoResp result = new PermissionInfoResp();
     List<String> userList = authorizer.listAllUsers();
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
 
   public PermissionInfoResp executeListRoleUsers(AuthorReq plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    Role role = authorizer.getRole(plan.getRoleName());
-    if (role == null) {
-      throw new AuthException("No such role : " + plan.getRoleName());
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    Role role;
+    try {
+      role = authorizer.getRole(plan.getRoleName());
+      if (role == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
     }
     List<String> roleUsersList = new ArrayList<>();
     List<String> userList = authorizer.listAllUsers();
@@ -171,35 +212,54 @@ public class AuthorInfo {
         roleUsersList.add(userN);
       }
     }
-    Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
 
   public PermissionInfoResp executeListUserRoles(AuthorReq plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    User user = authorizer.getUser(plan.getUserName());
-    if (user == null) {
-      throw new AuthException("No such user : " + plan.getUserName());
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    User user;
+    try {
+      user = authorizer.getUser(plan.getUserName());
+      if (user == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
     }
     List<String> userRoleList = new ArrayList<>();
     for (String roleN : user.getRoleList()) {
       userRoleList.add(roleN);
     }
-    Map<String, List<String>> permissionInfo = new HashMap<>();
+
     permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
 
   public PermissionInfoResp executeListRolePrivileges(AuthorReq plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    Role role = authorizer.getRole(plan.getRoleName());
-    if (role == null) {
-      throw new AuthException("No such role : " + plan.getRoleName());
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    Role role;
+    try {
+      role = authorizer.getRole(plan.getRoleName());
+      if (role == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
     }
     List<String> rolePrivilegesList = new ArrayList<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
@@ -208,27 +268,37 @@ public class AuthorInfo {
         rolePrivilegesList.add(pathPrivilege.toString());
       }
     }
-    Map<String, List<String>> permissionInfo = new HashMap<>();
+
     permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
-    result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
 
   public PermissionInfoResp executeListUserPrivileges(AuthorReq plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    User user = authorizer.getUser(plan.getUserName());
-    if (user == null) {
-      throw new AuthException("No such user : " + plan.getUserName());
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    User user;
+    try {
+      user = authorizer.getUser(plan.getUserName());
+      if (user == null) {
+        result.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
+        result.setPermissionInfo(permissionInfo);
+        return result;
+      }
+    } catch (AuthException e) {
+      throw new AuthException(e);
     }
     List<String> userPrivilegesList = new ArrayList<>();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
+
     if (IoTDBConstant.PATH_ROOT.equals(plan.getUserName())) {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
         userPrivilegesList.add(privilegeType.toString());
       }
       permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
-      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       result.setPermissionInfo(permissionInfo);
       return result;
     } else {
@@ -255,7 +325,7 @@ public class AuthorInfo {
       }
       permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
       permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, userPrivilegesList);
-      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       result.setPermissionInfo(permissionInfo);
       return result;
     }

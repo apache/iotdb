@@ -19,12 +19,18 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -42,6 +48,10 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeLocationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -59,7 +69,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 
@@ -83,6 +92,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     this.configManager = configManager;
   }
 
+  @TestOnly
   public void close() throws IOException {
     configManager.close();
   }
@@ -95,7 +105,10 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     registerResp.convertToRpcDataNodeRegisterResp(resp);
-    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", resp, req);
+
+    // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
+    LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
+
     return resp;
   }
 
@@ -116,7 +129,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
     // Set default configurations
     if (!storageGroupSchema.isSetTTL()) {
-      storageGroupSchema.setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
+      storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
     }
     if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
       storageGroupSchema.setSchemaReplicationFactor(
@@ -135,7 +148,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 
     SetStorageGroupReq setReq = new SetStorageGroupReq(storageGroupSchema);
-    return configManager.setStorageGroup(setReq);
+    TSStatus resp = configManager.setStorageGroup(setReq);
+
+    // Print log to record the ConfigNode that performs the set SetStorageGroupRequest
+    LOGGER.info("Execute SetStorageGroupRequest {} with result {}", req, resp);
+
+    return resp;
   }
 
   @Override
@@ -173,8 +191,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     CountStorageGroupResp countStorageGroupResp =
         (CountStorageGroupResp)
             configManager.countMatchedStorageGroups(
-                new GetOrCountStorageGroupReq(
-                    ConfigRequestType.CountStorageGroup, storageGroupPathPattern));
+                new CountStorageGroupReq(storageGroupPathPattern));
 
     TCountStorageGroupResp resp = new TCountStorageGroupResp();
     countStorageGroupResp.convertToRPCCountStorageGroupResp(resp);
@@ -187,8 +204,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     StorageGroupSchemaResp storageGroupSchemaResp =
         (StorageGroupSchemaResp)
             configManager.getMatchedStorageGroupSchemas(
-                new GetOrCountStorageGroupReq(
-                    ConfigRequestType.GetStorageGroup, storageGroupPathPattern));
+                new GetStorageGroupReq(storageGroupPathPattern));
 
     TStorageGroupSchemaResp resp = new TStorageGroupSchemaResp();
     storageGroupSchemaResp.convertToRPCStorageGroupSchemaResp(resp);
@@ -222,8 +238,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TDataPartitionResp getDataPartition(TDataPartitionReq req) throws TException {
-    GetOrCreateDataPartitionReq getDataPartitionReq =
-        new GetOrCreateDataPartitionReq(ConfigRequestType.GetDataPartition);
+    GetDataPartitionReq getDataPartitionReq = new GetDataPartitionReq();
     getDataPartitionReq.convertFromRpcTDataPartitionReq(req);
     DataPartitionResp dataResp =
         (DataPartitionResp) configManager.getDataPartition(getDataPartitionReq);
@@ -235,8 +250,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req) throws TException {
-    GetOrCreateDataPartitionReq getOrCreateDataPartitionReq =
-        new GetOrCreateDataPartitionReq(ConfigRequestType.GetOrCreateDataPartition);
+    GetOrCreateDataPartitionReq getOrCreateDataPartitionReq = new GetOrCreateDataPartitionReq();
     getOrCreateDataPartitionReq.convertFromRpcTDataPartitionReq(req);
     DataPartitionResp dataResp =
         (DataPartitionResp) configManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
@@ -257,7 +271,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       plan =
           new AuthorReq(
               ConfigRequestType.values()[
-                  req.getAuthorType() + ConfigRequestType.AUTHOR.ordinal() + 1],
+                  req.getAuthorType() + ConfigRequestType.Author.ordinal() + 1],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
@@ -281,7 +295,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       plan =
           new AuthorReq(
               ConfigRequestType.values()[
-                  req.getAuthorType() + ConfigRequestType.AUTHOR.ordinal() + 1],
+                  req.getAuthorType() + ConfigRequestType.Author.ordinal() + 1],
               req.getUserName(),
               req.getRoleName(),
               req.getPassword(),
@@ -298,6 +312,33 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus login(TLoginReq req) throws TException {
     return configManager.login(req.getUserrname(), req.getPassword());
+  }
+
+  @Override
+  public TSStatus checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+    return configManager.checkUserPrivileges(
+        req.getUsername(), req.getPaths(), req.getPermission());
+  }
+
+  @Override
+  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
+    TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
+
+    // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
+    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
+
+    return resp;
+  }
+
+  @Override
+  public TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
+    ApplyConfigNodeReq applyConfigNodeReq = new ApplyConfigNodeReq(configNodeLocation);
+    TSStatus status = configManager.applyConfigNode(applyConfigNodeReq);
+
+    // Print log to record the ConfigNode that performs the ApplyConfigNodeRequest
+    LOGGER.info("Execute ApplyConfigNodeRequest {} with result {}", configNodeLocation, status);
+
+    return status;
   }
 
   public void handleClientExit() {}

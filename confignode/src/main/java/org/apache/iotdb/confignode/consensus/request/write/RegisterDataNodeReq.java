@@ -46,12 +46,12 @@ public class RegisterDataNodeReq extends ConfigRequest {
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.putInt(ConfigRequestType.RegisterDataNode.ordinal());
-    ThriftCommonsSerDeUtils.writeTDataNodeLocation(location, buffer);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(location, buffer);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    location = ThriftCommonsSerDeUtils.readTDataNodeLocation(buffer);
+    location = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
   }
 
   @Override

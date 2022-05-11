@@ -28,7 +28,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
-![](https://img.shields.io/badge/platform-win%20%7C%20macox%20%7C%20linux-yellow.svg)
+![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
@@ -174,6 +174,20 @@ and "`antlr/target/generated-sources/antlr4`" need to be added to sources roots 
 
 **In IDEA, you just need to right click on the root project name and choose "`Maven->Reload Project`" after 
 you run `mvn package` successfully.**
+
+#### Spotless problem
+**NOTE**: IF you are using JDK16+, you have to create a file called `jvm.config`,
+put it under `.mvn/`, before you use `spotless:apply`. The file contains the following content:
+```
+--add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+--add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+```
+
+This is [an issue of Spotless](https://github.com/diffplug/spotless/issues/834),
+Once the issue is fixed, we can remove this file.
 
 ### Configurations
 
