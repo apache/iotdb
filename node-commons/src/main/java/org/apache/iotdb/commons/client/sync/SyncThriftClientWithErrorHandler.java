@@ -54,9 +54,24 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
       return methodProxy.invokeSuper(o, objects);
     } catch (InvocationTargetException e) {
       if (e.getTargetException() instanceof TException) {
+        Throwable t = e.getTargetException();
+        int level = 0;
+        while (t != null) {
+          LOGGER.error(
+              "level-{} Exception class {}, message {}",
+              level,
+              t.getClass().getName(),
+              t.getMessage());
+          t = t.getCause();
+        }
         Throwable rootCause = ExceptionUtils.getRootCause(e);
         // if the exception is SocketException and its error message is Broken pipe, it means that
         // the remote node may restart and all the connection we cached before should be cleared.
+        LOGGER.error(
+            "root cause message {}, LocalizedMessage {}, ",
+            rootCause.getMessage(),
+            rootCause.getLocalizedMessage(),
+            rootCause);
         if (rootCause instanceof SocketException
             && rootCause.getMessage().contains("Broken pipe")) {
           LOGGER.error(
@@ -67,13 +82,13 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
           ((SyncThriftClient) o).invalidateAll();
         } else {
           LOGGER.error(
-              "Error in calling method {}, err: {}", method.getName(), e.getTargetException());
+              "Error in calling method1 {}, err: {}", method.getName(), e.getTargetException());
           ((SyncThriftClient) o).invalidate();
         }
       }
-      throw new TException("Error in calling method " + method.getName(), e.getTargetException());
+      throw new TException("Error in calling method2 " + method.getName(), e.getTargetException());
     } catch (Exception e) {
-      throw new TException("Error in calling method " + method.getName(), e);
+      throw new TException("Error in calling method3 " + method.getName(), e);
     }
   }
 }
