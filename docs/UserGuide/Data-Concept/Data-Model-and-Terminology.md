@@ -118,7 +118,7 @@ For example, if entity wt01 in power plant wf01 of power group ln has a measurem
 
 ### Aligned timeseries
 
-There is a situation that multiple measurements of an entity are sampled simultaneously in practical applications, forming multiple timeseries sharing the time column. Such a group of timeseries can be modeled as aligned timeseries in Apache IoTDB.
+There is a situation that multiple measurements of an entity are sampled simultaneously in practical applications, forming multiple timeseries with the same time column. Such a group of timeseries can be modeled as aligned timeseries in Apache IoTDB.
 
 The timestamp columns of a group of aligned timeseries need to be stored only once in memory and disk when inserting data, instead of once per timeseries.
 
