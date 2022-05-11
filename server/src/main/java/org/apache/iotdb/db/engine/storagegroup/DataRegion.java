@@ -41,7 +41,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
+import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
@@ -262,6 +262,29 @@ public class DataRegion {
 
   /** used to collect TsFiles in this virtual storage group */
   private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
+
+  private DataRegion(String systemDir, String dataRegionId, String logicalStorageGroupName) {
+    storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
+    this.dataRegionId = dataRegionId;
+    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.tsFileManager =
+        new TsFileManager(logicalStorageGroupName, dataRegionId, storageGroupSysDir.getPath());
+    if (storageGroupSysDir.mkdirs()) {
+      logger.info(
+          "Storage Group system Directory {} doesn't exist, create it",
+          storageGroupSysDir.getPath());
+    } else if (!storageGroupSysDir.exists()) {
+      logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
+    }
+
+    // if use id table, we use id table flush time manager
+    if (config.isEnableIDTable()) {
+      idTable = IDTableManager.getInstance().getIDTableDirectly(logicalStorageGroupName);
+      lastFlushTimeManager = new IDTableFlushTimeManager(idTable);
+    } else {
+      lastFlushTimeManager = new LastFlushTimeManager();
+    }
+  }
 
   /**
    * constrcut a storage group processor
@@ -2391,11 +2414,12 @@ public class DataRegion {
     //    } finally {
     //      writeUnlock();
     //    }
-    try {
-      new SnapshotTaker(this).takeFullSnapshot("../snapshot", true);
-    } catch (Exception e) {
-      logger.error("exception occurs", e);
-    }
+    //    try {
+    //      new SnapshotTaker(this).takeFullSnapshot("../snapshot", true);
+    //    } catch (Exception e) {
+    //      logger.error("exception occurs", e);
+    //    }
+    new SnapshotLoader("../snapshot", "root.test", "0").loadSnapshot();
   }
 
   private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
@@ -3479,7 +3503,7 @@ public class DataRegion {
   }
 
   public List<Long> getTimePartitions() {
-    return new ArrayList<>(timePartitionIdVersionControllerMap.keySet());
+    return new ArrayList<>(partitionMaxFileVersions.keySet());
   }
 
   public String getInsertWriteLockHolder() {
@@ -3502,5 +3526,74 @@ public class DataRegion {
   @TestOnly
   public TsFileManager getTsFileManager() {
     return tsFileManager;
+  }
+
+  public static DataRegion recoverFromSnapshot(
+      String logicalStorageGroupName, String dataRegionId, String dataDir, String systemDir)
+      throws Exception {
+    DataRegion dataRegion = new DataRegion(systemDir, dataRegionId, logicalStorageGroupName);
+    dataRegion.recoverCompaction();
+    Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilePairs =
+        dataRegion.getAllFiles(
+            Collections.singletonList(
+                dataDir + File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME));
+    Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair =
+        dataRegion.getAllFiles(
+            Collections.singletonList(
+                dataDir + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME));
+    List<TsFileResource> tmpSeqTsFiles = seqTsFilePairs.left;
+    List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
+    DataRegionRecoveryContext DataRegionRecoveryContext =
+        dataRegion.new DataRegionRecoveryContext(tmpSeqTsFiles.size() + tmpUnseqTsFiles.size());
+    Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles =
+        dataRegion.splitResourcesByPartition(tmpSeqTsFiles);
+    Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles =
+        dataRegion.splitResourcesByPartition(tmpUnseqTsFiles);
+    for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
+      for (TsFileResource tsFileResource : value) {
+        dataRegion.recoverSealedTsFiles(tsFileResource, DataRegionRecoveryContext, true);
+      }
+    }
+    for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
+      for (TsFileResource tsFileResource : value) {
+        dataRegion.recoverSealedTsFiles(tsFileResource, DataRegionRecoveryContext, false);
+      }
+    }
+    for (TsFileResource resource : dataRegion.tsFileManager.getTsFileList(true)) {
+      long partitionNum = resource.getTimePartition();
+      dataRegion.updatePartitionFileVersion(partitionNum, resource.getVersion());
+    }
+    for (TsFileResource resource : dataRegion.tsFileManager.getTsFileList(false)) {
+      long partitionNum = resource.getTimePartition();
+      dataRegion.updatePartitionFileVersion(partitionNum, resource.getVersion());
+    }
+    dataRegion.updateLatestFlushedTime();
+    List<TsFileResource> seqTsFileResources = dataRegion.tsFileManager.getTsFileList(true);
+    for (TsFileResource resource : seqTsFileResources) {
+      long timePartitionId = resource.getTimePartition();
+      Map<String, Long> endTimeMap = new HashMap<>();
+      for (String deviceId : resource.getDevices()) {
+        long endTime = resource.getEndTime(deviceId);
+        endTimeMap.put(deviceId.intern(), endTime);
+      }
+      dataRegion.lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
+      dataRegion.lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+      dataRegion.lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
+    }
+
+    // recover and start timed compaction thread
+    dataRegion.initCompaction();
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.MEM.toString(),
+              MetricLevel.IMPORTANT,
+              dataRegion.storageGroupInfo,
+              StorageGroupInfo::getMemCost,
+              Tag.NAME.toString(),
+              "storageGroup_" + dataRegion.getLogicalStorageGroupName());
+    }
+    return null;
   }
 }

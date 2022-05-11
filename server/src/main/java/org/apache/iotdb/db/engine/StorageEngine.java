@@ -1055,6 +1055,10 @@ public class StorageEngine implements IService {
     }
   }
 
+  public String getSystemDir() {
+    return systemDir;
+  }
+
   static class InstanceHolder {
 
     private static final StorageEngine INSTANCE = new StorageEngine();
