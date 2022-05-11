@@ -194,7 +194,7 @@ public class LocalExecutionPlanner {
           new SeriesScanOperator(
               node.getPlanNodeId(),
               seriesPath,
-              context.getAllSensors(seriesPath.getDeviceIdString(), seriesPath.getMeasurement()),
+              context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
               seriesPath.getSeriesType(),
               operatorContext,
               node.getTimeFilter(),
@@ -380,7 +380,7 @@ public class LocalExecutionPlanner {
           new SeriesAggregateScanOperator(
               node.getPlanNodeId(),
               seriesPath,
-              context.getAllSensors(seriesPath.getDeviceIdString(), seriesPath.getMeasurement()),
+              context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
               operatorContext,
               aggregators,
               node.getTimeFilter(),
