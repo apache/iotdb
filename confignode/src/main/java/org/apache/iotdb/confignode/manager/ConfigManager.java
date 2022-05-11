@@ -106,6 +106,7 @@ public class ConfigManager implements Manager {
 
   public void close() throws IOException {
     consensusManager.close();
+    procedureManager.shiftExecutor(false);
   }
 
   @Override

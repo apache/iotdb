@@ -72,10 +72,11 @@ public class ProcedureManager {
       }
     } else {
       if (executor.isRunning()) {
-        executor.join();
-      }
-      if (store.isRunning()) {
-        store.stop();
+        executor.stop();
+        if (!executor.isRunning()) {
+          executor.join();
+          store.stop();
+        }
       }
     }
   }
