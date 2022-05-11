@@ -151,6 +151,7 @@ public class LogicalPlanner {
       // other common upstream node
       planBuilder =
           planBuilder
+              .planFilterNull(analysis.getFilterNullParameter())
               .planFill(analysis.getFillDescriptor())
               .planOffset(queryStatement.getRowOffset())
               .planLimit(queryStatement.getRowLimit());

@@ -64,6 +64,7 @@ public class LogicalPlannerTest {
   @Test
   public void testQueryPlan() {
     for (String sql : querySQLs) {
+      PlanNode resRoot = parseSQLToPlanNode(sql);
       Assert.assertEquals(sqlToPlanMap.get(sql), parseSQLToPlanNode(sql));
     }
   }
