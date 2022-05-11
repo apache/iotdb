@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.client.handlers.InitRegionHandler;
+import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 
@@ -51,7 +51,7 @@ public class AsyncDataNodeClientPool {
    * @param endPoint The specific DataNode
    */
   public void createSchemaRegion(
-      TEndPoint endPoint, TCreateSchemaRegionReq req, InitRegionHandler handler) {
+      TEndPoint endPoint, TCreateSchemaRegionReq req, CreateRegionHandler handler) {
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
@@ -69,7 +69,7 @@ public class AsyncDataNodeClientPool {
    * @param endPoint The specific DataNode
    */
   public void createDataRegion(
-      TEndPoint endPoint, TCreateDataRegionReq req, InitRegionHandler handler) {
+      TEndPoint endPoint, TCreateDataRegionReq req, CreateRegionHandler handler) {
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);

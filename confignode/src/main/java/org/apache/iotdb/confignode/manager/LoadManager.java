@@ -25,12 +25,12 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.handlers.InitRegionHandler;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.allocator.CopySetRegionAllocator;
 import org.apache.iotdb.confignode.manager.allocator.IRegionAllocator;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 
@@ -50,11 +50,6 @@ import java.util.concurrent.CountDownLatch;
 public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
-
-  private static final int schemaReplicationFactor =
-      ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor();
-  private static final int dataReplicationFactor =
-      ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor();
 
   private final Manager configManager;
 
@@ -76,12 +71,13 @@ public class LoadManager {
   public void allocateAndCreateRegions(
       List<String> storageGroups, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException {
-    CreateRegionsReq createRegionsReq = allocateRegions(storageGroups, consensusGroupType);
+    CreateRegionsReq createRegionsReq = null;
 
     // TODO: use procedure to protect create Regions process
     try {
+      createRegionsReq = allocateRegions(storageGroups, consensusGroupType);
       createRegionsOnDataNodes(createRegionsReq);
-    } catch (Exception e) {
+    } catch (MetadataException e) {
       LOGGER.error("Meet error when create Regions", e);
     }
 
@@ -90,21 +86,24 @@ public class LoadManager {
 
   private CreateRegionsReq allocateRegions(
       List<String> storageGroups, TConsensusGroupType consensusGroupType)
-      throws NotEnoughDataNodeException {
+      throws NotEnoughDataNodeException, MetadataException {
     CreateRegionsReq createRegionsReq = new CreateRegionsReq();
 
-    int replicationFactor =
-        consensusGroupType.equals(TConsensusGroupType.SchemaRegion)
-            ? schemaReplicationFactor
-            : dataReplicationFactor;
     List<TDataNodeLocation> onlineDataNodes = getNodeManager().getOnlineDataNodes();
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllocatedRegions();
 
-    if (onlineDataNodes.size() < replicationFactor) {
-      throw new NotEnoughDataNodeException();
-    }
-
     for (String storageGroup : storageGroups) {
+      TStorageGroupSchema storageGroupSchema =
+          getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
+      int replicationFactor =
+          consensusGroupType == TConsensusGroupType.SchemaRegion
+              ? storageGroupSchema.getSchemaReplicationFactor()
+              : storageGroupSchema.getDataReplicationFactor();
+
+      if (onlineDataNodes.size() < replicationFactor) {
+        throw new NotEnoughDataNodeException();
+      }
+
       TRegionReplicaSet newRegion =
           regionAllocator.allocateRegion(
               onlineDataNodes,
@@ -120,17 +119,23 @@ public class LoadManager {
 
   private void createRegionsOnDataNodes(CreateRegionsReq createRegionsReq)
       throws MetadataException {
+    // Index of each Region
     int index = 0;
+    // Number of regions to be created
     int regionNum = 0;
-    Map<String, Integer> indexMap = new HashMap<>();
+    Map<String, Map<Integer, Integer>> indexMap = new HashMap<>();
     Map<String, Long> ttlMap = new HashMap<>();
     for (Map.Entry<String, TRegionReplicaSet> entry : createRegionsReq.getRegionMap().entrySet()) {
-      indexMap.put(entry.getKey(), index);
+      regionNum += entry.getValue().getDataNodeLocationsSize();
       ttlMap.put(
           entry.getKey(),
           getClusterSchemaManager().getStorageGroupSchemaByName(entry.getKey()).getTTL());
-      index += 1;
-      regionNum += entry.getValue().getDataNodeLocationsSize();
+      for (TDataNodeLocation dataNodeLocation : entry.getValue().getDataNodeLocations()) {
+        indexMap
+            .computeIfAbsent(entry.getKey(), sg -> new HashMap<>())
+            .put(dataNodeLocation.getDataNodeId(), index);
+        index += 1;
+      }
     }
 
     BitSet bitSet = new BitSet(regionNum);
@@ -148,11 +153,14 @@ public class LoadManager {
                     .forEach(
                         dataNodeLocation -> {
                           // Skip those created successfully
-                          if (!bitSet.get(indexMap.get(storageGroup))) {
+                          if (!bitSet.get(
+                              indexMap.get(storageGroup).get(dataNodeLocation.getDataNodeId()))) {
                             TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
-                            InitRegionHandler handler =
-                                new InitRegionHandler(
-                                    indexMap.get(storageGroup),
+                            CreateRegionHandler handler =
+                                new CreateRegionHandler(
+                                    indexMap
+                                        .get(storageGroup)
+                                        .get(dataNodeLocation.getDataNodeId()),
                                     bitSet,
                                     latch,
                                     regionReplicaSet.getRegionId(),

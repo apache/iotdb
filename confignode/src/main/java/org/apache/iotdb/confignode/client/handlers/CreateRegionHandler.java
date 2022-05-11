@@ -31,18 +31,23 @@ import org.slf4j.LoggerFactory;
 import java.util.BitSet;
 import java.util.concurrent.CountDownLatch;
 
-/** Only use this handler when initialize Region to set StorageGroup */
-public class InitRegionHandler implements AsyncMethodCallback<TSStatus> {
+/** Only use CreateRegionHandler when the LoadManager wants to create Regions */
+public class CreateRegionHandler implements AsyncMethodCallback<TSStatus> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(InitRegionHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CreateRegionHandler.class);
 
+  // Mark BitSet when successfully create
   private final int index;
   private final BitSet bitSet;
+
+  // Used to protect asynchronous creation
   private final CountDownLatch latch;
+
+  // Used for Logger
   private final TConsensusGroupId consensusGroupId;
   private final TDataNodeLocation dataNodeLocation;
 
-  public InitRegionHandler(
+  public CreateRegionHandler(
       int index,
       BitSet bitSet,
       CountDownLatch latch,
