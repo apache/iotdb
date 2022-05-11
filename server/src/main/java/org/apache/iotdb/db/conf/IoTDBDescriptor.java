@@ -868,6 +868,10 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
+      // commons
+      commonDescriptor.loadCommonProps(properties);
+      commonDescriptor.initCommonConfigDir(conf.getSystemDir());
+
       // timed flush memtable
       loadTimedService(properties);
 
@@ -892,8 +896,6 @@ public class IoTDBDescriptor {
       // shuffle
       loadShuffleProps(properties);
 
-      // commons
-      commonDescriptor.loadCommonProps(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {

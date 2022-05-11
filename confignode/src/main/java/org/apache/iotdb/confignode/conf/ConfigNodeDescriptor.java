@@ -206,6 +206,7 @@ public class ConfigNodeDescriptor {
 
       // commons
       commonDescriptor.loadCommonProps(properties);
+      commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
