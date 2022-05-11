@@ -152,9 +152,11 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + user.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
+    logger.info(String.valueOf(userProfile.exists()));
     if (!userProfile.exists()) {
       userProfile.createNewFile();
     }
+    logger.info(String.valueOf(userProfile.exists()));
     try (BufferedOutputStream outputStream =
         new BufferedOutputStream(new FileOutputStream(userProfile))) {
       try {
