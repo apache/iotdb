@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.library.dprofile.util;
 
-import org.apache.log4j.Logger;
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -40,6 +41,8 @@ public class MADSketch {
   private final UnifiedMap<Integer, Long> negative_buckets;
 
   private static final double MIN_POSITIVE_VALUE = 1e-6;
+
+  private static final Logger logger = LoggerFactory.getLogger(MADSketch.class);
 
   public MADSketch(double alpha) {
     this.alpha = alpha;
@@ -262,8 +265,9 @@ public class MADSketch {
 
   public void show(Bucket[] buckets) {
     for (Bucket bucket : buckets) {
-      Logger logger = Logger.getLogger(getClass());
-      logger.debug(bucket.index + ": " + bucket.count);
+      if (logger.isDebugEnabled()) {
+        logger.debug(bucket.index + ": " + bucket.count);
+      }
     }
   }
 
