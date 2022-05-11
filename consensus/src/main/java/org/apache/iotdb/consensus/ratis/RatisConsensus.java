@@ -497,7 +497,7 @@ class RatisConsensus implements IConsensus {
     long startTime = System.currentTimeMillis();
     try {
       while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
-        Thread.sleep(100);
+        Thread.sleep(10);
         long consumedTime = System.currentTimeMillis() - startTime;
         if (consumedTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT) {
           logger.warn("{}: leader is still not ready after {}ms", groupId, consumedTime);
@@ -505,6 +505,7 @@ class RatisConsensus implements IConsensus {
         }
       }
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.warn("Unexpected interruption", e);
       return false;
     }
