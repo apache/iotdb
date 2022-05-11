@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -256,7 +256,7 @@ public class LocalFileAuthorizerTest {
     IAuthorizer authorizer = AuthorizerManager.getInstance();
     List<String> userList = authorizer.listAllUsers();
     assertEquals(1, userList.size());
-    assertEquals(CommonConfig.getInstance().getAdminName(), userList.get(0));
+    assertEquals(CommonDescriptor.getInstance().getConfig().getAdminName(), userList.get(0));
 
     int userCnt = 10;
     for (int i = 0; i < userCnt; i++) {

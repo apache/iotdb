@@ -108,9 +108,6 @@ public class ConfigNodeConf {
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
 
-  /** Default TTL for storage groups that are not set TTL by statements, in ms. */
-  private long defaultTTL = Long.MAX_VALUE;
-
   /** Time partition interval in seconds */
   private long timePartitionInterval = 604800;
 
@@ -126,7 +123,7 @@ public class ConfigNodeConf {
   /** The initial number of DataRegions of each StorageGroup */
   private int initialDataRegionCount = 1;
 
-  public ConfigNodeConf() {
+  ConfigNodeConf() {
     // empty constructor
   }
 
@@ -333,14 +330,6 @@ public class ConfigNodeConf {
 
   public void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
-  }
-
-  public long getDefaultTTL() {
-    return defaultTTL;
-  }
-
-  public void setDefaultTTL(long defaultTTL) {
-    this.defaultTTL = defaultTTL;
   }
 
   public int getSchemaReplicationFactor() {
