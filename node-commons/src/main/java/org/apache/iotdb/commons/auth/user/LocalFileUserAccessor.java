@@ -91,7 +91,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
               userDirPath + File.separator + username + IoTDBConstant.PROFILE_SUFFIX + TEMP_SUFFIX);
       if (newProfile.exists() && newProfile.isFile()) {
         if (!newProfile.renameTo(userProfile)) {
-          logger.info("New profile renaming not succeed.");
+          logger.error("New profile renaming not succeed.");
         }
         userProfile = newProfile;
       } else {
@@ -152,15 +152,12 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + user.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
-    logger.info("saveUser : " + userProfile);
-    logger.info(String.valueOf(userProfile.isFile()));
-    logger.info(String.valueOf(userProfile.exists()));
-    FileOutputStream fileOutputStream = new FileOutputStream(userProfile);
-    logger.info(String.valueOf(fileOutputStream));
-    try (BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-      logger.info("1");
+    if (!userProfile.exists()) {
+      userProfile.createNewFile();
+    }
+    try (BufferedOutputStream outputStream =
+        new BufferedOutputStream(new FileOutputStream(userProfile))) {
       try {
-        logger.info("2");
         IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
         IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
 
@@ -192,7 +189,6 @@ public class LocalFileUserAccessor implements IUserAccessor {
     File oldFile =
         SystemFileFactory.INSTANCE.getFile(
             userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
-    logger.info("saveUser oldFile" + oldFile);
     IOUtils.replaceFile(userProfile, oldFile);
   }
 
