@@ -43,6 +43,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.tsfile.read.filter.factory.FilterType.VALUE_FILTER;
 import static org.junit.Assert.assertEquals;
@@ -85,5 +86,232 @@ public class AggregationNodeSerdeTest {
     aggregationNode.serialize(byteBuffer);
     byteBuffer.flip();
     assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), aggregationNode);
+  }
+
+  /** Test AVG with COUNT and SUM (former or later). */
+  @Test
+  public void getDeduplicatedDescriptorsTest1() {
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
+    List<AggregationType> aggregationTypeList = new ArrayList<>();
+    aggregationTypeList.add(AggregationType.COUNT);
+    aggregationTypeList.add(AggregationType.AVG);
+    aggregationTypeList.add(AggregationType.SUM);
+    List<AggregationDescriptor> descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.PARTIAL,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    List<AggregationDescriptor> deduplicatedDescriptors =
+        AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(1, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.AVG, deduplicatedDescriptors.get(0).getAggregationType());
+
+    aggregationTypeList = new ArrayList<>();
+    aggregationTypeList.add(AggregationType.COUNT);
+    aggregationTypeList.add(AggregationType.SUM);
+    aggregationTypeList.add(AggregationType.AVG);
+    descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.PARTIAL,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    deduplicatedDescriptors = AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(1, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.AVG, deduplicatedDescriptors.get(0).getAggregationType());
+
+    aggregationTypeList = new ArrayList<>();
+    aggregationTypeList.add(AggregationType.AVG);
+    aggregationTypeList.add(AggregationType.COUNT);
+    aggregationTypeList.add(AggregationType.SUM);
+    descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.PARTIAL,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    deduplicatedDescriptors = AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(1, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.AVG, deduplicatedDescriptors.get(0).getAggregationType());
+
+    // try output final
+    descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.SINGLE,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    deduplicatedDescriptors = AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(3, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.AVG, deduplicatedDescriptors.get(0).getAggregationType());
+    assertEquals(AggregationType.COUNT, deduplicatedDescriptors.get(1).getAggregationType());
+    assertEquals(AggregationType.SUM, deduplicatedDescriptors.get(2).getAggregationType());
+  }
+
+  /** Test FIRST_VALUE with MIN_TIME (former or later). */
+  @Test
+  public void getDeduplicatedDescriptorsTest2() {
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
+    List<AggregationType> aggregationTypeList = new ArrayList<>();
+    aggregationTypeList.add(AggregationType.FIRST_VALUE);
+    aggregationTypeList.add(AggregationType.MIN_TIME);
+    List<AggregationDescriptor> descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.PARTIAL,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    List<AggregationDescriptor> deduplicatedDescriptors =
+        AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(1, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.FIRST_VALUE, deduplicatedDescriptors.get(0).getAggregationType());
+
+    aggregationTypeList = new ArrayList<>();
+    aggregationTypeList.add(AggregationType.MIN_TIME);
+    aggregationTypeList.add(AggregationType.FIRST_VALUE);
+    descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.PARTIAL,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    deduplicatedDescriptors = AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(1, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.FIRST_VALUE, deduplicatedDescriptors.get(0).getAggregationType());
+
+    // try output final
+    descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.SINGLE,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    deduplicatedDescriptors = AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(2, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.MIN_TIME, deduplicatedDescriptors.get(0).getAggregationType());
+    assertEquals(AggregationType.FIRST_VALUE, deduplicatedDescriptors.get(1).getAggregationType());
+  }
+
+  /** Test LAST_VALUE with MAX_TIME (former or later). */
+  @Test
+  public void getDeduplicatedDescriptorsTest3() {
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
+    List<AggregationType> aggregationTypeList = new ArrayList<>();
+    aggregationTypeList.add(AggregationType.LAST_VALUE);
+    aggregationTypeList.add(AggregationType.MAX_TIME);
+    List<AggregationDescriptor> descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.PARTIAL,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    List<AggregationDescriptor> deduplicatedDescriptors =
+        AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(1, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.LAST_VALUE, deduplicatedDescriptors.get(0).getAggregationType());
+
+    aggregationTypeList = new ArrayList<>();
+    aggregationTypeList.add(AggregationType.MAX_TIME);
+    aggregationTypeList.add(AggregationType.LAST_VALUE);
+    descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.PARTIAL,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    deduplicatedDescriptors = AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(1, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.LAST_VALUE, deduplicatedDescriptors.get(0).getAggregationType());
+
+    // try output final
+    descriptorList = new ArrayList<>();
+    for (AggregationType aggregationType : aggregationTypeList) {
+      descriptorList.add(
+          new AggregationDescriptor(
+              aggregationType,
+              AggregationStep.SINGLE,
+              Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    }
+    deduplicatedDescriptors = AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(2, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.MAX_TIME, deduplicatedDescriptors.get(0).getAggregationType());
+    assertEquals(AggregationType.LAST_VALUE, deduplicatedDescriptors.get(1).getAggregationType());
+  }
+
+  /** Test AVG with COUNT but work on different time series. */
+  @Test
+  public void getDeduplicatedDescriptorsTest4() {
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
+    PartialPath seriesPath2 = new PartialPath(new String[] {"root", "sg", "d1", "s2"});
+    List<AggregationDescriptor> descriptorList = new ArrayList<>();
+    descriptorList.add(
+        new AggregationDescriptor(
+            AggregationType.AVG,
+            AggregationStep.PARTIAL,
+            Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    descriptorList.add(
+        new AggregationDescriptor(
+            AggregationType.COUNT,
+            AggregationStep.PARTIAL,
+            Collections.singletonList(new TimeSeriesOperand(seriesPath2))));
+
+    List<AggregationDescriptor> deduplicatedDescriptors =
+        AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(2, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.AVG, deduplicatedDescriptors.get(0).getAggregationType());
+    assertEquals(AggregationType.COUNT, deduplicatedDescriptors.get(1).getAggregationType());
+
+    descriptorList = new ArrayList<>();
+    descriptorList.add(
+        new AggregationDescriptor(
+            AggregationType.FIRST_VALUE,
+            AggregationStep.PARTIAL,
+            Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    descriptorList.add(
+        new AggregationDescriptor(
+            AggregationType.MIN_TIME,
+            AggregationStep.PARTIAL,
+            Collections.singletonList(new TimeSeriesOperand(seriesPath2))));
+
+    deduplicatedDescriptors = AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(2, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.FIRST_VALUE, deduplicatedDescriptors.get(0).getAggregationType());
+    assertEquals(AggregationType.MIN_TIME, deduplicatedDescriptors.get(1).getAggregationType());
+
+    descriptorList = new ArrayList<>();
+    descriptorList.add(
+        new AggregationDescriptor(
+            AggregationType.LAST_VALUE,
+            AggregationStep.PARTIAL,
+            Collections.singletonList(new TimeSeriesOperand(seriesPath1))));
+    descriptorList.add(
+        new AggregationDescriptor(
+            AggregationType.MAX_TIME,
+            AggregationStep.PARTIAL,
+            Collections.singletonList(new TimeSeriesOperand(seriesPath2))));
+
+    deduplicatedDescriptors = AggregationNode.getDeduplicatedDescriptors(descriptorList);
+    assertEquals(2, deduplicatedDescriptors.size());
+    assertEquals(AggregationType.LAST_VALUE, deduplicatedDescriptors.get(0).getAggregationType());
+    assertEquals(AggregationType.MAX_TIME, deduplicatedDescriptors.get(1).getAggregationType());
   }
 }

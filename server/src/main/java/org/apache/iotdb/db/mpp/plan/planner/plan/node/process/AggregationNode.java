@@ -24,13 +24,16 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -43,11 +46,12 @@ public class AggregationNode extends ProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column of
   // result TsBlock
-  protected final List<AggregationDescriptor> aggregationDescriptorList;
+  protected List<AggregationDescriptor> aggregationDescriptorList;
 
   // The parameter of `group by time`.
   // Its value will be null if there is no `group by time` clause.
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
+  protected OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
 
   protected List<PlanNode> children;
 
@@ -55,9 +59,7 @@ public class AggregationNode extends ProcessNode {
       PlanNodeId id,
       List<PlanNode> children,
       List<AggregationDescriptor> aggregationDescriptorList) {
-    super(id);
-    this.children = children;
-    this.aggregationDescriptorList = aggregationDescriptorList;
+    this(id, children, aggregationDescriptorList, null);
   }
 
   public AggregationNode(
@@ -67,14 +69,12 @@ public class AggregationNode extends ProcessNode {
       @Nullable GroupByTimeParameter groupByTimeParameter) {
     super(id);
     this.children = children;
-    this.aggregationDescriptorList = aggregationDescriptorList;
+    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
     this.groupByTimeParameter = groupByTimeParameter;
   }
 
   public AggregationNode(PlanNodeId id, List<AggregationDescriptor> aggregationDescriptorList) {
-    super(id);
-    this.aggregationDescriptorList = aggregationDescriptorList;
-    this.children = new ArrayList<>();
+    this(id, aggregationDescriptorList, null);
   }
 
   public AggregationNode(
@@ -82,7 +82,7 @@ public class AggregationNode extends ProcessNode {
       List<AggregationDescriptor> aggregationDescriptorList,
       @Nullable GroupByTimeParameter groupByTimeParameter) {
     super(id);
-    this.aggregationDescriptorList = aggregationDescriptorList;
+    this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
     this.groupByTimeParameter = groupByTimeParameter;
     this.children = new ArrayList<>();
   }
@@ -94,6 +94,10 @@ public class AggregationNode extends ProcessNode {
   @Nullable
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
+  }
+
+  public OrderBy getScanOrder() {
+    return scanOrder;
   }
 
   @Override
@@ -182,5 +186,47 @@ public class AggregationNode extends ProcessNode {
   public int hashCode() {
     return Objects.hash(
         super.hashCode(), aggregationDescriptorList, groupByTimeParameter, children);
+  }
+
+  /**
+   * If aggregation function COUNT and AVG for one time series appears at the same time, and outputs
+   * intermediate result, the output columns will be like | COUNT | COUNT | SUM |. In this
+   * situation, one COUNT column is not needed. Therefore, when COUNT(or SUM) appears with AVG and
+   * outputs intermediate result(if they output final result, they will be all necessary), we need
+   * to REMOVE the COUNT aggregation, and only keep AVG function no matter their appearing order.
+   *
+   * <p>The related functions include AVG(COUNT AND SUM), FIRST_VALUE(FIRST_VALUE AND MIN_TIME),
+   * LAST_VALUE(LAST_VALUE AND MAX_TIME).
+   */
+  public static List<AggregationDescriptor> getDeduplicatedDescriptors(
+      List<AggregationDescriptor> aggregationDescriptors) {
+    Map<String, Integer> columnToIndexMap = new HashMap<>();
+    boolean[] removedIndexes = new boolean[aggregationDescriptors.size()];
+    for (int i = 0; i < aggregationDescriptors.size(); i++) {
+      AggregationDescriptor descriptor = aggregationDescriptors.get(i);
+      if (descriptor.getStep().isOutputPartial()) {
+        List<String> outputColumnNames = descriptor.getOutputColumnNames();
+        for (String outputColumn : outputColumnNames) {
+          // if encountering repeated column
+          if (columnToIndexMap.containsKey(outputColumn)) {
+            // if self is double outputs, then remove the former, else remove self
+            if (outputColumnNames.size() == 2) {
+              removedIndexes[columnToIndexMap.get(outputColumn)] = true;
+            } else {
+              removedIndexes[i] = true;
+            }
+          } else {
+            columnToIndexMap.put(outputColumn, i);
+          }
+        }
+      }
+    }
+    List<AggregationDescriptor> deduplicatedDescriptors = new ArrayList<>();
+    for (int i = 0; i < aggregationDescriptors.size(); i++) {
+      if (!removedIndexes[i]) {
+        deduplicatedDescriptors.add(aggregationDescriptors.get(i));
+      }
+    }
+    return deduplicatedDescriptors;
   }
 }
