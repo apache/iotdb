@@ -69,6 +69,7 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
               TSendFragmentInstanceReq req =
                   new TSendFragmentInstanceReq(
                       new TFragmentInstance(buffer), groupId, instance.getType().toString());
+              LOGGER.info("send FragmentInstance[{}] to {}", instance.getId(), endPoint);
               resp = client.sendFragmentInstance(req);
             } catch (IOException e) {
               LOGGER.error("can't connect to node {}", endPoint, e);
