@@ -84,9 +84,11 @@ public abstract class BasicUserManager implements IUserManager {
   public User getUser(String username) throws AuthException {
     lock.readLock(username);
     User user = userMap.get(username);
+    logger.info(userMap.get("root").toString());
+    logger.info("getUser: " + user.getName());
     try {
       if (user == null) {
-        logger.debug("null");
+        logger.info("null");
         user = accessor.loadUser(username);
         if (user != null) {
           userMap.put(username, user);
@@ -108,6 +110,7 @@ public abstract class BasicUserManager implements IUserManager {
     AuthUtils.validateUsername(username);
     AuthUtils.validatePassword(password);
 
+    logger.info("BUM: " + username);
     User user = getUser(username);
     if (user != null) {
       return false;

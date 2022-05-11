@@ -277,7 +277,6 @@ public class AuthorInfoTest {
     }
 
     // clean role
-    authorReq = new AuthorReq(ConfigRequestType.ListUser, "", "", "", "", new HashSet<>(), "");
     permissionInfoResp = authorInfo.executeListRole();
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
