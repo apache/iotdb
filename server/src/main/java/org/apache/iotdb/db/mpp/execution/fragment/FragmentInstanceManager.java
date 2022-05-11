@@ -117,6 +117,7 @@ public class FragmentInstanceManager {
                 return createFragmentInstanceExecution(
                     scheduler, instanceId, context, driver, stateMachine, failedInstances);
               } catch (Throwable t) {
+                logger.error("error when create FragmentInstanceExecution.", t);
                 stateMachine.failed(t);
                 return null;
               }
@@ -128,7 +129,6 @@ public class FragmentInstanceManager {
   public FragmentInstanceInfo execSchemaQueryFragmentInstance(
       FragmentInstance instance, ISchemaRegion schemaRegion) {
     FragmentInstanceId instanceId = instance.getId();
-
     FragmentInstanceExecution execution =
         instanceExecution.computeIfAbsent(
             instanceId,

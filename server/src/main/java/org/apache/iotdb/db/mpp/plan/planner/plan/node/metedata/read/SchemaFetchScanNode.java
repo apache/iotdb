@@ -47,6 +47,7 @@ public class SchemaFetchScanNode extends SourceNode {
     super(id);
     this.storageGroup = storageGroup;
     this.patternTree = patternTree;
+    this.patternTree.constructTree();
   }
 
   public PartialPath getStorageGroup() {

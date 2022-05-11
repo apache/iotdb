@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -66,9 +66,9 @@ public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
-  private final IoTDBConfig conf = new IoTDBConfig();
+  private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
-  private final CommonConfig commonConfig = CommonConfig.getInstance();
+  private final IoTDBConfig conf = new IoTDBConfig();
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -129,17 +129,10 @@ public class IoTDBDescriptor {
     }
   }
 
-  /** init common config according to iotdb config */
-  private void initCommonConfig() {
-    // first init the user and role folder in common config
-    commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
-    commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
-  }
-
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    initCommonConfig();
+    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
@@ -657,10 +650,6 @@ public class IoTDBDescriptor {
       conf.setKerberosPrincipal(
           properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
 
-      conf.setDefaultTTL(
-          Long.parseLong(
-              properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
-
       // the num of memtables in each storage group
       conf.setConcurrentWritingTimePartition(
           Integer.parseInt(
@@ -879,26 +868,9 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
-      commonConfig.setAuthorizerProvider(
-          properties.getProperty(
-              "authorizer_provider_class", commonConfig.getAuthorizerProvider()));
-      // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-      commonConfig.setOpenIdProviderUrl(
-          properties.getProperty("openID_url", commonConfig.getOpenIdProviderUrl()));
-      commonConfig.setAdminName(properties.getProperty("admin_name", commonConfig.getAdminName()));
-
-      commonConfig.setAdminPassword(
-          properties.getProperty("admin_password", commonConfig.getAdminPassword()));
-      commonConfig.setEncryptDecryptProvider(
-          properties.getProperty(
-              "iotdb_server_encrypt_decrypt_provider", commonConfig.getEncryptDecryptProvider()));
-
-      commonConfig.setEncryptDecryptProviderParameter(
-          properties.getProperty(
-              "iotdb_server_encrypt_decrypt_provider_parameter",
-              commonConfig.getEncryptDecryptProviderParameter()));
-      commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
-      commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
+      // commons
+      commonDescriptor.loadCommonProps(properties);
+      commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
       // timed flush memtable
       loadTimedService(properties);
@@ -932,7 +904,7 @@ public class IoTDBDescriptor {
     } finally {
       // update all data seriesPath
       conf.updatePath();
-      commonConfig.updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
+      commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
     }
   }
 
