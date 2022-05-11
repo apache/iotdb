@@ -55,12 +55,12 @@ public class AuthorInfoTest {
 
     List<String> userList = new ArrayList<>();
     userList.add("root");
-    userList.add("tempuser0");
-    userList.add("tempuser1");
+    userList.add("user0");
+    userList.add("user1");
 
     List<String> roleList = new ArrayList<>();
-    roleList.add("temprole0");
-    roleList.add("temprole1");
+    roleList.add("role0");
+    roleList.add("role1");
 
     AuthorReq authorReq;
     TCheckUserPrivilegesReq checkUserPrivilegesReq;
@@ -85,22 +85,22 @@ public class AuthorInfoTest {
     // create user
     authorReq =
         new AuthorReq(
-            ConfigRequestType.CreateUser, "tempuser0", "", "passwd", "", new HashSet<>(), "");
+            ConfigRequestType.CreateUser, "user0", "", "passwd", "", new HashSet<>(), "");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertNull(status.getMessage());
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    authorReq.setUserName("tempuser1");
+    authorReq.setUserName("user1");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // check user privileges
     status =
-        authorInfo.checkUserPrivileges("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
+        authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal());
     Assert.assertEquals(TSStatusCode.NO_PERMISSION_ERROR.getStatusCode(), status.getCode());
 
     // drop user
     authorReq =
-        new AuthorReq(ConfigRequestType.DropUser, "tempuser1", "", "", "", new HashSet<>(), "");
+        new AuthorReq(ConfigRequestType.DropUser, "user1", "", "", "", new HashSet<>(), "");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -108,22 +108,22 @@ public class AuthorInfoTest {
     PermissionInfoResp permissionInfoResp = authorInfo.executeListUser();
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    userList.remove("tempuser1");
+    userList.remove("user1");
     Assert.assertEquals(
         userList, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_USER));
 
     // create role
     authorReq =
-        new AuthorReq(ConfigRequestType.CreateRole, "", "temprole0", "", "", new HashSet<>(), "");
+        new AuthorReq(ConfigRequestType.CreateRole, "", "role0", "", "", new HashSet<>(), "");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    authorReq.setRoleName("temprole1");
+    authorReq.setRoleName("role1");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // drop role
     authorReq =
-        new AuthorReq(ConfigRequestType.DropRole, "", "temprole1", "", "", new HashSet<>(), "");
+        new AuthorReq(ConfigRequestType.DropRole, "", "role1", "", "", new HashSet<>(), "");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -131,33 +131,33 @@ public class AuthorInfoTest {
     permissionInfoResp = authorInfo.executeListRole();
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    roleList.remove("temprole1");
+    roleList.remove("role1");
     Assert.assertEquals(
         roleList, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_ROLE));
 
     // alter user
     authorReq =
         new AuthorReq(
-            ConfigRequestType.UpdateUser, "tempuser0", "", "", "newpwd", new HashSet<>(), "");
+            ConfigRequestType.UpdateUser, "user0", "", "", "newpwd", new HashSet<>(), "");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant user
     authorReq =
         new AuthorReq(
-            ConfigRequestType.GrantUser, "tempuser0", "", "", "", privilegeList, "root.ln");
+            ConfigRequestType.GrantUser, "user0", "", "", "", privilegeList, "root.ln");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // check user privileges
     status =
-        authorInfo.checkUserPrivileges("tempuser0", paths, PrivilegeType.DELETE_USER.ordinal());
+        authorInfo.checkUserPrivileges("user0", paths, PrivilegeType.DELETE_USER.ordinal());
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant role
     authorReq =
         new AuthorReq(
-            ConfigRequestType.GrantRole, "", "temprole0", "", "", privilegeList, "root.ln");
+            ConfigRequestType.GrantRole, "", "role0", "", "", privilegeList, "root.ln");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -165,8 +165,8 @@ public class AuthorInfoTest {
     authorReq =
         new AuthorReq(
             ConfigRequestType.GrantRoleToUser,
-            "tempuser0",
-            "temprole0",
+            "user0",
+            "role0",
             "",
             "",
             new HashSet<>(),
@@ -177,14 +177,14 @@ public class AuthorInfoTest {
     // revoke user
     authorReq =
         new AuthorReq(
-            ConfigRequestType.RevokeUser, "tempuser0", "", "", "", revokePrivilege, "root.ln");
+            ConfigRequestType.RevokeUser, "user0", "", "", "", revokePrivilege, "root.ln");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // revoke role
     authorReq =
         new AuthorReq(
-            ConfigRequestType.RevokeRole, "", "temprole0", "", "", revokePrivilege, "root.ln");
+            ConfigRequestType.RevokeRole, "", "role0", "", "", revokePrivilege, "root.ln");
     status = authorInfo.authorNonQuery(authorReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -192,7 +192,7 @@ public class AuthorInfoTest {
     authorReq =
         new AuthorReq(
             ConfigRequestType.ListUserPrivilege,
-            "tempuser0",
+            "user0",
             "",
             "",
             "",
@@ -207,7 +207,7 @@ public class AuthorInfoTest {
     // list user privileges
     authorReq =
         new AuthorReq(
-            ConfigRequestType.ListUserPrivilege, "tempuser0", "", "", "", new HashSet<>(), "");
+            ConfigRequestType.ListUserPrivilege, "user0", "", "", "", new HashSet<>(), "");
     permissionInfoResp = authorInfo.executeListUserPrivileges(authorReq);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -219,7 +219,7 @@ public class AuthorInfoTest {
         new AuthorReq(
             ConfigRequestType.ListRolePrivilege,
             "",
-            "temprole0",
+            "role0",
             "",
             "",
             new HashSet<>(),
@@ -234,7 +234,7 @@ public class AuthorInfoTest {
     // list role privileges
     authorReq =
         new AuthorReq(
-            ConfigRequestType.ListRolePrivilege, "", "temprole0", "", "", new HashSet<>(), "");
+            ConfigRequestType.ListRolePrivilege, "", "role0", "", "", new HashSet<>(), "");
     permissionInfoResp = authorInfo.executeListRolePrivileges(authorReq);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -244,22 +244,22 @@ public class AuthorInfoTest {
     // list all role of user
     authorReq =
         new AuthorReq(
-            ConfigRequestType.ListUserRoles, "tempuser0", "", "", "", new HashSet<>(), "");
+            ConfigRequestType.ListUserRoles, "user0", "", "", "", new HashSet<>(), "");
     permissionInfoResp = authorInfo.executeListUserRoles(authorReq);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    roleList.remove("temprole1");
+    roleList.remove("role1");
     Assert.assertEquals(
         roleList, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_ROLE));
 
     // list all user of role
     authorReq =
         new AuthorReq(
-            ConfigRequestType.ListRoleUsers, "", "temprole0", "", "", new HashSet<>(), "");
+            ConfigRequestType.ListRoleUsers, "", "role0", "", "", new HashSet<>(), "");
     permissionInfoResp = authorInfo.executeListRoleUsers(authorReq);
     status = permissionInfoResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    userList.remove("tempuser1");
+    userList.remove("user1");
     userList.remove("root");
     Assert.assertEquals(
         userList, permissionInfoResp.getPermissionInfo().get(IoTDBConstant.COLUMN_USER));
@@ -268,8 +268,8 @@ public class AuthorInfoTest {
     authorReq =
         new AuthorReq(
             ConfigRequestType.RevokeRoleFromUser,
-            "tempuser0",
-            "temprole0",
+            "user0",
+            "role0",
             "",
             "",
             new HashSet<>(),
