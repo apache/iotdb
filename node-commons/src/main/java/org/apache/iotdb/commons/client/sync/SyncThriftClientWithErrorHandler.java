@@ -70,7 +70,7 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
         }
         ((SyncThriftClient) o).invalidate();
       }
-      
+
       Throwable rootCause = ExceptionUtils.getRootCause(t);
       // if the exception is SocketException and its error message is Broken pipe, it means that
       // the remote node may restart and all the connection we cached before should be cleared.
@@ -79,8 +79,7 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
           rootCause.getMessage(),
           rootCause.getLocalizedMessage(),
           rootCause);
-      if (rootCause instanceof SocketException
-          && rootCause.getMessage().contains("Broken pipe")) {
+      if (rootCause instanceof SocketException && rootCause.getMessage().contains("Broken pipe")) {
         LOGGER.error(
             "Broken pipe error happened in calling method {}, we need to clear all previous cached connection, err: {}",
             method.getName(),
