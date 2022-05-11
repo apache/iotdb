@@ -33,11 +33,6 @@ public class LsGreedy extends ValueRepair {
     setParameters();
   }
 
-  public LsGreedy(String filename) throws Exception {
-    super(filename);
-    setParameters();
-  }
-
   private void setParameters() {
     double[] speed = Util.speed(original, time);
     double[] speedchange = Util.variation(speed);
