@@ -149,17 +149,10 @@ public class TransformNode extends ProcessNode {
       return false;
     }
     TransformNode that = (TransformNode) o;
-    if (!Arrays.equals(outputExpressions, that.outputExpressions)) {
-      return false;
-    }
-    if (!childPlanNode.equals(that.childPlanNode)) {
-      return false;
-    }
-    return keepNull == that.keepNull && zoneId.equals(that.zoneId);
-    //    return keepNull == that.keepNull
-    //        && childPlanNode.equals(that.childPlanNode)
-    //        && Arrays.equals(outputExpressions, that.outputExpressions)
-    //        && zoneId.equals(that.zoneId);
+    return keepNull == that.keepNull
+        && childPlanNode.equals(that.childPlanNode)
+        && Arrays.equals(outputExpressions, that.outputExpressions)
+        && zoneId.equals(that.zoneId);
   }
 
   @Override

@@ -207,14 +207,15 @@ public class MetaUtils {
       } else {
         if (alignedPath == null || !alignedPath.equals(measurementPath.getDeviceIdString())) {
           alignedPath = new AlignedPath(measurementPath);
-          result
-              .computeIfAbsent(alignedPath, key -> new ArrayList<>())
-              .addAll(alignedPathAggregations);
+          alignedPathAggregations.addAll(pathToAggregations.get(path));
         } else {
           alignedPath.addMeasurement(measurementPath);
           alignedPathAggregations.addAll(pathToAggregations.get(path));
         }
       }
+    }
+    if (alignedPath != null) {
+      result.put(alignedPath, alignedPathAggregations);
     }
     return result;
   }

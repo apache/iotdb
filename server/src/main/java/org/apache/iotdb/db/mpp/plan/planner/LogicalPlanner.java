@@ -177,28 +177,23 @@ public class LogicalPlanner {
             planBuilder.planRawDataSource(
                 sourceExpressions, queryStatement.getResultOrder(), analysis.getGlobalTimeFilter());
 
-        if (analysis.hasValueFilter()) {
-          planBuilder =
-              planBuilder.planFilterAndTransform(
-                  queryFilter,
-                  selectExpressions,
-                  queryStatement.isGroupByTime(),
-                  queryStatement.getSelectComponent().getZoneId());
-        } else {
-          planBuilder =
-              planBuilder.planTransform(
-                  selectExpressions,
-                  queryStatement.isGroupByTime(),
-                  queryStatement.getSelectComponent().getZoneId());
-        }
-
         if (queryStatement.isAggregationQuery()) {
+          if (analysis.hasValueFilter()) {
+            planBuilder =
+                planBuilder.planFilterAndTransform(
+                    queryFilter,
+                    sourceExpressions.values().stream()
+                        .flatMap(Set::stream)
+                        .collect(Collectors.toSet()),
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId());
+          }
+
           boolean outputPartial =
               queryStatement.isGroupByLevel()
                   || (queryStatement.isGroupByTime()
                       && analysis.getGroupByTimeParameter().hasOverlap());
-          AggregationStep curStep =
-              outputPartial ? AggregationStep.INTERMEDIATE : AggregationStep.FINAL;
+          AggregationStep curStep = outputPartial ? AggregationStep.PARTIAL : AggregationStep.FINAL;
           planBuilder =
               planBuilder.planAggregation(
                   aggregationExpressions,
@@ -222,6 +217,21 @@ public class LogicalPlanner {
               planBuilder =
                   planBuilder.planGroupByLevel(analysis.getGroupByLevelExpressions(), curStep);
             }
+          }
+        } else {
+          if (analysis.hasValueFilter()) {
+            planBuilder =
+                planBuilder.planFilterAndTransform(
+                    queryFilter,
+                    selectExpressions,
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId());
+          } else {
+            planBuilder =
+                planBuilder.planTransform(
+                    selectExpressions,
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId());
           }
         }
       } else {

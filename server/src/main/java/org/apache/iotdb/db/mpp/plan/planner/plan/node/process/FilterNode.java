@@ -105,11 +105,7 @@ public class FilterNode extends TransformNode {
       return false;
     }
     FilterNode that = (FilterNode) o;
-    if (!predicate.equals(that.predicate)) {
-      return false;
-    }
-    return true;
-    //    return predicate.equals(that.predicate);
+    return predicate.equals(that.predicate);
   }
 
   @Override

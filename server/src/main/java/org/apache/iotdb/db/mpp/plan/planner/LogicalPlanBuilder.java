@@ -230,9 +230,7 @@ public class LogicalPlanBuilder {
     List<AggregationType> splitAggregations =
         SchemaUtils.splitPartialAggregation(aggregationDescriptor.getAggregationType());
     PartialPath path =
-        ((TimeSeriesOperand)
-                aggregationDescriptor.getInputExpressions().get(0).getExpressions().get(0))
-            .getPath();
+        ((TimeSeriesOperand) aggregationDescriptor.getInputExpressions().get(0)).getPath();
     for (AggregationType aggregationType : splitAggregations) {
       String functionName = aggregationType.toString().toLowerCase();
       typeProvider.setType(
