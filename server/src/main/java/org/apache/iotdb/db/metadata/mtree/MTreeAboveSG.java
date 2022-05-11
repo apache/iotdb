@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollec
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -95,17 +97,23 @@ public class MTreeAboveSG {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = root;
+    Template upperTemplate = cur.getSchemaTemplate();
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
       IMNode temp = cur.getChild(nodeNames[i]);
       if (temp == null) {
+        if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
+          throw new PathAlreadyExistException(
+              cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+        }
         store.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
         // before set storage group, check whether the storage group already exists
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
       cur = cur.getChild(nodeNames[i]);
+      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
       i++;
     }
 
@@ -120,6 +128,10 @@ public class MTreeAboveSG {
           throw new StorageGroupAlreadySetException(path.getFullPath(), true);
         }
       } else {
+        if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
+          throw new PathAlreadyExistException(
+              cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+        }
         IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
                 cur, nodeNames[i], CommonDescriptor.getInstance().getConfig().getDefaultTTL());
