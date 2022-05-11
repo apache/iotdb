@@ -64,11 +64,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * The PartitionInfo stores cluster PartitionTable.
- * The PartitionTable including:
- *   1. regionMap: location of Region member
- *   2. schemaPartition: location of schema
- *   3. dataPartition: location of data
+ * The PartitionInfo stores cluster PartitionTable. The PartitionTable including: 1. regionMap:
+ * location of Region member 2. schemaPartition: location of schema 3. dataPartition: location of
+ * data
  */
 public class PartitionInfo implements SnapshotProcessor {
 
@@ -131,7 +129,7 @@ public class PartitionInfo implements SnapshotProcessor {
     try {
       int maxRegionId = Integer.MIN_VALUE;
 
-      for (TRegionReplicaSet regionReplicaSet : req.getRegionReplicaSets()) {
+      for (TRegionReplicaSet regionReplicaSet : req.getRegionMap().values()) {
         regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
         maxRegionId = Math.max(maxRegionId, regionReplicaSet.getRegionId().getId());
       }
@@ -139,7 +137,7 @@ public class PartitionInfo implements SnapshotProcessor {
       if (nextRegionGroupId.get() < maxRegionId) {
         // In this case, at least one Region is created with the leader node,
         // so the nextRegionGroupID of the followers needs to be added
-        nextRegionGroupId.getAndAdd(req.getRegionReplicaSets().size());
+        nextRegionGroupId.getAndAdd(req.getRegionMap().size());
       }
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

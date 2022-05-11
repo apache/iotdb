@@ -204,8 +204,7 @@ public class ConfigNodeDescriptor {
       conf.setMaximumSchemaRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "max_schema_region_number",
-                  String.valueOf(conf.getMaximumSchemaRegionCount()))));
+                  "max_schema_region_number", String.valueOf(conf.getMaximumSchemaRegionCount()))));
 
       conf.setMaximumDataRegionCount(
           Integer.parseInt(

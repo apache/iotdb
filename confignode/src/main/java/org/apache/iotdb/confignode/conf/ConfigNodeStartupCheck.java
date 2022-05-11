@@ -252,7 +252,7 @@ public class ConfigNodeStartupCheck {
       int rpcPort = Integer.parseInt(systemProperties.getProperty("rpc_port"));
       if (rpcPort != conf.getRpcPort()) {
         throw new ConfigurationException(
-          "rpc_port", String.valueOf(conf.getRpcPort()), String.valueOf(rpcPort));
+            "rpc_port", String.valueOf(conf.getRpcPort()), String.valueOf(rpcPort));
       }
     }
 
@@ -262,7 +262,9 @@ public class ConfigNodeStartupCheck {
       int consensusPort = Integer.parseInt(systemProperties.getProperty("consensus_port"));
       if (consensusPort != conf.getConsensusPort()) {
         throw new ConfigurationException(
-          "consensus_port", String.valueOf(conf.getConsensusPort()), String.valueOf(consensusPort));
+            "consensus_port",
+            String.valueOf(conf.getConsensusPort()),
+            String.valueOf(consensusPort));
       }
     }
 
@@ -271,7 +273,8 @@ public class ConfigNodeStartupCheck {
         systemProperties.getProperty("config_node_consensus_protocol_class", null);
     if (configNodeConsensusProtocolClass == null) {
       needReWrite = true;
-    } else if (!configNodeConsensusProtocolClass.equals(conf.getConfigNodeConsensusProtocolClass())) {
+    } else if (!configNodeConsensusProtocolClass.equals(
+        conf.getConfigNodeConsensusProtocolClass())) {
       throw new ConfigurationException(
           "config_node_consensus_protocol_class",
           conf.getConfigNodeConsensusProtocolClass(),
@@ -294,12 +297,12 @@ public class ConfigNodeStartupCheck {
       needReWrite = true;
     } else {
       int seriesPartitionSlotNum =
-        Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
+          Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
       if (seriesPartitionSlotNum != conf.getSeriesPartitionSlotNum()) {
         throw new ConfigurationException(
-          "series_partition_slot_num",
-          String.valueOf(conf.getSeriesPartitionSlotNum()),
-          String.valueOf(seriesPartitionSlotNum));
+            "series_partition_slot_num",
+            String.valueOf(conf.getSeriesPartitionSlotNum()),
+            String.valueOf(seriesPartitionSlotNum));
       }
     }
 
@@ -307,7 +310,8 @@ public class ConfigNodeStartupCheck {
         systemProperties.getProperty("series_partition_executor_class", null);
     if (seriesPartitionSlotExecutorClass == null) {
       needReWrite = true;
-    } else if (!Objects.equals(seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
+    } else if (!Objects.equals(
+        seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
       throw new ConfigurationException(
           "series_partition_executor_class",
           conf.getSeriesPartitionExecutorClass(),

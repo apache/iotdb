@@ -21,11 +21,9 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -34,7 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -59,27 +57,28 @@ public class ClusterSchemaManager {
   /**
    * Set StorageGroup
    *
-   * @return SUCCESS_STATUS if the StorageGroup is set successfully.
-   *         STORAGE_GROUP_ALREADY_EXISTS if the StorageGroup is already set.
-   *         PERSISTENCE_FAILURE if fail to set StorageGroup in MTreeAboveSG.
+   * @return SUCCESS_STATUS if the StorageGroup is set successfully. STORAGE_GROUP_ALREADY_EXISTS if
+   *     the StorageGroup is already set. PERSISTENCE_FAILURE if fail to set StorageGroup in
+   *     MTreeAboveSG.
    */
   public TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq) {
     TSStatus result;
-      if (clusterSchemaInfo.containsStorageGroup(setStorageGroupReq.getSchema().getName())) {
-        // Reject if StorageGroup already set
-        result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
-        result.setMessage(
-            String.format(
-                "StorageGroup %s is already set.", setStorageGroupReq.getSchema().getName()));
-      } else {
-        // Persist StorageGroupSchema
-        result = getConsensusManager().write(setStorageGroupReq).getStatus();
-      }
+    if (clusterSchemaInfo.containsStorageGroup(setStorageGroupReq.getSchema().getName())) {
+      // Reject if StorageGroup already set
+      result = new TSStatus(TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode());
+      result.setMessage(
+          String.format(
+              "StorageGroup %s is already set.", setStorageGroupReq.getSchema().getName()));
+    } else {
+      // Persist StorageGroupSchema
+      result = getConsensusManager().write(setStorageGroupReq).getStatus();
+    }
     return result;
   }
 
   /**
-   * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup
+   * Only leader use this interface. Get the SchemaRegionGroupIds or DataRegionGroupIds from the
+   * specific StorageGroup.
    *
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
@@ -88,6 +87,18 @@ public class ClusterSchemaManager {
    */
   public List<TConsensusGroupId> getRegionGroupIds(String storageGroup, TConsensusGroupType type) {
     return clusterSchemaInfo.getRegionGroupIds(storageGroup, type);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param storageGroup StorageGroupName
+   * @return the matched StorageGroupSchema
+   * @throws MetadataException when the specific StorageGroup doesn't exist
+   */
+  public TStorageGroupSchema getStorageGroupSchemaByName(String storageGroup)
+      throws MetadataException {
+    return clusterSchemaInfo.getMatchedStorageGroupSchemaByName(storageGroup);
   }
 
   public TSStatus setTTL(SetTTLReq setTTLReq) {

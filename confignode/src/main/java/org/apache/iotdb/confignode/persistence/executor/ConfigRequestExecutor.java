@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.SnapshotProcessor;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -125,7 +126,11 @@ public class ConfigRequestExecutor {
         return clusterSchemaInfo.setDataReplicationFactor((SetDataReplicationFactorReq) req);
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
-      case CreateRegion:
+      case CreateRegions:
+        TSStatus status = clusterSchemaInfo.createRegions((CreateRegionsReq) req);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         return partitionInfo.createRegions((CreateRegionsReq) req);
       case DeleteRegions:
         return partitionInfo.deleteRegions((DeleteRegionsReq) req);

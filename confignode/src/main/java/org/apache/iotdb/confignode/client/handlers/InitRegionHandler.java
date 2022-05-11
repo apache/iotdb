@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.confignode.client.handlers;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -36,11 +39,20 @@ public class InitRegionHandler implements AsyncMethodCallback<TSStatus> {
   private final int index;
   private final BitSet bitSet;
   private final CountDownLatch latch;
+  private final TConsensusGroupId consensusGroupId;
+  private final TDataNodeLocation dataNodeLocation;
 
-  public InitRegionHandler(int index, BitSet bitSet, CountDownLatch latch) {
+  public InitRegionHandler(
+      int index,
+      BitSet bitSet,
+      CountDownLatch latch,
+      TConsensusGroupId consensusGroupId,
+      TDataNodeLocation dataNodeLocation) {
     this.index = index;
     this.bitSet = bitSet;
     this.latch = latch;
+    this.consensusGroupId = consensusGroupId;
+    this.dataNodeLocation = dataNodeLocation;
   }
 
   @Override
@@ -49,15 +61,27 @@ public class InitRegionHandler implements AsyncMethodCallback<TSStatus> {
       synchronized (bitSet) {
         bitSet.set(index);
       }
+      LOGGER.info(
+          String.format(
+              "Successfully create %s on DataNode: %s",
+              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeLocation));
     } else {
-      LOGGER.error(tsStatus.toString());
+      LOGGER.error(
+          String.format(
+              "Create %s on DataNode: %s failed, %s",
+              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId),
+              dataNodeLocation,
+              tsStatus));
     }
     latch.countDown();
   }
 
   @Override
   public void onError(Exception e) {
-    LOGGER.error(e.getMessage());
+    LOGGER.error(
+        String.format(
+            "Create %s on DataNode: %s failed, %s",
+            ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeLocation, e));
     latch.countDown();
   }
 }

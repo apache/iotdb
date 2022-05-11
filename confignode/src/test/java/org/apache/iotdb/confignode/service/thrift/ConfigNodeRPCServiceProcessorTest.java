@@ -193,16 +193,11 @@ public class ConfigNodeRPCServiceProcessorTest {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
 
-    // failed because there are not enough DataNodes
-    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
-    status = processor.setStorageGroup(setReq0);
-    Assert.assertEquals(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(), status.getCode());
-    Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
-
     // register DataNodes
     registerDataNodes();
 
     // set StorageGroup0 by default values
+    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
     status = processor.setStorageGroup(setReq0);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 

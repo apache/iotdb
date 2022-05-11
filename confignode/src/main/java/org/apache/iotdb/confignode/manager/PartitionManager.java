@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
@@ -34,10 +35,11 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionRe
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
-import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,12 +50,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-/** The ClusterSchemaManager Manages cluster PartitionTable read and write requests. */
+/** The PartitionManager Manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
-  private static final ClusterSchemaInfo clusterSchemaInfo = ClusterSchemaInfo.getInstance();
   private static final PartitionInfo partitionInfo = PartitionInfo.getInstance();
 
   private final Manager configManager;
@@ -82,7 +83,8 @@ public class PartitionManager {
    * Get SchemaPartition and create a new one if it does not exist
    *
    * @param physicalPlan SchemaPartitionPlan with partitionSlotsMap
-   * @return SchemaPartitionDataSet
+   * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
    */
   public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionReq physicalPlan) {
     Map<String, List<TSeriesPartitionSlot>> noAssignedSchemaPartitionSlots =
@@ -91,7 +93,15 @@ public class PartitionManager {
     if (noAssignedSchemaPartitionSlots.size() > 0) {
 
       // Make sure each StorageGroup has at least one SchemaRegion
-      checkAndAllocateRegionsIfNecessary(new ArrayList<>(noAssignedSchemaPartitionSlots.keySet()), TConsensusGroupType.SchemaRegion);
+      try {
+        checkAndAllocateRegionsIfNecessary(
+            new ArrayList<>(noAssignedSchemaPartitionSlots.keySet()),
+            TConsensusGroupType.SchemaRegion);
+      } catch (NotEnoughDataNodeException e) {
+        SchemaPartitionResp resp = new SchemaPartitionResp();
+        resp.setStatus(new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode()));
+        return resp;
+      }
 
       // Allocate SchemaPartition
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> assignedSchemaPartition =
@@ -101,6 +111,8 @@ public class PartitionManager {
       CreateSchemaPartitionReq createPlan = new CreateSchemaPartitionReq();
       createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
       getConsensusManager().write(createPlan);
+
+      // TODO: Allocate more Regions if necessary
     }
 
     return getSchemaPartition(physicalPlan);
@@ -121,7 +133,8 @@ public class PartitionManager {
           noAssignedSchemaPartitionSlotsMap.get(storageGroup);
       List<TRegionReplicaSet> schemaRegionReplicaSets =
           partitionInfo.getRegionReplicaSets(
-              clusterSchemaInfo.getRegionGroupIds(storageGroup, TConsensusGroupType.SchemaRegion));
+              getClusterSchemaManager()
+                  .getRegionGroupIds(storageGroup, TConsensusGroupType.SchemaRegion));
       Random random = new Random();
 
       Map<TSeriesPartitionSlot, TRegionReplicaSet> allocateResult = new HashMap<>();
@@ -156,7 +169,8 @@ public class PartitionManager {
    *
    * @param physicalPlan DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
    *     List<TimePartitionSlot>>>
-   * @return DataPartitionDataSet
+   * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
    */
   public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq physicalPlan) {
     Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> noAssignedDataPartitionSlots =
@@ -165,7 +179,14 @@ public class PartitionManager {
     if (noAssignedDataPartitionSlots.size() > 0) {
 
       // Make sure each StorageGroup has at least one DataRegion
-      checkAndAllocateRegionsIfNecessary(new ArrayList<>(noAssignedDataPartitionSlots.keySet()), TConsensusGroupType.DataRegion);
+      try {
+        checkAndAllocateRegionsIfNecessary(
+            new ArrayList<>(noAssignedDataPartitionSlots.keySet()), TConsensusGroupType.DataRegion);
+      } catch (NotEnoughDataNodeException e) {
+        DataPartitionResp resp = new DataPartitionResp();
+        resp.setStatus(new TSStatus(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode()));
+        return resp;
+      }
 
       // Allocate DataPartition
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -175,6 +196,8 @@ public class PartitionManager {
       CreateDataPartitionReq createPlan = new CreateDataPartitionReq();
       createPlan.setAssignedDataPartition(assignedDataPartition);
       getConsensusManager().write(createPlan);
+
+      // TODO: Allocate more Regions if necessary
     }
 
     return getDataPartition(physicalPlan);
@@ -201,7 +224,8 @@ public class PartitionManager {
           noAssignedDataPartitionSlotsMap.get(storageGroup);
       List<TRegionReplicaSet> dataRegionEndPoints =
           partitionInfo.getRegionReplicaSets(
-              clusterSchemaInfo.getRegionGroupIds(storageGroup, TConsensusGroupType.DataRegion));
+              getClusterSchemaManager()
+                  .getRegionGroupIds(storageGroup, TConsensusGroupType.DataRegion));
       Random random = new Random();
 
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> allocateResult =
@@ -222,10 +246,13 @@ public class PartitionManager {
     return result;
   }
 
-  private void checkAndAllocateRegionsIfNecessary(List<String> storageGroups, TConsensusGroupType consensusGroupType) {
+  private void checkAndAllocateRegionsIfNecessary(
+      List<String> storageGroups, TConsensusGroupType consensusGroupType)
+      throws NotEnoughDataNodeException {
     List<String> storageGroupWithoutRegion = new ArrayList<>();
     for (String storageGroup : storageGroups) {
-      List<TConsensusGroupId> groupIds = clusterSchemaInfo.getRegionGroupIds(storageGroup, consensusGroupType);
+      List<TConsensusGroupId> groupIds =
+          getClusterSchemaManager().getRegionGroupIds(storageGroup, consensusGroupType);
       if (groupIds.size() == 0) {
         storageGroupWithoutRegion.add(storageGroup);
       }
@@ -267,6 +294,10 @@ public class PartitionManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private ClusterSchemaManager getClusterSchemaManager() {
+    return configManager.getClusterSchemaManager();
   }
 
   private LoadManager getLoadManager() {

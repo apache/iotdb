@@ -16,6 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.balancer;
+package org.apache.iotdb.confignode.exception;
 
-public class SeriesPartitionSlotBalancer {}
+public class NotEnoughDataNodeException extends ConfigNodeException {
+
+  public NotEnoughDataNodeException() {
+    super("DataNode is not enough, please register more.");
+  }
+}

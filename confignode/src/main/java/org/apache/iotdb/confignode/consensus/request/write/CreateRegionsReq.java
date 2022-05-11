@@ -26,11 +26,9 @@ import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 /** Create regions for specific StorageGroups */
 public class CreateRegionsReq extends ConfigRequest {
@@ -39,7 +37,7 @@ public class CreateRegionsReq extends ConfigRequest {
 
   public CreateRegionsReq() {
     super(ConfigRequestType.CreateRegions);
-    this.regionMap = new HashMap<>();
+    this.regionMap = new TreeMap<>();
   }
 
   public Map<String, TRegionReplicaSet> getRegionMap() {
@@ -55,10 +53,11 @@ public class CreateRegionsReq extends ConfigRequest {
     buffer.putInt(ConfigRequestType.CreateRegions.ordinal());
 
     buffer.putInt(regionMap.size());
-    regionMap.forEach((storageGroup, regionReplicaSet) -> {
-      BasicStructureSerDeUtil.write(storageGroup, buffer);
-      ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
-    });
+    regionMap.forEach(
+        (storageGroup, regionReplicaSet) -> {
+          BasicStructureSerDeUtil.write(storageGroup, buffer);
+          ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, buffer);
+        });
   }
 
   @Override
@@ -66,7 +65,8 @@ public class CreateRegionsReq extends ConfigRequest {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       String storageGroup = BasicStructureSerDeUtil.readString(buffer);
-      TRegionReplicaSet regionReplicaSet = ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
+      TRegionReplicaSet regionReplicaSet =
+          ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(buffer);
       regionMap.put(storageGroup, regionReplicaSet);
     }
   }

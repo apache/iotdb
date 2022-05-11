@@ -46,11 +46,11 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Only use this interface when initialize SchemaRegion to set StorageGroup
+   * Create a SchemaRegion on specific DataNode
    *
    * @param endPoint The specific DataNode
    */
-  public void initSchemaRegion(
+  public void createSchemaRegion(
       TEndPoint endPoint, TCreateSchemaRegionReq req, InitRegionHandler handler) {
     AsyncDataNodeInternalServiceClient client;
     try {
@@ -64,11 +64,11 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Only use this interface when initialize SchemaRegion to set StorageGroup
+   * Create a DataRegion on specific DataNode
    *
    * @param endPoint The specific DataNode
    */
-  public void initDataRegion(
+  public void createDataRegion(
       TEndPoint endPoint, TCreateDataRegionReq req, InitRegionHandler handler) {
     AsyncDataNodeInternalServiceClient client;
     try {

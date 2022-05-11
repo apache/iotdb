@@ -23,39 +23,38 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.InitRegionHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.manager.allocator.CopySetRegionAllocator;
 import org.apache.iotdb.confignode.manager.allocator.IRegionAllocator;
-import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /**
- * The LoadManager at ConfigNodeGroup-Leader is active.
- * It proactively implements the cluster dynamic load balancing policy
- * and passively accepts the PartitionTable expansion request.
+ * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
+ * dynamic load balancing policy and passively accepts the PartitionTable expansion request.
  */
 public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
-  private static final AsyncDataNodeClientPool clientPool = AsyncDataNodeClientPool.getInstance();
-
-  private static final int schemaReplicationFactor = ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor();
-  private static final int dataReplicationFactor = ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor();
+  private static final int schemaReplicationFactor =
+      ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor();
+  private static final int dataReplicationFactor =
+      ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor();
 
   private final Manager configManager;
 
@@ -67,79 +66,119 @@ public class LoadManager {
     this.configManager = configManager;
     this.regionAllocator = new CopySetRegionAllocator();
   }
+
   /**
    * Allocate and create one Region on DataNode for each StorageGroup.
    *
    * @param storageGroups List<StorageGroupName>
    * @param consensusGroupType TConsensusGroupType of Region to be allocated
    */
-  public void allocateAndCreateRegions(List<String> storageGroups, TConsensusGroupType consensusGroupType) {
+  public void allocateAndCreateRegions(
+      List<String> storageGroups, TConsensusGroupType consensusGroupType)
+      throws NotEnoughDataNodeException {
     CreateRegionsReq createRegionsReq = allocateRegions(storageGroups, consensusGroupType);
-    createRegionsOnDataNodes(createRegionsReq);
+
+    // TODO: use procedure to protect create Regions process
+    try {
+      createRegionsOnDataNodes(createRegionsReq);
+    } catch (Exception e) {
+      LOGGER.error("Meet error when create Regions", e);
+    }
+
     getConsensusManager().write(createRegionsReq);
   }
 
-
-  private CreateRegionsReq allocateRegions(List<String> storageGroups, TConsensusGroupType consensusGroupType) {
+  private CreateRegionsReq allocateRegions(
+      List<String> storageGroups, TConsensusGroupType consensusGroupType)
+      throws NotEnoughDataNodeException {
     CreateRegionsReq createRegionsReq = new CreateRegionsReq();
 
     int replicationFactor =
-      consensusGroupType.equals(TConsensusGroupType.SchemaRegion)
-        ? schemaReplicationFactor
-        : dataReplicationFactor;
+        consensusGroupType.equals(TConsensusGroupType.SchemaRegion)
+            ? schemaReplicationFactor
+            : dataReplicationFactor;
     List<TDataNodeLocation> onlineDataNodes = getNodeManager().getOnlineDataNodes();
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllocatedRegions();
 
+    if (onlineDataNodes.size() < replicationFactor) {
+      throw new NotEnoughDataNodeException();
+    }
+
     for (String storageGroup : storageGroups) {
-      TRegionReplicaSet newRegion = regionAllocator.allocateRegion(onlineDataNodes, allocatedRegions, replicationFactor);
-      newRegion.setRegionId(new TConsensusGroupId(consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
+      TRegionReplicaSet newRegion =
+          regionAllocator.allocateRegion(
+              onlineDataNodes,
+              allocatedRegions,
+              replicationFactor,
+              new TConsensusGroupId(
+                  consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
       createRegionsReq.addRegion(storageGroup, newRegion);
     }
 
     return createRegionsReq;
   }
 
-  private void createRegionsOnDataNodes(CreateRegionsReq createRegionsReq) {
+  private void createRegionsOnDataNodes(CreateRegionsReq createRegionsReq)
+      throws MetadataException {
+    int index = 0;
     int regionNum = 0;
-    Map<String, Long> TTLMap = new HashMap<>();
+    Map<String, Integer> indexMap = new HashMap<>();
+    Map<String, Long> ttlMap = new HashMap<>();
     for (Map.Entry<String, TRegionReplicaSet> entry : createRegionsReq.getRegionMap().entrySet()) {
-
+      indexMap.put(entry.getKey(), index);
+      ttlMap.put(
+          entry.getKey(),
+          getClusterSchemaManager().getStorageGroupSchemaByName(entry.getKey()).getTTL());
+      index += 1;
+      regionNum += entry.getValue().getDataNodeLocationsSize();
     }
 
     BitSet bitSet = new BitSet(regionNum);
 
     for (int retry = 0; retry < 3; retry++) {
-      int index = 0;
       CountDownLatch latch = new CountDownLatch(regionNum - bitSet.cardinality());
-      for (TRegionReplicaSet regionReplicaSet : createRegionsReq.getRegionReplicaSets()) {
-        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-          TEndPoint endPoint =
-            NodeInfo.getInstance()
-              .getOnlineDataNode(dataNodeLocation.getDataNodeId())
-              .getInternalEndPoint();
-          InitRegionHandler handler = new InitRegionHandler(index, bitSet, latch);
-          switch (regionReplicaSet.getRegionId().getType()) {
-            case SchemaRegion:
-              if (retry == 0) {
-                schemaRegionEndPoints.add(endPoint);
-              }
-              AsyncDataNodeClientPool.getInstance()
-                .initSchemaRegion(
-                  endPoint, genCreateSchemaRegionReq(storageGroup, regionReplicaSet), handler);
-              break;
-            case DataRegion:
-              if (retry == 0) {
-                dataRegionEndPoints.add(endPoint);
-              }
-              AsyncDataNodeClientPool.getInstance()
-                .initDataRegion(
-                  endPoint,
-                  genCreateDataRegionReq(storageGroup, regionReplicaSet, TTL),
-                  handler);
-          }
-          index += 1;
-        }
-      }
+
+      createRegionsReq
+          .getRegionMap()
+          .forEach(
+              (storageGroup, regionReplicaSet) -> {
+                // Enumerate each Region
+                regionReplicaSet
+                    .getDataNodeLocations()
+                    .forEach(
+                        dataNodeLocation -> {
+                          // Skip those created successfully
+                          if (!bitSet.get(indexMap.get(storageGroup))) {
+                            TEndPoint endPoint = dataNodeLocation.getInternalEndPoint();
+                            InitRegionHandler handler =
+                                new InitRegionHandler(
+                                    indexMap.get(storageGroup),
+                                    bitSet,
+                                    latch,
+                                    regionReplicaSet.getRegionId(),
+                                    dataNodeLocation);
+
+                            switch (regionReplicaSet.getRegionId().getType()) {
+                              case SchemaRegion:
+                                AsyncDataNodeClientPool.getInstance()
+                                    .createSchemaRegion(
+                                        endPoint,
+                                        genCreateSchemaRegionReq(storageGroup, regionReplicaSet),
+                                        handler);
+                                break;
+                              case DataRegion:
+                                AsyncDataNodeClientPool.getInstance()
+                                    .createDataRegion(
+                                        endPoint,
+                                        genCreateDataRegionReq(
+                                            storageGroup,
+                                            regionReplicaSet,
+                                            ttlMap.get(storageGroup)),
+                                        handler);
+                            }
+                          }
+                        });
+              });
 
       try {
         latch.await();
@@ -153,12 +192,13 @@ public class LoadManager {
     }
 
     if (bitSet.cardinality() < regionNum) {
-      LOGGER.error("Failed to create some SchemaRegions or DataRegions on DataNodes. Please check former logs.");
+      LOGGER.error(
+          "Failed to create some SchemaRegions or DataRegions on DataNodes. Please check former logs.");
     }
   }
 
   private TCreateSchemaRegionReq genCreateSchemaRegionReq(
-    String storageGroup, TRegionReplicaSet regionReplicaSet) {
+      String storageGroup, TRegionReplicaSet regionReplicaSet) {
     TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
@@ -166,7 +206,7 @@ public class LoadManager {
   }
 
   private TCreateDataRegionReq genCreateDataRegionReq(
-    String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
+      String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
     TCreateDataRegionReq req = new TCreateDataRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
@@ -180,6 +220,10 @@ public class LoadManager {
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
+  }
+
+  private ClusterSchemaManager getClusterSchemaManager() {
+    return configManager.getClusterSchemaManager();
   }
 
   private PartitionManager getPartitionManager() {

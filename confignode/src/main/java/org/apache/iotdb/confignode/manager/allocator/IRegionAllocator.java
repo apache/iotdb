@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager.allocator;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
@@ -26,12 +27,18 @@ import java.util.List;
 public interface IRegionAllocator {
 
   /**
-   * Calculating the next optimal TRegionReplicaSet based on the current online DataNodes and allocated Regions
+   * Calculating the next optimal TRegionReplicaSet based on the current online DataNodes and
+   * allocated Regions
    *
    * @param onlineDataNodes DataNodes that currently communicable
    * @param allocatedRegions Allocated Regions
    * @param replicationFactor Replication factor of TRegionReplicaSet
+   * @param consensusGroupId TConsensusGroupId of result TRegionReplicaSet
    * @return The optimal TRegionReplicaSet derived by the specific algorithm
    */
-  TRegionReplicaSet allocateRegion(List<TDataNodeLocation> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions, int replicationFactor);
+  TRegionReplicaSet allocateRegion(
+      List<TDataNodeLocation> onlineDataNodes,
+      List<TRegionReplicaSet> allocatedRegions,
+      int replicationFactor,
+      TConsensusGroupId consensusGroupId);
 }
