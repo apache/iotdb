@@ -84,10 +84,9 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         return null;
       }
     }
-
-    try (FileInputStream inputStream = new FileInputStream(roleProfile);
-        DataInputStream dataInputStream =
-            new DataInputStream(new BufferedInputStream(inputStream))) {
+    FileInputStream inputStream = new FileInputStream(roleProfile);
+    try (DataInputStream dataInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
       Role role = new Role();
       role.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
 
