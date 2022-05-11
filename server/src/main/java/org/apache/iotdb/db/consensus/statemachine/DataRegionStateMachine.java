@@ -20,8 +20,12 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
+import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
@@ -47,7 +51,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
       FragmentInstanceManager.getInstance();
 
-  private final DataRegion region;
+  private DataRegion region;
 
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
@@ -59,13 +63,46 @@ public class DataRegionStateMachine extends BaseStateMachine {
   @Override
   public void stop() {}
 
+  // snapshotDir -> ../snapshot
+  // ../snapshot/seq/root.test/0/ xxx / kkk.tsfile
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    return false;
+    try {
+      return new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+    } catch (Exception e) {
+      logger.error(
+          "Exception occurs when taking snapshot for {}-{} in {}",
+          region.getLogicalStorageGroupName(),
+          region.getDataRegionId(),
+          snapshotDir,
+          e);
+      return false;
+    }
   }
 
+  // ../snapshot
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {}
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    // clear data
+    // -> data
+    // load
+    // replace
+    this.region =
+        new SnapshotLoader(
+                latestSnapshotRootDir.getAbsolutePath(),
+                region.getLogicalStorageGroupName(),
+                region.getDataRegionId())
+            .loadSnapshotForStateMachine();
+    try {
+      StorageEngine.getInstance()
+          .setDataRegion(
+              new PartialPath(region.getLogicalStorageGroupName()),
+              region.getDataRegionId(),
+              region);
+    } catch (Exception e) {
+      logger.error("Exception occurs when replacing data region in storage engine.", e);
+    }
+  }
 
   @Override
   protected TSStatus write(FragmentInstance fragmentInstance) {

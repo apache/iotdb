@@ -263,10 +263,15 @@ public class DataRegion {
   /** used to collect TsFiles in this virtual storage group */
   private TsFileSyncManager tsFileSyncManager = TsFileSyncManager.getInstance();
 
-  private DataRegion(String systemDir, String dataRegionId, String logicalStorageGroupName) {
+  private DataRegion(
+      String systemDir,
+      String dataRegionId,
+      String logicalStorageGroupName,
+      TsFileFlushPolicy tsFileFlushPolicy) {
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
     this.dataRegionId = dataRegionId;
     this.logicalStorageGroupName = logicalStorageGroupName;
+    this.fileFlushPolicy = tsFileFlushPolicy;
     this.tsFileManager =
         new TsFileManager(logicalStorageGroupName, dataRegionId, storageGroupSysDir.getPath());
     if (storageGroupSysDir.mkdirs()) {
@@ -3545,7 +3550,12 @@ public class DataRegion {
   public static DataRegion recoverFromSnapshot(
       String logicalStorageGroupName, String dataRegionId, String dataDir, String systemDir)
       throws Exception {
-    DataRegion dataRegion = new DataRegion(systemDir, dataRegionId, logicalStorageGroupName);
+    DataRegion dataRegion =
+        new DataRegion(
+            systemDir,
+            dataRegionId,
+            logicalStorageGroupName,
+            StorageEngine.getInstance().getFileFlushPolicy());
     dataRegion.recoverCompaction();
     Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilePairs =
         dataRegion.getAllFiles(

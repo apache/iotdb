@@ -496,4 +496,8 @@ public class StorageGroupManager {
   public AtomicBoolean getIsSettling() {
     return isSettling;
   }
+
+  public void setDataRegion(int dataRegionId, DataRegion dataRegion) {
+    this.dataRegion[dataRegionId] = dataRegion;
+  }
 }

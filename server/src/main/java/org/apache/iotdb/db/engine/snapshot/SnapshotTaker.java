@@ -50,8 +50,26 @@ public class SnapshotTaker {
 
   public boolean takeFullSnapshot(String snapshotDirPath, boolean flushBeforeSnapshot)
       throws DirectoryNotLegalException {
-    File snapshotDir = new File(snapshotDirPath);
-    if (snapshotDir.exists() && snapshotDir.listFiles() != null) {
+    File seqSnapshotDir =
+        new File(
+            snapshotDirPath
+                + File.separator
+                + IoTDBConstant.SEQUENCE_FLODER_NAME
+                + File.separator
+                + dataRegion.getLogicalStorageGroupName()
+                + File.separator
+                + dataRegion.getDataRegionId());
+    File unseqSnapshotDir =
+        new File(
+            snapshotDirPath
+                + File.separator
+                + IoTDBConstant.UNSEQUENCE_FLODER_NAME
+                + File.separator
+                + dataRegion.getLogicalStorageGroupName()
+                + File.separator
+                + dataRegion.getDataRegionId());
+    if ((seqSnapshotDir.exists() && seqSnapshotDir.listFiles() != null)
+        || (unseqSnapshotDir.exists() && unseqSnapshotDir.listFiles() != null)) {
       // the directory should be empty or not exists
       throw new DirectoryNotLegalException(
           String.format("%s already exists and is not empty", snapshotDirPath));
