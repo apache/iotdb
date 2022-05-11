@@ -110,7 +110,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void createUser(String username, String password) throws AuthException {
-    logger.info(username + ":" + password);
     if (!userManager.createUser(username, password)) {
       throw new AuthException(String.format("User %s already exists", username));
     }
