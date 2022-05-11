@@ -16,34 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.fragment;
 
-import org.apache.iotdb.consensus.common.DataSet;
+package org.apache.iotdb.commons.schema.tree;
 
-public class FragmentInstanceInfo implements DataSet {
-  private final FragmentInstanceState state;
-  private String message;
-  private final long endTime;
+public interface ITreeNode {
 
-  public FragmentInstanceInfo(FragmentInstanceState state, long endTime) {
-    this.state = state;
-    this.endTime = endTime;
-  }
-
-  public FragmentInstanceInfo(FragmentInstanceState state, long endTime, String message) {
-    this(state, endTime);
-    this.message = message;
-  }
-
-  public FragmentInstanceState getState() {
-    return state;
-  }
-
-  public long getEndTime() {
-    return endTime;
-  }
-
-  public String getMessage() {
-    return message;
-  }
+  String getName();
 }

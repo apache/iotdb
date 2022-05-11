@@ -48,6 +48,7 @@ public class PathPatternTree {
 
   public PathPatternTree(PathPatternNode root) {
     this.root = root;
+    this.pathList = new ArrayList<>();
   }
 
   public PathPatternTree(PartialPath devicePath, String[] measurements) {

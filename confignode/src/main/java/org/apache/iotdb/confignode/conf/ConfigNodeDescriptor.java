@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 
@@ -35,8 +35,9 @@ import java.util.Properties;
 public class ConfigNodeDescriptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeDescriptor.class);
 
+  private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
+
   private final ConfigNodeConf conf = new ConfigNodeConf();
-  private final CommonConfig commonConfig = CommonConfig.getInstance();
 
   private ConfigNodeDescriptor() {
     loadProps();
@@ -46,20 +47,12 @@ public class ConfigNodeDescriptor {
     return conf;
   }
 
-  /** init common config according to iotdb config */
-  private void initCommonConfig() {
-    // first init the user and role folder in common config
-    commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
-    commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
-  }
-
   /**
    * get props url location
    *
    * @return url object if location exit, otherwise null.
    */
   public URL getPropsUrl() {
-    initCommonConfig();
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(ConfigNodeConstant.CONFIGNODE_CONF, null);
     // If it wasn't, check if a home directory was provided
@@ -98,6 +91,7 @@ public class ConfigNodeDescriptor {
   }
 
   private void loadProps() {
+    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     URL url = getPropsUrl();
     if (url == null) {
       LOGGER.warn(
@@ -182,10 +176,6 @@ public class ConfigNodeDescriptor {
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
-      conf.setDefaultTTL(
-          Long.parseLong(
-              properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
-
       conf.setTimePartitionInterval(
           Long.parseLong(
               properties.getProperty(
@@ -209,14 +199,19 @@ public class ConfigNodeDescriptor {
       conf.setMaximumDataRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "maximum_data_region_count", String.valueOf(conf.getMaximumDataRegionCount()))));
-      commonConfig.setUserFolder(conf.getSystemDir() + File.separator + "users");
-      commonConfig.setRoleFolder(conf.getSystemDir() + File.separator + "roles");
+                  "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
+
+      // commons
+      commonDescriptor.loadCommonProps(properties);
+      commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);
     } finally {
       conf.updatePath();
+      commonDescriptor
+          .getConfig()
+          .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
     }
   }
 

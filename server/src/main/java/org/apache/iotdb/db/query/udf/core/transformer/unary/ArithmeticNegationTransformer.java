@@ -33,12 +33,12 @@ public class ArithmeticNegationTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType getDataType() {
-    return layerPointReader.getDataType();
+    return layerPointReaderDataType;
   }
 
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
-    switch (layerPointReader.getDataType()) {
+    switch (layerPointReaderDataType) {
       case INT32:
         cachedInt = -layerPointReader.currentInt();
         break;

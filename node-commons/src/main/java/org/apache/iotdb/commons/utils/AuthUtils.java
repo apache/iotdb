@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -178,15 +178,15 @@ public class AuthUtils {
    */
   public static String encryptPassword(String password) {
     return AsymmetricEncryptFactory.getEncryptProvider(
-            CommonConfig.getInstance().getEncryptDecryptProvider(),
-            CommonConfig.getInstance().getEncryptDecryptProviderParameter())
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
         .encrypt(password);
   }
 
   public static boolean validatePassword(String originPassword, String encryptPassword) {
     return AsymmetricEncryptFactory.getEncryptProvider(
-            CommonConfig.getInstance().getEncryptDecryptProvider(),
-            CommonConfig.getInstance().getEncryptDecryptProviderParameter())
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
         .validate(originPassword, encryptPassword);
   }
 

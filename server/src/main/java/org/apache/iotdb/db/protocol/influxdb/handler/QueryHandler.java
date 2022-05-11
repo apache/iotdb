@@ -647,7 +647,7 @@ public class QueryHandler {
                       String.format(
                           "select %s from %s where %s=%s",
                           function.getParmaName(),
-                          paths.get(i).getDeviceIdString(),
+                          paths.get(i).getDevice(),
                           paths.get(i).getFullPath(),
                           o);
                   QueryPlan queryPlanNew =

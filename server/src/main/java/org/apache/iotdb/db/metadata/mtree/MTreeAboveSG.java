@@ -19,18 +19,16 @@
 
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -136,7 +134,7 @@ public class MTreeAboveSG {
         }
         IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
-                cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+                cur, nodeNames[i], CommonDescriptor.getInstance().getConfig().getDefaultTTL());
 
         IMNode result = store.addChild(cur, nodeNames[i], storageGroupMNode);
 
@@ -356,8 +354,7 @@ public class MTreeAboveSG {
     if (cur.isStorageGroup()) {
       return cur.getAsStorageGroupMNode();
     } else {
-      throw new MNodeTypeMismatchException(
-          storageGroupPath.getFullPath(), MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
+      throw new StorageGroupAlreadySetException(storageGroupPath.getFullPath(), true);
     }
   }
 

@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -185,7 +186,7 @@ public class ConfigNodeStartupCheck {
             conf.getDataNodeConsensusProtocolClass(),
             conf.getSeriesPartitionSlotNum(),
             conf.getSeriesPartitionExecutorClass(),
-            conf.getDefaultTTL(),
+            CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
             conf.getTimePartitionInterval(),
             conf.getSchemaReplicationFactor(),
             conf.getDataReplicationFactor());

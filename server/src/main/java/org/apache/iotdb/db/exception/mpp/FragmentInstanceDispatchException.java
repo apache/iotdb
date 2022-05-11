@@ -17,9 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.tree;
+package org.apache.iotdb.db.exception.mpp;
 
-public interface ITreeNode {
-
-  String getName();
+public class FragmentInstanceDispatchException extends Exception {
+  public FragmentInstanceDispatchException(Throwable t) {
+    super(t);
+  }
 }

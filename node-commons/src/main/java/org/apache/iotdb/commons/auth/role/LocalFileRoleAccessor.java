@@ -84,9 +84,10 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         return null;
       }
     }
-    FileInputStream inputStream = new FileInputStream(roleProfile);
-    try (DataInputStream dataInputStream =
-        new DataInputStream(new BufferedInputStream(inputStream))) {
+
+    try (FileInputStream inputStream = new FileInputStream(roleProfile);
+        DataInputStream dataInputStream =
+            new DataInputStream(new BufferedInputStream(inputStream))) {
       Role role = new Role();
       role.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
 
@@ -97,7 +98,6 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
             IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
       }
       role.setPrivilegeList(pathPrivilegeList);
-
       return role;
     } catch (Exception e) {
       throw new IOException(e);
