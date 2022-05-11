@@ -155,9 +155,12 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + user.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
+    logger.info("saveUser : " + userProfile);
     try (BufferedOutputStream outputStream =
         new BufferedOutputStream(new FileOutputStream(userProfile))) {
+      logger.info("1");
       try {
+        logger.info("2");
         IOUtils.writeString(outputStream, user.getName(), STRING_ENCODING, encodingBufferLocal);
         IOUtils.writeString(outputStream, user.getPassword(), STRING_ENCODING, encodingBufferLocal);
 
@@ -189,6 +192,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
     File oldFile =
         SystemFileFactory.INSTANCE.getFile(
             userDirPath + File.separator + user.getName() + IoTDBConstant.PROFILE_SUFFIX);
+    logger.info("saveUser oldFile" + oldFile);
     IOUtils.replaceFile(userProfile, oldFile);
   }
 

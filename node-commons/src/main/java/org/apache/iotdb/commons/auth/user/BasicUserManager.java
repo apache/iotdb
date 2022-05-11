@@ -101,6 +101,7 @@ public abstract class BasicUserManager implements IUserManager {
     if (user != null) {
       user.setLastActiveTime(System.currentTimeMillis());
     }
+    logger.info("getUser result: " + user);
     return user;
   }
 
@@ -114,9 +115,11 @@ public abstract class BasicUserManager implements IUserManager {
     if (user != null) {
       return false;
     }
+    logger.info("after getUser user" + user);
     lock.writeLock(username);
     try {
       user = new User(username, AuthUtils.encryptPassword(password));
+      logger.info("start save user" + username);
       accessor.saveUser(user);
       userMap.put(username, user);
       return true;
