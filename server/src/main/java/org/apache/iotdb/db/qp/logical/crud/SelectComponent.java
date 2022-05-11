@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -86,7 +86,7 @@ public class SelectComponent {
     if (resultColumn.getExpression().isUserDefinedAggregationFunctionExpression()) {
       hasUserDefinedAggregationFunction = true;
     }
-    if (resultColumn.getExpression().isPlainAggregationFunctionExpression()) {
+    if (resultColumn.getExpression().isBuiltInAggregationFunctionExpression()) {
       hasPlainAggregationFunction = true;
     }
     if (resultColumn.getExpression().isTimeSeriesGeneratingFunctionExpression()) {
@@ -113,10 +113,8 @@ public class SelectComponent {
         if (expression instanceof TimeSeriesOperand) {
           pathsCache.add(((TimeSeriesOperand) expression).getPath());
         } else if (expression instanceof FunctionExpression
-            && expression.isPlainAggregationFunctionExpression()) {
-          pathsCache.add(
-              ((TimeSeriesOperand) ((FunctionExpression) expression).getExpressions().get(0))
-                  .getPath());
+            && expression.isBuiltInAggregationFunctionExpression()) {
+          pathsCache.add(((TimeSeriesOperand) expression.getExpressions().get(0)).getPath());
         } else {
           pathsCache.add(null);
         }

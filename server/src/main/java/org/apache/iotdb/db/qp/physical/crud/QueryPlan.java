@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -59,7 +59,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private boolean ascending = true;
 
-  private Map<String, Integer> pathToIndex = new HashMap<>();
+  private final Map<String, Integer> pathToIndex = new HashMap<>();
 
   protected Set<Integer>
       withoutNullColumnsIndex; // index set that withoutNullColumns for output data columns
@@ -120,7 +120,8 @@ public abstract class QueryPlan extends PhysicalPlan {
     for (int i = 0; i < resultColumns.size(); ++i) {
       if (isJdbcQuery) {
         // Separate sgName from the name of resultColumn to reduce the network IO
-        String sgName = IoTDB.schemaEngine.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
+        String sgName =
+            IoTDB.schemaProcessor.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
         respSgColumns.add(sgName);
         if (resultColumns.get(i).getAlias() == null) {
           respColumns.add(

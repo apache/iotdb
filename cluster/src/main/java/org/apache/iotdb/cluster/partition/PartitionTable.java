@@ -21,10 +21,10 @@ package org.apache.iotdb.cluster.partition;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
@@ -124,7 +124,7 @@ public interface PartitionTable {
    */
   default PartitionGroup partitionByPathTime(PartialPath path, long timestamp)
       throws MetadataException {
-    PartialPath storageGroup = IoTDB.schemaEngine.getBelongedStorageGroup(path);
+    PartialPath storageGroup = IoTDB.schemaProcessor.getBelongedStorageGroup(path);
     return this.route(storageGroup.getFullPath(), timestamp);
   }
 
@@ -138,7 +138,7 @@ public interface PartitionTable {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
 
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
-    PartialPath storageGroup = IoTDB.schemaEngine.getBelongedStorageGroup(path);
+    PartialPath storageGroup = IoTDB.schemaProcessor.getBelongedStorageGroup(path);
     startTime = StorageEngine.convertMilliWithPrecision(startTime);
     endTime = StorageEngine.convertMilliWithPrecision(endTime);
     while (startTime <= endTime) {

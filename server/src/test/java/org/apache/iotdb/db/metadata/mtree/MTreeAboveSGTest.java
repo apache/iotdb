@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -31,6 +32,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -44,10 +46,10 @@ import static org.junit.Assert.fail;
 
 public class MTreeAboveSGTest {
 
-  private MTreeAboveSG root = new MTreeAboveSG();
+  private MTreeAboveSG root;
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     root = new MTreeAboveSG();
   }
@@ -266,27 +268,72 @@ public class MTreeAboveSGTest {
     root.setStorageGroup(new PartialPath("root.sg1"));
 
     root.setStorageGroup(new PartialPath("root.sg2"));
-    SchemaEngine.StorageGroupFilter filter = storageGroup -> storageGroup.equals("root.sg1");
+    LocalSchemaProcessor.StorageGroupFilter filter =
+        storageGroup -> storageGroup.equals("root.sg1");
 
-    Pair<List<PartialPath>, Set<IStorageGroupMNode>> result =
-        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null);
+    Pair<List<PartialPath>, Set<PartialPath>> result =
+        root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, null);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, null);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(2, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, filter);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, filter);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(1, result.right.size());
 
-    result = root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, filter);
+    result = root.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, false, filter);
     Assert.assertEquals(0, result.left.size());
     Assert.assertEquals(1, result.right.size());
+  }
+
+  @Test
+  public void testSerialization() throws Exception {
+    PartialPath[] pathList =
+        new PartialPath[] {
+          new PartialPath("root.sg"),
+          new PartialPath("root.a.sg"),
+          new PartialPath("root.a.b.sg"),
+          new PartialPath("root.a.a.b.sg")
+        };
+    for (int i = 0; i < pathList.length; i++) {
+      root.setStorageGroup(pathList[i]);
+      IStorageGroupMNode storageGroupMNode =
+          root.getStorageGroupNodeByStorageGroupPath(pathList[i]);
+      storageGroupMNode.setDataTTL(i);
+      storageGroupMNode.setDataReplicationFactor(i);
+      storageGroupMNode.setSchemaReplicationFactor(i);
+      storageGroupMNode.setTimePartitionInterval(i);
+    }
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
+    root.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    MTreeAboveSG newTree = new MTreeAboveSG();
+    newTree.deserialize(byteBuffer);
+
+    for (int i = 0; i < pathList.length; i++) {
+      newTree.isStorageGroup(pathList[i]);
+      TStorageGroupSchema storageGroupSchema =
+          newTree.getStorageGroupNodeByStorageGroupPath(pathList[i]).getStorageGroupSchema();
+      Assert.assertEquals(i, storageGroupSchema.getTTL());
+      Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
+      Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
+      Assert.assertEquals(i, storageGroupSchema.getTimePartitionInterval());
+    }
+
+    Assert.assertEquals(
+        3, newTree.getMatchedStorageGroups(new PartialPath("root.**.sg"), false).size());
+    Assert.assertEquals(
+        2, newTree.getMatchedStorageGroups(new PartialPath("root.**.b.sg"), false).size());
+    Assert.assertEquals(
+        1, newTree.getMatchedStorageGroups(new PartialPath("root.*.*.sg"), false).size());
   }
 }

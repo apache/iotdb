@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.metadata.SchemaEngine;
+import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.schemaregion.SchemaEngineMode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -42,6 +43,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,12 +55,20 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MTreeBelowSGTest {
+public abstract class MTreeBelowSGTest {
 
   MTreeAboveSG root;
+  IMTreeBelowSG storageGroup;
+
+  Set<IMTreeBelowSG> usedMTree = new HashSet<>();
+
+  protected abstract void setConfig();
+
+  protected abstract void rollBackConfig();
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
+    setConfig();
     EnvironmentUtils.envSetUp();
     root = new MTreeAboveSG();
   }
@@ -67,13 +77,27 @@ public class MTreeBelowSGTest {
   public void tearDown() throws Exception {
     root.clear();
     root = null;
+    for (IMTreeBelowSG mtree : usedMTree) {
+      mtree.clear();
+    }
+    usedMTree.clear();
+    storageGroup = null;
     EnvironmentUtils.cleanEnv();
+    rollBackConfig();
   }
 
-  private MTreeBelowSG getStorageGroup(PartialPath path) throws MetadataException {
-    root.setStorageGroup(path);
+  private IMTreeBelowSG getStorageGroup(PartialPath path) throws MetadataException {
     try {
-      return new MTreeBelowSG(root.getStorageGroupNodeByStorageGroupPath(path));
+      root.setStorageGroup(path);
+      IMTreeBelowSG mtree;
+      if (SchemaEngineMode.valueOf(IoTDBDescriptor.getInstance().getConfig().getSchemaEngineMode())
+          .equals(SchemaEngineMode.Schema_File)) {
+        mtree = new MTreeBelowSGCachedImpl(root.getStorageGroupNodeByStorageGroupPath(path), 0);
+      } else {
+        mtree = new MTreeBelowSGMemoryImpl(root.getStorageGroupNodeByStorageGroupPath(path), 0);
+      }
+      usedMTree.add(mtree);
+      return mtree;
     } catch (IOException e) {
       throw new MetadataException(e);
     }
@@ -81,7 +105,7 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testAddLeftNodePathWithAlias() throws MetadataException {
-    MTreeBelowSG storageGroup = getStorageGroup(new PartialPath("root.laptop"));
+    storageGroup = getStorageGroup(new PartialPath("root.laptop"));
     try {
       storageGroup.createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
@@ -109,7 +133,7 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testAddAndPathExist() throws MetadataException {
-    MTreeBelowSG storageGroup = getStorageGroup(new PartialPath("root.laptop"));
+    storageGroup = getStorageGroup(new PartialPath("root.laptop"));
     assertFalse(storageGroup.isPathExist(new PartialPath("root.laptop.d1")));
     try {
       storageGroup.createTimeseries(
@@ -129,7 +153,6 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testAddAndQueryPath() {
-    MTreeBelowSG storageGroup = null;
     try {
       assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.a")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a")));
@@ -181,6 +204,7 @@ public class MTreeBelowSGTest {
       assertNotNull(storageGroup);
       List<MeasurementPath> result =
           storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"));
+      result.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
@@ -195,7 +219,6 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testAddAndQueryPathWithAlias() {
-    MTreeBelowSG storageGroup = null;
     try {
       assertFalse(root.isStorageGroupAlreadySet(new PartialPath("root.a")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a")));
@@ -248,11 +271,13 @@ public class MTreeBelowSGTest {
 
       List<MeasurementPath> result =
           storageGroup.getMeasurementPaths(new PartialPath("root.a.*.s0"));
+      result.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
 
       result = storageGroup.getMeasurementPaths(new PartialPath("root.a.*.temperature"));
+      result.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0).getFullPath());
       assertEquals("root.a.d1.s0", result.get(1).getFullPath());
@@ -260,6 +285,7 @@ public class MTreeBelowSGTest {
       List<MeasurementPath> result2 =
           storageGroup.getMeasurementPathsWithAlias(new PartialPath("root.a.*.s0"), 0, 0, false)
               .left;
+      result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
       assertFalse(result2.get(0).isMeasurementAliasExists());
@@ -270,6 +296,7 @@ public class MTreeBelowSGTest {
           storageGroup.getMeasurementPathsWithAlias(
                   new PartialPath("root.a.*.temperature"), 0, 0, false)
               .left;
+      result2.sort(Comparator.comparing(MeasurementPath::getFullPath));
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.temperature", result2.get(0).getFullPathWithAlias());
       assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
@@ -287,7 +314,6 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testGetAllChildNodeNamesByPath() {
-    MTreeBelowSG storageGroup = null;
     try {
       storageGroup = getStorageGroup(new PartialPath("root.a"));
 
@@ -331,9 +357,7 @@ public class MTreeBelowSGTest {
   }
 
   @Test
-  public void testSetStorageGroup() throws IllegalPathException {
-    // set storage group first
-    MTreeBelowSG storageGroup = null;
+  public void testSetStorageGroup() throws MetadataException {
     try {
       storageGroup = getStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isStorageGroupAlreadySet(new PartialPath("root.laptop.d1")));
@@ -406,8 +430,6 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testGetAllTimeseriesCount() {
-    // set storage group first
-    MTreeBelowSG storageGroup = null;
     try {
       storageGroup = getStorageGroup(new PartialPath("root.laptop"));
       storageGroup.createTimeseries(
@@ -471,7 +493,7 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testAddSubDevice() throws MetadataException {
-    MTreeBelowSG storageGroup = getStorageGroup(new PartialPath("root.laptop"));
+    storageGroup = getStorageGroup(new PartialPath("root.laptop"));
     storageGroup.createTimeseries(
         new PartialPath("root.laptop.d1.s1"),
         TSDataType.INT32,
@@ -503,7 +525,7 @@ public class MTreeBelowSGTest {
   public void testSearchStorageGroup() throws MetadataException {
     String path1 = "root";
     String sgPath1 = "root.vehicle";
-    MTreeBelowSG storageGroup = getStorageGroup(new PartialPath(sgPath1));
+    storageGroup = getStorageGroup(new PartialPath(sgPath1));
     assertTrue(root.isStorageGroupAlreadySet(new PartialPath(path1)));
     try {
       storageGroup.createTimeseries(
@@ -532,7 +554,7 @@ public class MTreeBelowSGTest {
   @Test
   public void testCreateTimeseries() throws MetadataException {
     String sgPath = "root.sg1";
-    MTreeBelowSG storageGroup = getStorageGroup(new PartialPath(sgPath));
+    storageGroup = getStorageGroup(new PartialPath(sgPath));
 
     storageGroup.createTimeseries(
         new PartialPath("root.sg1.a.b.c"),
@@ -561,7 +583,7 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testCountEntity() throws MetadataException {
-    MTreeBelowSG storageGroup = getStorageGroup(new PartialPath("root.laptop"));
+    storageGroup = getStorageGroup(new PartialPath("root.laptop"));
     storageGroup.createTimeseries(
         new PartialPath("root.laptop.s1"),
         TSDataType.INT32,
@@ -618,9 +640,9 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testGetNodeListInLevel() throws MetadataException {
-    SchemaEngine.StorageGroupFilter filter = sg -> sg.equals("root.sg1");
+    LocalSchemaProcessor.StorageGroupFilter filter = sg -> sg.equals("root.sg1");
 
-    MTreeBelowSG storageGroup = getStorageGroup(new PartialPath("root.sg1"));
+    storageGroup = getStorageGroup(new PartialPath("root.sg1"));
     storageGroup.createTimeseries(
         new PartialPath("root.sg1.d1.s1"),
         TSDataType.INT32,
@@ -637,19 +659,29 @@ public class MTreeBelowSGTest {
         null);
 
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null).size());
+        2,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null).size());
 
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, null).size());
+        1,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null).size());
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, null).size());
+        1,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, null).size());
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, null).size());
+        1,
+        storageGroup
+            .getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, false, null)
+            .size());
 
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, filter).size());
+        2,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, filter).size());
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, filter).size());
+        1,
+        storageGroup
+            .getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, false, filter)
+            .size());
 
     storageGroup = getStorageGroup(new PartialPath("root.sg2"));
     storageGroup.createTimeseries(
@@ -668,24 +700,34 @@ public class MTreeBelowSGTest {
         null);
 
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, null).size());
+        2,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, null).size());
 
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, null).size());
+        2,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 2, false, null).size());
     Assert.assertEquals(
-        1, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, null).size());
+        1,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*"), 1, false, null).size());
     Assert.assertEquals(
-        2, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, null).size());
+        2,
+        storageGroup
+            .getNodesListInGivenLevel(new PartialPath("root.*.*.s1"), 2, false, null)
+            .size());
 
     Assert.assertEquals(
-        0, storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, filter).size());
+        0,
+        storageGroup.getNodesListInGivenLevel(new PartialPath("root.**"), 3, false, filter).size());
     Assert.assertEquals(
-        0, storageGroup.getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, filter).size());
+        0,
+        storageGroup
+            .getNodesListInGivenLevel(new PartialPath("root.*.**"), 2, false, filter)
+            .size());
   }
 
   @Test
   public void testGetDeviceForTimeseries() throws MetadataException {
-    MTreeBelowSG storageGroup = getStorageGroup(new PartialPath("root.sg"));
+    storageGroup = getStorageGroup(new PartialPath("root.sg"));
     storageGroup.createTimeseries(
         new PartialPath("root.sg.a1.d1.s1"),
         TSDataType.INT32,
@@ -725,7 +767,7 @@ public class MTreeBelowSGTest {
 
   @Test
   public void testGetMeasurementCountGroupByLevel() throws Exception {
-    MTreeBelowSG storageGroup = getStorageGroup(new PartialPath("root.sg"));
+    storageGroup = getStorageGroup(new PartialPath("root.sg"));
     storageGroup.createTimeseries(
         new PartialPath("root.sg.a1.s1"),
         TSDataType.INT32,

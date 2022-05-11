@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
+import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +45,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class TsFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
   private String storageGroupName;
-  private String virtualStorageGroup;
+  private String dataRegion;
   private String storageGroupDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
@@ -60,11 +61,10 @@ public class TsFileManager {
 
   private boolean allowCompaction = true;
 
-  public TsFileManager(
-      String storageGroupName, String virtualStorageGroup, String storageGroupDir) {
+  public TsFileManager(String storageGroupName, String dataRegion, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
-    this.virtualStorageGroup = virtualStorageGroup;
+    this.dataRegion = dataRegion;
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
@@ -355,12 +355,12 @@ public class TsFileManager {
     this.allowCompaction = allowCompaction;
   }
 
-  public String getVirtualStorageGroup() {
-    return virtualStorageGroup;
+  public String getDataRegion() {
+    return dataRegion;
   }
 
-  public void setVirtualStorageGroup(String virtualStorageGroup) {
-    this.virtualStorageGroup = virtualStorageGroup;
+  public void setDataRegion(String dataRegion) {
+    this.dataRegion = dataRegion;
   }
 
   public List<TsFileResource> getSequenceRecoverTsFileResources() {
@@ -369,6 +369,43 @@ public class TsFileManager {
 
   public List<TsFileResource> getUnsequenceRecoverTsFileResources() {
     return unsequenceRecoverTsFileResources;
+  }
+
+  public List<File> collectHistoryTsFileForSync(long dataStartTime) {
+    readLock();
+    try {
+      List<File> historyTsFiles = new ArrayList<>();
+      collectTsFile(historyTsFiles, getTsFileList(true), dataStartTime);
+      collectTsFile(historyTsFiles, getTsFileList(false), dataStartTime);
+      return historyTsFiles;
+    } finally {
+      readUnlock();
+    }
+  }
+
+  private void collectTsFile(
+      List<File> historyTsFiles, List<TsFileResource> tsFileResources, long dataStartTime) {
+    TsFileSyncManager syncManager = TsFileSyncManager.getInstance();
+
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (tsFileResource.getFileEndTime() < dataStartTime) {
+        continue;
+      }
+      TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+      boolean isRealTimeTsFile = false;
+      if (tsFileProcessor != null) {
+        isRealTimeTsFile = tsFileProcessor.isMemtableNotNull();
+      }
+      File tsFile = tsFileResource.getTsFile();
+      if (!isRealTimeTsFile) {
+        File mods = new File(tsFileResource.getModFile().getFilePath());
+        long modsOffset = mods.exists() ? mods.length() : 0L;
+        File hardlink = syncManager.createHardlink(tsFile, modsOffset);
+        if (hardlink != null) {
+          historyTsFiles.add(hardlink);
+        }
+      }
+    }
   }
 
   // ({systemTime}-{versionNum}-{innerCompactionNum}-{crossCompactionNum}.tsfile)

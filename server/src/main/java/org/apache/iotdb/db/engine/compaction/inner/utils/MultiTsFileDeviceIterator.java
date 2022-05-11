@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
@@ -94,7 +94,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public boolean hasNextDevice() {
     boolean hasNext = false;
     for (TsFileDeviceIterator iterator : deviceIteratorMap.values()) {
-      hasNext = hasNext || iterator.hasNext() || !iterator.current().equals(currentDevice);
+      hasNext =
+          hasNext
+              || iterator.hasNext()
+              || (iterator.current() != null && !iterator.current().equals(currentDevice));
     }
     return hasNext;
   }

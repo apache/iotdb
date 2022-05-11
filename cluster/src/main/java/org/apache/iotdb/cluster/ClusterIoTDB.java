@@ -32,7 +32,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
-import org.apache.iotdb.cluster.metadata.CSchemaEngine;
+import org.apache.iotdb.cluster.metadata.CSchemaProcessor;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
@@ -65,8 +65,8 @@ import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
@@ -151,9 +151,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
             IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     metaGroupMember = new MetaGroupMember(protocolFactory, thisNode, coordinator);
     IoTDB.setClusterMode();
-    IoTDB.setSchemaEngine(CSchemaEngine.getInstance());
-    ((CSchemaEngine) IoTDB.schemaEngine).setMetaGroupMember(metaGroupMember);
-    ((CSchemaEngine) IoTDB.schemaEngine).setCoordinator(coordinator);
+    IoTDB.setSchemaProcessor(CSchemaProcessor.getInstance());
+    ((CSchemaProcessor) IoTDB.schemaProcessor).setMetaGroupMember(metaGroupMember);
+    ((CSchemaProcessor) IoTDB.schemaProcessor).setCoordinator(coordinator);
     MetaPuller.getInstance().init(metaGroupMember);
     // set coordinator for serviceProvider construction
     try {
@@ -225,11 +225,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   protected boolean serverCheckAndInit() throws ConfigurationException, IOException {
-    IoTDBConfigCheck.getInstance().checkConfig();
+    IoTDBStartCheck.getInstance().checkConfig();
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     // init server's configuration first, because the cluster configuration may read settings from
     // the server's configuration.
-    config.setSyncEnable(false);
     // auto create schema is took over by cluster module, so we disable it in the server module.
     config.setAutoCreateSchemaEnabled(false);
     // check cluster config

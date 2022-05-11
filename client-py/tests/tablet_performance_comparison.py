@@ -208,9 +208,7 @@ def performance_test(
                 for m in measurements:
                     value_array.append(csv_data.at[t, m])
                 values.append(value_array)
-            tablet = Tablet(
-                device_id, measurements, data_types, values, timestamps_
-            )
+            tablet = Tablet(device_id, measurements, data_types, values, timestamps_)
         else:
             # Use the NEW method to construct numpy tablet
             timestamps_ = csv_data[TIME_STR].values

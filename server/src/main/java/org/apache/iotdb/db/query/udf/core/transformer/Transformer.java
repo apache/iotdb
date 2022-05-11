@@ -55,7 +55,7 @@ public abstract class Transformer implements LayerPointReader {
   protected abstract boolean cacheValue() throws QueryProcessException, IOException;
 
   @Override
-  public void readyForNext() {
+  public final void readyForNext() {
     hasCachedValue = false;
     currentNull = false;
   }

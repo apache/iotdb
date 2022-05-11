@@ -42,12 +42,12 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift-confignode</artifactId>
+            <artifactId>iotdb-consensus</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-commons</artifactId>
+            <artifactId>iotdb-server</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

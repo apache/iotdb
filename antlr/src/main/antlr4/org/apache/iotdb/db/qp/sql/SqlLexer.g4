@@ -362,6 +362,30 @@ PATHS
     : P A T H S
     ;
 
+PIPE
+    : P I P E
+    ;
+
+PIPES
+    : P I P E S
+    ;
+
+PIPESERVER
+    : P I P E S E R V E R
+    ;
+
+PIPESINK
+    : P I P E S I N K
+    ;
+
+PIPESINKS
+    : P I P E S I N K S
+    ;
+
+PIPESINKTYPE
+    : P I P E S I N K T Y P E
+    ;
+
 PREVIOUS
     : P R E V I O U S
     ;
@@ -812,6 +836,17 @@ DROP_CONTINUOUS_QUERY
     : D R O P '_' C O N T I N U O U S '_' Q U E R Y
     ;
 
+SCHEMA_REPLICATION_FACTOR
+    : S C H E M A '_' R E P L I C A T I O N '_' F A C T O R
+    ;
+
+DATA_REPLICATION_FACTOR
+    : D A T A '_' R E P L I C A T I O N '_' F A C T O R
+    ;
+
+TIME_PARTITION_INTERVAL
+    : T I M E '_' P A R T I T I O N '_' I N T E R V A L
+    ;
 
 /**
  * 3. Operators
@@ -827,7 +862,8 @@ MOD : '%';
 
 // Operators. Comparation
 
-OPERATOR_EQ : '=' | '==';
+OPERATOR_DEQ : '==';
+OPERATOR_SEQ : '=';
 OPERATOR_GT : '>';
 OPERATOR_GTE : '>=';
 OPERATOR_LT : '<';
@@ -946,11 +982,7 @@ ID
     : NAME_CHAR+
     ;
 
-QUTOED_ID_IN_NODE_NAME
-    : BQUOTA_STRING_IN_NODE_NAME
-    ;
-
-QUTOED_ID
+QUOTED_ID
     : BQUOTA_STRING
     ;
 
@@ -973,20 +1005,17 @@ fragment CN_CHAR
     ;
 
 fragment DQUOTA_STRING
-    : '"' ( '\\'. | ~('"'| '\\') )* '"'
+    : '"' ( '\\'. | '""' | ~('"'| '\\') )* '"'
     ;
 
 fragment SQUOTA_STRING
-    : '\'' ( '\\'. | ~('\''| '\\') )* '\''
+    : '\'' ( '\\'. | '\'\'' |~('\''| '\\') )* '\''
     ;
 
 fragment BQUOTA_STRING
-    : '`' ( '\\'. | ~('`'| '\\') )* '`'
+    : '`' ( '\\' ~('`') | '``' | ~('`'| '\\') )* '`'
     ;
 
-fragment BQUOTA_STRING_IN_NODE_NAME
-    : '`' ( '\\' ('`'|'\\'|'\''|'"') | ~('`'|'\\'|'.'|'\''|'"'))* '`'
-    ;
 
 // Characters and write it this way for case sensitivity
 

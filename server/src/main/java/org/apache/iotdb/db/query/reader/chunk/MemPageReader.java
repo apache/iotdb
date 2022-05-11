@@ -18,28 +18,32 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
+import java.util.Collections;
 
 public class MemPageReader implements IPageReader {
 
-  private final IPointReader timeValuePairIterator;
+  private final TsBlock tsBlock;
   private final IChunkMetadata chunkMetadata;
   private Filter valueFilter;
 
-  public MemPageReader(
-      IPointReader timeValuePairIterator, IChunkMetadata chunkMetadata, Filter filter) {
-    this.timeValuePairIterator = timeValuePairIterator;
+  public MemPageReader(TsBlock tsBlock, IChunkMetadata chunkMetadata, Filter filter) {
+    this.tsBlock = tsBlock;
     this.chunkMetadata = chunkMetadata;
     this.valueFilter = filter;
   }
@@ -48,15 +52,118 @@ public class MemPageReader implements IPageReader {
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     TSDataType dataType = chunkMetadata.getDataType();
     BatchData batchData = BatchDataFactory.createBatchData(dataType, ascending, false);
-    while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
+    for (int i = 0; i < tsBlock.getPositionCount(); i++) {
       if (valueFilter == null
           || valueFilter.satisfy(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+              tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getObject(i))) {
+        switch (dataType) {
+          case BOOLEAN:
+            batchData.putBoolean(
+                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBoolean(i));
+            break;
+          case INT32:
+            batchData.putInt(tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getInt(i));
+            break;
+          case INT64:
+            batchData.putLong(tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getLong(i));
+            break;
+          case DOUBLE:
+            batchData.putDouble(
+                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getDouble(i));
+            break;
+          case FLOAT:
+            batchData.putFloat(
+                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getFloat(i));
+            break;
+          case TEXT:
+            batchData.putBinary(
+                tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBinary(i));
+            break;
+          default:
+            throw new UnSupportedDataTypeException(String.valueOf(dataType));
+        }
       }
     }
     return batchData.flip();
+  }
+
+  @Override
+  public TsBlock getAllSatisfiedData() {
+    TSDataType dataType = chunkMetadata.getDataType();
+    TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(dataType));
+    TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
+    ColumnBuilder valueBuilder = builder.getColumnBuilder(0);
+    switch (dataType) {
+      case BOOLEAN:
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long time = tsBlock.getTimeColumn().getLong(i);
+          boolean value = tsBlock.getColumn(0).getBoolean(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeBoolean(value);
+            builder.declarePosition();
+          }
+        }
+        break;
+      case INT32:
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long time = tsBlock.getTimeColumn().getLong(i);
+          int value = tsBlock.getColumn(0).getInt(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeInt(value);
+            builder.declarePosition();
+          }
+        }
+        break;
+      case INT64:
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long time = tsBlock.getTimeColumn().getLong(i);
+          long value = tsBlock.getColumn(0).getLong(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeLong(value);
+            builder.declarePosition();
+          }
+        }
+        break;
+      case FLOAT:
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long time = tsBlock.getTimeColumn().getLong(i);
+          float value = tsBlock.getColumn(0).getFloat(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeFloat(value);
+            builder.declarePosition();
+          }
+        }
+        break;
+      case DOUBLE:
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long time = tsBlock.getTimeColumn().getLong(i);
+          double value = tsBlock.getColumn(0).getDouble(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeDouble(value);
+            builder.declarePosition();
+          }
+        }
+        break;
+      case TEXT:
+        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+          long time = tsBlock.getTimeColumn().getLong(i);
+          Binary value = tsBlock.getColumn(0).getBinary(i);
+          if (valueFilter == null || valueFilter.satisfy(time, value)) {
+            timeBuilder.writeLong(time);
+            valueBuilder.writeBinary(value);
+            builder.declarePosition();
+          }
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+    }
+    return builder.build();
   }
 
   @Override

@@ -185,7 +185,7 @@ public class CatchUpTaskTest {
 
   @Before
   public void setUp() {
-    IoTDB.schemaEngine.init();
+    IoTDB.configManager.init();
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     receivedLogs = new ArrayList<>();
@@ -197,7 +197,7 @@ public class CatchUpTaskTest {
 
   @After
   public void tearDown() throws Exception {
-    IoTDB.schemaEngine.clear();
+    IoTDB.configManager.clear();
     sender.stop();
     sender.closeLogManager();
     EnvironmentUtils.cleanAllDir();

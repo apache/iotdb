@@ -33,6 +33,7 @@
         <cli.test.skip>false</cli.test.skip>
         <cli.it.skip>${cli.test.skip}</cli.it.skip>
         <cli.ut.skip>${cli.test.skip}</cli.ut.skip>
+        <commons-csv.version>1.9.0</commons-csv.version>
     </properties>
     <dependencies>
         <dependency>
@@ -63,12 +64,14 @@
         <dependency>
             <groupId>me.tongfei</groupId>
             <artifactId>progressbar</artifactId>
-            <version>0.9.2</version>
+            <version>${progressbar.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jline</groupId>
             <artifactId>jline</artifactId>
         </dependency>
+        <!-- Not for importing class, used for windows CLI,
+        refer to https://github.com/apache/iotdb/pull/4458 -->
         <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
@@ -87,7 +90,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
-            <version>1.9.0</version>
+            <version>${commons-csv.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

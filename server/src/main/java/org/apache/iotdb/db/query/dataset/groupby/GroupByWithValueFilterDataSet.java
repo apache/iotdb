@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -120,11 +120,10 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
     groupedPathList.addAll(pathToAggrIndexesMap.keySet());
     groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
-    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
-        lockListAndProcessorToSeriesMapPair =
-            StorageEngine.getInstance().mergeLock(groupedPathList);
-    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
-    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+    Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>> lockListAndProcessorToSeriesMapPair =
+        StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<DataRegion> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<DataRegion, List<PartialPath>> processorToSeriesMap =
         lockListAndProcessorToSeriesMapPair.right;
 
     try {
@@ -195,10 +194,12 @@ public class GroupByWithValueFilterDataSet extends GroupByTimeEngineDataSet {
     curAggregateResults = new AggregateResult[paths.size()];
     for (SlidingWindowGroupByExecutor slidingWindowGroupByExecutor :
         slidingWindowGroupByExecutors) {
-      slidingWindowGroupByExecutor.setTimeRange(curStartTime, curEndTime);
+      slidingWindowGroupByExecutor.setTimeRange(
+          curAggrTimeRange.getMin(), curAggrTimeRange.getMax());
     }
     while (!isEndCal()) {
-      AggregateResult[] aggregations = calcResult(curPreAggrStartTime, curPreAggrEndTime);
+      AggregateResult[] aggregations =
+          calcResult(curPreAggrTimeRange.getMin(), curPreAggrTimeRange.getMax());
       for (int i = 0; i < aggregations.length; i++) {
         slidingWindowGroupByExecutors[i].update(aggregations[i].clone());
       }

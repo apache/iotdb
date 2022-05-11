@@ -32,7 +32,7 @@ import java.util.List;
 public class RegisterManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RegisterManager.class);
-  private List<IService> iServices;
+  private final List<IService> iServices;
   private static long deregisterTimeOut = 10_000L;
 
   public RegisterManager() {
