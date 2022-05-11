@@ -26,10 +26,6 @@ import com.sun.management.OperatingSystemMXBean;
 
 import java.lang.management.ManagementFactory;
 
-/**
- * @author Erickin
- * @create 2022-03-31-上午 8:55
- */
 public class ProcessMetricsMonitor {
 
   private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
@@ -39,7 +35,7 @@ public class ProcessMetricsMonitor {
   public void collectProcessCPUInfo() {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_CPU_LOAD.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         sunOsMXBean,
         a -> (long) (sunOsMXBean.getProcessCpuLoad() * 100),
         Tag.NAME.toString(),
@@ -47,7 +43,7 @@ public class ProcessMetricsMonitor {
 
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_CPU_TIME.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         sunOsMXBean,
         com.sun.management.OperatingSystemMXBean::getProcessCpuTime,
         Tag.NAME.toString(),
@@ -58,35 +54,35 @@ public class ProcessMetricsMonitor {
     Runtime runtime = Runtime.getRuntime();
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_MAX_MEM.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         runtime,
         a -> runtime.maxMemory(),
         Tag.NAME.toString(),
         "process");
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_TOTAL_MEM.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         runtime,
         a -> runtime.totalMemory(),
         Tag.NAME.toString(),
         "process");
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_FREE_MEM.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         runtime,
         a -> runtime.freeMemory(),
         Tag.NAME.toString(),
         "process");
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_USED_MEM.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         this,
         a -> getProcessUsedMemory(),
         Tag.NAME.toString(),
         "process");
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_MEM_RATIO.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         this,
         a -> Math.round(getProcessMemoryRatio()),
         Tag.NAME.toString(),
@@ -96,7 +92,7 @@ public class ProcessMetricsMonitor {
   public void collectThreadInfo() {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_THREADS_COUNT.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         this,
         a -> getThreadsCount(),
         Tag.NAME.toString(),
@@ -106,7 +102,7 @@ public class ProcessMetricsMonitor {
   public void collectProcessStatusInfo() {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_STATUS.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         this,
         a -> (getProcessStatus()),
         Tag.NAME.toString(),
@@ -139,8 +135,7 @@ public class ProcessMetricsMonitor {
   private double getProcessMemoryRatio() {
     long processUsedMemory = getProcessUsedMemory();
     long totalPhysicalMemorySize = sunOsMXBean.getTotalPhysicalMemorySize();
-    double ratio = (double) processUsedMemory / (double) totalPhysicalMemorySize * 100;
-    return ratio;
+    return (double) processUsedMemory / (double) totalPhysicalMemorySize * 100;
   }
 
   public static ProcessMetricsMonitor getInstance() {

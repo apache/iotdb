@@ -16,11 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -31,10 +33,6 @@ import java.io.File;
 import java.lang.management.ManagementFactory;
 import java.util.stream.Stream;
 
-/**
- * @author Erickin
- * @create 2022-03-31-下午 3:09
- */
 public class SysRunMetricsMonitor {
   private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
   private com.sun.management.OperatingSystemMXBean osMXBean;
@@ -46,7 +44,7 @@ public class SysRunMetricsMonitor {
   public void collectSystemCpuInfo() {
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_CPU_LOAD.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         osMXBean,
         a -> (long) (osMXBean.getSystemCpuLoad() * 100),
         Tag.NAME.toString(),
@@ -62,34 +60,34 @@ public class SysRunMetricsMonitor {
     metricManager
         .getOrCreateGauge(
             Metric.SYS_TOTAL_PHYSICAL_MEMORY_SIZE.toString(),
-            MetricLevel.IMPORTANT,
+            MetricLevel.CORE,
             Tag.NAME.toString(),
             "system")
         .set(osMXBean.getTotalPhysicalMemorySize());
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_FREE_PHYSICAL_MEMORY_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getFreePhysicalMemorySize(),
         Tag.NAME.toString(),
         "system");
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_TOTAL_SWAP_SPACE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getTotalSwapSpaceSize(),
         Tag.NAME.toString(),
         "system");
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_FREE_SWAP_SPACE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getFreeSwapSpaceSize(),
         Tag.NAME.toString(),
         "system");
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_COMMITTED_VM_SIZE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         osMXBean,
         a -> osMXBean.getCommittedVirtualMemorySize(),
         Tag.NAME.toString(),
@@ -98,15 +96,15 @@ public class SysRunMetricsMonitor {
 
   public void collectSystemDiskInfo() {
     metricManager.getOrCreateAutoGauge(
-        Metric.SYS_DICK_TOTAL_SPACE.toString(),
-        MetricLevel.IMPORTANT,
+        Metric.SYS_DISK_TOTAL_SPACE.toString(),
+        MetricLevel.CORE,
         this,
         a -> getSysDiskTotalSpace(),
         Tag.NAME.toString(),
         "system");
     metricManager.getOrCreateAutoGauge(
-        Metric.SYS_DICK_FREE_SPACE.toString(),
-        MetricLevel.IMPORTANT,
+        Metric.SYS_DISK_FREE_SPACE.toString(),
+        MetricLevel.CORE,
         this,
         a -> getSysDickFreeSpace(),
         Tag.NAME.toString(),
@@ -114,7 +112,7 @@ public class SysRunMetricsMonitor {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     metricManager.getOrCreateAutoGauge(
         Metric.TABLE_SPACE.toString(),
-        MetricLevel.IMPORTANT,
+        MetricLevel.CORE,
         dataDirs,
         value ->
             Stream.of(value)
