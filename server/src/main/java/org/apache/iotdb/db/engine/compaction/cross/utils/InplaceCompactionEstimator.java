@@ -1,7 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -16,13 +34,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class InplaceCompactionEstimator implements CompactionEstimator {
+public class InplaceCompactionEstimator implements ICompactionEstimator {
   private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
-  private final boolean tightEstimate;
-  private long tempMaxSeqFileCost;
-  private long timeLimit;
+  private boolean tightEstimate;
+  private long maxSeqFileCost;
 
   // the number of timeseries being compacted at the same time
   private final int concurrentSeriesNum =
@@ -34,28 +51,20 @@ public class InplaceCompactionEstimator implements CompactionEstimator {
   /** Maximum memory cost of querying a timeseries in each file. */
   private final Map<TsFileResource, Long> maxSeriesQueryCostMap = new HashMap<>();
 
-  private final RewriteCrossSpaceCompactionResource resource;
+  private final CrossSpaceCompactionResource resource;
 
-  public InplaceCompactionEstimator(
-      boolean tightEstimate, RewriteCrossSpaceCompactionResource resource) {
-    this.tightEstimate = tightEstimate;
-    this.tempMaxSeqFileCost = 0;
-    timeLimit =
-        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionFileSelectionTimeBudget();
-    if (timeLimit < 0) {
-      timeLimit = Long.MAX_VALUE;
-    }
+  public InplaceCompactionEstimator(CrossSpaceCompactionResource resource) {
+    this.tightEstimate = false;
+    this.maxSeqFileCost = 0;
     this.resource = resource;
   }
 
   @Override
   public long estimateMemory(int unseqIndex, List<Integer> seqIndexes) throws IOException {
     if (tightEstimate) {
-      return calculateTightMemoryCost(
-          unseqIndex, seqIndexes, System.currentTimeMillis(), timeLimit);
+      return calculateTightMemoryCost(unseqIndex, seqIndexes);
     } else {
-      return calculateLooseMemoryCost(
-          unseqIndex, seqIndexes, System.currentTimeMillis(), timeLimit);
+      return calculateLooseMemoryCost(unseqIndex, seqIndexes);
     }
   }
 
@@ -63,9 +72,7 @@ public class InplaceCompactionEstimator implements CompactionEstimator {
       int unseqIndex,
       List<Integer> seqIndexes,
       IFileQueryMemMeasurement unseqMeasurement,
-      IFileQueryMemMeasurement seqMeasurement,
-      long startTime,
-      long timeLimit)
+      IFileQueryMemMeasurement seqMeasurement)
       throws IOException {
     long cost = 0;
     Long fileCost = unseqMeasurement.measure(resource.getUnseqFiles().get(unseqIndex));
@@ -74,42 +81,31 @@ public class InplaceCompactionEstimator implements CompactionEstimator {
     for (int seqIndex : seqIndexes) {
       TsFileResource seqFile = resource.getSeqFiles().get(seqIndex);
       fileCost = seqMeasurement.measure(seqFile);
-      if (fileCost > tempMaxSeqFileCost) {
+      if (fileCost > maxSeqFileCost) {
         // only one file will be read at the same time, so only the largest one is recorded here
-        cost -= tempMaxSeqFileCost;
+        cost -= maxSeqFileCost;
         cost += fileCost;
-        tempMaxSeqFileCost = fileCost;
+        maxSeqFileCost = fileCost;
       }
       // but writing data into a new file may generate the same amount of metadata in memory
       cost += calculateMetadataSize(seqFile);
-      long timeConsumption = System.currentTimeMillis() - startTime;
-      if (timeConsumption > timeLimit) {
-        return Long.MAX_VALUE;
-      }
     }
     return cost;
   }
 
-  private long calculateLooseMemoryCost(
-      int unseqIndex, List<Integer> seqIndexes, long startTime, long timeLimit) throws IOException {
+  private long calculateLooseMemoryCost(int unseqIndex, List<Integer> seqIndexes)
+      throws IOException {
     return calculateMemoryCost(
-        unseqIndex,
-        seqIndexes,
-        TsFileResource::getTsFileSize,
-        this::calculateMetadataSize,
-        startTime,
-        timeLimit);
+        unseqIndex, seqIndexes, TsFileResource::getTsFileSize, this::calculateMetadataSize);
   }
 
-  private long calculateTightMemoryCost(
-      int unseqIndex, List<Integer> seqIndexes, long startTime, long timeLimit) throws IOException {
+  private long calculateTightMemoryCost(int unseqIndex, List<Integer> seqIndexes)
+      throws IOException {
     return calculateMemoryCost(
         unseqIndex,
         seqIndexes,
         this::calculateTightUnseqMemoryCost,
-        this::calculateTightSeqMemoryCost,
-        startTime,
-        timeLimit);
+        this::calculateTightSeqMemoryCost);
   }
 
   private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
@@ -173,5 +169,9 @@ public class InplaceCompactionEstimator implements CompactionEstimator {
         totalChunkNum,
         maxChunkNum);
     return new long[] {totalChunkNum, maxChunkNum};
+  }
+
+  public void setTightEstimate(boolean tightEstimate) {
+    this.tightEstimate = tightEstimate;
   }
 }

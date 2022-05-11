@@ -19,15 +19,9 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,34 +29,26 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * CrossSpaceMergeResource manages files and caches of readers, writers, MeasurementSchemas and
- * modifications to avoid unnecessary object creations and file openings.
+ * CrossSpaceCompactionResource manages files and caches of readers to avoid unnecessary object
+ * creations and file openings.
  */
-public class RewriteCrossSpaceCompactionResource {
-
+public class CrossSpaceCompactionResource {
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles = new ArrayList<>();
 
-  private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
-  private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
-  private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<TsFileResource, Map<String, Pair<Long, Long>>> startEndTimeCache =
-      new HashMap<>(); // pair<startTime, endTime>
-  private Map<IMeasurementSchema, ChunkWriterImpl> chunkWriterCache = new ConcurrentHashMap<>();
+  private final Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
 
   private long ttlLowerBound = Long.MIN_VALUE;
 
   private boolean cacheDeviceMeta = false;
 
-  public RewriteCrossSpaceCompactionResource(
+  public CrossSpaceCompactionResource(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
     filterUnseqResource(unseqFiles);
@@ -89,7 +75,7 @@ public class RewriteCrossSpaceCompactionResource {
     }
   }
 
-  public RewriteCrossSpaceCompactionResource(
+  public CrossSpaceCompactionResource(
       Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
     this.ttlLowerBound = ttlLowerBound;
     this.seqFiles = seqFiles.stream().filter(this::filterSeqResource).collect(Collectors.toList());
@@ -100,14 +86,7 @@ public class RewriteCrossSpaceCompactionResource {
     for (TsFileSequenceReader sequenceReader : fileReaderCache.values()) {
       sequenceReader.close();
     }
-    for (RestorableTsFileIOWriter writer : fileWriterCache.values()) {
-      writer.close();
-    }
-
     fileReaderCache.clear();
-    fileWriterCache.clear();
-    modificationCache.clear();
-    chunkWriterCache.clear();
   }
 
   /**
@@ -122,27 +101,6 @@ public class RewriteCrossSpaceCompactionResource {
       fileReaderCache.put(tsFileResource, reader);
     }
     return reader;
-  }
-
-  /**
-   * Get the modifications of a timeseries in the ModificationFile of a TsFile.
-   *
-   * @param path name of the time series
-   */
-  public List<Modification> getModifications(TsFileResource tsFileResource, PartialPath path) {
-    // copy from TsFileResource so queries are not affected
-    List<Modification> modifications =
-        modificationCache.computeIfAbsent(
-            tsFileResource, resource -> new LinkedList<>(resource.getModFile().getModifications()));
-    List<Modification> pathModifications = new ArrayList<>();
-    Iterator<Modification> modificationIterator = modifications.iterator();
-    while (modificationIterator.hasNext()) {
-      Modification modification = modificationIterator.next();
-      if (modification.getPath().matchFullPath(path)) {
-        pathModifications.add(modification);
-      }
-    }
-    return pathModifications;
   }
 
   public List<TsFileResource> getSeqFiles() {
@@ -174,33 +132,5 @@ public class RewriteCrossSpaceCompactionResource {
         entryIterator.remove();
       }
     }
-  }
-
-  public void setCacheDeviceMeta(boolean cacheDeviceMeta) {
-    this.cacheDeviceMeta = cacheDeviceMeta;
-  }
-
-  public void updateStartTime(TsFileResource tsFileResource, String device, long startTime) {
-    Map<String, Pair<Long, Long>> deviceStartEndTimePairMap =
-        startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
-    Pair<Long, Long> startEndTimePair =
-        deviceStartEndTimePairMap.getOrDefault(device, new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
-    long newStartTime = startEndTimePair.left > startTime ? startTime : startEndTimePair.left;
-    deviceStartEndTimePairMap.put(device, new Pair<>(newStartTime, startEndTimePair.right));
-    startEndTimeCache.put(tsFileResource, deviceStartEndTimePairMap);
-  }
-
-  public void updateEndTime(TsFileResource tsFileResource, String device, long endTime) {
-    Map<String, Pair<Long, Long>> deviceStartEndTimePairMap =
-        startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
-    Pair<Long, Long> startEndTimePair =
-        deviceStartEndTimePairMap.getOrDefault(device, new Pair<>(Long.MAX_VALUE, Long.MIN_VALUE));
-    long newEndTime = startEndTimePair.right < endTime ? endTime : startEndTimePair.right;
-    deviceStartEndTimePairMap.put(device, new Pair<>(startEndTimePair.left, newEndTime));
-    startEndTimeCache.put(tsFileResource, deviceStartEndTimePairMap);
-  }
-
-  public Map<String, Pair<Long, Long>> getStartEndTime(TsFileResource tsFileResource) {
-    return startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
   }
 }

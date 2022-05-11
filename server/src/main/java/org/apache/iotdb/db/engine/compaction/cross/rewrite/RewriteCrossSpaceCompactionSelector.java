@@ -89,8 +89,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
     long budget = config.getCrossCompactionMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    RewriteCrossSpaceCompactionResource mergeResource =
-        new RewriteCrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
+    CrossSpaceCompactionResource mergeResource =
+        new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
 
     ICrossSpaceMergeFileSelector fileSelector =
         CompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);

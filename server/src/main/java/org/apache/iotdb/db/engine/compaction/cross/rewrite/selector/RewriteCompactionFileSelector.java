@@ -21,15 +21,11 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.compaction.cross.utils.CompactionEstimator;
-import org.apache.iotdb.db.engine.compaction.cross.utils.RewriteCompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.utils.ICompactionEstimator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,10 +33,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 
 /**
  * MaxFileMergeFileSelector selects the most files from given seqFiles and unseqFiles which can be
@@ -48,41 +42,33 @@ import java.util.Map;
  * queried at the same time is 1 to maximize the number of file merged.
  */
 public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelector {
-
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
-  RewriteCrossSpaceCompactionResource resource;
+  private final CrossSpaceCompactionResource resource;
 
-  long totalCost;
-  private long memoryBudget;
-  private long maxSeqFileCost;
-  private int maxCrossCompactionFileNum;
+  private long totalCost;
+  private final long memoryBudget;
+  private final int maxCrossCompactionFileNum;
 
-  // the number of timeseries being queried at the same time
-  int concurrentMergeNum = IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
-
-  /** Total metadata size of each file. */
-  private Map<TsFileResource, Long> fileMetaSizeMap = new HashMap<>();
-  /** Maximum memory cost of querying a timeseries in each file. */
-  private Map<TsFileResource, Long> maxSeriesQueryCostMap = new HashMap<>();
-
-  List<TsFileResource> selectedUnseqFiles;
-  List<TsFileResource> selectedSeqFiles;
+  private List<TsFileResource> selectedUnseqFiles;
+  private List<TsFileResource> selectedSeqFiles;
 
   private Collection<Integer> tmpSelectedSeqFiles;
-  private long tempMaxSeqFileCost;
 
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
-  public RewriteCompactionFileSelector(
-      RewriteCrossSpaceCompactionResource resource, long memoryBudget) {
+  private ICompactionEstimator compactionEstimator;
+
+  public RewriteCompactionFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
     this.resource = resource;
     this.memoryBudget = memoryBudget;
     this.maxCrossCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+    this.compactionEstimator =
+        ICrossSpaceSelector.getCompactionEstimator(
+            IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), resource);
   }
 
   /**
@@ -115,10 +101,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
           "Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(),
           resource.getUnseqFiles().size());
-      select(false);
-      if (selectedUnseqFiles.isEmpty()) {
-        select(true);
-      }
+      selectSourceFiles();
       resource.setSeqFiles(selectedSeqFiles);
       resource.setUnseqFiles(selectedUnseqFiles);
       resource.removeOutdatedSeqReaders();
@@ -148,18 +131,13 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
    * that may be added by compacting them (preferably using the loop estimate), and if it does not
    * exceed the memory overhead preset by the system for the compaction thread, put them into the
    * selectedSeqFiles and selectedUnseqFiles.
-   *
-   * @param useTightBound whether is tight estimate or loop estimate
-   * @throws IOException
    */
-  void select(boolean useTightBound) throws IOException {
+  void selectSourceFiles() throws IOException {
     tmpSelectedSeqFiles = new HashSet<>();
     seqSelected = new boolean[resource.getSeqFiles().size()];
     seqSelectedNum = 0;
     selectedSeqFiles = new ArrayList<>();
     selectedUnseqFiles = new ArrayList<>();
-    maxSeqFileCost = 0;
-    tempMaxSeqFileCost = 0;
 
     totalCost = 0;
 
@@ -171,7 +149,6 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     if (timeLimit < 0) {
       timeLimit = Long.MAX_VALUE;
     }
-    CompactionEstimator compactionEstimator = new RewriteCompactionEstimator(resource);
     while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
@@ -185,7 +162,6 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         break;
       }
 
-      tempMaxSeqFileCost = maxSeqFileCost;
       long newCost =
           compactionEstimator.estimateMemory(unseqIndex, new ArrayList<>(tmpSelectedSeqFiles));
       if (!updateSelectedFiles(newCost, unseqFile)) {
@@ -210,7 +186,6 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
                 <= maxCrossCompactionFileNum
             && totalCost + newCost < memoryBudget)) {
       selectedUnseqFiles.add(unseqFile);
-      maxSeqFileCost = tempMaxSeqFileCost;
 
       for (Integer seqIdx : tmpSelectedSeqFiles) {
         if (!seqSelected[seqIdx]) {
@@ -292,18 +267,6 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
           // there may be overlap later.
           tmpSelectedSeqFiles.add(i);
         }
-      }
-    }
-  }
-
-  private void getMaxCurrentSeriesNum(TsFileSequenceReader reader) throws IOException {
-    TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
-    while (deviceIterator.hasNext()) {
-      Pair<String, Boolean> deviceInfo = deviceIterator.next();
-      if (deviceInfo.right) {
-        Map<String, TimeseriesMetadata> deviceMetadata = reader.readDeviceMetadata(deviceInfo.left);
-        concurrentMergeNum =
-            concurrentMergeNum < deviceMetadata.size() ? deviceMetadata.size() : concurrentMergeNum;
       }
     }
   }

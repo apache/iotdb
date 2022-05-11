@@ -1,7 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -12,11 +30,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class RewriteCompactionEstimator implements CompactionEstimator {
+public class RewriteCompactionEstimator implements ICompactionEstimator {
 
-  private final RewriteCrossSpaceCompactionResource resource;
-
-  private long timeLimit;
+  private final CrossSpaceCompactionResource resource;
 
   private long maxCostOfReadingSeqFile;
 
@@ -28,12 +44,7 @@ public class RewriteCompactionEstimator implements CompactionEstimator {
   private final int subCompactionTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
-  public RewriteCompactionEstimator(RewriteCrossSpaceCompactionResource resource) {
-    timeLimit =
-        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionFileSelectionTimeBudget();
-    if (timeLimit < 0) {
-      timeLimit = Long.MAX_VALUE;
-    }
+  public RewriteCompactionEstimator(CrossSpaceCompactionResource resource) {
     this.resource = resource;
     this.maxCostOfReadingSeqFile = 0;
     this.maxSeqChunkNumInDeviceList = new ArrayList<>();
@@ -49,10 +60,14 @@ public class RewriteCompactionEstimator implements CompactionEstimator {
     return cost;
   }
 
+  /**
+   * Calculate memory cost of reading source unseq files in the cross space compaction. Double the
+   * total size of the timeseries to be compacted at the same time in all unseq files.
+   */
   private long calculateReadingUnseqFile(int unseqIndex) throws IOException {
     TsFileResource unseqResource = resource.getUnseqFiles().get(unseqIndex);
     TsFileSequenceReader reader = resource.getFileReader(unseqResource);
-    int[] fileInfo = getTotalAndLargestChunkNum(reader);
+    int[] fileInfo = getSeriesAndDeviceChunkNum(reader);
     // it is max aligned series num of one device when tsfile contains aligned series,
     // else is sub compaction task num.
     int concurrentSeriesNum = fileInfo[2] == -1 ? subCompactionTaskNum : fileInfo[2];
@@ -62,18 +77,24 @@ public class RewriteCompactionEstimator implements CompactionEstimator {
     return 2 * concurrentSeriesNum * (unseqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
   }
 
+  /**
+   * Calculate memory cost of reading source seq files in the cross space compaction. Double the
+   * maximun size of the timeseries to be compacted at the same time in one seq file, because only
+   * one seq file will be queried at the same time.
+   */
   private long calculateReadingSeqFiles(List<Integer> seqIndexes) throws IOException {
     long cost = 0;
     for (int seqIndex : seqIndexes) {
       TsFileResource seqResource = resource.getSeqFiles().get(seqIndex);
       TsFileSequenceReader reader = resource.getFileReader(seqResource);
-      int[] fileInfo = getTotalAndLargestChunkNum(reader);
+      int[] fileInfo = getSeriesAndDeviceChunkNum(reader);
       // it is max aligned series num of one device when tsfile contains aligned series,
       // else is sub compaction task num.
       int concurrentSeriesNum = fileInfo[2] == -1 ? subCompactionTaskNum : fileInfo[2];
       long seqFileCost =
           concurrentSeriesNum * (seqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
       if (seqFileCost > maxCostOfReadingSeqFile) {
+        // Only one seq file will be read at the same time.
         // not only reading chunk into chunk cache, but also need to deserialize data point into
         // merge reader, so we have to double the cost here.
         cost -= 2 * maxCostOfReadingSeqFile;
@@ -85,6 +106,11 @@ public class RewriteCompactionEstimator implements CompactionEstimator {
     return cost;
   }
 
+  /**
+   * Calculate memory cost of writing target files in the cross space compaction. Including metadata
+   * size of all seq files, max chunk group size of each seq file and max chunk group size of
+   * corresponding overlapped unseq file.
+   */
   private long calculatingWritingTargetFiles(int unseqIndex, List<Integer> seqIndexes)
       throws IOException {
     long cost = 0;
@@ -108,11 +134,18 @@ public class RewriteCompactionEstimator implements CompactionEstimator {
   }
 
   /**
-   * @param reader
-   * @return
-   * @throws IOException
+   * Get the details of the tsfile, the returned array contains the following elements in sequence:
+   *
+   * <p>total chunk num in this tsfile
+   *
+   * <p>max chunk num of one timeseries in this tsfile
+   *
+   * <p>max aligned series num in one device. If there is no aligned series in this file, then it
+   * turns to be -1.
+   *
+   * <p>max chunk num of one device in this tsfile
    */
-  private int[] getTotalAndLargestChunkNum(TsFileSequenceReader reader) throws IOException {
+  private int[] getSeriesAndDeviceChunkNum(TsFileSequenceReader reader) throws IOException {
     int totalChunkNum = 0;
     int maxChunkNum = 0;
     int maxAlignedSeriesNumInDevice = -1;
