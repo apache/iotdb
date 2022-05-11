@@ -28,6 +28,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +72,7 @@ public class SimpleFragInstanceDispatcher implements IFragInstanceDispatcher {
                       new TFragmentInstance(buffer), groupId, instance.getType().toString());
               LOGGER.info("send FragmentInstance[{}] to {}", instance.getId(), endPoint);
               resp = client.sendFragmentInstance(req);
-            } catch (IOException e) {
+            } catch (IOException | TException e) {
               LOGGER.error("can't connect to node {}", endPoint, e);
               throw e;
             }
