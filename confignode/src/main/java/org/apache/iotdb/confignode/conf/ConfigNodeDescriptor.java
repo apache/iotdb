@@ -194,12 +194,13 @@ public class ConfigNodeDescriptor {
       conf.setMaximumSchemaRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "max_schema_region_number", String.valueOf(conf.getMaximumSchemaRegionCount()))));
+                  "maximum_schema_region_count",
+                  String.valueOf(conf.getMaximumSchemaRegionCount()))));
 
       conf.setMaximumDataRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
+                  "maximum_data_region_count", String.valueOf(conf.getMaximumDataRegionCount()))));
 
       // commons
       commonDescriptor.loadCommonProps(properties);
