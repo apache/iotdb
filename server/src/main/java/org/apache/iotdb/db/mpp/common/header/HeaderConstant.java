@@ -41,6 +41,10 @@ public class HeaderConstant {
   public static final String COLUMN_ATTRIBUTES = "attributes";
   public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String COLUMN_COUNT = "count";
+  public static final String COLUMN_TTL = "ttl";
+  public static final String COLUMN_SCHEMA_REPLICATION_FACTOR = "schema_replication_factor";
+  public static final String COLUMN_DATA_REPLICATION_FACTOR = "data_replication_factor";
+  public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -54,6 +58,7 @@ public class HeaderConstant {
   public static final DatasetHeader showDevicesHeader;
   public static final DatasetHeader showDevicesWithSgHeader;
   public static final DatasetHeader showStorageGroupHeader;
+  public static final DatasetHeader showTTLHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -116,7 +121,18 @@ public class HeaderConstant {
             true);
     showStorageGroupHeader =
         new DatasetHeader(
-            Collections.singletonList(new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT)),
+            Arrays.asList(
+                new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_TTL, TSDataType.INT64),
+                new ColumnHeader(COLUMN_SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
+                new ColumnHeader(COLUMN_DATA_REPLICATION_FACTOR, TSDataType.INT32),
+                new ColumnHeader(COLUMN_TIME_PARTITION_INTERVAL, TSDataType.INT64)),
+            true);
+    showTTLHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
             true);
   }
 }

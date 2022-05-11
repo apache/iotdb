@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.utils;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.AlignedLastPointReader;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
@@ -322,13 +322,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(partialPath.getSchemaList());
-    int curSize = alignedTvListCopy.rowCount();
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
     }
-    return new AlignedReadOnlyMemChunk(
-        getMeasurementSchema(), alignedTvListCopy, curSize, deletionList);
+    return new AlignedReadOnlyMemChunk(getMeasurementSchema(), alignedTvListCopy, deletionList);
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
@@ -456,6 +454,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         ascending);
   }
 
+  @Override
   @TestOnly
   public SeriesReader createSeriesReader(
       Set<String> allSensors,
@@ -537,7 +536,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         memTableMap.get(deviceID).getMemChunkMap().get(partialPath.getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
-    int curSize = chunkCopy.rowCount();
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
@@ -548,7 +546,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         partialPath.getMeasurementSchema().getEncodingType(),
         chunkCopy,
         partialPath.getMeasurementSchema().getProps(),
-        curSize,
         deletionList);
   }
   /**
@@ -574,6 +571,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     return TimeRange.sortAndMerge(deletionList);
   }
   /** get modifications from a memtable. */
+  @Override
   protected List<Modification> getModificationsForMemtable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
     List<Modification> modifications = new ArrayList<>();

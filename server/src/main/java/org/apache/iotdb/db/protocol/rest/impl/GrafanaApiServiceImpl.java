@@ -18,9 +18,9 @@
 package org.apache.iotdb.db.protocol.rest.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.rest.GrafanaApiService;
 import org.apache.iotdb.db.protocol.rest.NotFoundException;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;

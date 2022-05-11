@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.metadata.path;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -93,6 +95,7 @@ public class AlignedPath extends PartialPath {
     schemaList = new ArrayList<>();
   }
 
+  @Override
   public PartialPath getDevicePath() {
     return new PartialPath(Arrays.copyOf(nodes, nodes.length));
   }
@@ -164,6 +167,7 @@ public class AlignedPath extends PartialPath {
     return this.schemaList == null ? Collections.emptyList() : this.schemaList;
   }
 
+  @Override
   public VectorMeasurementSchema getMeasurementSchema() {
     TSDataType[] types = new TSDataType[measurementList.size()];
     TSEncoding[] encodings = new TSEncoding[measurementList.size()];
@@ -180,6 +184,7 @@ public class AlignedPath extends PartialPath {
         VECTOR_PLACEHOLDER, array, types, encodings, schemaList.get(0).getCompressor());
   }
 
+  @Override
   public TSDataType getSeriesType() {
     return TSDataType.VECTOR;
   }
@@ -235,6 +240,7 @@ public class AlignedPath extends PartialPath {
     return alignedPath;
   }
 
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PathType.Aligned.serialize(byteBuffer);
     super.serializeWithoutType(byteBuffer);
@@ -281,7 +287,7 @@ public class AlignedPath extends PartialPath {
 
     alignedPath.measurementList = measurements;
     alignedPath.schemaList = measurementSchemas;
-    alignedPath.nodes = partialPath.nodes;
+    alignedPath.nodes = partialPath.getNodes();
     alignedPath.device = partialPath.getDevice();
     alignedPath.fullPath = partialPath.getFullPath();
     return alignedPath;

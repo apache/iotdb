@@ -19,12 +19,9 @@
 
 package org.apache.iotdb.db.query.expression.binary;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.sql.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
@@ -50,8 +47,8 @@ import java.util.Set;
 
 public abstract class BinaryExpression extends Expression {
 
-  protected final Expression leftExpression;
-  protected final Expression rightExpression;
+  protected Expression leftExpression;
+  protected Expression rightExpression;
 
   protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
     this.leftExpression = leftExpression;
@@ -69,6 +66,14 @@ public abstract class BinaryExpression extends Expression {
 
   public Expression getRightExpression() {
     return rightExpression;
+  }
+
+  public void setLeftExpression(Expression leftExpression) {
+    this.leftExpression = leftExpression;
+  }
+
+  public void setRightExpression(Expression rightExpression) {
+    this.rightExpression = rightExpression;
   }
 
   @Override
@@ -95,39 +100,12 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public final void concat(
-      List<PartialPath> prefixPaths,
-      List<Expression> resultExpressions,
-      PathPatternTree patternTree) {
-    List<Expression> leftExpressions = new ArrayList<>();
-    leftExpression.concat(prefixPaths, leftExpressions, patternTree);
-
-    List<Expression> rightExpressions = new ArrayList<>();
-    rightExpression.concat(prefixPaths, rightExpressions, patternTree);
-
-    reconstruct(leftExpressions, rightExpressions, resultExpressions);
-  }
-
-  @Override
   public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     List<Expression> leftExpressions = new ArrayList<>();
     leftExpression.concat(prefixPaths, leftExpressions);
 
     List<Expression> rightExpressions = new ArrayList<>();
     rightExpression.concat(prefixPaths, rightExpressions);
-
-    reconstruct(leftExpressions, rightExpressions, resultExpressions);
-  }
-
-  @Override
-  public final void removeWildcards(
-      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws StatementAnalyzeException {
-    List<Expression> leftExpressions = new ArrayList<>();
-    leftExpression.removeWildcards(wildcardsRemover, leftExpressions);
-
-    List<Expression> rightExpressions = new ArrayList<>();
-    rightExpression.removeWildcards(wildcardsRemover, rightExpressions);
 
     reconstruct(leftExpressions, rightExpressions, resultExpressions);
   }

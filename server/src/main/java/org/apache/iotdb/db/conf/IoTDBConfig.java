@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -640,9 +641,6 @@ public class IoTDBConfig {
    */
   private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
 
-  /** Default system file storage is in local file system (unsupported) */
-  private FSType systemFileStorageFs = FSType.LOCAL;
-
   /** Default TSfile storage is in local file system */
   private FSType tsFileStorageFs = FSType.LOCAL;
 
@@ -689,14 +687,6 @@ public class IoTDBConfig {
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
 
-  /**
-   * default TTL for storage groups that are not set TTL by statements, in ms.
-   *
-   * <p>Notice: if this property is changed, previous created storage group which are not set TTL
-   * will also be affected. Unit: millisecond
-   */
-  private long defaultTTL = Long.MAX_VALUE;
-
   /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 32;
 
@@ -730,12 +720,6 @@ public class IoTDBConfig {
   // In one insert (one device, one timestamp, multiple measurements),
   // if enable partial insert, one measurement failure will not impact other measurements
   private boolean enablePartialInsert = true;
-
-  // Open ID Secret
-  private String openIdProviderUrl = "";
-
-  // the authorizer provider class which extends BasicAuthorizer
-  private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
   /**
    * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
@@ -799,10 +783,6 @@ public class IoTDBConfig {
 
   private boolean enableDiscardOutOfOrderData = false;
 
-  private String adminName = "root";
-
-  private String adminPassword = "root";
-
   /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
   private String deviceIDTransformationMethod = "Plain";
 
@@ -813,13 +793,6 @@ public class IoTDBConfig {
    * whether create mapping file of id table. This file can map device id in tsfile to device path
    */
   private boolean enableIDTableLogFile = false;
-
-  /** Encryption provider class */
-  private String encryptDecryptProvider =
-      "org.apache.iotdb.db.security.encrypt.MessageDigestEncrypt";
-
-  /** Encryption provided class parameter */
-  private String encryptDecryptProviderParameter;
 
   /** whether to use persistent schema mode */
   private String schemaEngineMode = "Memory";
@@ -833,11 +806,6 @@ public class IoTDBConfig {
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
 
-  /**
-   * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
-   */
-  private List<String> configNodeUrls = Collections.singletonList("127.0.0.1:22277");
-
   /** Internal ip for data node */
   private String internalIp = "127.0.0.1";
 
@@ -846,6 +814,10 @@ public class IoTDBConfig {
 
   /** Internal port for consensus protocol */
   private int consensusPort = 40010;
+
+  /** Ip and port of config nodes. */
+  private List<TEndPoint> configNodeList =
+      Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
   /** The max time of data node waiting to join into the cluster */
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
@@ -900,9 +872,11 @@ public class IoTDBConfig {
 
   /**
    * Cache size of partition cache in {@link
-   * org.apache.iotdb.db.mpp.sql.analyze.ClusterPartitionFetcher}
+   * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
   private int partitionCacheSize = 10000;
+
+  IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -2039,14 +2013,6 @@ public class IoTDBConfig {
     this.defaultTextEncoding = TSEncoding.valueOf(defaultTextEncoding);
   }
 
-  public FSType getSystemFileStorageFs() {
-    return systemFileStorageFs;
-  }
-
-  public void setSystemFileStorageFs(String systemFileStorageFs) {
-    this.systemFileStorageFs = FSType.valueOf(systemFileStorageFs);
-  }
-
   FSType getTsFileStorageFs() {
     return tsFileStorageFs;
   }
@@ -2163,14 +2129,6 @@ public class IoTDBConfig {
     this.kerberosPrincipal = kerberosPrincipal;
   }
 
-  public long getDefaultTTL() {
-    return defaultTTL;
-  }
-
-  public void setDefaultTTL(long defaultTTL) {
-    this.defaultTTL = defaultTTL;
-  }
-
   public int getThriftServerAwaitTimeForStopService() {
     return thriftServerAwaitTimeForStopService;
   }
@@ -2249,22 +2207,6 @@ public class IoTDBConfig {
 
   public void setPrimitiveArraySize(int primitiveArraySize) {
     this.primitiveArraySize = primitiveArraySize;
-  }
-
-  public String getOpenIdProviderUrl() {
-    return openIdProviderUrl;
-  }
-
-  public void setOpenIdProviderUrl(String openIdProviderUrl) {
-    this.openIdProviderUrl = openIdProviderUrl;
-  }
-
-  public String getAuthorizerProvider() {
-    return authorizerProvider;
-  }
-
-  public void setAuthorizerProvider(String authorizerProvider) {
-    this.authorizerProvider = authorizerProvider;
   }
 
   public long getStartUpNanosecond() {
@@ -2432,22 +2374,6 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
-  }
-
-  public String getAdminName() {
-    return adminName;
-  }
-
-  public void setAdminName(String adminName) {
-    this.adminName = adminName;
-  }
-
-  public String getAdminPassword() {
-    return adminPassword;
-  }
-
-  public void setAdminPassword(String adminPassword) {
-    this.adminPassword = adminPassword;
   }
 
   public boolean isEnableSeqSpaceCompaction() {
@@ -2646,22 +2572,6 @@ public class IoTDBConfig {
     this.enableIDTableLogFile = enableIDTableLogFile;
   }
 
-  public String getEncryptDecryptProvider() {
-    return encryptDecryptProvider;
-  }
-
-  public void setEncryptDecryptProvider(String encryptDecryptProvider) {
-    this.encryptDecryptProvider = encryptDecryptProvider;
-  }
-
-  public String getEncryptDecryptProviderParameter() {
-    return encryptDecryptProviderParameter;
-  }
-
-  public void setEncryptDecryptProviderParameter(String encryptDecryptProviderParameter) {
-    this.encryptDecryptProviderParameter = encryptDecryptProviderParameter;
-  }
-
   public String getSchemaEngineMode() {
     return schemaEngineMode;
   }
@@ -2694,14 +2604,6 @@ public class IoTDBConfig {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 
-  public List<String> getConfigNodeUrls() {
-    return configNodeUrls;
-  }
-
-  public void setConfigNodeUrls(List<String> configNodeUrls) {
-    this.configNodeUrls = configNodeUrls;
-  }
-
   public String getInternalIp() {
     return internalIp;
   }
@@ -2724,6 +2626,14 @@ public class IoTDBConfig {
 
   public void setConsensusPort(int consensusPort) {
     this.consensusPort = consensusPort;
+  }
+
+  public List<TEndPoint> getConfigNodeList() {
+    return configNodeList;
+  }
+
+  public void setConfigNodeList(List<TEndPoint> configNodeList) {
+    this.configNodeList = configNodeList;
   }
 
   public long getJoinClusterTimeOutMs() {

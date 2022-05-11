@@ -905,4 +905,134 @@ public class IoTDBUDTFBuiltinFunctionIT {
       e.printStackTrace();
     }
   }
+
+  @Test
+  public void testUDTFJexl() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg.d7.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s2 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s3 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s4 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s5 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s6 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s7 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s8 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg.d7.s9 with datatype=TEXT,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+    String[] SQL_FOR_SAMPLE_1 = new String[5];
+    String[] SQL_FOR_SAMPLE_2 = new String[5];
+    String[] SQL_FOR_SAMPLE_3 = new String[5];
+    String[] SQL_FOR_SAMPLE_4 = new String[5];
+    String[] SQL_FOR_SAMPLE_5 = new String[5];
+    String[] SQL_FOR_SAMPLE_6 = new String[5];
+    String[] SQL_FOR_SAMPLE_7 = new String[5];
+    String[] SQL_FOR_SAMPLE_8 = new String[5];
+    String[] SQL_FOR_SAMPLE_9 = new String[5];
+    for (int i = 0; i < 5; i++) {
+      SQL_FOR_SAMPLE_1[i] =
+          String.format("insert into root.sg.d7(time, s1) values (%d, %d)", i, i + 1);
+      SQL_FOR_SAMPLE_2[i] =
+          String.format("insert into root.sg.d7(time, s2) values (%d, %f)", i, i + 1.0);
+      SQL_FOR_SAMPLE_3[i] =
+          String.format("insert into root.sg.d7(time, s3) values (%d, %f)", i, i + 1.0);
+      SQL_FOR_SAMPLE_4[i] =
+          String.format("insert into root.sg.d7(time, s4) values (%d, '%s')", i, "string");
+      SQL_FOR_SAMPLE_5[i] = String.format("insert into root.sg.d7(time, s5) values (%d, true)", i);
+      SQL_FOR_SAMPLE_6[i] =
+          String.format("insert into root.sg.d7(time, s6) values (%d, %d)", i, i + 8);
+      SQL_FOR_SAMPLE_7[i] =
+          String.format("insert into root.sg.d7(time, s7) values (%d, %d)", i, i + 1);
+      SQL_FOR_SAMPLE_8[i] =
+          String.format("insert into root.sg.d7(time, s8) values (%d, %f)", i, i + 1.0);
+      SQL_FOR_SAMPLE_9[i] =
+          String.format("insert into root.sg.d7(time, s9) values (%d, '%s')", i, "string");
+    }
+    double[] ANSWER1 = new double[] {2, 4, 6, 8, 10};
+    double[] ANSWER2 = new double[] {2, 4, 6, 8, 10};
+    double[] ANSWER3 = new double[] {4, 7, 10, 13, 16};
+    String[] ANSWER4 = new String[] {"string2", "string2", "string2", "string2", "string2"};
+    double[] ANSWER7 = new double[] {1, 4, 9, 16, 25};
+    String[] ANSWER8 = new String[] {"string1", "string4", "string9", "string16", "string25"};
+    double[] ANSWER9 = new double[] {2, 9, 28, 65, 126};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < 5; i++) {
+        statement.execute(SQL_FOR_SAMPLE_1[i]);
+        statement.execute(SQL_FOR_SAMPLE_2[i]);
+        statement.execute(SQL_FOR_SAMPLE_3[i]);
+        statement.execute(SQL_FOR_SAMPLE_4[i]);
+        statement.execute(SQL_FOR_SAMPLE_5[i]);
+        statement.execute(SQL_FOR_SAMPLE_6[i]);
+        statement.execute(SQL_FOR_SAMPLE_7[i]);
+        statement.execute(SQL_FOR_SAMPLE_8[i]);
+        statement.execute(SQL_FOR_SAMPLE_9[i]);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String functionName = "JEXL";
+      String expr1 = "x -> {2 * x}";
+      String expr2 = "x -> {x + x}";
+      String expr3 = "x -> {x * 3 + 1}";
+      String expr4 = "x -> {x + 2}";
+      String expr5 = "x -> {x == true}";
+      String expr6 = "x -> {x == x}";
+      String expr7 = "(x, y) -> {x * y}";
+      String expr8 = "(x, y, z) -> {x + y * z}";
+      String expr9 = "(x, y, z, a) -> {x * y * z + (a ? 1 : -1)}";
+      ResultSet resultSet =
+          statement.executeQuery(
+              String.format(
+                  "select %s(s1, 'expr'='%s'), "
+                      + "%s(s2, 'expr'='%s'), "
+                      + "%s(s3, 'expr'='%s'), "
+                      + "%s(s4, 'expr'='%s'), "
+                      + "%s(s5, 'expr'='%s'), "
+                      + "%s(s6, 'expr'='%s'), "
+                      + "%s(s7, s8, 'expr'='%s'), "
+                      + "%s(s4, s7, s1, 'expr'='%s'), "
+                      + "%s(s1, s7, s8, s5, 'expr'='%s') "
+                      + "from root.sg.d7",
+                  functionName,
+                  expr1,
+                  functionName,
+                  expr2,
+                  functionName,
+                  expr3,
+                  functionName,
+                  expr4,
+                  functionName,
+                  expr5,
+                  functionName,
+                  expr6,
+                  functionName,
+                  expr7,
+                  functionName,
+                  expr8,
+                  functionName,
+                  expr9));
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 9, columnCount);
+      for (int i = 0; i < 5; i++) {
+        resultSet.next();
+        assertEquals(ANSWER1[i], resultSet.getDouble(2), 0.01);
+        assertEquals(ANSWER2[i], resultSet.getDouble(3), 0.01);
+        assertEquals(ANSWER3[i], resultSet.getDouble(4), 0.01);
+        assertEquals(ANSWER4[i], resultSet.getString(5));
+        assertTrue(resultSet.getBoolean(6));
+        assertTrue(resultSet.getBoolean(7));
+        assertEquals(ANSWER7[i], resultSet.getDouble(8), 0.01);
+        assertEquals(ANSWER8[i], resultSet.getString(9));
+        assertEquals(ANSWER9[i], resultSet.getDouble(10), 0.01);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }
