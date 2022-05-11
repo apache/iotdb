@@ -64,6 +64,22 @@ public class CommonConfig {
     private static final CommonConfig INSTANCE = new CommonConfig();
   }
 
+  public void updatePath(String homeDir) {
+    userFolder = addHomeDir(userFolder, homeDir);
+    roleFolder = addHomeDir(roleFolder, homeDir);
+  }
+
+  private String addHomeDir(String dir, String homeDir) {
+    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
+      if (!homeDir.endsWith(File.separator)) {
+        dir = homeDir + File.separatorChar + dir;
+      } else {
+        dir = homeDir + dir;
+      }
+    }
+    return dir;
+  }
+
   public String getEncryptDecryptProvider() {
     return encryptDecryptProvider;
   }

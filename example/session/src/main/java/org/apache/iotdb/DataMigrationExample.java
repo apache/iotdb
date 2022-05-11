@@ -117,7 +117,7 @@ public class DataMigrationExample {
 
     public LoadThread(int i, Path series, TSDataType dataType) {
       this.i = i;
-      this.device = series.getDeviceIdString();
+      this.device = series.getDevice();
       this.measurement = series.getMeasurement();
       this.dataType = dataType;
       this.series = series;

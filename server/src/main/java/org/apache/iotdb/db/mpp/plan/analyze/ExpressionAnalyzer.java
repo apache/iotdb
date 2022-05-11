@@ -807,7 +807,7 @@ public class ExpressionAnalyzer {
 
   public static String getDeviceNameInSourceExpression(Expression expression) {
     if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath().getDeviceIdString();
+      return ((TimeSeriesOperand) expression).getPath().getDevice();
     } else if (expression instanceof FunctionExpression) {
       return getDeviceNameInSourceExpression(expression.getExpressions().get(0));
     } else {
