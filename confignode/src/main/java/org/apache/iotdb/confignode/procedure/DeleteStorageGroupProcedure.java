@@ -182,7 +182,7 @@ public class DeleteStorageGroupProcedure
   private void invalidateCache(ConfigNodeProcedureEnv env, String storageGroupName)
       throws IOException, TException {
     List<TDataNodeLocation> allDataNodes =
-        env.getConfigManager().getDataNodeManager().getOnlineDataNodes();
+        env.getConfigManager().getNodeManager().getOnlineDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
