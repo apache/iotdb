@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.client.handlers.InitRegionHandler;
+import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 
@@ -46,12 +46,12 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Only use this interface when initialize SchemaRegion to set StorageGroup
+   * Create a SchemaRegion on specific DataNode
    *
    * @param endPoint The specific DataNode
    */
-  public void initSchemaRegion(
-      TEndPoint endPoint, TCreateSchemaRegionReq req, InitRegionHandler handler) {
+  public void createSchemaRegion(
+      TEndPoint endPoint, TCreateSchemaRegionReq req, CreateRegionHandler handler) {
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
@@ -64,12 +64,12 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * Only use this interface when initialize SchemaRegion to set StorageGroup
+   * Create a DataRegion on specific DataNode
    *
    * @param endPoint The specific DataNode
    */
-  public void initDataRegion(
-      TEndPoint endPoint, TCreateDataRegionReq req, InitRegionHandler handler) {
+  public void createDataRegion(
+      TEndPoint endPoint, TCreateDataRegionReq req, CreateRegionHandler handler) {
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);

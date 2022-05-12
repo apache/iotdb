@@ -86,10 +86,11 @@ public class QueryExecution implements IQueryExecution {
   private DistributedQueryPlan distributedPlan;
 
   private final ExecutorService executor;
+  private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
   // TODO need to use factory to decide standalone or cluster
   private final IPartitionFetcher partitionFetcher;
-  // TODO need to use factory to decide standalone or cluster
+  // TODO need to use factory to decide standalone or cluster,
   private final ISchemaFetcher schemaFetcher;
 
   // The result of QueryExecution will be written to the DataBlockManager in current Node.
@@ -103,11 +104,13 @@ public class QueryExecution implements IQueryExecution {
       Statement statement,
       MPPQueryContext context,
       ExecutorService executor,
+      ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.executor = executor;
+    this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
     this.planOptimizers = new ArrayList<>();
@@ -176,6 +179,7 @@ public class QueryExecution implements IQueryExecution {
                 distributedPlan.getInstances(),
                 context.getQueryType(),
                 executor,
+                writeOperationExecutor,
                 scheduledExecutor,
                 internalServiceClientManager)
             : new StandaloneScheduler(
@@ -232,7 +236,9 @@ public class QueryExecution implements IQueryExecution {
     // There are only two scenarios where the ResultHandle should be closed:
     //   1. The client fetch all the result and the ResultHandle is finished.
     //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
-    if (resultHandle != null && resultHandle.isFinished()) {
+    // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
+    // waiting it to be finished.
+    if (resultHandle != null) {
       resultHandle.abort();
     }
   }

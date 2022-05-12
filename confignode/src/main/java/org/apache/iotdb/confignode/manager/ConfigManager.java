@@ -80,12 +80,15 @@ public class ConfigManager implements Manager {
   /** Manage cluster authorization */
   private final PermissionManager permissionManager;
 
+  private final LoadManager loadManager;
+
   public ConfigManager() throws IOException {
     this.nodeManager = new NodeManager(this);
     this.partitionManager = new PartitionManager(this);
     this.clusterSchemaManager = new ClusterSchemaManager(this);
-    this.consensusManager = new ConsensusManager();
     this.permissionManager = new PermissionManager(this);
+    this.loadManager = new LoadManager(this);
+    this.consensusManager = new ConsensusManager();
   }
 
   public void close() throws IOException {
@@ -323,7 +326,7 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public NodeManager getDataNodeManager() {
+  public NodeManager getNodeManager() {
     return nodeManager;
   }
 
@@ -340,6 +343,11 @@ public class ConfigManager implements Manager {
   @Override
   public PartitionManager getPartitionManager() {
     return partitionManager;
+  }
+
+  @Override
+  public LoadManager getLoadManager() {
+    return loadManager;
   }
 
   @Override

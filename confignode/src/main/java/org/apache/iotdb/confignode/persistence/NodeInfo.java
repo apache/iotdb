@@ -52,6 +52,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * The NodeInfo stores cluster node information. The cluster node information including: 1. DataNode
+ * information 2. ConfigNode information
+ */
 public class NodeInfo {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeInfo.class);

@@ -37,7 +37,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Properties;
@@ -224,11 +223,6 @@ public class ConfigNodeStartupCheck {
     systemProperties.setProperty(
         "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
 
-    // Directory configuration
-    systemProperties.setProperty("system_dir", conf.getSystemDir());
-    systemProperties.setProperty("data_dirs", String.join(",", conf.getDataDirs()));
-    systemProperties.setProperty("consensus_dir", conf.getConsensusDir());
-
     // ConfigNodeList
     systemProperties.setProperty(
         "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(conf.getConfigNodeList()));
@@ -243,28 +237,45 @@ public class ConfigNodeStartupCheck {
 
   /** Ensure that special parameters are consistent with each startup except the first one */
   private void checkSystemProperties() throws ConfigurationException {
+    boolean needReWrite = false;
+
     // Startup configuration
-    String rpcAddress = systemProperties.getProperty("rpc_address");
-    if (!rpcAddress.equals(conf.getRpcAddress())) {
+    String rpcAddress = systemProperties.getProperty("rpc_address", null);
+    if (rpcAddress == null) {
+      needReWrite = true;
+    } else if (!rpcAddress.equals(conf.getRpcAddress())) {
       throw new ConfigurationException("rpc_address", conf.getRpcAddress(), rpcAddress);
     }
 
-    int rpcPort = Integer.parseInt(systemProperties.getProperty("rpc_port"));
-    if (rpcPort != conf.getRpcPort()) {
-      throw new ConfigurationException(
-          "rpc_port", String.valueOf(conf.getRpcPort()), String.valueOf(rpcPort));
+    if (systemProperties.getProperty("rpc_port", null) == null) {
+      needReWrite = true;
+    } else {
+      int rpcPort = Integer.parseInt(systemProperties.getProperty("rpc_port"));
+      if (rpcPort != conf.getRpcPort()) {
+        throw new ConfigurationException(
+            "rpc_port", String.valueOf(conf.getRpcPort()), String.valueOf(rpcPort));
+      }
     }
 
-    int consensusPort = Integer.parseInt(systemProperties.getProperty("consensus_port"));
-    if (consensusPort != conf.getConsensusPort()) {
-      throw new ConfigurationException(
-          "consensus_port", String.valueOf(conf.getConsensusPort()), String.valueOf(consensusPort));
+    if (systemProperties.getProperty("consensus_port", null) == null) {
+      needReWrite = true;
+    } else {
+      int consensusPort = Integer.parseInt(systemProperties.getProperty("consensus_port"));
+      if (consensusPort != conf.getConsensusPort()) {
+        throw new ConfigurationException(
+            "consensus_port",
+            String.valueOf(conf.getConsensusPort()),
+            String.valueOf(consensusPort));
+      }
     }
 
     // Consensus protocol configuration
     String configNodeConsensusProtocolClass =
-        systemProperties.getProperty("config_node_consensus_protocol_class");
-    if (!configNodeConsensusProtocolClass.equals(conf.getConfigNodeConsensusProtocolClass())) {
+        systemProperties.getProperty("config_node_consensus_protocol_class", null);
+    if (configNodeConsensusProtocolClass == null) {
+      needReWrite = true;
+    } else if (!configNodeConsensusProtocolClass.equals(
+        conf.getConfigNodeConsensusProtocolClass())) {
       throw new ConfigurationException(
           "config_node_consensus_protocol_class",
           conf.getConfigNodeConsensusProtocolClass(),
@@ -272,8 +283,10 @@ public class ConfigNodeStartupCheck {
     }
 
     String dataNodeConsensusProtocolClass =
-        systemProperties.getProperty("data_node_consensus_protocol_class");
-    if (!dataNodeConsensusProtocolClass.equals(conf.getDataNodeConsensusProtocolClass())) {
+        systemProperties.getProperty("data_node_consensus_protocol_class", null);
+    if (dataNodeConsensusProtocolClass == null) {
+      needReWrite = true;
+    } else if (!dataNodeConsensusProtocolClass.equals(conf.getDataNodeConsensusProtocolClass())) {
       throw new ConfigurationException(
           "data_node_consensus_protocol_class",
           conf.getDataNodeConsensusProtocolClass(),
@@ -281,39 +294,34 @@ public class ConfigNodeStartupCheck {
     }
 
     // PartitionSlot configuration
-    int seriesPartitionSlotNum =
-        Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
-    if (seriesPartitionSlotNum != conf.getSeriesPartitionSlotNum()) {
-      throw new ConfigurationException(
-          "series_partition_slot_num",
-          String.valueOf(conf.getSeriesPartitionSlotNum()),
-          String.valueOf(seriesPartitionSlotNum));
+    if (systemProperties.getProperty("series_partition_slot_num", null) == null) {
+      needReWrite = true;
+    } else {
+      int seriesPartitionSlotNum =
+          Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
+      if (seriesPartitionSlotNum != conf.getSeriesPartitionSlotNum()) {
+        throw new ConfigurationException(
+            "series_partition_slot_num",
+            String.valueOf(conf.getSeriesPartitionSlotNum()),
+            String.valueOf(seriesPartitionSlotNum));
+      }
     }
 
     String seriesPartitionSlotExecutorClass =
-        systemProperties.getProperty("series_partition_executor_class");
-    if (!Objects.equals(seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
+        systemProperties.getProperty("series_partition_executor_class", null);
+    if (seriesPartitionSlotExecutorClass == null) {
+      needReWrite = true;
+    } else if (!Objects.equals(
+        seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
       throw new ConfigurationException(
           "series_partition_executor_class",
           conf.getSeriesPartitionExecutorClass(),
           seriesPartitionSlotExecutorClass);
     }
 
-    // Directory configuration
-    String systemDir = systemProperties.getProperty("system_dir");
-    if (!systemDir.equals(conf.getSystemDir())) {
-      throw new ConfigurationException("system_dir", conf.getSystemDir(), systemDir);
-    }
-
-    String[] dataDirs = systemProperties.getProperty("data_dirs").split(",");
-    if (!Arrays.equals(dataDirs, conf.getDataDirs())) {
-      throw new ConfigurationException(
-          "data_dirs", String.join(",", conf.getDataDirs()), String.join(",", dataDirs));
-    }
-
-    String consensusDir = systemProperties.getProperty("consensus_dir");
-    if (!consensusDir.equals(conf.getConsensusDir())) {
-      throw new ConfigurationException("consensus_dir", conf.getConsensusDir(), consensusDir);
+    if (needReWrite) {
+      // Re-write special parameters if necessary
+      writeSystemProperties();
     }
   }
 

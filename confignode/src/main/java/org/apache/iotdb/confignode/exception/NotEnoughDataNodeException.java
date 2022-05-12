@@ -16,34 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.fragment;
+package org.apache.iotdb.confignode.exception;
 
-import org.apache.iotdb.consensus.common.DataSet;
+public class NotEnoughDataNodeException extends ConfigNodeException {
 
-public class FragmentInstanceInfo implements DataSet {
-  private final FragmentInstanceState state;
-  private String message;
-  private final long endTime;
-
-  public FragmentInstanceInfo(FragmentInstanceState state, long endTime) {
-    this.state = state;
-    this.endTime = endTime;
-  }
-
-  public FragmentInstanceInfo(FragmentInstanceState state, long endTime, String message) {
-    this(state, endTime);
-    this.message = message;
-  }
-
-  public FragmentInstanceState getState() {
-    return state;
-  }
-
-  public long getEndTime() {
-    return endTime;
-  }
-
-  public String getMessage() {
-    return message;
+  public NotEnoughDataNodeException() {
+    super("DataNode is not enough, please register more.");
   }
 }
