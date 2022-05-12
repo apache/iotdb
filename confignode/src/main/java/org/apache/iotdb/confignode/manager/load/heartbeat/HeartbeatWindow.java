@@ -16,6 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.balancer;
+package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-public class RegionBalancer {}
+import java.util.LinkedList;
+
+public class HeartbeatWindow {
+
+  private static final int maximumWindowSize = 1000;
+
+  private final LinkedList<HeartbeatPackage> slidingWindow;
+
+  public HeartbeatWindow() {
+    this.slidingWindow = new LinkedList<>();
+  }
+
+  public void addHeartbeat(HeartbeatPackage newHeartbeat) {
+    synchronized (slidingWindow) {
+      // Only sequential heartbeats are accepted
+      if (slidingWindow.size() == 0
+          || slidingWindow.getLast().getSendTimestamp() < newHeartbeat.getSendTimestamp()) {
+        slidingWindow.add(newHeartbeat);
+      }
+
+      while (slidingWindow.size() > maximumWindowSize) {
+        slidingWindow.removeFirst();
+      }
+    }
+  }
+}

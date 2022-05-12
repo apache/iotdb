@@ -38,7 +38,7 @@ struct TGlobalConfig {
 
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
-  2: required list<TConfigNodeLocation> configNodeList
+  2: required list<common.TConfigNodeLocation> configNodeList
   3: optional i32 dataNodeId
   4: optional TGlobalConfig globalConfig
 }
@@ -153,13 +153,8 @@ struct TCheckUserPrivilegesReq{
 }
 
 // ConfigNode
-struct TConfigNodeLocation {
-  1: required common.TEndPoint internalEndPoint
-  2: required common.TEndPoint consensusEndPoint
-}
-
 struct TConfigNodeRegisterReq {
-  1: required TConfigNodeLocation configNodeLocation
+  1: required common.TConfigNodeLocation configNodeLocation
   2: required string dataNodeConsensusProtocolClass
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
@@ -172,7 +167,7 @@ struct TConfigNodeRegisterReq {
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
   2: optional common.TConsensusGroupId partitionRegionId
-  3: optional list<TConfigNodeLocation> configNodeList
+  3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
 service ConfigIService {
@@ -227,5 +222,5 @@ service ConfigIService {
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
-  common.TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation)
+  common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
 }

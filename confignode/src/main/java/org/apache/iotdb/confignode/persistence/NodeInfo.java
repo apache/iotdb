@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -28,7 +29,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;

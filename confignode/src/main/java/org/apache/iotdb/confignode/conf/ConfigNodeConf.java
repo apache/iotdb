@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.confignode.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
@@ -117,6 +117,12 @@ public class ConfigNodeConf {
 
   /** The maximum number of DataRegions of each StorageGroup */
   private int maximumDataRegionCount = 20;
+
+  /** The heartbeat interval in milliseconds */
+  private long heartbeatInterval = 3000;
+
+  /** This parameter only exists for a few days */
+  private boolean enableHeartbeat = false;
 
   ConfigNodeConf() {
     // empty constructor
@@ -346,5 +352,21 @@ public class ConfigNodeConf {
 
   public void setMaximumDataRegionCount(int maximumDataRegionCount) {
     this.maximumDataRegionCount = maximumDataRegionCount;
+  }
+
+  public long getHeartbeatInterval() {
+    return heartbeatInterval;
+  }
+
+  public void setHeartbeatInterval(long heartbeatInterval) {
+    this.heartbeatInterval = heartbeatInterval;
+  }
+
+  public boolean isEnableHeartbeat() {
+    return enableHeartbeat;
+  }
+
+  public void setEnableHeartbeat(boolean enableHeartbeat) {
+    this.enableHeartbeat = enableHeartbeat;
   }
 }

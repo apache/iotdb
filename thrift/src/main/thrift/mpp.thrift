@@ -176,6 +176,13 @@ service InternalService {
    * @param previous data node in the data region, new data node, and dataregion id
    */
   common.TSStatus migrateDataRegion(TMigrateDataRegionReq req)
+
+  /**
+  * ConfigNode will ask DataNode for heartbeat in every few seconds.
+  *
+  * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
+  **/
+  common.THeartbeatResp getHeartBeat(common.THeartbeatReq req)
 }
 
 service DataBlockService {

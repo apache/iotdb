@@ -16,6 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.balancer;
+package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-public class SeriesPartitionSlotBalancer {}
+import java.util.HashMap;
+import java.util.Map;
+
+/** HeartbeatCache caches and maintains all the heartbeat data */
+public class HeartbeatCache implements IHeartbeatStatistic {
+
+  private boolean containsCache = false;
+
+  private final Map<Integer, HeartbeatWindow> windowMap;
+
+  public HeartbeatCache() {
+    this.windowMap = new HashMap<>();
+  }
+
+  @Override
+  public void cacheHeartBeat(int dataNodeId, HeartbeatPackage newHeartbeat) {
+    containsCache = true;
+    windowMap
+        .computeIfAbsent(dataNodeId, window -> new HeartbeatWindow())
+        .addHeartbeat(newHeartbeat);
+  }
+
+  @Override
+  public void discardAllCache() {
+    if (containsCache) {
+      containsCache = false;
+      windowMap.clear();
+    }
+  }
+}
