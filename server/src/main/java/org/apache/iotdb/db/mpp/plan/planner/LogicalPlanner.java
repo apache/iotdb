@@ -168,12 +168,12 @@ public class LogicalPlanner {
         Expression queryFilter,
         MPPQueryContext context) {
       LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-      boolean isRawDataQuery =
+      boolean isRawDataSource =
           !queryStatement.isAggregationQuery()
               || (queryStatement.isAggregationQuery() && analysis.hasValueFilter());
 
       // plan data source node
-      if (isRawDataQuery) {
+      if (isRawDataSource) {
         planBuilder =
             planBuilder.planRawDataSource(
                 sourceExpressions, queryStatement.getResultOrder(), analysis.getGlobalTimeFilter());
