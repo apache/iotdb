@@ -48,6 +48,7 @@ public class PathPatternTree {
 
   public PathPatternTree(PathPatternNode root) {
     this.root = root;
+    this.pathList = new ArrayList<>();
   }
 
   public PathPatternTree(PartialPath devicePath, String[] measurements) {
@@ -258,7 +259,7 @@ public class PathPatternTree {
     PartialPath pattern = prefixPath.concatNode(MULTI_LEVEL_PATH_WILDCARD);
     List<PartialPath> involvedPath = new ArrayList<>();
     for (PartialPath path : pathList) {
-      if (pattern.matchFullPath(path) || path.matchFullPath(pattern)) {
+      if (pattern.overlapWith(path)) {
         involvedPath.add(path);
       }
     }

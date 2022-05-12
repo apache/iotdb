@@ -200,12 +200,12 @@ public class ConfigRequestSerDeTest {
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegion(dataRegionSet);
+    req0.addRegion("root.sg0", dataRegionSet);
 
     TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
     schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegion(schemaRegionSet);
+    req0.addRegion("root.sg1", schemaRegionSet);
 
     req0.serialize(buffer);
     buffer.flip();

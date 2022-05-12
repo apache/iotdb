@@ -87,6 +87,7 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
+    LOGGER.info("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
     QueryType type = QueryType.valueOf(req.queryType);
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());

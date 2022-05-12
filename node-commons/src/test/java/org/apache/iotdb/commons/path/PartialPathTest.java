@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -419,6 +419,25 @@ public class PartialPathTest {
     List<String> stringPaths = PartialPath.toStringList(paths);
     Assert.assertEquals("root.sg1.d1.s1", stringPaths.get(0));
     Assert.assertEquals("root.sg1.d1.s2", stringPaths.get(1));
+  }
+
+  @Test
+  public void testOverlapWith() throws IllegalPathException {
+    PartialPath[][] pathPairs =
+        new PartialPath[][] {
+          new PartialPath[] {new PartialPath("root.**"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.**.*"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.**.s"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.*.**"), new PartialPath("root.sg.**")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.**.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.*.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.d2.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s.*"), new PartialPath("root.sg.d.s")}
+        };
+    boolean[] results = new boolean[] {true, true, true, true, true, true, false, false};
+    for (int i = 0; i < pathPairs.length; i++) {
+      Assert.assertEquals(results[i], pathPairs[i][0].overlapWith(pathPairs[i][1]));
+    }
   }
 
   private void checkNodes(String[] expected, String[] actual) {
