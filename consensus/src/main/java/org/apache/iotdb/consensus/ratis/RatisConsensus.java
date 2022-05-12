@@ -62,6 +62,7 @@ import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.NetUtils;
+import org.apache.ratis.util.TimeDuration;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,6 +120,10 @@ class RatisConsensus implements IConsensus {
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
     RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
+    RaftServerConfigKeys.Rpc.setSlownessTimeout(properties, TimeDuration.valueOf(10, TimeUnit.MINUTES));
+    RaftServerConfigKeys.Rpc.setTimeoutMin(properties, TimeDuration.valueOf(2, TimeUnit.SECONDS));
+    RaftServerConfigKeys.Rpc.setTimeoutMax(properties, TimeDuration.valueOf(8, TimeUnit.SECONDS));
+    RaftServerConfigKeys.Rpc.setSleepTime(properties, TimeDuration.valueOf(1, TimeUnit.SECONDS));
 
     // set the port which server listen to in RaftProperty object
     final int port = NetUtils.createSocketAddr(address).getPort();

@@ -94,6 +94,9 @@ public class RatisClient {
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
+//                  .setRetryPolicy(
+//                      RetryPolicies.retryForeverWithSleep(
+//                          TimeDuration.valueOf(10, TimeUnit.MILLISECONDS)))
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));
