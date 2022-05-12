@@ -52,40 +52,44 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
       throws Throwable {
     try {
       return methodProxy.invokeSuper(o, objects);
-    } catch (Throwable t1) {
-      Throwable t = t1;
+    } catch (Throwable t) {
+      Throwable origin = t;
       if (t instanceof InvocationTargetException) {
-        t = ((InvocationTargetException) t).getTargetException();
+        origin = ((InvocationTargetException) t).getTargetException();
       }
-
-      if (t instanceof TException) {
+      Throwable cur = origin;
+      if (cur instanceof TException) {
         int level = 0;
-        while (t != null) {
+        while (cur != null) {
           LOGGER.error(
               "level-{} Exception class {}, message {}",
               level,
-              t.getClass().getName(),
-              t.getMessage());
-          t = t.getCause();
+              cur.getClass().getName(),
+              cur.getMessage());
+          cur = cur.getCause();
+          level++;
         }
         ((SyncThriftClient) o).invalidate();
       }
 
-      Throwable rootCause = ExceptionUtils.getRootCause(t);
-      // if the exception is SocketException and its error message is Broken pipe, it means that
-      // the remote node may restart and all the connection we cached before should be cleared.
-      LOGGER.error(
-          "root cause message {}, LocalizedMessage {}, ",
-          rootCause.getMessage(),
-          rootCause.getLocalizedMessage(),
-          rootCause);
-      if (rootCause instanceof SocketException && rootCause.getMessage().contains("Broken pipe")) {
+      Throwable rootCause = ExceptionUtils.getRootCause(origin);
+      if (rootCause != null) {
+        // if the exception is SocketException and its error message is Broken pipe, it means that
+        // the remote node may restart and all the connection we cached before should be cleared.
         LOGGER.error(
-            "Broken pipe error happened in calling method {}, we need to clear all previous cached connection, err: {}",
-            method.getName(),
-            t);
-        ((SyncThriftClient) o).invalidate();
-        ((SyncThriftClient) o).invalidateAll();
+            "root cause message {}, LocalizedMessage {}, ",
+            rootCause.getMessage(),
+            rootCause.getLocalizedMessage(),
+            rootCause);
+        if (rootCause instanceof SocketException
+            && rootCause.getMessage().contains("Broken pipe")) {
+          LOGGER.error(
+              "Broken pipe error happened in calling method {}, we need to clear all previous cached connection, err: {}",
+              method.getName(),
+              t);
+          ((SyncThriftClient) o).invalidate();
+          ((SyncThriftClient) o).invalidateAll();
+        }
       }
       throw new TException("Error in calling method " + method.getName(), t);
     }
