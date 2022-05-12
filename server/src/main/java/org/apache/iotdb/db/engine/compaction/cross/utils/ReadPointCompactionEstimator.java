@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceEstimator;
+import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -30,9 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class RewriteCompactionEstimator implements ICompactionEstimator {
-
-  private final CrossSpaceCompactionResource resource;
+public class ReadPointCompactionEstimator
+    implements AbstractCrossSpaceEstimator, ICrossSpaceSelector {
 
   private long maxCostOfReadingSeqFile;
 
@@ -44,18 +44,18 @@ public class RewriteCompactionEstimator implements ICompactionEstimator {
   private final int subCompactionTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
-  public RewriteCompactionEstimator(CrossSpaceCompactionResource resource) {
-    this.resource = resource;
+  public ReadPointCompactionEstimator() {
     this.maxCostOfReadingSeqFile = 0;
     this.maxSeqChunkNumInDeviceList = new ArrayList<>();
   }
 
   @Override
-  public long estimateMemory(int unseqIndex, List<Integer> seqIndexes) throws IOException {
+  public long estimateCrossCompactionMemory(
+      List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
     long cost = 0;
-    cost += calculateReadingUnseqFile(unseqIndex);
-    cost += calculateReadingSeqFiles(seqIndexes);
-    cost += calculatingWritingTargetFiles(unseqIndex, seqIndexes);
+    cost += calculateReadingUnseqFile(unseqResource);
+    cost += calculateReadingSeqFiles(seqResources);
+    cost += calculatingWritingTargetFiles(seqResources, unseqResource);
     maxSeqChunkNumInDeviceList.clear();
     return cost;
   }
@@ -64,9 +64,8 @@ public class RewriteCompactionEstimator implements ICompactionEstimator {
    * Calculate memory cost of reading source unseq files in the cross space compaction. Double the
    * total size of the timeseries to be compacted at the same time in all unseq files.
    */
-  private long calculateReadingUnseqFile(int unseqIndex) throws IOException {
-    TsFileResource unseqResource = resource.getUnseqFiles().get(unseqIndex);
-    TsFileSequenceReader reader = resource.getFileReader(unseqResource);
+  private long calculateReadingUnseqFile(TsFileResource unseqResource) throws IOException {
+    TsFileSequenceReader reader = getFileReader(unseqResource);
     int[] fileInfo = getSeriesAndDeviceChunkNum(reader);
     // it is max aligned series num of one device when tsfile contains aligned series,
     // else is sub compaction task num.
@@ -82,11 +81,10 @@ public class RewriteCompactionEstimator implements ICompactionEstimator {
    * maximun size of the timeseries to be compacted at the same time in one seq file, because only
    * one seq file will be queried at the same time.
    */
-  private long calculateReadingSeqFiles(List<Integer> seqIndexes) throws IOException {
+  private long calculateReadingSeqFiles(List<TsFileResource> seqResources) throws IOException {
     long cost = 0;
-    for (int seqIndex : seqIndexes) {
-      TsFileResource seqResource = resource.getSeqFiles().get(seqIndex);
-      TsFileSequenceReader reader = resource.getFileReader(seqResource);
+    for (TsFileResource seqResource : seqResources) {
+      TsFileSequenceReader reader = getFileReader(seqResource);
       int[] fileInfo = getSeriesAndDeviceChunkNum(reader);
       // it is max aligned series num of one device when tsfile contains aligned series,
       // else is sub compaction task num.
@@ -111,12 +109,13 @@ public class RewriteCompactionEstimator implements ICompactionEstimator {
    * size of all seq files, max chunk group size of each seq file and max chunk group size of
    * corresponding overlapped unseq file.
    */
-  private long calculatingWritingTargetFiles(int unseqIndex, List<Integer> seqIndexes)
-      throws IOException {
+  private long calculatingWritingTargetFiles(
+      List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
+    if (this instanceof ICrossSpaceSelector) {}
+
     long cost = 0;
-    for (int seqIndex : seqIndexes) {
-      TsFileResource seqResource = resource.getSeqFiles().get(seqIndex);
-      TsFileSequenceReader reader = resource.getFileReader(seqResource);
+    for (TsFileResource seqResource : seqResources) {
+      TsFileSequenceReader reader = getFileReader(seqResource);
       // add seq file metadata size
       cost += reader.getFileMetadataSize();
       // add max chunk group size of this seq tsfile
@@ -127,7 +126,7 @@ public class RewriteCompactionEstimator implements ICompactionEstimator {
     }
     // add max chunk group size of overlapped unseq tsfile
     cost +=
-        resource.getUnseqFiles().get(unseqIndex).getTsFileSize()
+        unseqResource.getTsFileSize()
             * maxUnseqChunkNumInDevice.left
             / maxUnseqChunkNumInDevice.right;
     return cost;

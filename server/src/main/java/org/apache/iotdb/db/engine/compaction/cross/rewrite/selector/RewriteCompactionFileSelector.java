@@ -23,10 +23,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.compaction.cross.utils.ICompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstimator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +58,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
-  private ICompactionEstimator compactionEstimator;
+  private AbstractCompactionEstimator compactionEstimator;
 
   public RewriteCompactionFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
     this.resource = resource;
@@ -162,8 +161,12 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         break;
       }
 
+      List<TsFileResource> tmpSelectedSeqFileResources = new ArrayList<>();
+      for (int seqIndex : tmpSelectedSeqFiles) {
+        tmpSelectedSeqFileResources.add(resource.getSeqFiles().get(seqIndex));
+      }
       long newCost =
-          compactionEstimator.estimateMemory(unseqIndex, new ArrayList<>(tmpSelectedSeqFiles));
+          compactionEstimator.estimateCrossCompactionMemory(tmpSelectedSeqFileResources, unseqFile);
       if (!updateSelectedFiles(newCost, unseqFile)) {
         // older unseq files must be merged before newer ones
         break;

@@ -24,12 +24,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.inner.IInnerUnseqSpaceSelector;
-import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,19 +58,13 @@ public class SizeTieredCompactionSelector
   protected String dataRegionId;
   protected long timePartition;
   protected List<TsFileResource> tsFileResources;
-  protected TsFileManager tsFileManager;
   protected boolean sequence;
 
   public SizeTieredCompactionSelector(
-      String logicalStorageGroupName,
-      String dataRegionId,
-      long timePartition,
-      TsFileManager tsFileManager,
-      boolean sequence) {
+      String logicalStorageGroupName, String dataRegionId, long timePartition, boolean sequence) {
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
-    this.tsFileManager = tsFileManager;
     this.sequence = sequence;
   }
 

@@ -19,13 +19,12 @@
 package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceEstimator;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class InplaceCompactionEstimator implements ICompactionEstimator {
+public class InplaceCompactionEstimator extends AbstractCrossSpaceEstimator {
   private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
@@ -51,35 +50,32 @@ public class InplaceCompactionEstimator implements ICompactionEstimator {
   /** Maximum memory cost of querying a timeseries in each file. */
   private final Map<TsFileResource, Long> maxSeriesQueryCostMap = new HashMap<>();
 
-  private final CrossSpaceCompactionResource resource;
-
-  public InplaceCompactionEstimator(CrossSpaceCompactionResource resource) {
+  public InplaceCompactionEstimator() {
     this.tightEstimate = false;
     this.maxSeqFileCost = 0;
-    this.resource = resource;
   }
 
   @Override
-  public long estimateMemory(int unseqIndex, List<Integer> seqIndexes) throws IOException {
+  public long estimateCrossCompactionMemory(
+      List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
     if (tightEstimate) {
-      return calculateTightMemoryCost(unseqIndex, seqIndexes);
+      return calculateTightMemoryCost(unseqResource, seqResources);
     } else {
-      return calculateLooseMemoryCost(unseqIndex, seqIndexes);
+      return calculateLooseMemoryCost(unseqResource, seqResources);
     }
   }
 
   private long calculateMemoryCost(
-      int unseqIndex,
-      List<Integer> seqIndexes,
+      TsFileResource unseqResource,
+      List<TsFileResource> seqResources,
       IFileQueryMemMeasurement unseqMeasurement,
       IFileQueryMemMeasurement seqMeasurement)
       throws IOException {
     long cost = 0;
-    Long fileCost = unseqMeasurement.measure(resource.getUnseqFiles().get(unseqIndex));
+    Long fileCost = unseqMeasurement.measure(unseqResource);
     cost += fileCost;
 
-    for (int seqIndex : seqIndexes) {
-      TsFileResource seqFile = resource.getSeqFiles().get(seqIndex);
+    for (TsFileResource seqFile : seqResources) {
       fileCost = seqMeasurement.measure(seqFile);
       if (fileCost > maxSeqFileCost) {
         // only one file will be read at the same time, so only the largest one is recorded here
@@ -93,17 +89,17 @@ public class InplaceCompactionEstimator implements ICompactionEstimator {
     return cost;
   }
 
-  private long calculateLooseMemoryCost(int unseqIndex, List<Integer> seqIndexes)
-      throws IOException {
+  private long calculateLooseMemoryCost(
+      TsFileResource unseqResource, List<TsFileResource> seqResources) throws IOException {
     return calculateMemoryCost(
-        unseqIndex, seqIndexes, TsFileResource::getTsFileSize, this::calculateMetadataSize);
+        unseqResource, seqResources, TsFileResource::getTsFileSize, this::calculateMetadataSize);
   }
 
-  private long calculateTightMemoryCost(int unseqIndex, List<Integer> seqIndexes)
-      throws IOException {
+  private long calculateTightMemoryCost(
+      TsFileResource unseqResource, List<TsFileResource> seqResources) throws IOException {
     return calculateMemoryCost(
-        unseqIndex,
-        seqIndexes,
+        unseqResource,
+        seqResources,
         this::calculateTightUnseqMemoryCost,
         this::calculateTightSeqMemoryCost);
   }
@@ -111,7 +107,7 @@ public class InplaceCompactionEstimator implements ICompactionEstimator {
   private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
     Long cost = fileMetaSizeMap.get(seqFile);
     if (cost == null) {
-      cost = resource.getFileReader(seqFile).getFileMetadataSize();
+      cost = getFileReader(seqFile).getFileMetadataSize();
       fileMetaSizeMap.put(seqFile, cost);
       logger.debug(LOG_FILE_COST, seqFile, cost);
     }
@@ -122,8 +118,7 @@ public class InplaceCompactionEstimator implements ICompactionEstimator {
       TsFileResource seqFile, IFileQueryMemMeasurement measurement) throws IOException {
     Long cost = maxSeriesQueryCostMap.get(seqFile);
     if (cost == null) {
-      long[] chunkNums =
-          findTotalAndLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
+      long[] chunkNums = findTotalAndLargestSeriesChunkNum(seqFile, getFileReader(seqFile));
       long totalChunkNum = chunkNums[0];
       long maxChunkNum = chunkNums[1];
       cost = measurement.measure(seqFile) * maxChunkNum / totalChunkNum;
