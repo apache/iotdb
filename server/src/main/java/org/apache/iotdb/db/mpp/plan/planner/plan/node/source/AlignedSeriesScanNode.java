@@ -129,7 +129,7 @@ public class AlignedSeriesScanNode extends SourceNode {
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
+    return regionReplicaSet;
   }
 
   @Override

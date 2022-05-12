@@ -96,8 +96,12 @@ public class Analysis {
   public Analysis() {}
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
+    return getPartitionInfoByDevice(seriesPath.getDevicePath(), timefilter);
+  }
+
+  public List<TRegionReplicaSet> getPartitionInfoByDevice(PartialPath devicePath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
-    return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
+    return dataPartition.getDataRegionReplicaSet(devicePath.getFullPath(), null);
   }
 
   public Statement getStatement() {

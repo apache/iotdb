@@ -42,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryS
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
@@ -222,6 +223,25 @@ public class DistributionPlanner {
       }
       TimeJoinNode timeJoinNode =
           new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
+      for (TRegionReplicaSet dataRegion : dataDistribution) {
+        SeriesScanNode split = (SeriesScanNode) node.clone();
+        split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
+        split.setRegionReplicaSet(dataRegion);
+        timeJoinNode.addChild(split);
+      }
+      return timeJoinNode;
+    }
+
+    @Override
+    public PlanNode visitAlignedSeriesScan(AlignedSeriesScanNode node, DistributionPlanContext context) {
+      List<TRegionReplicaSet> dataDistribution =
+              analysis.getPartitionInfoByDevice(node.getAlignedPath(), node.getTimeFilter());
+      if (dataDistribution.size() == 1) {
+        node.setRegionReplicaSet(dataDistribution.get(0));
+        return node;
+      }
+      TimeJoinNode timeJoinNode =
+              new TimeJoinNode(context.queryContext.getQueryId().genPlanNodeId(), node.getScanOrder());
       for (TRegionReplicaSet dataRegion : dataDistribution) {
         SeriesScanNode split = (SeriesScanNode) node.clone();
         split.setPlanNodeId(context.queryContext.getQueryId().genPlanNodeId());
@@ -429,6 +449,14 @@ public class DistributionPlanner {
       context.putNodeDistribution(
           node.getPlanNodeId(),
           new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
+      return node.clone();
+    }
+
+    @Override
+    public PlanNode visitAlignedSeriesScan(AlignedSeriesScanNode node, NodeGroupContext context) {
+      context.putNodeDistribution(
+              node.getPlanNodeId(),
+              new NodeDistribution(NodeDistributionType.NO_CHILD, node.getRegionReplicaSet()));
       return node.clone();
     }
 
