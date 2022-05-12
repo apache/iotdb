@@ -46,8 +46,6 @@ public class ConfigNodeInfo {
 
   private final String CONFIG_NODE_LIST = "config_node_list";
 
-  private final String SYSTEM_PROPERTIES_STRING = "System properties:";
-
   private static final String PROPERTIES_FILE_NAME = "system.properties";
 
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
@@ -58,10 +56,6 @@ public class ConfigNodeInfo {
   public static PartitionRegionId partitionRegionId = new PartitionRegionId(0);
 
   private File propertiesFile;
-
-  private File tmpPropertiesFile;
-
-  private Properties properties = new Properties();
 
   private ConfigNodeInfo() {
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
@@ -107,6 +101,7 @@ public class ConfigNodeInfo {
 
   /** call this method to store config node list */
   private void storeConfigNode() throws IOException {
+    Properties properties = new Properties();
     try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
       properties.load(inputStream);
     }
@@ -118,8 +113,15 @@ public class ConfigNodeInfo {
   public void loadConfigNodeList() {
     // properties contain CONFIG_NODE_LIST only when start as Data node
     try {
+      configNodeInfoReadWriteLock.writeLock().lock();
+      Properties properties = new Properties();
+      try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
+        properties.load(inputStream);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+
       if (properties.containsKey(CONFIG_NODE_LIST)) {
-        configNodeInfoReadWriteLock.writeLock().lock();
         onlineConfigNodes.clear();
         onlineConfigNodes.addAll(
             NodeUrlUtils.parseTEndPointUrls(properties.getProperty(CONFIG_NODE_LIST)));

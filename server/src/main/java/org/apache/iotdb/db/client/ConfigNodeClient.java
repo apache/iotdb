@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.sync.SyncThriftClient;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
-import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
@@ -90,9 +89,9 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   private int cursor = 0;
 
-  ClientManager<ConsensusGroupId, ConfigNodeClient> clientManager;
+  ClientManager<PartitionRegionId, ConfigNodeClient> clientManager;
 
-  ConsensusGroupId consensusGroupId = ConfigNodeInfo.partitionRegionId;
+  PartitionRegionId partitionRegionId = ConfigNodeInfo.partitionRegionId;
 
   TProtocolFactory protocolFactory;
 
@@ -110,7 +109,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   public ConfigNodeClient(
       TProtocolFactory protocolFactory,
       int connectionTimeout,
-      ClientManager<ConsensusGroupId, ConfigNodeClient> clientManager)
+      ClientManager<PartitionRegionId, ConfigNodeClient> clientManager)
       throws TException {
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     this.protocolFactory = protocolFactory;
@@ -190,7 +189,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   @Override
   public void close() {
     if (clientManager != null) {
-      clientManager.returnClient(consensusGroupId, this);
+      clientManager.returnClient(partitionRegionId, this);
     } else {
       invalidate();
     }

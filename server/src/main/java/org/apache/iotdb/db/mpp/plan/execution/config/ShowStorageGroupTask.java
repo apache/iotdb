@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -46,7 +45,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -75,10 +73,8 @@ public class ShowStorageGroupTask implements IConfigTask {
       try (ConfigNodeClient client = clientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TStorageGroupSchemaResp resp =
             client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
-        storageGroupPaths = new ArrayList<>(resp.getStorageGroupSchemaMap().keySet());
-      } catch (TException | IOException e) {
         storageGroupSchemaMap = resp.getStorageGroupSchemaMap();
-      } catch (IoTDBConnectionException e) {
+      } catch (TException | IOException e) {
         LOGGER.error("Failed to connect to config node.");
         future.setException(e);
       }
