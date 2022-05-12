@@ -217,6 +217,7 @@ public class ConfigRequestExecutor {
     List<SnapshotProcessor> allAttributes = new ArrayList<>();
     allAttributes.add(clusterSchemaInfo);
     allAttributes.add(partitionInfo);
+    allAttributes.add(nodeInfo);
     return allAttributes;
   }
 }
