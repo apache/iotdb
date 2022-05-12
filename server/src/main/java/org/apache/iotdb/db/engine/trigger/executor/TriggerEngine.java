@@ -61,7 +61,7 @@ public class TriggerEngine {
             timestamp,
             values[i],
             mNode.getSchema().getType(),
-            insertRowPlan.getDevicePath());
+            insertRowPlan.getPaths().get(i));
       }
     }
   }
@@ -93,7 +93,7 @@ public class TriggerEngine {
             timestamps,
             columns[i],
             mNode.getSchema().getType(),
-            insertTabletPlan.getDevicePath());
+            insertTabletPlan.getPaths().get(i));
       }
     }
   }
