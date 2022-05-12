@@ -124,7 +124,7 @@ public class ReceiverLogAnalyzer {
         // start、stop、drop
         PipeStatus status = PipeStatus.valueOf(items[3]);
         if (status.equals(PipeStatus.RUNNING)) {
-          pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.PENDING);
+          pipeInfos.get(pipeName).get(remoteIp).put(createTime, PipeStatus.STOP);
         } else {
           pipeInfos.get(pipeName).get(remoteIp).put(createTime, status);
         }

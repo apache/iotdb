@@ -103,7 +103,7 @@ public class ReceiverService implements IService {
 
   private void checkPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeName != null && pipeInfo.getStatus().equals(PipeStatus.PENDING)) {
+    if (pipeName != null && pipeInfo.getStatus().equals(PipeStatus.STOP)) {
       startPipe(pipeName, remoteIp, createTime);
     }
   }
@@ -164,9 +164,7 @@ public class ReceiverService implements IService {
   /** start an existed pipe named pipeName */
   private void startPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo != null
-        && (pipeInfo.getStatus().equals(PipeStatus.STOP)
-            || pipeInfo.getStatus().equals(PipeStatus.PENDING))) {
+    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.STOP)) {
       logger.info("start Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       receiverManager.startPipe(pipeName, remoteIp, createTime);
       collector.startPipe(pipeName, remoteIp, createTime);
@@ -176,9 +174,7 @@ public class ReceiverService implements IService {
   /** stop an existed pipe named pipeName */
   private void stopPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo != null
-        && (pipeInfo.getStatus().equals(PipeStatus.RUNNING)
-            || pipeInfo.getStatus().equals(PipeStatus.PENDING))) {
+    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
       logger.info("stop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       receiverManager.stopPipe(pipeName, remoteIp, createTime);
       collector.stopPipe(pipeName, remoteIp, createTime);
@@ -188,9 +184,7 @@ public class ReceiverService implements IService {
   /** drop an existed pipe named pipeName */
   private void dropPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeInfo != null
-        && (!pipeInfo.getStatus().equals(PipeStatus.DROP)
-            || pipeInfo.getStatus().equals(PipeStatus.PENDING))) {
+    if (pipeInfo != null && !pipeInfo.getStatus().equals(PipeStatus.DROP)) {
       logger.info("drop Pipe name={}, remoteIp={}, createTime={}", pipeName, remoteIp, createTime);
       receiverManager.dropPipe(pipeName, remoteIp, createTime);
       collector.stopPipe(pipeName, remoteIp, createTime);
@@ -251,12 +245,7 @@ public class ReceiverService implements IService {
     record.addField(Binary.valueOf(pipeInfo.getPipeName()), TSDataType.TEXT);
     record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
     record.addField(Binary.valueOf(pipeInfo.getRemoteIp()), TSDataType.TEXT);
-    record.addField(
-        Binary.valueOf(
-            pipeInfo.getStatus().equals(PipeStatus.PENDING)
-                ? PipeStatus.STOP.name()
-                : pipeInfo.getStatus().name()),
-        TSDataType.TEXT);
+    record.addField(Binary.valueOf(pipeInfo.getStatus().name()), TSDataType.TEXT);
     record.addField(
         Binary.valueOf(
             receiverManager
