@@ -67,15 +67,15 @@ public class NodeInfoTest {
     registerDataNodeReq = new RegisterDataNodeReq(generateTDataNodeLocation(2));
     nodeInfo.registerDataNode(registerDataNodeReq);
 
-    Set<TDataNodeLocation> tDataNodeLocations = new HashSet<>();
+    Set<TDataNodeLocation> drainingDataNodes_before = new HashSet<>();
     // parameter i is used to be flag in generateTDataNodeLocation
     for (int i = 3; i < 8; i++) {
-      tDataNodeLocations.add(generateTDataNodeLocation(i));
+      drainingDataNodes_before.add(generateTDataNodeLocation(i));
     }
-    nodeInfo.setDrainingDataNodes(tDataNodeLocations);
+    nodeInfo.setDrainingDataNodes(drainingDataNodes_before);
 
     int nextId = nodeInfo.getNextDataNodeId();
-    List<TDataNodeLocation> tDataNodeLocations_before = nodeInfo.getOnlineDataNodes();
+    List<TDataNodeLocation> onlineDataNodes_before = nodeInfo.getOnlineDataNodes();
 
     nodeInfo.processTakeSnapshot(snapshotDir);
     nodeInfo.clear();
@@ -83,12 +83,12 @@ public class NodeInfoTest {
 
     Assert.assertEquals(nextId, nodeInfo.getNextDataNodeId());
 
-    Set<TDataNodeLocation> tDataNodeLocations_after = nodeInfo.getDrainingDataNodes();
-    Assert.assertEquals(tDataNodeLocations, tDataNodeLocations_after);
+    Set<TDataNodeLocation> drainingDataNodes_after = nodeInfo.getDrainingDataNodes();
+    Assert.assertEquals(drainingDataNodes_before, drainingDataNodes_after);
 
-    List<TDataNodeLocation> getOnlineDataNodes = nodeInfo.getOnlineDataNodes();
+    List<TDataNodeLocation> onlineDataNodes_after = nodeInfo.getOnlineDataNodes();
 
-    Assert.assertEquals(tDataNodeLocations_before, getOnlineDataNodes);
+    Assert.assertEquals(onlineDataNodes_before, onlineDataNodes_after);
   }
 
   private TDataNodeLocation generateTDataNodeLocation(int flag) {
