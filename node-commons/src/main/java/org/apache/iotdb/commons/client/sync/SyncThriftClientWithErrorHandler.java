@@ -23,6 +23,7 @@ import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,8 +82,7 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
             rootCause.getMessage(),
             rootCause.getLocalizedMessage(),
             rootCause);
-        if (rootCause instanceof SocketException
-            && rootCause.getMessage().contains("Broken pipe")) {
+        if (isConnectionBroken(rootCause)) {
           LOGGER.error(
               "Broken pipe error happened in calling method {}, we need to clear all previous cached connection, err: {}",
               method.getName(),
@@ -93,5 +93,11 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
       }
       throw new TException("Error in calling method " + method.getName(), t);
     }
+  }
+
+  private boolean isConnectionBroken(Throwable cause) {
+    return (cause instanceof SocketException && cause.getMessage().contains("Broken pipe"))
+        || cause instanceof TTransportException
+            && cause.getMessage().contains("Socket is closed by peer");
   }
 }
