@@ -97,7 +97,7 @@ public class SyncThriftClientWithErrorHandler implements MethodInterceptor {
 
   private boolean isConnectionBroken(Throwable cause) {
     return (cause instanceof SocketException && cause.getMessage().contains("Broken pipe"))
-        || cause instanceof TTransportException
-            && cause.getMessage().contains("Socket is closed by peer");
+        || (cause instanceof TTransportException
+            && cause.getMessage().contains("Socket is closed by peer"));
   }
 }
