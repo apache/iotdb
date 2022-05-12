@@ -112,7 +112,7 @@ public class Utils {
   /** Given raftGroupId, decrypt ConsensusGroupId out of it */
   public static ConsensusGroupId fromRaftGroupIdToConsensusGroupId(RaftGroupId raftGroupId) {
     byte[] padded = raftGroupId.toByteString().toByteArray();
-    long type = (padded[10] << 8) + padded[11];
+    long type = (long) ((padded[10] & 0xff) << 8) + (padded[11] & 0xff);
     ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);
     byteBuffer.put(padded, 12, 4);
     byteBuffer.flip();
