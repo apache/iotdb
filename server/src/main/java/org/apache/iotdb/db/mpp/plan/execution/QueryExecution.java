@@ -236,7 +236,9 @@ public class QueryExecution implements IQueryExecution {
     // There are only two scenarios where the ResultHandle should be closed:
     //   1. The client fetch all the result and the ResultHandle is finished.
     //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
-    if (resultHandle != null && resultHandle.isFinished()) {
+    // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
+    // waiting it to be finished.
+    if (resultHandle != null) {
       resultHandle.abort();
     }
   }
