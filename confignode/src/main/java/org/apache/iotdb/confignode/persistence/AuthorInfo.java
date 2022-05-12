@@ -331,10 +331,6 @@ public class AuthorInfo {
     }
   }
 
-  public void reset() throws AuthException {
-    authorizer.reset();
-  }
-
   private static class AuthorInfoHolder {
 
     private static final AuthorInfo INSTANCE = new AuthorInfo();
