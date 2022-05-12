@@ -244,7 +244,7 @@ public class Analysis {
   public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
     this.groupByTimeParameter = groupByTimeParameter;
   }
-  
+
   public boolean isFinishQueryAfterAnalyze() {
     return finishQueryAfterAnalyze;
   }
