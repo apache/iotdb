@@ -31,7 +31,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class CountAccumulator implements Accumulator {
 
   private long countValue = 0;
-  private boolean initResult = false;
 
   public CountAccumulator() {}
 
@@ -45,7 +44,6 @@ public class CountAccumulator implements Accumulator {
         break;
       }
       if (!column[1].isNull(i)) {
-        initResult = true;
         countValue++;
       }
     }
@@ -58,13 +56,11 @@ public class CountAccumulator implements Accumulator {
     if (partialResult[0].isNull(0)) {
       return;
     }
-    initResult = true;
     countValue += partialResult[0].getLong(0);
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
-    initResult = true;
     countValue += statistics.getCount();
   }
 
@@ -74,7 +70,6 @@ public class CountAccumulator implements Accumulator {
     if (finalResult.isNull(0)) {
       return;
     }
-    initResult = true;
     countValue = finalResult.getLong(0);
   }
 
@@ -82,25 +77,16 @@ public class CountAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of Count should be 1");
-    if (!initResult) {
-      columnBuilders[0].appendNull();
-    } else {
-      columnBuilders[0].writeLong(countValue);
-    }
+    columnBuilders[0].writeLong(countValue);
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    if (!initResult) {
-      columnBuilder.appendNull();
-    } else {
-      columnBuilder.writeLong(countValue);
-    }
+    columnBuilder.writeLong(countValue);
   }
 
   @Override
   public void reset() {
-    initResult = false;
     this.countValue = 0;
   }
 

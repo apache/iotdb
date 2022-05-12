@@ -116,10 +116,10 @@ public class AccumulatorTest {
     ColumnBuilder[] intermediateResult = new ColumnBuilder[1];
     intermediateResult[0] = new LongColumnBuilder(null, 1);
     countAccumulator.outputIntermediate(intermediateResult);
-    Assert.assertTrue(intermediateResult[0].build().isNull(0));
+    Assert.assertEquals(0, intermediateResult[0].build().getLong(0));
     ColumnBuilder finalResult = new LongColumnBuilder(null, 1);
     countAccumulator.outputFinal(finalResult);
-    Assert.assertTrue(finalResult.build().isNull(0));
+    Assert.assertEquals(0, finalResult.build().getLong(0));
 
     countAccumulator.addInput(rawData.getTimeAndValueColumn(0), defaultTimeRange);
     Assert.assertFalse(countAccumulator.hasFinalResult());
