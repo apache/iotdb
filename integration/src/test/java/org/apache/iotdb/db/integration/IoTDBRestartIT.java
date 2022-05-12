@@ -18,15 +18,20 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -48,12 +53,19 @@ public class IoTDBRestartIT {
 
   private final Logger logger = LoggerFactory.getLogger(IoTDBRestartIT.class);
 
-  @Test
-  public void testRestart()
-      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
+  @Before
+  public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
+  }
 
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testRestart() throws SQLException, IOException, StorageEngineException {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -99,16 +111,10 @@ public class IoTDBRestartIT {
         }
       }
     }
-
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void testRestartDelete()
-      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-
+  public void testRestartDelete() throws SQLException, IOException, StorageEngineException {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -169,16 +175,11 @@ public class IoTDBRestartIT {
         resultSet.close();
       }
     }
-
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void testRestartQueryLargerThanEndTime()
       throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -228,16 +229,11 @@ public class IoTDBRestartIT {
       }
       assertEquals(1, cnt);
     }
-
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void testRestartEndTime()
       throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -284,15 +280,10 @@ public class IoTDBRestartIT {
       }
       assertEquals(2, cnt);
     }
-
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void testRecoverWALMismatchDataType() throws Exception {
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -319,15 +310,10 @@ public class IoTDBRestartIT {
       }
       assertEquals(1, cnt);
     }
-
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void testRecoverWALDeleteSchema() throws Exception {
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -352,14 +338,10 @@ public class IoTDBRestartIT {
       }
       assertEquals(1, cnt);
     }
-
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void testRecoverWALDeleteSchemaCheckResourceTime() throws Exception {
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     int avgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
     config.setAvgSeriesPointNumberThreshold(2);
@@ -402,6 +384,55 @@ public class IoTDBRestartIT {
     config.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
     config.setSeqTsFileSize(tsFileSize);
     config.setUnSeqTsFileSize(unFsFileSize);
-    EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testRecoverFromFlushMemTableError() throws Exception {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
+    }
+
+    // mock exception
+    TsFileProcessor[] tsFileProcessors =
+        StorageEngine.getInstance()
+            .getProcessorByDataRegionId(new PartialPath("root.turbine1"), 0)
+            .getWorkSequenceTsFileProcessors()
+            .toArray(new TsFileProcessor[0]);
+    Assert.assertEquals(1, tsFileProcessors.length);
+    IMemTable memTable = tsFileProcessors[0].getWorkMemTable();
+    memTable.clear();
+    memTable.addTextDataSize(1);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("flush");
+    }
+
+    IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
+    EnvironmentUtils.restartDaemon();
+
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet = statement.execute("select * from root.**");
+      assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          Assert.assertEquals("1", resultSet.getString(1));
+          Assert.assertEquals("1.1", resultSet.getString(2));
+          Assert.assertEquals("2.2", resultSet.getString(3));
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    }
   }
 }
