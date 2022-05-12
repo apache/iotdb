@@ -97,22 +97,21 @@ public class Path implements Serializable, Comparable<Path> {
     if (device == null || measurement == null) {
       throw new PathParseException(ILLEGAL_PATH_ARGUMENT);
     }
-    String[] nodes;
-    // use splitPathToNodes to check whether path is legal.
+    // use PathNodesGenerator to check whether path is legal.
     if (!"".equals(device) && !"".equals(measurement)) {
       String fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
-      nodes = PathNodesGenerator.splitPathToNodes(fullPath);
+      PathNodesGenerator.checkPath(fullPath);
     } else if (!"".equals(device)) {
-      nodes = PathNodesGenerator.splitPathToNodes(device);
+      PathNodesGenerator.checkPath(device);
     } else if (!"".equals(measurement)) {
-      nodes = PathNodesGenerator.splitPathToNodes(measurement);
+      PathNodesGenerator.checkPath(measurement);
     }
     this.device = device;
     this.measurement = measurement;
-    if (!"".equals(device)) {
+    if (!"".equals(device) && !"".equals(measurement)) {
       this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
     } else {
-      this.fullPath = measurement;
+      this.fullPath = "".equals(measurement) ? device : measurement;
     }
   }
 
@@ -120,7 +119,7 @@ public class Path implements Serializable, Comparable<Path> {
     return fullPath;
   }
 
-  public String getDeviceIdString() {
+  public String getDevice() {
     return device;
   }
 

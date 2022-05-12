@@ -63,24 +63,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @throws IllegalPathException
    */
   public PartialPath(String path) throws IllegalPathException {
-    this.nodes = PathUtils.splitPathToDetachedPath(path);
+    this.nodes = PathUtils.splitPathToDetachedNodes(path);
     this.fullPath = path;
   }
 
   public PartialPath(String device, String measurement) throws IllegalPathException {
-    if ("".equals(device) && "".equals(measurement)) {
-      this.fullPath = device;
-      this.nodes = new String[] {};
-      return;
-    }
-    String fullPath;
-    if (!"".equals(device)) {
-      fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
-    } else {
-      fullPath = measurement;
-    }
-    this.nodes = PathUtils.splitPathToDetachedPath(fullPath);
-    this.fullPath = fullPath;
+    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    this.nodes = PathUtils.splitPathToDetachedNodes(fullPath);
   }
 
   /** @param partialNodes nodes of a time series path */
@@ -95,7 +84,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath(String path, boolean needSplit) {
     super(path, needSplit);
     if (!needSplit) {
-      this.nodes = new String[] {path};
+      if ("".equals(path)) {
+        this.nodes = new String[] {};
+      } else {
+        this.nodes = new String[] {path};
+      }
     }
   }
 
@@ -378,8 +371,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
-  public String getDeviceIdString() {
-    if (device == null) {
+  public String getDevice() {
+    if (device != null) {
+      return device;
+    } else {
       if (nodes.length == 1) {
         return "";
       }
@@ -445,7 +440,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   @TestOnly
   public Path toTSFilePath() {
-    return new Path(getDeviceIdString(), getMeasurement());
+    return new Path(getDevice(), getMeasurement());
   }
 
   public static List<String> toStringList(List<PartialPath> pathList) {
@@ -510,7 +505,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
     partialPath.nodes = nodes;
     partialPath.setMeasurement(path.getMeasurement());
-    partialPath.device = path.getDeviceIdString();
+    partialPath.device = path.getDevice();
     partialPath.fullPath = path.getFullPath();
     return partialPath;
   }

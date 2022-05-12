@@ -30,57 +30,57 @@ public class PathTest {
   public void testLegalPath() {
     // empty path
     Path a = new Path("", true);
-    Assert.assertEquals("", a.getDeviceIdString());
+    Assert.assertEquals("", a.getDevice());
     Assert.assertEquals("", a.getMeasurement());
 
     // empty device
     Path b = new Path("s1", true);
     Assert.assertEquals("s1", b.getMeasurement());
-    Assert.assertEquals("", b.getDeviceIdString());
+    Assert.assertEquals("", b.getDevice());
 
     // normal node
     Path c = new Path("root.sg.a", true);
-    Assert.assertEquals("root.sg", c.getDeviceIdString());
+    Assert.assertEquals("root.sg", c.getDevice());
     Assert.assertEquals("a", c.getMeasurement());
 
     // quoted node
     Path d = new Path("root.sg.`a.b`", true);
-    Assert.assertEquals("root.sg", d.getDeviceIdString());
+    Assert.assertEquals("root.sg", d.getDevice());
     Assert.assertEquals("`a.b`", d.getMeasurement());
 
     Path e = new Path("root.sg.`a.``b`", true);
-    Assert.assertEquals("root.sg", e.getDeviceIdString());
+    Assert.assertEquals("root.sg", e.getDevice());
     Assert.assertEquals("`a.``b`", e.getMeasurement());
 
     Path f = new Path("root.`sg\"`.`a.``b`", true);
-    Assert.assertEquals("root.`sg\"`", f.getDeviceIdString());
+    Assert.assertEquals("root.`sg\"`", f.getDevice());
     Assert.assertEquals("`a.``b`", f.getMeasurement());
 
     Path g = new Path("root.sg.`a.b\\\\`", true);
-    Assert.assertEquals("root.sg", g.getDeviceIdString());
+    Assert.assertEquals("root.sg", g.getDevice());
     Assert.assertEquals("`a.b\\\\`", g.getMeasurement());
 
     // quoted node of digits
     Path h = new Path("root.sg.`111`", true);
-    Assert.assertEquals("root.sg", h.getDeviceIdString());
+    Assert.assertEquals("root.sg", h.getDevice());
     Assert.assertEquals("`111`", h.getMeasurement());
 
     // quoted node of key word
     Path i = new Path("root.sg.`select`", true);
-    Assert.assertEquals("root.sg", i.getDeviceIdString());
+    Assert.assertEquals("root.sg", i.getDevice());
     Assert.assertEquals("`select`", i.getMeasurement());
 
     // wildcard
     Path j = new Path("root.sg.`a*b`", true);
-    Assert.assertEquals("root.sg", j.getDeviceIdString());
+    Assert.assertEquals("root.sg", j.getDevice());
     Assert.assertEquals("`a*b`", j.getMeasurement());
 
     Path k = new Path("root.sg.*", true);
-    Assert.assertEquals("root.sg", k.getDeviceIdString());
+    Assert.assertEquals("root.sg", k.getDevice());
     Assert.assertEquals("*", k.getMeasurement());
 
     Path l = new Path("root.sg.**", true);
-    Assert.assertEquals("root.sg", l.getDeviceIdString());
+    Assert.assertEquals("root.sg", l.getDevice());
     Assert.assertEquals("**", l.getMeasurement());
   }
 

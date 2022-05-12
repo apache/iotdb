@@ -31,6 +31,8 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 /** convert String path to String[] nodes * */
 public class PathNodesGenerator {
+  private static PathVisitor pathVisitor = new PathVisitor();
+
   public static String[] splitPathToNodes(String path) throws PathParseException {
     try {
       return invokeParser(path);
@@ -39,8 +41,16 @@ public class PathNodesGenerator {
     }
   }
 
+  /** throw exception if path is illegal. */
+  public static void checkPath(String path) throws PathParseException {
+    try {
+      invokeParser(path);
+    } catch (ParseCancellationException e) {
+      throw new PathParseException(path);
+    }
+  }
+
   private static String[] invokeParser(String path) {
-    PathVisitor pathVisitor = new PathVisitor();
 
     CharStream charStream1 = CharStreams.fromString(path);
 

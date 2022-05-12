@@ -22,26 +22,14 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.tsfile.exception.PathParseException;
 import org.apache.iotdb.tsfile.read.common.parser.PathNodesGenerator;
 
-import java.util.HashSet;
-
 public class PathUtils {
-
-  private static final HashSet<String> KEY_WORDS =
-      new HashSet<String>() {
-        {
-          add("time");
-        }
-      };
 
   /**
    * @param path the path will split. ex, root.ln.
    * @return string array. ex, [root, ln]
    * @throws IllegalPathException if path isn't correct, the exception will throw
    */
-  public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
-    if (isInnerKeyWord(path)) {
-      return new String[] {path};
-    }
+  public static String[] splitPathToDetachedNodes(String path) throws IllegalPathException {
     if ("".equals(path)) {
       return new String[] {};
     }
@@ -53,17 +41,10 @@ public class PathUtils {
   }
 
   public static void isLegalPath(String path) throws IllegalPathException {
-    if (isInnerKeyWord(path) || "".equals(path)) {
-      return;
-    }
     try {
       PathNodesGenerator.splitPathToNodes(path);
     } catch (PathParseException e) {
       throw new IllegalPathException(path);
     }
-  }
-
-  private static boolean isInnerKeyWord(String path) {
-    return KEY_WORDS.contains(path);
   }
 }

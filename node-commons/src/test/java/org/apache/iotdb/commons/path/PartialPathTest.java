@@ -34,7 +34,7 @@ public class PartialPathTest {
   public void testLegalPath() throws IllegalPathException {
     String[] nodes;
     // empty path
-    PartialPath a = new PartialPath("");
+    PartialPath a = new PartialPath("", false);
     Assert.assertEquals("", a.getFullPath());
     Assert.assertEquals(0, a.getNodes().length);
 
@@ -398,7 +398,7 @@ public class PartialPathTest {
     Assert.assertTrue(p1.matchFullPath(new PartialPath("root.sg1.d1.s2")));
     Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg1.d1")));
     Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg2.d1.*")));
-    Assert.assertFalse(p1.matchFullPath(new PartialPath("")));
+    Assert.assertFalse(p1.matchFullPath(new PartialPath("", false)));
 
     PartialPath path = new PartialPath("root.sg.d.s");
     String[] patterns = {

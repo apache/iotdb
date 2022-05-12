@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.tree;
+package org.apache.iotdb.commons.schema.tree;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
@@ -97,10 +97,5 @@ public abstract class AbstractTreeVisitorWithLimitOffset<N extends ITreeNode, R>
 
   public int getNextOffset() {
     return curOffset + 1;
-  }
-
-  @Override
-  protected boolean processInternalMatchedNode(N node) {
-    return false;
   }
 }

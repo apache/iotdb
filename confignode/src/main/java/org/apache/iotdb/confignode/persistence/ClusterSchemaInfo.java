@@ -96,7 +96,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       mTree.setStorageGroup(partialPathName);
 
       // Set StorageGroupSchema
-      mTree.getStorageGroupNodeByPath(partialPathName).setStorageGroupSchema(storageGroupSchema);
+      mTree
+          .getStorageGroupNodeByStorageGroupPath(partialPathName)
+          .setStorageGroupSchema(storageGroupSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
@@ -144,7 +146,10 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
-        mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema().setTTL(req.getTTL());
+        mTree
+            .getStorageGroupNodeByStorageGroupPath(path)
+            .getStorageGroupSchema()
+            .setTTL(req.getTTL());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
@@ -167,7 +172,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByPath(path)
+            .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setSchemaReplicationFactor(req.getSchemaReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -192,7 +197,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByPath(path)
+            .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setDataReplicationFactor(req.getDataReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -217,7 +222,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByPath(path)
+            .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setTimePartitionInterval(req.getTimePartitionInterval());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -279,7 +284,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
-            path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+            path.getFullPath(),
+            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -322,7 +328,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.readLock().lock();
     try {
       StorageGroupMNode mNode =
-          (StorageGroupMNode) mTree.getStorageGroupNodeByPath(new PartialPath(storageGroup));
+          (StorageGroupMNode)
+              mTree.getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup));
       switch (type) {
         case SchemaRegion:
           result = mNode.getStorageGroupSchema().getSchemaRegionGroupIds();

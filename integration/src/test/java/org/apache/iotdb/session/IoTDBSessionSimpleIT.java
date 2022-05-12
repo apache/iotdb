@@ -561,6 +561,12 @@ public class IoTDBSessionSimpleIT {
       logger.error("", e);
     }
 
+    try {
+      session.createTimeseries("", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logger.error("", e);
+    }
+
     final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
     assertFalse(dataSet.hasNext());
 

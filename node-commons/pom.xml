@@ -83,12 +83,10 @@
             <artifactId>iotdb-thrift-confignode</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <!-- antlr for test -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-antlr</artifactId>
             <version>${project.version}</version>
-            <scope>compile</scope>
         </dependency>
         <!--        compile group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'-->
         <dependency>

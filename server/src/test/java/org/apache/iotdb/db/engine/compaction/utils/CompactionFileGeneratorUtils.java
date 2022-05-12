@@ -182,8 +182,7 @@ public class CompactionFileGeneratorUtils {
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
-          deviceMeasurementMap.computeIfAbsent(
-              partialPath.getDeviceIdString(), (s) -> new ArrayList<>());
+          deviceMeasurementMap.computeIfAbsent(partialPath.getDevice(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     for (Entry<String, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
@@ -240,8 +239,7 @@ public class CompactionFileGeneratorUtils {
     for (String fullPath : fullPaths) {
       PartialPath partialPath = new PartialPath(fullPath);
       List<String> sensors =
-          deviceMeasurementMap.computeIfAbsent(
-              partialPath.getDeviceIdString(), (s) -> new ArrayList<>());
+          deviceMeasurementMap.computeIfAbsent(partialPath.getDevice(), (s) -> new ArrayList<>());
       sensors.add(partialPath.getMeasurement());
     }
     int currChunksIndex = 0;

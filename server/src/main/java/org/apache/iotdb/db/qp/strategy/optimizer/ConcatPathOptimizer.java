@@ -146,7 +146,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             ((TimeSeriesOperand) expression)
                 .setPath(
                     new PartialPath(
-                        PathUtils.splitPathToDetachedPath(
+                        PathUtils.splitPathToDetachedNodes(
                             ((TimeSeriesOperand) expression)
                                 .getPath()
                                 .getFirstNode()))); // split path To nodes
