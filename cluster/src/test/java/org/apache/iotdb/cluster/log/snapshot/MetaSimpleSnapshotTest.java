@@ -27,12 +27,12 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.CreateTemplatePlanUtil;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -207,13 +207,13 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
 
     for (int i = 0; i < 5; i++) {
       String userName = "user_" + i;
-      User user = AuthorizerManager.getInstance().getUser(userName);
+      User user = BasicAuthorizer.getInstance().getUser(userName);
       assertEquals(userMap.get(userName), user);
     }
 
     for (int i = 0; i < 10; i++) {
       String roleName = "role_" + i;
-      Role role = AuthorizerManager.getInstance().getRole(roleName);
+      Role role = BasicAuthorizer.getInstance().getRole(roleName);
       assertEquals(roleMap.get(roleName), role);
     }
 
@@ -315,13 +315,13 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
 
       for (int i = 0; i < 5; i++) {
         String userName = "user_" + i;
-        User user = AuthorizerManager.getInstance().getUser(userName);
+        User user = BasicAuthorizer.getInstance().getUser(userName);
         assertNull(user);
       }
 
       for (int i = 0; i < 10; i++) {
         String roleName = "role_" + i;
-        Role role = AuthorizerManager.getInstance().getRole(roleName);
+        Role role = BasicAuthorizer.getInstance().getRole(roleName);
         assertNull(role);
       }
 

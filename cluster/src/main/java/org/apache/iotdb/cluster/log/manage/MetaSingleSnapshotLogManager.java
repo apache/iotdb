@@ -24,11 +24,12 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.service.IoTDB;
@@ -63,12 +64,16 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
     super.takeSnapshot();
     synchronized (this) {
       storageGroupTTLMap = IoTDB.schemaProcessor.getStorageGroupsTTL();
-      IAuthorizer authorizer = AuthorizerManager.getInstance();
-      userMap = authorizer.getAllUsers();
-      roleMap = authorizer.getAllRoles();
-      templateMap = TemplateManager.getInstance().getTemplateMap();
-      commitIndex = getCommitLogIndex();
-      term = getCommitLogTerm();
+      try {
+        IAuthorizer authorizer = BasicAuthorizer.getInstance();
+        userMap = authorizer.getAllUsers();
+        roleMap = authorizer.getAllRoles();
+        templateMap = TemplateManager.getInstance().getTemplateMap();
+        commitIndex = getCommitLogIndex();
+        term = getCommitLogTerm();
+      } catch (AuthException e) {
+        logger.error("get user or role info failed", e);
+      }
     }
   }
 
