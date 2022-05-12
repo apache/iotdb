@@ -210,17 +210,17 @@ public class QueryLogicalPlanUtil {
     sourceNodeList1.add(
         new SeriesScanNode(
             new PlanNodeId("0"),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
+            (MeasurementPath) schemaMap.get("root.sg.d1.s3"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             new PlanNodeId("1"),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
+            (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             new PlanNodeId("2"),
-            (MeasurementPath) schemaMap.get("root.sg.d1.s3"),
+            (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList1.forEach(
         planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
@@ -242,9 +242,9 @@ public class QueryLogicalPlanUtil {
             new PlanNodeId("4"),
             timeJoinNode1,
             new Expression[] {
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s3")),
               new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s3"))
+              new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))
             },
             predicate1,
             false,
@@ -254,17 +254,17 @@ public class QueryLogicalPlanUtil {
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("5"),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
+            (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("6"),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
+            (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             new PlanNodeId("7"),
-            (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
+            (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
             OrderBy.TIMESTAMP_DESC));
     sourceNodeList2.forEach(
         planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
@@ -283,19 +283,23 @@ public class QueryLogicalPlanUtil {
             new PlanNodeId("9"),
             timeJoinNode2,
             new Expression[] {
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s4")),
               new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
-              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s4"))
+              new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))
             },
             predicate2,
             false,
             ZonedDateTime.now().getOffset());
 
+    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 3, 4));
+    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(2, 3, 4));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             new PlanNodeId("10"),
             Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
-            Arrays.asList(HeaderConstant.COLUMN_DEVICE, "s3", "s4", "s1", "s2"));
+            Arrays.asList(HeaderConstant.COLUMN_DEVICE, "s3", "s4", "s1", "s2"),
+            deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode("root.sg.d1", filterNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", filterNode2);
 
@@ -695,12 +699,16 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode2 =
         new TimeJoinNode(new PlanNodeId("5"), OrderBy.TIMESTAMP_DESC, sourceNodeList2);
 
+    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 2, 3));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             new PlanNodeId("6"),
             Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
             Arrays.asList(
-                HeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"));
+                HeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
+            deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode("root.sg.d1", timeJoinNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", timeJoinNode2);
 
@@ -989,12 +997,16 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))));
 
+    Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+    deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
+    deviceToMeasurementIndexesMap.put("root.sg.d2", Arrays.asList(1, 2, 3));
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             new PlanNodeId("10"),
             Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
             Arrays.asList(
-                HeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"));
+                HeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
+            deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode("root.sg.d1", aggregationNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", aggregationNode2);
 

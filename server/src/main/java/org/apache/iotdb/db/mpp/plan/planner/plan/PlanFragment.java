@@ -28,10 +28,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /** PlanFragment contains a sub-query of distributed query. */
@@ -40,7 +36,6 @@ public class PlanFragment {
   private PlanFragmentId id;
   private PlanNode root;
   private TypeProvider typeProvider;
-  private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
   public PlanFragment(PlanFragmentId id, PlanNode root) {
     this.id = id;
@@ -65,15 +60,6 @@ public class PlanFragment {
 
   public void setTypeProvider(TypeProvider typeProvider) {
     this.typeProvider = typeProvider;
-  }
-
-  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
-    return deviceToMeasurementIndexesMap;
-  }
-
-  public void setDeviceToMeasurementIndexesMap(
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
-    this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
   }
 
   @Override
@@ -129,19 +115,6 @@ public class PlanFragment {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       typeProvider.serialize(byteBuffer);
     }
-    if (deviceToMeasurementIndexesMap == null) {
-      ReadWriteIOUtils.write((byte) 0, byteBuffer);
-    } else {
-      ReadWriteIOUtils.write((byte) 1, byteBuffer);
-      ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), byteBuffer);
-      for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
-        ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
-        ReadWriteIOUtils.write(entry.getValue().size(), byteBuffer);
-        for (Integer index : entry.getValue()) {
-          ReadWriteIOUtils.write(index, byteBuffer);
-        }
-      }
-    }
   }
 
   public static PlanFragment deserialize(ByteBuffer byteBuffer) {
@@ -150,23 +123,6 @@ public class PlanFragment {
     byte hasTypeProvider = ReadWriteIOUtils.readByte(byteBuffer);
     if (hasTypeProvider == 1) {
       planFragment.setTypeProvider(TypeProvider.deserialize(byteBuffer));
-    }
-    byte hasDeviceToMeasurementIndexesMap = ReadWriteIOUtils.readByte(byteBuffer);
-    if (hasDeviceToMeasurementIndexesMap == 1) {
-      int mapSize = ReadWriteIOUtils.readInt(byteBuffer);
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>(mapSize);
-      while (mapSize > 0) {
-        String deviceName = ReadWriteIOUtils.readString(byteBuffer);
-        int listSize = ReadWriteIOUtils.readInt(byteBuffer);
-        List<Integer> indexes = new ArrayList<>(listSize);
-        while (listSize > 0) {
-          indexes.add(ReadWriteIOUtils.readInt(byteBuffer));
-          listSize--;
-        }
-        deviceToMeasurementIndexesMap.put(deviceName, indexes);
-        mapSize--;
-      }
-      planFragment.setDeviceToMeasurementIndexesMap(deviceToMeasurementIndexesMap);
     }
     return planFragment;
   }

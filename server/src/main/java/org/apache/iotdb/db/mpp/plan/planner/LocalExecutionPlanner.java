@@ -138,12 +138,10 @@ public class LocalExecutionPlanner {
   public DataDriver plan(
       PlanNode plan,
       TypeProvider types,
-      Map<String, List<Integer>> deviceToMeasurementIndexesMap,
       FragmentInstanceContext instanceContext,
       Filter timeFilter,
       DataRegion dataRegion) {
-    LocalExecutionPlanContext context =
-        new LocalExecutionPlanContext(types, deviceToMeasurementIndexesMap, instanceContext);
+    LocalExecutionPlanContext context = new LocalExecutionPlanContext(types, instanceContext);
 
     Operator root = plan.accept(new Visitor(), context);
 
@@ -406,7 +404,7 @@ public class LocalExecutionPlanner {
               .collect(Collectors.toList());
       List<List<Integer>> deviceColumnIndex =
           node.getDevices().stream()
-              .map(deviceName -> context.getDeviceToMeasurementIndexesMap().get(deviceName))
+              .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
               .collect(Collectors.toList());
       List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
       return new DeviceViewOperator(
@@ -713,14 +711,10 @@ public class LocalExecutionPlanner {
     private int nextOperatorId = 0;
 
     private TypeProvider typeProvider;
-    private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
     public LocalExecutionPlanContext(
-        TypeProvider typeProvider,
-        Map<String, List<Integer>> deviceToMeasurementIndexesMap,
-        FragmentInstanceContext instanceContext) {
+        TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
       this.typeProvider = typeProvider;
-      this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
       this.instanceContext = instanceContext;
       this.paths = new ArrayList<>();
       this.allSensorsMap = new HashMap<>();
@@ -773,10 +767,6 @@ public class LocalExecutionPlanner {
 
     public TypeProvider getTypeProvider() {
       return typeProvider;
-    }
-
-    public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
-      return deviceToMeasurementIndexesMap;
     }
   }
 }

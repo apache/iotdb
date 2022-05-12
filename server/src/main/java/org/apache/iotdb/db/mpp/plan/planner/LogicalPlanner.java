@@ -135,6 +135,7 @@ public class LogicalPlanner {
                 analysis.getRespDatasetHeader().getRespColumns().stream()
                     .distinct()
                     .collect(Collectors.toList()),
+                analysis.getDeviceToMeasurementIndexesMap(),
                 queryStatement.getResultOrder());
       } else {
         planBuilder =
