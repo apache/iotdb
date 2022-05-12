@@ -145,7 +145,7 @@ public class Analyzer {
         }
 
         List<Pair<Expression, String>> outputExpressions;
-        Set<Expression> selectExpressions = new HashSet<>();
+        Set<Expression> selectExpressions = new LinkedHashSet<>();
         Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
         // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
         //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
@@ -567,7 +567,7 @@ public class Analyzer {
         sourceExpressions
             .computeIfAbsent(
                 ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
-                key -> new HashSet<>())
+                key -> new LinkedHashSet<>())
             .add(sourceExpression);
       }
     }
