@@ -145,8 +145,7 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     if (skipExecute()) {
       logger.info(
-          "{} execution of query will be skipped. Transit to RUNNING immediately.",
-          getLogHeader());
+          "{} execution of query will be skipped. Transit to RUNNING immediately.", getLogHeader());
       constructResultForMemoryTable();
       stateMachine.transitionToRunning();
       return;
