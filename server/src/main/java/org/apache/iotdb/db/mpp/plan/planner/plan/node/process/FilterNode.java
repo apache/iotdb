@@ -23,57 +23,35 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.query.expression.Expression;
-
-import com.google.common.collect.ImmutableList;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.List;
+import java.time.ZoneId;
 import java.util.Objects;
 
-/** The FilterNode is responsible to filter the RowRecord from TsBlock. */
-public class FilterNode extends ProcessNode {
-
-  private PlanNode child;
+public class FilterNode extends TransformNode {
 
   private final Expression predicate;
 
-  public FilterNode(PlanNodeId id, Expression predicate) {
-    super(id);
+  public FilterNode(
+      PlanNodeId id,
+      PlanNode childPlanNode,
+      Expression[] outputExpressions,
+      Expression predicate,
+      boolean keepNull,
+      ZoneId zoneId) {
+    super(id, childPlanNode, outputExpressions, keepNull, zoneId);
     this.predicate = predicate;
   }
 
-  public FilterNode(PlanNodeId id, PlanNode child, Expression predicate) {
-    this(id, predicate);
-    this.child = child;
-  }
-
-  public Expression getPredicate() {
-    return predicate;
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of(child);
-  }
-
-  @Override
-  public void addChild(PlanNode child) {
-    this.child = child;
-  }
-
-  @Override
-  public int allowedChildCount() {
-    return ONE_CHILD;
-  }
-
-  @Override
-  public PlanNode clone() {
-    return new FilterNode(getPlanNodeId(), predicate);
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return child.getOutputColumnNames();
+  public FilterNode(
+      PlanNodeId id,
+      Expression[] outputExpressions,
+      Expression predicate,
+      boolean keepNull,
+      ZoneId zoneId) {
+    super(id, outputExpressions, keepNull, zoneId);
+    this.predicate = predicate;
   }
 
   @Override
@@ -82,15 +60,37 @@ public class FilterNode extends ProcessNode {
   }
 
   @Override
+  public PlanNode clone() {
+    return new FilterNode(getPlanNodeId(), outputExpressions, predicate, keepNull, zoneId);
+  }
+
+  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FILTER.serialize(byteBuffer);
+    ReadWriteIOUtils.write(outputExpressions.length, byteBuffer);
+    for (Expression expression : outputExpressions) {
+      Expression.serialize(expression, byteBuffer);
+    }
     Expression.serialize(predicate, byteBuffer);
+    ReadWriteIOUtils.write(keepNull, byteBuffer);
+    ReadWriteIOUtils.write(zoneId.getId(), byteBuffer);
   }
 
   public static FilterNode deserialize(ByteBuffer byteBuffer) {
+    int outputExpressionsLength = ReadWriteIOUtils.readInt(byteBuffer);
+    Expression[] outputExpressions = new Expression[outputExpressionsLength];
+    for (int i = 0; i < outputExpressionsLength; ++i) {
+      outputExpressions[i] = Expression.deserialize(byteBuffer);
+    }
     Expression predicate = Expression.deserialize(byteBuffer);
+    boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
+    ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new FilterNode(planNodeId, predicate);
+    return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, zoneId);
+  }
+
+  public Expression getPredicate() {
+    return predicate;
   }
 
   @Override
@@ -98,18 +98,18 @@ public class FilterNode extends ProcessNode {
     if (this == o) {
       return true;
     }
-    if (o == null || getClass() != o.getClass()) {
+    if (!(o instanceof FilterNode)) {
       return false;
     }
     if (!super.equals(o)) {
       return false;
     }
     FilterNode that = (FilterNode) o;
-    return child.equals(that.child) && predicate.equals(that.predicate);
+    return predicate.equals(that.predicate);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), child, predicate);
+    return Objects.hash(super.hashCode(), predicate);
   }
 }

@@ -229,7 +229,7 @@ public class SeriesScanNode extends SourceNode {
     }
     ReadWriteIOUtils.write(limit, byteBuffer);
     ReadWriteIOUtils.write(offset, byteBuffer);
-    ThriftCommonsSerDeUtils.writeTRegionReplicaSet(regionReplicaSet, byteBuffer);
+    ThriftCommonsSerDeUtils.serializeTRegionReplicaSet(regionReplicaSet, byteBuffer);
   }
 
   public static SeriesScanNode deserialize(ByteBuffer byteBuffer) {
@@ -253,7 +253,7 @@ public class SeriesScanNode extends SourceNode {
     int limit = ReadWriteIOUtils.readInt(byteBuffer);
     int offset = ReadWriteIOUtils.readInt(byteBuffer);
     TRegionReplicaSet dataRegionReplicaSet =
-        ThriftCommonsSerDeUtils.readTRegionReplicaSet(byteBuffer);
+        ThriftCommonsSerDeUtils.deserializeTRegionReplicaSet(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SeriesScanNode(
         planNodeId,

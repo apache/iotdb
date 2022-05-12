@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
@@ -686,14 +687,6 @@ public class IoTDBConfig {
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
 
-  /**
-   * default TTL for storage groups that are not set TTL by statements, in ms.
-   *
-   * <p>Notice: if this property is changed, previous created storage group which are not set TTL
-   * will also be affected. Unit: millisecond
-   */
-  private long defaultTTL = Long.MAX_VALUE;
-
   /** The default value of primitive array size in array pool */
   private int primitiveArraySize = 32;
 
@@ -813,11 +806,6 @@ public class IoTDBConfig {
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
 
-  /**
-   * Ip and port of config nodes. each one is a {internalIp | domain name}:{meta port} string tuple.
-   */
-  private List<String> configNodeUrls = Collections.singletonList("127.0.0.1:22277");
-
   /** Internal ip for data node */
   private String internalIp = "127.0.0.1";
 
@@ -826,6 +814,10 @@ public class IoTDBConfig {
 
   /** Internal port for consensus protocol */
   private int consensusPort = 40010;
+
+  /** Ip and port of config nodes. */
+  private List<TEndPoint> configNodeList =
+      Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
   /** The max time of data node waiting to join into the cluster */
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
@@ -883,6 +875,8 @@ public class IoTDBConfig {
    * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
   private int partitionCacheSize = 10000;
+
+  IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
     return udfMemoryBudgetInMB;
@@ -2135,14 +2129,6 @@ public class IoTDBConfig {
     this.kerberosPrincipal = kerberosPrincipal;
   }
 
-  public long getDefaultTTL() {
-    return defaultTTL;
-  }
-
-  public void setDefaultTTL(long defaultTTL) {
-    this.defaultTTL = defaultTTL;
-  }
-
   public int getThriftServerAwaitTimeForStopService() {
     return thriftServerAwaitTimeForStopService;
   }
@@ -2618,14 +2604,6 @@ public class IoTDBConfig {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 
-  public List<String> getConfigNodeUrls() {
-    return configNodeUrls;
-  }
-
-  public void setConfigNodeUrls(List<String> configNodeUrls) {
-    this.configNodeUrls = configNodeUrls;
-  }
-
   public String getInternalIp() {
     return internalIp;
   }
@@ -2648,6 +2626,14 @@ public class IoTDBConfig {
 
   public void setConsensusPort(int consensusPort) {
     this.consensusPort = consensusPort;
+  }
+
+  public List<TEndPoint> getConfigNodeList() {
+    return configNodeList;
+  }
+
+  public void setConfigNodeList(List<TEndPoint> configNodeList) {
+    this.configNodeList = configNodeList;
   }
 
   public long getJoinClusterTimeOutMs() {

@@ -22,9 +22,6 @@ package org.apache.iotdb.db.query.expression;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.plan.rewriter.WildcardsRemover;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
@@ -89,24 +86,19 @@ public abstract class Expression {
   // Operations for time series paths
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
-  public abstract void concat(
-      List<PartialPath> prefixPaths,
-      List<Expression> resultExpressions,
-      PathPatternTree patternTree);
-
   // TODO: remove after MPP finish
+  @Deprecated
   public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
 
-  public abstract void removeWildcards(
-      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws StatementAnalyzeException;
-
   // TODO: remove after MPP finish
+  @Deprecated
   public abstract void removeWildcards(
       org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
       List<Expression> resultExpressions)
       throws LogicalOptimizeException;
 
+  // TODO: remove after MPP finish
+  @Deprecated
   public abstract void collectPaths(Set<PartialPath> pathSet);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

@@ -81,4 +81,28 @@ public abstract class ConsensusGroupId {
       return create(tConsensusGroupId.getType().getValue(), tConsensusGroupId.getId());
     }
   }
+
+  public static TConsensusGroupId convertToTConsensusGroupId(ConsensusGroupId consensusGroupId) {
+    return new TConsensusGroupId(consensusGroupId.getType(), consensusGroupId.getId());
+  }
+
+  public static String formatTConsensusGroupId(TConsensusGroupId groupId) {
+    StringBuilder format = new StringBuilder();
+
+    switch (groupId.getType()) {
+      case SchemaRegion:
+        format.append("SchemaRegion");
+        break;
+      case DataRegion:
+        format.append("DataRegion");
+        break;
+      case PartitionRegion:
+        format.append("PartitionRegion");
+        break;
+    }
+
+    format.append("(").append(groupId.getId()).append(")");
+
+    return format.toString();
+  }
 }

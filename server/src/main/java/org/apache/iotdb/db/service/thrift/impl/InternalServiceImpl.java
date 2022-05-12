@@ -72,6 +72,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class InternalServiceImpl implements InternalService.Iface {
 
@@ -86,6 +87,7 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
+    LOGGER.info("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
     QueryType type = QueryType.valueOf(req.queryType);
     ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
@@ -132,11 +134,14 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   @Override
   public TCancelResp cancelQuery(TCancelQueryReq req) throws TException {
-
-    // TODO need to be implemented and currently in order not to print NotImplementedException log,
-    // we simply return null
+    List<FragmentInstanceId> taskIds =
+        req.getFragmentInstanceIds().stream()
+            .map(FragmentInstanceId::fromThrift)
+            .collect(Collectors.toList());
+    for (FragmentInstanceId taskId : taskIds) {
+      FragmentInstanceManager.getInstance().cancelTask(taskId);
+    }
     return new TCancelResp(true);
-    //    throw new NotImplementedException();
   }
 
   @Override

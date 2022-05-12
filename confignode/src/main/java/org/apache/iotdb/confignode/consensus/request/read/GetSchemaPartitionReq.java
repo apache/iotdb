@@ -67,7 +67,8 @@ public class GetSchemaPartitionReq extends ConfigRequest {
           buffer.putInt(seriesPartitionSlots.size());
           seriesPartitionSlots.forEach(
               seriesPartitionSlot ->
-                  ThriftCommonsSerDeUtils.writeTSeriesPartitionSlot(seriesPartitionSlot, buffer));
+                  ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(
+                      seriesPartitionSlot, buffer));
         });
   }
 
@@ -81,7 +82,7 @@ public class GetSchemaPartitionReq extends ConfigRequest {
       int seriesPartitionSlotNum = buffer.getInt();
       for (int j = 0; j < seriesPartitionSlotNum; j++) {
         TSeriesPartitionSlot seriesPartitionSlot =
-            ThriftCommonsSerDeUtils.readTSeriesPartitionSlot(buffer);
+            ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
         partitionSlotsMap.get(storageGroup).add(seriesPartitionSlot);
       }
     }

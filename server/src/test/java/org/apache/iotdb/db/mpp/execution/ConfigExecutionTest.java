@@ -96,7 +96,7 @@ public class ConfigExecutionTest {
         new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
     execution.start();
     ExecutionResult result = execution.getStatus();
-    assertEquals(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode(), result.status.code);
+    assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
   }
 
   @Test

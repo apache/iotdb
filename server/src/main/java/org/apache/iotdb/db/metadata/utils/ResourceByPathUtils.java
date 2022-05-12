@@ -322,13 +322,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(partialPath.getSchemaList());
-    int curSize = alignedTvListCopy.rowCount();
     List<List<TimeRange>> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
     }
-    return new AlignedReadOnlyMemChunk(
-        getMeasurementSchema(), alignedTvListCopy, curSize, deletionList);
+    return new AlignedReadOnlyMemChunk(getMeasurementSchema(), alignedTvListCopy, deletionList);
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
@@ -383,13 +381,12 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
-        writer.getVisibleMetadataList(
-            partialPath.getDeviceIdString(), "", partialPath.getSeriesType());
+        writer.getVisibleMetadataList(partialPath.getDevice(), "", partialPath.getSeriesType());
     List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
     for (int i = 0; i < partialPath.getMeasurementList().size(); i++) {
       valueChunkMetadataList.add(
           writer.getVisibleMetadataList(
-              partialPath.getDeviceIdString(),
+              partialPath.getDevice(),
               partialPath.getMeasurementList().get(i),
               partialPath.getSchemaList().get(i).getType()));
     }
@@ -539,7 +536,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         memTableMap.get(deviceID).getMemChunkMap().get(partialPath.getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
-    int curSize = chunkCopy.rowCount();
     List<TimeRange> deletionList = null;
     if (modsToMemtable != null) {
       deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
@@ -550,7 +546,6 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         partialPath.getMeasurementSchema().getEncodingType(),
         chunkCopy,
         partialPath.getMeasurementSchema().getProps(),
-        curSize,
         deletionList);
   }
   /**
@@ -599,7 +594,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(
             writer.getVisibleMetadataList(
-                partialPath.getDeviceIdString(),
+                partialPath.getDevice(),
                 partialPath.getMeasurement(),
                 partialPath.getSeriesType()));
 

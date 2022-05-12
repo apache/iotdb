@@ -40,6 +40,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,16 +66,20 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planRawDataQuerySource(
-      Map<String, Set<PartialPath>> deviceNameToPathsMap,
+      Map<String, Set<Expression>> deviceNameToPathsMap,
       OrderBy scanOrder,
       boolean isAlignByDevice) {
     Map<String, List<PlanNode>> deviceNameToSourceNodesMap = new HashMap<>();
 
-    for (Map.Entry<String, Set<PartialPath>> entry : deviceNameToPathsMap.entrySet()) {
+    for (Map.Entry<String, Set<Expression>> entry : deviceNameToPathsMap.entrySet()) {
       String deviceName = entry.getKey();
       Set<String> allSensors =
-          entry.getValue().stream().map(PartialPath::getMeasurement).collect(Collectors.toSet());
-      for (PartialPath path : entry.getValue()) {
+          entry.getValue().stream()
+              .map(expression -> ((TimeSeriesOperand) expression).getPath())
+              .map(PartialPath::getMeasurement)
+              .collect(Collectors.toSet());
+      for (Expression expression : entry.getValue()) {
+        PartialPath path = ((TimeSeriesOperand) expression).getPath();
         deviceNameToSourceNodesMap
             .computeIfAbsent(deviceName, k -> new ArrayList<>())
             .add(
