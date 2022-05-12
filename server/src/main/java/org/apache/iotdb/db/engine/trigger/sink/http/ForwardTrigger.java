@@ -22,37 +22,78 @@ package org.apache.iotdb.db.engine.trigger.sink.http;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
+import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 
-import java.io.IOException;
+import org.fusesource.mqtt.client.QoS;
+
 import java.util.HashMap;
 
 public class ForwardTrigger implements Trigger {
 
-  private final HTTPHandler forwardManagerHandler = new HTTPHandler();
-  private HTTPConfiguration forwardManagerConfiguration;
+  private Handler forwardManagerHandler;
+  private Configuration forwardManagerConfiguration;
   private ForwardQueue<Event> queue;
   private final HashMap<String, String> labels = new HashMap<>();
+  private String protocol;
 
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
-    String endpoint = attributes.getString("endpoint");
-    String protocol = attributes.getString("protocol");
-    boolean stopForwardingIfException = Boolean.parseBoolean(attributes.getString("stopForwardingIfException"));
+    protocol = attributes.getString("protocol").toLowerCase();
+    boolean stopIfException = Boolean.parseBoolean(attributes.getString("stopIfException"));
 
-    // TODO instantiate the corresponding handler (HTTP or MQTT) according to the protocol.
-    forwardManagerConfiguration = new HTTPConfiguration(endpoint, protocol, stopForwardingIfException);
-    queue = new ForwardQueue<>(forwardManagerHandler);
-    forwardManagerHandler.open(forwardManagerConfiguration);
+    switch (protocol) {
+      case "http":
+        forwardManagerConfiguration = createHTTPConfiguration(attributes, stopIfException);
+        forwardManagerHandler = new HTTPForwardHandler();
+        queue = new ForwardQueue<>(forwardManagerHandler);
+        forwardManagerHandler.open(forwardManagerConfiguration);
+        break;
+      case "mqtt":
+        forwardManagerConfiguration = createMQTTConfiguration(attributes, stopIfException);
+        forwardManagerHandler = new MQTTForwardHandler();
+        queue = new ForwardQueue<>(forwardManagerHandler);
+        forwardManagerHandler.open(forwardManagerConfiguration);
+        break;
+      default:
+        throw new TriggerExecutionException("Forward protocol doesn't support.");
+    }
+  }
+
+  private Configuration createHTTPConfiguration(
+      TriggerAttributes attributes, boolean stopIfException) {
+    String endpoint = attributes.getString("endpoint");
+    return new ForwardConfiguration("http", stopIfException, endpoint);
+  }
+
+  private Configuration createMQTTConfiguration(
+      TriggerAttributes attributes, boolean stopIfException) {
+    String host = attributes.getString("host");
+    String port = attributes.getString("port");
+    String username = attributes.getString("username");
+    String password = attributes.getString("password");
+    String reconnectDelay = attributes.getString("reconnectDelay");
+    String connectAttemptsMax = attributes.getString("connectAttemptsMax");
+    return new ForwardConfiguration(
+        "mqtt",
+        stopIfException,
+        host,
+        Integer.parseInt(port),
+        username,
+        password,
+        Long.parseLong(reconnectDelay),
+        Long.parseLong(connectAttemptsMax));
   }
 
   @Override
-  public void onDrop() throws IOException {
+  public void onDrop() throws Exception {
     forwardManagerHandler.close();
   }
 
   @Override
-  public void onStart() {
+  public void onStart() throws Exception {
     forwardManagerHandler.open(forwardManagerConfiguration);
   }
 
@@ -65,21 +106,52 @@ public class ForwardTrigger implements Trigger {
   public Double fire(long timestamp, Double value, PartialPath path) throws Exception {
     labels.put("value", String.valueOf(value));
     labels.put("severity", "critical");
-    labels.put("fullPath", path.toString());
-    HTTPEvent httpEvent = new HTTPEvent(path.toString(), labels);
-    queue.offer(httpEvent);
+
+    ForwardEvent event;
+    switch (protocol) {
+      case "http":
+        event = new ForwardEvent("topic-http", timestamp, value, path.toString(), labels);
+        break;
+      case "mqtt":
+        event =
+            new ForwardEvent(
+                "topic-mqtt", timestamp, value, path.toString(), QoS.EXACTLY_ONCE, false, labels);
+        break;
+      default:
+        throw new TriggerExecutionException("Forward protocol doesn't support.");
+    }
+
+    queue.offer(event);
     return value;
   }
 
   @Override
   public double[] fire(long[] timestamps, double[] values, PartialPath path) throws Exception {
-    // 需要合并
-    for (double value : values) {
-      labels.put("value", String.valueOf(value));
+    // TODO need merge
+    for (int i = 0; i < timestamps.length; i++) {
+      labels.put("value", String.valueOf(values[i]));
       labels.put("severity", "warning");
-      labels.put("fullPath", path.toString());
-      HTTPEvent httpEvent = new HTTPEvent(path.toString(), labels);
-      queue.offer(httpEvent);
+
+      ForwardEvent event;
+      switch (protocol) {
+        case "http":
+          event = new ForwardEvent("topic-http", timestamps[i], values[i], path.toString(), labels);
+          break;
+        case "mqtt":
+          event =
+              new ForwardEvent(
+                  "topic-mqtt",
+                  timestamps[i],
+                  values[i],
+                  path.toString(),
+                  QoS.EXACTLY_ONCE,
+                  false,
+                  labels);
+          break;
+        default:
+          throw new TriggerExecutionException("Forward protocol doesn't support.");
+      }
+      queue.offer(event);
     }
     return values;
   }

@@ -29,17 +29,21 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
 
-public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
+public class HTTPForwardHandler implements Handler<ForwardConfiguration, ForwardEvent> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(HTTPForwardHandler.class);
+
   private static final PoolingHttpClientConnectionManager clientConnectionManager;
   private static CloseableHttpClient client;
   private static int referenceCount;
 
   private HttpPost request;
-  private HTTPConfiguration configuration;
+  private ForwardConfiguration configuration;
 
   static {
     // Create connection-pool manager
@@ -69,7 +73,7 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
   }
 
   @Override
-  public void open(HTTPConfiguration configuration) {
+  public void open(ForwardConfiguration configuration) {
     this.configuration = configuration;
     if (this.request == null) {
       this.request = new HttpPost(configuration.getEndpoint());
@@ -81,7 +85,7 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
   }
 
   @Override
-  public void onEvent(HTTPEvent event) throws SinkException {
+  public void onEvent(ForwardEvent event) throws SinkException {
     CloseableHttpResponse response = null;
     try {
       request.setEntity(new StringEntity("[" + event.toJsonString() + "]"));
@@ -90,27 +94,27 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
         throw new SinkException(response.getStatusLine().toString());
       }
     } catch (Exception e) {
-      if (configuration.isStopForwardingIfException()) {
-        throw new SinkException("Forward Exception", e);
+      if (configuration.isStopIfException()) {
+        throw new SinkException("HTTP Forward Exception", e);
       }
-      e.printStackTrace();
+      LOGGER.error("HTTP Forward Exception", e);
     } finally {
       try {
         if (null != response) {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        LOGGER.error("Connection Close Exception", e);
       }
     }
   }
 
   @Override
-  public void onEvent(List<HTTPEvent> events) throws SinkException {
+  public void onEvent(List<ForwardEvent> events) throws SinkException {
     CloseableHttpResponse response = null;
     try {
       StringBuilder sb = new StringBuilder();
-      for (HTTPEvent event : events) {
+      for (ForwardEvent event : events) {
         sb.append(event.toJsonString()).append(", ");
       }
       sb.replace(sb.lastIndexOf(", "), sb.length() - 1, "");
@@ -120,17 +124,17 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
         throw new SinkException(response.getStatusLine().toString());
       }
     } catch (Exception e) {
-      if (configuration.isStopForwardingIfException()) {
-        throw new SinkException("Forward Exception", e);
+      if (configuration.isStopIfException()) {
+        throw new SinkException("HTTP Forward Exception", e);
       }
-      e.printStackTrace();
+      LOGGER.error("HTTP Forward Exception", e);
     } finally {
       try {
         if (null != response) {
           response.close();
         }
       } catch (IOException e) {
-        e.printStackTrace();
+        LOGGER.error("Connection Close Exception", e);
       }
     }
   }
