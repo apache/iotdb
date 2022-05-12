@@ -140,6 +140,7 @@ public class Analyzer {
         // If there is no leaf node in the schema tree, the query should be completed immediately
         if (schemaTree.isEmpty()) {
           analysis.setRespDatasetHeader(new DatasetHeader(new ArrayList<>(), false));
+          analysis.setFinishQueryAfterAnalyze(true);
           return analysis;
         }
 

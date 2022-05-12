@@ -34,6 +34,10 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.execution.memory.MemorySourceHandle;
+import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemoryTable;
+import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemoryTableContext;
+import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemoryTableVisitor;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
@@ -143,7 +147,8 @@ public class QueryExecution implements IQueryExecution {
       logger.info(
           "{} execution of query will be skipped. Transit to FINISHED immediately.",
           getLogHeader());
-      stateMachine.transitionToFinished();
+      constructResultForMemoryTable();
+      stateMachine.transitionToRunning();
       return;
     }
     doLogicalPlan();
@@ -155,7 +160,16 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private boolean skipExecute() {
-    return context.getQueryType() == QueryType.READ && !analysis.hasDataSource();
+    return analysis.isFinishQueryAfterAnalyze()
+        || (context.getQueryType() == QueryType.READ && !analysis.hasDataSource());
+  }
+
+  private void constructResultForMemoryTable() {
+    StatementMemoryTable memoryTable =
+        new StatementMemoryTableVisitor()
+            .process(analysis.getStatement(), new StatementMemoryTableContext(context, analysis));
+    this.resultHandle = new MemorySourceHandle(memoryTable.getTsBlock());
+    this.analysis.setRespDatasetHeader(memoryTable.getDatasetHeader());
   }
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
