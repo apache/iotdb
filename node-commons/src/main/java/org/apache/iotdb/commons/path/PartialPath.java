@@ -329,7 +329,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
         return false;
       }
     }
-    return true;
+    return this.nodes.length == rNodes.length;
   }
 
   @Override

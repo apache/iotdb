@@ -35,9 +35,10 @@ public class PartialPathTest {
           new PartialPath[] {new PartialPath("root.*.**"), new PartialPath("root.sg.**")},
           new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.**.s")},
           new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.*.s")},
-          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.d2.s")}
+          new PartialPath[] {new PartialPath("root.*.d.s"), new PartialPath("root.sg.d2.s")},
+          new PartialPath[] {new PartialPath("root.*.d.s.*"), new PartialPath("root.sg.d.s")}
         };
-    boolean[] results = new boolean[] {true, true, true, true, true, true, false};
+    boolean[] results = new boolean[] {true, true, true, true, true, true, false, false};
     for (int i = 0; i < pathPairs.length; i++) {
       Assert.assertEquals(results[i], pathPairs[i][0].overlapWith(pathPairs[i][1]));
     }
