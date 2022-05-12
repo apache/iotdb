@@ -103,7 +103,7 @@ public class ReceiverService implements IService {
 
   private void checkPipe(String pipeName, String remoteIp, long createTime) throws IOException {
     PipeInfo pipeInfo = receiverManager.getPipeInfo(pipeName, remoteIp, createTime);
-    if (pipeName != null && pipeInfo.getStatus().equals(PipeStatus.STOP)) {
+    if (pipeInfo != null && pipeInfo.getStatus().equals(PipeStatus.STOP)) {
       startPipe(pipeName, remoteIp, createTime);
     }
   }

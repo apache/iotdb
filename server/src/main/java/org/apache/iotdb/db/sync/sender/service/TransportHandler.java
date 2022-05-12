@@ -88,6 +88,7 @@ public class TransportHandler {
             SyncConstant.HEARTBEAT_DELAY_SECONDS,
             SyncConstant.HEARTBEAT_DELAY_SECONDS,
             TimeUnit.SECONDS);
+    sendHeartbeat(); // send a heartbeat immediately
   }
 
   public void stop() {
