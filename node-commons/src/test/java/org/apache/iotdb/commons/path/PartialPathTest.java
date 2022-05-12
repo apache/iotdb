@@ -159,15 +159,15 @@ public class PartialPathTest {
   @Test
   public void testLegalDeviceAndMeasurement() throws IllegalPathException {
     String[] nodes;
-    // empty path
-    PartialPath a = new PartialPath("", "");
-    Assert.assertEquals("", a.getFullPath());
-    Assert.assertEquals(0, a.getNodes().length);
-
     // normal node
-    PartialPath b = new PartialPath("root.sg", "s1");
-    Assert.assertEquals("root.sg.s1", b.getFullPath());
+    PartialPath a = new PartialPath("root.sg", "s1");
+    Assert.assertEquals("root.sg.s1", a.getFullPath());
     nodes = new String[] {"root", "sg", "s1"};
+    checkNodes(nodes, a.getNodes());
+
+    PartialPath b = new PartialPath("root.sg", "s2");
+    Assert.assertEquals("root.sg.s2", b.getFullPath());
+    nodes = new String[] {"root", "sg", "s2"};
     checkNodes(nodes, b.getNodes());
 
     PartialPath c = new PartialPath("root.sg", "a");
