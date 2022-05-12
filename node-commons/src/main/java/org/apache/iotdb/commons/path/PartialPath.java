@@ -79,16 +79,17 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   /**
    * @param path path
-   * @param needSplit whether to split path to nodes.
+   * @param needSplit whether to split path to nodes, needSplit can only be false.
    */
   public PartialPath(String path, boolean needSplit) {
-    super(path, needSplit);
-    if (!needSplit) {
-      if ("".equals(path)) {
-        this.nodes = new String[] {};
-      } else {
-        this.nodes = new String[] {path};
-      }
+    if (needSplit) {
+      throw new IllegalArgumentException("needSplit can only be false");
+    }
+    fullPath = path;
+    if ("".equals(path)) {
+      this.nodes = new String[] {};
+    } else {
+      this.nodes = new String[] {path};
     }
   }
 
