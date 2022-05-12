@@ -174,8 +174,6 @@ public class ConfigNodeDescriptor {
 
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
-      conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
-
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
       conf.setTimePartitionInterval(
@@ -193,16 +191,16 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-      conf.setInitialSchemaRegionCount(
+      conf.setMaximumSchemaRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "initial_schema_region_count",
-                  String.valueOf(conf.getInitialSchemaRegionCount()))));
+                  "maximum_schema_region_count",
+                  String.valueOf(conf.getMaximumSchemaRegionCount()))));
 
-      conf.setInitialDataRegionCount(
+      conf.setMaximumDataRegionCount(
           Integer.parseInt(
               properties.getProperty(
-                  "initial_data_region_count", String.valueOf(conf.getInitialDataRegionCount()))));
+                  "maximum_data_region_count", String.valueOf(conf.getMaximumDataRegionCount()))));
 
       // commons
       commonDescriptor.loadCommonProps(properties);

@@ -57,7 +57,7 @@ public interface Manager {
    *
    * @return DataNodeManager instance
    */
-  NodeManager getDataNodeManager();
+  NodeManager getNodeManager();
 
   /**
    * Get ConsensusManager
@@ -79,6 +79,13 @@ public interface Manager {
    * @return PartitionManager instance
    */
   PartitionManager getPartitionManager();
+
+  /**
+   * Get LoadManager
+   *
+   * @return LoadManager instance
+   */
+  LoadManager getLoadManager();
 
   /**
    * Register DataNode
