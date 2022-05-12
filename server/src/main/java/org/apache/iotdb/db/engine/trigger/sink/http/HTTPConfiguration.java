@@ -23,12 +23,24 @@ import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 
 public class HTTPConfiguration implements Configuration {
   private final String endpoint;
+  private final String protocol;
+  private final boolean stopForwardingIfException;
 
-  public HTTPConfiguration(String endpoint) {
+  public HTTPConfiguration(String endpoint, String protocol, boolean stopForwardingIfException) {
     this.endpoint = endpoint;
+    this.protocol = protocol;
+    this.stopForwardingIfException = stopForwardingIfException;
   }
 
   public String getEndpoint() {
     return endpoint;
+  }
+
+  public String getProtocol() {
+    return protocol;
+  }
+
+  public boolean isStopForwardingIfException() {
+    return stopForwardingIfException;
   }
 }

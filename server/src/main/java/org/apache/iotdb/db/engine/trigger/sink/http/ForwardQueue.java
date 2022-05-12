@@ -30,9 +30,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 设计思路：根据trigger（未来根据subscription）， 分别实例化对应的ForwardQueue。
+ * Each Trigger instantiate a ForwardQueue
  *
- * @param <T>
+ * @param <T> Subclass of Event
  */
 public class ForwardQueue<T extends Event> {
 
@@ -58,7 +58,6 @@ public class ForwardQueue<T extends Event> {
     return (hashCode & 0x7FFFFFFF) % queues.length;
   }
 
-  // 按照设备取模入队列
   public boolean offer(T event) {
     if (event.getFullPath() != null) {
       return queues[getQueueID(event.getFullPath().hashCode())].offer(event);
@@ -71,12 +70,8 @@ public class ForwardQueue<T extends Event> {
     queues[getQueueID(hashCode)].put(event);
   }
 
-  private void handle(ArrayList<T> events) {
-    try {
-      handler.onEvent(events);
-    } catch (Exception e) {
-      //
-    }
+  private void handle(ArrayList<T> events) throws Exception {
+    handler.onEvent(events);
   }
 
   class ForwardQueueThread extends Thread {

@@ -39,13 +39,15 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
   private static int referenceCount;
 
   private HttpPost request;
+  private HTTPConfiguration configuration;
 
   static {
-    // 创建连接池管理器
+    // Create connection-pool manager
     clientConnectionManager = new PoolingHttpClientConnectionManager();
-    // 设置最大的连接数
+    // Set the max number of connections
     clientConnectionManager.setMaxTotal(200);
-    // 设置每个主机的最大连接数，访问每一个网站指定的连接数，不会影响其他网站的访问
+    // Set the maximum number of connections per host and the specified number of connections
+    // per website, which will not affect the access of other websites
     clientConnectionManager.setDefaultMaxPerRoute(20);
   }
 
@@ -68,6 +70,7 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
 
   @Override
   public void open(HTTPConfiguration configuration) {
+    this.configuration = configuration;
     if (this.request == null) {
       this.request = new HttpPost(configuration.getEndpoint());
       request.setHeader("Accept", "application/json");
@@ -77,14 +80,8 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
     openClient();
   }
 
-  /**
-   * 转发数据
-   *
-   * @param event
-   * @throws SinkException
-   */
   @Override
-  public void onEvent(HTTPEvent event) {
+  public void onEvent(HTTPEvent event) throws SinkException {
     CloseableHttpResponse response = null;
     try {
       request.setEntity(new StringEntity("[" + event.toJsonString() + "]"));
@@ -93,7 +90,9 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
         throw new SinkException(response.getStatusLine().toString());
       }
     } catch (Exception e) {
-      // 要不要向外抛异常，阻止写入，需要讨论：开关配置？
+      if (configuration.isStopForwardingIfException()) {
+        throw new SinkException("Forward Exception", e);
+      }
       e.printStackTrace();
     } finally {
       try {
@@ -107,7 +106,7 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
   }
 
   @Override
-  public void onEvent(List<HTTPEvent> events) {
+  public void onEvent(List<HTTPEvent> events) throws SinkException {
     CloseableHttpResponse response = null;
     try {
       StringBuilder sb = new StringBuilder();
@@ -121,7 +120,9 @@ public class HTTPHandler implements Handler<HTTPConfiguration, HTTPEvent> {
         throw new SinkException(response.getStatusLine().toString());
       }
     } catch (Exception e) {
-      // 要不要向外抛异常，阻止写入，需要讨论：开关配置？
+      if (configuration.isStopForwardingIfException()) {
+        throw new SinkException("Forward Exception", e);
+      }
       e.printStackTrace();
     } finally {
       try {

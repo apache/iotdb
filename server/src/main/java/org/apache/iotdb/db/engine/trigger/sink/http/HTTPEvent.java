@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
 public class HTTPEvent implements Event {
   private static final String PARAMETER_NULL_ERROR_STR = "parameter null error";
 
-  // json 格式转发 还是 自定义格式
+  // TODO json or customer format
   private static final String formatter = "";
   private static final Pattern pattern = Pattern.compile("\\{\\{\\.\\w+}}");
   private final String fullPath;
@@ -43,15 +43,10 @@ public class HTTPEvent implements Event {
 
   public String toJsonString() {
     Gson gson = new Gson();
-    //    Type gsonType = new TypeToken<Map>() {}.getType();
-    //        StringBuilder sb = new StringBuilder();
-    //        return sb.toString();
-
     return gson.toJson(this.labels);
   }
 
   private static String fillTemplate(Map<String, String> map, String template) {
-    // TODO delete this method?
     if (template == null || map == null) {
       return null;
     }

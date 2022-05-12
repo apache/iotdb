@@ -30,30 +30,19 @@ import java.util.HashMap;
 public class ForwardTrigger implements Trigger {
 
   private final HTTPHandler forwardManagerHandler = new HTTPHandler();
-
   private HTTPConfiguration forwardManagerConfiguration;
-
-  //  private String fullPath;
-
-  //  private String url;
-
   private ForwardQueue<Event> queue;
-
   private final HashMap<String, String> labels = new HashMap<>();
-
-  //  private final HashMap<String, String> annotations = new HashMap<>();
 
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
-    // 获取trigger 属性
     String endpoint = attributes.getString("endpoint");
+    String protocol = attributes.getString("protocol");
+    boolean stopForwardingIfException = Boolean.parseBoolean(attributes.getString("stopForwardingIfException"));
 
-    // 实例化对应的 handler ：MQTT handler 或者 对应 HTTP Handler
-    forwardManagerConfiguration = new HTTPConfiguration(endpoint);
-
-    // 实例化ForwardQueue
+    // TODO instantiate the corresponding handler (HTTP or MQTT) according to the protocol.
+    forwardManagerConfiguration = new HTTPConfiguration(endpoint, protocol, stopForwardingIfException);
     queue = new ForwardQueue<>(forwardManagerHandler);
-
     forwardManagerHandler.open(forwardManagerConfiguration);
   }
 
@@ -74,15 +63,11 @@ public class ForwardTrigger implements Trigger {
 
   @Override
   public Double fire(long timestamp, Double value, PartialPath path) throws Exception {
-    //  params fullPath
     labels.put("value", String.valueOf(value));
     labels.put("severity", "critical");
     labels.put("fullPath", path.toString());
     HTTPEvent httpEvent = new HTTPEvent(path.toString(), labels);
-    // 转成event， 入队列
     queue.offer(httpEvent);
-    //    forwardManagerHandler.onEvent(httpEvent);
-
     return value;
   }
 
@@ -94,10 +79,8 @@ public class ForwardTrigger implements Trigger {
       labels.put("severity", "warning");
       labels.put("fullPath", path.toString());
       HTTPEvent httpEvent = new HTTPEvent(path.toString(), labels);
-      // 转成event， 入队列
       queue.offer(httpEvent);
     }
-
     return values;
   }
 }
