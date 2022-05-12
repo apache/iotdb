@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
@@ -79,12 +80,15 @@ public class ConfigManager implements Manager {
   /** Manage cluster authorization */
   private final PermissionManager permissionManager;
 
+  private final LoadManager loadManager;
+
   public ConfigManager() throws IOException {
     this.nodeManager = new NodeManager(this);
     this.partitionManager = new PartitionManager(this);
     this.clusterSchemaManager = new ClusterSchemaManager(this);
-    this.consensusManager = new ConsensusManager();
     this.permissionManager = new PermissionManager(this);
+    this.loadManager = new LoadManager(this);
+    this.consensusManager = new ConsensusManager();
   }
 
   public void close() throws IOException {
@@ -322,7 +326,7 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public NodeManager getDataNodeManager() {
+  public NodeManager getNodeManager() {
     return nodeManager;
   }
 
@@ -339,6 +343,11 @@ public class ConfigManager implements Manager {
   @Override
   public PartitionManager getPartitionManager() {
     return partitionManager;
+  }
+
+  @Override
+  public LoadManager getLoadManager() {
+    return loadManager;
   }
 
   @Override
@@ -410,7 +419,7 @@ public class ConfigManager implements Manager {
               "Reject register, please ensure that the series_partition_executor_class are consistent.");
       return errorResp;
     }
-    if (req.getDefaultTTL() != conf.getDefaultTTL()) {
+    if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTL()) {
       errorResp
           .getStatus()
           .setMessage("Reject register, please ensure that the default_ttl are consistent.");

@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
@@ -128,7 +129,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
     // Set default configurations
     if (!storageGroupSchema.isSetTTL()) {
-      storageGroupSchema.setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
+      storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
     }
     if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
       storageGroupSchema.setSchemaReplicationFactor(
@@ -142,7 +143,16 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       storageGroupSchema.setTimePartitionInterval(
           ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
+    if (!storageGroupSchema.isSetMaximumSchemaRegionCount()) {
+      storageGroupSchema.setMaximumSchemaRegionCount(
+          ConfigNodeDescriptor.getInstance().getConf().getMaximumSchemaRegionCount());
+    }
+    if (!storageGroupSchema.isSetMaximumDataRegionCount()) {
+      storageGroupSchema.setMaximumDataRegionCount(
+          ConfigNodeDescriptor.getInstance().getConf().getMaximumDataRegionCount());
+    }
 
+    // Initialize RegionGroupId List
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 

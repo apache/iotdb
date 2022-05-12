@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -187,7 +188,7 @@ public class SchemaFile implements ISchemaFile {
         sgName,
         schemaRegionId,
         true,
-        IoTDBDescriptor.getInstance().getConfig().getDefaultTTL(),
+        CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
         false);
   }
 

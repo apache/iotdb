@@ -66,25 +66,30 @@
         <dependency>
             <groupId>org.openjdk.jol</groupId>
             <artifactId>jol-core</artifactId>
+            <version>${jol-core.version}</version>
         </dependency>
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>slice</artifactId>
+            <version>${io.airlift.slice.version}</version>
         </dependency>
         <!-- for mocked test-->
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-core</artifactId>
+            <version>${powermock-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-module-junit4</artifactId>
+            <version>${powermock-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-api-mockito2</artifactId>
+            <version>${powermock-core.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

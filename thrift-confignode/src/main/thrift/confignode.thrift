@@ -96,8 +96,10 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional list<common.TConsensusGroupId> dataRegionGroupIds
-  7: optional list<common.TConsensusGroupId> schemaRegionGroupIds
+  6: optional i32 maximumSchemaRegionCount
+  7: optional i32 maximumDataRegionCount
+  8: optional list<common.TConsensusGroupId> dataRegionGroupIds
+  9: optional list<common.TConsensusGroupId> schemaRegionGroupIds
 }
 
 // Schema

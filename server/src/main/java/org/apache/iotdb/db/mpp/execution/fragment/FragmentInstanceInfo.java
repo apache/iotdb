@@ -22,12 +22,17 @@ import org.apache.iotdb.consensus.common.DataSet;
 
 public class FragmentInstanceInfo implements DataSet {
   private final FragmentInstanceState state;
-
+  private String message;
   private final long endTime;
 
   public FragmentInstanceInfo(FragmentInstanceState state, long endTime) {
     this.state = state;
     this.endTime = endTime;
+  }
+
+  public FragmentInstanceInfo(FragmentInstanceState state, long endTime, String message) {
+    this(state, endTime);
+    this.message = message;
   }
 
   public FragmentInstanceState getState() {
@@ -36,5 +41,9 @@ public class FragmentInstanceInfo implements DataSet {
 
   public long getEndTime() {
     return endTime;
+  }
+
+  public String getMessage() {
+    return message;
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.tree;
+package org.apache.iotdb.commons.schema.tree;
 
 import org.apache.iotdb.commons.path.PartialPath;
 
@@ -61,14 +61,20 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
  */
 public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Iterator<R> {
 
+  // command parameters
   protected final N root;
   protected final String[] nodes;
   protected final boolean isPrefixMatch;
 
+  // run time variables
   protected final Deque<VisitorStackEntry<N>> visitorStack = new ArrayDeque<>();
-  protected final Deque<N> ancestorStack = new ArrayDeque<>();
+  protected final Deque<AncestorStackEntry<N>> ancestorStack = new ArrayDeque<>();
+  protected boolean shouldVisitSubtree;
 
+  // result variables
   protected N nextMatchedNode;
+  protected int patternIndexOfMatchedNode;
+  protected int lastMultiLevelWildcardIndexOfMatchedNode;
 
   protected AbstractTreeVisitor(N root, PartialPath pathPattern, boolean isPrefixMatch) {
     this.root = root;
@@ -81,7 +87,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   /**
    * Optimize the given path pattern. Currently, the node name used for one level match will be
-   * transformed into a regex.
+   * transformed into a regex. e.g. given pathPattern {"root", "sg", "d*", "s"} and the
+   * optimizedPathPattern is {"root", "sg", "d.*", "s"}.
    */
   private String[] optimizePathPattern(PartialPath pathPattern) {
     String[] rawNodes = pathPattern.getNodes();
@@ -112,7 +119,24 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
+    return consumeNextMatchedNode();
+  }
+
+  private R consumeNextMatchedNode() {
     R result = generateResult();
+
+    // after the node be consumed, the subTree should be considered.
+    if (patternIndexOfMatchedNode == nodes.length) {
+      pushChildrenWhilePrefixMatch(
+          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
+    } else if (patternIndexOfMatchedNode == nodes.length - 1) {
+      pushChildrenWhileTail(
+          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
+    } else {
+      pushChildrenWhileInternal(
+          nextMatchedNode, patternIndexOfMatchedNode, lastMultiLevelWildcardIndexOfMatchedNode);
+    }
+
     nextMatchedNode = null;
     return result;
   }
@@ -156,16 +180,16 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
       // only prefixMatch
       if (patternIndex == nodes.length) {
-        if (processFullMatchedNode(node)) {
-          return;
-        }
 
-        if (!isLeafNode(node)) {
-          pushAllChildren(node, patternIndex, lastMultiLevelWildcardIndex);
-        }
+        shouldVisitSubtree = processFullMatchedNode(node) && isInternalNode(node);
 
         if (nextMatchedNode != null) {
+          saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
           return;
+        }
+
+        if (shouldVisitSubtree) {
+          pushChildrenWhilePrefixMatch(node, patternIndex, lastMultiLevelWildcardIndex);
         }
 
         continue;
@@ -173,49 +197,28 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
       if (checkIsMatch(patternIndex, node)) {
         if (patternIndex == nodes.length - 1) {
-          if (processFullMatchedNode(node)) {
-            return;
-          }
-
-          if (!isLeafNode(node)) {
-            if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-              pushAllChildren(node, patternIndex, patternIndex);
-            } else if (lastMultiLevelWildcardIndex != -1) {
-              pushAllChildren(
-                  node,
-                  findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex) + 1,
-                  lastMultiLevelWildcardIndex);
-            } else if (isPrefixMatch) {
-              pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
-            }
-          }
+          shouldVisitSubtree = processFullMatchedNode(node) && isInternalNode(node);
 
           if (nextMatchedNode != null) {
+            saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
             return;
           }
 
-          continue;
-        }
+          if (shouldVisitSubtree) {
+            pushChildrenWhileTail(node, patternIndex, lastMultiLevelWildcardIndex);
+          }
+        } else {
+          shouldVisitSubtree = processInternalMatchedNode(node) && isInternalNode(node);
 
-        if (processInternalMatchedNode(node)) {
-          return;
-        }
+          if (nextMatchedNode != null) {
+            saveNextMatchedNodeContext(patternIndex, lastMultiLevelWildcardIndex);
+            return;
+          }
 
-        if (!isLeafNode(node)) {
-          if (nodes[patternIndex + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-            pushAllChildren(node, patternIndex + 1, patternIndex + 1);
-          } else {
-            if (lastMultiLevelWildcardIndex > -1) {
-              pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
-            } else if (nodes[patternIndex + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
-              pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
-            } else {
-              pushSingleChild(
-                  node, nodes[patternIndex + 1], patternIndex + 1, lastMultiLevelWildcardIndex);
-            }
+          if (shouldVisitSubtree) {
+            pushChildrenWhileInternal(node, patternIndex, lastMultiLevelWildcardIndex);
           }
         }
-
       } else {
         if (lastMultiLevelWildcardIndex == -1) {
           continue;
@@ -223,37 +226,72 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
         int lastMatchIndex = findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex);
 
-        if (processInternalMatchedNode(node)) {
+        shouldVisitSubtree = processInternalMatchedNode(node) && isInternalNode(node);
+
+        if (nextMatchedNode != null) {
+          saveNextMatchedNodeContext(lastMatchIndex, lastMultiLevelWildcardIndex);
           return;
         }
 
-        if (!isLeafNode(node)) {
-          pushAllChildren(node, lastMatchIndex + 1, lastMultiLevelWildcardIndex);
+        if (shouldVisitSubtree) {
+          pushChildrenWhileInternal(node, lastMatchIndex, lastMultiLevelWildcardIndex);
         }
-      }
-
-      if (nextMatchedNode != null) {
-        return;
       }
     }
   }
 
+  /**
+   * The context, mainly the matching info, of nextedMatchedNode should be saved. When the
+   * nextedMatchedNode is consumed, the saved info will be used to process its subtree.
+   */
+  private void saveNextMatchedNodeContext(
+      int patternIndexOfMatchedNode, int lastMultiLevelWildcardIndexOfMatchedNode) {
+    this.patternIndexOfMatchedNode = patternIndexOfMatchedNode;
+    this.lastMultiLevelWildcardIndexOfMatchedNode = lastMultiLevelWildcardIndexOfMatchedNode;
+  }
+
+  /**
+   * When current node cannot match the pattern node in nodes[patternIndex] and there is ** before
+   * current pattern node, the pattern nodes before current pattern node should be checked. For
+   * example, given path root.sg.d.s and path pattern root.**.s. A status, root.sg.d not match
+   * root.**.s, may be reached during traversing process, then it should be checked and found that
+   * root.sg.d could match root.**, after which the process could continue and find root.sg.d.s
+   * matches root.**.s.
+   */
   private int findLastMatch(N node, int patternIndex, int lastMultiLevelWildcardIndex) {
     for (int i = patternIndex - 1; i > lastMultiLevelWildcardIndex; i--) {
       if (!checkIsMatch(i, node)) {
         continue;
       }
 
-      Iterator<N> ancestors = ancestorStack.iterator();
+      Iterator<AncestorStackEntry<N>> ancestors = ancestorStack.iterator();
       boolean allMatch = true;
+      AncestorStackEntry<N> ancestor;
       for (int j = i - 1; j > lastMultiLevelWildcardIndex; j--) {
-        if (!checkIsMatch(j, ancestors.next())) {
+        ancestor = ancestors.next();
+        if (ancestor.isMatched(j)) {
+          break;
+        }
+
+        if (ancestor.hasBeenChecked(j) || !checkIsMatch(j, ancestor.node)) {
+          ancestors = ancestorStack.iterator();
+          for (int k = i - 1; k >= j; k--) {
+            ancestors.next().setNotMatched(k);
+          }
           allMatch = false;
           break;
         }
       }
 
       if (allMatch) {
+        ancestors = ancestorStack.iterator();
+        for (int k = i - 1; k > lastMultiLevelWildcardIndex; k--) {
+          ancestor = ancestors.next();
+          if (ancestor.isMatched(k)) {
+            break;
+          }
+          ancestor.setMatched(k);
+        }
         return i;
       }
     }
@@ -277,11 +315,78 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
-  protected void pushSingleChild(
-      N parent, String childName, int patternIndex, int lastMultiLevelWildcardIndex) {
-    N child = getChild(parent, childName);
+  /**
+   * This method is invoked to decide how to push children of given node. Invoked only when
+   * patternIndex == nodes.length.
+   *
+   * @param node the current processed node
+   * @param patternIndex the patternIndex for the given node
+   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of the given node
+   */
+  private void pushChildrenWhilePrefixMatch(
+      N node, int patternIndex, int lastMultiLevelWildcardIndex) {
+    pushAllChildren(node, patternIndex, lastMultiLevelWildcardIndex);
+  }
+
+  /**
+   * This method is invoked to decide how to push children of given node. Invoked only when
+   * patternIndex == nodes.length - 1.
+   *
+   * @param node the current processed node
+   * @param patternIndex the patternIndex for the given node
+   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of the given node
+   */
+  private void pushChildrenWhileTail(N node, int patternIndex, int lastMultiLevelWildcardIndex) {
+    if (nodes[patternIndex].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      pushAllChildren(node, patternIndex, patternIndex);
+    } else if (lastMultiLevelWildcardIndex != -1) {
+      pushAllChildren(
+          node,
+          findLastMatch(node, patternIndex, lastMultiLevelWildcardIndex) + 1,
+          lastMultiLevelWildcardIndex);
+    } else if (isPrefixMatch) {
+      pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+    }
+  }
+
+  /**
+   * This method is invoked to decide how to push children of given node. Invoked only when
+   * patternIndex < nodes.length - 1.
+   *
+   * @param node the current processed node
+   * @param patternIndex the patternIndex for the given node
+   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of the given node
+   */
+  private void pushChildrenWhileInternal(
+      N node, int patternIndex, int lastMultiLevelWildcardIndex) {
+    if (nodes[patternIndex + 1].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+      pushAllChildren(node, patternIndex + 1, patternIndex + 1);
+    } else {
+      if (lastMultiLevelWildcardIndex > -1) {
+        pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+      } else if (nodes[patternIndex + 1].contains(ONE_LEVEL_PATH_WILDCARD)) {
+        pushAllChildren(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+      } else {
+        pushSingleChild(node, patternIndex + 1, lastMultiLevelWildcardIndex);
+      }
+    }
+  }
+
+  /**
+   * Push child for name match case.
+   *
+   * @param parent the parent node of target children
+   * @param patternIndex the patternIndex to match children
+   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of child
+   */
+  protected void pushSingleChild(N parent, int patternIndex, int lastMultiLevelWildcardIndex) {
+    N child = getChild(parent, nodes[patternIndex]);
     if (child != null) {
-      ancestorStack.push(parent);
+      ancestorStack.push(
+          new AncestorStackEntry<>(
+              parent,
+              visitorStack.peek().patternIndex,
+              visitorStack.peek().lastMultiLevelWildcardIndex));
       visitorStack.push(
           new VisitorStackEntry<>(
               Collections.singletonList(child).iterator(),
@@ -291,8 +396,25 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
     }
   }
 
+  /**
+   * Push children for the following cases:
+   *
+   * <ol>
+   *   <li>the pattern to match children is **, multiLevelWildcard
+   *   <li>the pattern to match children contains *, oneLevelWildcard
+   *   <li>there's ** before the patternIndex for children
+   * </ol>
+   *
+   * @param parent the parent node of target children
+   * @param patternIndex the patternIndex to match children
+   * @param lastMultiLevelWildcardIndex the lastMultiLevelWildcardIndex of child
+   */
   protected void pushAllChildren(N parent, int patternIndex, int lastMultiLevelWildcardIndex) {
-    ancestorStack.push(parent);
+    ancestorStack.push(
+        new AncestorStackEntry<>(
+            parent,
+            visitorStack.peek().patternIndex,
+            visitorStack.peek().lastMultiLevelWildcardIndex));
     visitorStack.push(
         new VisitorStackEntry<>(
             getChildrenIterator(parent),
@@ -321,16 +443,19 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
 
   protected String[] generateFullPathNodes(N node) {
     List<String> nodeNames = new ArrayList<>();
-    Iterator<N> iterator = ancestorStack.descendingIterator();
+    Iterator<AncestorStackEntry<N>> iterator = ancestorStack.descendingIterator();
     while (iterator.hasNext()) {
-      nodeNames.add(iterator.next().getName());
+      nodeNames.add(iterator.next().node.getName());
     }
     nodeNames.add(node.getName());
     return nodeNames.toArray(new String[0]);
   }
 
-  // Check whether the given node is a leaf node of this tree.
-  protected abstract boolean isLeafNode(N node);
+  /**
+   * Check whether the given node is an internal node of this tree. Return true if the given node is
+   * an internal node. Return false if the given node is a leaf node.
+   */
+  protected abstract boolean isInternalNode(N node);
 
   // Get a child with the given childName.
   protected abstract N getChild(N parent, String childName);
@@ -343,9 +468,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
    * internal match root.sg.**(pattern). This method should be implemented according to concrete
    * tasks.
    *
-   * <p>If return true, the traversing process won't check the subtree with the given node as root,
-   * and the result will be return immediately. If return false, the traversing process will keep
-   * traversing the subtree.
+   * <p>Return whether the subtree of given node should be processed. If return true, the traversing
+   * process will keep traversing the subtree. If return false, the traversing process will skip the
+   * subtree of given node.
    */
   protected abstract boolean processInternalMatchedNode(N node);
 
@@ -353,9 +478,9 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
    * Full-match means the node matches the last node name of the given path pattern. root.sg.d full
    * match root.sg.**(pattern) This method should be implemented according to concrete tasks.
    *
-   * <p>If return true, the traversing process won't check the subtree with the given node as root,
-   * and the result will be return immediately. f return false, the traversing process will keep
-   * traversing the subtree.
+   * <p>Return whether the subtree of given node should be processed. If return true, the traversing
+   * process will keep traversing the subtree. If return false, the traversing process will skip the
+   * subtree of given node.
    */
   protected abstract boolean processFullMatchedNode(N node);
 
@@ -375,6 +500,41 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Ite
       this.patternIndex = patternIndex;
       this.level = level;
       this.lastMultiLevelWildcardIndex = lastMultiLevelWildcardIndex;
+    }
+  }
+
+  protected static class AncestorStackEntry<N> {
+    private final N node;
+    private final int matchedIndex;
+    /** Record the check result to reduce repeating check. */
+    private final byte[] matchStatus;
+
+    AncestorStackEntry(N node, int matchedIndex, int lastMultiLevelWildcardIndex) {
+      this.node = node;
+      this.matchedIndex = matchedIndex;
+      matchStatus = new byte[matchedIndex - lastMultiLevelWildcardIndex + 1];
+      matchStatus[0] = 1;
+      matchStatus[matchStatus.length - 1] = 1;
+    }
+
+    public N getNode() {
+      return node;
+    }
+
+    boolean hasBeenChecked(int index) {
+      return matchStatus[matchedIndex - index] != 0;
+    }
+
+    boolean isMatched(int index) {
+      return matchStatus[matchedIndex - index] == 1;
+    }
+
+    void setMatched(int index) {
+      matchStatus[matchedIndex - index] = 1;
+    }
+
+    void setNotMatched(int index) {
+      matchStatus[matchedIndex - index] = -1;
     }
   }
 }

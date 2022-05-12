@@ -134,7 +134,7 @@ public class QueryResourceManager {
       // when all the selected series are under the same device, the QueryDataSource will be
       // filtered according to timeIndex
       Set<String> selectedDeviceIdSet =
-          pathList.stream().map(PartialPath::getDeviceIdString).collect(Collectors.toSet());
+          pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
 
       long queryId = context.getQueryId();
       String storageGroupPath = processor.getStorageGroupPath();
@@ -162,7 +162,7 @@ public class QueryResourceManager {
 
     long queryId = context.getQueryId();
     String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(selectedPath);
-    String deviceId = selectedPath.getDeviceIdString();
+    String deviceId = selectedPath.getDevice();
 
     // get cached QueryDataSource
     QueryDataSource cachedQueryDataSource;
@@ -176,7 +176,7 @@ public class QueryResourceManager {
       cachedQueryDataSource =
           processor.query(
               Collections.singletonList(translatedPath),
-              translatedPath.getDeviceIdString(),
+              translatedPath.getDevice(),
               context,
               filePathsManager,
               timeFilter);

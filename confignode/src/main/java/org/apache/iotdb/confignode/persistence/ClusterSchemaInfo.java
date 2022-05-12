@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -27,6 +28,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -43,22 +45,36 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class ClusterSchemaInfo {
+/**
+ * The ClusterSchemaInfo stores cluster schema. The cluster schema including: 1. StorageGroupSchema
+ * 2. Template (Not implement yet)
+ */
+public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaInfo.class);
 
   // StorageGroup read write lock
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
 
-  // TODO: serialize and deserialize
   private MTreeAboveSG mTree;
+
+  // The size of the buffer used for snapshot(temporary value)
+  private final int bufferSize = 10 * 1024 * 1024;
+
+  private final String snapshotFileName = "cluster_schema.bin";
 
   private ClusterSchemaInfo() {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
@@ -74,7 +90,8 @@ public class ClusterSchemaInfo {
    * Persistence new StorageGroupSchema
    *
    * @param req SetStorageGroupReq
-   * @return SUCCESS_STATUS
+   * @return SUCCESS_STATUS if the StorageGroup is set successfully. PERSISTENCE_FAILURE if fail to
+   *     set StorageGroup in MTreeAboveSG.
    */
   public TSStatus setStorageGroup(SetStorageGroupReq req) {
     TSStatus result = new TSStatus();
@@ -86,7 +103,9 @@ public class ClusterSchemaInfo {
       mTree.setStorageGroup(partialPathName);
 
       // Set StorageGroupSchema
-      mTree.getStorageGroupNodeByPath(partialPathName).setStorageGroupSchema(storageGroupSchema);
+      mTree
+          .getStorageGroupNodeByStorageGroupPath(partialPathName)
+          .setStorageGroupSchema(storageGroupSchema);
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
@@ -94,7 +113,7 @@ public class ClusterSchemaInfo {
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
       result
-          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
+          .setCode(TSStatusCode.PERSISTENCE_FAILURE.getStatusCode())
           .setMessage("Error StorageGroup name");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
@@ -128,13 +147,52 @@ public class ClusterSchemaInfo {
     return result;
   }
 
+  /**
+   * Persistence new RegionGroupIds on specific StorageGroupSchema
+   *
+   * @param req CreateRegionsReq
+   * @return SUCCESS_STATUS if the new RegionGroupIds is persistence successfully.
+   *     PERSISTENCE_FAILURE if fail to find StorageGroup in MTreeAboveSG.
+   */
+  public TSStatus createRegions(CreateRegionsReq req) {
+    TSStatus result = new TSStatus();
+    storageGroupReadWriteLock.writeLock().lock();
+
+    try {
+      for (Map.Entry<String, TRegionReplicaSet> reqEntry : req.getRegionMap().entrySet()) {
+        PartialPath partialPathName = new PartialPath(reqEntry.getKey());
+        TStorageGroupSchema storageGroupSchema =
+            mTree.getStorageGroupNodeByStorageGroupPath(partialPathName).getStorageGroupSchema();
+        switch (reqEntry.getValue().getRegionId().getType()) {
+          case SchemaRegion:
+            storageGroupSchema.getSchemaRegionGroupIds().add(reqEntry.getValue().getRegionId());
+            break;
+          case DataRegion:
+            storageGroupSchema.getDataRegionGroupIds().add(reqEntry.getValue().getRegionId());
+            break;
+        }
+      }
+      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      LOGGER.error("Error StorageGroup name", e);
+      result.setCode(TSStatusCode.PERSISTENCE_FAILURE.getStatusCode());
+    } finally {
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
+
+    return result;
+  }
+
   public TSStatus setTTL(SetTTLReq req) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
-        mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema().setTTL(req.getTTL());
+        mTree
+            .getStorageGroupNodeByStorageGroupPath(path)
+            .getStorageGroupSchema()
+            .setTTL(req.getTTL());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
@@ -157,7 +215,7 @@ public class ClusterSchemaInfo {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByPath(path)
+            .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setSchemaReplicationFactor(req.getSchemaReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -182,7 +240,7 @@ public class ClusterSchemaInfo {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByPath(path)
+            .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setDataReplicationFactor(req.getDataReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -207,7 +265,7 @@ public class ClusterSchemaInfo {
       PartialPath path = new PartialPath(req.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
-            .getStorageGroupNodeByPath(path)
+            .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
             .setTimePartitionInterval(req.getTimePartitionInterval());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -269,7 +327,8 @@ public class ClusterSchemaInfo {
       List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
-            path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+            path.getFullPath(),
+            mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema());
       }
       result.setSchemaMap(schemaMap);
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -300,7 +359,26 @@ public class ClusterSchemaInfo {
   }
 
   /**
-   * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup
+   * Get the specific StorageGroupSchema
+   *
+   * @param storageGroup StorageGroupName
+   * @return The specific StorageGroupSchema
+   * @throws MetadataException from MTree
+   */
+  public TStorageGroupSchema getMatchedStorageGroupSchemaByName(String storageGroup)
+      throws MetadataException {
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      return mTree
+          .getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup))
+          .getStorageGroupSchema();
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Get the SchemaRegionGroupIds or DataRegionGroupIds from the specific StorageGroup.
    *
    * @param storageGroup StorageGroupName
    * @param type SchemaRegion or DataRegion
@@ -312,7 +390,8 @@ public class ClusterSchemaInfo {
     storageGroupReadWriteLock.readLock().lock();
     try {
       StorageGroupMNode mNode =
-          (StorageGroupMNode) mTree.getStorageGroupNodeByPath(new PartialPath(storageGroup));
+          (StorageGroupMNode)
+              mTree.getStorageGroupNodeByStorageGroupPath(new PartialPath(storageGroup));
       switch (type) {
         case SchemaRegion:
           result = mNode.getStorageGroupSchema().getSchemaRegionGroupIds();
@@ -332,12 +411,59 @@ public class ClusterSchemaInfo {
     return result;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    // TODO: Serialize ClusterSchemaInfo
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
+
+    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
+    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+          FileChannel fileChannel = fileOutputStream.getChannel()) {
+        mTree.serialize(buffer);
+        buffer.flip();
+        fileChannel.write(buffer);
+      }
+      return tmpFile.renameTo(snapshotFile);
+    } finally {
+      buffer.clear();
+      tmpFile.delete();
+      storageGroupReadWriteLock.readLock().unlock();
+    }
   }
 
-  public void deserialize(ByteBuffer buffer) {
-    // TODO: Deserialize ClusterSchemaInfo
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws IOException {
+
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          snapshotFile.getAbsolutePath());
+      return;
+    }
+    storageGroupReadWriteLock.writeLock().lock();
+    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+        FileChannel fileChannel = fileInputStream.getChannel()) {
+      // get buffer from fileChannel
+      fileChannel.read(buffer);
+      mTree.clear();
+      buffer.flip();
+      mTree.deserialize(buffer);
+    } finally {
+      buffer.clear();
+      storageGroupReadWriteLock.writeLock().unlock();
+    }
   }
 
   @TestOnly

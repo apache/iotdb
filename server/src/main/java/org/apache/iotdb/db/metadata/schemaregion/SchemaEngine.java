@@ -207,9 +207,8 @@ public class SchemaEngine {
   private ISchemaRegion createSchemaRegionWithoutExistenceCheck(
       PartialPath storageGroup, SchemaRegionId schemaRegionId) throws MetadataException {
     ISchemaRegion schemaRegion = null;
-    this.localStorageGroupSchemaManager.ensureStorageGroup(storageGroup);
     IStorageGroupMNode storageGroupMNode =
-        this.localStorageGroupSchemaManager.getStorageGroupNodeByStorageGroupPath(storageGroup);
+        this.localStorageGroupSchemaManager.ensureStorageGroupByStorageGroupPath(storageGroup);
     switch (this.schemaRegionStoredMode) {
       case Memory:
         schemaRegion = new SchemaRegionMemoryImpl(storageGroup, schemaRegionId, storageGroupMNode);

@@ -38,12 +38,12 @@ public class ColumnEncoderTest {
     Column mockColumn = Mockito.mock(Column.class);
     Mockito.doReturn(7).when(mockColumn).getPositionCount();
     Mockito.doReturn(true).when(mockColumn).mayHaveNull();
-    Mockito.doAnswer(invocation -> (int) invocation.getArgument(0) % 2 == 0)
+    Mockito.doAnswer(invocation -> (int) invocation.getArguments()[0] % 2 == 0)
         .when(mockColumn)
         .isNull(Mockito.anyInt());
     Mockito.doAnswer(
             invocation ->
-                (int) invocation.getArgument(0) % 2 == 0 ? null : invocation.getArgument(0))
+                (int) (invocation.getArguments()[0]) % 2 == 0 ? null : invocation.getArguments()[0])
         .when(mockColumn)
         .getInt(Mockito.anyInt());
 
@@ -123,7 +123,7 @@ public class ColumnEncoderTest {
     Mockito.doReturn(8).when(mockColumn).getPositionCount();
     Mockito.doReturn(false).when(mockColumn).mayHaveNull();
     Mockito.doReturn(false).when(mockColumn).isNull(Mockito.anyInt());
-    Mockito.doAnswer(invocation -> invocation.getArgument(0))
+    Mockito.doAnswer(invocation -> invocation.getArguments()[0])
         .when(mockColumn)
         .getInt(Mockito.anyInt());
 

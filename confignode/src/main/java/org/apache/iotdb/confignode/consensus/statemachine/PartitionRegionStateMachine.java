@@ -98,11 +98,13 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {
-    return false;
+    return executor.takeSnapshot(snapshotDir);
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {}
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    executor.loadSnapshot(latestSnapshotRootDir);
+  }
 
   /** Transmit PhysicalPlan to confignode.service.executor.PlanExecutor */
   protected DataSet read(ConfigRequest plan) {

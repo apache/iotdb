@@ -86,10 +86,11 @@ public class QueryExecution implements IQueryExecution {
   private DistributedQueryPlan distributedPlan;
 
   private final ExecutorService executor;
+  private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
   // TODO need to use factory to decide standalone or cluster
   private final IPartitionFetcher partitionFetcher;
-  // TODO need to use factory to decide standalone or cluster
+  // TODO need to use factory to decide standalone or cluster,
   private final ISchemaFetcher schemaFetcher;
 
   // The result of QueryExecution will be written to the DataBlockManager in current Node.
@@ -103,11 +104,13 @@ public class QueryExecution implements IQueryExecution {
       Statement statement,
       MPPQueryContext context,
       ExecutorService executor,
+      ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.executor = executor;
+    this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
     this.planOptimizers = new ArrayList<>();
@@ -176,6 +179,7 @@ public class QueryExecution implements IQueryExecution {
                 distributedPlan.getInstances(),
                 context.getQueryType(),
                 executor,
+                writeOperationExecutor,
                 scheduledExecutor,
                 internalServiceClientManager)
             : new StandaloneScheduler(
