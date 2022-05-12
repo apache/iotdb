@@ -57,11 +57,11 @@ public class Analysis {
   // map from device name to series/aggregation under this device
   private Map<String, Set<Expression>> sourceExpressions;
 
-  //
+  // expression of output column to be calculated
   private Set<Expression> selectExpressions;
 
   // all aggregations that need to be calculated
-  private Map<String, Set<Expression>> AggregationExpressions;
+  private Map<String, Set<Expression>> aggregationExpressions;
 
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
@@ -77,16 +77,21 @@ public class Analysis {
 
   private Expression queryFilter;
 
+  // map from device name to query filter under this device (used in ALIGN BY DEVICE)
   private Map<String, Expression> deviceToQueryFilter;
 
   // indicate is there a value filter
   private boolean hasValueFilter = false;
 
-  // a global time filter used in `initQueryDataSource`
+  // a global time filter used in `initQueryDataSource` and filter push down
   private Filter globalTimeFilter;
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
+
+  // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
+  // not 0 because device is the first column
+  private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
   private boolean finishQueryAfterAnalyze;
 
@@ -177,11 +182,11 @@ public class Analysis {
   }
 
   public Map<String, Set<Expression>> getAggregationExpressions() {
-    return AggregationExpressions;
+    return aggregationExpressions;
   }
 
   public void setAggregationExpressions(Map<String, Set<Expression>> aggregationExpressions) {
-    AggregationExpressions = aggregationExpressions;
+    this.aggregationExpressions = aggregationExpressions;
   }
 
   public Map<Expression, Set<Expression>> getGroupByLevelExpressions() {
@@ -208,7 +213,7 @@ public class Analysis {
     this.fillDescriptor = fillDescriptor;
   }
 
-  public boolean isHasValueFilter() {
+  public boolean hasValueFilter() {
     return hasValueFilter;
   }
 
@@ -239,12 +244,21 @@ public class Analysis {
   public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
     this.groupByTimeParameter = groupByTimeParameter;
   }
-
+  
   public boolean isFinishQueryAfterAnalyze() {
     return finishQueryAfterAnalyze;
   }
 
   public void setFinishQueryAfterAnalyze(boolean finishQueryAfterAnalyze) {
     this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
+  }
+
+  public void setDeviceToMeasurementIndexesMap(
+      Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
+    this.deviceToMeasurementIndexesMap = deviceToMeasurementIndexesMap;
+  }
+
+  public Map<String, List<Integer>> getDeviceToMeasurementIndexesMap() {
+    return deviceToMeasurementIndexesMap;
   }
 }

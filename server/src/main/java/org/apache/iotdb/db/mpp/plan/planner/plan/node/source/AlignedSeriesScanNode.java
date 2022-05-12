@@ -107,6 +107,10 @@ public class AlignedSeriesScanNode extends SourceNode {
     return timeFilter;
   }
 
+  public void setTimeFilter(@Nullable Filter timeFilter) {
+    this.timeFilter = timeFilter;
+  }
+
   @Nullable
   public Filter getValueFilter() {
     return valueFilter;
