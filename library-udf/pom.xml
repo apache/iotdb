@@ -116,12 +116,12 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
-      <dependency>
-        <groupId>org.apache.iotdb</groupId>
-        <artifactId>iotdb-server</artifactId>
-        <version>${project.version}</version>
-        <scope>compile</scope>
-      </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-server</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>node-commons</artifactId>
