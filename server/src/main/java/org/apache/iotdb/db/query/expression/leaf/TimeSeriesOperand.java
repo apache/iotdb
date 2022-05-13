@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
@@ -88,6 +89,11 @@ public class TimeSeriesOperand extends LeafOperand {
   }
 
   @Override
+  public TSDataType inferTypes(TypeProvider typeProvider) {
+    return typeProvider.getType(toString());
+  }
+
+  @Override
   public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
     inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
   }
@@ -125,6 +131,7 @@ public class TimeSeriesOperand extends LeafOperand {
     return expressionIntermediateLayerMap.get(this);
   }
 
+  @Override
   public String getExpressionStringInternal() {
     return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
   }

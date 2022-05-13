@@ -19,37 +19,32 @@
 
 package org.apache.iotdb.db.query.expression.binary;
 
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ExpressionType;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.binary.LogicAndTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.binary.LogicBinaryTransformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.nio.ByteBuffer;
 
-public class LogicAndExpression extends LogicBinaryExpression {
+public abstract class LogicBinaryExpression extends BinaryExpression {
 
-  public LogicAndExpression(Expression leftExpression, Expression rightExpression) {
+  protected LogicBinaryExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);
   }
 
-  public LogicAndExpression(ByteBuffer byteBuffer) {
+  protected LogicBinaryExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
   }
 
   @Override
-  protected LogicBinaryTransformer constructTransformer(
-      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
-    return new LogicAndTransformer(leftParentLayerPointReader, rightParentLayerPointReader);
-  }
-
-  @Override
-  protected String operator() {
-    return "&";
-  }
-
-  @Override
-  public ExpressionType getExpressionType() {
-    return ExpressionType.LOGIC_AND;
+  public final TSDataType inferTypes(TypeProvider typeProvider) {
+    final String expressionString = toString();
+    if (!typeProvider.containsTypeInfoOf(expressionString)) {
+      checkInputExpressionDataType(
+          leftExpression.toString(), leftExpression.inferTypes(typeProvider), TSDataType.BOOLEAN);
+      checkInputExpressionDataType(
+          rightExpression.toString(), rightExpression.inferTypes(typeProvider), TSDataType.BOOLEAN);
+      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
+    }
+    return TSDataType.BOOLEAN;
   }
 }

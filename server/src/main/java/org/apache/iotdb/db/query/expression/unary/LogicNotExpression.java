@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
@@ -27,6 +29,7 @@ import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.db.query.udf.core.transformer.unary.LogicNotTransformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.nio.ByteBuffer;
 
@@ -48,6 +51,17 @@ public class LogicNotExpression extends UnaryExpression {
   @Override
   protected Expression constructExpression(Expression childExpression) {
     return new LogicNotExpression(childExpression);
+  }
+
+  @Override
+  public TSDataType inferTypes(TypeProvider typeProvider) throws SemanticException {
+    final String expressionString = toString();
+    if (!typeProvider.containsTypeInfoOf(expressionString)) {
+      checkInputExpressionDataType(
+          expression.toString(), expression.inferTypes(typeProvider), TSDataType.BOOLEAN);
+      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
+    }
+    return TSDataType.BOOLEAN;
   }
 
   @Override

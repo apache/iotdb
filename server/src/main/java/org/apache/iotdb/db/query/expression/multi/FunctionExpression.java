@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFTypeInferrer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.MultiInputColumnIntermediateLayer;
@@ -236,6 +238,22 @@ public class FunctionExpression extends Expression {
       expression.constructUdfExecutors(expressionName2Executor, zoneId);
     }
     expressionName2Executor.put(expressionString, new UDTFExecutor(this, zoneId));
+  }
+
+  @Override
+  public TSDataType inferTypes(TypeProvider typeProvider) {
+    final String expressionString = toString();
+
+    if (!typeProvider.containsTypeInfoOf(expressionString)) {
+      for (Expression expression : expressions) {
+        expression.inferTypes(typeProvider);
+      }
+
+      typeProvider.setType(
+          expressionString, new UDTFTypeInferrer(this).inferOutputType(typeProvider));
+    }
+
+    return typeProvider.getType(expressionString);
   }
 
   @Override
