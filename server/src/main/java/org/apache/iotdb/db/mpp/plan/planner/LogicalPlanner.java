@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
@@ -273,6 +275,20 @@ public class LogicalPlanner {
           context.getQueryId().genPlanNodeId(),
           createAlignedTimeSeriesStatement.getDevicePath(),
           createAlignedTimeSeriesStatement.getMeasurements(),
+          createAlignedTimeSeriesStatement.getDataTypes(),
+          createAlignedTimeSeriesStatement.getEncodings(),
+          createAlignedTimeSeriesStatement.getCompressors(),
+          createAlignedTimeSeriesStatement.getAliasList(),
+          createAlignedTimeSeriesStatement.getTagsList(),
+          createAlignedTimeSeriesStatement.getAttributesList());
+    }
+
+    @Override
+    public PlanNode visitCreateMultiTimeseries(
+        CreateMultiTimeSeriesStatement createAlignedTimeSeriesStatement, MPPQueryContext context) {
+      return new CreateMultiTimeSeriesNode(
+          context.getQueryId().genPlanNodeId(),
+          createAlignedTimeSeriesStatement.getPaths(),
           createAlignedTimeSeriesStatement.getDataTypes(),
           createAlignedTimeSeriesStatement.getEncodings(),
           createAlignedTimeSeriesStatement.getCompressors(),

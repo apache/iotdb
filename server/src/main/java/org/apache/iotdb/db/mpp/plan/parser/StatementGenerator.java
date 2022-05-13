@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.qp.strategy.SQLParseError;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
@@ -370,6 +372,36 @@ public class StatementGenerator {
     statement.setTagsList(req.tagsList);
     statement.setAttributesList(req.attributesList);
     statement.setAliasList(req.measurementAlias);
+    return statement;
+  }
+
+  public static Statement createStatement(TSCreateMultiTimeseriesReq req)
+      throws IllegalPathException {
+    // construct create multi timeseries statement
+    CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
+    List<PartialPath> paths = new ArrayList<>();
+    for (String path : req.paths) {
+      paths.add(new PartialPath(path));
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int dataType : req.dataTypes) {
+      dataTypes.add(TSDataType.values()[dataType]);
+    }
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int encoding : req.encodings) {
+      encodings.add(TSEncoding.values()[encoding]);
+    }
+    List<CompressionType> compressors = new ArrayList<>();
+    for (int compressor : req.compressors) {
+      compressors.add(CompressionType.values()[compressor]);
+    }
+    statement.setPaths(paths);
+    statement.setDataTypes(dataTypes);
+    statement.setEncodings(encodings);
+    statement.setCompressors(compressors);
+    statement.setTagsList(req.tagsList);
+    statement.setAttributesList(req.attributesList);
+    statement.setAliasList(req.measurementAliasList);
     return statement;
   }
 
