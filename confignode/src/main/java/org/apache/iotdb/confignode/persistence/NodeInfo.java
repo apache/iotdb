@@ -31,22 +31,29 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,7 +63,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * The NodeInfo stores cluster node information. The cluster node information including: 1. DataNode
  * information 2. ConfigNode information
  */
-public class NodeInfo {
+public class NodeInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeInfo.class);
 
@@ -78,18 +85,17 @@ public class NodeInfo {
 
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
 
-  // TODO: serialize and deserialize
   private AtomicInteger nextDataNodeId = new AtomicInteger(0);
 
   // Online DataNodes
-  // TODO: serialize and deserialize
   private final ConcurrentNavigableMap<Integer, TDataNodeLocation> onlineDataNodes =
       new ConcurrentSkipListMap();
 
   // For remove or draining DataNode
   // TODO: implement
-  // TODO: serialize and deserialize
   private final Set<TDataNodeLocation> drainingDataNodes = new HashSet<>();
+
+  private final String snapshotFileName = "node_info.bin";
 
   private NodeInfo() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
@@ -272,15 +278,128 @@ public class NodeInfo {
     return nextDataNodeId.getAndIncrement();
   }
 
-  public void serialize(ByteBuffer buffer) {
-    // TODO: Serialize DataNodeInfo
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException, TException {
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (snapshotFile.exists() && snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to take snapshot, because snapshot file [{}] is already exist.",
+          snapshotFile.getAbsolutePath());
+      return false;
+    }
+
+    File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
+    configNodeInfoReadWriteLock.readLock().lock();
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+        DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataOutputStream)) {
+
+      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+
+      dataOutputStream.writeInt(nextDataNodeId.get());
+
+      serializeOnlineDataNode(dataOutputStream, protocol);
+
+      serializeDrainingDataNodes(dataOutputStream, protocol);
+
+      fileOutputStream.flush();
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+
+    return tmpFile.renameTo(snapshotFile);
   }
 
-  public void deserialize(ByteBuffer buffer) {
-    // TODO: Deserialize DataNodeInfo
+  private void serializeOnlineDataNode(DataOutputStream outputStream, TProtocol protocol)
+      throws IOException, TException {
+    outputStream.writeInt(onlineDataNodes.size());
+    for (Entry<Integer, TDataNodeLocation> entry : onlineDataNodes.entrySet()) {
+      outputStream.writeInt(entry.getKey());
+      entry.getValue().write(protocol);
+    }
+  }
+
+  private void serializeDrainingDataNodes(DataOutputStream outputStream, TProtocol protocol)
+      throws IOException, TException {
+    outputStream.writeInt(drainingDataNodes.size());
+    for (TDataNodeLocation tDataNodeLocation : drainingDataNodes) {
+      tDataNodeLocation.write(protocol);
+    }
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws IOException, TException {
+
+    File snapshotFile = new File(snapshotDir, snapshotFileName);
+    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+      LOGGER.error(
+          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          snapshotFile.getAbsolutePath());
+      return;
+    }
+
+    configNodeInfoReadWriteLock.writeLock().lock();
+    dataNodeInfoReadWriteLock.writeLock().lock();
+
+    try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
+        DataInputStream dataInputStream = new DataInputStream(fileInputStream);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataInputStream)) {
+      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+
+      clear();
+
+      nextDataNodeId.set(dataInputStream.readInt());
+
+      deserializeOnlineDataNode(dataInputStream, protocol);
+
+      deserializeDrainingDataNodes(dataInputStream, protocol);
+
+    } finally {
+      configNodeInfoReadWriteLock.writeLock().unlock();
+      dataNodeInfoReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  private void deserializeOnlineDataNode(DataInputStream inputStream, TProtocol protocol)
+      throws IOException, TException {
+    int size = inputStream.readInt();
+    while (size > 0) {
+      int dataNodeId = inputStream.readInt();
+      TDataNodeLocation tDataNodeLocation = new TDataNodeLocation();
+      tDataNodeLocation.read(protocol);
+      onlineDataNodes.put(dataNodeId, tDataNodeLocation);
+      size--;
+    }
+  }
+
+  private void deserializeDrainingDataNodes(DataInputStream inputStream, TProtocol protocol)
+      throws IOException, TException {
+    int size = inputStream.readInt();
+    while (size > 0) {
+      TDataNodeLocation tDataNodeLocation = new TDataNodeLocation();
+      tDataNodeLocation.read(protocol);
+      drainingDataNodes.add(tDataNodeLocation);
+      size--;
+    }
+  }
+
+  // as drainingDataNodes is not currently implemented, manually set it to validate the test
+  @TestOnly
+  public void setDrainingDataNodes(Set<TDataNodeLocation> tDataNodeLocations) {
+    drainingDataNodes.addAll(tDataNodeLocations);
+  }
+
+  public int getNextDataNodeId() {
+    return nextDataNodeId.get();
   }
 
   @TestOnly
+  public Set<TDataNodeLocation> getDrainingDataNodes() {
+    return drainingDataNodes;
+  }
+
   public void clear() {
     nextDataNodeId = new AtomicInteger(0);
     onlineDataNodes.clear();
