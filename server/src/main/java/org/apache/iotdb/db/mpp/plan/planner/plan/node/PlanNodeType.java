@@ -100,7 +100,8 @@ public enum PlanNodeType {
   DEVICE_MERGE((short) 35),
   SCHEMA_FETCH_MERGE((short) 36),
   TRANSFORM((short) 37),
-  CREATE_MULTI_TIME_SERIES((short) 38);
+  DELETE_REGION((short) 38),
+  CREATE_MULTI_TIME_SERIES((short) 39);
 
   private final short nodeType;
 
@@ -201,6 +202,8 @@ public enum PlanNodeType {
       case 37:
         return TransformNode.deserialize(buffer);
       case 38:
+        return DeleteRegionNode.deserialize(buffer);
+      case 39:
         return CreateMultiTimeSeriesNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);

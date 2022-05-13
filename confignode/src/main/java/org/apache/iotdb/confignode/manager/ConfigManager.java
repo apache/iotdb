@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -47,12 +48,17 @@ import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -64,6 +70,8 @@ import java.util.Set;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
 public class ConfigManager implements Manager {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
   /** Manage PartitionTable read/write requests through the ConsensusLayer */
   private final ConsensusManager consensusManager;
@@ -82,17 +90,22 @@ public class ConfigManager implements Manager {
 
   private final LoadManager loadManager;
 
+  /** Manage procedure */
+  private final ProcedureManager procedureManager;
+
   public ConfigManager() throws IOException {
     this.nodeManager = new NodeManager(this);
     this.partitionManager = new PartitionManager(this);
     this.clusterSchemaManager = new ClusterSchemaManager(this);
     this.permissionManager = new PermissionManager(this);
     this.loadManager = new LoadManager(this);
-    this.consensusManager = new ConsensusManager();
+    this.procedureManager = new ProcedureManager(this);
+    this.consensusManager = new ConsensusManager(this);
   }
 
   public void close() throws IOException {
     consensusManager.close();
+    procedureManager.shiftExecutor(false);
   }
 
   @Override
@@ -197,6 +210,30 @@ public class ConfigManager implements Manager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setStorageGroup(setStorageGroupReq);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus deleteStorageGroups(List<String> deletedPaths) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      // remove wild
+      Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
+          ClusterSchemaInfo.getInstance().getDeleteStorageGroups(deletedPaths);
+      for (Map.Entry<String, TStorageGroupSchema> storageGroupSchemaEntry :
+          deleteStorageSchemaMap.entrySet()) {
+        String sgName = storageGroupSchemaEntry.getKey();
+        TStorageGroupSchema deleteStorageSchema = storageGroupSchemaEntry.getValue();
+        deleteStorageSchema.setSchemaRegionGroupIds(
+            getClusterSchemaManager().getRegionGroupIds(sgName, TConsensusGroupType.SchemaRegion));
+        deleteStorageSchema.setDataRegionGroupIds(
+            getClusterSchemaManager().getRegionGroupIds(sgName, TConsensusGroupType.DataRegion));
+      }
+      ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
+          new ArrayList<>(deleteStorageSchemaMap.values());
+      return procedureManager.deleteStorageGroups(parsedDeleteStorageGroups);
     } else {
       return status;
     }
@@ -453,5 +490,9 @@ public class ConfigManager implements Manager {
   @Override
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
     return nodeManager.applyConfigNode(applyConfigNodeReq);
+  }
+
+  public ProcedureManager getProcedureManager() {
+    return procedureManager;
   }
 }

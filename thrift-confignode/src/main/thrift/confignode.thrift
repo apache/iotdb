@@ -55,7 +55,11 @@ struct TSetStorageGroupReq {
 }
 
 struct TDeleteStorageGroupReq {
-  1: required string storageGroup
+  1: required string prefixPath
+}
+
+struct TDeleteStorageGroupsReq {
+  1: required list<string> prefixPathList
 }
 
 struct TSetTTLReq {
@@ -188,6 +192,8 @@ service ConfigIService {
   common.TSStatus setStorageGroup(TSetStorageGroupReq req)
 
   common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
+
+  common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
 
   common.TSStatus setTTL(TSetTTLReq req)
 

@@ -353,4 +353,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       coordinator.getQueryExecution(queryId).stopAndCleanup();
     }
   }
+
+  @Override
+  public void invalidAllCache() {
+    DataNodeSchemaCache.getInstance().cleanUp();
+  }
 }
