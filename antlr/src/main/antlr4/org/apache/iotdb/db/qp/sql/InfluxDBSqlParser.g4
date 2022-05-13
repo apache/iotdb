@@ -73,7 +73,7 @@ fromClause
 
 nodeName
     : STAR
-    | IDENTIFIER
+    | identifier
     | LAST
     | COUNT
     | DEVICE

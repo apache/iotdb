@@ -47,7 +47,7 @@
                         <configuration>
                             <listener>false</listener>
                             <visitor>true</visitor>
-                            <libDirectory>src/main/antlr4/org/apache/iotdb/db/qp/sql/imports</libDirectory>
+                            <libDirectory>src/main/antlr4/org/apache/iotdb/db/qp/sql</libDirectory>
                         </configuration>
                         <goals>
                             <goal>antlr4</goal>
