@@ -49,7 +49,7 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-  private ConfigManager configManager;
+  private final ConfigManager configManager;
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 

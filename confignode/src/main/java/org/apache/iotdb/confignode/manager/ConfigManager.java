@@ -101,7 +101,7 @@ public class ConfigManager implements Manager {
     this.permissionManager = new PermissionManager(this);
     this.loadManager = new LoadManager(this);
     this.procedureManager = new ProcedureManager(this);
-    this.consensusManager = new ConsensusManager();
+    this.consensusManager = new ConsensusManager(this);
 
     // We are on testing.......
     if (ConfigNodeDescriptor.getInstance().getConf().isEnableHeartbeat()) {

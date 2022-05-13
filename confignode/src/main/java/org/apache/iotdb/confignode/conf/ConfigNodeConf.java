@@ -363,7 +363,7 @@ public class ConfigNodeConf {
   public void setMaximumDataRegionCount(int maximumDataRegionCount) {
     this.maximumDataRegionCount = maximumDataRegionCount;
   }
-  
+
   public int getProcedureCompletedEvictTTL() {
     return procedureCompletedEvictTTL;
   }
