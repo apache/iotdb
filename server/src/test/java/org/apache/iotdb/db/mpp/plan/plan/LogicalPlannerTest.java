@@ -37,11 +37,13 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -181,6 +183,90 @@ public class LogicalPlannerTest {
       CreateAlignedTimeSeriesNode createAlignedTimeSeriesNode1 =
           (CreateAlignedTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
       Assert.assertTrue(createAlignedTimeSeriesNode.equals(createAlignedTimeSeriesNode1));
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testCreateMultiTimeSeriesPlan() {
+    try {
+      CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement =
+          new CreateMultiTimeSeriesStatement();
+      createMultiTimeSeriesStatement.setPaths(
+          new ArrayList<PartialPath>() {
+            {
+              add(new PartialPath("root.sg1.d2.s1"));
+              add(new PartialPath("root.sg1.d2.s2"));
+            }
+          });
+      createMultiTimeSeriesStatement.setAliasList(
+          new ArrayList<String>() {
+            {
+              add("meter1");
+              add(null);
+            }
+          });
+      createMultiTimeSeriesStatement.setDataTypes(
+          new ArrayList<TSDataType>() {
+            {
+              add(TSDataType.FLOAT);
+              add(TSDataType.FLOAT);
+            }
+          });
+      createMultiTimeSeriesStatement.setEncodings(
+          new ArrayList<TSEncoding>() {
+            {
+              add(TSEncoding.PLAIN);
+              add(TSEncoding.PLAIN);
+            }
+          });
+      createMultiTimeSeriesStatement.setCompressors(
+          new ArrayList<CompressionType>() {
+            {
+              add(CompressionType.SNAPPY);
+              add(CompressionType.SNAPPY);
+            }
+          });
+      createMultiTimeSeriesStatement.setAttributesList(
+          new ArrayList<Map<String, String>>() {
+            {
+              add(
+                  new HashMap<String, String>() {
+                    {
+                      put("attr1", "a1");
+                    }
+                  });
+              add(null);
+            }
+          });
+      createMultiTimeSeriesStatement.setTagsList(
+          new ArrayList<Map<String, String>>() {
+            {
+              add(
+                  new HashMap<String, String>() {
+                    {
+                      put("tag1", "t1");
+                    }
+                  });
+              add(null);
+            }
+          });
+      MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
+      Analyzer analyzer =
+          new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
+      Analysis analysis = analyzer.analyze(createMultiTimeSeriesStatement);
+      LogicalPlanner planner = new LogicalPlanner(context, new ArrayList<>());
+      CreateMultiTimeSeriesNode createMultiTimeSeriesNode =
+          (CreateMultiTimeSeriesNode) planner.plan(analysis).getRootNode();
+      // Test serialize and deserialize
+      ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
+      createMultiTimeSeriesNode.serialize(byteBuffer);
+      byteBuffer.flip();
+      CreateMultiTimeSeriesNode createMultiTimeSeriesNode1 =
+          (CreateMultiTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+      Assert.assertTrue(createMultiTimeSeriesNode.equals(createMultiTimeSeriesNode1));
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
