@@ -20,6 +20,10 @@ package org.apache.iotdb.confignode.manager.load.heartbeat;
 
 import java.util.LinkedList;
 
+/**
+ * HeartbeatWindow contains Heartbeat's sending and receiving time, which is used for estimating
+ * when the next heartbeat will arrive.
+ */
 public class HeartbeatWindow {
 
   private static final int maximumWindowSize = 1000;
@@ -32,7 +36,8 @@ public class HeartbeatWindow {
 
   public void addHeartbeat(HeartbeatPackage newHeartbeat) {
     synchronized (slidingWindow) {
-      // Only sequential heartbeats are accepted
+      // Only sequential heartbeats are accepted.
+      // And un-sequential heartbeats will be discarded.
       if (slidingWindow.size() == 0
           || slidingWindow.getLast().getSendTimestamp() < newHeartbeat.getSendTimestamp()) {
         slidingWindow.add(newHeartbeat);

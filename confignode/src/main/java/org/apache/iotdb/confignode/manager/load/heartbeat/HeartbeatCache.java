@@ -26,6 +26,7 @@ public class HeartbeatCache implements IHeartbeatStatistic {
 
   private boolean containsCache = false;
 
+  // Map<DataNodeId, HeartbeatWindow>
   private final Map<Integer, HeartbeatWindow> windowMap;
 
   public HeartbeatCache() {
