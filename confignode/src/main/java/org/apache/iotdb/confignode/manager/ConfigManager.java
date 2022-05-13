@@ -286,7 +286,16 @@ public class ConfigManager implements Manager {
       }
 
       getSchemaPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
-      return partitionManager.getSchemaPartition(getSchemaPartitionReq);
+      SchemaPartitionResp resp =
+          (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionReq);
+
+      // TODO: Delete or hide this LOGGER before officially release.
+      LOGGER.info(
+          "GetSchemaPartition interface receive devicePaths: {}, return SchemaPartition: {}",
+          devicePaths,
+          resp.getSchemaPartition().getSchemaPartitionMap());
+
+      return resp;
     } else {
       SchemaPartitionResp dataSet = new SchemaPartitionResp();
       dataSet.setStatus(status);
@@ -320,7 +329,17 @@ public class ConfigManager implements Manager {
       }
 
       getOrCreateSchemaPartitionReq.setPartitionSlotsMap(partitionSlotsMap);
-      return partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionReq);
+      SchemaPartitionResp resp =
+          (SchemaPartitionResp)
+              partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionReq);
+
+      // TODO: Delete or hide this LOGGER before officially release.
+      LOGGER.info(
+          "GetOrCreateSchemaPartition interface receive devicePaths: {}, return SchemaPartition: {}",
+          devicePaths,
+          resp.getSchemaPartition().getSchemaPartitionMap());
+
+      return resp;
     } else {
       SchemaPartitionResp dataSet = new SchemaPartitionResp();
       dataSet.setStatus(status);
@@ -332,7 +351,16 @@ public class ConfigManager implements Manager {
   public DataSet getDataPartition(GetDataPartitionReq getDataPartitionReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getDataPartition(getDataPartitionReq);
+      DataPartitionResp resp =
+          (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionReq);
+
+      // TODO: Delete or hide this LOGGER before officially release.
+      LOGGER.info(
+          "GetDataPartition interface receive PartitionSlotsMap: {}, return DataPartition: {}",
+          getDataPartitionReq.getPartitionSlotsMap(),
+          resp.getDataPartition().getDataPartitionMap());
+
+      return resp;
     } else {
       DataPartitionResp dataSet = new DataPartitionResp();
       dataSet.setStatus(status);
@@ -344,7 +372,17 @@ public class ConfigManager implements Manager {
   public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionReq getOrCreateDataPartitionReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
+      DataPartitionResp resp =
+          (DataPartitionResp)
+              partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
+
+      // TODO: Delete or hide this LOGGER before officially release.
+      LOGGER.info(
+          "GetOrCreateDataPartition receive PartitionSlotsMap: {}, return DataPartition: {}",
+          getOrCreateDataPartitionReq.getPartitionSlotsMap(),
+          resp.getDataPartition().getDataPartitionMap());
+
+      return resp;
     } else {
       DataPartitionResp dataSet = new DataPartitionResp();
       dataSet.setStatus(status);
