@@ -33,8 +33,8 @@ import java.util.HashMap;
 
 public class ForwardTrigger implements Trigger {
 
-  private Handler forwardManagerHandler;
-  private ForwardConfiguration forwardManagerConfiguration;
+  private Handler forwardHandler;
+  private ForwardConfiguration forwardConfig;
   private ForwardQueue<Event> queue;
   private final HashMap<String, String> labels = new HashMap<>();
   private String protocol;
@@ -47,22 +47,22 @@ public class ForwardTrigger implements Trigger {
     int maxQueueSize = attributes.getIntOrDefault("maxQueueSize", 2000);
     int forwardBatchSize = attributes.getIntOrDefault("forwardBatchSize", 100);
 
-    forwardManagerConfiguration =
+    forwardConfig =
         new ForwardConfiguration(
             protocol, stopIfException, maxQueueCount, maxQueueSize, forwardBatchSize);
 
     switch (protocol) {
       case "http":
-        createHTTPConfiguration(forwardManagerConfiguration, attributes);
-        forwardManagerHandler = new HTTPForwardHandler();
-        queue = new ForwardQueue<>(forwardManagerHandler, forwardManagerConfiguration);
-        forwardManagerHandler.open(forwardManagerConfiguration);
+        createHTTPConfiguration(forwardConfig, attributes);
+        forwardHandler = new HTTPForwardHandler();
+        queue = new ForwardQueue<>(forwardHandler, forwardConfig);
+        forwardHandler.open(forwardConfig);
         break;
       case "mqtt":
-        createMQTTConfiguration(forwardManagerConfiguration, attributes);
-        forwardManagerHandler = new MQTTForwardHandler();
-        queue = new ForwardQueue<>(forwardManagerHandler, forwardManagerConfiguration);
-        forwardManagerHandler.open(forwardManagerConfiguration);
+        createMQTTConfiguration(forwardConfig, attributes);
+        forwardHandler = new MQTTForwardHandler();
+        queue = new ForwardQueue<>(forwardHandler, forwardConfig);
+        forwardHandler.open(forwardConfig);
         break;
       default:
         throw new TriggerExecutionException("Forward protocol doesn't support.");
@@ -91,17 +91,17 @@ public class ForwardTrigger implements Trigger {
 
   @Override
   public void onDrop() throws Exception {
-    forwardManagerHandler.close();
+    forwardHandler.close();
   }
 
   @Override
   public void onStart() throws Exception {
-    forwardManagerHandler.open(forwardManagerConfiguration);
+    forwardHandler.open(forwardConfig);
   }
 
   @Override
   public void onStop() throws Exception {
-    forwardManagerHandler.close();
+    forwardHandler.close();
   }
 
   @Override

@@ -27,9 +27,9 @@ public class ForwardConfiguration implements Configuration {
   private final boolean stopIfException;
 
   // ForwardQueue config items
-  private int maxQueueCount = 8;
-  private int maxQueueSize = 2000;
-  private int forwardBatchSize = 100;
+  private final int maxQueueCount;
+  private final int maxQueueSize;
+  private final int forwardBatchSize;
 
   // HTTP config items
   private String endpoint;
@@ -43,11 +43,6 @@ public class ForwardConfiguration implements Configuration {
   private long connectAttemptsMax;
 
   // TODO support payloadFormatter
-
-  public ForwardConfiguration(String protocol, boolean stopIfException) {
-    this.protocol = protocol;
-    this.stopIfException = stopIfException;
-  }
 
   public ForwardConfiguration(
       String protocol,
