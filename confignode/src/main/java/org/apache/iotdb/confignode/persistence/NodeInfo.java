@@ -391,7 +391,6 @@ public class NodeInfo implements SnapshotProcessor {
     drainingDataNodes.addAll(tDataNodeLocations);
   }
 
-  @TestOnly
   public int getNextDataNodeId() {
     return nextDataNodeId.get();
   }
