@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -101,6 +102,12 @@ public class ConfigManager implements Manager {
     this.loadManager = new LoadManager(this);
     this.procedureManager = new ProcedureManager(this);
     this.consensusManager = new ConsensusManager(this);
+
+    // We are on testing.......
+    if (ConfigNodeDescriptor.getInstance().getConf().isEnableHeartbeat()) {
+      // Start asking for heartbeat
+      new Thread(this.loadManager).start();
+    }
   }
 
   public void close() throws IOException {

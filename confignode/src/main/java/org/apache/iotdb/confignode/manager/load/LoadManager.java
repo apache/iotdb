@@ -16,20 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager;
+package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
+import org.apache.iotdb.confignode.client.handlers.HeartbeatHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
-import org.apache.iotdb.confignode.manager.allocator.CopySetRegionAllocator;
-import org.apache.iotdb.confignode.manager.allocator.IRegionAllocator;
+import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
+import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.Manager;
+import org.apache.iotdb.confignode.manager.NodeManager;
+import org.apache.iotdb.confignode.manager.PartitionManager;
+import org.apache.iotdb.confignode.manager.load.allocator.CopySetRegionAllocator;
+import org.apache.iotdb.confignode.manager.load.allocator.IRegionAllocator;
+import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -42,16 +51,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
  * dynamic load balancing policy and passively accepts the PartitionTable expansion request.
  */
-public class LoadManager {
+public class LoadManager implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
+  private final long heartbeatInterval =
+      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatInterval();
+
   private final Manager configManager;
+
+  private final HeartbeatCache heartbeatCache;
 
   private final IRegionAllocator regionAllocator;
 
@@ -59,6 +74,7 @@ public class LoadManager {
 
   public LoadManager(Manager configManager) {
     this.configManager = configManager;
+    this.heartbeatCache = new HeartbeatCache();
     this.regionAllocator = new CopySetRegionAllocator();
   }
 
@@ -236,5 +252,36 @@ public class LoadManager {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  private THeartbeatReq genHeartbeatReq() {
+    return new THeartbeatReq(System.currentTimeMillis());
+  }
+
+  @Override
+  public void run() {
+    while (true) {
+      try {
+
+        if (getConsensusManager().isLeader()) {
+          // Ask DataNode for heartbeat in every heartbeat interval
+          List<TDataNodeLocation> onlineDataNodes = getNodeManager().getOnlineDataNodes();
+          for (TDataNodeLocation dataNodeLocation : onlineDataNodes) {
+            HeartbeatHandler handler =
+                new HeartbeatHandler(dataNodeLocation.getDataNodeId(), heartbeatCache);
+            AsyncDataNodeClientPool.getInstance()
+                .getHeartBeat(dataNodeLocation.getInternalEndPoint(), genHeartbeatReq(), handler);
+          }
+
+        } else {
+          heartbeatCache.discardAllCache();
+        }
+
+        TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
+      } catch (InterruptedException e) {
+        LOGGER.error("Heartbeat thread has been interrupted, stopping ConfigNode...", e);
+        System.exit(-1);
+      }
+    }
   }
 }
