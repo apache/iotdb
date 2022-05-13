@@ -44,10 +44,11 @@ public class CreateMultiTimeSeriesStatement extends Statement {
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
   private List<CompressionType> compressors = new ArrayList<>();
-  private List<String> aliasList = new ArrayList<>();
-  private List<Map<String, String>> tagsList = new ArrayList<>();
-  private List<Map<String, String>> attributesList = new ArrayList<>();
-  private List<Long> tagOffsets = null;
+  private List<Map<String, String>> propsList;
+  private List<String> aliasList;
+  private List<Map<String, String>> tagsList;
+  private List<Map<String, String>> attributesList;
+  private List<Long> tagOffsets;
 
   public CreateMultiTimeSeriesStatement() {
     super();
@@ -71,20 +72,12 @@ public class CreateMultiTimeSeriesStatement extends Statement {
     this.dataTypes = dataTypes;
   }
 
-  public void addDataType(TSDataType dataType) {
-    this.dataTypes.add(dataType);
-  }
-
   public List<TSEncoding> getEncodings() {
     return encodings;
   }
 
   public void setEncodings(List<TSEncoding> encodings) {
     this.encodings = encodings;
-  }
-
-  public void addEncoding(TSEncoding encoding) {
-    this.encodings.add(encoding);
   }
 
   public List<CompressionType> getCompressors() {
@@ -95,8 +88,12 @@ public class CreateMultiTimeSeriesStatement extends Statement {
     this.compressors = compressors;
   }
 
-  public void addCompressor(CompressionType compression) {
-    this.compressors.add(compression);
+  public List<Map<String, String>> getPropsList() {
+    return propsList;
+  }
+
+  public void setPropsList(List<Map<String, String>> propsList) {
+    this.propsList = propsList;
   }
 
   public List<String> getAliasList() {
@@ -107,20 +104,12 @@ public class CreateMultiTimeSeriesStatement extends Statement {
     this.aliasList = aliasList;
   }
 
-  public void addAliasList(String alias) {
-    this.aliasList.add(alias);
-  }
-
   public List<Map<String, String>> getTagsList() {
     return tagsList;
   }
 
   public void setTagsList(List<Map<String, String>> tagsList) {
     this.tagsList = tagsList;
-  }
-
-  public void addTagsList(Map<String, String> tags) {
-    this.tagsList.add(tags);
   }
 
   public List<Map<String, String>> getAttributesList() {

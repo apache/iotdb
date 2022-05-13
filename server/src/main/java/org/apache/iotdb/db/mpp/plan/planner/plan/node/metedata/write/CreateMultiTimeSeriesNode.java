@@ -47,6 +47,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
   private List<TSEncoding> encodings = new ArrayList<>();
   private List<CompressionType> compressors = new ArrayList<>();
   private List<String> aliasList;
+  private List<Map<String, String>> propsList;
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
   private List<Long> tagOffsets;
@@ -62,6 +63,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
+      List<Map<String, String>> propsList,
       List<String> aliasList,
       List<Map<String, String>> tagsList,
       List<Map<String, String>> attributesList) {
@@ -70,6 +72,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
     this.dataTypes = dataTypes;
     this.encodings = encodings;
     this.compressors = compressors;
+    this.propsList = propsList;
     this.aliasList = aliasList;
     this.tagsList = tagsList;
     this.attributesList = attributesList;
@@ -144,6 +147,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
       TSDataType dataType,
       TSEncoding encoding,
       CompressionType compressor,
+      Map<String, String> props,
       String alias,
       Map<String, String> tags,
       Map<String, String> attributes) {
@@ -151,6 +155,12 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
     this.dataTypes.add(dataType);
     this.encodings.add(encoding);
     this.compressors.add(compressor);
+    if (props != null) {
+      if (this.propsList == null) {
+        propsList = new ArrayList<>();
+      }
+      propsList.add(props);
+    }
     if (alias != null) {
       if (this.aliasList == null) {
         aliasList = new ArrayList<>();
@@ -206,6 +216,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
     List<TSEncoding> encodings;
     List<CompressionType> compressors;
     List<String> aliasList = null;
+    List<Map<String, String>> propsList = null;
     List<Map<String, String>> tagsList = null;
     List<Map<String, String>> attributesList = null;
 
@@ -246,6 +257,16 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
 
     label = byteBuffer.get();
     if (label >= 0) {
+      propsList = new ArrayList<>();
+      if (label == 1) {
+        for (int i = 0; i < size; i++) {
+          propsList.add(ReadWriteIOUtils.readMap(byteBuffer));
+        }
+      }
+    }
+
+    label = byteBuffer.get();
+    if (label >= 0) {
       tagsList = new ArrayList<>();
       if (label == 1) {
         for (int i = 0; i < size; i++) {
@@ -272,6 +293,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
         dataTypes,
         encodings,
         compressors,
+        propsList,
         aliasList,
         tagsList,
         attributesList);
@@ -291,6 +313,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
         && Objects.equals(dataTypes, that.dataTypes)
         && Objects.equals(encodings, that.encodings)
         && Objects.equals(compressors, that.compressors)
+        && Objects.equals(propsList, that.propsList)
         && Objects.equals(tagOffsets, that.tagOffsets)
         && Objects.equals(aliasList, that.aliasList)
         && Objects.equals(tagsList, that.tagsList)
@@ -331,6 +354,18 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
       byteBuffer.put((byte) 1);
       for (String alias : aliasList) {
         ReadWriteIOUtils.write(alias, byteBuffer);
+      }
+    }
+
+    // props
+    if (propsList == null) {
+      byteBuffer.put((byte) -1);
+    } else if (propsList.isEmpty()) {
+      byteBuffer.put((byte) 0);
+    } else {
+      byteBuffer.put((byte) 1);
+      for (Map<String, String> props : propsList) {
+        ReadWriteIOUtils.write(props, byteBuffer);
       }
     }
 
@@ -400,6 +435,7 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
           dataTypes.get(i),
           encodings.get(i),
           compressors.get(i),
+          propsList == null ? null : propsList.get(i),
           aliasList == null ? null : aliasList.get(i),
           attributesList == null ? null : tagsList.get(i),
           attributesList == null ? null : attributesList.get(i));

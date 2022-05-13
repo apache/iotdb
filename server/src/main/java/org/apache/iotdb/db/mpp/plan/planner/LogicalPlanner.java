@@ -285,16 +285,17 @@ public class LogicalPlanner {
 
     @Override
     public PlanNode visitCreateMultiTimeseries(
-        CreateMultiTimeSeriesStatement createAlignedTimeSeriesStatement, MPPQueryContext context) {
+        CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, MPPQueryContext context) {
       return new CreateMultiTimeSeriesNode(
           context.getQueryId().genPlanNodeId(),
-          createAlignedTimeSeriesStatement.getPaths(),
-          createAlignedTimeSeriesStatement.getDataTypes(),
-          createAlignedTimeSeriesStatement.getEncodings(),
-          createAlignedTimeSeriesStatement.getCompressors(),
-          createAlignedTimeSeriesStatement.getAliasList(),
-          createAlignedTimeSeriesStatement.getTagsList(),
-          createAlignedTimeSeriesStatement.getAttributesList());
+          createMultiTimeSeriesStatement.getPaths(),
+          createMultiTimeSeriesStatement.getDataTypes(),
+          createMultiTimeSeriesStatement.getEncodings(),
+          createMultiTimeSeriesStatement.getCompressors(),
+          createMultiTimeSeriesStatement.getPropsList(),
+          createMultiTimeSeriesStatement.getAliasList(),
+          createMultiTimeSeriesStatement.getTagsList(),
+          createMultiTimeSeriesStatement.getAttributesList());
     }
 
     @Override

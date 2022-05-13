@@ -399,6 +399,7 @@ public class StatementGenerator {
     statement.setDataTypes(dataTypes);
     statement.setEncodings(encodings);
     statement.setCompressors(compressors);
+    statement.setPropsList(req.propsList);
     statement.setTagsList(req.tagsList);
     statement.setAttributesList(req.attributesList);
     statement.setAliasList(req.measurementAliasList);
