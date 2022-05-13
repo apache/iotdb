@@ -22,9 +22,9 @@ package org.apache.iotdb.db.engine.trigger.sink.http;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
-import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
+import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 
 import org.fusesource.mqtt.client.QoS;
@@ -34,7 +34,7 @@ import java.util.HashMap;
 public class ForwardTrigger implements Trigger {
 
   private Handler forwardManagerHandler;
-  private Configuration forwardManagerConfiguration;
+  private ForwardConfiguration forwardManagerConfiguration;
   private ForwardQueue<Event> queue;
   private final HashMap<String, String> labels = new HashMap<>();
   private String protocol;
@@ -42,19 +42,26 @@ public class ForwardTrigger implements Trigger {
   @Override
   public void onCreate(TriggerAttributes attributes) throws Exception {
     protocol = attributes.getString("protocol").toLowerCase();
-    boolean stopIfException = Boolean.parseBoolean(attributes.getString("stopIfException"));
+    boolean stopIfException = attributes.getBooleanOrDefault("stopIfException", false);
+    int maxQueueCount = attributes.getIntOrDefault("maxQueueCount", 8);
+    int maxQueueSize = attributes.getIntOrDefault("maxQueueSize", 2000);
+    int forwardBatchSize = attributes.getIntOrDefault("forwardBatchSize", 100);
+
+    forwardManagerConfiguration =
+        new ForwardConfiguration(
+            protocol, stopIfException, maxQueueCount, maxQueueSize, forwardBatchSize);
 
     switch (protocol) {
       case "http":
-        forwardManagerConfiguration = createHTTPConfiguration(attributes, stopIfException);
+        createHTTPConfiguration(forwardManagerConfiguration, attributes);
         forwardManagerHandler = new HTTPForwardHandler();
-        queue = new ForwardQueue<>(forwardManagerHandler);
+        queue = new ForwardQueue<>(forwardManagerHandler, forwardManagerConfiguration);
         forwardManagerHandler.open(forwardManagerConfiguration);
         break;
       case "mqtt":
-        forwardManagerConfiguration = createMQTTConfiguration(attributes, stopIfException);
+        createMQTTConfiguration(forwardManagerConfiguration, attributes);
         forwardManagerHandler = new MQTTForwardHandler();
-        queue = new ForwardQueue<>(forwardManagerHandler);
+        queue = new ForwardQueue<>(forwardManagerHandler, forwardManagerConfiguration);
         forwardManagerHandler.open(forwardManagerConfiguration);
         break;
       default:
@@ -62,29 +69,24 @@ public class ForwardTrigger implements Trigger {
     }
   }
 
-  private Configuration createHTTPConfiguration(
-      TriggerAttributes attributes, boolean stopIfException) {
+  private void createHTTPConfiguration(
+      ForwardConfiguration configuration, TriggerAttributes attributes) throws SinkException {
     String endpoint = attributes.getString("endpoint");
-    return new ForwardConfiguration("http", stopIfException, endpoint);
+    ForwardConfiguration.setHTTPConfig(configuration, endpoint);
+    configuration.checkHTTPConfig();
   }
 
-  private Configuration createMQTTConfiguration(
-      TriggerAttributes attributes, boolean stopIfException) {
+  private void createMQTTConfiguration(
+      ForwardConfiguration configuration, TriggerAttributes attributes) throws SinkException {
     String host = attributes.getString("host");
-    String port = attributes.getString("port");
+    int port = attributes.getInt("port");
     String username = attributes.getString("username");
     String password = attributes.getString("password");
-    String reconnectDelay = attributes.getString("reconnectDelay");
-    String connectAttemptsMax = attributes.getString("connectAttemptsMax");
-    return new ForwardConfiguration(
-        "mqtt",
-        stopIfException,
-        host,
-        Integer.parseInt(port),
-        username,
-        password,
-        Long.parseLong(reconnectDelay),
-        Long.parseLong(connectAttemptsMax));
+    long reconnectDelay = attributes.getLongOrDefault("reconnectDelay", 10L);
+    long connectAttemptsMax = attributes.getLongOrDefault("connectAttemptsMax", 3L);
+    ForwardConfiguration.setMQTTConfig(
+        configuration, host, port, username, password, reconnectDelay, connectAttemptsMax);
+    configuration.checkMQTTConfig();
   }
 
   @Override
@@ -110,12 +112,11 @@ public class ForwardTrigger implements Trigger {
     ForwardEvent event;
     switch (protocol) {
       case "http":
-        event = new ForwardEvent("topic-http", timestamp, value, path.toString(), labels);
+        event = new ForwardEvent("topic-http", timestamp, value, path, labels);
         break;
       case "mqtt":
         event =
-            new ForwardEvent(
-                "topic-mqtt", timestamp, value, path.toString(), QoS.EXACTLY_ONCE, false, labels);
+            new ForwardEvent("topic-mqtt", timestamp, value, path, QoS.EXACTLY_ONCE, false, labels);
         break;
       default:
         throw new TriggerExecutionException("Forward protocol doesn't support.");
@@ -135,18 +136,12 @@ public class ForwardTrigger implements Trigger {
       ForwardEvent event;
       switch (protocol) {
         case "http":
-          event = new ForwardEvent("topic-http", timestamps[i], values[i], path.toString(), labels);
+          event = new ForwardEvent("topic-http", timestamps[i], values[i], path, labels);
           break;
         case "mqtt":
           event =
               new ForwardEvent(
-                  "topic-mqtt",
-                  timestamps[i],
-                  values[i],
-                  path.toString(),
-                  QoS.EXACTLY_ONCE,
-                  false,
-                  labels);
+                  "topic-mqtt", timestamps[i], values[i], path, QoS.EXACTLY_ONCE, false, labels);
           break;
         default:
           throw new TriggerExecutionException("Forward protocol doesn't support.");

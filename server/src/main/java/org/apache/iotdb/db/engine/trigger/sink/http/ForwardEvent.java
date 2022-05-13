@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.http;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 
 import com.google.gson.Gson;
@@ -30,14 +31,14 @@ public class ForwardEvent implements Event {
   private final String topic;
   private final long timestamp;
   private final Object value;
-  private final String fullPath;
+  private final PartialPath fullPath;
 
   private QoS qos;
   private boolean retain;
 
   private Map<String, String> labels;
 
-  public ForwardEvent(String topic, long timestamp, Object value, String fullPath) {
+  public ForwardEvent(String topic, long timestamp, Object value, PartialPath fullPath) {
     this.topic = topic;
     this.timestamp = timestamp;
     this.value = value;
@@ -45,13 +46,17 @@ public class ForwardEvent implements Event {
   }
 
   public ForwardEvent(
-      String topic, long timestamp, Object value, String fullPath, Map<String, String> labels) {
+      String topic,
+      long timestamp,
+      Object value,
+      PartialPath fullPath,
+      Map<String, String> labels) {
     this(topic, timestamp, value, fullPath);
     this.labels = labels;
   }
 
   public ForwardEvent(
-      String topic, long timestamp, Object value, String fullPath, QoS qos, boolean retain) {
+      String topic, long timestamp, Object value, PartialPath fullPath, QoS qos, boolean retain) {
     this(topic, timestamp, value, fullPath);
     this.qos = qos;
     this.retain = retain;
@@ -61,7 +66,7 @@ public class ForwardEvent implements Event {
       String topic,
       long timestamp,
       Object value,
-      String fullPath,
+      PartialPath fullPath,
       QoS qos,
       boolean retain,
       Map<String, String> labels) {
@@ -94,7 +99,7 @@ public class ForwardEvent implements Event {
     return value;
   }
 
-  public String getFullPath() {
+  public PartialPath getFullPath() {
     return fullPath;
   }
 

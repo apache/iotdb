@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.api;
 
+import org.apache.iotdb.commons.path.PartialPath;
+
 public interface Event {
-  default String getFullPath() {
+  default PartialPath getFullPath() {
     return null;
   }
 }

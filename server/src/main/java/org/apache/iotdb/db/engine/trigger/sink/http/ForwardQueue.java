@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Each Trigger instantiate a ForwardQueue
@@ -38,20 +39,26 @@ public class ForwardQueue<T extends Event> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ForwardQueue.class);
 
-  private static final int MAX_QUEUE_COUNT = 8;
-  private static final int MAX_QUEUE_SIZE = 2000;
-  private static final int BATCH_SIZE = 100;
+  private final int maxQueueCount;
+  private final int maxQueueSize;
+  private final int batchSize;
+  private final AtomicInteger atomicCount = new AtomicInteger();
 
-  private final ArrayBlockingQueue<T>[] queues = new ArrayBlockingQueue[MAX_QUEUE_COUNT];
+  private final ArrayBlockingQueue<T>[] queues;
 
   private final Handler handler;
 
-  public ForwardQueue(Handler handler) {
-    for (int i = 0; i < MAX_QUEUE_COUNT; i++) {
-      queues[i] = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
+  public ForwardQueue(Handler handler, ForwardConfiguration configuration) {
+    this.handler = handler;
+    this.maxQueueCount = configuration.getMaxQueueCount();
+    this.maxQueueSize = configuration.getMaxQueueSize();
+    this.batchSize = configuration.getForwardBatchSize();
+
+    queues = new ArrayBlockingQueue[maxQueueCount];
+    for (int i = 0; i < maxQueueCount; i++) {
+      queues[i] = new ArrayBlockingQueue<>(maxQueueSize);
       new ForwardQueueThread(ForwardQueue.class.getSimpleName() + "-" + i, queues[i]).start();
     }
-    this.handler = handler;
   }
 
   int getQueueID(int hashCode) {
@@ -59,10 +66,11 @@ public class ForwardQueue<T extends Event> {
   }
 
   public boolean offer(T event) {
+    // Group by device or polling
     if (event.getFullPath() != null) {
-      return queues[getQueueID(event.getFullPath().hashCode())].offer(event);
+      return queues[getQueueID(event.getFullPath().getDevice().hashCode())].offer(event);
     } else {
-      return queues[getQueueID(event.hashCode())].offer(event);
+      return queues[getQueueID(atomicCount.incrementAndGet())].offer(event);
     }
   }
 
@@ -98,8 +106,8 @@ public class ForwardQueue<T extends Event> {
           }
           if (obj != null) {
             list.add(obj);
-            queue.drainTo(list, BATCH_SIZE - list.size());
-            if (list.size() < BATCH_SIZE) {
+            queue.drainTo(list, batchSize - list.size());
+            if (list.size() < batchSize) {
               long waitMillis = System.currentTimeMillis() - startMillis;
               if (waitMillis < maxWaitMillis) {
                 restMillis = maxWaitMillis - waitMillis;

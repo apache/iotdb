@@ -20,10 +20,16 @@
 package org.apache.iotdb.db.engine.trigger.sink.http;
 
 import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
+import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
 public class ForwardConfiguration implements Configuration {
   private final String protocol;
   private final boolean stopIfException;
+
+  // ForwardQueue config items
+  private int maxQueueCount = 8;
+  private int maxQueueSize = 2000;
+  private int forwardBatchSize = 100;
 
   // HTTP config items
   private String endpoint;
@@ -36,42 +42,45 @@ public class ForwardConfiguration implements Configuration {
   private long reconnectDelay;
   private long connectAttemptsMax;
 
+  // TODO support payloadFormatter
+
   public ForwardConfiguration(String protocol, boolean stopIfException) {
     this.protocol = protocol;
     this.stopIfException = stopIfException;
   }
 
-  public ForwardConfiguration(String protocol, boolean stopIfException, String endpoint) {
-    this(protocol, stopIfException);
-    this.endpoint = endpoint;
-  }
-
   public ForwardConfiguration(
       String protocol,
       boolean stopIfException,
+      int maxQueueCount,
+      int maxQueueSize,
+      int forwardBatchSize) {
+    this.protocol = protocol;
+    this.stopIfException = stopIfException;
+
+    this.maxQueueCount = maxQueueCount;
+    this.maxQueueSize = maxQueueSize;
+    this.forwardBatchSize = forwardBatchSize;
+  }
+
+  public static void setHTTPConfig(ForwardConfiguration configuration, String endpoint) {
+    configuration.setEndpoint(endpoint);
+  }
+
+  public static void setMQTTConfig(
+      ForwardConfiguration configuration,
       String host,
       int port,
       String username,
       String password,
       long reconnectDelay,
       long connectAttemptsMax) {
-    this(protocol, stopIfException);
-    this.host = host;
-    this.port = port;
-    this.username = username;
-    this.password = password;
-    this.reconnectDelay = reconnectDelay;
-    this.connectAttemptsMax = connectAttemptsMax;
-  }
-
-  public ForwardConfiguration(
-      String protocol,
-      boolean stopIfException,
-      String host,
-      int port,
-      String username,
-      String password) {
-    this(protocol, stopIfException, host, port, username, password, 10L, 3L);
+    configuration.setHost(host);
+    configuration.setPort(port);
+    configuration.setUsername(username);
+    configuration.setPassword(password);
+    configuration.setReconnectDelay(reconnectDelay);
+    configuration.setConnectAttemptsMax(connectAttemptsMax);
   }
 
   public String getProtocol() {
@@ -80,6 +89,18 @@ public class ForwardConfiguration implements Configuration {
 
   public boolean isStopIfException() {
     return stopIfException;
+  }
+
+  public int getMaxQueueCount() {
+    return maxQueueCount;
+  }
+
+  public int getMaxQueueSize() {
+    return maxQueueSize;
+  }
+
+  public int getForwardBatchSize() {
+    return forwardBatchSize;
   }
 
   public String getEndpoint() {
@@ -108,5 +129,52 @@ public class ForwardConfiguration implements Configuration {
 
   public long getConnectAttemptsMax() {
     return connectAttemptsMax;
+  }
+
+  private void setEndpoint(String endpoint) {
+    this.endpoint = endpoint;
+  }
+
+  private void setHost(String host) {
+    this.host = host;
+  }
+
+  private void setPort(int port) {
+    this.port = port;
+  }
+
+  private void setUsername(String username) {
+    this.username = username;
+  }
+
+  private void setPassword(String password) {
+    this.password = password;
+  }
+
+  private void setReconnectDelay(long reconnectDelay) {
+    this.reconnectDelay = reconnectDelay;
+  }
+
+  private void setConnectAttemptsMax(long connectAttemptsMax) {
+    this.connectAttemptsMax = connectAttemptsMax;
+  }
+
+  public void checkHTTPConfig() throws SinkException {
+    if (endpoint == null || endpoint.isEmpty()) {
+      throw new SinkException("HTTP config item error");
+    }
+  }
+
+  public void checkMQTTConfig() throws SinkException {
+    if (host == null
+        || host.isEmpty()
+        || port < 0
+        || port > 65535
+        || username == null
+        || username.isEmpty()
+        || password == null
+        || password.isEmpty()) {
+      throw new SinkException("MQTT config item error");
+    }
   }
 }

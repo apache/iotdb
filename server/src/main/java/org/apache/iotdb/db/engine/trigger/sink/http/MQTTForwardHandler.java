@@ -69,6 +69,7 @@ public class MQTTForwardHandler implements Handler<ForwardConfiguration, Forward
 
   @Override
   public void onEvent(List<ForwardEvent> events) throws SinkException {
+    // TODO need merge
     for (ForwardEvent event : events) {
       try {
         connection.publish(
