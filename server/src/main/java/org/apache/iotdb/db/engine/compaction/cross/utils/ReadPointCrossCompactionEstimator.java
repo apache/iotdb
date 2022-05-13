@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.cross.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceEstimator;
-import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -32,11 +31,16 @@ import java.util.List;
 import java.util.Map;
 
 public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimator {
-
+  // the max cost of reading source seq file among all source seq files of this cross compaction
+  // task
   private long maxCostOfReadingSeqFile;
 
+  // left is the max chunk num in chunkgroup of unseq file, right is the total chunk num of unseq
+  // file.
   private Pair<Integer, Integer> maxUnseqChunkNumInDevice;
 
+  // it stores all chunk info of seq files. Left is the max chunk num in chunkgroup of seq file,
+  // right is the total chunk num of seq file.
   private final List<Pair<Integer, Integer>> maxSeqChunkNumInDeviceList;
 
   // the number of timeseries being compacted at the same time
@@ -111,8 +115,6 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
    */
   private long calculatingWritingTargetFiles(
       List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
-    if (this instanceof ICrossSpaceSelector) {}
-
     long cost = 0;
     for (TsFileResource seqResource : seqResources) {
       TsFileSequenceReader reader = getFileReader(seqResource);
