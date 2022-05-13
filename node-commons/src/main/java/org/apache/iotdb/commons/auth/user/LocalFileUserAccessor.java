@@ -98,9 +98,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
         return null;
       }
     }
-    try (FileInputStream inputStream = new FileInputStream(userProfile);
-        DataInputStream dataInputStream =
-            new DataInputStream(new BufferedInputStream(inputStream))) {
+    FileInputStream inputStream = new FileInputStream(userProfile);
+    try (DataInputStream dataInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
       User user = new User();
       user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
@@ -152,6 +152,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + user.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
+
     try (BufferedOutputStream outputStream =
         new BufferedOutputStream(new FileOutputStream(userProfile))) {
       try {
@@ -241,5 +242,10 @@ public class LocalFileUserAccessor implements IUserAccessor {
     } else if (!SystemFileFactory.INSTANCE.getFile(userDirPath).exists()) {
       logger.error("user info dir {} can not be created", userDirPath);
     }
+  }
+
+  @Override
+  public String getDirPath() {
+    return userDirPath;
   }
 }

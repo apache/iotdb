@@ -331,16 +331,16 @@ public class AuthorInfo {
     }
   }
 
-  private static class AuthorInfoPersistenceHolder {
+  private static class AuthorInfoHolder {
 
     private static final AuthorInfo INSTANCE = new AuthorInfo();
 
-    private AuthorInfoPersistenceHolder() {
+    private AuthorInfoHolder() {
       // empty constructor
     }
   }
 
   public static AuthorInfo getInstance() {
-    return AuthorInfo.AuthorInfoPersistenceHolder.INSTANCE;
+    return AuthorInfo.AuthorInfoHolder.INSTANCE;
   }
 }
