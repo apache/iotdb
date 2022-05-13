@@ -303,6 +303,31 @@ public class IoTDBSyntaxConventionIdentifierIT {
       } catch (Exception ignored) {
       }
 
+      // unsupported
+      try {
+        statement.execute("create timeseries root.sg1.d1.contains INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.and INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.or INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.not INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
     } catch (SQLException e) {
       e.printStackTrace();
       fail();

@@ -51,7 +51,6 @@ keyWord
     | CACHE
     | CHILD
     | CLEAR
-    | CONTAINS
     | COMPRESSION
     | COMPRESSOR
     | CONCAT

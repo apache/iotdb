@@ -109,21 +109,6 @@ public class PartialPathTest {
     nodes = new String[] {"root", "sg", "device"};
     checkNodes(nodes, n.getNodes());
 
-    PartialPath o = new PartialPath("root.sg.contains");
-    Assert.assertEquals("root.sg.contains", o.getFullPath());
-    nodes = new String[] {"root", "sg", "contains"};
-    checkNodes(nodes, o.getNodes());
-
-    PartialPath p = new PartialPath("root.sg.not");
-    Assert.assertEquals("root.sg.not", p.getFullPath());
-    nodes = new String[] {"root", "sg", "not"};
-    checkNodes(nodes, p.getNodes());
-
-    PartialPath q = new PartialPath("root.sg.or");
-    Assert.assertEquals("root.sg.or", q.getFullPath());
-    nodes = new String[] {"root", "sg", "or"};
-    checkNodes(nodes, q.getNodes());
-
     PartialPath r = new PartialPath("root.sg.boolean");
     Assert.assertEquals("root.sg.boolean", r.getFullPath());
     nodes = new String[] {"root", "sg", "boolean"};
@@ -169,6 +154,30 @@ public class PartialPathTest {
 
     try {
       new PartialPath("root.sg.111");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.and");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.or");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.not");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.contains");
       fail();
     } catch (IllegalPathException ignored) {
     }

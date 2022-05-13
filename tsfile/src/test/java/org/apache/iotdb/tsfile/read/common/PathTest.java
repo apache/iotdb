@@ -82,6 +82,19 @@ public class PathTest {
     Path l = new Path("root.sg.**", true);
     Assert.assertEquals("root.sg", l.getDevice());
     Assert.assertEquals("**", l.getMeasurement());
+
+    // raw key word
+    Path m = new Path("root.sg.select", true);
+    Assert.assertEquals("root.sg", m.getDevice());
+    Assert.assertEquals("select", m.getMeasurement());
+
+    Path n = new Path("root.sg.device", true);
+    Assert.assertEquals("root.sg", n.getDevice());
+    Assert.assertEquals("device", n.getMeasurement());
+
+    Path o = new Path("root.sg.drop_trigger", true);
+    Assert.assertEquals("root.sg", o.getDevice());
+    Assert.assertEquals("drop_trigger", o.getMeasurement());
   }
 
   @Test
@@ -94,8 +107,7 @@ public class PathTest {
     }
 
     try {
-      // key word with out `
-      new Path("root.select", true);
+      new Path("root.select`", true);
       fail();
     } catch (PathParseException ignored) {
     }
@@ -133,10 +145,28 @@ public class PathTest {
     } catch (PathParseException ignored) {
     }
 
-    //    try {
-    //      Path path = new Path("root.*ab*", true);
-    //      fail();
-    //    } catch (PathParseException ignored) {
-    //    }
+    try {
+      new Path("root.and", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.or", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.not", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.contains", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
   }
 }
