@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -53,7 +54,7 @@ import java.util.Set;
 public class AuthorInfo implements SnapshotProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthorInfo.class);
-  private static final CommonConfig commonConfig = CommonConfig.getInstance();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private IAuthorizer authorizer;
 
@@ -351,26 +352,26 @@ public class AuthorInfo implements SnapshotProcessor {
     return AuthorInfo.AuthorInfoHolder.INSTANCE;
   }
 
-    @Override
-    public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-      return authorizer.processTakeSnapshot(snapshotDir);
-    }
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    return authorizer.processTakeSnapshot(snapshotDir);
+  }
 
-    @Override
-    public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-      authorizer.processLoadSnapshot(snapshotDir);
-    }
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    authorizer.processLoadSnapshot(snapshotDir);
+  }
 
-    @TestOnly
-    public void clear() throws AuthException {
-      File userFolder = new File(commonConfig.getUserFolder());
-      if (userFolder.exists()) {
-        FileUtils.deleteDirectory(userFolder);
-      }
-      File roleFolder = new File(commonConfig.getRoleFolder());
-      if (roleFolder.exists()) {
-        FileUtils.deleteDirectory(roleFolder);
-      }
-      authorizer.reset();
+  @TestOnly
+  public void clear() throws AuthException {
+    File userFolder = new File(commonConfig.getUserFolder());
+    if (userFolder.exists()) {
+      FileUtils.deleteDirectory(userFolder);
     }
+    File roleFolder = new File(commonConfig.getRoleFolder());
+    if (roleFolder.exists()) {
+      FileUtils.deleteDirectory(roleFolder);
+    }
+    authorizer.reset();
+  }
 }
