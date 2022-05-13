@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -366,7 +366,7 @@ public class EnvironmentUtils {
     }
     // create user and roles folder
     try {
-      BasicAuthorizer.getInstance().reset();
+      AuthorizerManager.getInstance().reset();
     } catch (AuthException e) {
       logger.error("create user and role folders failed", e);
       fail(e.getMessage());

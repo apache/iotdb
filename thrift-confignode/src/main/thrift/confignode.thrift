@@ -55,7 +55,11 @@ struct TSetStorageGroupReq {
 }
 
 struct TDeleteStorageGroupReq {
-  1: required string storageGroup
+  1: required string prefixPath
+}
+
+struct TDeleteStorageGroupsReq {
+  1: required list<string> prefixPathList
 }
 
 struct TSetTTLReq {
@@ -96,8 +100,10 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional list<common.TConsensusGroupId> dataRegionGroupIds
-  7: optional list<common.TConsensusGroupId> schemaRegionGroupIds
+  6: optional i32 maximumSchemaRegionCount
+  7: optional i32 maximumDataRegionCount
+  8: optional list<common.TConsensusGroupId> dataRegionGroupIds
+  9: optional list<common.TConsensusGroupId> schemaRegionGroupIds
 }
 
 // Schema
@@ -186,6 +192,8 @@ service ConfigIService {
   common.TSStatus setStorageGroup(TSetStorageGroupReq req)
 
   common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
+
+  common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
 
   common.TSStatus setTTL(TSetTTLReq req)
 

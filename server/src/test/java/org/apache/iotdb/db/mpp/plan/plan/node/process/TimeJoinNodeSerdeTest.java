@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 
-import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -47,7 +46,6 @@ public class TimeJoinNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             TimeFilter.gt(100),
             null,
@@ -59,7 +57,6 @@ public class TimeJoinNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_DESC,
             null,
             ValueFilter.gt(100),

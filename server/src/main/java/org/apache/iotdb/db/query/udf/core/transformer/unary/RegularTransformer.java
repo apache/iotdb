@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.udf.core.transformer.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
@@ -34,6 +35,11 @@ public class RegularTransformer extends UnaryTransformer {
   public RegularTransformer(LayerPointReader layerPointReader, Pattern pattern) {
     super(layerPointReader);
     this.pattern = pattern;
+
+    if (layerPointReaderDataType != TSDataType.TEXT) {
+      throw new UnSupportedDataTypeException(
+          "Unsupported data type: " + layerPointReader.getDataType().toString());
+    }
   }
 
   @Override
@@ -43,11 +49,6 @@ public class RegularTransformer extends UnaryTransformer {
 
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
-    if (layerPointReader.getDataType() != TSDataType.TEXT) {
-      throw new QueryProcessException(
-          "Unsupported data type: " + layerPointReader.getDataType().toString());
-    }
-
     Binary binary = layerPointReader.currentBinary();
     if (pattern.matcher(binary.getStringValue()).find()) {
       cachedBinary = binary;

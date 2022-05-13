@@ -34,6 +34,10 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.execution.memory.MemorySourceHandle;
+import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySource;
+import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceContext;
+import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceVisitor;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
@@ -86,10 +90,11 @@ public class QueryExecution implements IQueryExecution {
   private DistributedQueryPlan distributedPlan;
 
   private final ExecutorService executor;
+  private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
   // TODO need to use factory to decide standalone or cluster
   private final IPartitionFetcher partitionFetcher;
-  // TODO need to use factory to decide standalone or cluster
+  // TODO need to use factory to decide standalone or cluster,
   private final ISchemaFetcher schemaFetcher;
 
   // The result of QueryExecution will be written to the DataBlockManager in current Node.
@@ -103,11 +108,13 @@ public class QueryExecution implements IQueryExecution {
       Statement statement,
       MPPQueryContext context,
       ExecutorService executor,
+      ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.executor = executor;
+    this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
     this.context = context;
     this.planOptimizers = new ArrayList<>();
@@ -138,9 +145,9 @@ public class QueryExecution implements IQueryExecution {
   public void start() {
     if (skipExecute()) {
       logger.info(
-          "{} execution of query will be skipped. Transit to FINISHED immediately.",
-          getLogHeader());
-      stateMachine.transitionToFinished();
+          "{} execution of query will be skipped. Transit to RUNNING immediately.", getLogHeader());
+      constructResultForMemorySource();
+      stateMachine.transitionToRunning();
       return;
     }
     doLogicalPlan();
@@ -152,7 +159,16 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private boolean skipExecute() {
-    return context.getQueryType() == QueryType.READ && !analysis.hasDataSource();
+    return analysis.isFinishQueryAfterAnalyze()
+        || (context.getQueryType() == QueryType.READ && !analysis.hasDataSource());
+  }
+
+  private void constructResultForMemorySource() {
+    StatementMemorySource memorySource =
+        new StatementMemorySourceVisitor()
+            .process(analysis.getStatement(), new StatementMemorySourceContext(context, analysis));
+    this.resultHandle = new MemorySourceHandle(memorySource.getTsBlock());
+    this.analysis.setRespDatasetHeader(memorySource.getDatasetHeader());
   }
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
@@ -176,6 +192,7 @@ public class QueryExecution implements IQueryExecution {
                 distributedPlan.getInstances(),
                 context.getQueryType(),
                 executor,
+                writeOperationExecutor,
                 scheduledExecutor,
                 internalServiceClientManager)
             : new StandaloneScheduler(
@@ -232,7 +249,9 @@ public class QueryExecution implements IQueryExecution {
     // There are only two scenarios where the ResultHandle should be closed:
     //   1. The client fetch all the result and the ResultHandle is finished.
     //   2. The client's connection is closed that all owned QueryExecution should be cleaned up
-    if (resultHandle != null && resultHandle.isFinished()) {
+    // If the QueryExecution's state is abnormal, we should also abort the resultHandle without
+    // waiting it to be finished.
+    if (resultHandle != null) {
       resultHandle.abort();
     }
   }

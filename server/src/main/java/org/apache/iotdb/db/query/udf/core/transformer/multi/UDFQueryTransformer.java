@@ -32,21 +32,23 @@ public abstract class UDFQueryTransformer extends Transformer {
 
   protected final UDTFExecutor executor;
 
-  protected final TSDataType udfOutputDataType;
-  protected final LayerPointReader udfOutput;
+  protected final LayerPointReader layerPointReader;
+  protected final TSDataType layerPointReaderDataType;
+  protected final boolean isLayerPointReaderConstant;
 
   protected boolean terminated;
 
   protected UDFQueryTransformer(UDTFExecutor executor) {
     this.executor = executor;
-    udfOutputDataType = executor.getConfigurations().getOutputDataType();
-    udfOutput = executor.getCollector().constructPointReaderUsingTrivialEvictionStrategy();
+    layerPointReader = executor.getCollector().constructPointReaderUsingTrivialEvictionStrategy();
+    layerPointReaderDataType = executor.getConfigurations().getOutputDataType();
+    isLayerPointReaderConstant = layerPointReader.isConstantPointReader();
     terminated = false;
   }
 
   @Override
   public boolean isConstantPointReader() {
-    return udfOutput.isConstantPointReader();
+    return isLayerPointReaderConstant;
   }
 
   @Override
@@ -60,37 +62,37 @@ public abstract class UDFQueryTransformer extends Transformer {
   }
 
   protected final boolean cacheValueFromUDFOutput() throws QueryProcessException, IOException {
-    if (!udfOutput.next()) {
+    if (!layerPointReader.next()) {
       return false;
     }
-    cachedTime = udfOutput.currentTime();
-    if (udfOutput.isCurrentNull()) {
+    cachedTime = layerPointReader.currentTime();
+    if (layerPointReader.isCurrentNull()) {
       currentNull = true;
     } else {
-      switch (udfOutputDataType) {
+      switch (layerPointReaderDataType) {
         case INT32:
-          cachedInt = udfOutput.currentInt();
+          cachedInt = layerPointReader.currentInt();
           break;
         case INT64:
-          cachedLong = udfOutput.currentLong();
+          cachedLong = layerPointReader.currentLong();
           break;
         case FLOAT:
-          cachedFloat = udfOutput.currentFloat();
+          cachedFloat = layerPointReader.currentFloat();
           break;
         case DOUBLE:
-          cachedDouble = udfOutput.currentDouble();
+          cachedDouble = layerPointReader.currentDouble();
           break;
         case BOOLEAN:
-          cachedBoolean = udfOutput.currentBoolean();
+          cachedBoolean = layerPointReader.currentBoolean();
           break;
         case TEXT:
-          cachedBinary = udfOutput.currentBinary();
+          cachedBinary = layerPointReader.currentBinary();
           break;
         default:
-          throw new UnSupportedDataTypeException(udfOutputDataType.toString());
+          throw new UnSupportedDataTypeException(layerPointReaderDataType.toString());
       }
     }
-    udfOutput.readyForNext();
+    layerPointReader.readyForNext();
     return true;
   }
 
@@ -107,6 +109,6 @@ public abstract class UDFQueryTransformer extends Transformer {
 
   @Override
   public final TSDataType getDataType() {
-    return udfOutputDataType;
+    return layerPointReaderDataType;
   }
 }

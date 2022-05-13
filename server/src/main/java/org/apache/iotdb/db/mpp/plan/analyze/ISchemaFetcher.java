@@ -41,4 +41,6 @@ public interface ISchemaFetcher {
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
       List<Boolean> aligned);
+
+  void invalidAllCache();
 }

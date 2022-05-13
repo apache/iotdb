@@ -37,6 +37,8 @@ public enum ConfigRequestType {
   GetDataPartition,
   CreateDataPartition,
   GetOrCreateDataPartition,
+  UpdateProcedure,
+  DeleteProcedure,
   Author,
   CreateUser,
   CreateRole,

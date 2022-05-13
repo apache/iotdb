@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
@@ -33,17 +34,27 @@ public abstract class ArithmeticBinaryTransformer extends BinaryTransformer {
   }
 
   @Override
+  protected void checkType() {
+    if (leftPointReaderDataType == TSDataType.BOOLEAN) {
+      throw new UnSupportedDataTypeException(leftPointReader.getDataType().toString());
+    }
+    if (rightPointReaderDataType == TSDataType.BOOLEAN) {
+      throw new UnSupportedDataTypeException(rightPointReader.getDataType().toString());
+    }
+  }
+
+  @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
     cachedDouble =
         evaluate(
-            castCurrentValueToDoubleOperand(leftPointReader),
-            castCurrentValueToDoubleOperand(rightPointReader));
+            castCurrentValueToDoubleOperand(leftPointReader, leftPointReaderDataType),
+            castCurrentValueToDoubleOperand(rightPointReader, rightPointReaderDataType));
   }
+
+  protected abstract double evaluate(double leftOperand, double rightOperand);
 
   @Override
   public TSDataType getDataType() {
     return TSDataType.DOUBLE;
   }
-
-  protected abstract double evaluate(double leftOperand, double rightOperand);
 }

@@ -17,9 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.auth.authorizer;
+package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 
@@ -40,7 +42,7 @@ public class AuthorizerManager implements IAuthorizer {
     try {
       iAuthorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
-      logger.error("Authorizer uninitialized");
+      logger.error(e.getMessage());
     }
   }
 
@@ -131,7 +133,9 @@ public class AuthorizerManager implements IAuthorizer {
   }
 
   @Override
-  public void reset() throws AuthException {}
+  public void reset() throws AuthException {
+    iAuthorizer.reset();
+  }
 
   @Override
   public List<String> listAllUsers() {
