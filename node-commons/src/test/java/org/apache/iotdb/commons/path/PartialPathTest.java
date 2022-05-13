@@ -109,6 +109,11 @@ public class PartialPathTest {
     nodes = new String[] {"root", "sg", "device"};
     checkNodes(nodes, n.getNodes());
 
+    PartialPath o = new PartialPath("root.sg.datatype");
+    Assert.assertEquals("root.sg.datatype", o.getFullPath());
+    nodes = new String[] {"root", "sg", "datatype"};
+    checkNodes(nodes, o.getNodes());
+
     PartialPath r = new PartialPath("root.sg.boolean");
     Assert.assertEquals("root.sg.boolean", r.getFullPath());
     nodes = new String[] {"root", "sg", "boolean"};

@@ -22,7 +22,7 @@ parser grammar IdentifierParser;
 options { tokenVocab=SqlLexer; }
 
 identifier
-     : keyWord
+     : keyWords
      | ID
      | QUOTED_ID
      ;
@@ -30,7 +30,7 @@ identifier
 
 // List of key words
 
-keyWord
+keyWords
     : ADD
     | AFTER
     | ALIAS
@@ -171,7 +171,6 @@ keyWord
     | VALUES
     | VERIFY
     | VERSION
-    | WATERMARK_EMBEDDING
     | WHERE
     | WITH
     | WITHOUT
