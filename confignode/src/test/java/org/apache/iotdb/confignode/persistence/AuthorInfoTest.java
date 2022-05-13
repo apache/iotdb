@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -33,6 +32,8 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;
