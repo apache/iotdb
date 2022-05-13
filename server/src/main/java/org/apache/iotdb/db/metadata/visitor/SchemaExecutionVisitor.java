@@ -185,12 +185,12 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
     public PhysicalPlan visitCreateMultiTimeSeries(
         CreateMultiTimeSeriesNode node, TransformerContext context) {
-
       CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
       multiPlan.setPaths(node.getPaths());
       multiPlan.setDataTypes(node.getDataTypes());
       multiPlan.setEncodings(node.getEncodings());
       multiPlan.setCompressors(node.getCompressors());
+      multiPlan.setProps(node.getPropsList());
       multiPlan.setAlias(node.getAliasList());
       multiPlan.setTags(node.getTagsList());
       multiPlan.setAttributes(node.getAttributesList());

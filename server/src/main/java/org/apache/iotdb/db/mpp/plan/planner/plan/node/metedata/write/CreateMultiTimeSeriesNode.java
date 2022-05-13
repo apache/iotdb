@@ -110,6 +110,14 @@ public class CreateMultiTimeSeriesNode extends WritePlanNode {
     this.compressors = compressors;
   }
 
+  public List<Map<String, String>> getPropsList() {
+    return propsList;
+  }
+
+  public void setPropsList(List<Map<String, String>> propsList) {
+    this.propsList = propsList;
+  }
+
   public List<String> getAliasList() {
     return aliasList;
   }

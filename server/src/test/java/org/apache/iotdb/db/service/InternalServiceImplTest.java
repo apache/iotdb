@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.service.thrift.impl.InternalServiceImpl;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -225,6 +226,105 @@ public class InternalServiceImplTest {
     TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
     PlanFragment planFragment =
         new PlanFragment(new PlanFragmentId("2", 3), createAlignedTimeSeriesNode);
+    FragmentInstance fragmentInstance =
+        new FragmentInstance(
+            planFragment,
+            planFragment.getId().genFragmentInstanceId(),
+            new GroupByFilter(1, 2, 3, 4),
+            QueryType.WRITE);
+    fragmentInstance.setDataRegionAndHost(regionReplicaSet);
+
+    // serialize fragmentInstance
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    fragmentInstance.serializeRequest(byteBuffer);
+    byteBuffer.flip();
+
+    // put serialized fragmentInstance to TSendFragmentInstanceReq
+    TSendFragmentInstanceReq request = new TSendFragmentInstanceReq();
+    TFragmentInstance tFragmentInstance = new TFragmentInstance();
+    tFragmentInstance.setBody(byteBuffer);
+    request.setFragmentInstance(tFragmentInstance);
+    request.setConsensusGroupId(regionReplicaSet.getRegionId());
+    request.setQueryType(QueryType.WRITE.toString());
+
+    // Use consensus layer to execute request
+    TSendFragmentInstanceResp response = internalServiceImpl.sendFragmentInstance(request);
+
+    Assert.assertTrue(response.accepted);
+  }
+
+  @Test
+  public void testCreateMultiTimeSeries() throws MetadataException {
+    CreateMultiTimeSeriesNode createMultiTimeSeriesNode =
+        new CreateMultiTimeSeriesNode(
+            new PlanNodeId("0"),
+            new ArrayList<PartialPath>() {
+              {
+                add(new PartialPath("root.ln.wf01.GPS.latitude"));
+                add(new PartialPath("root.ln.wf01.GPS.longitude"));
+              }
+            },
+            new ArrayList<TSDataType>() {
+              {
+                add(TSDataType.FLOAT);
+                add(TSDataType.FLOAT);
+              }
+            },
+            new ArrayList<TSEncoding>() {
+              {
+                add(TSEncoding.PLAIN);
+                add(TSEncoding.PLAIN);
+              }
+            },
+            new ArrayList<CompressionType>() {
+              {
+                add(CompressionType.SNAPPY);
+                add(CompressionType.SNAPPY);
+              }
+            },
+            new ArrayList<Map<String, String>>() {
+              {
+                add(
+                    new HashMap<String, String>() {
+                      {
+                        put("MAX_POINT_NUMBER", "3");
+                      }
+                    });
+                add(null);
+              }
+            },
+            new ArrayList<String>() {
+              {
+                add("meter1");
+                add(null);
+              }
+            },
+            new ArrayList<Map<String, String>>() {
+              {
+                add(
+                    new HashMap<String, String>() {
+                      {
+                        put("tag1", "t1");
+                      }
+                    });
+                add(null);
+              }
+            },
+            new ArrayList<Map<String, String>>() {
+              {
+                add(
+                    new HashMap<String, String>() {
+                      {
+                        put("tag1", "t1");
+                      }
+                    });
+                add(null);
+              }
+            });
+
+    TRegionReplicaSet regionReplicaSet = genRegionReplicaSet();
+    PlanFragment planFragment =
+        new PlanFragment(new PlanFragmentId("2", 3), createMultiTimeSeriesNode);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             planFragment,
