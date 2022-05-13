@@ -199,19 +199,19 @@ public class ExpressionAnalyzer {
    * @param prefixPaths prefix paths in the FROM clause
    * @param patternTree a PathPatternTree contains all paths to query
    */
-  public static void constructPatternTreeFromQueryFilter(
+  public static void constructPatternTreeFromExpression(
       Expression predicate, List<PartialPath> prefixPaths, PathPatternTree patternTree) {
     if (predicate instanceof BinaryExpression) {
-      constructPatternTreeFromQueryFilter(
+      constructPatternTreeFromExpression(
           ((BinaryExpression) predicate).getLeftExpression(), prefixPaths, patternTree);
-      constructPatternTreeFromQueryFilter(
+      constructPatternTreeFromExpression(
           ((BinaryExpression) predicate).getRightExpression(), prefixPaths, patternTree);
     } else if (predicate instanceof UnaryExpression) {
-      constructPatternTreeFromQueryFilter(
+      constructPatternTreeFromExpression(
           ((UnaryExpression) predicate).getExpression(), prefixPaths, patternTree);
     } else if (predicate instanceof FunctionExpression) {
       for (Expression suffixExpression : predicate.getExpressions()) {
-        constructPatternTreeFromQueryFilter(suffixExpression, prefixPaths, patternTree);
+        constructPatternTreeFromExpression(suffixExpression, prefixPaths, patternTree);
       }
     } else if (predicate instanceof TimeSeriesOperand) {
       PartialPath rawPath = ((TimeSeriesOperand) predicate).getPath();
