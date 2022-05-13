@@ -120,7 +120,8 @@ class RatisConsensus implements IConsensus {
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
     RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
-    RaftServerConfigKeys.Rpc.setSlownessTimeout(properties, TimeDuration.valueOf(10, TimeUnit.MINUTES));
+    RaftServerConfigKeys.Rpc.setSlownessTimeout(
+        properties, TimeDuration.valueOf(10, TimeUnit.MINUTES));
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, TimeDuration.valueOf(2, TimeUnit.SECONDS));
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, TimeDuration.valueOf(8, TimeUnit.SECONDS));
     RaftServerConfigKeys.Rpc.setSleepTime(properties, TimeDuration.valueOf(1, TimeUnit.SECONDS));
