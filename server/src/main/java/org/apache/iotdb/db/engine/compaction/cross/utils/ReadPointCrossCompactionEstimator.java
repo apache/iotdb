@@ -31,8 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class ReadPointCompactionEstimator
-    implements AbstractCrossSpaceEstimator, ICrossSpaceSelector {
+public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimator {
 
   private long maxCostOfReadingSeqFile;
 
@@ -44,7 +43,7 @@ public class ReadPointCompactionEstimator
   private final int subCompactionTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
-  public ReadPointCompactionEstimator() {
+  public ReadPointCrossCompactionEstimator() {
     this.maxCostOfReadingSeqFile = 0;
     this.maxSeqChunkNumInDeviceList = new ArrayList<>();
   }

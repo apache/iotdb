@@ -21,9 +21,9 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.slf4j.Logger;
@@ -66,8 +66,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     this.maxCrossCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
     this.compactionEstimator =
-        ICrossSpaceSelector.getCompactionEstimator(
-            IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), resource);
+        ICompactionSelector.getCompactionEstimator(
+            IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
   }
 
   /**
@@ -103,6 +103,7 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       selectSourceFiles();
       resource.setSeqFiles(selectedSeqFiles);
       resource.setUnseqFiles(selectedUnseqFiles);
+      compactionEstimator.clear();
       resource.removeOutdatedSeqReaders();
       if (selectedUnseqFiles.isEmpty()) {
         logger.debug("No merge candidates are found");

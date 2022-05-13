@@ -26,27 +26,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Estimate the memory cost of one compaction task based on its corresponding implementation. */
+/**
+ * Estimate the memory cost of one compaction task with specific source files based on its
+ * corresponding implementation.
+ */
 public abstract class AbstractCompactionEstimator {
 
   protected Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
 
-  public long estimateCrossCompactionMemory(
-      List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException {
-    throw new RuntimeException(
-        "This kind of estimator cannot be used to estimate cross space compaction task");
-  }
-
-  public long estimateInnerCompactionMemory(List<TsFileResource> resources) {
-    throw new RuntimeException(
-        "This kind of estimator cannot be used to estimate inner space compaction task");
-  }
-
   /**
-   * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
-   *
-   * @return a TsFileSequenceReader
+   * Estimate the memory cost of compacting the unseq file and its corresponding overlapped seq
+   * files in cross space compaction task.
    */
+  public abstract long estimateCrossCompactionMemory(
+      List<TsFileResource> seqResources, TsFileResource unseqResource) throws IOException;
+
+  /** Estimate the memory cost of compacting the source files in inner space compaction task. */
+  public abstract long estimateInnerCompactionMemory(List<TsFileResource> resources);
+
+  /** Construct a new or get an existing TsFileSequenceReader of a TsFile. */
   protected TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
     TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
     if (reader == null) {
