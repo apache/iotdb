@@ -1183,7 +1183,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (ctx.constant() != null) {
       alias = parseStringLiteral(ctx.constant().getText());
     } else {
-      alias = parseIdentifier(ctx.IDENTIFIER().getText());
+      alias = parseIdentifier(ctx.identifier().getText());
     }
     return alias;
   }

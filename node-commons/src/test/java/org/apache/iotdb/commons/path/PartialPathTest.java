@@ -98,11 +98,36 @@ public class PartialPathTest {
     nodes = new String[] {"root", "sg", "**"};
     checkNodes(nodes, l.getNodes());
 
-    // other
-    PartialPath m = new PartialPath("`to`.be.prefix.s");
-    Assert.assertEquals("`to`.be.prefix.s", m.getFullPath());
-    nodes = new String[] {"`to`", "be", "prefix", "s"};
+    // raw key word
+    PartialPath m = new PartialPath("root.sg.select");
+    Assert.assertEquals("root.sg.select", m.getFullPath());
+    nodes = new String[] {"root", "sg", "select"};
     checkNodes(nodes, m.getNodes());
+
+    PartialPath n = new PartialPath("root.sg.device");
+    Assert.assertEquals("root.sg.device", n.getFullPath());
+    nodes = new String[] {"root", "sg", "device"};
+    checkNodes(nodes, n.getNodes());
+
+    PartialPath o = new PartialPath("root.sg.contains");
+    Assert.assertEquals("root.sg.contains", o.getFullPath());
+    nodes = new String[] {"root", "sg", "contains"};
+    checkNodes(nodes, o.getNodes());
+
+    PartialPath p = new PartialPath("root.sg.not");
+    Assert.assertEquals("root.sg.not", p.getFullPath());
+    nodes = new String[] {"root", "sg", "not"};
+    checkNodes(nodes, p.getNodes());
+
+    PartialPath q = new PartialPath("root.sg.or");
+    Assert.assertEquals("root.sg.or", q.getFullPath());
+    nodes = new String[] {"root", "sg", "or"};
+    checkNodes(nodes, q.getNodes());
+
+    PartialPath r = new PartialPath("root.sg.boolean");
+    Assert.assertEquals("root.sg.boolean", r.getFullPath());
+    nodes = new String[] {"root", "sg", "boolean"};
+    checkNodes(nodes, r.getNodes());
   }
 
   @Test
@@ -143,17 +168,6 @@ public class PartialPathTest {
     } catch (IllegalPathException ignored) {
     }
 
-    try {
-      new PartialPath("root.sg.select");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
-      new PartialPath("root.sg.d1.device");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
   }
 
   @Test
@@ -281,26 +295,21 @@ public class PartialPathTest {
     } catch (IllegalPathException ignored) {
     }
 
+
     try {
-      new PartialPath("root.sg", "select");
+      new PartialPath("root.sg.select`", "a");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.select", "a");
+      new PartialPath("root.sg.d1", "device`");
       fail();
     } catch (IllegalPathException ignored) {
     }
 
     try {
-      new PartialPath("root.sg.d1", "device");
-      fail();
-    } catch (IllegalPathException ignored) {
-    }
-
-    try {
-      new PartialPath("root.sg.d1.device", "s1");
+      new PartialPath("root.sg.d1.device`", "s1");
       fail();
     } catch (IllegalPathException ignored) {
     }

@@ -21,6 +21,8 @@ parser grammar InfluxDBSqlParser;
 
 options { tokenVocab=SqlLexer; }
 
+import IdentifierParser;
+
 singleStatement
     : statement SEMI? EOF
     ;
@@ -35,7 +37,7 @@ selectClause
    ;
 
 resultColumn
-   : expression (AS IDENTIFIER)?
+   : expression (AS identifier)?
    ;
 
 expression

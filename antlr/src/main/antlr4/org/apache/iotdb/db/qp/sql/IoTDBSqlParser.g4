@@ -21,6 +21,7 @@ parser grammar IoTDBSqlParser;
 
 options { tokenVocab=SqlLexer; }
 
+import IdentifierParser;
 
 /**
  * 1. Top Level Description
@@ -99,7 +100,7 @@ alignedMeasurements
 
 // Create Schema Template
 createSchemaTemplate
-    : CREATE SCHEMA? TEMPLATE templateName=IDENTIFIER
+    : CREATE SCHEMA? TEMPLATE templateName=identifier
     ALIGNED? LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
     ;
 
@@ -114,12 +115,12 @@ createTimeseriesOfSchemaTemplate
 
 // Create Function
 createFunction
-    : CREATE FUNCTION udfName=IDENTIFIER AS className=STRING_LITERAL
+    : CREATE FUNCTION udfName=identifier AS className=STRING_LITERAL
     ;
 
 // Create Trigger
 createTrigger
-    : CREATE TRIGGER triggerName=IDENTIFIER triggerEventClause ON fullPath AS className=STRING_LITERAL triggerAttributeClause?
+    : CREATE TRIGGER triggerName=identifier triggerEventClause ON fullPath AS className=STRING_LITERAL triggerAttributeClause?
     ;
 
 triggerEventClause
@@ -136,7 +137,7 @@ triggerAttribute
 
 // Create Continuous Query
 createContinuousQuery
-    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=IDENTIFIER resampleClause? cqSelectIntoClause
+    : CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=identifier resampleClause? cqSelectIntoClause
     ;
 
 cqSelectIntoClause
@@ -172,7 +173,7 @@ aliasClause
 
 alias
     : constant
-    | IDENTIFIER
+    | identifier
     ;
 
 // Delete Storage Group
@@ -192,22 +193,22 @@ deletePartition
 
 // Drop Function
 dropFunction
-    : DROP FUNCTION udfName=IDENTIFIER
+    : DROP FUNCTION udfName=identifier
     ;
 
 // Drop Trigger
 dropTrigger
-    : DROP TRIGGER triggerName=IDENTIFIER
+    : DROP TRIGGER triggerName=identifier
     ;
 
 // Drop Continuous Query
 dropContinuousQuery
-    : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=IDENTIFIER
+    : DROP (CONTINUOUS QUERY|CQ) continuousQueryName=identifier
     ;
 
 // Drop Schema Template
 dropSchemaTemplate
-    : DROP SCHEMA? TEMPLATE templateName=IDENTIFIER
+    : DROP SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Set TTL
@@ -222,22 +223,22 @@ unsetTTL
 
 // Set Schema Template
 setSchemaTemplate
-    : SET SCHEMA? TEMPLATE templateName=IDENTIFIER TO prefixPath
+    : SET SCHEMA? TEMPLATE templateName=identifier TO prefixPath
     ;
 
 // Unset Schema Template
 unsetSchemaTemplate
-    : UNSET SCHEMA? TEMPLATE templateName=IDENTIFIER FROM prefixPath
+    : UNSET SCHEMA? TEMPLATE templateName=identifier FROM prefixPath
     ;
 
 // Start Trigger
 startTrigger
-    : START TRIGGER triggerName=IDENTIFIER
+    : START TRIGGER triggerName=identifier
     ;
 
 // Stop Trigger
 stopTrigger
-    : STOP TRIGGER triggerName=IDENTIFIER
+    : STOP TRIGGER triggerName=identifier
     ;
 
 // Show Storage Group
@@ -301,17 +302,17 @@ showSchemaTemplates
 
 // Show Measurements In Schema Template
 showNodesInSchemaTemplate
-    : SHOW NODES OPERATOR_IN SCHEMA? TEMPLATE templateName=IDENTIFIER
+    : SHOW NODES OPERATOR_IN SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Show Paths Set Schema Template
 showPathsSetSchemaTemplate
-    : SHOW PATHS SET SCHEMA? TEMPLATE templateName=IDENTIFIER
+    : SHOW PATHS SET SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Show Paths Using Schema Template
 showPathsUsingSchemaTemplate
-    : SHOW PATHS USING SCHEMA? TEMPLATE templateName=IDENTIFIER
+    : SHOW PATHS USING SCHEMA? TEMPLATE templateName=identifier
     ;
 
 // Count Storage Group
@@ -476,12 +477,12 @@ whereClause
 
 // Create User
 createUser
-    : CREATE USER userName=IDENTIFIER password=STRING_LITERAL
+    : CREATE USER userName=identifier password=STRING_LITERAL
     ;
 
 // Create Role
 createRole
-    : CREATE ROLE roleName=IDENTIFIER
+    : CREATE ROLE roleName=identifier
     ;
 
 // Alter Password
@@ -491,42 +492,42 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=IDENTIFIER PRIVILEGES privileges ON prefixPath
+    : GRANT USER userName=identifier PRIVILEGES privileges ON prefixPath
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=IDENTIFIER PRIVILEGES privileges ON prefixPath
+    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
     ;
 
 // Grant User Role
 grantRoleToUser
-    : GRANT roleName=IDENTIFIER TO userName=IDENTIFIER
+    : GRANT roleName=identifier TO userName=identifier
     ;
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=IDENTIFIER PRIVILEGES privileges ON prefixPath
+    : REVOKE USER userName=identifier PRIVILEGES privileges ON prefixPath
     ;
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=IDENTIFIER PRIVILEGES privileges ON prefixPath
+    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
     ;
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE roleName=IDENTIFIER FROM userName=IDENTIFIER
+    : REVOKE roleName=identifier FROM userName=identifier
     ;
 
 // Drop User
 dropUser
-    : DROP USER userName=IDENTIFIER
+    : DROP USER userName=identifier
     ;
 
 // Drop Role
 dropRole
-    : DROP ROLE roleName=IDENTIFIER
+    : DROP ROLE roleName=identifier
     ;
 
 // List Users
@@ -546,7 +547,7 @@ listPrivilegesUser
 
 // List Privileges of Roles On Specific Path
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=IDENTIFIER ON prefixPath
+    : LIST PRIVILEGES ROLE roleName=identifier ON prefixPath
     ;
 
 // List Privileges of Users
@@ -556,7 +557,7 @@ listUserPrivileges
 
 // List Privileges of Roles
 listRolePrivileges
-    : LIST ROLE PRIVILEGES roleName=IDENTIFIER
+    : LIST ROLE PRIVILEGES roleName=identifier
     ;
 
 // List Roles of Users
@@ -566,7 +567,7 @@ listAllRoleOfUser
 
 // List Users of Role
 listAllUserOfRole
-    : LIST ALL USER OF ROLE roleName=IDENTIFIER
+    : LIST ALL USER OF ROLE roleName=identifier
     ;
 
 privileges
@@ -580,7 +581,7 @@ privilegeValue
 
 usernameWithRoot
     : ROOT
-    | IDENTIFIER
+    | identifier
     ;
 
 
@@ -696,7 +697,7 @@ unloadFile
 
 // pipesink statement
 createPipeSink
-    : CREATE PIPESINK pipeSinkName=IDENTIFIER AS pipeSinkType=IDENTIFIER (LR_BRACKET syncAttributeClauses RR_BRACKET)?
+    : CREATE PIPESINK pipeSinkName=identifier AS pipeSinkType=identifier (LR_BRACKET syncAttributeClauses RR_BRACKET)?
     ;
 
 showPipeSinkType
@@ -704,32 +705,32 @@ showPipeSinkType
     ;
 
 showPipeSink
-    : SHOW ((PIPESINK (pipeSinkName=IDENTIFIER)?) | PIPESINKS)
+    : SHOW ((PIPESINK (pipeSinkName=identifier)?) | PIPESINKS)
     ;
 
 dropPipeSink
-    : DROP PIPESINK pipeSinkName=IDENTIFIER
+    : DROP PIPESINK pipeSinkName=identifier
     ;
 
 // pipe statement
 createPipe
-    : CREATE PIPE pipeName=IDENTIFIER TO pipeSinkName=IDENTIFIER (FROM LR_BRACKET selectStatement RR_BRACKET)? (WITH syncAttributeClauses)?
+    : CREATE PIPE pipeName=identifier TO pipeSinkName=identifier (FROM LR_BRACKET selectStatement RR_BRACKET)? (WITH syncAttributeClauses)?
     ;
 
 showPipe
-    : SHOW ((PIPE (pipeName=IDENTIFIER)?) | PIPES)
+    : SHOW ((PIPE (pipeName=identifier)?) | PIPES)
     ;
 
 stopPipe
-    : STOP PIPE pipeName=IDENTIFIER
+    : STOP PIPE pipeName=identifier
     ;
 
 startPipe
-    : START PIPE pipeName=IDENTIFIER
+    : START PIPE pipeName=identifier
     ;
 
 dropPipe
-    : DROP PIPE pipeName=IDENTIFIER
+    : DROP PIPE pipeName=identifier
     ;
 
 // attribute clauses
@@ -775,12 +776,12 @@ suffixPath
 
 nodeName
     : wildcard
-    | wildcard? IDENTIFIER wildcard?
-    | IDENTIFIER
+    | wildcard? identifier wildcard?
+    | identifier
     ;
 
 nodeNameWithoutWildcard
-    : IDENTIFIER
+    : identifier
     ;
 
 wildcard
@@ -843,7 +844,7 @@ expression
     ;
 
 functionName
-    : IDENTIFIER
+    : identifier
     | COUNT
     ;
 
@@ -910,12 +911,12 @@ attributePair
     ;
 
 attributeKey
-    : IDENTIFIER
+    : identifier
     | constant
     ;
 
 attributeValue
-    : IDENTIFIER
+    : identifier
     | constant
     ;
 

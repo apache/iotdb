@@ -841,4 +841,15 @@ public class IoTDBSyntaxConventionIdentifierIT {
       fail();
     }
   }
+  @Test
+  public void testKeyWord() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.select datatype=float");
+    }catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 }
+

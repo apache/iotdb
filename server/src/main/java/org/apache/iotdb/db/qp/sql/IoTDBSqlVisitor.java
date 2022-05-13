@@ -2449,7 +2449,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.constant() != null) {
       alias = parseStringLiteral(ctx.constant().getText());
     } else {
-      alias = parseIdentifier(ctx.IDENTIFIER().getText());
+      alias = parseIdentifier(ctx.identifier().getText());
     }
     return alias;
   }
