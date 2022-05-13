@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -57,6 +58,7 @@ public class IoTDB implements IoTDBMBean {
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
   public static ServiceProvider serviceProvider;
@@ -104,6 +106,13 @@ public class IoTDB implements IoTDBMBean {
           "{}: failed to start because some checks failed. ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return;
     }
+
+    // set recover config, avoid creating deleted time series when recovering wal
+    boolean prevIsAutoCreateSchemaEnabled = config.isAutoCreateSchemaEnabled();
+    config.setAutoCreateSchemaEnabled(false);
+    boolean prevIsEnablePartialInsert = config.isEnablePartialInsert();
+    config.setEnablePartialInsert(true);
+
     try {
       setUp();
     } catch (StartupException | QueryProcessException e) {
@@ -112,6 +121,11 @@ public class IoTDB implements IoTDBMBean {
       logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
+
+    // reset config
+    config.setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
+    config.setEnablePartialInsert(prevIsEnablePartialInsert);
+
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
