@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 
 import com.google.gson.Gson;
-import org.fusesource.mqtt.client.QoS;
 
 import java.util.Map;
 
@@ -32,10 +31,6 @@ public class ForwardEvent implements Event {
   private final long timestamp;
   private final Object value;
   private final PartialPath fullPath;
-
-  private QoS qos;
-  private boolean retain;
-
   private Map<String, String> labels;
 
   public ForwardEvent(String topic, long timestamp, Object value, PartialPath fullPath) {
@@ -55,25 +50,6 @@ public class ForwardEvent implements Event {
     this.labels = labels;
   }
 
-  public ForwardEvent(
-      String topic, long timestamp, Object value, PartialPath fullPath, QoS qos, boolean retain) {
-    this(topic, timestamp, value, fullPath);
-    this.qos = qos;
-    this.retain = retain;
-  }
-
-  public ForwardEvent(
-      String topic,
-      long timestamp,
-      Object value,
-      PartialPath fullPath,
-      QoS qos,
-      boolean retain,
-      Map<String, String> labels) {
-    this(topic, timestamp, value, fullPath, qos, retain);
-    this.labels = labels;
-  }
-
   public String toJsonString() {
     Gson gson = new Gson();
     return gson.toJson(this);
@@ -81,14 +57,6 @@ public class ForwardEvent implements Event {
 
   public String getTopic() {
     return topic;
-  }
-
-  public QoS getQos() {
-    return qos;
-  }
-
-  public boolean isRetain() {
-    return retain;
   }
 
   public long getTimestamp() {

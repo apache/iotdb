@@ -111,7 +111,6 @@ public class HTTPForwardHandler implements Handler<ForwardConfiguration, Forward
 
   @Override
   public void onEvent(List<ForwardEvent> events) throws SinkException {
-    // TODO need merge
     CloseableHttpResponse response = null;
     try {
       StringBuilder sb = new StringBuilder();

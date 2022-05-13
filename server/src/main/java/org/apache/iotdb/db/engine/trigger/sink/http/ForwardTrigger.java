@@ -27,8 +27,6 @@ import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 
-import org.fusesource.mqtt.client.QoS;
-
 import java.util.HashMap;
 
 public class ForwardTrigger implements Trigger {
@@ -72,6 +70,7 @@ public class ForwardTrigger implements Trigger {
   private void createHTTPConfiguration(
       ForwardConfiguration configuration, TriggerAttributes attributes) throws SinkException {
     String endpoint = attributes.getString("endpoint");
+
     ForwardConfiguration.setHTTPConfig(configuration, endpoint);
     configuration.checkHTTPConfig();
   }
@@ -84,8 +83,19 @@ public class ForwardTrigger implements Trigger {
     String password = attributes.getString("password");
     long reconnectDelay = attributes.getLongOrDefault("reconnectDelay", 10L);
     long connectAttemptsMax = attributes.getLongOrDefault("connectAttemptsMax", 3L);
+    String qos = attributes.getStringOrDefault("qos", "exactly_once");
+    boolean retain = attributes.getBooleanOrDefault("retain", false);
+
     ForwardConfiguration.setMQTTConfig(
-        configuration, host, port, username, password, reconnectDelay, connectAttemptsMax);
+        configuration,
+        host,
+        port,
+        username,
+        password,
+        reconnectDelay,
+        connectAttemptsMax,
+        qos,
+        retain);
     configuration.checkMQTTConfig();
   }
 
@@ -115,8 +125,7 @@ public class ForwardTrigger implements Trigger {
         event = new ForwardEvent("topic-http", timestamp, value, path, labels);
         break;
       case "mqtt":
-        event =
-            new ForwardEvent("topic-mqtt", timestamp, value, path, QoS.EXACTLY_ONCE, false, labels);
+        event = new ForwardEvent("topic-mqtt", timestamp, value, path, labels);
         break;
       default:
         throw new TriggerExecutionException("Forward protocol doesn't support.");
@@ -128,7 +137,6 @@ public class ForwardTrigger implements Trigger {
 
   @Override
   public double[] fire(long[] timestamps, double[] values, PartialPath path) throws Exception {
-    // TODO need merge
     for (int i = 0; i < timestamps.length; i++) {
       labels.put("value", String.valueOf(values[i]));
       labels.put("severity", "warning");
@@ -139,9 +147,7 @@ public class ForwardTrigger implements Trigger {
           event = new ForwardEvent("topic-http", timestamps[i], values[i], path, labels);
           break;
         case "mqtt":
-          event =
-              new ForwardEvent(
-                  "topic-mqtt", timestamps[i], values[i], path, QoS.EXACTLY_ONCE, false, labels);
+          event = new ForwardEvent("topic-mqtt", timestamps[i], values[i], path, labels);
           break;
         default:
           throw new TriggerExecutionException("Forward protocol doesn't support.");

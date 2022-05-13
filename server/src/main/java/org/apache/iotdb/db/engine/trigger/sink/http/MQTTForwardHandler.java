@@ -58,7 +58,10 @@ public class MQTTForwardHandler implements Handler<ForwardConfiguration, Forward
   public void onEvent(ForwardEvent event) throws SinkException {
     try {
       connection.publish(
-          event.getTopic(), event.toJsonString().getBytes(), event.getQos(), event.isRetain());
+          event.getTopic(),
+          event.toJsonString().getBytes(),
+          configuration.getQos(),
+          configuration.isRetain());
     } catch (Exception e) {
       if (configuration.isStopIfException()) {
         throw new SinkException("MQTT Forward Exception", e);
@@ -69,17 +72,22 @@ public class MQTTForwardHandler implements Handler<ForwardConfiguration, Forward
 
   @Override
   public void onEvent(List<ForwardEvent> events) throws SinkException {
-    // TODO need merge
+    StringBuilder sb = new StringBuilder();
     for (ForwardEvent event : events) {
-      try {
-        connection.publish(
-            event.getTopic(), event.toJsonString().getBytes(), event.getQos(), event.isRetain());
-      } catch (Exception e) {
-        if (configuration.isStopIfException()) {
-          throw new SinkException("MQTT Forward Exception", e);
-        }
-        LOGGER.error("MQTT Forward Exception", e);
+      sb.append(event.toJsonString()).append(", ");
+    }
+    sb.replace(sb.lastIndexOf(", "), sb.length() - 1, "");
+    try {
+      connection.publish(
+          "mqtt-topic-batch",
+          sb.toString().getBytes(),
+          configuration.getQos(),
+          configuration.isRetain());
+    } catch (Exception e) {
+      if (configuration.isStopIfException()) {
+        throw new SinkException("MQTT Forward Exception", e);
       }
+      LOGGER.error("MQTT Forward Exception", e);
     }
   }
 }
