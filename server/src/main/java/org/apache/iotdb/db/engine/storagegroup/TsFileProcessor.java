@@ -1255,6 +1255,9 @@ public class TsFileProcessor {
           // release resource
           try {
             syncReleaseFlushedMemTable(memTableToFlush);
+            // make sure no query will search this file
+            tsFileResource.setTimeIndex(config.getTimeIndexLevel().getTimeIndex());
+            // this callback method will register this empty tsfile into TsFileManager
             for (CloseFileListener closeFileListener : closeFileListeners) {
               closeFileListener.onClosed(this);
             }
