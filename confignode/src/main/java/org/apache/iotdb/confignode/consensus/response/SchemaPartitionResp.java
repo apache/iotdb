@@ -47,6 +47,10 @@ public class SchemaPartitionResp implements DataSet {
     this.schemaPartition = schemaPartition;
   }
 
+  public SchemaPartition getSchemaPartition() {
+    return schemaPartition;
+  }
+
   public void convertToRpcSchemaPartitionResp(TSchemaPartitionResp resp) {
     resp.setStatus(status);
 
