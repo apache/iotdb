@@ -26,19 +26,23 @@
         <format>zip</format>
     </formats>
     <baseDirectory>apache-iotdb-${project.version}-library-udf-bin</baseDirectory>
+    <dependencySets>
+        <dependencySet>
+            <includes>
+                <include>org.apache.iotdb:library-udf:jar:${project.version}</include>
+            </includes>
+            <outputDirectory>ext/udf</outputDirectory>
+            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+            <unpack>false</unpack>
+        </dependencySet>
+    </dependencySets>
     <fileSets>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-library/src/assembly/resources/sbin</directory>
-            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/library-udf/src/assembly/tools</directory>
+            <outputDirectory>tools</outputDirectory>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
-    <files>
-        <file>
-            <source>${maven.multiModuleProjectDirectory}/library-udf/target/library-udf-${project.version}-jar-with-dependencies.jar</source>
-            <outputDirectory>ext/udf</outputDirectory>
-        </file>
-    </files>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>
     </componentDescriptors>

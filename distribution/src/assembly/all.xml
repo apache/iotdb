@@ -45,6 +45,14 @@
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
             <unpack>false</unpack>
         </dependencySet>
+        <dependencySet>
+            <includes>
+                <include>org.apache.iotdb:library-udf:jar:${project.version}</include>
+            </includes>
+            <outputDirectory>ext/udf</outputDirectory>
+            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+            <unpack>false</unpack>
+        </dependencySet>
     </dependencySets>
     <fileSets>
         <!--        <fileSet>-->
@@ -91,6 +99,11 @@
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/docs</directory>
             <outputDirectory>docs</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/library-udf/src/assembly/tools</directory>
+            <outputDirectory>tools</outputDirectory>
+            <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
     <files>
