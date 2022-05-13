@@ -22,11 +22,11 @@ package org.apache.iotdb.db.mpp.plan.execution.memory;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 
-public class StatementMemoryTableContext {
+public class StatementMemorySourceContext {
   private final MPPQueryContext queryContext;
   private final Analysis analysis;
 
-  public StatementMemoryTableContext(MPPQueryContext queryContext, Analysis analysis) {
+  public StatementMemorySourceContext(MPPQueryContext queryContext, Analysis analysis) {
     this.queryContext = queryContext;
     this.analysis = analysis;
   }

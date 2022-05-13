@@ -20,17 +20,22 @@
 package org.apache.iotdb.db.mpp.plan.execution.memory;
 
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
-import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import java.util.ArrayList;
+public class StatementMemorySource {
+  private final TsBlock tsBlock;
+  private final DatasetHeader datasetHeader;
 
-public class StatementMemoryTableVisitor
-    extends StatementVisitor<StatementMemoryTable, StatementMemoryTableContext> {
+  public StatementMemorySource(TsBlock tsBlock, DatasetHeader datasetHeader) {
+    this.tsBlock = tsBlock;
+    this.datasetHeader = datasetHeader;
+  }
 
-  @Override
-  public StatementMemoryTable visitNode(StatementNode node, StatementMemoryTableContext context) {
-    return new StatementMemoryTable(new TsBlock(0), new DatasetHeader(new ArrayList<>(), false));
+  public TsBlock getTsBlock() {
+    return tsBlock;
+  }
+
+  public DatasetHeader getDatasetHeader() {
+    return datasetHeader;
   }
 }

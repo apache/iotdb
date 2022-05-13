@@ -35,9 +35,9 @@ import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ISchemaFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.execution.memory.MemorySourceHandle;
-import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemoryTable;
-import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemoryTableContext;
-import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemoryTableVisitor;
+import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySource;
+import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceContext;
+import org.apache.iotdb.db.mpp.plan.execution.memory.StatementMemorySourceVisitor;
 import org.apache.iotdb.db.mpp.plan.optimization.PlanOptimizer;
 import org.apache.iotdb.db.mpp.plan.planner.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
@@ -146,7 +146,7 @@ public class QueryExecution implements IQueryExecution {
     if (skipExecute()) {
       logger.info(
           "{} execution of query will be skipped. Transit to RUNNING immediately.", getLogHeader());
-      constructResultForMemoryTable();
+      constructResultForMemorySource();
       stateMachine.transitionToRunning();
       return;
     }
@@ -163,12 +163,12 @@ public class QueryExecution implements IQueryExecution {
         || (context.getQueryType() == QueryType.READ && !analysis.hasDataSource());
   }
 
-  private void constructResultForMemoryTable() {
-    StatementMemoryTable memoryTable =
-        new StatementMemoryTableVisitor()
-            .process(analysis.getStatement(), new StatementMemoryTableContext(context, analysis));
-    this.resultHandle = new MemorySourceHandle(memoryTable.getTsBlock());
-    this.analysis.setRespDatasetHeader(memoryTable.getDatasetHeader());
+  private void constructResultForMemorySource() {
+    StatementMemorySource memorySource =
+        new StatementMemorySourceVisitor()
+            .process(analysis.getStatement(), new StatementMemorySourceContext(context, analysis));
+    this.resultHandle = new MemorySourceHandle(memorySource.getTsBlock());
+    this.analysis.setRespDatasetHeader(memorySource.getDatasetHeader());
   }
 
   // Analyze the statement in QueryContext. Generate the analysis this query need
