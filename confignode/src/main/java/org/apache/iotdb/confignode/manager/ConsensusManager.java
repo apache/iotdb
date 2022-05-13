@@ -49,11 +49,12 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-
+  private ConfigManager configManager;
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  public ConsensusManager() throws IOException {
+  public ConsensusManager(ConfigManager configManager) throws IOException {
+    this.configManager = configManager;
     setConsensusLayer();
   }
 
@@ -72,7 +73,7 @@ public class ConsensusManager {
                 conf.getConfigNodeConsensusProtocolClass(),
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()),
                 new File(conf.getConsensusDir()),
-                gid -> new PartitionRegionStateMachine())
+                gid -> new PartitionRegionStateMachine(configManager))
             .orElseThrow(
                 () ->
                     new IllegalArgumentException(

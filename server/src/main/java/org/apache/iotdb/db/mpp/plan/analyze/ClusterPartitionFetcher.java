@@ -221,6 +221,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
+  @Override
+  public void invalidAllCache() {
+    logger.debug("Invalidate partition cache");
+    partitionCache.storageGroupCache.clear();
+    partitionCache.invalidAllDataPartitionCache();
+    partitionCache.invalidAllSchemaPartitionCache();
+    logger.debug("PartitionCache is invalid:{}", partitionCache);
+  }
+
   /** get deviceToStorageGroup map */
   private Map<String, String> getDeviceToStorageGroup(
       List<String> devicePaths, boolean isAutoCreate) {
@@ -569,6 +578,30 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       DataPartitionCacheKey dataPartitionCacheKey =
           new DataPartitionCacheKey(seriesPartitionSlot, timePartitionSlot);
       dataPartitionCache.invalidate(dataPartitionCacheKey);
+    }
+
+    /** invalid schemaPartitionCache by device */
+    public void invalidAllSchemaPartitionCache() {
+      schemaPartitionCache.invalidateAll();
+    }
+
+    /** invalid dataPartitionCache by seriesPartitionSlot, timePartitionSlot */
+    public void invalidAllDataPartitionCache() {
+      dataPartitionCache.invalidateAll();
+    }
+
+    @Override
+    public String toString() {
+      return "PartitionCache{"
+          + "cacheSize="
+          + cacheSize
+          + ", storageGroupCache="
+          + storageGroupCache
+          + ", schemaPartitionCache="
+          + schemaPartitionCache
+          + ", dataPartitionCache="
+          + dataPartitionCache
+          + '}';
     }
   }
 

@@ -41,10 +41,12 @@ public class ProcedureWAL {
 
   private static final String TMP_SUFFIX = ".tmp";
   private static final int PROCEDURE_WAL_BUFFER_SIZE = 8 * 1024 * 1024;
+  private IProcedureFactory procedureFactory;
   private Path walFilePath;
 
-  public ProcedureWAL(Path walFilePath) {
+  public ProcedureWAL(Path walFilePath, IProcedureFactory procedureFactory) {
     this.walFilePath = walFilePath;
+    this.procedureFactory = procedureFactory;
   }
 
   /**
@@ -80,12 +82,7 @@ public class ProcedureWAL {
       ByteBuffer byteBuffer = ByteBuffer.allocate(PROCEDURE_WAL_BUFFER_SIZE);
       if (channel.read(byteBuffer) > 0) {
         byteBuffer.flip();
-        procedure = Procedure.newInstance(byteBuffer);
-        if (procedure != null) {
-          procedure.deserialize(byteBuffer);
-        } else {
-          throw new IOException("WAL File is corrupted.");
-        }
+        procedure = procedureFactory.create(byteBuffer);
         byteBuffer.clear();
       }
       procedureList.add(procedure);

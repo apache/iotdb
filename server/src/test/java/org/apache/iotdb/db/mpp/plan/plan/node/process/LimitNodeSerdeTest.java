@@ -32,7 +32,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
-import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -48,7 +47,6 @@ public class LimitNodeSerdeTest {
         new SeriesScanNode(
             new PlanNodeId("TestSeriesScanNode"),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_DESC,
             new GroupByFilter(1, 2, 3, 4),
             null,

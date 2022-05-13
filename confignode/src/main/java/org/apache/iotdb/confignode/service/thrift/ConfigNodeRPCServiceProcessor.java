@@ -59,6 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
@@ -79,6 +80,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -166,9 +168,15 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
-    // TODO: delete StorageGroup
-    return null;
+  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq tDeleteReq) throws TException {
+    String prefixPath = tDeleteReq.getPrefixPath();
+    return configManager.deleteStorageGroups(Collections.singletonList(prefixPath));
+  }
+
+  @Override
+  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq tDeleteReq) throws TException {
+    List<String> prefixList = tDeleteReq.getPrefixPathList();
+    return configManager.deleteStorageGroups(prefixList);
   }
 
   @Override

@@ -36,7 +36,6 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.commons.compress.utils.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -62,7 +61,6 @@ public class GroupByLevelNodeSerdeTest {
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
-            Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC,
             null,
             groupByTimeParameter,
@@ -78,7 +76,6 @@ public class GroupByLevelNodeSerdeTest {
                     AggregationStep.FINAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d2.s1"))))),
-            Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC,
             null,
             groupByTimeParameter,
