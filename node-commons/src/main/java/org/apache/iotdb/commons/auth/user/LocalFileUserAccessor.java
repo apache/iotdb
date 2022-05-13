@@ -98,9 +98,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
         return null;
       }
     }
-    FileInputStream inputStream = new FileInputStream(userProfile);
-    try (DataInputStream dataInputStream =
-        new DataInputStream(new BufferedInputStream(inputStream))) {
+    try (FileInputStream inputStream = new FileInputStream(userProfile);
+        DataInputStream dataInputStream =
+            new DataInputStream(new BufferedInputStream(inputStream))) {
       User user = new User();
       user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));

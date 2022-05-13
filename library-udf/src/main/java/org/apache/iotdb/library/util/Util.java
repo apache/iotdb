@@ -200,7 +200,7 @@ public class Util {
     int n = origin.length;
     double[] var = new double[n - 1];
     for (int i = 0; i < n - 1; i++) {
-      var[i] = origin[i + 1] - origin[i];
+      var[i] = (double) (origin[i + 1] - origin[i]);
     }
     return var;
   }
@@ -291,13 +291,13 @@ public class Util {
       unit = 1000;
       s = s.substring(0, s.length() - 1);
     } else if (s.endsWith("m")) {
-      unit = 60 * 1000;
+      unit = 60 * 1000L;
       s = s.substring(0, s.length() - 1);
     } else if (s.endsWith("h")) {
-      unit = 60 * 60 * 1000;
+      unit = 60 * 60 * 1000L;
       s = s.substring(0, s.length() - 1);
     } else if (s.endsWith("d")) {
-      unit = 24 * 60 * 60 * 1000;
+      unit = 24 * 60 * 60 * 1000L;
       s = s.substring(0, s.length() - 1);
     }
     double v = Double.parseDouble(s);

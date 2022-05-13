@@ -193,16 +193,11 @@ public class ConfigNodeRPCServiceProcessorTest {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
 
-    // failed because there are not enough DataNodes
-    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
-    status = processor.setStorageGroup(setReq0);
-    Assert.assertEquals(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(), status.getCode());
-    Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
-
     // register DataNodes
     registerDataNodes();
 
     // set StorageGroup0 by default values
+    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
     status = processor.setStorageGroup(setReq0);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -576,11 +571,11 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     Map<String, List<String>> permissionInfo;
     List<String> privilege = new ArrayList<>();
-    privilege.add("root : CREATE_USER");
-    privilege.add("root : CREATE_USER");
+    privilege.add("root.** : CREATE_USER");
+    privilege.add("root.** : CREATE_USER");
 
     List<String> paths = new ArrayList<>();
-    paths.add("root.ln");
+    paths.add("root.ln.**");
 
     cleanUserAndRole();
 
@@ -692,7 +687,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             privilegeList,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -711,7 +706,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             privilegeList,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -737,7 +732,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             revokePrivilege,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -750,7 +745,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             revokePrivilege,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -763,7 +758,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "root.ln");
+            "root.ln.**");
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -795,7 +790,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "root.ln");
+            "root.ln.**");
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

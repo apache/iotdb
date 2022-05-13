@@ -26,12 +26,6 @@ import org.apache.iotdb.library.util.LongCircularQueue;
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Scanner;
-
 /** util for UDTFResample. */
 public class Resampler {
 
@@ -83,17 +77,6 @@ public class Resampler {
     }
     timeWindow.add(time);
     valueWindow.add(value);
-  }
-
-  /** insert points from a file */
-  public void insert(String filename) throws FileNotFoundException, ParseException {
-    Scanner sc = new Scanner(new File(filename));
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    sc.useDelimiter("\\s*(,|\\r|\\n)\\s*"); // delimited by ',' or '\n', may contains ' ' nearby.
-    sc.nextLine();
-    while (sc.hasNext()) {
-      insert(format.parse(sc.next()).getTime(), sc.nextDouble());
-    }
   }
 
   /** process all data in buffer */

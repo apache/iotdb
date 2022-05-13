@@ -95,7 +95,7 @@ public class PartitionInfoTest {
         generateTRegionReplicaSet(
             testFlag.RegionReplica.getFlag(),
             generateTConsensusGroupId(testFlag.RegionReplica.getFlag()));
-    createRegionsReq.addRegion(tRegionReplicaSet);
+    createRegionsReq.addRegion("root.test", tRegionReplicaSet);
     partitionInfo.createRegions(createRegionsReq);
 
     CreateSchemaPartitionReq createSchemaPartitionReq =
