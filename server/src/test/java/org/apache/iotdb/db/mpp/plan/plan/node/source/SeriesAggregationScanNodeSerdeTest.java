@@ -64,7 +64,6 @@ public class SeriesAggregationScanNodeSerdeTest {
             new PlanNodeId("TestSeriesAggregateScanNode"),
             new MeasurementPath("root.sg.d1.s1", TSDataType.BOOLEAN),
             aggregationDescriptorList,
-            Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC,
             new In<>(Sets.newHashSet("s1", "s2"), VALUE_FILTER, true),
             groupByTimeParameter,

@@ -26,6 +26,7 @@ import org.apache.iotdb.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.procedure.util.ProcedureTestUtil;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class SleepProcedure extends Procedure<TestProcEnv> {
   @Override
@@ -42,5 +43,11 @@ public class SleepProcedure extends Procedure<TestProcEnv> {
   @Override
   protected boolean abort(TestProcEnv testProcEnv) {
     return false;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    byteBuffer.putInt(TestProcedureFactory.TestProcedureType.SLEEP_PROCEDURE.ordinal());
+    super.serialize(byteBuffer);
   }
 }

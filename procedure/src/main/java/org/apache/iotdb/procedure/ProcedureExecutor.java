@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.procedure;
 
-import org.apache.iotdb.procedure.conf.ProcedureNodeConfigDescriptor;
 import org.apache.iotdb.procedure.exception.ProcedureException;
 import org.apache.iotdb.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.procedure.exception.ProcedureYieldException;
@@ -50,9 +49,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class ProcedureExecutor<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureExecutor.class);
-
-  static final int EVICT_TTL =
-      ProcedureNodeConfigDescriptor.getInstance().getConf().getCompletedEvictTTL();
 
   private final ConcurrentHashMap<Long, ReentrantLock> idLockMap = new ConcurrentHashMap<>();
 
@@ -283,7 +279,11 @@ public class ProcedureExecutor<Env> {
     for (WorkerThread workerThread : workerThreads) {
       workerThread.start();
     }
-    addInternalProcedure(new CompletedProcedureCleaner(store, completed));
+  }
+
+  public void startCompletedCleaner(long cleanTimeInterval, long cleanEvictTTL) {
+    addInternalProcedure(
+        new CompletedProcedureCleaner(store, completed, cleanTimeInterval, cleanEvictTTL));
   }
 
   private void addInternalProcedure(InternalProcedure interalProcedure) {

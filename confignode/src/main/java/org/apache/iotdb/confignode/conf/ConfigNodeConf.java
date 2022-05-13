@@ -99,17 +99,9 @@ public class ConfigNodeConf {
   private String systemDir =
       ConfigNodeConstant.DATA_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
-  /** Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"}; */
-  private String[] dataDirs = {
-    ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.DATA_DIR
-  };
-
   /** Consensus directory, storage consensus protocol logs */
   private String consensusDir =
       ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.CONSENSUS_FOLDER;
-
-  /** Default TTL for storage groups that are not set TTL by statements, in ms. */
-  private long defaultTTL = Long.MAX_VALUE;
 
   /** Time partition interval in seconds */
   private long timePartitionInterval = 604800;
@@ -120,13 +112,23 @@ public class ConfigNodeConf {
   /** Default number of DataRegion replicas */
   private int dataReplicationFactor = 3;
 
-  /** The initial number of SchemaRegions of each StorageGroup */
-  private int initialSchemaRegionCount = 1;
+  /** The maximum number of SchemaRegions of each StorageGroup */
+  private int maximumSchemaRegionCount = 4;
 
-  /** The initial number of DataRegions of each StorageGroup */
-  private int initialDataRegionCount = 1;
+  /** The maximum number of DataRegions of each StorageGroup */
+  private int maximumDataRegionCount = 20;
 
-  public ConfigNodeConf() {
+  /** Procedure Evict ttl */
+  private int procedureCompletedEvictTTL = 800;
+
+  /** Procedure completed clean interval */
+  private int procedureCompletedCleanInterval = 30;
+
+  /** Procedure core worker threads size */
+  private int procedureCoreWorkerThreadsSize =
+      Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
+
+  ConfigNodeConf() {
     // empty constructor
   }
 
@@ -136,9 +138,6 @@ public class ConfigNodeConf {
 
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
-    for (int i = 0; i < dataDirs.length; i++) {
-      dataDirs[i] = addHomeDir(dataDirs[i]);
-    }
     consensusDir = addHomeDir(consensusDir);
   }
 
@@ -327,22 +326,6 @@ public class ConfigNodeConf {
     this.systemDir = systemDir;
   }
 
-  public String[] getDataDirs() {
-    return dataDirs;
-  }
-
-  public void setDataDirs(String[] dataDirs) {
-    this.dataDirs = dataDirs;
-  }
-
-  public long getDefaultTTL() {
-    return defaultTTL;
-  }
-
-  public void setDefaultTTL(long defaultTTL) {
-    this.defaultTTL = defaultTTL;
-  }
-
   public int getSchemaReplicationFactor() {
     return schemaReplicationFactor;
   }
@@ -359,19 +342,43 @@ public class ConfigNodeConf {
     this.dataReplicationFactor = dataReplicationFactor;
   }
 
-  public int getInitialSchemaRegionCount() {
-    return initialSchemaRegionCount;
+  public int getMaximumSchemaRegionCount() {
+    return maximumSchemaRegionCount;
   }
 
-  public void setInitialSchemaRegionCount(int initialSchemaRegionCount) {
-    this.initialSchemaRegionCount = initialSchemaRegionCount;
+  public void setMaximumSchemaRegionCount(int maximumSchemaRegionCount) {
+    this.maximumSchemaRegionCount = maximumSchemaRegionCount;
   }
 
-  public int getInitialDataRegionCount() {
-    return initialDataRegionCount;
+  public int getMaximumDataRegionCount() {
+    return maximumDataRegionCount;
   }
 
-  public void setInitialDataRegionCount(int initialDataRegionCount) {
-    this.initialDataRegionCount = initialDataRegionCount;
+  public void setMaximumDataRegionCount(int maximumDataRegionCount) {
+    this.maximumDataRegionCount = maximumDataRegionCount;
+  }
+
+  public int getProcedureCompletedEvictTTL() {
+    return procedureCompletedEvictTTL;
+  }
+
+  public void setProcedureCompletedEvictTTL(int procedureCompletedEvictTTL) {
+    this.procedureCompletedEvictTTL = procedureCompletedEvictTTL;
+  }
+
+  public int getProcedureCompletedCleanInterval() {
+    return procedureCompletedCleanInterval;
+  }
+
+  public void setProcedureCompletedCleanInterval(int procedureCompletedCleanInterval) {
+    this.procedureCompletedCleanInterval = procedureCompletedCleanInterval;
+  }
+
+  public int getProcedureCoreWorkerThreadsSize() {
+    return procedureCoreWorkerThreadsSize;
+  }
+
+  public void setProcedureCoreWorkerThreadsSize(int procedureCoreWorkerThreadsSize) {
+    this.procedureCoreWorkerThreadsSize = procedureCoreWorkerThreadsSize;
   }
 }

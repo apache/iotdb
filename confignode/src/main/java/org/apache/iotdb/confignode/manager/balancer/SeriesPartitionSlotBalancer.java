@@ -16,10 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.manager.balancer;
 
-package org.apache.iotdb.db.metadata.tree;
-
-public interface ITreeNode {
-
-  String getName();
-}
+public class SeriesPartitionSlotBalancer {}

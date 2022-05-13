@@ -62,4 +62,11 @@ public interface IUserAccessor extends SnapshotProcessor {
 
   /** Re-initialize this object. */
   void reset();
+
+  /**
+   * get UserDirPath
+   *
+   * @return userDirPath
+   */
+  public String getDirPath();
 }

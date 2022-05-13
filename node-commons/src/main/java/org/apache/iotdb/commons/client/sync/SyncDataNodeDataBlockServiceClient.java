@@ -40,13 +40,13 @@ import java.net.SocketException;
 public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client
     implements SyncThriftClient, AutoCloseable {
 
-  private final TEndPoint endpoint;
+  private final TEndPoint endPoint;
   private final ClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> clientManager;
 
   public SyncDataNodeDataBlockServiceClient(
       TProtocolFactory protocolFactory,
       int connectionTimeout,
-      TEndPoint endpoint,
+      TEndPoint endPoint,
       ClientManager<TEndPoint, SyncDataNodeDataBlockServiceClient> clientManager)
       throws TTransportException {
     super(
@@ -54,17 +54,17 @@ public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
                     TConfigurationConst.defaultTConfiguration,
-                    endpoint.getIp(),
-                    endpoint.getPort(),
+                    endPoint.getIp(),
+                    endPoint.getPort(),
                     connectionTimeout))));
-    this.endpoint = endpoint;
+    this.endPoint = endPoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
   }
 
   public void close() {
     if (clientManager != null) {
-      clientManager.returnClient(endpoint, this);
+      clientManager.returnClient(endPoint, this);
     }
   }
 
@@ -77,13 +77,18 @@ public class SyncDataNodeDataBlockServiceClient extends DataBlockService.Client
     getInputProtocol().getTransport().close();
   }
 
+  @Override
+  public void invalidateAll() {
+    clientManager.clear(endPoint);
+  }
+
   public int getTimeout() throws SocketException {
     return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
   @Override
   public String toString() {
-    return String.format("SyncDataNodeDataBlockServiceClient{%s}", endpoint);
+    return String.format("SyncDataNodeDataBlockServiceClient{%s}", endPoint);
   }
 
   public static class Factory

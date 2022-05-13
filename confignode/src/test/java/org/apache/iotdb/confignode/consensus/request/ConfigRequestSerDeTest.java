@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -47,8 +48,11 @@ import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationF
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
+import org.apache.iotdb.confignode.procedure.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.procedure.Procedure;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -118,7 +122,13 @@ public class ConfigRequestSerDeTest {
 
   @Test
   public void DeleteStorageGroupReqTest() throws IOException {
-    DeleteStorageGroupReq req0 = new DeleteStorageGroupReq("root.sg0");
+    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+    storageGroupSchema.setName("root.sg");
+    storageGroupSchema.addToSchemaRegionGroupIds(
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
+    storageGroupSchema.addToSchemaRegionGroupIds(
+        new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2));
+    DeleteStorageGroupReq req0 = new DeleteStorageGroupReq(storageGroupSchema);
     req0.serialize(buffer);
     buffer.flip();
     DeleteStorageGroupReq req1 = (DeleteStorageGroupReq) ConfigRequest.Factory.create(buffer);
@@ -200,12 +210,12 @@ public class ConfigRequestSerDeTest {
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegion(dataRegionSet);
+    req0.addRegion("root.sg0", dataRegionSet);
 
     TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
     schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegion(schemaRegionSet);
+    req0.addRegion("root.sg1", schemaRegionSet);
 
     req0.serialize(buffer);
     buffer.flip();
@@ -559,6 +569,57 @@ public class ConfigRequestSerDeTest {
     req0.serialize(buffer);
     buffer.flip();
     ApplyConfigNodeReq req1 = (ApplyConfigNodeReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void updateProcedureTest() throws IOException {
+    DeleteStorageGroupProcedure procedure = new DeleteStorageGroupProcedure();
+    TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+    storageGroupSchema.setName("root.sg");
+    storageGroupSchema.setSchemaRegionGroupIds(
+        Collections.singletonList(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0)));
+    storageGroupSchema.setDataRegionGroupIds(
+        Collections.singletonList(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1)));
+    procedure.setDeleteSgSchema(storageGroupSchema);
+    UpdateProcedureReq updateProcedureReq = new UpdateProcedureReq();
+    updateProcedureReq.setProcedure(procedure);
+    updateProcedureReq.serialize(buffer);
+    buffer.flip();
+    UpdateProcedureReq reqNew = (UpdateProcedureReq) ConfigRequest.Factory.create(buffer);
+    Procedure proc = reqNew.getProcedure();
+    Assert.assertEquals(proc, procedure);
+  }
+
+  @Test
+  public void UpdateProcedureReqTest() throws IOException {
+    UpdateProcedureReq req0 = new UpdateProcedureReq();
+    DeleteStorageGroupProcedure deleteStorageGroupProcedure = new DeleteStorageGroupProcedure();
+    TStorageGroupSchema tStorageGroupSchema = new TStorageGroupSchema();
+    tStorageGroupSchema.setName("root.sg");
+    List<TConsensusGroupId> dataRegionIds = new ArrayList<>();
+    List<TConsensusGroupId> schemaRegionIds = new ArrayList<>();
+    TConsensusGroupId dataRegionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 1);
+    dataRegionIds.add(dataRegionId);
+    TConsensusGroupId schemaRegionId = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 2);
+    schemaRegionIds.add(schemaRegionId);
+    tStorageGroupSchema.setDataRegionGroupIds(dataRegionIds);
+    tStorageGroupSchema.setSchemaRegionGroupIds(schemaRegionIds);
+    deleteStorageGroupProcedure.setDeleteSgSchema(tStorageGroupSchema);
+    req0.setProcedure(deleteStorageGroupProcedure);
+    req0.serialize(buffer);
+    buffer.flip();
+    UpdateProcedureReq req1 = (UpdateProcedureReq) ConfigRequest.Factory.create(buffer);
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void DeleteProcedureReqTest() throws IOException {
+    DeleteProcedureReq req0 = new DeleteProcedureReq();
+    req0.setProcId(1L);
+    req0.serialize(buffer);
+    buffer.flip();
+    DeleteProcedureReq req1 = (DeleteProcedureReq) ConfigRequest.Factory.create(buffer);
     Assert.assertEquals(req0, req1);
   }
 }

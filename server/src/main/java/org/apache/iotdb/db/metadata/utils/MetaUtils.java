@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.ArrayList;
@@ -79,7 +80,7 @@ public class MetaUtils {
         result.add(measurementPath);
         alignedPath = null;
       } else {
-        if (alignedPath == null || !alignedPath.equals(measurementPath.getDeviceIdString())) {
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
           alignedPath = new AlignedPath(measurementPath);
           result.add(alignedPath);
         } else {
@@ -171,10 +172,10 @@ public class MetaUtils {
       } else if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
         // for without value filter
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getDeviceIdString());
+        AlignedPath groupPath = temp.get(seriesPath.getDevice());
         if (groupPath == null) {
           groupPath = new AlignedPath((MeasurementPath) seriesPath);
-          temp.put(seriesPath.getDeviceIdString(), groupPath);
+          temp.put(seriesPath.getDevice(), groupPath);
           alignedPathToAggrIndexesMap
               .computeIfAbsent(groupPath, key -> new ArrayList<>())
               .add(indexes);
@@ -188,5 +189,34 @@ public class MetaUtils {
       }
     }
     return alignedPathToAggrIndexesMap;
+  }
+
+  public static Map<PartialPath, List<AggregationDescriptor>> groupAlignedAggregations(
+      Map<PartialPath, List<AggregationDescriptor>> pathToAggregations) {
+    Map<PartialPath, List<AggregationDescriptor>> result = new HashMap<>();
+    List<AggregationDescriptor> alignedPathAggregations = new ArrayList<>();
+    AlignedPath alignedPath = null;
+    for (PartialPath path : pathToAggregations.keySet()) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result
+            .computeIfAbsent(measurementPath, key -> new ArrayList<>())
+            .addAll(pathToAggregations.get(path));
+        alignedPath = null;
+        alignedPathAggregations.clear();
+      } else {
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
+          alignedPath = new AlignedPath(measurementPath);
+          alignedPathAggregations.addAll(pathToAggregations.get(path));
+        } else {
+          alignedPath.addMeasurement(measurementPath);
+          alignedPathAggregations.addAll(pathToAggregations.get(path));
+        }
+      }
+    }
+    if (alignedPath != null) {
+      result.put(alignedPath, alignedPathAggregations);
+    }
+    return result;
   }
 }

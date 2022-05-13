@@ -339,39 +339,38 @@ public class AuthorInfo implements SnapshotProcessor {
     }
   }
 
-  @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
-    return authorizer.processTakeSnapshot(snapshotDir);
-  }
-
-  @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
-    authorizer.processLoadSnapshot(snapshotDir);
-  }
-
-  @TestOnly
-  public void clear() throws AuthException {
-    File userFolder = new File(commonConfig.getUserFolder());
-    if (userFolder.exists()) {
-      FileUtils.deleteDirectory(userFolder);
-    }
-    File roleFolder = new File(commonConfig.getRoleFolder());
-    if (roleFolder.exists()) {
-      FileUtils.deleteDirectory(roleFolder);
-    }
-    authorizer.reset();
-  }
-
-  private static class AuthorInfoPersistenceHolder {
-
+  private static class AuthorInfoHolder {
     private static final AuthorInfo INSTANCE = new AuthorInfo();
 
-    private AuthorInfoPersistenceHolder() {
+    private AuthorInfoHolder() {
       // empty constructor
     }
   }
 
   public static AuthorInfo getInstance() {
-    return AuthorInfo.AuthorInfoPersistenceHolder.INSTANCE;
+    return AuthorInfo.AuthorInfoHolder.INSTANCE;
   }
+
+    @Override
+    public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+      return authorizer.processTakeSnapshot(snapshotDir);
+    }
+
+    @Override
+    public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+      authorizer.processLoadSnapshot(snapshotDir);
+    }
+
+    @TestOnly
+    public void clear() throws AuthException {
+      File userFolder = new File(commonConfig.getUserFolder());
+      if (userFolder.exists()) {
+        FileUtils.deleteDirectory(userFolder);
+      }
+      File roleFolder = new File(commonConfig.getRoleFolder());
+      if (roleFolder.exists()) {
+        FileUtils.deleteDirectory(roleFolder);
+      }
+      authorizer.reset();
+    }
 }

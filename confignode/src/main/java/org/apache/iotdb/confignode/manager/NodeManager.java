@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/** Manage cluster node information and process node addition and removal requests */
+/** NodeManager manages cluster node addition and removal requests */
 public class NodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
@@ -117,8 +117,23 @@ public class NodeManager {
     return nodeInfo.getOnlineDataNodeCount();
   }
 
+  /**
+   * Only leader use this interface.
+   *
+   * @return all online DataNodes
+   */
   public List<TDataNodeLocation> getOnlineDataNodes() {
     return nodeInfo.getOnlineDataNodes();
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param dataNodeId the specific DataNodeId
+   * @return the specific DataNodeLocation
+   */
+  public TDataNodeLocation getOnlineDataNode(int dataNodeId) {
+    return nodeInfo.getOnlineDataNode(dataNodeId);
   }
 
   /**

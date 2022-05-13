@@ -36,7 +36,7 @@ public abstract class PlanNode {
 
   private PlanNodeId id;
 
-  protected PlanNode(PlanNodeId id) {
+  public PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
     this.id = id;
   }

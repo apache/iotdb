@@ -101,7 +101,6 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
             IOUtils.readPathPrivilege(dataInputStream, STRING_ENCODING, strBufferLocal));
       }
       role.setPrivilegeList(pathPrivilegeList);
-
       return role;
     } catch (Exception e) {
       throw new IOException(e);
@@ -119,6 +118,10 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
                 + role.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
+    File roleDir = new File(roleDirPath);
+    if (!roleDir.exists()) {
+      roleDir.mkdirs();
+    }
     try (BufferedOutputStream outputStream =
         new BufferedOutputStream(new FileOutputStream(roleProfile))) {
       try {

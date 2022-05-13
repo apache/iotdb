@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
@@ -58,6 +59,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
@@ -78,6 +80,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -128,7 +131,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
     // Set default configurations
     if (!storageGroupSchema.isSetTTL()) {
-      storageGroupSchema.setTTL(ConfigNodeDescriptor.getInstance().getConf().getDefaultTTL());
+      storageGroupSchema.setTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
     }
     if (!storageGroupSchema.isSetSchemaReplicationFactor()) {
       storageGroupSchema.setSchemaReplicationFactor(
@@ -142,7 +145,16 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
       storageGroupSchema.setTimePartitionInterval(
           ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
     }
+    if (!storageGroupSchema.isSetMaximumSchemaRegionCount()) {
+      storageGroupSchema.setMaximumSchemaRegionCount(
+          ConfigNodeDescriptor.getInstance().getConf().getMaximumSchemaRegionCount());
+    }
+    if (!storageGroupSchema.isSetMaximumDataRegionCount()) {
+      storageGroupSchema.setMaximumDataRegionCount(
+          ConfigNodeDescriptor.getInstance().getConf().getMaximumDataRegionCount());
+    }
 
+    // Initialize RegionGroupId List
     storageGroupSchema.setSchemaRegionGroupIds(new ArrayList<>());
     storageGroupSchema.setDataRegionGroupIds(new ArrayList<>());
 
@@ -156,9 +168,15 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws TException {
-    // TODO: delete StorageGroup
-    return null;
+  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq tDeleteReq) throws TException {
+    String prefixPath = tDeleteReq.getPrefixPath();
+    return configManager.deleteStorageGroups(Collections.singletonList(prefixPath));
+  }
+
+  @Override
+  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq tDeleteReq) throws TException {
+    List<String> prefixList = tDeleteReq.getPrefixPathList();
+    return configManager.deleteStorageGroups(prefixList);
   }
 
   @Override

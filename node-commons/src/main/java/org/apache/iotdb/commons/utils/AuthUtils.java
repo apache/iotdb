@@ -21,8 +21,10 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.security.encrypt.AsymmetricEncryptFactory;
 
 import org.slf4j.Logger;
@@ -42,6 +44,11 @@ public class AuthUtils {
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   private static final String ENCRYPT_ALGORITHM = "MD5";
   private static final String STRING_ENCODING = "utf-8";
+
+  public static final String ROOT_PATH_PRIVILEGE =
+      IoTDBConstant.PATH_ROOT
+          + IoTDBConstant.PATH_SEPARATOR
+          + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
   private AuthUtils() {}
 
@@ -129,7 +136,7 @@ public class AuthUtils {
   public static void validatePrivilegeOnPath(String path, int privilegeId) throws AuthException {
     validatePrivilege(privilegeId);
     PrivilegeType type = PrivilegeType.values()[privilegeId];
-    if (!path.equals(IoTDBConstant.PATH_ROOT)) {
+    if (!path.equals(ROOT_PATH_PRIVILEGE)) {
       validatePath(path);
       switch (type) {
         case READ_TIMESERIES:
@@ -171,30 +178,34 @@ public class AuthUtils {
    */
   public static String encryptPassword(String password) {
     return AsymmetricEncryptFactory.getEncryptProvider(
-            CommonConfig.getInstance().getEncryptDecryptProvider(),
-            CommonConfig.getInstance().getEncryptDecryptProviderParameter())
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
         .encrypt(password);
   }
 
   public static boolean validatePassword(String originPassword, String encryptPassword) {
     return AsymmetricEncryptFactory.getEncryptProvider(
-            CommonConfig.getInstance().getEncryptDecryptProvider(),
-            CommonConfig.getInstance().getEncryptDecryptProviderParameter())
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProvider(),
+            CommonDescriptor.getInstance().getConfig().getEncryptDecryptProviderParameter())
         .validate(originPassword, encryptPassword);
   }
 
   /**
-   * check if pathA belongs to pathB.
+   * check if pathA belongs to pathB according to path pattern.
    *
    * @param pathA sub-path
    * @param pathB path
-   * @return True if pathA == pathB, or pathA is an extension of pathB, e.g. pathA = "root.a.b.c"
-   *     and pathB = "root.a"
+   * @return True if pathA is a sub pattern of pathB, e.g. pathA = "root.a.b.c" and pathB =
+   *     "root.a.b.*", "root.a.**", "root.a.*.c", "root.**.c" or "root.*.b.**"
    */
-  public static boolean pathBelongsTo(String pathA, String pathB) {
-    return pathA.equals(pathB)
-        || (pathA.startsWith(pathB)
-            && pathA.charAt(pathB.length()) == IoTDBConstant.PATH_SEPARATOR);
+  public static boolean pathBelongsTo(String pathA, String pathB) throws AuthException {
+    try {
+      PartialPath partialPathA = new PartialPath(pathA);
+      PartialPath partialPathB = new PartialPath(pathB);
+      return partialPathB.matchFullPath(partialPathA);
+    } catch (IllegalPathException e) {
+      throw new AuthException(e);
+    }
   }
 
   /**
@@ -206,7 +217,7 @@ public class AuthUtils {
    * @return True if privilege-check passed
    */
   public static boolean checkPrivilege(
-      String path, int privilegeId, List<PathPrivilege> privilegeList) {
+      String path, int privilegeId, List<PathPrivilege> privilegeList) throws AuthException {
     if (privilegeList == null) {
       return false;
     }
@@ -234,7 +245,8 @@ public class AuthUtils {
    *     are desired, this should be null.
    * @return The privileges granted to the role.
    */
-  public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList) {
+  public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList)
+      throws AuthException {
     if (privilegeList == null) {
       return new HashSet<>();
     }

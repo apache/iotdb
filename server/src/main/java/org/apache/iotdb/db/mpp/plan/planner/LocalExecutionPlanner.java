@@ -192,7 +192,7 @@ public class LocalExecutionPlanner {
           new SeriesScanOperator(
               node.getPlanNodeId(),
               seriesPath,
-              context.getAllSensors(seriesPath.getDeviceIdString(), seriesPath.getMeasurement()),
+              context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
               seriesPath.getSeriesType(),
               operatorContext,
               node.getTimeFilter(),
@@ -378,7 +378,7 @@ public class LocalExecutionPlanner {
           new SeriesAggregateScanOperator(
               node.getPlanNodeId(),
               seriesPath,
-              context.getAllSensors(seriesPath.getDeviceIdString(), seriesPath.getMeasurement()),
+              context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
               operatorContext,
               aggregators,
               node.getTimeFilter(),
@@ -402,7 +402,13 @@ public class LocalExecutionPlanner {
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
               .collect(Collectors.toList());
-      return new DeviceViewOperator(operatorContext, node.getDevices(), children, null, null);
+      List<List<Integer>> deviceColumnIndex =
+          node.getDevices().stream()
+              .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
+              .collect(Collectors.toList());
+      List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      return new DeviceViewOperator(
+          operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
     }
 
     @Override

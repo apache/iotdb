@@ -21,12 +21,13 @@ package org.apache.iotdb.commons.auth.user;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.concurrent.HashLock;
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.AuthUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -66,7 +67,7 @@ public abstract class BasicUserManager implements IUserManager {
   private void initAdmin() throws AuthException {
     User admin;
     try {
-      admin = getUser(CommonConfig.getInstance().getAdminName());
+      admin = getUser(CommonDescriptor.getInstance().getConfig().getAdminName());
     } catch (AuthException e) {
       logger.warn("Cannot load admin, Creating a new one.", e);
       admin = null;
@@ -74,8 +75,9 @@ public abstract class BasicUserManager implements IUserManager {
 
     if (admin == null) {
       createUser(
-          CommonConfig.getInstance().getAdminName(), CommonConfig.getInstance().getAdminPassword());
-      setUserUseWaterMark(CommonConfig.getInstance().getAdminName(), false);
+          CommonDescriptor.getInstance().getConfig().getAdminName(),
+          CommonDescriptor.getInstance().getConfig().getAdminPassword());
+      setUserUseWaterMark(CommonDescriptor.getInstance().getConfig().getAdminName(), false);
     }
     logger.info("Admin initialized");
   }
@@ -114,6 +116,10 @@ public abstract class BasicUserManager implements IUserManager {
     lock.writeLock(username);
     try {
       user = new User(username, AuthUtils.encryptPassword(password));
+      File userDirPath = new File(accessor.getDirPath());
+      if (!userDirPath.exists()) {
+        reset();
+      }
       accessor.saveUser(user);
       userMap.put(username, user);
       return true;
