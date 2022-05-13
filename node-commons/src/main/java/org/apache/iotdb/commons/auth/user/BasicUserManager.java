@@ -45,9 +45,9 @@ public abstract class BasicUserManager implements IUserManager {
   private static final Logger logger = LoggerFactory.getLogger(BasicUserManager.class);
   private static final String NO_SUCH_USER_ERROR = "No such user %s";
 
-  private Map<String, User> userMap;
-  private IUserAccessor accessor;
-  private HashLock lock;
+  protected Map<String, User> userMap;
+  protected IUserAccessor accessor;
+  protected HashLock lock;
 
   /**
    * BasicUserManager Constructor.
