@@ -133,6 +133,10 @@ CONFIGURATION
     : C O N F I G U R A T I O N
     ;
 
+CONTAINS
+    : C O N T A I N S
+    ;
+
 CONTINUOUS
     : C O N T I N U O U S
     ;
@@ -889,7 +893,7 @@ OPERATOR_NOT
     ;
 
 OPERATOR_CONTAINS
-    : C O N T A I N S
+    : CONTAINS
     ;
 
 

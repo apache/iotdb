@@ -38,7 +38,6 @@ keyWord
     | ALIGNED
     | ALL
     | ALTER
-    | AND
     | ANY
     | APPEND
     | AS
@@ -105,13 +104,11 @@ keyWord
     | MERGE
     | METADATA
     | NODES
-    | NOT
     | NOW
     | OF
     | OFF
     | OFFSET
     | ON
-    | OR
     | ORDER
     | PARTITION
     | PASSWORD

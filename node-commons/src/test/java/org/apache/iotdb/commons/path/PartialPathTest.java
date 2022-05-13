@@ -128,6 +128,11 @@ public class PartialPathTest {
     Assert.assertEquals("root.sg.boolean", r.getFullPath());
     nodes = new String[] {"root", "sg", "boolean"};
     checkNodes(nodes, r.getNodes());
+
+    PartialPath s = new PartialPath("root.sg.DROP_TRIGGER");
+    Assert.assertEquals("root.sg.DROP_TRIGGER", s.getFullPath());
+    nodes = new String[] {"root", "sg", "DROP_TRIGGER"};
+    checkNodes(nodes, s.getNodes());
   }
 
   @Test
@@ -167,7 +172,6 @@ public class PartialPathTest {
       fail();
     } catch (IllegalPathException ignored) {
     }
-
   }
 
   @Test
@@ -294,7 +298,6 @@ public class PartialPathTest {
       fail();
     } catch (IllegalPathException ignored) {
     }
-
 
     try {
       new PartialPath("root.sg.select`", "a");
