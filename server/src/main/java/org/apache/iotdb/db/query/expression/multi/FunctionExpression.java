@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -45,6 +46,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryRowTransform
 import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.multi.UDFQueryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.unary.TransparentTransformer;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -249,8 +251,21 @@ public class FunctionExpression extends Expression {
         expression.inferTypes(typeProvider);
       }
 
-      typeProvider.setType(
-          expressionString, new UDTFTypeInferrer(this).inferOutputType(typeProvider));
+      if (isTimeSeriesGeneratingFunctionExpression()) {
+        typeProvider.setType(
+            expressionString, new UDTFTypeInferrer(this).inferOutputType(typeProvider));
+      } else {
+        if (expressions.size() != 1) {
+          throw new SemanticException(
+              String.format(
+                  "Builtin aggregation function only accepts 1 input expression. Actual %d input expressions.",
+                  expressions.size()));
+        }
+        typeProvider.setType(
+            expressionString,
+            TypeInferenceUtils.getAggrDataType(
+                functionName, typeProvider.getType(expressions.get(0).toString())));
+      }
     }
 
     return typeProvider.getType(expressionString);
