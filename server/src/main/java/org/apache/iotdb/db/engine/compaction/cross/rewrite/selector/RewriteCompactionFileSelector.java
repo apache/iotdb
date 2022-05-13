@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstim
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,26 +102,27 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
           resource.getSeqFiles().size(),
           resource.getUnseqFiles().size());
       selectSourceFiles();
-      resource.setSeqFiles(selectedSeqFiles);
-      resource.setUnseqFiles(selectedUnseqFiles);
-      compactionEstimator.clear();
-      resource.removeOutdatedSeqReaders();
       if (selectedUnseqFiles.isEmpty()) {
         logger.debug("No merge candidates are found");
         return new List[0];
       }
     } catch (IOException e) {
       throw new MergeException(e);
+    } finally {
+      try {
+        compactionEstimator.clear();
+      } catch (IOException e) {
+        throw new MergeException(e);
+      }
     }
-    if (logger.isInfoEnabled()) {
-      logger.info(
-          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
-              + "time consumption {}ms",
-          selectedSeqFiles.size(),
-          selectedUnseqFiles.size(),
-          totalCost,
-          System.currentTimeMillis() - startTime);
-    }
+    logger.info(
+        "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
+            + "time consumption {}ms",
+        selectedSeqFiles.size(),
+        selectedUnseqFiles.size(),
+        totalCost,
+        System.currentTimeMillis() - startTime);
+
     return new List[] {selectedSeqFiles, selectedUnseqFiles};
   }
 

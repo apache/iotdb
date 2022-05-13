@@ -61,7 +61,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     List<TsFileResource> unseqSelected = result[1];
     assertEquals(seqResources, seqSelected);
     assertEquals(unseqResources, unseqSelected);
-    resource.clear();
 
     resource = new CrossSpaceCompactionResource(seqResources.subList(0, 1), unseqResources);
     mergeFileSelector = new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
@@ -70,7 +69,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     unseqSelected = result[1];
     assertEquals(seqResources.subList(0, 1), seqSelected);
     assertEquals(unseqResources, unseqSelected);
-    resource.clear();
 
     resource = new CrossSpaceCompactionResource(seqResources, unseqResources.subList(0, 1));
     mergeFileSelector = new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
@@ -79,7 +77,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     unseqSelected = result[1];
     assertEquals(seqResources.subList(0, 1), seqSelected);
     assertEquals(unseqResources.subList(0, 1), unseqSelected);
-    resource.clear();
   }
 
   @Test
@@ -89,7 +86,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     ICrossSpaceMergeFileSelector mergeFileSelector = new RewriteCompactionFileSelector(resource, 1);
     List[] result = mergeFileSelector.select();
     assertEquals(2, result.length);
-    resource.clear();
   }
 
   @Test
@@ -103,7 +99,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     List<TsFileResource> unseqSelected = result[1];
     assertEquals(seqResources.subList(0, 5), seqSelected);
     assertEquals(unseqResources.subList(0, 6), unseqSelected);
-    resource.clear();
   }
 
   /**
@@ -158,7 +153,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
-    resource.clear();
   }
 
   /**
@@ -211,7 +205,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         new CrossSpaceCompactionResource(seqResources, newUnseqResources, ttlLowerBound);
     assertEquals(5, mergeResource.getSeqFiles().size());
     assertEquals(1, mergeResource.getUnseqFiles().size());
-    mergeResource.clear();
   }
 
   /**
@@ -250,7 +243,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(2, result[0].size());
-    resource.clear();
   }
 
   @Test
@@ -312,7 +304,6 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       assertEquals(1, result[1].size());
       assertEquals(seqList.get(0), result[0].get(0));
       assertEquals(unseqList.get(0), result[1].get(0));
-      resource.clear();
 
       resource =
           new CrossSpaceCompactionResource(
@@ -321,7 +312,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       mergeFileSelector = new RewriteCompactionFileSelector(resource, 29000);
       result = mergeFileSelector.select();
       assertEquals(2, result.length);
-      resource.clear();
+
     } finally {
       removeFiles(seqList, unseqList);
     }
@@ -887,7 +878,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     List<TsFileResource> unseqSelected = result[1];
     assertEquals(2, seqSelected.size());
     assertEquals(2, unseqSelected.size());
-    resource.clear();
+
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionCandidateFileNum);
@@ -908,7 +899,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     List<TsFileResource> unseqSelected = result[1];
     assertEquals(1, seqSelected.size());
     assertEquals(1, unseqSelected.size());
-    resource.clear();
+
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);

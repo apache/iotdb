@@ -21,17 +21,10 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 /**
@@ -42,11 +35,7 @@ public class CrossSpaceCompactionResource {
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles = new ArrayList<>();
 
-  private final Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
-
   private long ttlLowerBound = Long.MIN_VALUE;
-
-  private boolean cacheDeviceMeta = false;
 
   public CrossSpaceCompactionResource(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
@@ -82,27 +71,6 @@ public class CrossSpaceCompactionResource {
     filterUnseqResource(unseqFiles);
   }
 
-  public void clear() throws IOException {
-    for (TsFileSequenceReader sequenceReader : fileReaderCache.values()) {
-      sequenceReader.close();
-    }
-    fileReaderCache.clear();
-  }
-
-  /**
-   * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
-   *
-   * @return a TsFileSequenceReader
-   */
-  public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
-    TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
-    if (reader == null) {
-      reader = new TsFileSequenceReader(tsFileResource.getTsFilePath(), true, cacheDeviceMeta);
-      fileReaderCache.put(tsFileResource, reader);
-    }
-    return reader;
-  }
-
   public List<TsFileResource> getSeqFiles() {
     return seqFiles;
   }
@@ -117,20 +85,5 @@ public class CrossSpaceCompactionResource {
 
   public void setUnseqFiles(List<TsFileResource> unseqFiles) {
     this.unseqFiles = unseqFiles;
-  }
-
-  public void removeOutdatedSeqReaders() throws IOException {
-    Iterator<Entry<TsFileResource, TsFileSequenceReader>> entryIterator =
-        fileReaderCache.entrySet().iterator();
-    HashSet<TsFileResource> fileSet = new HashSet<>(seqFiles);
-    while (entryIterator.hasNext()) {
-      Entry<TsFileResource, TsFileSequenceReader> entry = entryIterator.next();
-      TsFileResource tsFile = entry.getKey();
-      if (!fileSet.contains(tsFile)) {
-        TsFileSequenceReader reader = entry.getValue();
-        reader.close();
-        entryIterator.remove();
-      }
-    }
   }
 }

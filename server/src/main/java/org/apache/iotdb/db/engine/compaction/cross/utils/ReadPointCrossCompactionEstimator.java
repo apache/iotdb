@@ -70,7 +70,8 @@ public class ReadPointCrossCompactionEstimator extends AbstractCrossSpaceEstimat
     // else is sub compaction task num.
     int concurrentSeriesNum = fileInfo[2] == -1 ? subCompactionTaskNum : fileInfo[2];
     maxUnseqChunkNumInDevice = new Pair<>(fileInfo[3], fileInfo[0]);
-    // not only reading chunk into chunk cache, but also need to deserialize data point into merge
+    // it means the max size of a timeseries in this file when reading all of its chunk into memory.
+    // Not only reading chunk into chunk cache, but also need to deserialize data point into merge
     // reader, so we have to double the cost here.
     return 2 * concurrentSeriesNum * (unseqResource.getTsFileSize() * fileInfo[1] / fileInfo[0]);
   }
