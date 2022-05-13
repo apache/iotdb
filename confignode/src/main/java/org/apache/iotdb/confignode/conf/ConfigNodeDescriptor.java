@@ -206,23 +206,23 @@ public class ConfigNodeDescriptor {
       commonDescriptor.loadCommonProps(properties);
       commonDescriptor.initCommonConfigDir(conf.getSystemDir());
 
-      conf.setProcedureWalDir(properties.getProperty("proc_wal_dir", conf.getProcedureWalDir()));
-
-      conf.setCompletedEvictTTL(
+      conf.setProcedureCompletedEvictTTL(
           Integer.parseInt(
               properties.getProperty(
-                  "completed_evict_ttl", String.valueOf(conf.getCompletedEvictTTL()))));
+                  "procedure_completed_evict_ttl",
+                  String.valueOf(conf.getProcedureCompletedEvictTTL()))));
 
-      conf.setCompletedCleanInterval(
+      conf.setProcedureCompletedCleanInterval(
           Integer.parseInt(
               properties.getProperty(
-                  "completed_clean_interval", String.valueOf(conf.getCompletedCleanInterval()))));
+                  "procedure_completed_clean_interval",
+                  String.valueOf(conf.getProcedureCompletedCleanInterval()))));
 
-      conf.setCoreWorkerThreadsSize(
+      conf.setProcedureCoreWorkerThreadsSize(
           Integer.parseInt(
               properties.getProperty(
-                  "proc_core_worker_thread_size",
-                  String.valueOf(conf.getCoreWorkerThreadsSize()))));
+                  "procedure_core_worker_thread_size",
+                  String.valueOf(conf.getProcedureCoreWorkerThreadsSize()))));
 
     } catch (IOException | BadNodeUrlException e) {
       LOGGER.warn("Couldn't load ConfigNode conf file, use default config", e);

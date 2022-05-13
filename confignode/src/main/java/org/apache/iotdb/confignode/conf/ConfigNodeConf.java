@@ -118,18 +118,15 @@ public class ConfigNodeConf {
   /** The maximum number of DataRegions of each StorageGroup */
   private int maximumDataRegionCount = 20;
 
-  /** Procedure directory, storage procedure wal */
-  private String procedureWalDir =
-      ConfigNodeConstant.DATA_DIR + File.separator + ConfigNodeConstant.PROCEDURE_FOLDER;
-
   /** Procedure Evict ttl */
-  private int completedEvictTTL = 800;
+  private int procedureCompletedEvictTTL = 800;
 
   /** Procedure completed clean interval */
-  private int completedCleanInterval = 30;
+  private int procedureCompletedCleanInterval = 30;
 
   /** Procedure core worker threads size */
-  private int coreWorkerThreadsSize = Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
+  private int procedureCoreWorkerThreadsSize =
+      Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
 
   ConfigNodeConf() {
     // empty constructor
@@ -142,7 +139,6 @@ public class ConfigNodeConf {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     consensusDir = addHomeDir(consensusDir);
-    procedureWalDir = addHomeDir(procedureWalDir);
   }
 
   private String addHomeDir(String dir) {
@@ -362,35 +358,27 @@ public class ConfigNodeConf {
     this.maximumDataRegionCount = maximumDataRegionCount;
   }
 
-  public String getProcedureWalDir() {
-    return procedureWalDir;
+  public int getProcedureCompletedEvictTTL() {
+    return procedureCompletedEvictTTL;
   }
 
-  public void setProcedureWalDir(String procedureWalDir) {
-    this.procedureWalDir = procedureWalDir;
+  public void setProcedureCompletedEvictTTL(int procedureCompletedEvictTTL) {
+    this.procedureCompletedEvictTTL = procedureCompletedEvictTTL;
   }
 
-  public int getCompletedEvictTTL() {
-    return completedEvictTTL;
+  public int getProcedureCompletedCleanInterval() {
+    return procedureCompletedCleanInterval;
   }
 
-  public void setCompletedEvictTTL(int completedEvictTTL) {
-    this.completedEvictTTL = completedEvictTTL;
+  public void setProcedureCompletedCleanInterval(int procedureCompletedCleanInterval) {
+    this.procedureCompletedCleanInterval = procedureCompletedCleanInterval;
   }
 
-  public int getCompletedCleanInterval() {
-    return completedCleanInterval;
+  public int getProcedureCoreWorkerThreadsSize() {
+    return procedureCoreWorkerThreadsSize;
   }
 
-  public void setCompletedCleanInterval(int completedCleanInterval) {
-    this.completedCleanInterval = completedCleanInterval;
-  }
-
-  public int getCoreWorkerThreadsSize() {
-    return coreWorkerThreadsSize;
-  }
-
-  public void setCoreWorkerThreadsSize(int coreWorkerThreadsSize) {
-    this.coreWorkerThreadsSize = coreWorkerThreadsSize;
+  public void setProcedureCoreWorkerThreadsSize(int procedureCoreWorkerThreadsSize) {
+    this.procedureCoreWorkerThreadsSize = procedureCoreWorkerThreadsSize;
   }
 }

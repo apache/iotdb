@@ -26,7 +26,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -137,7 +136,7 @@ public interface Manager {
    * @param deleteStorageGroupsReq deleteStorageGroupReq
    * @return status
    */
-  TSStatus deleteStorageGroups(DeleteStorageGroupsReq deleteStorageGroupsReq);
+  TSStatus deleteStorageGroups(List<String> deletedPaths);
 
   /**
    * Get SchemaPartition

@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.confignode.procedure.ProcedureFactory;
@@ -45,7 +45,7 @@ public class ProcedureInfo {
 
   private final ProcedureFactory procedureFactory = ProcedureFactory.getInstance();
   private final String procedureWalDir =
-      ConfigNodeDescriptor.getInstance().getConf().getProcedureWalDir();
+      CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
 
   public static ProcedureInfo getInstance() {

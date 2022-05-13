@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure;
 
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -43,7 +43,7 @@ public class ConfigProcedureStore implements IProcedureStore {
   private volatile boolean isRunning = false;
   private ProcedureInfo procedureInfo = ProcedureInfo.getInstance();
   private final String procedureWalDir =
-      ConfigNodeDescriptor.getInstance().getConf().getProcedureWalDir();
+      CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
   private ConfigManager configManager;
 
   public ConfigProcedureStore() {}

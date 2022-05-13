@@ -31,7 +31,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -171,17 +170,13 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @Override
   public TSStatus deleteStorageGroup(TDeleteStorageGroupReq tDeleteReq) throws TException {
     String prefixPath = tDeleteReq.getPrefixPath();
-    DeleteStorageGroupsReq deleteStorageGroupsReq = new DeleteStorageGroupsReq();
-    deleteStorageGroupsReq.setStorageGroups(Collections.singletonList(prefixPath));
-    return configManager.deleteStorageGroups(deleteStorageGroupsReq);
+    return configManager.deleteStorageGroups(Collections.singletonList(prefixPath));
   }
 
   @Override
   public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq tDeleteReq) throws TException {
     List<String> prefixList = tDeleteReq.getPrefixPathList();
-    DeleteStorageGroupsReq deleteStorageGroupsReq = new DeleteStorageGroupsReq();
-    deleteStorageGroupsReq.setStorageGroups(prefixList);
-    return configManager.deleteStorageGroups(deleteStorageGroupsReq);
+    return configManager.deleteStorageGroups(prefixList);
   }
 
   @Override

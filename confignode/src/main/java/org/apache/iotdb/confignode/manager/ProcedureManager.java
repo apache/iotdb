@@ -67,7 +67,8 @@ public class ProcedureManager {
         executor.init(configNodeConf.getSchemaReplicationFactor());
         executor.startWorkers();
         executor.startCompletedCleaner(
-            configNodeConf.getCompletedCleanInterval(), configNodeConf.getCompletedEvictTTL());
+            configNodeConf.getProcedureCompletedCleanInterval(),
+            configNodeConf.getProcedureCompletedEvictTTL());
         store.start();
       }
     } else {
