@@ -260,8 +260,8 @@ public class InternalServiceImplTest {
             new PlanNodeId("0"),
             new ArrayList<PartialPath>() {
               {
-                add(new PartialPath("root.ln.wf01.GPS.latitude"));
-                add(new PartialPath("root.ln.wf01.GPS.longitude"));
+                add(new PartialPath("root.ln.d3.s1"));
+                add(new PartialPath("root.ln.d3.s2"));
               }
             },
             new ArrayList<TSDataType>() {
