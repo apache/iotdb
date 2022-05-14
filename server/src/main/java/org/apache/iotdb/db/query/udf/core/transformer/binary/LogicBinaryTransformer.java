@@ -21,27 +21,32 @@ package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
 public abstract class LogicBinaryTransformer extends BinaryTransformer {
+
   protected LogicBinaryTransformer(
       LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     super(leftPointReader, rightPointReader);
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    // Check TSDataType
-    if (leftPointReader.getDataType() != TSDataType.BOOLEAN) {
-      throw new QueryProcessException(
+  protected void checkType() {
+    if (leftPointReaderDataType != TSDataType.BOOLEAN) {
+      throw new UnSupportedDataTypeException(
           "Unsupported data type: " + leftPointReader.getDataType().toString());
     }
-    if (rightPointReader.getDataType() != TSDataType.BOOLEAN) {
-      throw new QueryProcessException(
+    if (rightPointReaderDataType != TSDataType.BOOLEAN) {
+      throw new UnSupportedDataTypeException(
           "Unsupported data type: " + rightPointReader.getDataType().toString());
     }
+  }
+
+  @Override
+  protected void transformAndCache() throws QueryProcessException, IOException {
     cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
   }
 

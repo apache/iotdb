@@ -170,9 +170,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
         setNextState(getStateId(state));
       }
 
-      if (LOG.isTraceEnabled()) {
-        LOG.trace(state + " " + this + "; cycles=" + this.cycles);
-      }
+      LOG.info(state + " " + this + "; cycles=" + this.cycles);
       // Keep running count of cycles
       if (getStateId(state) != this.previousState) {
         this.previousState = getStateId(state);
@@ -302,7 +300,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) throws IOException {
+  public void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     byteBuffer.putInt(stateCount);
     for (int i = 0; i < stateCount; ++i) {
@@ -311,7 +309,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) throws IOException {
+  public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     stateCount = byteBuffer.getInt();
     if (stateCount > 0) {

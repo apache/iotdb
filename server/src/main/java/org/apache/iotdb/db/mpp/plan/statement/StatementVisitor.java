@@ -19,20 +19,13 @@
 
 package org.apache.iotdb.db.mpp.plan.statement;
 
-import org.apache.iotdb.db.mpp.plan.statement.crud.AggregationQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.FillQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.GroupByFillQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.GroupByQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDAFQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -40,6 +33,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
@@ -89,8 +83,13 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(alterTimeSeriesStatement, context);
   }
 
-  public R visitSetStorageGroup(SetStorageGroupStatement alterTimeSeriesStatement, C context) {
-    return visitStatement(alterTimeSeriesStatement, context);
+  public R visitDeleteStorageGroup(
+      DeleteStorageGroupStatement deleteStorageGroupStatement, C context) {
+    return visitStatement(deleteStorageGroupStatement, context);
+  }
+
+  public R visitSetStorageGroup(SetStorageGroupStatement setStorageGroupStatement, C context) {
+    return visitStatement(setStorageGroupStatement, context);
   }
 
   // Alter TTL
@@ -111,34 +110,6 @@ public abstract class StatementVisitor<R, C> {
   // Select Statement
   public R visitQuery(QueryStatement queryStatement, C context) {
     return visitStatement(queryStatement, context);
-  }
-
-  public R visitAggregationQuery(AggregationQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitFillQuery(FillQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitGroupByQuery(GroupByQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitGroupByFillQuery(GroupByFillQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitLastQuery(LastQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitUDTFQuery(UDTFQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
-  }
-
-  public R visitUDAFQuery(UDAFQueryStatement queryStatement, C context) {
-    return visitQuery(queryStatement, context);
   }
 
   // Insert Statement

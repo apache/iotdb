@@ -27,7 +27,9 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 public class StuckProcedure extends Procedure<TestProcEnv> {
-  private final Semaphore latch;
+  private Semaphore latch;
+
+  public StuckProcedure() {}
 
   public StuckProcedure(final Semaphore latch) {
     this.latch = latch;

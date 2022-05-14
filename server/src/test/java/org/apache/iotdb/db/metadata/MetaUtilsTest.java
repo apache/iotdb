@@ -18,10 +18,8 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -31,107 +29,11 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class MetaUtilsTest {
-
-  @Test
-  public void testSplitPathToNodes() throws IllegalPathException {
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "d1", "s1").toArray(),
-        PathUtils.splitPathToDetachedPath("root.sg.d1.s1"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "d1", "s+1").toArray(),
-        PathUtils.splitPathToDetachedPath("root.sg.d1.`s+1`"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "\"s g\"", "d1", "\"s+1\"").toArray(),
-        PathUtils.splitPathToDetachedPath("root.`\"s g\"`.d1.`\"s+1\"`"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "1").toArray(), PathUtils.splitPathToDetachedPath("root.1"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "d1", "s", "1").toArray(),
-        PathUtils.splitPathToDetachedPath("root.sg.d1.s.1"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "d1", "`a.b`").toArray(),
-        PathUtils.splitPathToDetachedPath("root.sg.d1.```a.b```"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "d1", "`").toArray(),
-        PathUtils.splitPathToDetachedPath("root.sg.d1.````"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "d1", "`").toArray(),
-        PathUtils.splitPathToDetachedPath("`root`.`sg`.`d1`.````"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "d1", "`").toArray(),
-        PathUtils.splitPathToDetachedPath("`root`.sg.`d1`.````"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "d1.`").toArray(),
-        PathUtils.splitPathToDetachedPath("root.sg.`d1.```"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "\"d").toArray(),
-        PathUtils.splitPathToDetachedPath("root.sg.`\\\"d`"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "\td").toArray(),
-        PathUtils.splitPathToDetachedPath("root.sg.`\\td`"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "sg", "\\td").toArray(),
-        PathUtils.splitPathToDetachedPath("root.sg.`\\\\td`"));
-
-    assertArrayEquals(
-        Arrays.asList("root", "laptop", "d1", "\"1.2.3\"").toArray(),
-        PathUtils.splitPathToDetachedPath("root.laptop.d1.`\\\"1.2.3\\\"`"));
-
-    try {
-      PathUtils.splitPathToDetachedPath("root.sg.d1.```");
-      fail();
-    } catch (IllegalPathException e) {
-      Assert.assertEquals("root.sg.d1.``` is not a legal path", e.getMessage());
-    }
-
-    try {
-      PathUtils.splitPathToDetachedPath("root.sg.`d1`..`aa``b`");
-      fail();
-    } catch (IllegalPathException e) {
-      Assert.assertEquals("root.sg.`d1`..`aa``b` is not a legal path", e.getMessage());
-    }
-
-    try {
-      PathUtils.splitPathToDetachedPath("root.sg.d1.`s+`-1\"`");
-      fail();
-    } catch (IllegalPathException e) {
-      Assert.assertEquals("root.sg.d1.`s+`-1\"` is not a legal path", e.getMessage());
-    }
-
-    try {
-      PathUtils.splitPathToDetachedPath("root..a");
-      fail();
-    } catch (IllegalPathException e) {
-      Assert.assertEquals("root..a is not a legal path", e.getMessage());
-    }
-
-    try {
-      PathUtils.splitPathToDetachedPath("root.sg.d1.");
-      fail();
-    } catch (IllegalPathException e) {
-      Assert.assertEquals("root.sg.d1. is not a legal path", e.getMessage());
-    }
-  }
 
   @Test
   public void testGetMultiFullPaths() {

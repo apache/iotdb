@@ -26,26 +26,35 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class AuthorInfo {
+public class AuthorInfo implements SnapshotProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(AuthorInfo.class);
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private IAuthorizer authorizer;
 
@@ -331,16 +340,38 @@ public class AuthorInfo {
     }
   }
 
-  private static class AuthorInfoPersistenceHolder {
-
+  private static class AuthorInfoHolder {
     private static final AuthorInfo INSTANCE = new AuthorInfo();
 
-    private AuthorInfoPersistenceHolder() {
+    private AuthorInfoHolder() {
       // empty constructor
     }
   }
 
   public static AuthorInfo getInstance() {
-    return AuthorInfo.AuthorInfoPersistenceHolder.INSTANCE;
+    return AuthorInfo.AuthorInfoHolder.INSTANCE;
+  }
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    return authorizer.processTakeSnapshot(snapshotDir);
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    authorizer.processLoadSnapshot(snapshotDir);
+  }
+
+  @TestOnly
+  public void clear() throws AuthException {
+    File userFolder = new File(commonConfig.getUserFolder());
+    if (userFolder.exists()) {
+      FileUtils.deleteDirectory(userFolder);
+    }
+    File roleFolder = new File(commonConfig.getRoleFolder());
+    if (roleFolder.exists()) {
+      FileUtils.deleteDirectory(roleFolder);
+    }
+    authorizer.reset();
   }
 }

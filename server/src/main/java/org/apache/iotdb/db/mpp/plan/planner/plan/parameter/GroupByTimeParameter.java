@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
+import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
+
+import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
 
 /** The parameter of `GROUP BY TIME` */
 public class GroupByTimeParameter {
@@ -66,6 +69,16 @@ public class GroupByTimeParameter {
     this.isIntervalByMonth = isIntervalByMonth;
     this.isSlidingStepByMonth = isSlidingStepByMonth;
     this.leftCRightO = leftCRightO;
+  }
+
+  public GroupByTimeParameter(GroupByTimeComponent groupByTimeComponent) {
+    this.startTime = groupByTimeComponent.getStartTime();
+    this.endTime = groupByTimeComponent.getEndTime();
+    this.interval = groupByTimeComponent.getInterval();
+    this.slidingStep = groupByTimeComponent.getSlidingStep();
+    this.isIntervalByMonth = groupByTimeComponent.isIntervalByMonth();
+    this.isSlidingStepByMonth = groupByTimeComponent.isSlidingStepByMonth();
+    this.leftCRightO = groupByTimeComponent.isLeftCRightO();
   }
 
   public long getStartTime() {
@@ -122,6 +135,12 @@ public class GroupByTimeParameter {
 
   public void setLeftCRightO(boolean leftCRightO) {
     this.leftCRightO = leftCRightO;
+  }
+
+  public boolean hasOverlap() {
+    long tmpInterval = isIntervalByMonth ? interval * MS_TO_MONTH : interval;
+    long tmpSlidingStep = isSlidingStepByMonth ? slidingStep * MS_TO_MONTH : slidingStep;
+    return tmpInterval > tmpSlidingStep;
   }
 
   public void serialize(ByteBuffer buffer) {

@@ -30,8 +30,6 @@ import java.util.Set;
 
 public class InTransformer extends UnaryTransformer {
 
-  private final TSDataType dataType;
-
   private final Satisfy satisfy;
 
   private Set<Integer> intSet;
@@ -43,13 +41,12 @@ public class InTransformer extends UnaryTransformer {
 
   public InTransformer(LayerPointReader layerPointReader, boolean isNotIn, Set<String> values) {
     super(layerPointReader);
-    dataType = layerPointReader.getDataType();
     satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
     initTypedSet(values);
   }
 
   private void initTypedSet(Set<String> values) {
-    switch (dataType) {
+    switch (layerPointReaderDataType) {
       case INT32:
         intSet = new HashSet<>();
         for (String value : values) {
@@ -91,12 +88,12 @@ public class InTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType getDataType() {
-    return dataType;
+    return layerPointReaderDataType;
   }
 
   @Override
   protected void transformAndCache() throws QueryProcessException, IOException {
-    switch (dataType) {
+    switch (layerPointReaderDataType) {
       case INT32:
         int intValue = layerPointReader.currentInt();
         if (satisfy.of(intValue)) {

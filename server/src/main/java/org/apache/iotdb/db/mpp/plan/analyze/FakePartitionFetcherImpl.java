@@ -155,4 +155,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
     return null;
   }
+
+  @Override
+  public void invalidAllCache() {}
 }

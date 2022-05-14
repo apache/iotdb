@@ -31,21 +31,15 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.crud.AggregationQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.FillQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.GroupByFillQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.GroupByQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDAFQueryStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.UDTFQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -55,9 +49,17 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.query.expression.Expression;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Generate a logical plan for the statement. */
 public class LogicalPlanner {
@@ -103,52 +105,149 @@ public class LogicalPlanner {
 
     @Override
     public PlanNode visitQuery(QueryStatement queryStatement, MPPQueryContext context) {
-      return new LogicalPlanBuilder(context)
-          .planRawDataQuerySource(
-              queryStatement.getDeviceNameToDeduplicatedPathsMap(),
-              queryStatement.getResultOrder(),
-              queryStatement.isAlignByDevice())
-          .planOffset(queryStatement.getRowOffset())
-          .planLimit(queryStatement.getRowLimit())
-          .getRoot();
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+
+      if (queryStatement.isAlignByDevice()) {
+        Map<String, PlanNode> deviceToSubPlanMap = new HashMap<>();
+        for (String deviceName : analysis.getSourceExpressions().keySet()) {
+          LogicalPlanBuilder subPlanBuilder = new LogicalPlanBuilder(context);
+          subPlanBuilder =
+              subPlanBuilder.withNewRoot(
+                  visitQueryBody(
+                      queryStatement,
+                      Maps.asMap(
+                          Sets.newHashSet(deviceName),
+                          (key) -> analysis.getSourceExpressions().get(key)),
+                      Maps.asMap(
+                          Sets.newHashSet(deviceName),
+                          (key) -> analysis.getAggregationExpressions().get(key)),
+                      analysis.getSourceExpressions().get(deviceName),
+                      analysis.getDeviceToQueryFilter() != null
+                          ? analysis.getDeviceToQueryFilter().get(deviceName)
+                          : null,
+                      context));
+          deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
+        }
+        // convert to ALIGN BY DEVICE view
+        planBuilder =
+            planBuilder.planDeviceView(
+                deviceToSubPlanMap,
+                analysis.getRespDatasetHeader().getRespColumns().stream()
+                    .distinct()
+                    .collect(Collectors.toList()),
+                analysis.getDeviceToMeasurementIndexesMap(),
+                queryStatement.getResultOrder());
+      } else {
+        planBuilder =
+            planBuilder.withNewRoot(
+                visitQueryBody(
+                    queryStatement,
+                    analysis.getSourceExpressions(),
+                    analysis.getAggregationExpressions(),
+                    analysis.getSelectExpressions(),
+                    analysis.getQueryFilter(),
+                    context));
+      }
+
+      // other common upstream node
+      planBuilder =
+          planBuilder
+              .planFilterNull(analysis.getFilterNullParameter())
+              .planFill(analysis.getFillDescriptor())
+              .planOffset(queryStatement.getRowOffset())
+              .planLimit(queryStatement.getRowLimit());
+
+      return planBuilder.getRoot();
     }
 
-    @Override
-    public PlanNode visitAggregationQuery(
-        AggregationQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
+    public PlanNode visitQueryBody(
+        QueryStatement queryStatement,
+        Map<String, Set<Expression>> sourceExpressions,
+        Map<String, Set<Expression>> aggregationExpressions,
+        Set<Expression> selectExpressions,
+        Expression queryFilter,
+        MPPQueryContext context) {
+      LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+      boolean isRawDataSource =
+          !queryStatement.isAggregationQuery()
+              || (queryStatement.isAggregationQuery() && analysis.hasValueFilter());
 
-    @Override
-    public PlanNode visitGroupByQuery(
-        GroupByQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
+      // plan data source node
+      if (isRawDataSource) {
+        planBuilder =
+            planBuilder.planRawDataSource(
+                sourceExpressions, queryStatement.getResultOrder(), analysis.getGlobalTimeFilter());
 
-    @Override
-    public PlanNode visitGroupByFillQuery(
-        GroupByFillQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
+        if (queryStatement.isAggregationQuery()) {
+          if (analysis.hasValueFilter()) {
+            planBuilder =
+                planBuilder.planFilterAndTransform(
+                    queryFilter,
+                    sourceExpressions.values().stream()
+                        .flatMap(Set::stream)
+                        .collect(Collectors.toSet()),
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId());
+          }
 
-    @Override
-    public PlanNode visitFillQuery(FillQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
+          boolean outputPartial =
+              queryStatement.isGroupByLevel()
+                  || (queryStatement.isGroupByTime()
+                      && analysis.getGroupByTimeParameter().hasOverlap());
+          AggregationStep curStep = outputPartial ? AggregationStep.PARTIAL : AggregationStep.FINAL;
+          planBuilder =
+              planBuilder.planAggregation(
+                  aggregationExpressions,
+                  analysis.getGroupByTimeParameter(),
+                  curStep,
+                  analysis.getTypeProvider());
 
-    @Override
-    public PlanNode visitLastQuery(LastQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
+          if (curStep.isOutputPartial()) {
+            if (queryStatement.isGroupByTime() && analysis.getGroupByTimeParameter().hasOverlap()) {
+              curStep =
+                  queryStatement.isGroupByLevel()
+                      ? AggregationStep.INTERMEDIATE
+                      : AggregationStep.FINAL;
+              planBuilder =
+                  planBuilder.planGroupByTime(
+                      aggregationExpressions, analysis.getGroupByTimeParameter(), curStep);
+            }
 
-    @Override
-    public PlanNode visitUDTFQuery(UDTFQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
-    }
+            if (queryStatement.isGroupByLevel()) {
+              curStep = AggregationStep.FINAL;
+              planBuilder =
+                  planBuilder.planGroupByLevel(analysis.getGroupByLevelExpressions(), curStep);
+            }
+          }
+        } else {
+          if (analysis.hasValueFilter()) {
+            planBuilder =
+                planBuilder.planFilterAndTransform(
+                    queryFilter,
+                    selectExpressions,
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId());
+          } else {
+            planBuilder =
+                planBuilder.planTransform(
+                    selectExpressions,
+                    queryStatement.isGroupByTime(),
+                    queryStatement.getSelectComponent().getZoneId());
+          }
+        }
+      } else {
+        planBuilder =
+            planBuilder.planAggregationSource(
+                sourceExpressions,
+                queryStatement.getResultOrder(),
+                analysis.getGlobalTimeFilter(),
+                analysis.getGroupByTimeParameter(),
+                aggregationExpressions,
+                analysis.getGroupByLevelExpressions(),
+                analysis.getTypeProvider());
+      }
 
-    @Override
-    public PlanNode visitUDAFQuery(UDAFQueryStatement queryStatement, MPPQueryContext context) {
-      throw new UnsupportedOperationException();
+      return planBuilder.getRoot();
     }
 
     @Override

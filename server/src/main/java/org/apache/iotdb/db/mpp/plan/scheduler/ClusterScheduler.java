@@ -58,6 +58,7 @@ public class ClusterScheduler implements IScheduler {
   private List<FragmentInstance> instances;
 
   private ExecutorService executor;
+  private ExecutorService writeOperationExecutor;
   private ScheduledExecutorService scheduledExecutor;
 
   private IFragInstanceDispatcher dispatcher;
@@ -70,6 +71,7 @@ public class ClusterScheduler implements IScheduler {
       List<FragmentInstance> instances,
       QueryType queryType,
       ExecutorService executor,
+      ExecutorService writeOperationExecutor,
       ScheduledExecutorService scheduledExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.queryContext = queryContext;
@@ -78,7 +80,9 @@ public class ClusterScheduler implements IScheduler {
     this.queryType = queryType;
     this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
-    this.dispatcher = new SimpleFragInstanceDispatcher(executor, internalServiceClientManager);
+    this.dispatcher =
+        new FragmentInstanceDispatcherImpl(
+            queryType, executor, writeOperationExecutor, internalServiceClientManager);
     this.stateTracker =
         new FixedRateFragInsStateTracker(
             stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);

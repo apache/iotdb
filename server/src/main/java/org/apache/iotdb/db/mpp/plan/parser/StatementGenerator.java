@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.parser;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -36,14 +35,16 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LastQueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
@@ -76,13 +77,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 /** Convert SQL and RPC requests to {@link Statement}. */
 public class StatementGenerator {
 
-  public static Statement createStatement(
-      String sql, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion) {
-    return invokeParser(sql, zoneId, clientVersion);
-  }
-
   public static Statement createStatement(String sql, ZoneId zoneId) {
-    return invokeParser(sql, zoneId, IoTDBConstant.ClientVersion.V_0_13);
+    return invokeParser(sql, zoneId);
   }
 
   public static Statement createStatement(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
@@ -121,7 +117,7 @@ public class StatementGenerator {
             Long.toString(rawDataQueryReq.getEndTime()));
     queryFilter.addChildOperator(left);
     queryFilter.addChildOperator(right);
-    whereCondition.setQueryFilter(queryFilter);
+    //    whereCondition.setQueryFilter(queryFilter);
 
     queryStatement.setSelectComponent(selectComponent);
     queryStatement.setFromComponent(fromComponent);
@@ -132,10 +128,12 @@ public class StatementGenerator {
   public static Statement createStatement(TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     // construct query statement
-    LastQueryStatement lastQueryStatement = new LastQueryStatement();
+    QueryStatement lastQueryStatement = new QueryStatement();
     SelectComponent selectComponent = new SelectComponent(zoneId);
     FromComponent fromComponent = new FromComponent();
     WhereCondition whereCondition = new WhereCondition();
+
+    selectComponent.setHasLast(true);
 
     // iterate the path list and add it to from operator
     for (String pathStr : lastDataQueryReq.getPaths()) {
@@ -151,7 +149,7 @@ public class StatementGenerator {
             FilterConstant.FilterType.GREATERTHANOREQUALTO,
             timePath,
             Long.toString(lastDataQueryReq.getTime()));
-    whereCondition.setQueryFilter(basicFunctionFilter);
+    //    whereCondition.setQueryFilter(basicFunctionFilter);
 
     lastQueryStatement.setSelectComponent(selectComponent);
     lastQueryStatement.setFromComponent(fromComponent);
@@ -328,8 +326,15 @@ public class StatementGenerator {
     return insertStatement;
   }
 
+  public static Statement createStatement(String storageGroup) throws IllegalPathException {
+    // construct set storage group statement
+    SetStorageGroupStatement statement = new SetStorageGroupStatement();
+    statement.setStorageGroupPath(new PartialPath(storageGroup));
+    return statement;
+  }
+
   public static Statement createStatement(TSCreateTimeseriesReq req) throws IllegalPathException {
-    // construct create timseries statement
+    // construct create timeseries statement
     CreateTimeSeriesStatement statement = new CreateTimeSeriesStatement();
     statement.setPath(new PartialPath(req.path));
     statement.setDataType(TSDataType.values()[req.dataType]);
@@ -342,11 +347,35 @@ public class StatementGenerator {
     return statement;
   }
 
-  private static Statement invokeParser(
-      String sql, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion) {
+  public static Statement createStatement(TSCreateAlignedTimeseriesReq req)
+      throws IllegalPathException {
+    // construct create aligned timeseries statement
+    CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
+    statement.setDevicePath(new PartialPath(req.prefixPath));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int dataType : req.dataTypes) {
+      dataTypes.add(TSDataType.values()[dataType]);
+    }
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int encoding : req.encodings) {
+      encodings.add(TSEncoding.values()[encoding]);
+    }
+    List<CompressionType> compressors = new ArrayList<>();
+    for (int compressor : req.compressors) {
+      compressors.add(CompressionType.values()[compressor]);
+    }
+    statement.setDataTypes(dataTypes);
+    statement.setEncodings(encodings);
+    statement.setCompressors(compressors);
+    statement.setTagsList(req.tagsList);
+    statement.setAttributesList(req.attributesList);
+    statement.setAliasList(req.measurementAlias);
+    return statement;
+  }
+
+  private static Statement invokeParser(String sql, ZoneId zoneId) {
     ASTVisitor astVisitor = new ASTVisitor();
     astVisitor.setZoneId(zoneId);
-    astVisitor.setClientVersion(clientVersion);
 
     CharStream charStream1 = CharStreams.fromString(sql);
 

@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.client;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -33,7 +32,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
@@ -53,6 +52,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ConfigNodeClient {
@@ -75,11 +75,9 @@ public class ConfigNodeClient {
 
   private int cursor = 0;
 
-  public ConfigNodeClient() throws BadNodeUrlException, IoTDBConnectionException {
+  public ConfigNodeClient() throws IoTDBConnectionException {
     // Read config nodes from configuration
-    configNodes =
-        NodeUrlUtils.parseTEndPointUrls(
-            IoTDBDescriptor.getInstance().getConfig().getConfigNodeUrls());
+    configNodes = IoTDBDescriptor.getInstance().getConfig().getConfigNodeList();
     init();
   }
 
@@ -169,10 +167,17 @@ public class ConfigNodeClient {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         TDataNodeRegisterResp resp = client.registerDataNode(req);
+
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
-        logger.info("Register current node using request {} with response {}", req, resp);
+
+        // set latest config node list
+        List<TEndPoint> newConfigNodes = new ArrayList<>();
+        for (TConfigNodeLocation configNodeLocation : resp.getConfigNodeList()) {
+          newConfigNodes.add(configNodeLocation.getInternalEndPoint());
+        }
+        configNodes = newConfigNodes;
       } catch (TException e) {
         configLeader = null;
       }
@@ -212,10 +217,10 @@ public class ConfigNodeClient {
     throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
   }
 
-  public TSStatus deleteStorageGroup(TDeleteStorageGroupReq req) throws IoTDBConnectionException {
+  public TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.deleteStorageGroup(req);
+        TSStatus status = client.deleteStorageGroups(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }

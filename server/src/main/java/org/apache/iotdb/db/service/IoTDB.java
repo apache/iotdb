@@ -25,8 +25,9 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.service.StartupChecks;
-import org.apache.iotdb.db.conf.IoTDBConfigCheck;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -66,6 +67,7 @@ public class IoTDB implements IoTDBMBean {
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final RegisterManager registerManager = new RegisterManager();
   public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
   public static LocalConfigNode configManager = LocalConfigNode.getInstance();
@@ -78,7 +80,7 @@ public class IoTDB implements IoTDBMBean {
 
   public static void main(String[] args) {
     try {
-      IoTDBConfigCheck.getInstance().checkConfig();
+      IoTDBStartCheck.getInstance().checkConfig();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
       logger.error("meet error when doing start checking", e);
@@ -114,6 +116,13 @@ public class IoTDB implements IoTDBMBean {
           "{}: failed to start because some checks failed. ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return;
     }
+
+    // set recover config, avoid creating deleted time series when recovering wal
+    boolean prevIsAutoCreateSchemaEnabled = config.isAutoCreateSchemaEnabled();
+    config.setAutoCreateSchemaEnabled(false);
+    boolean prevIsEnablePartialInsert = config.isEnablePartialInsert();
+    config.setEnablePartialInsert(true);
+
     try {
       setUp();
     } catch (StartupException | QueryProcessException e) {
@@ -122,6 +131,11 @@ public class IoTDB implements IoTDBMBean {
       logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
+
+    // reset config
+    config.setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
+    config.setEnablePartialInsert(prevIsEnablePartialInsert);
+
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 

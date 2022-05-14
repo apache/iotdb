@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
@@ -48,10 +47,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
   @Override
   public List<FragmentInstance> parallelPlan() {
     PlanFragment fragment = subPlan.getPlanFragment();
-    Filter timeFilter =
-        analysis.getQueryFilter() != null
-            ? ((GlobalTimeExpression) analysis.getQueryFilter()).getFilter()
-            : null;
+    Filter timeFilter = analysis.getGlobalTimeFilter();
     PlanNode node = fragment.getRoot();
     if (!(node instanceof WritePlanNode)) {
       throw new IllegalArgumentException("PlanNode should be IWritePlanNode in WRITE operation");

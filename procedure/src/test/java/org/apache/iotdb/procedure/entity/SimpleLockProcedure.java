@@ -32,6 +32,8 @@ public class SimpleLockProcedure extends Procedure<TestProcEnv> {
 
   private String procName;
 
+  public SimpleLockProcedure() {}
+
   public SimpleLockProcedure(String procName) {
     this.procName = procName;
   }

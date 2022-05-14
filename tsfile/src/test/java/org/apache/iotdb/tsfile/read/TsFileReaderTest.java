@@ -79,7 +79,7 @@ public class TsFileReaderTest {
 
     Path path = new Path("t", "id");
     tsFileWriter.registerTimeseries(
-        new Path(path.getDeviceIdString()),
+        new Path(path.getDevice()),
         new MeasurementSchema("id", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.LZ4));
 
     for (int i = 0; i < 11000000; i++) {

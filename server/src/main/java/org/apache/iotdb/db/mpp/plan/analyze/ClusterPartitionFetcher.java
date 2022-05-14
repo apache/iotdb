@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -86,7 +85,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   private ClusterPartitionFetcher() {
     try {
       client = new ConfigNodeClient();
-    } catch (IoTDBConnectionException | BadNodeUrlException e) {
+    } catch (IoTDBConnectionException e) {
       throw new StatementAnalyzeException("Couldn't connect config node");
     }
     this.partitionExecutor =
@@ -220,6 +219,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
+  }
+
+  @Override
+  public void invalidAllCache() {
+    logger.debug("Invalidate partition cache");
+    partitionCache.storageGroupCache.clear();
+    partitionCache.invalidAllDataPartitionCache();
+    partitionCache.invalidAllSchemaPartitionCache();
+    logger.debug("PartitionCache is invalid:{}", partitionCache);
   }
 
   /** get deviceToStorageGroup map */
@@ -570,6 +578,30 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       DataPartitionCacheKey dataPartitionCacheKey =
           new DataPartitionCacheKey(seriesPartitionSlot, timePartitionSlot);
       dataPartitionCache.invalidate(dataPartitionCacheKey);
+    }
+
+    /** invalid schemaPartitionCache by device */
+    public void invalidAllSchemaPartitionCache() {
+      schemaPartitionCache.invalidateAll();
+    }
+
+    /** invalid dataPartitionCache by seriesPartitionSlot, timePartitionSlot */
+    public void invalidAllDataPartitionCache() {
+      dataPartitionCache.invalidateAll();
+    }
+
+    @Override
+    public String toString() {
+      return "PartitionCache{"
+          + "cacheSize="
+          + cacheSize
+          + ", storageGroupCache="
+          + storageGroupCache
+          + ", schemaPartitionCache="
+          + schemaPartitionCache
+          + ", dataPartitionCache="
+          + dataPartitionCache
+          + '}';
     }
   }
 
