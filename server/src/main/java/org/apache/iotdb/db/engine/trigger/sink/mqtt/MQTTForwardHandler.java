@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.sink.http;
+package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
@@ -29,14 +29,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-public class MQTTForwardHandler implements Handler<ForwardConfiguration, ForwardEvent> {
+public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQTTForwardEvent> {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(MQTTForwardHandler.class);
 
   private BlockingConnection connection;
-  private ForwardConfiguration configuration;
+  private MQTTForwardConfiguration configuration;
 
   @Override
-  public void open(ForwardConfiguration configuration) throws Exception {
+  public void open(MQTTForwardConfiguration configuration) throws Exception {
     this.configuration = configuration;
     MQTT mqtt = new MQTT();
     mqtt.setHost(configuration.getHost(), configuration.getPort());
@@ -55,10 +56,10 @@ public class MQTTForwardHandler implements Handler<ForwardConfiguration, Forward
   }
 
   @Override
-  public void onEvent(ForwardEvent event) throws SinkException {
+  public void onEvent(MQTTForwardEvent event) throws SinkException {
     try {
       connection.publish(
-          event.getTopic(),
+          configuration.getTopic(),
           event.toJsonString().getBytes(),
           configuration.getQos(),
           configuration.isRetain());
@@ -71,15 +72,15 @@ public class MQTTForwardHandler implements Handler<ForwardConfiguration, Forward
   }
 
   @Override
-  public void onEvent(List<ForwardEvent> events) throws SinkException {
+  public void onEvent(List<MQTTForwardEvent> events) throws SinkException {
     StringBuilder sb = new StringBuilder();
-    for (ForwardEvent event : events) {
+    for (MQTTForwardEvent event : events) {
       sb.append(event.toJsonString()).append(", ");
     }
     sb.replace(sb.lastIndexOf(", "), sb.length() - 1, "");
     try {
       connection.publish(
-          "mqtt-topic-batch",
+          configuration.getTopic(),
           sb.toString().getBytes(),
           configuration.getQos(),
           configuration.isRetain());

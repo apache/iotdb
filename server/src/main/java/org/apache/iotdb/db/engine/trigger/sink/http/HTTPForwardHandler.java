@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 
-public class HTTPForwardHandler implements Handler<ForwardConfiguration, ForwardEvent> {
+public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTTPForwardEvent> {
   private static final Logger LOGGER = LoggerFactory.getLogger(HTTPForwardHandler.class);
 
   private static final PoolingHttpClientConnectionManager clientConnectionManager;
@@ -43,7 +43,7 @@ public class HTTPForwardHandler implements Handler<ForwardConfiguration, Forward
   private static int referenceCount;
 
   private HttpPost request;
-  private ForwardConfiguration configuration;
+  private HTTPForwardConfiguration configuration;
 
   static {
     // Create connection-pool manager
@@ -73,7 +73,7 @@ public class HTTPForwardHandler implements Handler<ForwardConfiguration, Forward
   }
 
   @Override
-  public void open(ForwardConfiguration configuration) {
+  public void open(HTTPForwardConfiguration configuration) {
     this.configuration = configuration;
     if (this.request == null) {
       this.request = new HttpPost(configuration.getEndpoint());
@@ -85,7 +85,7 @@ public class HTTPForwardHandler implements Handler<ForwardConfiguration, Forward
   }
 
   @Override
-  public void onEvent(ForwardEvent event) throws SinkException {
+  public void onEvent(HTTPForwardEvent event) throws SinkException {
     CloseableHttpResponse response = null;
     try {
       request.setEntity(new StringEntity("[" + event.toJsonString() + "]"));
@@ -110,11 +110,11 @@ public class HTTPForwardHandler implements Handler<ForwardConfiguration, Forward
   }
 
   @Override
-  public void onEvent(List<ForwardEvent> events) throws SinkException {
+  public void onEvent(List<HTTPForwardEvent> events) throws SinkException {
     CloseableHttpResponse response = null;
     try {
       StringBuilder sb = new StringBuilder();
-      for (ForwardEvent event : events) {
+      for (HTTPForwardEvent event : events) {
         sb.append(event.toJsonString()).append(", ");
       }
       sb.replace(sb.lastIndexOf(", "), sb.length() - 1, "");

@@ -17,46 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.sink.http;
+package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
+import com.google.gson.Gson;
+import java.util.Map;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 
-import com.google.gson.Gson;
+public class MQTTForwardEvent implements Event {
 
-import java.util.Map;
-
-public class ForwardEvent implements Event {
-  private final String topic;
   private final long timestamp;
   private final Object value;
   private final PartialPath fullPath;
-  private Map<String, String> labels;
 
-  public ForwardEvent(String topic, long timestamp, Object value, PartialPath fullPath) {
-    this.topic = topic;
+  public MQTTForwardEvent(long timestamp, Object value, PartialPath fullPath) {
     this.timestamp = timestamp;
     this.value = value;
     this.fullPath = fullPath;
   }
 
-  public ForwardEvent(
-      String topic,
-      long timestamp,
-      Object value,
-      PartialPath fullPath,
-      Map<String, String> labels) {
-    this(topic, timestamp, value, fullPath);
-    this.labels = labels;
-  }
-
+  //@todo excluder
   public String toJsonString() {
     Gson gson = new Gson();
     return gson.toJson(this);
-  }
-
-  public String getTopic() {
-    return topic;
   }
 
   public long getTimestamp() {
@@ -69,9 +52,5 @@ public class ForwardEvent implements Event {
 
   public PartialPath getFullPath() {
     return fullPath;
-  }
-
-  public Map<String, String> getLabels() {
-    return labels;
   }
 }

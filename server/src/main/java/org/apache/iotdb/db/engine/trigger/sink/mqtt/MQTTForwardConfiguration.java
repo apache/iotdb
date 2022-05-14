@@ -17,74 +17,49 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.sink.http;
+package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
 import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
-
 import org.fusesource.mqtt.client.QoS;
 
-public class ForwardConfiguration implements Configuration {
-  private final String protocol;
-  private final boolean stopIfException;
+public class MQTTForwardConfiguration implements Configuration {
 
-  // ForwardQueue config items
-  private final int maxQueueCount;
-  private final int maxQueueSize;
-  private final int forwardBatchSize;
-
-  // HTTP config items
-  private String endpoint;
-
-  // MQTT config items
   private String host;
   private int port;
   private String username;
   private String password;
+  private String topic;
   private long reconnectDelay;
   private long connectAttemptsMax;
   private QoS qos;
   private boolean retain;
+  private final boolean stopIfException;
 
   // TODO support payloadFormatter
 
-  public ForwardConfiguration(
-      String protocol,
-      boolean stopIfException,
-      int maxQueueCount,
-      int maxQueueSize,
-      int forwardBatchSize) {
-    this.protocol = protocol;
-    this.stopIfException = stopIfException;
-
-    this.maxQueueCount = maxQueueCount;
-    this.maxQueueSize = maxQueueSize;
-    this.forwardBatchSize = forwardBatchSize;
-  }
-
-  public static void setHTTPConfig(ForwardConfiguration configuration, String endpoint) {
-    configuration.setEndpoint(endpoint);
-  }
-
-  public static void setMQTTConfig(
-      ForwardConfiguration configuration,
+  public MQTTForwardConfiguration(
       String host,
       int port,
       String username,
       String password,
+      String topic,
       long reconnectDelay,
       long connectAttemptsMax,
       String qos,
-      boolean retain)
+      boolean retain,
+      boolean stopIfException)
       throws SinkException {
-    configuration.setHost(host);
-    configuration.setPort(port);
-    configuration.setUsername(username);
-    configuration.setPassword(password);
-    configuration.setReconnectDelay(reconnectDelay);
-    configuration.setConnectAttemptsMax(connectAttemptsMax);
-    configuration.setQos(parseQoS(qos));
-    configuration.setRetain(retain);
+    this.host = host;
+    this.port = port;
+    this.username = username;
+    this.password = password;
+    this.topic = topic;
+    this.reconnectDelay = reconnectDelay;
+    this.connectAttemptsMax = connectAttemptsMax;
+    this.qos = parseQoS(qos);
+    this.retain = retain;
+    this.stopIfException = stopIfException;
   }
 
   private static QoS parseQoS(String qos) throws SinkException {
@@ -100,13 +75,7 @@ public class ForwardConfiguration implements Configuration {
     }
   }
 
-  public void checkHTTPConfig() throws SinkException {
-    if (endpoint == null || endpoint.isEmpty()) {
-      throw new SinkException("HTTP config item error");
-    }
-  }
-
-  public void checkMQTTConfig() throws SinkException {
+  public void checkConfig() throws SinkException {
     if (host == null
         || host.isEmpty()
         || port < 0
@@ -114,38 +83,17 @@ public class ForwardConfiguration implements Configuration {
         || username == null
         || username.isEmpty()
         || password == null
-        || password.isEmpty()) {
+        || password.isEmpty()
+        || topic == null
+        || topic.isEmpty()) {
       throw new SinkException("MQTT config item error");
     }
-  }
-
-  public String getProtocol() {
-    return protocol;
   }
 
   public boolean isStopIfException() {
     return stopIfException;
   }
 
-  public int getMaxQueueCount() {
-    return maxQueueCount;
-  }
-
-  public int getMaxQueueSize() {
-    return maxQueueSize;
-  }
-
-  public int getForwardBatchSize() {
-    return forwardBatchSize;
-  }
-
-  public String getEndpoint() {
-    return endpoint;
-  }
-
-  private void setEndpoint(String endpoint) {
-    this.endpoint = endpoint;
-  }
 
   public String getHost() {
     return host;
@@ -209,5 +157,13 @@ public class ForwardConfiguration implements Configuration {
 
   private void setRetain(boolean retain) {
     this.retain = retain;
+  }
+
+  public String getTopic() {
+    return topic;
+  }
+
+  public void setTopic(String topic) {
+    this.topic = topic;
   }
 }

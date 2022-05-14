@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.sink.http;
+package org.apache.iotdb.db.engine.trigger.impl;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
 
@@ -35,12 +36,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @param <T> Subclass of Event
  */
-public class ForwardQueue<T extends Event> {
+public class BatchHandlerQueue<T extends Event> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ForwardQueue.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BatchHandlerQueue.class);
 
-  private final int maxQueueCount;
-  private final int maxQueueSize;
+  private final int queueNumber;
+  private final int queueSize;
   private final int batchSize;
   private final AtomicInteger atomicCount = new AtomicInteger();
 
@@ -48,20 +49,30 @@ public class ForwardQueue<T extends Event> {
 
   private final Handler handler;
 
-  public ForwardQueue(Handler handler, ForwardConfiguration configuration) {
+  public BatchHandlerQueue(int queueNumber, int queueSize, int batchSize, Handler handler) {
+    this.queueNumber =
+        queueNumber > IoTDBDescriptor.getInstance().getConfig()
+            .getTriggerForwardMaxQueueNumber() ? IoTDBDescriptor.getInstance().getConfig()
+            .getTriggerForwardMaxQueueNumber() : queueNumber;
+    this.queueSize = queueSize > IoTDBDescriptor.getInstance().getConfig()
+        .getTriggerForwardMaxSizePerQueue() ? IoTDBDescriptor.getInstance().getConfig()
+        .getTriggerForwardMaxSizePerQueue() : queueSize;
+    this.batchSize = batchSize > IoTDBDescriptor.getInstance().getConfig()
+        .getBatchSize() ? IoTDBDescriptor.getInstance().getConfig().getBatchSize()
+        : batchSize;
     this.handler = handler;
-    this.maxQueueCount = configuration.getMaxQueueCount();
-    this.maxQueueSize = configuration.getMaxQueueSize();
-    this.batchSize = configuration.getForwardBatchSize();
-
-    queues = new ArrayBlockingQueue[maxQueueCount];
-    for (int i = 0; i < maxQueueCount; i++) {
-      queues[i] = new ArrayBlockingQueue<>(maxQueueSize);
-      new ForwardQueueThread(ForwardQueue.class.getSimpleName() + "-" + i, queues[i]).start();
+    queues = new ArrayBlockingQueue[this.queueNumber];
+    for (int i = 0; i < queueNumber; i++) {
+      queues[i] = new ArrayBlockingQueue<>(this.queueSize);
+      Thread t = new ForwardQueueConsumer(
+          handler.getClass().getSimpleName() + "-" + BatchHandlerQueue.class.getSimpleName() + "-" + i,
+          queues[i]);
+      t.setDaemon(true);
+      t.start();
     }
   }
 
-  int getQueueID(int hashCode) {
+  private int getQueueID(int hashCode) {
     return (hashCode & 0x7FFFFFFF) % queues.length;
   }
 
@@ -74,19 +85,24 @@ public class ForwardQueue<T extends Event> {
     }
   }
 
-  public void put(T event, int hashCode) throws InterruptedException {
-    queues[getQueueID(hashCode)].put(event);
+  public void put(T event) throws InterruptedException {
+    // Group by device or polling
+    if (event.getFullPath() != null) {
+      queues[getQueueID(event.getFullPath().getDevice().hashCode())].put(event);
+    } else {
+      queues[getQueueID(atomicCount.incrementAndGet())].put(event);
+    }
   }
 
   private void handle(ArrayList<T> events) throws Exception {
     handler.onEvent(events);
   }
 
-  class ForwardQueueThread extends Thread {
+  class ForwardQueueConsumer extends Thread {
 
     ArrayBlockingQueue<T> queue;
 
-    public ForwardQueueThread(String name, ArrayBlockingQueue<T> queue) {
+    public ForwardQueueConsumer(String name, ArrayBlockingQueue<T> queue) {
       super(name);
       this.queue = queue;
     }

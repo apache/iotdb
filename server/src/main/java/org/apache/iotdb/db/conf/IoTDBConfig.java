@@ -876,6 +876,20 @@ public class IoTDBConfig {
    */
   private int partitionCacheSize = 10000;
 
+  /**
+   * Number of queues per forwarding trigger
+   */
+  private int triggerForwardMaxQueueNumber = 8;
+  /**
+   * The length of one of the queues per forwarding trigger
+   */
+  private int triggerForwardMaxSizePerQueue = 2000;
+
+  /**
+   *Trigger forwarding data size per batch
+   */
+  private int triggerForwardBatchSize = 50;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -2754,5 +2768,29 @@ public class IoTDBConfig {
 
   public void setPartitionCacheSize(int partitionCacheSize) {
     this.partitionCacheSize = partitionCacheSize;
+  }
+
+  public int getTriggerForwardMaxQueueNumber() {
+    return triggerForwardMaxQueueNumber;
+  }
+
+  public void setTriggerForwardMaxQueueNumber(int triggerForwardMaxQueueNumber) {
+    this.triggerForwardMaxQueueNumber = triggerForwardMaxQueueNumber;
+  }
+
+  public int getTriggerForwardMaxSizePerQueue() {
+    return triggerForwardMaxSizePerQueue;
+  }
+
+  public void setTriggerForwardMaxSizePerQueue(int triggerForwardMaxSizePerQueue) {
+    this.triggerForwardMaxSizePerQueue = triggerForwardMaxSizePerQueue;
+  }
+
+  public int getTriggerForwardBatchSize() {
+    return triggerForwardBatchSize;
+  }
+
+  public void setTriggerForwardBatchSize(int triggerForwardBatchSize) {
+    this.triggerForwardBatchSize = triggerForwardBatchSize;
   }
 }
