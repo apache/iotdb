@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -44,9 +45,9 @@ public abstract class BasicUserManager implements IUserManager {
   private static final Logger logger = LoggerFactory.getLogger(BasicUserManager.class);
   private static final String NO_SUCH_USER_ERROR = "No such user %s";
 
-  private Map<String, User> userMap;
-  private IUserAccessor accessor;
-  private HashLock lock;
+  protected Map<String, User> userMap;
+  protected IUserAccessor accessor;
+  protected HashLock lock;
 
   /**
    * BasicUserManager Constructor.
@@ -115,6 +116,10 @@ public abstract class BasicUserManager implements IUserManager {
     lock.writeLock(username);
     try {
       user = new User(username, AuthUtils.encryptPassword(password));
+      File userDirPath = new File(accessor.getDirPath());
+      if (!userDirPath.exists()) {
+        reset();
+      }
       accessor.saveUser(user);
       userMap.put(username, user);
       return true;

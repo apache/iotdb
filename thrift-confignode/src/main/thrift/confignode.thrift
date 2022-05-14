@@ -38,7 +38,7 @@ struct TGlobalConfig {
 
 struct TDataNodeRegisterResp {
   1: required common.TSStatus status
-  2: required list<TConfigNodeLocation> configNodeList
+  2: required list<common.TConfigNodeLocation> configNodeList
   3: optional i32 dataNodeId
   4: optional TGlobalConfig globalConfig
 }
@@ -55,7 +55,11 @@ struct TSetStorageGroupReq {
 }
 
 struct TDeleteStorageGroupReq {
-  1: required string storageGroup
+  1: required string prefixPath
+}
+
+struct TDeleteStorageGroupsReq {
+  1: required list<string> prefixPathList
 }
 
 struct TSetTTLReq {
@@ -153,13 +157,8 @@ struct TCheckUserPrivilegesReq{
 }
 
 // ConfigNode
-struct TConfigNodeLocation {
-  1: required common.TEndPoint internalEndPoint
-  2: required common.TEndPoint consensusEndPoint
-}
-
 struct TConfigNodeRegisterReq {
-  1: required TConfigNodeLocation configNodeLocation
+  1: required common.TConfigNodeLocation configNodeLocation
   2: required string dataNodeConsensusProtocolClass
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
@@ -172,7 +171,7 @@ struct TConfigNodeRegisterReq {
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
   2: optional common.TConsensusGroupId partitionRegionId
-  3: optional list<TConfigNodeLocation> configNodeList
+  3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
 service ConfigIService {
@@ -188,6 +187,8 @@ service ConfigIService {
   common.TSStatus setStorageGroup(TSetStorageGroupReq req)
 
   common.TSStatus deleteStorageGroup(TDeleteStorageGroupReq req)
+
+  common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
 
   common.TSStatus setTTL(TSetTTLReq req)
 
@@ -227,5 +228,5 @@ service ConfigIService {
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
-  common.TSStatus applyConfigNode(TConfigNodeLocation configNodeLocation)
+  common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
 }

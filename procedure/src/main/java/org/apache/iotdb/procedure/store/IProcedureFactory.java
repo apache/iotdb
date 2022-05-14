@@ -16,6 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.balancer;
 
-public class RegionBalancer {}
+package org.apache.iotdb.procedure.store;
+
+import org.apache.iotdb.procedure.Procedure;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
+public interface IProcedureFactory {
+
+  Procedure create(ByteBuffer byteBuffer) throws IOException;
+}
