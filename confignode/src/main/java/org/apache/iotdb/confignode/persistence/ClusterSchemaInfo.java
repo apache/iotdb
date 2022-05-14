@@ -132,15 +132,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.writeLock().lock();
     try {
       // Delete StorageGroup
-      PartialPath partialPathName = new PartialPath(req.getStorageGroup());
-      mTree.setStorageGroup(partialPathName);
+      TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
+      PartialPath partialPathName = new PartialPath(storageGroupSchema.getName());
       mTree.deleteStorageGroup(partialPathName);
+      PartitionInfo.getInstance().deleteStorageGroup(req);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
-      LOGGER.error("Error StorageGroup name", e);
+      LOGGER.warn("Storage group not exist", e);
       result
-          .setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode())
-          .setMessage("Error StorageGroup name");
+          .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          .setMessage("Storage group not exist");
     } finally {
       storageGroupReadWriteLock.writeLock().unlock();
     }
@@ -341,6 +342,27 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       storageGroupReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  /** @return All StorageGroupSchemas that matches to the specific StorageGroup patterns */
+  public Map<String, TStorageGroupSchema> getDeleteStorageGroups(List<String> rawPathList) {
+    Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      for (String rawPath : rawPathList) {
+        PartialPath patternPath = new PartialPath(rawPath);
+        List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+        for (PartialPath path : matchedPaths) {
+          schemaMap.put(
+              path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+        }
+      }
+    } catch (MetadataException e) {
+      LOGGER.warn("Error StorageGroup name", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return schemaMap;
   }
 
   /** @return True if StorageGroupInfo contains the specific StorageGroup */

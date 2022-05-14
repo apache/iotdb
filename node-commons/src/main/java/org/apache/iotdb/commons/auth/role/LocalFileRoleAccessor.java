@@ -84,10 +84,9 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
         return null;
       }
     }
-
-    try (FileInputStream inputStream = new FileInputStream(roleProfile);
-        DataInputStream dataInputStream =
-            new DataInputStream(new BufferedInputStream(inputStream))) {
+    FileInputStream inputStream = new FileInputStream(roleProfile);
+    try (DataInputStream dataInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
       Role role = new Role();
       role.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
 
@@ -115,6 +114,10 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
                 + role.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
+    File roleDir = new File(roleDirPath);
+    if (!roleDir.exists()) {
+      roleDir.mkdirs();
+    }
     try (BufferedOutputStream outputStream =
         new BufferedOutputStream(new FileOutputStream(roleProfile))) {
       try {

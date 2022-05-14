@@ -118,6 +118,16 @@ public class ConfigNodeConf {
   /** The maximum number of DataRegions of each StorageGroup */
   private int maximumDataRegionCount = 20;
 
+  /** Procedure Evict ttl */
+  private int procedureCompletedEvictTTL = 800;
+
+  /** Procedure completed clean interval */
+  private int procedureCompletedCleanInterval = 30;
+
+  /** Procedure core worker threads size */
+  private int procedureCoreWorkerThreadsSize =
+      Math.max(Runtime.getRuntime().availableProcessors() / 4, 16);
+
   ConfigNodeConf() {
     // empty constructor
   }
@@ -346,5 +356,29 @@ public class ConfigNodeConf {
 
   public void setMaximumDataRegionCount(int maximumDataRegionCount) {
     this.maximumDataRegionCount = maximumDataRegionCount;
+  }
+
+  public int getProcedureCompletedEvictTTL() {
+    return procedureCompletedEvictTTL;
+  }
+
+  public void setProcedureCompletedEvictTTL(int procedureCompletedEvictTTL) {
+    this.procedureCompletedEvictTTL = procedureCompletedEvictTTL;
+  }
+
+  public int getProcedureCompletedCleanInterval() {
+    return procedureCompletedCleanInterval;
+  }
+
+  public void setProcedureCompletedCleanInterval(int procedureCompletedCleanInterval) {
+    this.procedureCompletedCleanInterval = procedureCompletedCleanInterval;
+  }
+
+  public int getProcedureCoreWorkerThreadsSize() {
+    return procedureCoreWorkerThreadsSize;
+  }
+
+  public void setProcedureCoreWorkerThreadsSize(int procedureCoreWorkerThreadsSize) {
+    this.procedureCoreWorkerThreadsSize = procedureCoreWorkerThreadsSize;
   }
 }

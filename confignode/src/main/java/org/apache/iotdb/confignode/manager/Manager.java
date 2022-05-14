@@ -131,6 +131,14 @@ public interface Manager {
   TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq);
 
   /**
+   * Delete StorageGroup
+   *
+   * @param deleteStorageGroupsReq deleteStorageGroupReq
+   * @return status
+   */
+  TSStatus deleteStorageGroups(List<String> deletedPaths);
+
+  /**
    * Get SchemaPartition
    *
    * @return SchemaPartitionDataSet

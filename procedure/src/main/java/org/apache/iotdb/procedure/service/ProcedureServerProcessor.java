@@ -21,6 +21,7 @@ package org.apache.iotdb.procedure.service;
 
 import org.apache.iotdb.procedure.Procedure;
 import org.apache.iotdb.procedure.ProcedureExecutor;
+import org.apache.iotdb.procedure.store.IProcedureFactory;
 import org.apache.iotdb.service.rpc.thrift.ProcedureService;
 import org.apache.iotdb.service.rpc.thrift.SubmitProcedureReq;
 
@@ -31,6 +32,7 @@ import java.nio.ByteBuffer;
 
 public class ProcedureServerProcessor implements ProcedureService.Iface {
   private ProcedureExecutor executor;
+  private IProcedureFactory procedureFactory;
 
   private static final String PROC_NOT_FOUND = "Proc  %d not found";
   private static final String PROC_ABORT = "Proc %d  is  aborted";
@@ -41,6 +43,14 @@ public class ProcedureServerProcessor implements ProcedureService.Iface {
 
   public ProcedureServerProcessor(ProcedureExecutor executor) {
     this.executor = executor;
+  }
+
+  public IProcedureFactory getProcedureFactory() {
+    return procedureFactory;
+  }
+
+  public void setProcedureFactory(IProcedureFactory procedureFactory) {
+    this.procedureFactory = procedureFactory;
   }
 
   @Override
@@ -65,13 +75,13 @@ public class ProcedureServerProcessor implements ProcedureService.Iface {
     byte[] procedureBody = req.getProcedureBody();
     long procId;
     ByteBuffer byteBuffer = ByteBuffer.wrap(procedureBody);
-    Procedure procedure = Procedure.newInstance(byteBuffer);
+    Procedure procedure = null;
     try {
-      procedure.deserialize(byteBuffer);
-      procId = executor.submitProcedure(procedure);
+      procedure = procedureFactory.create(byteBuffer);
     } catch (IOException e) {
       return -1;
     }
+    procId = executor.submitProcedure(procedure);
     return procId;
   }
 }
