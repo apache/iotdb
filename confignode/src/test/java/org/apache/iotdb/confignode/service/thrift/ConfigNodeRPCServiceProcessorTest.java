@@ -99,8 +99,8 @@ public class ConfigNodeRPCServiceProcessorTest {
   @Before
   public void before() throws IOException, InterruptedException {
     processor = new ConfigNodeRPCServiceProcessor(new ConfigManager());
-    // Sleep 1s to make sure the Consensus group has done leader election
-    TimeUnit.SECONDS.sleep(1);
+    // Sleep 15s to make sure the Consensus group has done leader election
+    TimeUnit.SECONDS.sleep(15);
   }
 
   @After
