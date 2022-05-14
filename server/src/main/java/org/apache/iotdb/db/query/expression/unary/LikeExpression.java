@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.db.query.udf.core.transformer.unary.RegularTransformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -113,6 +116,17 @@ public class LikeExpression extends UnaryExpression {
       }
     }
     return stringBuilder.toString();
+  }
+
+  @Override
+  public TSDataType inferTypes(TypeProvider typeProvider) throws SemanticException {
+    final String expressionString = toString();
+    if (!typeProvider.containsTypeInfoOf(expressionString)) {
+      checkInputExpressionDataType(
+          expression.toString(), expression.inferTypes(typeProvider), TSDataType.TEXT);
+      typeProvider.setType(expressionString, TSDataType.TEXT);
+    }
+    return TSDataType.TEXT;
   }
 
   @Override
