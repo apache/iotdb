@@ -22,6 +22,8 @@ package org.apache.iotdb.db.service.thrift.impl;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.common.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -260,6 +262,12 @@ public class InternalServiceImpl implements InternalService.Iface {
   @Override
   public TSStatus migrateDataRegion(TMigrateDataRegionReq req) throws TException {
     return null;
+  }
+
+  @Override
+  public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
+    // TODO: Return load balancing messages
+    return new THeartbeatResp(req.getHeartbeatTimestamp());
   }
 
   @Override

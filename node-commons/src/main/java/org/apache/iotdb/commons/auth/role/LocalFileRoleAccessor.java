@@ -22,8 +22,10 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +41,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * This class store each role in a separate sequential file. Role file schema : Int32 role name size
@@ -53,6 +56,7 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
   private static final Logger logger = LoggerFactory.getLogger(LocalFileRoleAccessor.class);
   private static final String TEMP_SUFFIX = ".temp";
   private static final String STRING_ENCODING = "utf-8";
+  private static final String roleSnapshotFileName = "system" + File.separator + "roles";
 
   private String roleDirPath;
 
@@ -181,6 +185,47 @@ public class LocalFileRoleAccessor implements IRoleAccessor {
       retList.addAll(set);
     }
     return retList;
+  }
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
+    File roleFolder = systemFileFactory.getFile(roleDirPath);
+    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, roleSnapshotFileName);
+    File roleTmpSnapshotDir =
+        systemFileFactory.getFile(roleSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
+
+    boolean result = true;
+    try {
+      result = FileUtils.copyDir(roleFolder, roleTmpSnapshotDir);
+      result &= roleTmpSnapshotDir.renameTo(roleSnapshotDir);
+    } finally {
+      if (roleTmpSnapshotDir.exists() && !roleTmpSnapshotDir.delete()) {
+        FileUtils.deleteDirectory(roleTmpSnapshotDir);
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
+    File roleFolder = systemFileFactory.getFile(roleDirPath);
+    File roleTmpFolder =
+        systemFileFactory.getFile(roleFolder.getAbsolutePath() + "-" + UUID.randomUUID());
+    File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, roleSnapshotFileName);
+
+    try {
+      org.apache.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
+      if (!FileUtils.copyDir(roleSnapshotDir, roleFolder)) {
+        logger.error("Failed to load role folder snapshot and rollback.");
+        // rollback if failed to copy
+        FileUtils.deleteDirectory(roleFolder);
+        org.apache.commons.io.FileUtils.moveDirectory(roleTmpFolder, roleFolder);
+      }
+    } finally {
+      FileUtils.deleteDirectory(roleTmpFolder);
+    }
   }
 
   @Override
