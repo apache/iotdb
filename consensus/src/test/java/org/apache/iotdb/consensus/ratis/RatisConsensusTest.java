@@ -134,14 +134,15 @@ public class RatisConsensusTest {
     // then use removeConsensusGroup to clean up removed Consensus-Peer's states
     servers.get(follower1).removeConsensusGroup(gid);
     servers.get(follower2).removeConsensusGroup(gid);
-    Assert.assertEquals(servers.get(leader).getLeader(gid).getEndpoint(), peers.get(leader).getEndpoint());
-    Assert.assertEquals(stateMachines.get(leader).getLeaderEndpoint(), peers.get(leader).getEndpoint());
+    Assert.assertEquals(
+        servers.get(leader).getLeader(gid).getEndpoint(), peers.get(leader).getEndpoint());
+    Assert.assertEquals(
+        stateMachines.get(leader).getLeaderEndpoint(), peers.get(leader).getEndpoint());
     Assert.assertEquals(stateMachines.get(leader).getConfiguration().size(), 1);
     Assert.assertEquals(stateMachines.get(leader).getConfiguration().get(0), peers.get(leader));
 
     // 4. try consensus again with one peer
     doConsensus(servers.get(leader), gid, 10, 20);
-
 
     // 5. add two peers back
     // first notify these new peers, let them initialize
@@ -160,10 +161,13 @@ public class RatisConsensusTest {
     follower2 = (leader + 2) % 3;
     // 7. again, group contains only peer0
     // servers.get(0).transferLeader(group.getGroupId(), peers.get(0));
-    servers.get(leader).changePeer(group.getGroupId(), Collections.singletonList(peers.get(leader)));
+    servers
+        .get(leader)
+        .changePeer(group.getGroupId(), Collections.singletonList(peers.get(leader)));
     servers.get(follower1).removeConsensusGroup(group.getGroupId());
     servers.get(follower2).removeConsensusGroup(group.getGroupId());
-    Assert.assertEquals(stateMachines.get(leader).getLeaderEndpoint(), peers.get(leader).getEndpoint());
+    Assert.assertEquals(
+        stateMachines.get(leader).getLeaderEndpoint(), peers.get(leader).getEndpoint());
     Assert.assertEquals(stateMachines.get(leader).getConfiguration().size(), 1);
     Assert.assertEquals(stateMachines.get(leader).getConfiguration().get(0), peers.get(leader));
 
