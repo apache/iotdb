@@ -27,18 +27,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /** CREATE MULTI TIMESERIES statement. */
 public class CreateMultiTimeSeriesStatement extends Statement {
-
-  private static final Logger logger =
-      LoggerFactory.getLogger(CreateMultiTimeSeriesStatement.class);
 
   private List<PartialPath> paths;
   private List<TSDataType> dataTypes = new ArrayList<>();

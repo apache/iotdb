@@ -44,6 +44,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -192,44 +193,43 @@ public class LogicalPlannerTest {
   @Test
   public void testCreateMultiTimeSeriesPlan() {
     try {
-      CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement =
-          new CreateMultiTimeSeriesStatement();
-      createMultiTimeSeriesStatement.setPaths(
-          new ArrayList<PartialPath>() {
+      TSCreateMultiTimeseriesReq req = new TSCreateMultiTimeseriesReq();
+      req.setPaths(
+          new ArrayList<String>() {
             {
-              add(new PartialPath("root.sg1.d2.s1"));
-              add(new PartialPath("root.sg1.d2.s2"));
+              add("root.sg1.d2.s1");
+              add("root.sg1.d2.s2");
             }
           });
-      createMultiTimeSeriesStatement.setAliasList(
+      req.setMeasurementAliasList(
           new ArrayList<String>() {
             {
               add("meter1");
               add(null);
             }
           });
-      createMultiTimeSeriesStatement.setDataTypes(
-          new ArrayList<TSDataType>() {
+      req.setDataTypes(
+          new ArrayList<Integer>() {
             {
-              add(TSDataType.FLOAT);
-              add(TSDataType.FLOAT);
+              add(TSDataType.FLOAT.ordinal());
+              add(TSDataType.FLOAT.ordinal());
             }
           });
-      createMultiTimeSeriesStatement.setEncodings(
-          new ArrayList<TSEncoding>() {
+      req.setEncodings(
+          new ArrayList<Integer>() {
             {
-              add(TSEncoding.PLAIN);
-              add(TSEncoding.PLAIN);
+              add(TSEncoding.PLAIN.ordinal());
+              add(TSEncoding.PLAIN.ordinal());
             }
           });
-      createMultiTimeSeriesStatement.setCompressors(
-          new ArrayList<CompressionType>() {
+      req.setCompressors(
+          new ArrayList<Integer>() {
             {
-              add(CompressionType.SNAPPY);
-              add(CompressionType.SNAPPY);
+              add(CompressionType.SNAPPY.ordinal());
+              add(CompressionType.SNAPPY.ordinal());
             }
           });
-      createMultiTimeSeriesStatement.setAttributesList(
+      req.setAttributesList(
           new ArrayList<Map<String, String>>() {
             {
               add(
@@ -241,7 +241,7 @@ public class LogicalPlannerTest {
               add(null);
             }
           });
-      createMultiTimeSeriesStatement.setTagsList(
+      req.setTagsList(
           new ArrayList<Map<String, String>>() {
             {
               add(
@@ -253,6 +253,8 @@ public class LogicalPlannerTest {
               add(null);
             }
           });
+      CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement =
+          (CreateMultiTimeSeriesStatement) StatementGenerator.createStatement(req);
       MPPQueryContext context = new MPPQueryContext(new QueryId("test_query"));
       Analyzer analyzer =
           new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
@@ -266,7 +268,7 @@ public class LogicalPlannerTest {
       byteBuffer.flip();
       CreateMultiTimeSeriesNode createMultiTimeSeriesNode1 =
           (CreateMultiTimeSeriesNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-      Assert.assertTrue(createMultiTimeSeriesNode.equals(createMultiTimeSeriesNode1));
+      Assert.assertEquals(createMultiTimeSeriesNode, createMultiTimeSeriesNode1);
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();

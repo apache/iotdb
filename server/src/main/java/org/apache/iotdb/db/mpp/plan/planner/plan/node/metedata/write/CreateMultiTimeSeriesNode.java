@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class CreateMultiTimeSeriesNode extends WritePlanNode {
-  private List<PartialPath> paths = new ArrayList<>();;
+  private List<PartialPath> paths = new ArrayList<>();
   private List<TSDataType> dataTypes = new ArrayList<>();
   private List<TSEncoding> encodings = new ArrayList<>();
   private List<CompressionType> compressors = new ArrayList<>();

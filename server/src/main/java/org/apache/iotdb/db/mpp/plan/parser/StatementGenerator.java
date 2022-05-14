@@ -378,7 +378,6 @@ public class StatementGenerator {
   public static Statement createStatement(TSCreateMultiTimeseriesReq req)
       throws IllegalPathException {
     // construct create multi timeseries statement
-    CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
     List<PartialPath> paths = new ArrayList<>();
     for (String path : req.paths) {
       paths.add(new PartialPath(path));
@@ -395,6 +394,7 @@ public class StatementGenerator {
     for (int compressor : req.compressors) {
       compressors.add(CompressionType.values()[compressor]);
     }
+    CreateMultiTimeSeriesStatement statement = new CreateMultiTimeSeriesStatement();
     statement.setPaths(paths);
     statement.setDataTypes(dataTypes);
     statement.setEncodings(encodings);
