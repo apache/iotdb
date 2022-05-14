@@ -32,7 +32,7 @@ WS
 
 
 /**
- * 2. Keywords
+ * 2. Keywords, new keywords should be added into IdentifierParser.g4
  */
 
 // Common Keywords

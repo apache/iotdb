@@ -28,7 +28,7 @@ identifier
      ;
 
 
-// List of key words
+// List of keywords, new keywords should be added into this list.
 
 keyWords
     : ADD
@@ -134,7 +134,6 @@ keyWords
     | RESOURCE
     | REVOKE
     | ROLE
-    | ROOT
     | SCHEMA
     | SELECT
     | SET
@@ -151,9 +150,7 @@ keyWords
     | TASK
     | TEMPLATE
     | TEMPLATES
-    | TIME
     | TIMESERIES
-    | TIMESTAMP
     | TO
     | TOLERANCE
     | TOP

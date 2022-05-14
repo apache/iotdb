@@ -186,6 +186,30 @@ public class PartialPathTest {
       fail();
     } catch (IllegalPathException ignored) {
     }
+
+    try {
+      new PartialPath("root.sg.watermark_embedding");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.time");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.root");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.timestamp");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
   }
 
   @Test
@@ -326,7 +350,49 @@ public class PartialPathTest {
     }
 
     try {
-      new PartialPath("root.sg.d1.device`", "s1");
+      new PartialPath("root.sg.d1", "contains");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg", "watermark_embedding");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg", "and");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1", "or");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1", "not");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1", "root");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1", "time");
+      fail();
+    } catch (IllegalPathException ignored) {
+    }
+
+    try {
+      new PartialPath("root.sg.d1", "timestamp");
       fail();
     } catch (IllegalPathException ignored) {
     }

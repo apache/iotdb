@@ -324,6 +324,25 @@ public class IoTDBSyntaxConventionIdentifierIT {
       } catch (Exception ignored) {
       }
 
+      // reserved words can not be identifier
+      try {
+        statement.execute("create timeseries root.sg1.d1.root INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.time INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+      try {
+        statement.execute("create timeseries root.sg1.d1.timestamp INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
     } catch (SQLException e) {
       e.printStackTrace();
       fail();
