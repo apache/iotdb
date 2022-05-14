@@ -21,7 +21,7 @@
 
 # 语法约定
 
-## 0.13及之前版本语法约定中的问题
+## Proble
 
 在之前版本的语法约定中，为了保持兼容性，我们引入了一些会引起歧义的规定。为了避免歧义，我们设计了新的语法约定，本章将说明旧语法约定中存在的问题，以及我们做出改动的原因。
 
@@ -34,25 +34,22 @@
 在之前的语法约定中，路径结点名被定义成标识符，但是当需要在路径结点名中使用路径分隔符 . 时，需要使用单引号或者双引号引用。这与标识符使用反引号引用的规则相悖。
 
 ```SQL
-在之前的语法约定中，如果需要创建时间序列 root.sg.`www.baidu.com`，需要使用下述语句：
-
+# 在之前的语法约定中，如果需要创建时间序列 root.sg.`www.baidu.com`，需要使用下述语句：
 create root.sg.'www.baidu.com' with datatype=BOOLEAN, encoding=PLAIN
 
-该语句创建的时间序列实际为 root.sg.'www.baidu.com'，即引号一并存入,该时间序列的三个结点为{"root","sg","www.baidu.com"}
-{"root","sg","'www.baidu.com'"}
-在查询语句中，如果希望查询该时间序列的数据，查询语句如下：
+# 该语句创建的时间序列实际为 root.sg.'www.baidu.com'，即引号一并存入,该时间序列的三个结点为{"root","sg","'www.baidu.com'"}
 
+# 在查询语句中，如果希望查询该时间序列的数据，查询语句如下：
 select 'www.baidu.com' from root.sg;
 ```
 
 而在新语法约定中，特殊路径结点名统一使用反引号引用：
 
 ```SQL
-在现有语法约定中，如果需要创建时间序列 root.sg.`www.baidu.com`，语法如下：
-
+# 在现有语法约定中，如果需要创建时间序列 root.sg.`www.baidu.com`，语法如下：
 create root.sg.`www.baidu.com` with 'datatype' = 'BOOLEAN', 'encoding' = 'PLAIN'
 
-查询该时间序列可以通过如下语句：
+# 查询该时间序列可以通过如下语句：
 select `www.baidu.com` from root.sg;
 ```
 
@@ -61,10 +58,11 @@ select `www.baidu.com` from root.sg;
 在旧语法约定中，在路径结点名中使用单引号 ' 和 双引号 " 时，需要使用反斜杠 \ 进行转义，且反斜杠会被视为路径结点名的一部分存入，而在使用其它标识符时没有这个限制，造成了不统一。
 
 ```SQL
-# 创建时间序列 root.sg.\"a
+# 创建时间序列 root.sg.·\"a
 create timeseries root.sg.`\"a` with datatype=TEXT,encoding=PLAIN;
 
-# select `\"a` from root.sg;
+# 查询时间序列 root.sg.\"a
+select `\"a` from root.sg;
 +-----------------------------+-----------+
 |                         Time|root.sg.\"a|
 +-----------------------------+-----------+
@@ -219,7 +217,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
   +-----------------------------+-----------|-----+
   ```
 
-- 用于表示键值对的键和值，具体请参考键值对章节。
+- 用于表示键值对，键值对的键和值可以被定义成常量（包括字符串）或者标识符，具体请参考键值对章节。
 
 #### 如何在字符串内使用引号
 
@@ -285,7 +283,7 @@ MySQL 对字符串的定义可以参考：[MySQL :: MySQL 8.0 Reference Manual :
 
 请注意，此处约束是标识符的通用约束，具体标识符可能还附带其它约束条件，如用户名限制字符数大于等于4，更严格的约束请参考具体标识符相关的说明文档。
 
-标识符命名有以下约束：
+**标识符命名有以下约束：**
 
 - 不使用反引号括起的标识符中，允许出现以下字符：
   - [ 0-9 a-z A-Z _ : @ # $ { } ] （字母，数字，部分特殊字符）
@@ -398,7 +396,7 @@ create schema template `t1't"t`
   +-----------------------------+-----------+-----+
   ```
 
-- 用于表示键值对，键值对的键和值可以被定义成字符串或者标识符，具体请参考键值对章节。
+- 用于表示键值对，键值对的键和值可以被定义成常量（包括字符串）或者标识符，具体请参考键值对章节。
 
 
 ## 路径结点名
@@ -503,7 +501,7 @@ select `111` from root.sg
 
 ## 键值对
 
-**键值对的键和值可以被定义为标识符或者常量。如标识符章节所述，用反引号引起的标识符，反引号被视为标识符的一部分，所以`key1`和"key1"是不相同的表达方式。**
+**键值对的键和值可以被定义为标识符或者常量。如标识符章节所述，用反引号引起的标识符，反引号被视为标识符的一部分，所以\`key1\`和"key1"是不相同的表达方式。**
 
 下面将介绍键值对的使用场景。
 
@@ -533,7 +531,7 @@ WITH (
 
 - 时间序列中用于表示标签和属性的键值对。
 
-```SQL
+```sql
 # 创建时间序列时设定标签和属性，用字符串来表示键值对。
 CREATE timeseries root.turbine.d1.s1(temprature) 
 WITH datatype = FLOAT, encoding = RLE, compression = SNAPPY, 'max_point_number' = '5'
@@ -543,28 +541,46 @@ TAGS('tag1' = 'v1', 'tag2'= 'v2') ATTRIBUTES('attr1' = 'v1', 'attr2' = 'v2')
 CREATE timeseries root.turbine.d1.s1(temprature) 
 WITH datatype = FLOAT, encoding = RLE, compression = SNAPPY, max_point_number = 5
 TAGS(tag1 = v1, tag2 = v2) ATTRIBUTES(attr1 = v1, attr2 = v2)
+```
+
+```sql
 # 修改时间序列的标签和属性
 ALTER timeseries root.turbine.d1.s1 SET 'newTag1' = 'newV1', 'attr1' = 'newV1'
 
 ALTER timeseries root.turbine.d1.s1 SET newTag1 = newV1, attr1 = newV1
+```
+
+```sql
 # 修改标签名
 ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'newTag1'
 
 ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+```
+
+```sql
 # 插入别名、标签、属性
 ALTER timeseries root.turbine.d1.s1 UPSERT 
 ALIAS='newAlias' TAGS('tag2' = 'newV2', 'tag3' = 'v3') ATTRIBUTES('attr3' ='v3', 'attr4'='v4')
 
 ALTER timeseries root.turbine.d1.s1 UPSERT 
 ALIAS = newAlias TAGS(tag2 = newV2, tag3 = v3) ATTRIBUTES(attr3 = v3, attr4 = v4)
+```
+
+```sql
 # 添加新的标签
 ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3' = 'v3', 'tag4' = 'v4'
 
 ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3 = v3, tag4 = v4
+```
+
+```sql
 # 添加新的属性
 ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3' = 'v3', 'attr4' = 'v4'
 
 ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3 = v3, attr4 = v4
+```
+
+```sql
 # 查询符合条件的时间序列信息
 SHOW timeseries root.ln.** WHRER 'unit' = 'c'
 
@@ -581,8 +597,6 @@ CREATE PIPESINK my_iotdb AS IoTDB ('ip' = '输入你的IP')
 CREATE PIPE my_pipe TO my_iotdb FROM 
 (select ** from root WHERE time>=yyyy-mm-dd HH:MM:SS) WITH 'SyncDelOp' = 'true'
 ```
-
-## 关键字和保留字
 
 ## 关键字和保留字
 
