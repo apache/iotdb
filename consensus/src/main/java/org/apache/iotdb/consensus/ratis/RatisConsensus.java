@@ -45,6 +45,7 @@ import org.apache.iotdb.consensus.exception.RatisRequestFailedException;
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.ratis.client.RaftClient;
+import org.apache.ratis.client.RaftClientConfigKeys;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.Parameters;
 import org.apache.ratis.conf.RaftProperties;
@@ -119,12 +120,14 @@ class RatisConsensus implements IConsensus {
     myself = Utils.fromTEndPointAndPriorityToRaftPeer(endpoint, DEFAULT_PRIORITY);
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
-    RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
+    //RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
     RaftServerConfigKeys.Rpc.setSlownessTimeout(
         properties, TimeDuration.valueOf(10, TimeUnit.MINUTES));
     RaftServerConfigKeys.Rpc.setTimeoutMin(properties, TimeDuration.valueOf(2, TimeUnit.SECONDS));
     RaftServerConfigKeys.Rpc.setTimeoutMax(properties, TimeDuration.valueOf(8, TimeUnit.SECONDS));
     RaftServerConfigKeys.Rpc.setSleepTime(properties, TimeDuration.valueOf(1, TimeUnit.SECONDS));
+
+    RaftClientConfigKeys.Rpc.setRequestTimeout(properties, TimeDuration.valueOf(20, TimeUnit.SECONDS));
 
     // set the port which server listen to in RaftProperty object
     final int port = NetUtils.createSocketAddr(address).getPort();
