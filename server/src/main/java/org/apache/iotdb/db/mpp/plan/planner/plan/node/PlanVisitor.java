@@ -191,4 +191,8 @@ public abstract class PlanVisitor<R, C> {
   public R visitTransform(TransformNode node, C context) {
     return visitPlan(node, context);
   }
+
+  public R visitDeleteRegion(DeleteRegionNode node, C context) {
+    return visitPlan(node, context);
+  }
 }

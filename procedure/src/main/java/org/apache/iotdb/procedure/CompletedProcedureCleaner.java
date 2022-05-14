@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.procedure;
 
-import org.apache.iotdb.procedure.conf.ProcedureNodeConfigDescriptor;
 import org.apache.iotdb.procedure.store.IProcedureStore;
 
 import org.slf4j.Logger;
@@ -32,19 +31,20 @@ import java.util.concurrent.TimeUnit;
 /** Internal cleaner that removes the completed procedure results after a TTL. */
 public class CompletedProcedureCleaner<Env> extends InternalProcedure<Env> {
   private static final Logger LOG = LoggerFactory.getLogger(CompletedProcedureCleaner.class);
-
-  static final long CLEANER_INTERVAL =
-      ProcedureNodeConfigDescriptor.getInstance().getConf().getCompletedCleanInterval();
   private static final int DEFAULT_BATCH_SIZE = 32;
-
+  private long evictTTL;
   private final Map<Long, CompletedProcedureRetainer<Env>> completed;
   private final IProcedureStore store;
 
   public CompletedProcedureCleaner(
-      IProcedureStore store, Map<Long, CompletedProcedureRetainer<Env>> completedMap) {
-    super(TimeUnit.SECONDS.toMillis(CLEANER_INTERVAL));
+      IProcedureStore store,
+      Map<Long, CompletedProcedureRetainer<Env>> completedMap,
+      long cleanTimeInterval,
+      long evictTTL) {
+    super(TimeUnit.SECONDS.toMillis(cleanTimeInterval));
     this.completed = completedMap;
     this.store = store;
+    this.evictTTL = evictTTL;
   }
 
   @Override
@@ -56,7 +56,6 @@ public class CompletedProcedureCleaner<Env> extends InternalProcedure<Env> {
       return;
     }
 
-    final long evictTtl = ProcedureExecutor.EVICT_TTL;
     final long[] batchIds = new long[DEFAULT_BATCH_SIZE];
     int batchCount = 0;
 
@@ -67,7 +66,7 @@ public class CompletedProcedureCleaner<Env> extends InternalProcedure<Env> {
       final Map.Entry<Long, CompletedProcedureRetainer<Env>> entry = it.next();
       final CompletedProcedureRetainer<Env> retainer = entry.getValue();
       final Procedure<?> proc = retainer.getProcedure();
-      if (retainer.isExpired(now, evictTtl)) {
+      if (retainer.isExpired(now, evictTTL)) {
         // Failed procedures aren't persisted in WAL.
         batchIds[batchCount++] = entry.getKey();
         if (batchCount == batchIds.length) {

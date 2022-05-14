@@ -46,6 +46,8 @@ public class CommonConfig {
 
   private String roleFolder = "system" + File.separator + "roles";
 
+  private String procedureWalFolder = "system" + File.separator + "procedure";
+
   /** Default system file storage is in local file system (unsupported) */
   private FSType systemFileStorageFs = FSType.LOCAL;
 
@@ -62,6 +64,7 @@ public class CommonConfig {
   public void updatePath(String homeDir) {
     userFolder = addHomeDir(userFolder, homeDir);
     roleFolder = addHomeDir(roleFolder, homeDir);
+    procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
   }
 
   private String addHomeDir(String dir, String homeDir) {
@@ -137,6 +140,14 @@ public class CommonConfig {
 
   public void setRoleFolder(String roleFolder) {
     this.roleFolder = roleFolder;
+  }
+
+  public String getProcedureWalFolder() {
+    return procedureWalFolder;
+  }
+
+  public void setProcedureWalFolder(String procedureWalFolder) {
+    this.procedureWalFolder = procedureWalFolder;
   }
 
   public FSType getSystemFileStorageFs() {

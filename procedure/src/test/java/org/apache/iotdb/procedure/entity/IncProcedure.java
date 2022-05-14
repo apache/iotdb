@@ -25,6 +25,7 @@ import org.apache.iotdb.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.procedure.exception.ProcedureYieldException;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IncProcedure extends Procedure<TestProcEnv> {
@@ -53,5 +54,11 @@ public class IncProcedure extends Procedure<TestProcEnv> {
   @Override
   protected boolean abort(TestProcEnv testProcEnv) {
     return true;
+  }
+
+  @Override
+  public void serialize(ByteBuffer byteBuffer) {
+    byteBuffer.putInt(TestProcedureFactory.TestProcedureType.INC_PROCEDURE.ordinal());
+    super.serialize(byteBuffer);
   }
 }

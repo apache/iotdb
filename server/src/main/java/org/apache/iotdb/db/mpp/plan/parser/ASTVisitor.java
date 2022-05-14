@@ -55,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
@@ -1447,6 +1448,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     ShowTTLStatement showTTLStatement = new ShowTTLStatement();
     showTTLStatement.setAll(true);
     return showTTLStatement;
+  }
+
+  @Override
+  public Statement visitDeleteStorageGroup(IoTDBSqlParser.DeleteStorageGroupContext ctx) {
+    DeleteStorageGroupStatement deleteStorageGroupStatement = new DeleteStorageGroupStatement();
+    List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
+    List<String> paths = new ArrayList<>();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : prefixPathContexts) {
+      paths.add(parsePrefixPath(prefixPathContext).getFullPath());
+    }
+    deleteStorageGroupStatement.setPrefixPath(paths);
+    return deleteStorageGroupStatement;
   }
 
   /** function for parsing file path used by LOAD statement. */
