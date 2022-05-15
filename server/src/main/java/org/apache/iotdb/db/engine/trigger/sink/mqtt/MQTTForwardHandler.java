@@ -31,7 +31,7 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MQTTForwardHandler.class);
 
-  // TODO If make connectionPool static, it may cause only the first configuration to be active.
+  // TODO If make connectionPool static, it may cause that only the first configuration can be active.
   private MQTTConnectionPool connectionPool;
   private MQTTForwardConfiguration configuration;
 
