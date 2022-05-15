@@ -93,6 +93,7 @@ public class ForwardTrigger implements Trigger {
     long reconnectDelay = attributes.getLongOrDefault("reconnectDelay", 10L);
     long connectAttemptsMax = attributes.getLongOrDefault("connectAttemptsMax", 3L);
     String qos = attributes.getStringOrDefault("qos", "exactly_once");
+    int poolSize = attributes.getIntOrDefault("poolSize", 8);
     boolean retain = attributes.getBooleanOrDefault("retain", false);
     MQTTForwardConfiguration forwardConfig =
         new MQTTForwardConfiguration(
@@ -105,6 +106,7 @@ public class ForwardTrigger implements Trigger {
             connectAttemptsMax,
             qos,
             retain,
+            poolSize,
             stopIfException);
     forwardConfig.checkConfig();
     return forwardConfig;

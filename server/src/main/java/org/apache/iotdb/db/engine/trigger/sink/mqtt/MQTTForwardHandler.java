@@ -22,8 +22,6 @@ package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
-import org.fusesource.mqtt.client.BlockingConnection;
-import org.fusesource.mqtt.client.MQTT;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,32 +31,37 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MQTTForwardHandler.class);
 
-  private BlockingConnection connection;
+  // TODO If make connectionPool static, it may cause only the first configuration to be active.
+  private MQTTConnectionPool connectionPool;
   private MQTTForwardConfiguration configuration;
 
   @Override
   public void open(MQTTForwardConfiguration configuration) throws Exception {
     this.configuration = configuration;
-    MQTT mqtt = new MQTT();
-    mqtt.setHost(configuration.getHost(), configuration.getPort());
-    mqtt.setUserName(configuration.getUsername());
-    mqtt.setPassword(configuration.getPassword());
-    mqtt.setConnectAttemptsMax(configuration.getConnectAttemptsMax());
-    mqtt.setReconnectDelay(configuration.getReconnectDelay());
-
-    connection = mqtt.blockingConnection();
-    connection.connect();
+    if (connectionPool == null || connectionPool.isClosed()) {
+      connectionPool =
+          new MQTTConnectionPool(
+              new MQTTConnectionFactory(
+                  configuration.getHost(),
+                  configuration.getPort(),
+                  configuration.getUsername(),
+                  configuration.getPassword(),
+                  configuration.getConnectAttemptsMax(),
+                  configuration.getReconnectDelay()),
+              configuration.getPoolSize());
+    }
+    connectionPool.preparePool();
   }
 
   @Override
   public void close() throws Exception {
-    connection.disconnect();
+    connectionPool.disconnectAndClose();
   }
 
   @Override
   public void onEvent(MQTTForwardEvent event) throws SinkException {
     try {
-      connection.publish(
+      connectionPool.publish(
           configuration.getTopic(),
           event.toJsonString().getBytes(),
           configuration.getQos(),
@@ -79,7 +82,7 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
     }
     sb.replace(sb.lastIndexOf(", "), sb.length() - 1, "");
     try {
-      connection.publish(
+      connectionPool.publish(
           configuration.getTopic(),
           sb.toString().getBytes(),
           configuration.getQos(),

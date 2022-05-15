@@ -35,6 +35,7 @@ public class MQTTForwardConfiguration implements Configuration {
   private final long connectAttemptsMax;
   private final QoS qos;
   private final boolean retain;
+  private final int poolSize;
   private final boolean stopIfException;
 
   // TODO support payloadFormatter
@@ -49,6 +50,7 @@ public class MQTTForwardConfiguration implements Configuration {
       long connectAttemptsMax,
       String qos,
       boolean retain,
+      int poolSize,
       boolean stopIfException)
       throws SinkException {
     this.host = host;
@@ -60,6 +62,7 @@ public class MQTTForwardConfiguration implements Configuration {
     this.connectAttemptsMax = connectAttemptsMax;
     this.qos = parseQoS(qos);
     this.retain = retain;
+    this.poolSize = poolSize;
     this.stopIfException = stopIfException;
   }
 
@@ -91,10 +94,6 @@ public class MQTTForwardConfiguration implements Configuration {
     }
   }
 
-  public boolean isStopIfException() {
-    return stopIfException;
-  }
-
   public String getHost() {
     return host;
   }
@@ -109,6 +108,10 @@ public class MQTTForwardConfiguration implements Configuration {
 
   public String getPassword() {
     return password;
+  }
+
+  public String getTopic() {
+    return topic;
   }
 
   public long getReconnectDelay() {
@@ -127,7 +130,11 @@ public class MQTTForwardConfiguration implements Configuration {
     return retain;
   }
 
-  public String getTopic() {
-    return topic;
+  public int getPoolSize() {
+    return poolSize;
+  }
+
+  public boolean isStopIfException() {
+    return stopIfException;
   }
 }
