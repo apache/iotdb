@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -139,7 +140,11 @@ public class ConfigNodeRPCServiceProcessorTest {
       dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
       dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
 
-      TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
+      TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+      dataNodeInfo.setCpuCoreNum(8);
+      dataNodeInfo.setMaxMemory(1024 * 1024);
+
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation, dataNodeInfo);
       TDataNodeRegisterResp resp = processor.registerDataNode(req);
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
@@ -159,7 +164,11 @@ public class ConfigNodeRPCServiceProcessorTest {
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8778));
     dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
 
-    TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
+    TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+    dataNodeInfo.setCpuCoreNum(8);
+    dataNodeInfo.setMaxMemory(1024 * 1024);
+
+    TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation, dataNodeInfo);
     TDataNodeRegisterResp resp = processor.registerDataNode(req);
     Assert.assertEquals(
         TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode(), resp.getStatus().getCode());
