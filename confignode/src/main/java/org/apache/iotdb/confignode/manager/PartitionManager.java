@@ -47,10 +47,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import javafx.util.Pair;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
@@ -128,23 +129,37 @@ public class PartitionManager {
    */
   private Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> allocateSchemaPartition(
       Map<String, List<TSeriesPartitionSlot>> noAssignedSchemaPartitionSlotsMap) {
+
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap =
+        partitionInfo.getRegionReplicaMap();
 
     for (String storageGroup : noAssignedSchemaPartitionSlotsMap.keySet()) {
+
       List<TSeriesPartitionSlot> noAssignedPartitionSlots =
           noAssignedSchemaPartitionSlotsMap.get(storageGroup);
-      List<TRegionReplicaSet> schemaRegionReplicaSets =
-          partitionInfo.getRegionReplicaSets(
+      // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
+      List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
+          partitionInfo.getSortedRegionSlotsCounter(
               getClusterSchemaManager()
                   .getRegionGroupIds(storageGroup, TConsensusGroupType.SchemaRegion));
-      Random random = new Random();
 
       Map<TSeriesPartitionSlot, TRegionReplicaSet> allocateResult = new HashMap<>();
-      noAssignedPartitionSlots.forEach(
-          seriesPartitionSlot ->
-              allocateResult.put(
-                  seriesPartitionSlot,
-                  schemaRegionReplicaSets.get(random.nextInt(schemaRegionReplicaSets.size()))));
+      for (TSeriesPartitionSlot seriesPartitionSlot : noAssignedPartitionSlots) {
+        // Do greedy allocation
+        Pair<Long, TConsensusGroupId> bestRegion = regionSlotsCounter.get(0);
+        allocateResult.put(seriesPartitionSlot, regionReplicaMap.get(bestRegion.getValue()));
+
+        // Bubble sort
+        int index = 0;
+        regionSlotsCounter.set(0, new Pair<>(bestRegion.getKey() + 1, bestRegion.getValue()));
+        while (index < regionSlotsCounter.size() - 1
+            && regionSlotsCounter.get(index).getKey()
+                > regionSlotsCounter.get(index + 1).getKey()) {
+          Collections.swap(regionSlotsCounter, index, index + 1);
+          index += 1;
+        }
+      }
 
       result.put(storageGroup, allocateResult);
     }
@@ -220,15 +235,18 @@ public class PartitionManager {
 
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         result = new HashMap<>();
+    Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaMap =
+        partitionInfo.getRegionReplicaMap();
 
     for (String storageGroup : noAssignedDataPartitionSlotsMap.keySet()) {
+
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> noAssignedPartitionSlotsMap =
           noAssignedDataPartitionSlotsMap.get(storageGroup);
-      List<TRegionReplicaSet> dataRegionEndPoints =
-          partitionInfo.getRegionReplicaSets(
+      // List<Pair<allocatedSlotsNum, TConsensusGroupId>>
+      List<Pair<Long, TConsensusGroupId>> regionSlotsCounter =
+          partitionInfo.getSortedRegionSlotsCounter(
               getClusterSchemaManager()
                   .getRegionGroupIds(storageGroup, TConsensusGroupType.DataRegion));
-      Random random = new Random();
 
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> allocateResult =
           new HashMap<>();
@@ -236,10 +254,23 @@ public class PartitionManager {
           noAssignedPartitionSlotsMap.entrySet()) {
         allocateResult.put(seriesPartitionEntry.getKey(), new HashMap<>());
         for (TTimePartitionSlot timePartitionSlot : seriesPartitionEntry.getValue()) {
+
+          // Do greedy allocation
+          Pair<Long, TConsensusGroupId> bestRegion = regionSlotsCounter.get(0);
           allocateResult
               .get(seriesPartitionEntry.getKey())
               .computeIfAbsent(timePartitionSlot, key -> new ArrayList<>())
-              .add(dataRegionEndPoints.get(random.nextInt(dataRegionEndPoints.size())));
+              .add(regionReplicaMap.get(bestRegion.getValue()));
+
+          // Bubble sort
+          int index = 0;
+          regionSlotsCounter.set(0, new Pair<>(bestRegion.getKey() + 1, bestRegion.getValue()));
+          while (index < regionSlotsCounter.size() - 1
+              && regionSlotsCounter.get(index).getKey()
+                  > regionSlotsCounter.get(index + 1).getKey()) {
+            Collections.swap(regionSlotsCounter, index, index + 1);
+            index += 1;
+          }
         }
       }
 
