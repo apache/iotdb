@@ -45,6 +45,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
@@ -298,7 +299,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.SET_STORAGE_GROUP, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
   }
 
@@ -392,7 +393,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.CREATE_ALIGNED_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
   }
 
@@ -435,7 +436,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.CREATE_MULTI_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
   }
 
@@ -445,8 +446,46 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   }
 
   @Override
-  public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroup) {
-    throw new UnsupportedOperationException();
+  public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
+    try {
+      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} delete {} storage groups, the first is {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            storageGroups.size(),
+            storageGroups.get(0));
+      }
+
+      // Step 1: transfer from DeleteStorageGroupsReq to Statement
+      DeleteStorageGroupStatement statement =
+          (DeleteStorageGroupStatement) StatementGenerator.createStatement(storageGroups);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              SESSION_MANAGER.getSessionInfo(sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.DELETE_STORAGE_GROUPS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
@@ -599,7 +638,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -645,7 +684,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -691,7 +730,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e,
+          OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
+          TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -733,7 +774,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -771,7 +812,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -852,7 +893,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -991,7 +1032,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
