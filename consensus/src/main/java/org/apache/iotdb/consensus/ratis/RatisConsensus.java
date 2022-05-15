@@ -59,7 +59,6 @@ import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
-import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.NetUtils;
@@ -496,30 +495,31 @@ class RatisConsensus implements IConsensus {
   }
 
   private boolean waitUntilLeaderReady(RaftGroupId groupId) {
-    DivisionInfo divisionInfo;
-    try {
-      divisionInfo = server.getDivision(groupId).getInfo();
-    } catch (IOException e) {
-      // if the query fails, simply return not leader
-      logger.info("isLeaderReady checking failed with exception: ", e);
-      return false;
-    }
-    long startTime = System.currentTimeMillis();
-    try {
-      while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
-        Thread.sleep(10);
-        long consumedTime = System.currentTimeMillis() - startTime;
-        if (consumedTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT) {
-          logger.warn("{}: leader is still not ready after {}ms", groupId, consumedTime);
-          return false;
-        }
-      }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.warn("Unexpected interruption", e);
-      return false;
-    }
-    return divisionInfo.isLeader();
+    return true;
+    //    DivisionInfo divisionInfo;
+    //    try {
+    //      divisionInfo = server.getDivision(groupId).getInfo();
+    //    } catch (IOException e) {
+    //      // if the query fails, simply return not leader
+    //      logger.info("isLeaderReady checking failed with exception: ", e);
+    //      return false;
+    //    }
+    //    long startTime = System.currentTimeMillis();
+    //    try {
+    //      while (divisionInfo.isLeader() && !divisionInfo.isLeaderReady()) {
+    //        Thread.sleep(10);
+    //        long consumedTime = System.currentTimeMillis() - startTime;
+    //        if (consumedTime >= DEFAULT_WAIT_LEADER_READY_TIMEOUT) {
+    //          logger.warn("{}: leader is still not ready after {}ms", groupId, consumedTime);
+    //          return false;
+    //        }
+    //      }
+    //    } catch (InterruptedException e) {
+    //      Thread.currentThread().interrupt();
+    //      logger.warn("Unexpected interruption", e);
+    //      return false;
+    //    }
+    //    return divisionInfo.isLeader();
   }
 
   @Override
