@@ -27,6 +27,7 @@ struct TDataNodeRegisterReq {
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
   2: optional map<string, TStorageGroupSchema> statusMap
+  3: optional common.TDataNodeInfo dataNodeInfo
 }
 
 struct TGlobalConfig {
