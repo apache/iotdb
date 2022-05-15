@@ -37,6 +37,7 @@ public class MQTTForwardConfiguration implements Configuration {
   private final boolean retain;
   private final int poolSize;
   private final boolean stopIfException;
+  private final String payloadFormatter;
 
   // TODO support payloadFormatter
 
@@ -51,7 +52,8 @@ public class MQTTForwardConfiguration implements Configuration {
       String qos,
       boolean retain,
       int poolSize,
-      boolean stopIfException)
+      boolean stopIfException,
+      String payloadFormatter)
       throws SinkException {
     this.host = host;
     this.port = port;
@@ -64,6 +66,7 @@ public class MQTTForwardConfiguration implements Configuration {
     this.retain = retain;
     this.poolSize = poolSize;
     this.stopIfException = stopIfException;
+    this.payloadFormatter = payloadFormatter;
   }
 
   private static QoS parseQoS(String qos) throws SinkException {
@@ -136,5 +139,9 @@ public class MQTTForwardConfiguration implements Configuration {
 
   public boolean isStopIfException() {
     return stopIfException;
+  }
+
+  public String getPayloadFormatter() {
+    return payloadFormatter;
   }
 }

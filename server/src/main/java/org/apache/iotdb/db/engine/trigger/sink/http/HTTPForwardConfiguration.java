@@ -28,12 +28,13 @@ public class HTTPForwardConfiguration implements Configuration {
 
   // HTTP config items
   private final String endpoint;
+  private final String payloadFormatter;
 
-  // TODO support payloadFormatter
-
-  public HTTPForwardConfiguration(String endpoint, boolean stopIfException) {
+  public HTTPForwardConfiguration(
+      String endpoint, boolean stopIfException, String payloadFormatter) {
     this.endpoint = endpoint;
     this.stopIfException = stopIfException;
+    this.payloadFormatter = payloadFormatter;
   }
 
   public void checkConfig() throws SinkException {
@@ -48,5 +49,9 @@ public class HTTPForwardConfiguration implements Configuration {
 
   public String getEndpoint() {
     return endpoint;
+  }
+
+  public String getPayloadFormatter() {
+    return payloadFormatter;
   }
 }

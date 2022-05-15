@@ -74,8 +74,11 @@ public class ForwardTrigger implements Trigger {
       throws SinkException {
     String endpoint = attributes.getString("endpoint");
     boolean stopIfException = attributes.getBooleanOrDefault("stopIfException", false);
+    String payloadFormatter =
+        attributes.getStringOrDefault(
+            "payloadFormatter", "FullPath: `fullPath`, timestamp: `timestamp`, value: `value`");
     HTTPForwardConfiguration forwardConfig =
-        new HTTPForwardConfiguration(endpoint, stopIfException);
+        new HTTPForwardConfiguration(endpoint, stopIfException, payloadFormatter);
     forwardConfig.checkConfig();
     return forwardConfig;
   }
@@ -93,6 +96,9 @@ public class ForwardTrigger implements Trigger {
     String qos = attributes.getStringOrDefault("qos", "exactly_once");
     int poolSize = attributes.getIntOrDefault("poolSize", 8);
     boolean retain = attributes.getBooleanOrDefault("retain", false);
+    String payloadFormatter =
+        attributes.getStringOrDefault(
+            "payloadFormatter", "FullPath: `fullPath`, timestamp: `timestamp`, value: `value`");
     MQTTForwardConfiguration forwardConfig =
         new MQTTForwardConfiguration(
             host,
@@ -105,7 +111,8 @@ public class ForwardTrigger implements Trigger {
             qos,
             retain,
             poolSize,
-            stopIfException);
+            stopIfException,
+            payloadFormatter);
     forwardConfig.checkConfig();
     return forwardConfig;
   }
@@ -130,10 +137,20 @@ public class ForwardTrigger implements Trigger {
     Event event;
     switch (protocol) {
       case PROTOCOL_HTTP:
-        event = new HTTPForwardEvent(timestamp, value, path);
+        event =
+            new HTTPForwardEvent(
+                timestamp,
+                value,
+                path,
+                ((HTTPForwardConfiguration) forwardConfig).getPayloadFormatter());
         break;
       case PROTOCOL_MQTT:
-        event = new MQTTForwardEvent(timestamp, value, path);
+        event =
+            new MQTTForwardEvent(
+                timestamp,
+                value,
+                path,
+                ((MQTTForwardConfiguration) forwardConfig).getPayloadFormatter());
         break;
       default:
         throw new TriggerExecutionException("Forward protocol doesn't support.");
@@ -149,10 +166,20 @@ public class ForwardTrigger implements Trigger {
       Event event;
       switch (protocol) {
         case PROTOCOL_HTTP:
-          event = new HTTPForwardEvent(timestamps[i], values[i], path);
+          event =
+              new HTTPForwardEvent(
+                  timestamps[i],
+                  values[i],
+                  path,
+                  ((HTTPForwardConfiguration) forwardConfig).getPayloadFormatter());
           break;
         case PROTOCOL_MQTT:
-          event = new MQTTForwardEvent(timestamps[i], values[i], path);
+          event =
+              new MQTTForwardEvent(
+                  timestamps[i],
+                  values[i],
+                  path,
+                  ((MQTTForwardConfiguration) forwardConfig).getPayloadFormatter());
           break;
         default:
           throw new TriggerExecutionException("Forward protocol doesn't support.");

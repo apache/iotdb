@@ -29,17 +29,28 @@ public class MQTTForwardEvent implements Event {
   private final long timestamp;
   private final Object value;
   private final PartialPath fullPath;
+  private final String payloadFormatter;
 
-  public MQTTForwardEvent(long timestamp, Object value, PartialPath fullPath) {
+  public MQTTForwardEvent(
+      long timestamp, Object value, PartialPath fullPath, String payloadFormatter) {
     this.timestamp = timestamp;
     this.value = value;
     this.fullPath = fullPath;
+    this.payloadFormatter = payloadFormatter;
   }
 
-  // @todo excluder
   public String toJsonString() {
     Gson gson = new Gson();
-    return gson.toJson(this);
+    return gson.toJson(toFormatterString());
+  }
+
+  private String toFormatterString() {
+    return payloadFormatter
+        .replaceAll("`timestamp`", String.valueOf(timestamp))
+        .replaceAll("`value`", String.valueOf(value))
+        .replaceAll("`device`", fullPath.getDevice())
+        .replaceAll("`measurement`", fullPath.getMeasurement())
+        .replaceAll("`fullPath`", fullPath.getFullPath());
   }
 
   public long getTimestamp() {

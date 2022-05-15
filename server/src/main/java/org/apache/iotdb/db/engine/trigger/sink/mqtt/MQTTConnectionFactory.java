@@ -27,6 +27,8 @@ import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.MQTT;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class MQTTConnectionFactory extends BasePooledObjectFactory<BlockingConnection> {
   private final String host;
   private final int port;
@@ -34,6 +36,9 @@ public class MQTTConnectionFactory extends BasePooledObjectFactory<BlockingConne
   private final String password;
   private final long connectAttemptsMax;
   private final long reconnectDelay;
+
+  private final AtomicInteger atomicCount = new AtomicInteger();
+  private static final String CLIENT_NAME = "MQTTClient";
 
   public MQTTConnectionFactory(
       String host,
@@ -53,6 +58,7 @@ public class MQTTConnectionFactory extends BasePooledObjectFactory<BlockingConne
   @Override
   public BlockingConnection create() throws Exception {
     MQTT mqtt = new MQTT();
+    mqtt.setClientId(CLIENT_NAME + atomicCount.incrementAndGet());
     mqtt.setHost(host, port);
     mqtt.setUserName(username);
     mqtt.setPassword(password);
