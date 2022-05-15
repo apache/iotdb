@@ -586,11 +586,11 @@ class RatisConsensus implements IConsensus {
   }
 
   private long getCommitIndex(RaftGroupId raftGroupId) {
-    try {
-      return server.getDivision(raftGroupId).getRaftLog().getLastCommittedIndex();
-    } catch (IOException e) {
-      logger.debug("get group {} failed ", raftGroupId, e);
-    }
+    //    try {
+    //      return server.getDivision(raftGroupId).getRaftLog().getLastCommittedIndex();
+    //    } catch (IOException e) {
+    //      logger.debug("get group {} failed ", raftGroupId, e);
+    //    }
     return -1;
   }
 
