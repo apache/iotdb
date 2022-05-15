@@ -58,18 +58,16 @@ public class ForwardTrigger implements Trigger {
       case PROTOCOL_HTTP:
         forwardConfig = createHTTPConfiguration(attributes);
         forwardHandler = new HTTPForwardHandler();
-        queue = new BatchHandlerQueue<>(queueNumber, queueSize, batchSize, forwardHandler);
-        forwardHandler.open(forwardConfig);
         break;
       case PROTOCOL_MQTT:
         forwardConfig = createMQTTConfiguration(attributes);
         forwardHandler = new MQTTForwardHandler();
-        queue = new BatchHandlerQueue<>(queueNumber, queueSize, batchSize, forwardHandler);
-        forwardHandler.open(forwardConfig);
         break;
       default:
         throw new TriggerExecutionException("Forward protocol doesn't support.");
     }
+    queue = new BatchHandlerQueue<>(queueNumber, queueSize, batchSize, forwardHandler);
+    forwardHandler.open(forwardConfig);
   }
 
   private HTTPForwardConfiguration createHTTPConfiguration(TriggerAttributes attributes)
