@@ -70,7 +70,7 @@ public class PartitionInfoTest {
 
   @BeforeClass
   public static void setup() {
-    partitionInfo = PartitionInfo.getInstance();
+    partitionInfo = new PartitionInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }

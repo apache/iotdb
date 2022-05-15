@@ -48,10 +48,6 @@ public class ProcedureInfo {
       CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
 
-  public static ProcedureInfo getInstance() {
-    return ProcedureInfoHolder.INSTANCE;
-  }
-
   public void load(List<Procedure> procedureList) {
     try {
       Files.list(Paths.get(procedureWalDir))
@@ -102,14 +98,5 @@ public class ProcedureInfo {
     }
     procWALMap.remove(procId);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  private static class ProcedureInfoHolder {
-
-    private static final ProcedureInfo INSTANCE = new ProcedureInfo();
-
-    private ProcedureInfoHolder() {
-      // Empty constructor
-    }
   }
 }

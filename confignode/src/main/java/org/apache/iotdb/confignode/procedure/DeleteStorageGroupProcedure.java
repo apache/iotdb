@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.mpp.rpc.thrift.InternalService;
@@ -55,6 +55,8 @@ public class DeleteStorageGroupProcedure
 
   private static boolean byPassForTest = false;
 
+  private ConfigManager configManager;
+
   @TestOnly
   public static void setByPassForTest(boolean byPass) {
     byPassForTest = byPass;
@@ -66,9 +68,11 @@ public class DeleteStorageGroupProcedure
     super();
   }
 
-  public DeleteStorageGroupProcedure(TStorageGroupSchema deleteSgSchema) {
+  public DeleteStorageGroupProcedure(
+      TStorageGroupSchema deleteSgSchema, ConfigManager configManager) {
     super();
     this.deleteSgSchema = deleteSgSchema;
+    this.configManager = configManager;
   }
 
   public TStorageGroupSchema getDeleteSgSchema() {
@@ -89,12 +93,14 @@ public class DeleteStorageGroupProcedure
     List<TConsensusGroupId> dataRegionGroupIds = deleteSgSchema.getDataRegionGroupIds();
     List<TConsensusGroupId> schemaRegionGroupIds = deleteSgSchema.getSchemaRegionGroupIds();
     List<TRegionReplicaSet> dataRegionReplicaSets =
-        new ArrayList<>(PartitionInfo.getInstance().getRegionReplicaSets(dataRegionGroupIds));
+        new ArrayList<>(
+            configManager.getPartitionManager().getRegionReplicaSets(dataRegionGroupIds));
     List<TRegionReplicaSet> schemaRegionReplicaSets =
-        new ArrayList<>(PartitionInfo.getInstance().getRegionReplicaSets(schemaRegionGroupIds));
+        new ArrayList<>(
+            configManager.getPartitionManager().getRegionReplicaSets(schemaRegionGroupIds));
     try {
       switch (state) {
-        case DELETE_STORAGE_GROUP_PREPEARE:
+        case DELETE_STORAGE_GROUP_PREPARE:
           // TODO: lock related ClusterSchemaInfo, PartitionInfo and Regions
           setNextState(DeleteStorageGroupState.DELETE_DATA_REGION);
           break;
@@ -210,7 +216,7 @@ public class DeleteStorageGroupProcedure
 
   @Override
   protected DeleteStorageGroupState getInitialState() {
-    return DeleteStorageGroupState.DELETE_STORAGE_GROUP_PREPEARE;
+    return DeleteStorageGroupState.DELETE_STORAGE_GROUP_PREPARE;
   }
 
   @Override

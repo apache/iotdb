@@ -36,9 +36,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.NodeInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.procedure.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -104,10 +101,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @After
-  public void after() throws IOException {
-    NodeInfo.getInstance().clear();
-    ClusterSchemaInfo.getInstance().clear();
-    PartitionInfo.getInstance().clear();
+  public void after() throws IOException, InterruptedException {
     processor.close();
     FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
     FileUtils.deleteFully(
