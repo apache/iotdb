@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -65,7 +66,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import javafx.util.Pair;
 
 /**
  * The PartitionInfo stores cluster PartitionTable. The PartitionTable including: 1. regionMap:
@@ -402,7 +402,7 @@ public class PartitionInfo implements SnapshotProcessor {
       for (TConsensusGroupId consensusGroupId : consensusGroupIds) {
         result.add(new Pair<>(regionSlotsCounter.get(consensusGroupId), consensusGroupId));
       }
-      result.sort(Comparator.comparingLong(Pair::getKey));
+      result.sort(Comparator.comparingLong(Pair::getLeft));
     } finally {
       regionReadWriteLock.readLock().unlock();
     }

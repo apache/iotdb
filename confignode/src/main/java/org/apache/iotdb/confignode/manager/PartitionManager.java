@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +52,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javafx.util.Pair;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
 public class PartitionManager {
@@ -148,14 +148,14 @@ public class PartitionManager {
       for (TSeriesPartitionSlot seriesPartitionSlot : noAssignedPartitionSlots) {
         // Do greedy allocation
         Pair<Long, TConsensusGroupId> bestRegion = regionSlotsCounter.get(0);
-        allocateResult.put(seriesPartitionSlot, regionReplicaMap.get(bestRegion.getValue()));
+        allocateResult.put(seriesPartitionSlot, regionReplicaMap.get(bestRegion.getRight()));
 
         // Bubble sort
         int index = 0;
-        regionSlotsCounter.set(0, new Pair<>(bestRegion.getKey() + 1, bestRegion.getValue()));
+        regionSlotsCounter.set(0, new Pair<>(bestRegion.getLeft() + 1, bestRegion.getRight()));
         while (index < regionSlotsCounter.size() - 1
-            && regionSlotsCounter.get(index).getKey()
-                > regionSlotsCounter.get(index + 1).getKey()) {
+            && regionSlotsCounter.get(index).getLeft()
+                > regionSlotsCounter.get(index + 1).getLeft()) {
           Collections.swap(regionSlotsCounter, index, index + 1);
           index += 1;
         }
@@ -260,14 +260,14 @@ public class PartitionManager {
           allocateResult
               .get(seriesPartitionEntry.getKey())
               .computeIfAbsent(timePartitionSlot, key -> new ArrayList<>())
-              .add(regionReplicaMap.get(bestRegion.getValue()));
+              .add(regionReplicaMap.get(bestRegion.getRight()));
 
           // Bubble sort
           int index = 0;
-          regionSlotsCounter.set(0, new Pair<>(bestRegion.getKey() + 1, bestRegion.getValue()));
+          regionSlotsCounter.set(0, new Pair<>(bestRegion.getLeft() + 1, bestRegion.getRight()));
           while (index < regionSlotsCounter.size() - 1
-              && regionSlotsCounter.get(index).getKey()
-                  > regionSlotsCounter.get(index + 1).getKey()) {
+              && regionSlotsCounter.get(index).getLeft()
+                  > regionSlotsCounter.get(index + 1).getLeft()) {
             Collections.swap(regionSlotsCounter, index, index + 1);
             index += 1;
           }
