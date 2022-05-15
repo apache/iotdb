@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.expression.leaf;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
@@ -73,6 +74,12 @@ public class TimestampOperand extends LeafOperand {
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
     pathSet.add(TIMESTAMP_PARTIAL_PATH);
+  }
+
+  @Override
+  public TSDataType inferTypes(TypeProvider typeProvider) {
+    typeProvider.setType(toString(), TSDataType.INT64);
+    return TSDataType.INT64;
   }
 
   @Override

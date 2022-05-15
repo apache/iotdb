@@ -281,7 +281,7 @@ public class IoTDBArithmeticIT {
         Statement statement = connection.createStatement()) {
       statement.executeQuery("select s1 + s6 from root.sg.d1");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Unsupported data type: TEXT"));
+      assertTrue(throwable.getMessage().contains("Unsupported dataType: TEXT"));
     }
   }
 }
