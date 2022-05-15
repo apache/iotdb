@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.plan.planner.plan.SubPlan;
@@ -56,14 +58,24 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
     List<FragmentInstance> ret = new ArrayList<>();
     for (WritePlanNode split : splits) {
       FragmentInstance instance =
-          new FragmentInstance(
-              new PlanFragment(fragment.getId(), split),
-              fragment.getId().genFragmentInstanceId(),
-              timeFilter,
-              queryContext.getQueryType());
-      instance.setDataRegionAndHost(split.getRegionReplicaSet());
+          wrapSplit(fragment, timeFilter, split, queryContext.getQueryType());
       ret.add(instance);
     }
     return ret;
+  }
+
+  public static FragmentInstance wrapSplit(
+      PlanFragment fragment, Filter timeFilter, WritePlanNode split, QueryType type) {
+    FragmentInstance instance =
+        new FragmentInstance(
+            new PlanFragment(fragment.getId(), split),
+            fragment.getId().genFragmentInstanceId(),
+            timeFilter,
+            type);
+    TRegionReplicaSet regionReplicaSet = split.getRegionReplicaSet();
+    if (regionReplicaSet != null) {
+      instance.setDataRegionAndHost(regionReplicaSet);
+    }
+    return instance;
   }
 }

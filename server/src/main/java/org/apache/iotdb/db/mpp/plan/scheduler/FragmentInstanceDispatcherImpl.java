@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.ConsensusImpl;
@@ -32,8 +33,13 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
+import org.apache.iotdb.db.mpp.plan.planner.WriteFragmentParallelPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.DeleteTimeSeriesSchemaNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteTimeSeriesDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -47,8 +53,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -81,8 +89,65 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     if (type == QueryType.READ) {
       return dispatchRead(instances);
     } else {
+      if (instances.get(0).getFragment().getRoot() instanceof DeleteTimeSeriesNode) {
+        return dispatchDelete(instances.get(0));
+      }
       return dispatchWrite(instances);
     }
+  }
+
+  private Future<FragInstanceDispatchResult> dispatchDelete(FragmentInstance fragmentInstance) {
+    DeleteTimeSeriesNode deleteTimeSeriesNode =
+        (DeleteTimeSeriesNode) fragmentInstance.getFragment().getRoot();
+    PlanFragment rootFragment = fragmentInstance.getFragment();
+    List<PartialPath> deletedPaths = deleteTimeSeriesNode.getDeletedPaths();
+    // TODO: Consider partcial deletion
+    Map<PartialPath, List<PlanNode>> dataRegionSplitMap =
+        deleteTimeSeriesNode.getDataRegionSplitMap();
+    Map<PartialPath, PlanNode> schemaRegionSpiltMap =
+        deleteTimeSeriesNode.getSchemaRegionSpiltMap();
+    List<FragmentInstance> dataRegionFragmentInstances = new ArrayList<>();
+    List<FragmentInstance> schemaRegionFragmentInstances = new ArrayList<>();
+    final SettableFuture<FragInstanceDispatchResult> resultFuture = SettableFuture.create();
+    for (PartialPath deletedPath : deletedPaths) {
+      // delete ts data
+      dataRegionSplitMap.get(deletedPath).stream()
+          .map(
+              planNode ->
+                  WriteFragmentParallelPlanner.wrapSplit(
+                      rootFragment, null, (DeleteTimeSeriesDataNode) planNode, QueryType.WRITE))
+          .forEach(dataRegionFragmentInstances::add);
+      try {
+        final Future<FragInstanceDispatchResult> deleteDataFuture =
+            dispatchWrite(dataRegionFragmentInstances);
+        if (!deleteDataFuture.get().isSuccessful()) {
+          logger.error("Delete TimeSeries data of {} failed.", dataRegionFragmentInstances);
+          return deleteDataFuture;
+        }
+        schemaRegionFragmentInstances.add(
+            WriteFragmentParallelPlanner.wrapSplit(
+                rootFragment,
+                null,
+                (DeleteTimeSeriesSchemaNode) schemaRegionSpiltMap.get(deletedPath),
+                QueryType.WRITE));
+        // delete ts schema
+        final Future<FragInstanceDispatchResult> deleteSchemaFuture =
+            dispatchWrite(schemaRegionFragmentInstances);
+        if (!deleteSchemaFuture.get().isSuccessful()) {
+          logger.error("Delete TimeSeries schema of {} failed.", dataRegionFragmentInstances);
+          return deleteSchemaFuture;
+        }
+      } catch (ExecutionException | InterruptedException e) {
+        if (e instanceof InterruptedException) {
+          Thread.currentThread().interrupt();
+        }
+        resultFuture.set(new FragInstanceDispatchResult(false));
+        resultFuture.setException(e);
+        return resultFuture;
+      }
+    }
+    resultFuture.set(new FragInstanceDispatchResult(true));
+    return resultFuture;
   }
 
   // TODO: (xingtanzjr) currently we use a sequential dispatch policy for READ, which is

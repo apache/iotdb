@@ -17,44 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node;
+package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.List;
 
-public abstract class WritePlanNode extends PlanNode {
+public class DeleteTimeSeriesStatement extends Statement {
 
-  protected WritePlanNode(PlanNodeId id) {
-    super(id);
+  List<PartialPath> partialPaths;
+
+  public List<PartialPath> getPartialPaths() {
+    return partialPaths;
   }
 
-  public abstract TRegionReplicaSet getRegionReplicaSet();
-
-  public abstract List<WritePlanNode> splitByPartition(Analysis analysis);
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return null;
+  public void setPartialPaths(List<PartialPath> partialPaths) {
+    this.partialPaths = partialPaths;
   }
 
   @Override
-  public void addChild(PlanNode child) {}
-
-  @Override
-  public PlanNode clone() {
-    throw new NotImplementedException("clone of Insert is not implemented");
+  public List<PartialPath> getPaths() {
+    return partialPaths;
   }
 
   @Override
-  public int allowedChildCount() {
-    return NO_CHILD_ALLOWED;
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return null;
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitDeleteTimeSeries(this, context);
   }
 }

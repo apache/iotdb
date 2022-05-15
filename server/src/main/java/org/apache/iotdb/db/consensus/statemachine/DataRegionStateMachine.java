@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteTimeSeriesDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
@@ -88,6 +89,14 @@ public class DataRegionStateMachine extends BaseStateMachine {
         region.syncDeleteDataFiles();
         StorageEngineV2.getInstance()
             .deleteDataRegion((DataRegionId) ((DeleteRegionNode) planNode).getConsensusGroupId());
+      } else if (planNode instanceof DeleteTimeSeriesDataNode) {
+        // TODO: consider timePartitionFilter and planIndex
+        region.delete(
+            ((DeleteTimeSeriesDataNode) planNode).getDeletedPath(),
+            Long.MIN_VALUE,
+            Long.MAX_VALUE,
+            Long.MAX_VALUE,
+            null);
       } else {
         logger.error("Unsupported plan node for writing to data region : {}", planNode);
         return StatusUtils.UNSUPPORTED_OPERATION;

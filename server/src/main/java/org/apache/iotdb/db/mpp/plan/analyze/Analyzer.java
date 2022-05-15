@@ -60,6 +60,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
@@ -881,6 +882,48 @@ public class Analyzer {
           partitionFetcher.getSchemaPartition(
               new PathPatternTree(alterTimeSeriesStatement.getPath()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitDeleteTimeSeries(
+        DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+      Analysis analysis = new Analysis();
+      analysis.setStatement(deleteTimeSeriesStatement);
+      List<PartialPath> partialPaths = deleteTimeSeriesStatement.getPartialPaths();
+      // fetch schema tree
+      PathPatternTree patternTree = new PathPatternTree(partialPaths);
+      SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+      // If there is no leaf node in the schema tree, the query should be completed immediately
+      if (schemaTree.isEmpty()) {
+        analysis.setFinishQueryAfterAnalyze(true);
+        return analysis;
+      }
+      // fetch schema partition
+      SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
+      analysis.setSchemaPartitionInfo(schemaPartition);
+      // fetch data partition
+      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
+      List<PartialPath> removedWilds = new ArrayList<>();
+      for (PartialPath partialPath : partialPaths) {
+        // get measurement path, remove wild
+        List<MeasurementPath> measurementFullPathList =
+            schemaTree.searchMeasurementPaths(partialPath).left;
+        removedWilds.addAll(measurementFullPathList);
+        // fetch data partition information
+        for (MeasurementPath measurementPath : measurementFullPathList) {
+          String storageGroup = schemaTree.getBelongedStorageGroup(measurementPath);
+          DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+          dataPartitionQueryParam.setDevicePath(measurementPath.getDevice());
+          sgNameToQueryParamsMap
+              .computeIfAbsent(storageGroup, sg -> new ArrayList<>())
+              .add(dataPartitionQueryParam);
+        }
+      }
+      deleteTimeSeriesStatement.setPartialPaths(removedWilds);
+      DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+      analysis.setDataPartitionInfo(dataPartition);
       return analysis;
     }
 
