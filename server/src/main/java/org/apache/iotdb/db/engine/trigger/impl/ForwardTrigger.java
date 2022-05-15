@@ -38,8 +38,8 @@ import java.util.HashMap;
 
 public class ForwardTrigger implements Trigger {
 
-  private final static String PROTOCOL_HTTP = "http";
-  private final static String PROTOCOL_MQTT = "mqtt";
+  private static final String PROTOCOL_HTTP = "http";
+  private static final String PROTOCOL_MQTT = "mqtt";
 
   private Handler forwardHandler;
   private Configuration forwardConfig;
@@ -77,8 +77,7 @@ public class ForwardTrigger implements Trigger {
     String endpoint = attributes.getString("endpoint");
     boolean stopIfException = attributes.getBooleanOrDefault("stopIfException", false);
     HTTPForwardConfiguration forwardConfig =
-        new HTTPForwardConfiguration(
-            endpoint, stopIfException);
+        new HTTPForwardConfiguration(endpoint, stopIfException);
     forwardConfig.checkConfig();
     return forwardConfig;
   }
@@ -97,8 +96,16 @@ public class ForwardTrigger implements Trigger {
     boolean retain = attributes.getBooleanOrDefault("retain", false);
     MQTTForwardConfiguration forwardConfig =
         new MQTTForwardConfiguration(
-            host, port, username, password, topic, reconnectDelay, connectAttemptsMax,
-            qos, retain, stopIfException);
+            host,
+            port,
+            username,
+            password,
+            topic,
+            reconnectDelay,
+            connectAttemptsMax,
+            qos,
+            retain,
+            stopIfException);
     forwardConfig.checkConfig();
     return forwardConfig;
   }

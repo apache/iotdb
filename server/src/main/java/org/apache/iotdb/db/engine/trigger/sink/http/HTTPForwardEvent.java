@@ -24,8 +24,6 @@ import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 
 import com.google.gson.Gson;
 
-import java.util.Map;
-
 public class HTTPForwardEvent implements Event {
 
   private final long timestamp;
@@ -38,7 +36,7 @@ public class HTTPForwardEvent implements Event {
     this.fullPath = fullPath;
   }
 
-  //@todo
+  // @todo
   public String toJsonString() {
     Gson gson = new Gson();
     return gson.toJson(this);

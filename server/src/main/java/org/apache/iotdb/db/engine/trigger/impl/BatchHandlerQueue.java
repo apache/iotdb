@@ -51,22 +51,27 @@ public class BatchHandlerQueue<T extends Event> {
 
   public BatchHandlerQueue(int queueNumber, int queueSize, int batchSize, Handler handler) {
     this.queueNumber =
-        queueNumber > IoTDBDescriptor.getInstance().getConfig()
-            .getTriggerForwardMaxQueueNumber() ? IoTDBDescriptor.getInstance().getConfig()
-            .getTriggerForwardMaxQueueNumber() : queueNumber;
-    this.queueSize = queueSize > IoTDBDescriptor.getInstance().getConfig()
-        .getTriggerForwardMaxSizePerQueue() ? IoTDBDescriptor.getInstance().getConfig()
-        .getTriggerForwardMaxSizePerQueue() : queueSize;
-    this.batchSize = batchSize > IoTDBDescriptor.getInstance().getConfig()
-        .getBatchSize() ? IoTDBDescriptor.getInstance().getConfig().getBatchSize()
-        : batchSize;
+        Math.min(
+            queueNumber,
+            IoTDBDescriptor.getInstance().getConfig().getTriggerForwardMaxQueueNumber());
+    this.queueSize =
+        Math.min(
+            queueSize,
+            IoTDBDescriptor.getInstance().getConfig().getTriggerForwardMaxSizePerQueue());
+    this.batchSize =
+        Math.min(batchSize, IoTDBDescriptor.getInstance().getConfig().getTriggerForwardBatchSize());
     this.handler = handler;
     queues = new ArrayBlockingQueue[this.queueNumber];
     for (int i = 0; i < queueNumber; i++) {
       queues[i] = new ArrayBlockingQueue<>(this.queueSize);
-      Thread t = new ForwardQueueConsumer(
-          handler.getClass().getSimpleName() + "-" + BatchHandlerQueue.class.getSimpleName() + "-" + i,
-          queues[i]);
+      Thread t =
+          new ForwardQueueConsumer(
+              handler.getClass().getSimpleName()
+                  + "-"
+                  + BatchHandlerQueue.class.getSimpleName()
+                  + "-"
+                  + i,
+              queues[i]);
       t.setDaemon(true);
       t.start();
     }

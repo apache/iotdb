@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
-import com.google.gson.Gson;
-import java.util.Map;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
+
+import com.google.gson.Gson;
 
 public class MQTTForwardEvent implements Event {
 
@@ -36,7 +36,7 @@ public class MQTTForwardEvent implements Event {
     this.fullPath = fullPath;
   }
 
-  //@todo excluder
+  // @todo excluder
   public String toJsonString() {
     Gson gson = new Gson();
     return gson.toJson(this);

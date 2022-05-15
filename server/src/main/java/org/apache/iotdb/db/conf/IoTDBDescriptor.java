@@ -129,9 +129,7 @@ public class IoTDBDescriptor {
     }
   }
 
-  /**
-   * load an property file and set TsfileDBConfig variables.
-   */
+  /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     commonDescriptor.initCommonConfigDir(conf.getSystemDir());
@@ -1509,17 +1507,23 @@ public class IoTDBDescriptor {
       conf.setTlogBufferSize(tlogBufferSize);
     }
 
-    conf.setTriggerForwardMaxQueueNumber(Integer.parseInt(
-        properties.getProperty("trigger_forward_max_queue_number",
-            Integer.toString(conf.getTriggerForwardMaxQueueNumber()))));
+    conf.setTriggerForwardMaxQueueNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_max_queue_number",
+                Integer.toString(conf.getTriggerForwardMaxQueueNumber()))));
 
-    conf.setTriggerForwardMaxSizePerQueue(Integer.parseInt(
-        properties.getProperty("trigger_forward_max_size_per_queue",
-            Integer.toString(conf.getTriggerForwardMaxSizePerQueue()))));
+    conf.setTriggerForwardMaxSizePerQueue(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_max_size_per_queue",
+                Integer.toString(conf.getTriggerForwardMaxSizePerQueue()))));
 
-    conf.setTriggerForwardBatchSize(Integer.parseInt(
-        properties.getProperty("trigger_forward_batch_size",
-            Integer.toString(conf.getTriggerForwardBatchSize()))));
+    conf.setTriggerForwardBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_batch_size",
+                Integer.toString(conf.getTriggerForwardBatchSize()))));
   }
 
   private void loadCQProps(Properties properties) {
@@ -1601,9 +1605,7 @@ public class IoTDBDescriptor {
                 "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
   }
 
-  /**
-   * Get default encode algorithm by data type
-   */
+  /** Get default encode algorithm by data type */
   public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
     switch (dataType) {
       case BOOLEAN:
@@ -1633,7 +1635,6 @@ public class IoTDBDescriptor {
 
     private static final IoTDBDescriptor INSTANCE = new IoTDBDescriptor();
 
-    private IoTDBDescriptorHolder() {
-    }
+    private IoTDBDescriptorHolder() {}
   }
 }

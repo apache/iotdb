@@ -22,20 +22,16 @@ package org.apache.iotdb.db.engine.trigger.sink.http;
 import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
-import org.fusesource.mqtt.client.QoS;
-
 public class HTTPForwardConfiguration implements Configuration {
 
   private final boolean stopIfException;
 
   // HTTP config items
-  private String endpoint;
+  private final String endpoint;
 
   // TODO support payloadFormatter
 
-  public HTTPForwardConfiguration(
-      String endpoint,
-      boolean stopIfException) {
+  public HTTPForwardConfiguration(String endpoint, boolean stopIfException) {
     this.endpoint = endpoint;
     this.stopIfException = stopIfException;
   }
@@ -52,9 +48,5 @@ public class HTTPForwardConfiguration implements Configuration {
 
   public String getEndpoint() {
     return endpoint;
-  }
-
-  public static void main(String[] args) {
-    System.out.println(QoS.EXACTLY_ONCE.name());
   }
 }

@@ -21,19 +21,20 @@ package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
 import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
+
 import org.fusesource.mqtt.client.QoS;
 
 public class MQTTForwardConfiguration implements Configuration {
 
-  private String host;
-  private int port;
-  private String username;
-  private String password;
-  private String topic;
-  private long reconnectDelay;
-  private long connectAttemptsMax;
-  private QoS qos;
-  private boolean retain;
+  private final String host;
+  private final int port;
+  private final String username;
+  private final String password;
+  private final String topic;
+  private final long reconnectDelay;
+  private final long connectAttemptsMax;
+  private final QoS qos;
+  private final boolean retain;
   private final boolean stopIfException;
 
   // TODO support payloadFormatter
@@ -94,76 +95,39 @@ public class MQTTForwardConfiguration implements Configuration {
     return stopIfException;
   }
 
-
   public String getHost() {
     return host;
-  }
-
-  private void setHost(String host) {
-    this.host = host;
   }
 
   public int getPort() {
     return port;
   }
 
-  private void setPort(int port) {
-    this.port = port;
-  }
-
   public String getUsername() {
     return username;
-  }
-
-  private void setUsername(String username) {
-    this.username = username;
   }
 
   public String getPassword() {
     return password;
   }
 
-  private void setPassword(String password) {
-    this.password = password;
-  }
-
   public long getReconnectDelay() {
     return reconnectDelay;
-  }
-
-  private void setReconnectDelay(long reconnectDelay) {
-    this.reconnectDelay = reconnectDelay;
   }
 
   public long getConnectAttemptsMax() {
     return connectAttemptsMax;
   }
 
-  private void setConnectAttemptsMax(long connectAttemptsMax) {
-    this.connectAttemptsMax = connectAttemptsMax;
-  }
-
   public QoS getQos() {
     return qos;
-  }
-
-  private void setQos(QoS qos) {
-    this.qos = qos;
   }
 
   public boolean isRetain() {
     return retain;
   }
 
-  private void setRetain(boolean retain) {
-    this.retain = retain;
-  }
-
   public String getTopic() {
     return topic;
-  }
-
-  public void setTopic(String topic) {
-    this.topic = topic;
   }
 }
