@@ -124,6 +124,7 @@ public class RatisConsensusTest {
     int leader = getLeaderOrdinal();
     int follower1 = (leader + 1) % 3;
     int follower2 = (leader + 2) % 3;
+
     // 3. Remove two Peers from Group (peer 0 and peer 2)
     // transfer the leader to peer1
     // servers.get(0).transferLeader(gid, peers.get(1));
