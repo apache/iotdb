@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -60,6 +61,24 @@ public class ConsensusManager {
 
   public void close() throws IOException {
     consensusImpl.stop();
+  }
+
+  @TestOnly
+  public void singleCopyMayWaitUntilLeaderReady() {
+    if (conf.getConfigNodeList().size() == 1) {
+      long startTime = System.currentTimeMillis();
+      long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
+      try {
+        while (!consensusImpl.isLeader(consensusGroupId)) {
+          Thread.sleep(100);
+          long elapsed = System.currentTimeMillis() - startTime;
+          if (elapsed > maxWaitTime) {
+            return;
+          }
+        }
+      } catch (InterruptedException ignored) {
+      }
+    }
   }
 
   /** Build ConfigNodeGroup ConsensusLayer */

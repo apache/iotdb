@@ -85,7 +85,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeRPCServiceProcessorTest {
 
@@ -97,10 +96,9 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Before
-  public void before() throws IOException, InterruptedException {
+  public void before() throws IOException {
     processor = new ConfigNodeRPCServiceProcessor(new ConfigManager());
-    // Sleep 1s to make sure the Consensus group has done leader election
-    TimeUnit.SECONDS.sleep(1);
+    processor.getConsensusManager().singleCopyMayWaitUntilLeaderReady();
   }
 
   @After
