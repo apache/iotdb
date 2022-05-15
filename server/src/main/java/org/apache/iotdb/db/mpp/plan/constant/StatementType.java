@@ -135,5 +135,6 @@ public enum StatementType {
   FETCH_SCHEMA,
   FETCH_SCHEMA_WITH_AUTO_CREATE,
 
-  COUNT
+  COUNT,
+  OPERATE_PIPE
 }

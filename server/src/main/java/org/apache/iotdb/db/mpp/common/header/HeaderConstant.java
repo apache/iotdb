@@ -46,6 +46,13 @@ public class HeaderConstant {
   public static final String COLUMN_DATA_REPLICATION_FACTOR = "data_replication_factor";
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
 
+  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
+  public static final String COLUMN_PIPE_NAME = "name";
+  public static final String COLUMN_PIPE_ROLE = "role";
+  public static final String COLUMN_PIPE_REMOTE = "remote";
+  public static final String COLUMN_PIPE_STATUS = "status";
+  public static final String COLUMN_PIPE_MSG = "message";
+
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT_DEVICES = "count(devices)";
@@ -59,6 +66,7 @@ public class HeaderConstant {
   public static final DatasetHeader showDevicesWithSgHeader;
   public static final DatasetHeader showStorageGroupHeader;
   public static final DatasetHeader showTTLHeader;
+  public static final DatasetHeader showPipeHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -133,6 +141,16 @@ public class HeaderConstant {
             Arrays.asList(
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TTL, TSDataType.INT64)),
+            true);
+    showPipeHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_PIPE_CREATE_TIME, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PIPE_NAME, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PIPE_ROLE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PIPE_REMOTE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PIPE_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PIPE_MSG, TSDataType.TEXT)),
             true);
   }
 }

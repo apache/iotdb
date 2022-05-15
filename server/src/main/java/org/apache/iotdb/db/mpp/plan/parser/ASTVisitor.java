@@ -63,6 +63,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sync.OperatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -98,6 +100,7 @@ import org.apache.iotdb.db.query.expression.unary.LikeExpression;
 import org.apache.iotdb.db.query.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.RegularExpression;
+import org.apache.iotdb.service.transport.thrift.RequestType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1467,6 +1470,57 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     deleteStorageGroupStatement.setPrefixPath(paths);
     return deleteStorageGroupStatement;
+  }
+
+  // Sync tools command  ========================================================================
+  // TODO: fake implement, just for test
+  @Override
+  public Statement visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) {
+    OperatePipeStatement operatePipeStatement = new OperatePipeStatement();
+    operatePipeStatement.setOperateType(RequestType.CREATE);
+    operatePipeStatement.setPipeName(ctx.pipeName.getText());
+    operatePipeStatement.setRemoteIp("127.0.0.1");
+    operatePipeStatement.setCreateTime(1L);
+    return operatePipeStatement;
+  }
+
+  @Override
+  public Statement visitShowPipe(IoTDBSqlParser.ShowPipeContext ctx) {
+    if (ctx.pipeName == null) {
+      return new ShowPipeStatement();
+    } else {
+      return new ShowPipeStatement(StringEscapeUtils.unescapeJava(ctx.pipeName.getText()));
+    }
+  }
+
+  @Override
+  public Statement visitStopPipe(IoTDBSqlParser.StopPipeContext ctx) {
+    OperatePipeStatement operatePipeStatement = new OperatePipeStatement();
+    operatePipeStatement.setOperateType(RequestType.STOP);
+    operatePipeStatement.setPipeName(ctx.pipeName.getText());
+    operatePipeStatement.setRemoteIp("127.0.0.1");
+    operatePipeStatement.setCreateTime(1L);
+    return operatePipeStatement;
+  }
+
+  @Override
+  public Statement visitStartPipe(IoTDBSqlParser.StartPipeContext ctx) {
+    OperatePipeStatement operatePipeStatement = new OperatePipeStatement();
+    operatePipeStatement.setOperateType(RequestType.START);
+    operatePipeStatement.setPipeName(ctx.pipeName.getText());
+    operatePipeStatement.setRemoteIp("127.0.0.1");
+    operatePipeStatement.setCreateTime(1L);
+    return operatePipeStatement;
+  }
+
+  @Override
+  public Statement visitDropPipe(IoTDBSqlParser.DropPipeContext ctx) {
+    OperatePipeStatement operatePipeStatement = new OperatePipeStatement();
+    operatePipeStatement.setOperateType(RequestType.DROP);
+    operatePipeStatement.setPipeName(ctx.pipeName.getText());
+    operatePipeStatement.setRemoteIp("127.0.0.1");
+    operatePipeStatement.setCreateTime(1L);
+    return operatePipeStatement;
   }
 
   /** function for parsing file path used by LOAD statement. */

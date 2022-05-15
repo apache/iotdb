@@ -25,7 +25,9 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -33,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.sync.SyncReceiverManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -87,6 +90,13 @@ public interface Manager {
    * @return LoadManager instance
    */
   LoadManager getLoadManager();
+
+  /**
+   * Get SyncReceiverManager
+   *
+   * @return SyncReceiverManager instance
+   */
+  SyncReceiverManager getSyncReceiverManager();
 
   /**
    * Register DataNode
@@ -202,4 +212,8 @@ public interface Manager {
    * @return status
    */
   TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq);
+
+  TSStatus operatePipe(OperatePipeReq operatePipeReq);
+
+  DataSet showPipe(ShowPipeReq showPipeReq);
 }

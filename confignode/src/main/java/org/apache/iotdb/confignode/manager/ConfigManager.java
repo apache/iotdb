@@ -34,7 +34,9 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartiti
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -46,9 +48,11 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.consensus.response.PipeInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.sync.SyncReceiverManager;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -94,6 +98,8 @@ public class ConfigManager implements Manager {
   /** Manage procedure */
   private final ProcedureManager procedureManager;
 
+  private final SyncReceiverManager syncReceiverManager;
+
   public ConfigManager() throws IOException {
     this.nodeManager = new NodeManager(this);
     this.partitionManager = new PartitionManager(this);
@@ -102,6 +108,7 @@ public class ConfigManager implements Manager {
     this.loadManager = new LoadManager(this);
     this.procedureManager = new ProcedureManager(this);
     this.consensusManager = new ConsensusManager(this);
+    this.syncReceiverManager = new SyncReceiverManager(this);
 
     // We are on testing.......
     if (ConfigNodeDescriptor.getInstance().getConf().isEnableHeartbeat()) {
@@ -433,6 +440,11 @@ public class ConfigManager implements Manager {
   }
 
   @Override
+  public SyncReceiverManager getSyncReceiverManager() {
+    return syncReceiverManager;
+  }
+
+  @Override
   public TSStatus operatePermission(ConfigRequest configRequest) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -535,6 +547,28 @@ public class ConfigManager implements Manager {
   @Override
   public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
     return nodeManager.applyConfigNode(applyConfigNodeReq);
+  }
+
+  @Override
+  public TSStatus operatePipe(OperatePipeReq operatePipeReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return syncReceiverManager.operatePipe(operatePipeReq);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public DataSet showPipe(ShowPipeReq showPipeReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return syncReceiverManager.showPipe(showPipeReq);
+    } else {
+      PipeInfoResp dataSet = new PipeInfoResp();
+      dataSet.setStatus(status);
+      return dataSet;
+    }
   }
 
   public ProcedureManager getProcedureManager() {

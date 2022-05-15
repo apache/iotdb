@@ -175,6 +175,7 @@ public class ConfigNodeDescriptor {
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
+      conf.setSyncDir(properties.getProperty("sync_dir", conf.getSyncDir()));
 
       conf.setTimePartitionInterval(
           Long.parseLong(

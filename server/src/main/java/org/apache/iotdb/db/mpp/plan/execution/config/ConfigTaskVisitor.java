@@ -29,6 +29,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sync.OperatePipeStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sync.ShowPipeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -86,6 +88,17 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitAuthor(AuthorStatement statement, TaskContext context) {
     return new AuthorizerConfigTask(statement);
+  }
+
+  @Override
+  public IConfigTask visitOperatePipe(
+      OperatePipeStatement operatePipeStatement, TaskContext context) {
+    return new OperatePipeTask(operatePipeStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowPipe(ShowPipeStatement showPipeStatement, TaskContext context) {
+    return new ShowPipeTask(showPipeStatement);
   }
 
   public static class TaskContext {}

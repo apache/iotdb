@@ -57,5 +57,7 @@ public enum ConfigRequestType {
   ListRolePrivilege,
   ListUserRoles,
   ListRoleUsers,
-  ApplyConfigNode
+  ApplyConfigNode,
+  OperatePipe,
+  ShowPipe
 }

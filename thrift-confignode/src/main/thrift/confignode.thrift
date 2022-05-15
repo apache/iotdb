@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
+include "transport.thrift"
 include "common.thrift"
 namespace java org.apache.iotdb.confignode.rpc.thrift
 namespace py iotdb.thrift.confignode
@@ -174,6 +174,34 @@ struct TConfigNodeRegisterResp {
   3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
+// Sync
+struct TOperatePipeReq{
+  1:required transport.RequestType type // todo(cyz) 移到common，并改名
+  2:required string pipeName
+  3:required string remoteIp
+  4:required i64 createTime
+}
+
+struct TPipeInfo{
+      1:required string createTime
+      2:required string pipeName
+      3:required string role
+      4:required string remote
+      5:required string status
+      6:required string message
+}
+
+struct TShowPipeResp{
+    1: required common.TSStatus status
+    2: required list<TPipeInfo> pipeInfoList
+}
+
+struct TShowPipeReq{
+    1: optional string pipeName
+}
+
+
+
 service ConfigIService {
 
   /* DataNode */
@@ -229,4 +257,9 @@ service ConfigIService {
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
   common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  /* Sync */
+  common.TSStatus operatePipe(TOperatePipeReq req)
+
+  TShowPipeResp showPipe(TShowPipeReq req)
 }

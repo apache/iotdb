@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.ShowPipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
@@ -35,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.OperatePipeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
@@ -48,6 +50,7 @@ import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.SyncReceiverInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -75,12 +78,15 @@ public class ConfigRequestExecutor {
 
   private final ProcedureInfo procedureInfo;
 
+  private final SyncReceiverInfo syncReceiverInfo;
+
   public ConfigRequestExecutor() {
     this.nodeInfo = NodeInfo.getInstance();
     this.clusterSchemaInfo = ClusterSchemaInfo.getInstance();
     this.partitionInfo = PartitionInfo.getInstance();
     this.authorInfo = AuthorInfo.getInstance();
     this.procedureInfo = ProcedureInfo.getInstance();
+    this.syncReceiverInfo = SyncReceiverInfo.getInstance();
   }
 
   public DataSet executorQueryPlan(ConfigRequest req)
@@ -110,6 +116,8 @@ public class ConfigRequestExecutor {
         return authorInfo.executeListUserRoles((AuthorReq) req);
       case ListRoleUsers:
         return authorInfo.executeListRoleUsers((AuthorReq) req);
+      case ShowPipe:
+        return syncReceiverInfo.showPipe((ShowPipeReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -162,6 +170,8 @@ public class ConfigRequestExecutor {
         return authorInfo.authorNonQuery((AuthorReq) req);
       case ApplyConfigNode:
         return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);
+      case OperatePipe:
+        return syncReceiverInfo.operatePipe((OperatePipeReq) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
