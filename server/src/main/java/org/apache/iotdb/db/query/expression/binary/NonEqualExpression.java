@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareNonEqualTran
 
 import java.nio.ByteBuffer;
 
-public class NonEqualExpression extends BinaryExpression {
+public class NonEqualExpression extends CompareBinaryExpression {
 
   public NonEqualExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticDivisionT
 
 import java.nio.ByteBuffer;
 
-public class DivisionExpression extends BinaryExpression {
+public class DivisionExpression extends ArithmeticBinaryExpression {
 
   public DivisionExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

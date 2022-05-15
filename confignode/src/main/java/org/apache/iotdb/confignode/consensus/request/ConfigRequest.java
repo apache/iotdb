@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationF
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.slf4j.Logger;
@@ -107,9 +109,6 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case SetStorageGroup:
           req = new SetStorageGroupReq();
           break;
-        case DeleteStorageGroup:
-          req = new DeleteStorageGroupReq();
-          break;
         case SetTTL:
           req = new SetTTLReq();
           break;
@@ -151,6 +150,15 @@ public abstract class ConfigRequest implements IConsensusRequest {
           break;
         case GetOrCreateDataPartition:
           req = new GetOrCreateDataPartitionReq();
+          break;
+        case DeleteProcedure:
+          req = new DeleteProcedureReq();
+          break;
+        case UpdateProcedure:
+          req = new UpdateProcedureReq();
+          break;
+        case DeleteStorageGroup:
+          req = new DeleteStorageGroupReq();
           break;
         case ListUser:
         case ListRole:
