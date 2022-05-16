@@ -170,7 +170,9 @@ public class LoadManager implements Runnable {
   }
 
   private void doLoadBalancing() {
-    regionExpansion();
+    // TODO: Under development
+
+    // regionExpansion();
     // TODO: update replicaScoreMap
   }
 
