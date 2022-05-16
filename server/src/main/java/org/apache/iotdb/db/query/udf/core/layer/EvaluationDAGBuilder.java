@@ -68,8 +68,7 @@ public class EvaluationDAGBuilder {
     this.typeProvider = typeProvider;
     this.udtfContext = udtfContext;
 
-    int size = inputLayer.getInputColumnCount();
-    outputPointReaders = new LayerPointReader[size];
+    outputPointReaders = new LayerPointReader[outputExpressions.length];
 
     memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
 
