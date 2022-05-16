@@ -22,6 +22,8 @@ package org.apache.iotdb.db.query.expression.binary;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
@@ -191,10 +193,22 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
+  public final void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
     leftExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
     rightExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
     inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
+  }
+
+  @Override
+  public final void bindInputLayerColumnIndexWithExpression(
+      Map<String, List<InputLocation>> inputLocations) {
+    leftExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
+    rightExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
+
+    final String digest = toString();
+    if (inputLocations.containsKey(digest)) {
+      inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
+    }
   }
 
   @Override
@@ -237,6 +251,54 @@ public abstract class BinaryExpression extends Expression {
               leftParentIntermediateLayer.constructPointReader(),
               rightParentIntermediateLayer.constructPointReader());
       expressionDataTypeMap.put(this, transformer.getDataType());
+
+      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
+      // yet. And since a ConstantLayerPointReader won't produce too much IO,
+      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
+      expressionIntermediateLayerMap.put(
+          this,
+          memoryAssigner.getReference(this) == 1 || isConstantOperand()
+              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, transformer)
+              : new SingleInputColumnMultiReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, transformer));
+    }
+
+    return expressionIntermediateLayerMap.get(this);
+  }
+
+  @Override
+  public IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      float memoryBudgetInMB = memoryAssigner.assign();
+
+      IntermediateLayer leftParentIntermediateLayer =
+          leftExpression.constructIntermediateLayer(
+              queryId,
+              udtfContext,
+              rawTimeSeriesInputLayer,
+              expressionIntermediateLayerMap,
+              typeProvider,
+              memoryAssigner);
+      IntermediateLayer rightParentIntermediateLayer =
+          rightExpression.constructIntermediateLayer(
+              queryId,
+              udtfContext,
+              rawTimeSeriesInputLayer,
+              expressionIntermediateLayerMap,
+              typeProvider,
+              memoryAssigner);
+      Transformer transformer =
+          constructTransformer(
+              leftParentIntermediateLayer.constructPointReader(),
+              rightParentIntermediateLayer.constructPointReader());
 
       // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
       // yet. And since a ConstantLayerPointReader won't produce too much IO,
