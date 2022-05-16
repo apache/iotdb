@@ -53,6 +53,7 @@ import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Operation;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1059,7 +1060,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
-    if (CONFIG.isEnablePerformanceStat()) {
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
       MetricsService.getInstance()
           .getMetricManager()
           .histogram(
