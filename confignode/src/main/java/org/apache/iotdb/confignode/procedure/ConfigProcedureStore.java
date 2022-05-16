@@ -41,15 +41,14 @@ public class ConfigProcedureStore implements IProcedureStore {
   private static final Logger LOG = LoggerFactory.getLogger(ProcedureStore.class);
 
   private volatile boolean isRunning = false;
-  private ProcedureInfo procedureInfo = ProcedureInfo.getInstance();
+  private final ProcedureInfo procedureInfo;
   private final String procedureWalDir =
       CommonDescriptor.getInstance().getConfig().getProcedureWalFolder();
-  private ConfigManager configManager;
+  private final ConfigManager configManager;
 
-  public ConfigProcedureStore() {}
-
-  public ConfigProcedureStore(ConfigManager configManager) {
+  public ConfigProcedureStore(ConfigManager configManager, ProcedureInfo procedureInfo) {
     this.configManager = configManager;
+    this.procedureInfo = procedureInfo;
     try {
       checkProcWalDir(procedureWalDir);
     } catch (IOException e) {

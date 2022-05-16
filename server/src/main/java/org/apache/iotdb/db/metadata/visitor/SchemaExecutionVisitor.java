@@ -30,9 +30,11 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -42,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 /** Schema write PlanNode visitor */
 public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion> {
@@ -68,6 +71,39 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
+  }
+
+  @Override
+  public TSStatus visitCreateMultiTimeSeries(
+      CreateMultiTimeSeriesNode node, ISchemaRegion schemaRegion) {
+    CreateMultiTimeSeriesPlan multiPlan =
+        (CreateMultiTimeSeriesPlan)
+            node.accept(new PhysicalPlanTransformer(), new TransformerContext());
+    for (int i = 0; i < multiPlan.getPaths().size(); i++) {
+      if (multiPlan.getResults().containsKey(i) || multiPlan.isExecuted(i)) {
+        continue;
+      }
+      CreateTimeSeriesPlan plan =
+          new CreateTimeSeriesPlan(
+              multiPlan.getPaths().get(i),
+              multiPlan.getDataTypes().get(i),
+              multiPlan.getEncodings().get(i),
+              multiPlan.getCompressors().get(i),
+              multiPlan.getProps() == null ? null : multiPlan.getProps().get(i),
+              multiPlan.getTags() == null ? null : multiPlan.getTags().get(i),
+              multiPlan.getAttributes() == null ? null : multiPlan.getAttributes().get(i),
+              multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
+      try {
+        schemaRegion.createTimeseries(plan, -1);
+      } catch (MetadataException e) {
+        logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+        multiPlan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+    }
+    if (!multiPlan.getResults().isEmpty()) {
+      return RpcUtils.getStatus(Arrays.asList(multiPlan.getFailingStatus()));
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
@@ -145,6 +181,20 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
           node.getAliasList(),
           node.getTagsList(),
           node.getAttributesList());
+    }
+
+    public PhysicalPlan visitCreateMultiTimeSeries(
+        CreateMultiTimeSeriesNode node, TransformerContext context) {
+      CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
+      multiPlan.setPaths(node.getPaths());
+      multiPlan.setDataTypes(node.getDataTypes());
+      multiPlan.setEncodings(node.getEncodings());
+      multiPlan.setCompressors(node.getCompressors());
+      multiPlan.setProps(node.getPropsList());
+      multiPlan.setAlias(node.getAliasList());
+      multiPlan.setTags(node.getTagsList());
+      multiPlan.setAttributes(node.getAttributesList());
+      return multiPlan;
     }
   }
 

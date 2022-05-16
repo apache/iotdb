@@ -96,7 +96,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   private final String snapshotFileName = "partition_info.bin";
 
-  private PartitionInfo() {
+  public PartitionInfo() {
     this.regionReadWriteLock = new ReentrantReadWriteLock();
     this.regionReplicaMap = new HashMap<>();
     this.regionSlotsCounter = new HashMap<>();
@@ -178,12 +178,11 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Delete Regions
+   * Delete StorageGroup
    *
    * @param req DeleteRegionsReq
-   * @return SUCCESS_STATUS
    */
-  public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) {
+  public void deleteStorageGroup(DeleteStorageGroupReq req) {
     TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
     List<TConsensusGroupId> dataRegionGroupIds = storageGroupSchema.getDataRegionGroupIds();
     List<TConsensusGroupId> schemaRegionGroupIds = storageGroupSchema.getSchemaRegionGroupIds();
@@ -197,7 +196,6 @@ public class PartitionInfo implements SnapshotProcessor {
     deleteRegions(deleteRegionsReq);
     deleteDataPartitionMapByStorageGroup(storageGroupSchema.getName());
     deleteSchemaPartitionMapByStorageGroup(storageGroupSchema.getName());
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**
@@ -467,7 +465,7 @@ public class PartitionInfo implements SnapshotProcessor {
           break;
         } else {
           LOGGER.warn(
-              "Delete tmp snapshot file: {} failed, retrying...", tmpFile.getAbsolutePath());
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
         }
       }
     }
@@ -594,18 +592,5 @@ public class PartitionInfo implements SnapshotProcessor {
     if (dataPartition.getDataPartitionMap() != null) {
       dataPartition.getDataPartitionMap().clear();
     }
-  }
-
-  private static class PartitionInfoHolder {
-
-    private static final PartitionInfo INSTANCE = new PartitionInfo();
-
-    private PartitionInfoHolder() {
-      // empty constructor
-    }
-  }
-
-  public static PartitionInfo getInstance() {
-    return PartitionInfoHolder.INSTANCE;
   }
 }

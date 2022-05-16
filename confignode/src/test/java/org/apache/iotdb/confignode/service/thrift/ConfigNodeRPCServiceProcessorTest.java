@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -36,9 +37,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.NodeInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
 import org.apache.iotdb.confignode.procedure.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -85,7 +83,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeRPCServiceProcessorTest {
 
@@ -97,17 +94,13 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Before
-  public void before() throws IOException, InterruptedException {
+  public void before() throws IOException {
     processor = new ConfigNodeRPCServiceProcessor(new ConfigManager());
-    // Sleep 1s to make sure the Consensus group has done leader election
-    TimeUnit.SECONDS.sleep(1);
+    processor.getConsensusManager().singleCopyMayWaitUntilLeaderReady();
   }
 
   @After
-  public void after() throws IOException {
-    NodeInfo.getInstance().clear();
-    ClusterSchemaInfo.getInstance().clear();
-    PartitionInfo.getInstance().clear();
+  public void after() throws IOException, InterruptedException {
     processor.close();
     FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
     FileUtils.deleteFully(
@@ -139,7 +132,11 @@ public class ConfigNodeRPCServiceProcessorTest {
       dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
       dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
 
-      TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
+      TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+      dataNodeInfo.setCpuCoreNum(8);
+      dataNodeInfo.setMaxMemory(1024 * 1024);
+
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation, dataNodeInfo);
       TDataNodeRegisterResp resp = processor.registerDataNode(req);
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
@@ -159,7 +156,11 @@ public class ConfigNodeRPCServiceProcessorTest {
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8778));
     dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
 
-    TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
+    TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+    dataNodeInfo.setCpuCoreNum(8);
+    dataNodeInfo.setMaxMemory(1024 * 1024);
+
+    TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation, dataNodeInfo);
     TDataNodeRegisterResp resp = processor.registerDataNode(req);
     Assert.assertEquals(
         TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode(), resp.getStatus().getCode());
