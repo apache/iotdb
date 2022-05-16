@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.sink.mqtt;
+package org.apache.iotdb.db.engine.trigger.utils;
+
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.fusesource.mqtt.client.BlockingConnection;
@@ -27,7 +29,8 @@ public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
 
   public MQTTConnectionPool(MQTTConnectionFactory factory, int size) {
     super(factory);
-    setMaxTotal(size);
+    setMaxTotal(
+        Math.min(size, IoTDBDescriptor.getInstance().getConfig().getTriggerForwardMQTTPoolSize()));
     setMinIdle(1);
   }
 
@@ -39,7 +42,7 @@ public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
     returnObject(connection);
   }
 
-  public void disconnectAndClose() {
+  public void clearAndClose() {
     clear();
     close();
   }

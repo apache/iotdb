@@ -21,6 +21,8 @@ package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
+import org.apache.iotdb.db.engine.trigger.utils.MQTTConnectionFactory;
+import org.apache.iotdb.db.engine.trigger.utils.MQTTConnectionPool;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +33,6 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MQTTForwardHandler.class);
 
-  // TODO If make connectionPool static, it may cause that only the first configuration can be
-  // active.
   private MQTTConnectionPool connectionPool;
   private MQTTForwardConfiguration configuration;
 
@@ -56,7 +56,7 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
 
   @Override
   public void close() throws Exception {
-    connectionPool.disconnectAndClose();
+    connectionPool.clearAndClose();
   }
 
   @Override

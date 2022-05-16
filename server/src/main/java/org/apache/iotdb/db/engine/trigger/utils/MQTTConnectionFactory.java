@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.sink.mqtt;
+package org.apache.iotdb.db.engine.trigger.utils;
 
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
@@ -37,7 +37,7 @@ public class MQTTConnectionFactory extends BasePooledObjectFactory<BlockingConne
   private final long connectAttemptsMax;
   private final long reconnectDelay;
 
-  private final AtomicInteger atomicCount = new AtomicInteger();
+  private static final AtomicInteger atomicCount = new AtomicInteger();
   private static final String CLIENT_NAME = "MQTTClient";
 
   public MQTTConnectionFactory(
@@ -85,7 +85,7 @@ public class MQTTConnectionFactory extends BasePooledObjectFactory<BlockingConne
       }
     } catch (Exception e) {
       if (connection.isConnected()) {
-        connection.resume();
+        connection.disconnect();
       }
       connection.kill();
       throw new SinkException("MQTT Connection activate error", e);
@@ -101,7 +101,7 @@ public class MQTTConnectionFactory extends BasePooledObjectFactory<BlockingConne
     BlockingConnection connection = p.getObject();
     try {
       if (connection != null && connection.isConnected()) {
-        connection.resume();
+        connection.disconnect();
       }
     } catch (Exception e) {
       throw new SinkException("MQTT connection passivate error", e);

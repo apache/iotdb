@@ -20,48 +20,11 @@
 package org.apache.iotdb.db.engine.trigger.sink.http;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.sink.api.Event;
+import org.apache.iotdb.db.engine.trigger.sink.forward.ForwardEvent;
 
-import com.google.gson.Gson;
+public class HTTPForwardEvent extends ForwardEvent {
 
-public class HTTPForwardEvent implements Event {
-
-  private final long timestamp;
-  private final Object value;
-  private final PartialPath fullPath;
-  private final String payloadFormatter;
-
-  public HTTPForwardEvent(
-      long timestamp, Object value, PartialPath fullPath, String payloadFormatter) {
-    this.timestamp = timestamp;
-    this.value = value;
-    this.fullPath = fullPath;
-    this.payloadFormatter = payloadFormatter;
-  }
-
-  public String toJsonString() {
-    Gson gson = new Gson();
-    return gson.toJson(toFormatterString());
-  }
-
-  public String toFormatterString() {
-    return payloadFormatter
-        .replaceAll("`timestamp`", String.valueOf(timestamp))
-        .replaceAll("`value`", String.valueOf(value))
-        .replaceAll("`device`", fullPath.getDevice())
-        .replaceAll("`measurement`", fullPath.getMeasurement())
-        .replaceAll("`fullPath`", fullPath.getFullPath());
-  }
-
-  public long getTimestamp() {
-    return timestamp;
-  }
-
-  public Object getValue() {
-    return value;
-  }
-
-  public PartialPath getFullPath() {
-    return fullPath;
+  public HTTPForwardEvent(long timestamp, Object value, PartialPath fullPath) {
+    super(timestamp, value, fullPath);
   }
 }

@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.http;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
+import org.apache.iotdb.db.engine.trigger.utils.HTTPConnectionPool;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -38,22 +40,11 @@ import java.util.List;
 public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTTPForwardEvent> {
   private static final Logger LOGGER = LoggerFactory.getLogger(HTTPForwardHandler.class);
 
-  private static final PoolingHttpClientConnectionManager clientConnectionManager;
   private static CloseableHttpClient client;
   private static int referenceCount;
 
   private HttpPost request;
   private HTTPForwardConfiguration configuration;
-
-  static {
-    // Create connection-pool manager
-    clientConnectionManager = new PoolingHttpClientConnectionManager();
-    // Set the max number of connections
-    clientConnectionManager.setMaxTotal(200);
-    // Set the maximum number of connections per host and the specified number of connections
-    // per website, which will not affect the access of other websites
-    clientConnectionManager.setDefaultMaxPerRoute(20);
-  }
 
   private static synchronized void closeClient() throws IOException {
     if (--referenceCount == 0) {
@@ -61,9 +52,20 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
     }
   }
 
-  private static synchronized void openClient() {
+  private static synchronized void openClient(int maxTotal, int maxPerRoute) {
     if (referenceCount++ == 0) {
-      client = HttpClients.custom().setConnectionManager(clientConnectionManager).build();
+      PoolingHttpClientConnectionManager connectionManager = HTTPConnectionPool.getInstance();
+      // Set the max number of connections
+      connectionManager.setMaxTotal(
+          Math.min(
+              maxTotal, IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPoolSize()));
+      // Set the maximum number of connections per host and the specified number of connections
+      // per website, which will not affect the access of other websites
+      connectionManager.setDefaultMaxPerRoute(
+          Math.min(
+              maxPerRoute,
+              IoTDBDescriptor.getInstance().getConfig().getTriggerForwardHTTPPOOLMaxPerRoute()));
+      client = HttpClients.custom().setConnectionManager(connectionManager).build();
     }
   }
 
@@ -81,7 +83,7 @@ public class HTTPForwardHandler implements Handler<HTTPForwardConfiguration, HTT
       request.setHeader("Content-type", "application/json");
     }
 
-    openClient();
+    openClient(configuration.getPoolSize(), configuration.getPoolMaxPerRoute());
   }
 
   @Override

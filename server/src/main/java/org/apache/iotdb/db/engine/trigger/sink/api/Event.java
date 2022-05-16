@@ -23,6 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 
 public interface Event {
   default PartialPath getFullPath() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 }
