@@ -61,7 +61,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -253,7 +252,7 @@ public class PartitionInfo implements SnapshotProcessor {
    * Filter no assigned SchemaPartitionSlots
    *
    * @param partitionSlotsMap Map<StorageGroupName, List<TSeriesPartitionSlot>>
-   * @return Map<StorageGroupName, List<TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
+   * @return Map<StorageGroupName, List < TSeriesPartitionSlot>>, SchemaPartitionSlots that is not
    *     assigned in partitionSlotsMap
    */
   public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlots(
@@ -336,7 +335,7 @@ public class PartitionInfo implements SnapshotProcessor {
    *
    * @param partitionSlotsMap Map<StorageGroupName, Map<TSeriesPartitionSlot,
    *     List<TTimePartitionSlot>>>
-   * @return Map<StorageGroupName, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>,
+   * @return Map<StorageGroupName, Map < TSeriesPartitionSlot, List < TTimePartitionSlot>>>,
    *     DataPartitionSlots that is not assigned in partitionSlotsMap
    */
   public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
@@ -541,10 +540,11 @@ public class PartitionInfo implements SnapshotProcessor {
 
   private void serializeRegionMap(DataOutputStream dataOutputStream, TProtocol protocol)
       throws TException, IOException {
-    dataOutputStream.writeInt(regionMap.size());
-    for (Entry<TConsensusGroupId, TRegionReplicaSet> entry : regionMap.entrySet()) {
-      entry.getKey().write(protocol);
-      entry.getValue().write(protocol);
+    dataOutputStream.writeInt(regionReplicaMap.size());
+    for (TConsensusGroupId consensusGroupId : regionReplicaMap.keySet()) {
+      consensusGroupId.write(protocol);
+      regionReplicaMap.get(consensusGroupId).write(protocol);
+      protocol.writeI64(regionSlotsCounter.get(consensusGroupId));
     }
   }
 
@@ -556,7 +556,10 @@ public class PartitionInfo implements SnapshotProcessor {
       tConsensusGroupId.read(protocol);
       TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
       tRegionReplicaSet.read(protocol);
-      regionMap.put(tConsensusGroupId, tRegionReplicaSet);
+      Long count = protocol.readI64();
+
+      regionReplicaMap.put(tConsensusGroupId, tRegionReplicaSet);
+      regionSlotsCounter.put(tConsensusGroupId, count);
       size--;
     }
   }

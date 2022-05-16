@@ -128,6 +128,7 @@ public class PartitionInfoTest {
         dataMap_before = partitionInfo.getDataPartition().getDataPartitionMap();
     int nextId = partitionInfo.getNextRegionGroupId();
 
+    Map<TConsensusGroupId, Long> counter_before = partitionInfo.getRegionSlotsCounter();
     partitionInfo.processTakeSnapshot(snapshotDir);
     partitionInfo.clear();
     partitionInfo.processLoadSnapshot(snapshotDir);
@@ -157,9 +158,7 @@ public class PartitionInfoTest {
         partitionInfo.getSchemaPartition().getSchemaPartitionMap());
 
     Assert.assertEquals(2, partitionInfo.getRegionSlotsCounter().size());
-    for (Long count : partitionInfo.getRegionSlotsCounter().values()) {
-      Assert.assertEquals(1, count.intValue());
-    }
+    Assert.assertEquals(counter_before, partitionInfo.getRegionSlotsCounter());
 
     Assert.assertEquals(dataMap_before, partitionInfo.getDataPartition().getDataPartitionMap());
   }
