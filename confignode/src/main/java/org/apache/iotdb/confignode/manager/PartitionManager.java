@@ -57,14 +57,14 @@ public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
-  private static final PartitionInfo partitionInfo = PartitionInfo.getInstance();
-
   private final Manager configManager;
+  private final PartitionInfo partitionInfo;
 
   private SeriesPartitionExecutor executor;
 
-  public PartitionManager(Manager configManager) {
+  public PartitionManager(Manager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
+    this.partitionInfo = partitionInfo;
     setSeriesPartitionExecutor();
   }
 
@@ -292,6 +292,16 @@ public class PartitionManager {
    */
   public int generateNextRegionGroupId() {
     return partitionInfo.generateNextRegionGroupId();
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param groupIds List<TConsensusGroupId>
+   * @return RegionReplicaSet by the specific TConsensusGroupIds
+   */
+  public List<TRegionReplicaSet> getRegionReplicaSets(List<TConsensusGroupId> groupIds) {
+    return partitionInfo.getRegionReplicaSets(groupIds);
   }
 
   private ConsensusManager getConsensusManager() {

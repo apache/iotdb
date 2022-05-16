@@ -44,7 +44,7 @@ public class NodeInfoTest {
 
   @BeforeClass
   public static void setup() {
-    nodeInfo = NodeInfo.getInstance();
+    nodeInfo = new NodeInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
