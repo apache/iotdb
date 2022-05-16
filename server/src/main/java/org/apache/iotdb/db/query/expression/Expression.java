@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
@@ -135,7 +136,12 @@ public abstract class Expression {
 
   protected Integer inputColumnIndex = null;
 
+  // TODO: remove after MPP finish
+  @Deprecated
   public abstract void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan);
+
+  public abstract void bindInputLayerColumnIndexWithExpression(
+      Map<String, List<InputLocation>> inputLocations);
 
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 

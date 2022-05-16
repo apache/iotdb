@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.layer.EvaluationDAGBuilder;
@@ -46,6 +47,7 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class TransformOperator implements ProcessOperator {
 
@@ -75,6 +77,7 @@ public class TransformOperator implements ProcessOperator {
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
+      Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
@@ -88,7 +91,7 @@ public class TransformOperator implements ProcessOperator {
 
     initInputLayer(inputDataTypes);
     initUdtfContext(zoneId);
-    initTransformers(typeProvider);
+    initTransformers(inputLocations, typeProvider);
     readyForFirstIteration();
   }
 
@@ -105,7 +108,8 @@ public class TransformOperator implements ProcessOperator {
     udtfContext.constructUdfExecutors(outputExpressions);
   }
 
-  protected void initTransformers(TypeProvider typeProvider)
+  protected void initTransformers(
+      Map<String, List<InputLocation>> inputLocations, TypeProvider typeProvider)
       throws QueryProcessException, IOException {
     UDFRegistrationService.getInstance().acquireRegistrationLock();
     try {
@@ -116,6 +120,7 @@ public class TransformOperator implements ProcessOperator {
           new EvaluationDAGBuilder(
                   operatorContext.getOperatorId(),
                   inputLayer,
+                  inputLocations,
                   outputExpressions,
                   udtfContext,
                   typeProvider,

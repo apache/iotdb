@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ExpressionType;
@@ -97,6 +98,15 @@ public class TimeSeriesOperand extends LeafOperand {
   @Override
   public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
     inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
+  }
+
+  @Override
+  public void bindInputLayerColumnIndexWithExpression(
+      Map<String, List<InputLocation>> inputLocations) {
+    final String digest = toString();
+    if (inputLocations.containsKey(digest)) {
+      inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
+    }
   }
 
   @Override

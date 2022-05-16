@@ -21,12 +21,14 @@ package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class EvaluationDAGBuilder {
@@ -34,6 +36,7 @@ public class EvaluationDAGBuilder {
   private final long queryId;
 
   private final RawQueryInputLayer inputLayer;
+  private final Map<String, List<InputLocation>> inputLocations;
 
   private final Expression[] outputExpressions;
   private final LayerPointReader[] outputPointReaders;
@@ -52,12 +55,14 @@ public class EvaluationDAGBuilder {
   public EvaluationDAGBuilder(
       long queryId,
       RawQueryInputLayer inputLayer,
+      Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
       UDTFContext udtfContext,
       TypeProvider typeProvider,
       float memoryBudgetInMB) {
     this.queryId = queryId;
     this.inputLayer = inputLayer;
+    this.inputLocations = inputLocations;
     this.outputExpressions = outputExpressions;
     this.udtfContext = udtfContext;
     this.typeProvider = typeProvider;
@@ -75,6 +80,13 @@ public class EvaluationDAGBuilder {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     }
     memoryAssigner.build();
+    return this;
+  }
+
+  public EvaluationDAGBuilder bindInputLayerColumnIndexWithExpression() {
+    for (Expression expression : outputExpressions) {
+      expression.bindInputLayerColumnIndexWithExpression(inputLocations);
+    }
     return this;
   }
 

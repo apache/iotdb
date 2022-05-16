@@ -455,12 +455,14 @@ public class LocalExecutionPlanner {
               TransformNode.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
       final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
       try {
         return new TransformOperator(
             operatorContext,
             inputOperator,
             inputDataTypes,
+            inputLocations,
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
@@ -477,12 +479,14 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(), node.getPlanNodeId(), FilterNode.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
       final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
       try {
         return new FilterOperator(
             operatorContext,
             inputOperator,
             inputDataTypes,
+            inputLocations,
             node.getPredicate(),
             node.getOutputExpressions(),
             node.isKeepNull(),

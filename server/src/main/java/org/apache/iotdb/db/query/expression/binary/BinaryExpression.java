@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
@@ -192,10 +193,22 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
+  public final void bindInputLayerColumnIndexWithExpression(UDTFPlan udtfPlan) {
     leftExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
     rightExpression.bindInputLayerColumnIndexWithExpression(udtfPlan);
     inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
+  }
+
+  @Override
+  public final void bindInputLayerColumnIndexWithExpression(
+      Map<String, List<InputLocation>> inputLocations) {
+    leftExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
+    rightExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
+
+    final String digest = toString();
+    if (inputLocations.containsKey(digest)) {
+      inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
+    }
   }
 
   @Override
