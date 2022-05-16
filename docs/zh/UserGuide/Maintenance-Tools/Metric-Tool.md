@@ -89,7 +89,6 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | ---------- | -------------------- | ------ | ----------------------------------- | --------------------------- |
 | file_size  | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件大小(byte) | file_size{name="wal",} 67.0 |
 | file_count | name="wal/seq/unseq" | important | 当前时间wal/seq/unseq文件个数       | file_count{name="seq",} 1.0 |
-| table_space | name="tablespace" | core | 表空间大小 | table_space{name="tablespace",} 0.0 |
 
 #### 4.3.3. Flush
 

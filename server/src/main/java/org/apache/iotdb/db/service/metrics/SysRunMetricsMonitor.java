@@ -18,12 +18,7 @@
  */
 package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.metrics.Metric;
-import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
-import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
@@ -31,7 +26,6 @@ import com.sun.management.OperatingSystemMXBean;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
-import java.util.stream.Stream;
 
 public class SysRunMetricsMonitor {
   private MetricManager metricManager = MetricsService.getInstance().getMetricManager();
@@ -110,21 +104,6 @@ public class SysRunMetricsMonitor {
         Tag.NAME.toString(),
         "system");
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    metricManager.getOrCreateAutoGauge(
-        Metric.TABLE_SPACE.toString(),
-        MetricLevel.CORE,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                      dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                      return FileUtils.getDirSize(dir);
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "tablespace");
   }
 
   private long getSysDiskTotalSpace() {

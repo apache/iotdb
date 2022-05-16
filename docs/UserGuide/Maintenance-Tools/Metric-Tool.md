@@ -111,25 +111,58 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cost_task_seconds_sum   | name="compaction"                                                       | important   | The total cost seconds of all compaction tasks till now             | cost_task_seconds_sum{name="compaction",} 0.363               |
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"               | important   | The size of data written in compaction                              | data_written{name="compaction",type="total",} 10240           |
 | data_read               | name="compaction"                                                       | important   | The size of data read in compaction                                 | data_read={name="compaction",} 10240                          |
-#### 4.3.5. Memory Usage
+#### 4.3.5. CPU
+
+| Metric           | Tag        | level | 说明                                 | 示例                                         |
+| ---------------- | ---------- | ----- | ------------------------------------ | -------------------------------------------- |
+| process_cpu_load | name="cpu" | core  | current process CPU Usage (%)        | process_cpu_load{name="process",} 5.0        |
+| process_cpu_time | name="cpu" | core  | total Process CPU Time Occupied (ns) | process_cpu_time{name="process",} 3.265625E9 |
+| sys_cpu_load     | name="cpu" | core  | current system CPU Usage(%)          | sys_cpu_load{name="system",} 15.0            |
+| sys_cpu_cores    | name="cpu" | core  | available CPU cores                  | sys_cpu_cores{name="system",} 16.0           |
+
+#### 4.3.6. Memory Usage
 
 | Metric | Tag                                     | level  | Description                                                           | Sample                            |
 | ------ | --------------------------------------- | ------ | --------------------------------------------------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | important | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
+| process_max_mem | name="memory"                           | core      | The maximum available memory for the JVM                     | process_max_mem{name="process",} 3.545759744E9               |
+| process_used_mem               | name="memory"                           | core      | The current available memory for the JVM                     | process_used_mem{name="process",} 4.6065456E7                |
+| process_total_mem              | name="memory"                           | core      | The current requested memory for the JVM                     | process_total_mem{name="process",} 2.39599616E8              |
+| process_free_mem               | name="memory"                           | core      | The free available memory for the JVM                        | process_free_mem{name="process",} 1.94035584E8               |
+| process_mem_ratio              | name="memory"                           | core      | Memory footprint ratio of process                            | process_mem_ratio{name="process",} 0.0                       |
+| sys_total_physical_memory_size | name="memory"                           | core      | Maximum physical memory of system                            | sys_total_physical_memory_size{name="system",} 1.5950999552E10 |
+| sys_free_physical_memory_size  | name="memory"                           | core      | The current available memory of system                       | sys_free_physical_memory_size{name="system",} 4.532396032E9  |
+| sys_total_swap_space_size      | name="memory"                           | core      | The maximum swap area of system                              | sys_total_swap_space_size{name="system",} 2.1051273216E10    |
+| sys_free_swap_space_size       | name="memory"                           | core      | The available swap area of system | sys_free_swap_space_size{name="system",} 2.931576832E9 |
+| sys_committed_vm_size | name="memory" | important | the amount of virtual memory available to running processes | sys_committed_vm_size{name="system",} 5.04344576E8 |
 
-#### 4.3.6. Cache Hit Ratio
+#### 4.3.7 Process Status
+
+| Metric                | Tag            | level | 说明                                                         | 示例                                        |
+| --------------------- | -------------- | ----- | ------------------------------------------------------------ | ------------------------------------------- |
+| process_threads_count | name="process" | core  | The current number of threads                                | process_threads_count{name="process",} 11.0 |
+| process_status        | name="process" | core  | The process survivor status, 1.0 means survivorship, and 0.0 means terminated | process_status{name="process",} 1.0         |
+
+#### 4.3.8. 磁盘
+
+| Metric               | Tag         | level | 说明                      | 示例                                                  |
+| -------------------- | ----------- | ----- | ------------------------- | ----------------------------------------------------- |
+| sys_disk_total_space | name="disk" | core  | The total disk space      | sys_disk_total_space{name="system",} 5.10770798592E11 |
+| sys_disk_free_space  | name="disk" | core  | The available  disk space | sys_disk_free_space{name="system",} 3.63467845632E11  |
+
+#### 4.3.9. Cache Hit Ratio
 
 | Metric    | Tag                                     | level  | Description                                                                   | Sample                      |
 | --------- | --------------------------------------- | ------ | ----------------------------------------------------------------------------- | --------------------------- |
 | cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | important | Cache hit ratio of chunk/timeSeriesMeta  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
 
-#### 4.3.7. Business Data
+#### 4.3.19. Business Data
 
 | Metric   | Tag                                   | level  | Description                                                   | Sample                           |
 | -------- | ------------------------------------- | ------ | ------------------------------------------------------------- | -------------------------------- |
 | quantity | name="timeSeries/storageGroup/device" | important | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",} 1.0 |
 
-#### 4.3.8. Cluster
+#### 4.3.11. Cluster
 
 | Metric                    | Tag                             | level  | Description                                                                                  | Sample                                                                       |
 | ------------------------- | ------------------------------- | ------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
