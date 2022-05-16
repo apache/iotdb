@@ -283,7 +283,7 @@ public class QueryExecution implements IQueryExecution {
   /** return the result column count without the time column */
   @Override
   public int getOutputValueColumnCount() {
-    return analysis.getRespDatasetHeader().getColumnHeaders().size();
+    return analysis.getRespDatasetHeader().getOutputValueColumnCount();
   }
 
   @Override
