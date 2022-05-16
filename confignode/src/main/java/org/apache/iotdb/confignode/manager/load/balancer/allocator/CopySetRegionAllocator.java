@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.allocator;
+package org.apache.iotdb.confignode.manager.load.balancer.allocator;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
@@ -49,7 +50,7 @@ public class CopySetRegionAllocator implements IRegionAllocator {
 
   @Override
   public TRegionReplicaSet allocateRegion(
-      List<TDataNodeLocation> onlineDataNodes,
+      List<TDataNodeInfo> onlineDataNodes,
       List<TRegionReplicaSet> allocatedRegions,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
@@ -79,12 +80,15 @@ public class CopySetRegionAllocator implements IRegionAllocator {
   }
 
   private void buildWeightList(
-      List<TDataNodeLocation> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
+      List<TDataNodeInfo> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
+
+    // TODO: The remaining disk capacity of DataNode can also be calculated into the weightList
+
     int maximumRegionNum = 0;
     Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
-    for (TDataNodeLocation dataNodeLocation : onlineDataNodes) {
-      maxId = Math.max(maxId, dataNodeLocation.getDataNodeId());
-      countMap.put(dataNodeLocation, 0);
+    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+      maxId = Math.max(maxId, dataNodeInfo.getLocation().getDataNodeId());
+      countMap.put(dataNodeInfo.getLocation(), 0);
     }
     for (TRegionReplicaSet regionReplicaSet : allocatedRegions) {
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
@@ -103,6 +107,7 @@ public class CopySetRegionAllocator implements IRegionAllocator {
     }
   }
 
+  /** @return A new CopySet based on weighted random */
   private TRegionReplicaSet genWeightedRandomRegion(int replicationFactor) {
     Set<Integer> checkSet = new HashSet<>();
     TRegionReplicaSet randomRegion = new TRegionReplicaSet();
@@ -124,6 +129,14 @@ public class CopySetRegionAllocator implements IRegionAllocator {
     return randomRegion;
   }
 
+  /**
+   * Do intersection check.
+   *
+   * @param allocatedRegions Allocated CopySets.
+   * @param newRegion A new CopySet.
+   * @return True if the intersection size between every allocatedRegions and the newRegion are not
+   *     exceed intersectionSize.
+   */
   private boolean intersectionCheck(
       List<TRegionReplicaSet> allocatedRegions, TRegionReplicaSet newRegion) {
     BitSet newBit = new BitSet(maxId + 1);
