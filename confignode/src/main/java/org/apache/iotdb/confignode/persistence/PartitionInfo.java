@@ -50,19 +50,18 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -435,33 +434,34 @@ public class PartitionInfo implements SnapshotProcessor {
       return false;
     }
 
+    // prevents temporary files from being damaged and cannot be deleted, which affects the next
+    // snapshot operation.
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
 
     lockAllRead();
-    ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
-    try {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
+        DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataOutputStream)) {
+      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+
       // serialize nextRegionGroupId
-      byteBuffer.putInt(nextRegionGroupId.get());
+      dataOutputStream.writeInt(nextRegionGroupId.get());
       // serialize regionMap
-      serializeRegionMap(byteBuffer);
+      serializeRegionMap(dataOutputStream, protocol);
       // serialize schemaPartition
-      schemaPartition.serialize(byteBuffer);
+      schemaPartition.serialize(dataOutputStream, protocol);
       // serialize dataPartition
-      dataPartition.serialize(byteBuffer);
+      dataPartition.serialize(dataOutputStream, protocol);
       // write to file
-      try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-          FileChannel fileChannel = fileOutputStream.getChannel()) {
-        byteBuffer.flip();
-        fileChannel.write(byteBuffer);
-      }
+      fileOutputStream.flush();
+      fileOutputStream.close();
       // rename file
       return tmpFile.renameTo(snapshotFile);
     } finally {
       unlockAllRead();
-      byteBuffer.clear();
       // with or without success, delete temporary files anyway
       for (int retry = 0; retry < 5; retry++) {
-        if (tmpFile.delete()) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
           break;
         } else {
           LOGGER.warn(
@@ -484,22 +484,19 @@ public class PartitionInfo implements SnapshotProcessor {
     // no operations are processed at this time
     lockAllWrite();
 
-    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-        FileChannel fileChannel = fileInputStream.getChannel()) {
-      // get buffer from fileChannel
-      fileChannel.read(buffer);
-      buffer.flip();
+        DataInputStream dataInputStream = new DataInputStream(fileInputStream);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(dataInputStream)) {
+      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
       // before restoring a snapshot, clear all old data
       clear();
       // start to restore
-      nextRegionGroupId.set(buffer.getInt());
-      deserializeRegionMap(buffer);
-      schemaPartition.deserialize(buffer);
-      dataPartition.deserialize(buffer);
+      nextRegionGroupId.set(dataInputStream.readInt());
+      deserializeRegionMap(dataInputStream, protocol);
+      schemaPartition.deserialize(dataInputStream, protocol);
+      dataPartition.deserialize(dataInputStream, protocol);
     } finally {
       unlockAllWrite();
-      buffer.clear();
     }
   }
 
@@ -542,41 +539,25 @@ public class PartitionInfo implements SnapshotProcessor {
     return regionSlotsCounter;
   }
 
-  private void serializeRegionMap(ByteBuffer buffer) throws TException, IOException {
-    try (ByteArrayOutputStream out = new ByteArrayOutputStream();
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(out)) {
-      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-
-      for (TConsensusGroupId consensusGroupId : regionReplicaMap.keySet()) {
-        consensusGroupId.write(protocol);
-        regionReplicaMap.get(consensusGroupId).write(protocol);
-        protocol.writeI64(regionSlotsCounter.get(consensusGroupId));
-      }
-
-      byte[] toArray = out.toByteArray();
-      buffer.putInt(toArray.length);
-      buffer.put(toArray);
+  private void serializeRegionMap(DataOutputStream dataOutputStream, TProtocol protocol)
+      throws TException, IOException {
+    dataOutputStream.writeInt(regionMap.size());
+    for (Entry<TConsensusGroupId, TRegionReplicaSet> entry : regionMap.entrySet()) {
+      entry.getKey().write(protocol);
+      entry.getValue().write(protocol);
     }
   }
 
-  private void deserializeRegionMap(ByteBuffer buffer) throws TException, IOException {
-    int length = buffer.getInt();
-    byte[] regionMapBuffer = new byte[length];
-    buffer.get(regionMapBuffer);
-    try (ByteArrayInputStream in = new ByteArrayInputStream(regionMapBuffer);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(in)) {
-      while (in.available() > 0) {
-        TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-
-        TConsensusGroupId tConsensusGroupId = new TConsensusGroupId();
-        tConsensusGroupId.read(protocol);
-        TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-        tRegionReplicaSet.read(protocol);
-        Long count = protocol.readI64();
-
-        regionReplicaMap.put(tConsensusGroupId, tRegionReplicaSet);
-        regionSlotsCounter.put(tConsensusGroupId, count);
-      }
+  private void deserializeRegionMap(DataInputStream dataInputStream, TProtocol protocol)
+      throws TException, IOException {
+    int size = dataInputStream.readInt();
+    while (size > 0) {
+      TConsensusGroupId tConsensusGroupId = new TConsensusGroupId();
+      tConsensusGroupId.read(protocol);
+      TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
+      tRegionReplicaSet.read(protocol);
+      regionMap.put(tConsensusGroupId, tRegionReplicaSet);
+      size--;
     }
   }
 

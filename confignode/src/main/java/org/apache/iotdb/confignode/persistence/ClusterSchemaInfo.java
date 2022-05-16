@@ -460,7 +460,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       buffer.clear();
       for (int retry = 0; retry < 5; retry++) {
-        if (tmpFile.delete()) {
+        if (!tmpFile.exists() || tmpFile.delete()) {
           break;
         } else {
           LOGGER.warn(

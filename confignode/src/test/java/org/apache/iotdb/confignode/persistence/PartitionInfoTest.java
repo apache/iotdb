@@ -123,6 +123,9 @@ public class PartitionInfoTest {
             generateTConsensusGroupId(
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
     partitionInfo.createDataPartition(createDataPartitionReq);
+
+    Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+        dataMap_before = partitionInfo.getDataPartition().getDataPartitionMap();
     int nextId = partitionInfo.getNextRegionGroupId();
 
     partitionInfo.processTakeSnapshot(snapshotDir);
@@ -150,10 +153,6 @@ public class PartitionInfoTest {
     Assert.assertEquals(dataRegionReplicaSet, reloadTRegionReplicaSet.get(0));
 
     Assert.assertEquals(
-        createDataPartitionReq.getAssignedDataPartition(),
-        partitionInfo.getDataPartition().getDataPartitionMap());
-
-    Assert.assertEquals(
         createSchemaPartitionReq.getAssignedSchemaPartition(),
         partitionInfo.getSchemaPartition().getSchemaPartitionMap());
 
@@ -161,6 +160,8 @@ public class PartitionInfoTest {
     for (Long count : partitionInfo.getRegionSlotsCounter().values()) {
       Assert.assertEquals(1, count.intValue());
     }
+
+    Assert.assertEquals(dataMap_before, partitionInfo.getDataPartition().getDataPartitionMap());
   }
 
   private TRegionReplicaSet generateTRegionReplicaSet(
@@ -199,19 +200,30 @@ public class PartitionInfoTest {
 
   private CreateDataPartitionReq generateCreateDataPartitionReq(
       int startFlag, TConsensusGroupId tConsensusGroupId) {
+    startFlag = startFlag / 10;
     CreateDataPartitionReq createSchemaPartitionReq = new CreateDataPartitionReq();
     // Map<StorageGroup, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionMessage>>>>
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
 
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> relationInfo = new HashMap<>();
-    relationInfo.put(
-        new TTimePartitionSlot(System.currentTimeMillis() / 1000),
-        Collections.singletonList(generateTRegionReplicaSet(startFlag, tConsensusGroupId)));
+
+    List<TRegionReplicaSet> tRegionReplicaSets = new ArrayList<>();
+
+    for (int i = 0; i <= startFlag; i++) {
+      for (int j = 0; j <= startFlag; j++) {
+        tRegionReplicaSets.add(generateTRegionReplicaSet(j + startFlag, tConsensusGroupId));
+      }
+      relationInfo.put(
+          new TTimePartitionSlot((System.currentTimeMillis() / 1000) + i), tRegionReplicaSets);
+    }
 
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> slotInfo =
         new HashMap<>();
-    slotInfo.put(new TSeriesPartitionSlot(startFlag), relationInfo);
+
+    for (int i = 0; i <= startFlag; i++) {
+      slotInfo.put(new TSeriesPartitionSlot(startFlag + i), relationInfo);
+    }
 
     dataPartitionMap.put("root.test.data.sg", slotInfo);
     createSchemaPartitionReq.setAssignedDataPartition(dataPartitionMap);
