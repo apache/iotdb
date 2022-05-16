@@ -195,6 +195,8 @@ public class TransformOperator implements ProcessOperator {
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
+
+      tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

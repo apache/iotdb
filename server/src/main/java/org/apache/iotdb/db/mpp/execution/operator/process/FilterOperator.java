@@ -141,6 +141,8 @@ public class FilterOperator extends TransformOperator {
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
+
+      tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
