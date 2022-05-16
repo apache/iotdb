@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.confignode.procedure.ProcedureFactory;
 import org.apache.iotdb.procedure.Procedure;
+import org.apache.iotdb.procedure.store.ProcedureFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

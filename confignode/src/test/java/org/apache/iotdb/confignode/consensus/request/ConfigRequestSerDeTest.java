@@ -50,9 +50,9 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
-import org.apache.iotdb.confignode.procedure.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.procedure.Procedure;
+import org.apache.iotdb.procedure.impl.DeleteStorageGroupProcedure;
 
 import org.junit.After;
 import org.junit.Assert;

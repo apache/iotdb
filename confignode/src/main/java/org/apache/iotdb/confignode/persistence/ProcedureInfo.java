@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
-import org.apache.iotdb.confignode.procedure.ProcedureFactory;
 import org.apache.iotdb.procedure.Procedure;
 import org.apache.iotdb.procedure.conf.ProcedureNodeConstant;
+import org.apache.iotdb.procedure.store.ProcedureFactory;
 import org.apache.iotdb.procedure.store.ProcedureWAL;
 import org.apache.iotdb.rpc.TSStatusCode;
 
