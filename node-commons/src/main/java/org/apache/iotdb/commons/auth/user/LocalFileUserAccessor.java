@@ -22,8 +22,10 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.IOUtils;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +43,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * This class loads a user's information from the corresponding file.The user file is a sequential
@@ -55,10 +58,10 @@ import java.util.Set;
  * bytes
  */
 public class LocalFileUserAccessor implements IUserAccessor {
-
+  private static final Logger logger = LoggerFactory.getLogger(LocalFileUserAccessor.class);
   private static final String TEMP_SUFFIX = ".temp";
   private static final String STRING_ENCODING = "utf-8";
-  private static final Logger logger = LoggerFactory.getLogger(LocalFileUserAccessor.class);
+  private static final String userSnapshotFileName = "system" + File.separator + "users";
 
   private String userDirPath;
   /**
@@ -98,9 +101,9 @@ public class LocalFileUserAccessor implements IUserAccessor {
         return null;
       }
     }
-    try (FileInputStream inputStream = new FileInputStream(userProfile);
-        DataInputStream dataInputStream =
-            new DataInputStream(new BufferedInputStream(inputStream))) {
+    FileInputStream inputStream = new FileInputStream(userProfile);
+    try (DataInputStream dataInputStream =
+        new DataInputStream(new BufferedInputStream(inputStream))) {
       User user = new User();
       user.setName(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
       user.setPassword(IOUtils.readString(dataInputStream, STRING_ENCODING, strBufferLocal));
@@ -152,6 +155,7 @@ public class LocalFileUserAccessor implements IUserAccessor {
                 + user.getName()
                 + IoTDBConstant.PROFILE_SUFFIX
                 + TEMP_SUFFIX);
+
     try (BufferedOutputStream outputStream =
         new BufferedOutputStream(new FileOutputStream(userProfile))) {
       try {
@@ -235,11 +239,57 @@ public class LocalFileUserAccessor implements IUserAccessor {
   }
 
   @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
+    File userFolder = systemFileFactory.getFile(userDirPath);
+    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, userSnapshotFileName);
+    File userTmpSnapshotDir =
+        systemFileFactory.getFile(userSnapshotDir.getAbsolutePath() + "-" + UUID.randomUUID());
+
+    boolean result = true;
+    try {
+      result = FileUtils.copyDir(userFolder, userTmpSnapshotDir);
+      result &= userTmpSnapshotDir.renameTo(userSnapshotDir);
+    } finally {
+      if (userTmpSnapshotDir.exists() && !userTmpSnapshotDir.delete()) {
+        FileUtils.deleteDirectory(userTmpSnapshotDir);
+      }
+    }
+    return result;
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    SystemFileFactory systemFileFactory = SystemFileFactory.INSTANCE;
+    File userFolder = systemFileFactory.getFile(userDirPath);
+    File userTmpFolder =
+        systemFileFactory.getFile(userFolder.getAbsolutePath() + "-" + UUID.randomUUID());
+    File userSnapshotDir = systemFileFactory.getFile(snapshotDir, userSnapshotFileName);
+
+    try {
+      org.apache.commons.io.FileUtils.moveDirectory(userFolder, userTmpFolder);
+      if (!FileUtils.copyDir(userSnapshotDir, userFolder)) {
+        logger.error("Failed to load user folder snapshot and rollback.");
+        // rollback if failed to copy
+        FileUtils.deleteDirectory(userFolder);
+        org.apache.commons.io.FileUtils.moveDirectory(userTmpFolder, userFolder);
+      }
+    } finally {
+      FileUtils.deleteDirectory(userTmpFolder);
+    }
+  }
+
+  @Override
   public void reset() {
     if (SystemFileFactory.INSTANCE.getFile(userDirPath).mkdirs()) {
       logger.info("user info dir {} is created", userDirPath);
     } else if (!SystemFileFactory.INSTANCE.getFile(userDirPath).exists()) {
       logger.error("user info dir {} can not be created", userDirPath);
     }
+  }
+
+  @Override
+  public String getDirPath() {
+    return userDirPath;
   }
 }

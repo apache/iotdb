@@ -41,7 +41,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -124,28 +123,19 @@ public class FragmentInstanceSerdeTest {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("TimeJoinNode"), OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode1 =
-        new SeriesScanNode(
-            new PlanNodeId("SeriesScanNode1"),
-            new MeasurementPath("root.sg.d1.s2"),
-            Sets.newHashSet("s2"));
+        new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
     seriesScanNode1.setRegionReplicaSet(
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
-        new SeriesScanNode(
-            new PlanNodeId("SeriesScanNode2"),
-            new MeasurementPath("root.sg.d2.s1"),
-            Sets.newHashSet("s1", "s2"));
+        new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
     seriesScanNode2.setRegionReplicaSet(
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), new ArrayList<>()));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
-        new SeriesScanNode(
-            new PlanNodeId("SeriesScanNode3"),
-            new MeasurementPath("root.sg.d2.s2"),
-            Sets.newHashSet("s1", "s2"));
+        new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
     seriesScanNode3.setRegionReplicaSet(
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), new ArrayList<>()));

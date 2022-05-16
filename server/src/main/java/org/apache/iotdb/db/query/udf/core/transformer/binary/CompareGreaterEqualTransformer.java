@@ -29,7 +29,20 @@ public class CompareGreaterEqualTransformer extends CompareBinaryTransformer {
   }
 
   @Override
-  protected boolean evaluate(double leftOperand, double rightOperand) {
-    return Double.compare(leftOperand, rightOperand) >= 0;
+  protected Evaluator constructNumberEvaluator() {
+    return () ->
+        Double.compare(
+                castCurrentValueToDoubleOperand(leftPointReader, leftPointReaderDataType),
+                castCurrentValueToDoubleOperand(rightPointReader, rightPointReaderDataType))
+            >= 0;
+  }
+
+  @Override
+  protected Evaluator constructTextEvaluator() {
+    return () ->
+        compare(
+                leftPointReader.currentBinary().getStringValue(),
+                rightPointReader.currentBinary().getStringValue())
+            >= 0;
   }
 }

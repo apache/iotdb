@@ -30,9 +30,12 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -164,6 +167,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void createRole(String roleName) throws AuthException {
     if (!roleManager.createRole(roleName)) {
+      logger.error("Role {} already exists", roleName);
       throw new AuthException(String.format("Role %s already exists", roleName));
     }
   }
@@ -402,5 +406,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
     roleManager.replaceAllRoles(roles);
+  }
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    return userManager.processTakeSnapshot(snapshotDir)
+        & roleManager.processTakeSnapshot(snapshotDir);
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    userManager.processLoadSnapshot(snapshotDir);
+    roleManager.processLoadSnapshot(snapshotDir);
   }
 }

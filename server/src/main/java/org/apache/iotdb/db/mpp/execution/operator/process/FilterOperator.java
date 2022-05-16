@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -36,6 +37,7 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class FilterOperator extends TransformOperator {
 
@@ -45,6 +47,7 @@ public class FilterOperator extends TransformOperator {
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
+      Map<String, List<InputLocation>> inputLocations,
       Expression filterExpression,
       Expression[] outputExpressions,
       boolean keepNull,
@@ -55,6 +58,7 @@ public class FilterOperator extends TransformOperator {
         operatorContext,
         inputOperator,
         inputDataTypes,
+        inputLocations,
         bindExpressions(filterExpression, outputExpressions),
         keepNull,
         zoneId,
@@ -70,8 +74,12 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  protected void initTransformers() throws QueryProcessException, IOException {
-    super.initTransformers();
+  protected void initTransformers(
+      Map<String, List<InputLocation>> inputLocations,
+      Expression[] outputExpressions,
+      TypeProvider typeProvider)
+      throws QueryProcessException, IOException {
+    super.initTransformers(inputLocations, outputExpressions, typeProvider);
 
     filterPointReader = transformers[transformers.length - 1];
     if (filterPointReader.getDataType() != TSDataType.BOOLEAN) {
@@ -88,10 +96,10 @@ public class FilterOperator extends TransformOperator {
   }
 
   private void iterateFilterReaderToNextValid() throws QueryProcessException, IOException {
-    while (filterPointReader.next()
-        && (filterPointReader.isCurrentNull() || !filterPointReader.currentBoolean())) {
+    do {
       filterPointReader.readyForNext();
-    }
+    } while (filterPointReader.next()
+        && (filterPointReader.isCurrentNull() || !filterPointReader.currentBoolean()));
   }
 
   @Override
@@ -135,6 +143,8 @@ public class FilterOperator extends TransformOperator {
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
+
+      tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -153,6 +163,11 @@ public class FilterOperator extends TransformOperator {
   @Override
   public boolean hasNext() {
     try {
+      if (isFirstIteration) {
+        readyForFirstIteration();
+        isFirstIteration = false;
+      }
+
       return filterPointReader.next();
     } catch (Exception e) {
       throw new RuntimeException(e);

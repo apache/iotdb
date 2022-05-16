@@ -18,22 +18,55 @@
 # under the License.
 #
 
+echo ---------------------
+echo "Starting to remove a DataNode"
+echo ---------------------
 
-PIDS=$(ps ax | grep -i 'DataNode' | grep java | grep -v grep | awk '{print $1}')
-sig=0
-for every_pid in ${PIDS}
-do
-  cwd_path=$(ls -l /proc/$every_pid | grep "cwd ->" | grep -v grep | awk '{print $NF}')
-  pwd_path=$(/bin/pwd)
-  if [[ $pwd_path =~ $cwd_path ]]; then
-    kill -s TERM $every_pid
-    echo "close IoTDB"
-    sig=1
-  fi
-done
-
-if [ $sig -eq 0 ]; then
-  echo "No IoTDB server to stop"
-  exit 1
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="`dirname "$0"`/.."
 fi
+
+IOTDB_CONF=${IOTDB_HOME}/conf
+
+CONF_PARAMS="-r "$*
+
+if [ -n "$JAVA_HOME" ]; then
+    for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
+        if [ -x "$java" ]; then
+            JAVA="$java"
+            break
+        fi
+    done
+else
+    JAVA=java
+fi
+
+if [ -z $JAVA ] ; then
+    echo Unable to find java executable. Check JAVA_HOME and PATH environment variables.  > /dev/stderr
+    exit 1;
+fi
+
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
+classname=org.apache.iotdb.db.service.DataNode
+
+launch_service()
+{
+	class="$1"
+	iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback.xml"
+	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
+	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
+	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
+	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
+	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
+	return $?
+}
+
+# Start up the service
+launch_service "$classname"
+
+exit $?
+
 

@@ -53,6 +53,7 @@ public class CommonDescriptor {
   public void initCommonConfigDir(String systemDir) {
     config.setUserFolder(systemDir + File.separator + "users");
     config.setRoleFolder(systemDir + File.separator + "roles");
+    config.setProcedureWalFolder(systemDir + File.separator + "procedure");
   }
 
   public void loadCommonProps(Properties properties) {

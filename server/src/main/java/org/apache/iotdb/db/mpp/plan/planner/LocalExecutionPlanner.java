@@ -402,7 +402,13 @@ public class LocalExecutionPlanner {
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
               .collect(Collectors.toList());
-      return new DeviceViewOperator(operatorContext, node.getDevices(), children, null, null);
+      List<List<Integer>> deviceColumnIndex =
+          node.getDevices().stream()
+              .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
+              .collect(Collectors.toList());
+      List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      return new DeviceViewOperator(
+          operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
     }
 
     @Override
@@ -448,13 +454,15 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               TransformNode.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
-      final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
+      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
       try {
         return new TransformOperator(
             operatorContext,
             inputOperator,
             inputDataTypes,
+            inputLocations,
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
@@ -470,13 +478,15 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(), node.getPlanNodeId(), FilterNode.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
-      final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
+      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
       try {
         return new FilterOperator(
             operatorContext,
             inputOperator,
             inputDataTypes,
+            inputLocations,
             node.getPredicate(),
             node.getOutputExpressions(),
             node.isKeepNull(),
@@ -668,6 +678,14 @@ public class LocalExecutionPlanner {
         tsBlockIndex++;
       }
       return outputMappings;
+    }
+
+    private List<TSDataType> getInputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+      return node.getChildren().stream()
+          .map(PlanNode::getOutputColumnNames)
+          .flatMap(List::stream)
+          .map(typeProvider::getType)
+          .collect(Collectors.toList());
     }
 
     private List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {

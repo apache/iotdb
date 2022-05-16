@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -40,18 +41,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
 
-  private static final ClusterSchemaInfo clusterSchemaInfo = ClusterSchemaInfo.getInstance();
-
   private final Manager configManager;
+  private final ClusterSchemaInfo clusterSchemaInfo;
 
-  public ClusterSchemaManager(Manager configManager) {
+  public ClusterSchemaManager(Manager configManager, ClusterSchemaInfo clusterSchemaInfo) {
     this.configManager = configManager;
+    this.clusterSchemaInfo = clusterSchemaInfo;
   }
 
   /**
@@ -74,6 +76,10 @@ public class ClusterSchemaManager {
       result = getConsensusManager().write(setStorageGroupReq).getStatus();
     }
     return result;
+  }
+
+  public TSStatus deleteStorageGroup(DeleteStorageGroupReq deleteStorageGroupReq) {
+    return getConsensusManager().write(deleteStorageGroupReq).getStatus();
   }
 
   /**
@@ -99,6 +105,17 @@ public class ClusterSchemaManager {
   public TStorageGroupSchema getStorageGroupSchemaByName(String storageGroup)
       throws MetadataException {
     return clusterSchemaInfo.getMatchedStorageGroupSchemaByName(storageGroup);
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param rawPathList List<StorageGroupName>
+   * @return the matched StorageGroupSchemas
+   */
+  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
+      List<String> rawPathList) {
+    return clusterSchemaInfo.getMatchedStorageGroupSchemasByName(rawPathList);
   }
 
   public TSStatus setTTL(SetTTLReq setTTLReq) {

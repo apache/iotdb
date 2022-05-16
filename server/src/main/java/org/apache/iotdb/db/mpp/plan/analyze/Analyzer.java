@@ -58,6 +58,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesState
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
@@ -79,6 +80,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -139,12 +141,12 @@ public class Analyzer {
         logger.info("{} fetch schema done", getLogHeader());
         // If there is no leaf node in the schema tree, the query should be completed immediately
         if (schemaTree.isEmpty()) {
-          analysis.setRespDatasetHeader(new DatasetHeader(new ArrayList<>(), false));
+          analysis.setFinishQueryAfterAnalyze(true);
           return analysis;
         }
 
         List<Pair<Expression, String>> outputExpressions;
-        Set<Expression> selectExpressions = new HashSet<>();
+        Set<Expression> selectExpressions = new LinkedHashSet<>();
         Map<String, Set<Expression>> sourceExpressions = new HashMap<>();
         // Example 1: select s1, s1 + s2 as t, udf(udf(s1)) from root.sg.d1
         //   outputExpressions: [<root.sg.d1.s1,null>, <root.sg.d1.s1 + root.sg.d1.s2,t>,
@@ -175,9 +177,34 @@ public class Analyzer {
         // a set that contains all measurement names,
         Set<String> measurementSet = new HashSet<>();
         if (queryStatement.isAlignByDevice()) {
+          Map<String, Set<String>> deviceToMeasurementsMap = new HashMap<>();
           outputExpressions =
               analyzeFrom(
-                  queryStatement, schemaTree, deviceSchemaInfos, selectExpressions, measurementSet);
+                  queryStatement,
+                  schemaTree,
+                  deviceSchemaInfos,
+                  selectExpressions,
+                  deviceToMeasurementsMap,
+                  measurementSet);
+
+          Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
+          List<String> allMeasurements =
+              outputExpressions.stream()
+                  .map(Pair::getLeft)
+                  .map(Expression::getExpressionString)
+                  .distinct()
+                  .collect(Collectors.toList());
+          for (String deviceName : deviceToMeasurementsMap.keySet()) {
+            List<String> measurementsUnderDeivce =
+                new ArrayList<>(deviceToMeasurementsMap.get(deviceName));
+            List<Integer> indexes = new ArrayList<>();
+            for (String measurement : measurementsUnderDeivce) {
+              indexes.add(
+                  allMeasurements.indexOf(measurement) + 1); // add 1 to skip the device column
+            }
+            deviceToMeasurementIndexesMap.put(deviceName, indexes);
+          }
+          analysis.setDeviceToMeasurementIndexesMap(deviceToMeasurementIndexesMap);
         } else {
           outputExpressions = analyzeSelect(queryStatement, schemaTree);
           selectExpressions =
@@ -315,6 +342,7 @@ public class Analyzer {
             alias = hasAlias ? resultColumn.getAlias() : alias;
             outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
             ExpressionAnalyzer.updateTypeProvider(expressionWithoutAlias, typeProvider);
+            expressionWithoutAlias.inferTypes(typeProvider);
             paginationController.consumeLimit();
           } else {
             break;
@@ -329,9 +357,14 @@ public class Analyzer {
         SchemaTree schemaTree,
         List<DeviceSchemaInfo> allDeviceSchemaInfos,
         Set<Expression> selectExpressions,
+        Map<String, Set<String>> deviceToMeasurementsMap,
         Set<String> measurementSet) {
       // device path patterns in FROM clause
       List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
+
+      // a list of measurement name with alias (null if alias not exist)
+      List<Pair<Expression, String>> measurementWithAliasList =
+          getAllMeasurements(queryStatement, measurementSet);
 
       // a list contains all selected paths
       List<MeasurementPath> allSelectedPaths = new ArrayList<>();
@@ -370,10 +403,6 @@ public class Analyzer {
       // if not, throw a SemanticException
       measurementNameToPathsMap.values().forEach(this::checkDataTypeConsistencyInAlignByDevice);
 
-      // a list of measurement name with alias (null if alias not exist)
-      List<Pair<Expression, String>> measurementWithAliasList =
-          getAllMeasurements(queryStatement, measurementSet);
-
       // apply SLIMIT & SOFFSET and set outputExpressions & selectExpressions
       List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
       ColumnPaginationController paginationController =
@@ -399,6 +428,9 @@ public class Analyzer {
                       measurementAliasPair.left, measurementPath);
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
               selectExpressions.add(tmpExpression);
+              deviceToMeasurementsMap
+                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
+                  .add(measurementAliasPair.left.getExpressionString());
             }
             paginationController.consumeLimit();
           } else {
@@ -431,6 +463,9 @@ public class Analyzer {
                       expressionWithoutAlias, measurementPath);
               typeProvider.setType(tmpExpression.getExpressionString(), dataType);
               selectExpressions.add(tmpExpression);
+              deviceToMeasurementsMap
+                  .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
+                  .add(expressionWithoutAlias.getExpressionString());
             }
             paginationController.consumeLimit();
           } else {
@@ -459,6 +494,9 @@ public class Analyzer {
                         measurementAliasPair.left, measurementPath);
                 typeProvider.setType(tmpExpression.getExpressionString(), dataType);
                 selectExpressions.add(tmpExpression);
+                deviceToMeasurementsMap
+                    .computeIfAbsent(measurementPath.getDevice(), key -> new LinkedHashSet<>())
+                    .add(replacedMeasurement.getExpressionString());
               }
               paginationController.consumeLimit();
             } else {
@@ -531,7 +569,7 @@ public class Analyzer {
         sourceExpressions
             .computeIfAbsent(
                 ExpressionAnalyzer.getDeviceNameInSourceExpression(sourceExpression),
-                key -> new HashSet<>())
+                key -> new LinkedHashSet<>())
             .add(sourceExpression);
       }
     }
@@ -668,7 +706,12 @@ public class Analyzer {
         QueryStatement queryStatement, List<Pair<Expression, String>> outputExpressions) {
       boolean isIgnoreTimestamp =
           queryStatement.isAggregationQuery() && !queryStatement.isGroupByTime();
-      List<ColumnHeader> columnHeaders =
+      List<ColumnHeader> columnHeaders = new ArrayList<>();
+      if (queryStatement.isAlignByDevice()) {
+        columnHeaders.add(new ColumnHeader(HeaderConstant.COLUMN_DEVICE, TSDataType.TEXT, null));
+        typeProvider.setType(HeaderConstant.COLUMN_DEVICE, TSDataType.TEXT);
+      }
+      columnHeaders.addAll(
           outputExpressions.stream()
               .map(
                   expressionWithAlias -> {
@@ -676,7 +719,7 @@ public class Analyzer {
                     String alias = expressionWithAlias.right;
                     return new ColumnHeader(columnName, typeProvider.getType(columnName), alias);
                   })
-              .collect(Collectors.toList());
+              .collect(Collectors.toList()));
       return new DatasetHeader(columnHeaders, isIgnoreTimestamp);
     }
 
@@ -809,6 +852,20 @@ public class Analyzer {
               new PathPatternTree(
                   createAlignedTimeSeriesStatement.getDevicePath(),
                   createAlignedTimeSeriesStatement.getMeasurements()));
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateMultiTimeseries(
+        CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, MPPQueryContext context) {
+      context.setQueryType(QueryType.WRITE);
+      Analysis analysis = new Analysis();
+      analysis.setStatement(createMultiTimeSeriesStatement);
+
+      SchemaPartition schemaPartitionInfo =
+          partitionFetcher.getOrCreateSchemaPartition(
+              new PathPatternTree(createMultiTimeSeriesStatement.getPaths()));
       analysis.setSchemaPartitionInfo(schemaPartitionInfo);
       return analysis;
     }

@@ -18,10 +18,92 @@
 @REM
 
 @echo off
+echo ````````````````````````
+echo Starting to remove a DataNode
+echo ````````````````````````
 
-pushd..
-set exec_dir=%cd%
+PATH %PATH%;%JAVA_HOME%\bin\
+set "FULL_VERSION="
+set "MAJOR_VERSION="
+set "MINOR_VERSION="
+
+
+for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
+	set "FULL_VERSION=%%j-%%k-%%l-%%m"
+	IF "%%j" == "1" (
+	    set "MAJOR_VERSION=%%k"
+	    set "MINOR_VERSION=%%l"
+	) else (
+	    set "MAJOR_VERSION=%%j"
+	    set "MINOR_VERSION=%%k"
+	)
+)
+
+set JAVA_VERSION=%MAJOR_VERSION%
+
+IF NOT %JAVA_VERSION% == 8 (
+	IF NOT %JAVA_VERSION% == 11 (
+		echo IoTDB only supports jdk8 or jdk11, please check your java version.
+		goto finally
+	)
+)
+
+if "%OS%" == "Windows_NT" setlocal
+
+pushd %~dp0..
+if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%cd%
 popd
-set exec_dir=%exec_dir:\=\\%
-wmic process where (commandline like "%%iotdb.DataNode%%" and not name="wmic.exe" and  commandline  like "%%%exec_dir%%%") delete
 
+set IOTDB_CONF=%IOTDB_HOME%\conf
+set IOTDB_LOGS=%IOTDB_HOME%\logs
+
+@setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
+set CONF_PARAMS=-r
+set is_conf_path=false
+for %%i in (%*) do (
+	set CONF_PARAMS=!CONF_PARAMS! %%i
+)
+
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.DataNode
+if NOT DEFINED JAVA_HOME goto :err
+
+@REM -----------------------------------------------------------------------------
+@REM JVM Opts we'll use in legacy run or installation
+set JAVA_OPTS=-ea^
+ -Dlogback.configurationFile="%IOTDB_CONF%\logback.xml"^
+ -DIOTDB_HOME="%IOTDB_HOME%"^
+ -DTSFILE_HOME="%IOTDB_HOME%"^
+ -DIOTDB_CONF="%IOTDB_CONF%"
+
+@REM ***** CLASSPATH library setting *****
+@REM Ensure that any user defined CLASSPATH variables are not used on startup
+set CLASSPATH="%IOTDB_HOME%\lib"
+
+@REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
+set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
+set CLASSPATH=%CLASSPATH%;iotdb.db.service.DataNode
+goto okClasspath
+
+:append
+set CLASSPATH=%CLASSPATH%;%1
+goto :eof
+
+@REM -----------------------------------------------------------------------------
+:okClasspath
+
+rem echo CLASSPATH: %CLASSPATH%
+
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% %IOTDB_HEAP_OPTS% -cp %CLASSPATH% %IOTDB_JMX_OPTS% %MAIN_CLASS% %CONF_PARAMS%
+goto finally
+
+:err
+echo JAVA_HOME environment variable must be set!
+pause
+
+
+@REM -----------------------------------------------------------------------------
+:finally
+
+pause
+
+ENDLOCAL
