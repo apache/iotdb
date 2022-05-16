@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.confignode.consensus.statemachine;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -39,11 +43,25 @@ import java.io.IOException;
 public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
-
   private final ConfigRequestExecutor executor;
+  private ConfigManager configManager;
+  private TEndPoint currentNode;
 
-  public PartitionRegionStateMachine() {
+  public PartitionRegionStateMachine(ConfigManager configManager) {
     this.executor = new ConfigRequestExecutor();
+    this.configManager = configManager;
+    this.currentNode =
+        new TEndPoint()
+            .setIp(ConfigNodeDescriptor.getInstance().getConf().getRpcAddress())
+            .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
+  }
+
+  public ConfigManager getConfigManager() {
+    return configManager;
+  }
+
+  public void setConfigManager(ConfigManager configManager) {
+    this.configManager = configManager;
   }
 
   @Override
@@ -53,7 +71,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
       try {
         plan = ConfigRequest.Factory.create(((ByteBufferConsensusRequest) request).getContent());
       } catch (IOException e) {
-        LOGGER.error("Deserialization error for write plan : {}", request);
+        LOGGER.error("Deserialization error for write plan : {}", request, e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     } else if (request instanceof ConfigRequest) {
@@ -116,6 +134,16 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
       result = null;
     }
     return result;
+  }
+
+  @Override
+  public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
+    if (currentNode.equals(newLeader)) {
+      LOGGER.info("Current node {} is Leader, start procedure manager.", newLeader);
+      configManager.getProcedureManager().shiftExecutor(true);
+    } else {
+      configManager.getProcedureManager().shiftExecutor(false);
+    }
   }
 
   @Override

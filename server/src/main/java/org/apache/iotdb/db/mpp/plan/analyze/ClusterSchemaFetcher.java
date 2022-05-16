@@ -317,6 +317,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
       createAlignedTimeSeriesStatement.setEncodings(encodings);
       createAlignedTimeSeriesStatement.setCompressors(compressors);
+      createAlignedTimeSeriesStatement.setAliasList(null);
 
       executeCreateStatement(createAlignedTimeSeriesStatement);
     } else {
@@ -351,5 +352,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     } finally {
       coordinator.getQueryExecution(queryId).stopAndCleanup();
     }
+  }
+
+  @Override
+  public void invalidAllCache() {
+    DataNodeSchemaCache.getInstance().cleanUp();
   }
 }

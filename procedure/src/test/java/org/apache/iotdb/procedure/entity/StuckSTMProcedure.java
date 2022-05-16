@@ -99,13 +99,14 @@ public class StuckSTMProcedure
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) throws IOException {
+  public void serialize(ByteBuffer byteBuffer) {
+    byteBuffer.putInt(TestProcedureFactory.TestProcedureType.STUCK_STM_PROCEDURE.ordinal());
     super.serialize(byteBuffer);
     byteBuffer.putInt(childCount);
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) throws IOException {
+  public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     this.childCount = byteBuffer.getInt();
   }

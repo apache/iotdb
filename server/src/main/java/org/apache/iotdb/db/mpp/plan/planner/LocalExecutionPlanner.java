@@ -402,7 +402,13 @@ public class LocalExecutionPlanner {
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
               .collect(Collectors.toList());
-      return new DeviceViewOperator(operatorContext, node.getDevices(), children, null, null);
+      List<List<Integer>> deviceColumnIndex =
+          node.getDevices().stream()
+              .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
+              .collect(Collectors.toList());
+      List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      return new DeviceViewOperator(
+          operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
     }
 
     @Override
