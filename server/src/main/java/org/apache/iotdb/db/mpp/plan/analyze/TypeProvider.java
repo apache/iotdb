@@ -55,6 +55,10 @@ public class TypeProvider {
     this.typeMap.put(path, dataType);
   }
 
+  public boolean containsTypeInfoOf(String path) {
+    return typeMap.containsKey(path);
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(typeMap.size(), byteBuffer);
     for (Map.Entry<String, TSDataType> entry : typeMap.entrySet()) {

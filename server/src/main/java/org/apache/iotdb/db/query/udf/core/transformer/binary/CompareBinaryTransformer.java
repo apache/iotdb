@@ -25,34 +25,72 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
+import java.util.Objects;
 
 public abstract class CompareBinaryTransformer extends BinaryTransformer {
+
+  @FunctionalInterface
+  protected interface Evaluator {
+
+    boolean evaluate() throws QueryProcessException, IOException;
+  }
+
+  protected final Evaluator evaluator;
 
   protected CompareBinaryTransformer(
       LayerPointReader leftPointReader, LayerPointReader rightPointReader)
       throws UnSupportedDataTypeException {
     super(leftPointReader, rightPointReader);
+    evaluator =
+        TSDataType.TEXT.equals(leftPointReaderDataType)
+            ? constructTextEvaluator()
+            : constructNumberEvaluator();
+  }
+
+  protected abstract Evaluator constructNumberEvaluator();
+
+  protected abstract Evaluator constructTextEvaluator();
+
+  protected static int compare(CharSequence cs1, CharSequence cs2) {
+    if (Objects.requireNonNull(cs1) == Objects.requireNonNull(cs2)) {
+      return 0;
+    }
+
+    if (cs1.getClass() == cs2.getClass() && cs1 instanceof Comparable) {
+      return ((Comparable<Object>) cs1).compareTo(cs2);
+    }
+
+    for (int i = 0, len = Math.min(cs1.length(), cs2.length()); i < len; i++) {
+      char a = cs1.charAt(i);
+      char b = cs2.charAt(i);
+      if (a != b) {
+        return a - b;
+      }
+    }
+
+    return cs1.length() - cs2.length();
   }
 
   @Override
-  protected void checkType() {
-    if (leftPointReaderDataType == TSDataType.BOOLEAN) {
-      throw new UnSupportedDataTypeException(leftPointReader.getDataType().toString());
+  protected final void checkType() {
+    if (leftPointReaderDataType.equals(rightPointReaderDataType)) {
+      return;
     }
-    if (rightPointReaderDataType == TSDataType.BOOLEAN) {
-      throw new UnSupportedDataTypeException(rightPointReader.getDataType().toString());
+
+    if (leftPointReaderDataType.equals(TSDataType.BOOLEAN)
+        || rightPointReaderDataType.equals(TSDataType.BOOLEAN)) {
+      throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.toString());
+    }
+    if (leftPointReaderDataType.equals(TSDataType.TEXT)
+        || rightPointReaderDataType.equals(TSDataType.TEXT)) {
+      throw new UnSupportedDataTypeException(TSDataType.TEXT.toString());
     }
   }
 
   @Override
   protected final void transformAndCache() throws QueryProcessException, IOException {
-    cachedBoolean =
-        evaluate(
-            castCurrentValueToDoubleOperand(leftPointReader, leftPointReaderDataType),
-            castCurrentValueToDoubleOperand(rightPointReader, rightPointReaderDataType));
+    cachedBoolean = evaluator.evaluate();
   }
-
-  abstract boolean evaluate(double leftOperand, double rightOperand);
 
   @Override
   public TSDataType getDataType() {

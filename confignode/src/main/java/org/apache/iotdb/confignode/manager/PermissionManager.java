@@ -30,9 +30,11 @@ import java.util.List;
 public class PermissionManager {
 
   private final Manager configManager;
+  private final AuthorInfo authorInfo;
 
-  public PermissionManager(Manager configManager) {
+  public PermissionManager(Manager configManager, AuthorInfo authorInfo) {
     this.configManager = configManager;
+    this.authorInfo = authorInfo;
   }
 
   /**
@@ -60,10 +62,10 @@ public class PermissionManager {
   }
 
   public TSStatus login(String username, String password) {
-    return AuthorInfo.getInstance().login(username, password);
+    return authorInfo.login(username, password);
   }
 
   public TSStatus checkUserPrivileges(String username, List<String> paths, int permission) {
-    return AuthorInfo.getInstance().checkUserPrivileges(username, paths, permission);
+    return authorInfo.checkUserPrivileges(username, paths, permission);
   }
 }

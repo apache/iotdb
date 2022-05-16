@@ -47,6 +47,10 @@ public class DataPartitionResp implements DataSet {
     this.dataPartition = dataPartition;
   }
 
+  public DataPartition getDataPartition() {
+    return dataPartition;
+  }
+
   /**
    * Convert DataPartitionDataSet to TDataPartitionResp
    *

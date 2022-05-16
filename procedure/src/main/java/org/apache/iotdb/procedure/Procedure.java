@@ -126,12 +126,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    */
   protected abstract boolean abort(Env env);
 
-  public void serialize(ByteBuffer byteBuffer) throws IOException {
-    // 1. class  name
-    String className = this.getClass().getName();
-    byte[] classNameBytes = className.getBytes(StandardCharsets.UTF_8);
-    byteBuffer.putInt(classNameBytes.length);
-    byteBuffer.put(classNameBytes);
+  public void serialize(ByteBuffer byteBuffer) {
     // procid
     byteBuffer.putLong(this.procId);
     // state
@@ -144,7 +139,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     byteBuffer.putLong(this.parentProcId);
     // time out
     byteBuffer.putLong(this.timeout);
-    // stack  indexes
+    // stack indexes
     if (stackIndexes != null) {
       byteBuffer.putInt(stackIndexes.length);
       Arrays.stream(stackIndexes).forEach(byteBuffer::putInt);
@@ -160,9 +155,13 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       byteBuffer.putInt(exceptionClassNameBytes.length);
       byteBuffer.put(exceptionClassNameBytes);
       String message = this.exception.getMessage();
-      byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
-      byteBuffer.putInt(messageBytes.length);
-      byteBuffer.put(messageBytes);
+      if (message != null) {
+        byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
+        byteBuffer.putInt(messageBytes.length);
+        byteBuffer.put(messageBytes);
+      } else {
+        byteBuffer.putInt(-1);
+      }
     } else {
       byteBuffer.put((byte) 0);
     }
@@ -179,7 +178,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     byteBuffer.put(this.hasLock() ? (byte) 1 : (byte) 0);
   }
 
-  public void deserialize(ByteBuffer byteBuffer) throws IOException {
+  public void deserialize(ByteBuffer byteBuffer) {
     // procid
     this.setProcId(byteBuffer.getLong());
     // state
@@ -188,11 +187,11 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     this.setSubmittedTime(byteBuffer.getLong());
     //  last updated
     this.setLastUpdate(byteBuffer.getLong());
-    //  parent  id
+    //  parent id
     this.setParentProcId(byteBuffer.getLong());
-    //  time  out
+    //  time out
     this.setTimeout(byteBuffer.getLong());
-    //  stack  index
+    //  stack index
     int stackIndexesLen = byteBuffer.getInt();
     if (stackIndexesLen >= 0) {
       List<Integer> indexList = new ArrayList<>(stackIndexesLen);
@@ -205,9 +204,12 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     if (byteBuffer.get() == 1) {
       Class<?> exceptionClass = deserializeTypeInfo(byteBuffer);
       int messageBytesLength = byteBuffer.getInt();
-      byte[] messageBytes = new byte[messageBytesLength];
-      byteBuffer.get(messageBytes);
-      String errMsg = new String(messageBytes, StandardCharsets.UTF_8);
+      String errMsg = null;
+      if (messageBytesLength > 0) {
+        byte[] messageBytes = new byte[messageBytesLength];
+        byteBuffer.get(messageBytes);
+        errMsg = new String(messageBytes, StandardCharsets.UTF_8);
+      }
       ProcedureException exception;
       try {
         exception =

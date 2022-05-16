@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -47,15 +48,15 @@ public class NodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
-  private static final NodeInfo nodeInfo = NodeInfo.getInstance();
-
   private final Manager configManager;
+  private final NodeInfo nodeInfo;
 
   /** TODO:do some operate after add node or remove node */
   private final List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
-  public NodeManager(Manager configManager) {
+  public NodeManager(Manager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
+    this.nodeInfo = nodeInfo;
   }
 
   private void setGlobalConfig(DataNodeConfigurationResp dataSet) {
@@ -82,7 +83,7 @@ public class NodeManager {
   public DataSet registerDataNode(RegisterDataNodeReq req) {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
 
-    if (NodeInfo.getInstance().containsValue(req.getLocation())) {
+    if (nodeInfo.containsValue(req.getLocation())) {
       // Reset client
       AsyncDataNodeClientPool.getInstance().resetClient(req.getLocation().getInternalEndPoint());
 
@@ -91,7 +92,7 @@ public class NodeManager {
       dataSet.setStatus(status);
     } else {
       // Persist DataNodeInfo
-      req.getLocation().setDataNodeId(NodeInfo.getInstance().generateNextDataNodeId());
+      req.getLocation().setDataNodeId(nodeInfo.generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(req);
       dataSet.setStatus(resp.getStatus());
     }
@@ -165,6 +166,10 @@ public class NodeManager {
       return new TSStatus(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Apply ConfigNode failed because there is another ConfigNode being applied.");
     }
+  }
+
+  public List<TConfigNodeLocation> getOnlineConfigNodes() {
+    return nodeInfo.getOnlineConfigNodes();
   }
 
   private ConsensusManager getConsensusManager() {

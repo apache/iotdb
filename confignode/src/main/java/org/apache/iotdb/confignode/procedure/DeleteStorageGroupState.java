@@ -16,6 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.balancer;
 
-public class RegionBalancer {}
+package org.apache.iotdb.confignode.procedure;
+
+public enum DeleteStorageGroupState {
+  DELETE_STORAGE_GROUP_PREPARE,
+  DELETE_DATA_REGION,
+  DELETE_SCHEMA_REGION,
+  DELETE_CONFIG,
+  INVALIDATE_CACHE
+}
