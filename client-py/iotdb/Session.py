@@ -1027,7 +1027,7 @@ class Session(object):
         if status.code == Session.SUCCESS_CODE:
             return 0
 
-        logger.error("error status is", status)
+        logger.error("{}: error status is {}".format(status.code, status.message))
         return -1
 
     def execute_raw_data_query(
