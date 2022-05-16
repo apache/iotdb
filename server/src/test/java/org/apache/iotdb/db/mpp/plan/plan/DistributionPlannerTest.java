@@ -55,7 +55,6 @@ import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -75,7 +74,6 @@ public class DistributionPlannerTest {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC);
 
     Analysis analysis = constructAnalysis();
@@ -96,7 +94,6 @@ public class DistributionPlannerTest {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC);
 
     Analysis analysis = constructAnalysis();
@@ -119,19 +116,16 @@ public class DistributionPlannerTest {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
-            Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
@@ -200,19 +194,16 @@ public class DistributionPlannerTest {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
-            Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
@@ -240,19 +231,16 @@ public class DistributionPlannerTest {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d22.s1", TSDataType.INT32),
-            Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
@@ -278,19 +266,16 @@ public class DistributionPlannerTest {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s1", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d1.s2", TSDataType.INT32),
-            Sets.newHashSet("s1", "s2"),
             OrderBy.TIMESTAMP_ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d333.s1", TSDataType.INT32),
-            Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);

@@ -291,7 +291,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     TRegionReplicaSet regionReplicaSet =
-        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDeviceIdString());
+        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDevice());
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }

@@ -42,6 +42,11 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
@@ -261,22 +266,178 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   @Override
   public TSStatus setStorageGroup(long sessionId, String storageGroup) {
-    throw new UnsupportedOperationException();
+    try {
+      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} create storage group {}", SESSION_MANAGER.getCurrSessionId(), storageGroup);
+      }
+
+      // Step 1: Create SetStorageGroupStatement
+      SetStorageGroupStatement statement =
+          (SetStorageGroupStatement) StatementGenerator.createStatement(storageGroup);
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              SESSION_MANAGER.getSessionInfo(sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.SET_STORAGE_GROUP, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
-    throw new UnsupportedOperationException();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
+      }
+
+      // Step 1: transfer from TSCreateTimeseriesReq to Statement
+      CreateTimeSeriesStatement statement =
+          (CreateTimeSeriesStatement) StatementGenerator.createStatement(req);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CREATE_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
   public TSStatus createAlignedTimeseries(TSCreateAlignedTimeseriesReq req) {
-    throw new UnsupportedOperationException();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      // if measurements.size() == 1, convert to create timeseries
+      if (req.measurements.size() == 1) {
+        return createTimeseries(
+            new TSCreateTimeseriesReq(
+                req.sessionId,
+                req.prefixPath + "." + req.measurements.get(0),
+                req.dataTypes.get(0),
+                req.encodings.get(0),
+                req.compressors.get(0)));
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} create aligned timeseries {}.{}",
+            SESSION_MANAGER.getCurrSessionId(),
+            req.getPrefixPath(),
+            req.getMeasurements());
+      }
+
+      // Step 1: transfer from CreateAlignedTimeSeriesReq to Statement
+      CreateAlignedTimeSeriesStatement statement =
+          (CreateAlignedTimeSeriesStatement) StatementGenerator.createStatement(req);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CREATE_ALIGNED_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
-    throw new UnsupportedOperationException();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} create {} timeseries, the first is {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            req.getPaths().size(),
+            req.getPaths().get(0));
+      }
+
+      // Step 1: transfer from CreateMultiTimeSeriesReq to Statement
+      CreateMultiTimeSeriesStatement statement =
+          (CreateMultiTimeSeriesStatement) StatementGenerator.createStatement(req);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CREATE_MULTI_TIMESERIES, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
@@ -285,8 +446,46 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
   }
 
   @Override
-  public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroup) {
-    throw new UnsupportedOperationException();
+  public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
+    try {
+      if (!SESSION_MANAGER.checkLogin(sessionId)) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} delete {} storage groups, the first is {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            storageGroups.size(),
+            storageGroups.get(0));
+      }
+
+      // Step 1: transfer from DeleteStorageGroupsReq to Statement
+      DeleteStorageGroupStatement statement =
+          (DeleteStorageGroupStatement) StatementGenerator.createStatement(storageGroups);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              new QueryId(String.valueOf(queryId)),
+              SESSION_MANAGER.getSessionInfo(sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.DELETE_STORAGE_GROUPS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
@@ -439,7 +638,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -485,7 +684,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_RECORDS_OF_ONE_DEVICE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -531,7 +730,9 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e,
+          OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
+          TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -573,7 +774,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -611,7 +812,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -692,7 +893,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_STRING_RECORDS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
@@ -831,7 +1032,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       return result.status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
-          e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+          e, OperationType.INSERT_STRING_RECORD, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
       addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }

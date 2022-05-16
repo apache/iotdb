@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -26,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -35,9 +37,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
-import org.apache.iotdb.confignode.persistence.NodeInfo;
-import org.apache.iotdb.confignode.persistence.PartitionInfo;
+import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
@@ -65,6 +66,7 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.ratis.util.FileUtils;
 import org.apache.thrift.TException;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -81,7 +83,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeRPCServiceProcessorTest {
 
@@ -93,18 +94,21 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Before
-  public void before() throws IOException, InterruptedException {
+  public void before() throws IOException {
     processor = new ConfigNodeRPCServiceProcessor(new ConfigManager());
-    // Sleep 1s to make sure the Consensus group has done leader election
-    TimeUnit.SECONDS.sleep(1);
+    processor.getConsensusManager().singleCopyMayWaitUntilLeaderReady();
   }
 
   @After
-  public void after() throws IOException {
-    NodeInfo.getInstance().clear();
-    ClusterSchemaInfo.getInstance().clear();
-    PartitionInfo.getInstance().clear();
+  public void after() throws IOException, InterruptedException {
     processor.close();
+    FileUtils.deleteFully(new File(ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()));
+    FileUtils.deleteFully(
+        new File(CommonDescriptor.getInstance().getConfig().getProcedureWalFolder()));
+  }
+
+  @AfterClass
+  public static void afterClass() throws IOException {
     FileUtils.deleteFully(new File(ConfigNodeConstant.DATA_DIR));
   }
 
@@ -128,7 +132,11 @@ public class ConfigNodeRPCServiceProcessorTest {
       dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
       dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
 
-      TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
+      TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+      dataNodeInfo.setCpuCoreNum(8);
+      dataNodeInfo.setMaxMemory(1024 * 1024);
+
+      TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation, dataNodeInfo);
       TDataNodeRegisterResp resp = processor.registerDataNode(req);
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
@@ -148,7 +156,11 @@ public class ConfigNodeRPCServiceProcessorTest {
     dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8778));
     dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
 
-    TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation);
+    TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+    dataNodeInfo.setCpuCoreNum(8);
+    dataNodeInfo.setMaxMemory(1024 * 1024);
+
+    TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeLocation, dataNodeInfo);
     TDataNodeRegisterResp resp = processor.registerDataNode(req);
     Assert.assertEquals(
         TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode(), resp.getStatus().getCode());
@@ -193,16 +205,11 @@ public class ConfigNodeRPCServiceProcessorTest {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
 
-    // failed because there are not enough DataNodes
-    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
-    status = processor.setStorageGroup(setReq0);
-    Assert.assertEquals(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(), status.getCode());
-    Assert.assertEquals("DataNode is not enough, please register more.", status.getMessage());
-
     // register DataNodes
     registerDataNodes();
 
     // set StorageGroup0 by default values
+    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
     status = processor.setStorageGroup(setReq0);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -576,11 +583,11 @@ public class ConfigNodeRPCServiceProcessorTest {
 
     Map<String, List<String>> permissionInfo;
     List<String> privilege = new ArrayList<>();
-    privilege.add("root : CREATE_USER");
-    privilege.add("root : CREATE_USER");
+    privilege.add("root.** : CREATE_USER");
+    privilege.add("root.** : CREATE_USER");
 
     List<String> paths = new ArrayList<>();
-    paths.add("root.ln");
+    paths.add("root.ln.**");
 
     cleanUserAndRole();
 
@@ -692,7 +699,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             privilegeList,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -711,7 +718,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             privilegeList,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -737,7 +744,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             revokePrivilege,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -750,7 +757,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             revokePrivilege,
-            "root.ln");
+            "root.ln.**");
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -763,7 +770,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "root.ln");
+            "root.ln.**");
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -795,7 +802,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "root.ln");
+            "root.ln.**");
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -885,6 +892,32 @@ public class ConfigNodeRPCServiceProcessorTest {
           PrivilegeType.values()[i].toString(),
           authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE).get(i));
     }
+  }
+
+  @Test
+  public void deleteStorageGroupTest() throws TException {
+    TSStatus status;
+    final String sg0 = "root.sg0";
+    final String sg1 = "root.sg1";
+    // register DataNodes
+    registerDataNodes();
+    TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
+    // set StorageGroup0 by default values
+    status = processor.setStorageGroup(setReq0);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    // set StorageGroup1 by specific values
+    TSetStorageGroupReq setReq1 = new TSetStorageGroupReq(new TStorageGroupSchema(sg1));
+    status = processor.setStorageGroup(setReq1);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    TDeleteStorageGroupsReq deleteStorageGroupsReq = new TDeleteStorageGroupsReq();
+    List<String> sgs = Arrays.asList(sg0, sg1);
+    deleteStorageGroupsReq.setPrefixPathList(sgs);
+    DeleteStorageGroupProcedure.setByPassForTest(true);
+    TSStatus deleteSgStatus = processor.deleteStorageGroups(deleteStorageGroupsReq);
+    TStorageGroupSchemaResp root =
+        processor.getMatchedStorageGroupSchemas(Arrays.asList("root", "*"));
+    Assert.assertTrue(root.getStorageGroupSchemaMap().isEmpty());
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
   }
 
   private void cleanUserAndRole() throws TException {

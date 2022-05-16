@@ -22,6 +22,8 @@ package org.apache.iotdb.db.query.expression;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
@@ -56,6 +58,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -109,6 +112,24 @@ public abstract class Expression {
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
+  // type inference
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  public abstract TSDataType inferTypes(TypeProvider typeProvider);
+
+  protected static void checkInputExpressionDataType(
+      String expressionString, TSDataType actual, TSDataType... expected) {
+    for (TSDataType type : expected) {
+      if (actual.equals(type)) {
+        return;
+      }
+    }
+    throw new SemanticException(
+        String.format(
+            "Invalid input expression data type. expression: %s, actual data type: %s, expected data type(s): %s.",
+            expressionString, actual.name(), Arrays.toString(expected)));
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   // For expression evaluation DAG building
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -126,15 +147,6 @@ public abstract class Expression {
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // getExpressions: returning DIRECT children expressions
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
-   */
-  public abstract List<Expression> getExpressions();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // isConstantOperand
@@ -245,6 +257,11 @@ public abstract class Expression {
       return current;
     }
   }
+
+  /**
+   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
+   */
+  public abstract List<Expression> getExpressions();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // serialize & deserialize

@@ -64,7 +64,6 @@ public class AggregationNodeSerdeTest {
                     AggregationStep.INTERMEDIATE,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
-            Sets.newHashSet("s1"),
             OrderBy.TIMESTAMP_ASC,
             new In<>(Sets.newHashSet("s1", "s2"), VALUE_FILTER, true),
             groupByTimeParameter,

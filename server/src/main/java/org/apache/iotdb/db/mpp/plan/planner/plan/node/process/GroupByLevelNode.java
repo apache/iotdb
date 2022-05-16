@@ -158,11 +158,11 @@ public class GroupByLevelNode extends AggregationNode {
       return false;
     }
     GroupByLevelNode that = (GroupByLevelNode) o;
-    return outputColumnNames.equals(that.outputColumnNames) && children.equals(that.children);
+    return outputColumnNames.equals(that.outputColumnNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), outputColumnNames, children);
+    return Objects.hash(super.hashCode(), outputColumnNames);
   }
 }

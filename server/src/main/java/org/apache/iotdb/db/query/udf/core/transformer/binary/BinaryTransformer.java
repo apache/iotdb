@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.udf.core.transformer.binary;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
@@ -30,14 +31,28 @@ public abstract class BinaryTransformer extends Transformer {
   protected final LayerPointReader leftPointReader;
   protected final LayerPointReader rightPointReader;
 
+  protected final TSDataType leftPointReaderDataType;
+  protected final TSDataType rightPointReaderDataType;
+
+  protected final boolean isLeftPointReaderConstant;
+  protected final boolean isRightPointReaderConstant;
+
+  protected final boolean isCurrentConstant;
+
   protected BinaryTransformer(LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     this.leftPointReader = leftPointReader;
     this.rightPointReader = rightPointReader;
+    leftPointReaderDataType = leftPointReader.getDataType();
+    rightPointReaderDataType = rightPointReader.getDataType();
+    isLeftPointReaderConstant = leftPointReader.isConstantPointReader();
+    isRightPointReaderConstant = rightPointReader.isConstantPointReader();
+    isCurrentConstant = isLeftPointReaderConstant && isRightPointReaderConstant;
+    checkType();
   }
 
   @Override
   public boolean isConstantPointReader() {
-    return leftPointReader.isConstantPointReader() && rightPointReader.isConstantPointReader();
+    return isCurrentConstant;
   }
 
   @Override
@@ -63,6 +78,8 @@ public abstract class BinaryTransformer extends Transformer {
 
   protected abstract void transformAndCache() throws QueryProcessException, IOException;
 
+  protected abstract void checkType();
+
   /**
    * finds the smallest, unconsumed timestamp that exists in both {@code leftPointReader} and {@code
    * rightPointReader} and then caches the timestamp in {@code cachedTime}.
@@ -70,14 +87,14 @@ public abstract class BinaryTransformer extends Transformer {
    * @return true if there has a timestamp that meets the requirements
    */
   private boolean cacheTime() throws IOException, QueryProcessException {
-    if (leftPointReader.isConstantPointReader() && rightPointReader.isConstantPointReader()) {
+    if (isCurrentConstant) {
       return true;
     }
-    if (leftPointReader.isConstantPointReader()) {
+    if (isLeftPointReaderConstant) {
       cachedTime = rightPointReader.currentTime();
       return true;
     }
-    if (rightPointReader.isConstantPointReader()) {
+    if (isRightPointReaderConstant) {
       cachedTime = leftPointReader.currentTime();
       return true;
     }
@@ -106,9 +123,10 @@ public abstract class BinaryTransformer extends Transformer {
     return true;
   }
 
-  protected static double castCurrentValueToDoubleOperand(LayerPointReader layerPointReader)
+  protected static double castCurrentValueToDoubleOperand(
+      LayerPointReader layerPointReader, TSDataType layerPointReaderDataType)
       throws IOException, QueryProcessException {
-    switch (layerPointReader.getDataType()) {
+    switch (layerPointReaderDataType) {
       case INT32:
         return layerPointReader.currentInt();
       case INT64:
@@ -117,6 +135,8 @@ public abstract class BinaryTransformer extends Transformer {
         return layerPointReader.currentFloat();
       case DOUBLE:
         return layerPointReader.currentDouble();
+      case BOOLEAN:
+        return layerPointReader.currentBoolean() ? 1.0d : 0.0d;
       default:
         throw new QueryProcessException(
             "Unsupported data type: " + layerPointReader.getDataType().toString());

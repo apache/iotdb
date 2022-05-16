@@ -55,6 +55,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
@@ -1400,6 +1401,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     SetStorageGroupStatement setStorageGroupStatement = new SetStorageGroupStatement();
     PartialPath path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupStatement.setStorageGroupPath(path);
+    if (ctx.storageGroupAttributeClause() != null) {
+      for (IoTDBSqlParser.StorageGroupAttributeClauseContext attribute :
+          ctx.storageGroupAttributeClause()) {
+        if (attribute.TTL() != null) {
+          long ttl = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+          setStorageGroupStatement.setTtl(ttl);
+        } else if (attribute.SCHEMA_REPLICATION_FACTOR() != null) {
+          int schemaReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+          setStorageGroupStatement.setSchemaReplicationFactor(schemaReplicationFactor);
+        } else if (attribute.DATA_REPLICATION_FACTOR() != null) {
+          int dataReplicationFactor = Integer.parseInt(attribute.INTEGER_LITERAL().getText());
+          setStorageGroupStatement.setDataReplicationFactor(dataReplicationFactor);
+        } else if (attribute.TIME_PARTITION_INTERVAL() != null) {
+          long timePartitionInterval = Long.parseLong(attribute.INTEGER_LITERAL().getText());
+          setStorageGroupStatement.setTimePartitionInterval(timePartitionInterval);
+        }
+      }
+    }
     return setStorageGroupStatement;
   }
 
@@ -1436,6 +1455,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     ShowTTLStatement showTTLStatement = new ShowTTLStatement();
     showTTLStatement.setAll(true);
     return showTTLStatement;
+  }
+
+  @Override
+  public Statement visitDeleteStorageGroup(IoTDBSqlParser.DeleteStorageGroupContext ctx) {
+    DeleteStorageGroupStatement deleteStorageGroupStatement = new DeleteStorageGroupStatement();
+    List<IoTDBSqlParser.PrefixPathContext> prefixPathContexts = ctx.prefixPath();
+    List<String> paths = new ArrayList<>();
+    for (IoTDBSqlParser.PrefixPathContext prefixPathContext : prefixPathContexts) {
+      paths.add(parsePrefixPath(prefixPathContext).getFullPath());
+    }
+    deleteStorageGroupStatement.setPrefixPath(paths);
+    return deleteStorageGroupStatement;
   }
 
   /** function for parsing file path used by LOAD statement. */

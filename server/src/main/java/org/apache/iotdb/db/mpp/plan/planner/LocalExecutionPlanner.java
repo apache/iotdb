@@ -109,9 +109,12 @@ import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -192,7 +195,7 @@ public class LocalExecutionPlanner {
           new SeriesScanOperator(
               node.getPlanNodeId(),
               seriesPath,
-              node.getAllSensors(),
+              context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
               seriesPath.getSeriesType(),
               operatorContext,
               node.getTimeFilter(),
@@ -378,7 +381,7 @@ public class LocalExecutionPlanner {
           new SeriesAggregateScanOperator(
               node.getPlanNodeId(),
               seriesPath,
-              node.getAllSensors(),
+              context.getAllSensors(seriesPath.getDevice(), seriesPath.getMeasurement()),
               operatorContext,
               aggregators,
               node.getTimeFilter(),
@@ -402,7 +405,13 @@ public class LocalExecutionPlanner {
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
               .collect(Collectors.toList());
-      return new DeviceViewOperator(operatorContext, node.getDevices(), children, null, null);
+      List<List<Integer>> deviceColumnIndex =
+          node.getDevices().stream()
+              .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
+              .collect(Collectors.toList());
+      List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      return new DeviceViewOperator(
+          operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
     }
 
     @Override
@@ -753,6 +762,8 @@ public class LocalExecutionPlanner {
   private static class LocalExecutionPlanContext {
     private final FragmentInstanceContext instanceContext;
     private final List<PartialPath> paths;
+    // deviceId -> sensorId Set
+    private final Map<String, Set<String>> allSensorsMap;
     // Used to lock corresponding query resources
     private final List<DataSourceOperator> sourceOperators;
     private ISinkHandle sinkHandle;
@@ -766,12 +777,14 @@ public class LocalExecutionPlanner {
       this.typeProvider = typeProvider;
       this.instanceContext = instanceContext;
       this.paths = new ArrayList<>();
+      this.allSensorsMap = new HashMap<>();
       this.sourceOperators = new ArrayList<>();
     }
 
     public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
       this.instanceContext = instanceContext;
       this.paths = new ArrayList<>();
+      this.allSensorsMap = new HashMap<>();
       this.sourceOperators = new ArrayList<>();
     }
 
@@ -781,6 +794,12 @@ public class LocalExecutionPlanner {
 
     public List<PartialPath> getPaths() {
       return paths;
+    }
+
+    public Set<String> getAllSensors(String deviceId, String sensorId) {
+      Set<String> allSensors = allSensorsMap.computeIfAbsent(deviceId, k -> new HashSet<>());
+      allSensors.add(sensorId);
+      return allSensors;
     }
 
     public List<DataSourceOperator> getSourceOperators() {
