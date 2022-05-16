@@ -53,8 +53,8 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+@PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
-@PowerMockIgnore({"javax.*, com.sun.*"})
 @PrepareForTest({FragmentInstanceDispatcherImpl.class})
 public class FragmentInstanceDispatcherImplTest {
 
@@ -63,8 +63,6 @@ public class FragmentInstanceDispatcherImplTest {
   private PartialPath s2;
   IFragInstanceDispatcher dispatcher;
   DeleteTimeSeriesNode nodeSpy;
-
-  public FragmentInstanceDispatcherImplTest() throws IllegalPathException {}
 
   @Before
   public void setUp() throws IllegalPathException {
