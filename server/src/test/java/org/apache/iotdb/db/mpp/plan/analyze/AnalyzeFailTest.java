@@ -34,11 +34,21 @@ import static org.junit.Assert.fail;
 public class AnalyzeFailTest {
 
   @Test
-  public void illegalAggregationTest() {
-    String message = "Illegal aggregation function: ";
+  public void illegalAggregationTest1() {
+    String message = "Raw data and aggregation result calculation is not supported.";
     assertAnalyzeSemanticException("SELECT sum(s1) + s1 FROM root.sg.d1", message);
+  }
 
+  @Test
+  public void illegalAggregationTest2() {
+    String message = "Aggregation results cannot be as input of the aggregation function.";
     assertAnalyzeSemanticException("SELECT sum(sum(s1)) FROM root.sg.d1", message);
+  }
+
+  @Test
+  public void illegalAggregationTest3() {
+    String message = "Raw data and aggregation hybrid query is not supported.";
+    assertAnalyzeSemanticException("SELECT sum(s1), s1 FROM root.sg.d1", message);
   }
 
   @Test

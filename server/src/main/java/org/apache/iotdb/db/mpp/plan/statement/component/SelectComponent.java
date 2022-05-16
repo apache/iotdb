@@ -98,4 +98,8 @@ public class SelectComponent extends StatementNode {
   public void setHasLast(boolean hasLast) {
     this.hasLast = hasLast;
   }
+
+  public void setHasBuiltInAggregationFunction(boolean hasBuiltInAggregationFunction) {
+    this.hasBuiltInAggregationFunction = hasBuiltInAggregationFunction;
+  }
 }

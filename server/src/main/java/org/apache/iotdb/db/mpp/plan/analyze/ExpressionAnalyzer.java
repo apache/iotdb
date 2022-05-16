@@ -106,15 +106,23 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Check if expression is a built-in aggregation function. If not, throw a {@link
+   * Check if expression is a valid built-in aggregation function. If not, throw a {@link
    * SemanticException}.
    *
    * @param expression expression to be checked
+   * @return true if this expression is valid
    */
   public static boolean checkIsValidAggregation(Expression expression) {
     if (expression instanceof BinaryExpression) {
-      return checkIsValidAggregation(((BinaryExpression) expression).getLeftExpression())
-          && checkIsValidAggregation(((BinaryExpression) expression).getRightExpression());
+      boolean isLeftValid =
+          checkIsValidAggregation(((BinaryExpression) expression).getLeftExpression());
+      boolean isRightValid =
+          checkIsValidAggregation(((BinaryExpression) expression).getRightExpression());
+      if ((isLeftValid && !isRightValid) || (!isLeftValid && isRightValid)) {
+        throw new SemanticException(
+            "Raw data and aggregation result calculation is not supported.");
+      }
+      return isLeftValid;
     } else if (expression instanceof UnaryExpression) {
       return checkIsValidAggregation(((UnaryExpression) expression).getExpression());
     } else if (expression instanceof FunctionExpression) {
@@ -123,7 +131,8 @@ public class ExpressionAnalyzer {
       }
       for (Expression childExpression : expression.getExpressions()) {
         if (checkIsValidAggregation(childExpression)) {
-          return false;
+          throw new SemanticException(
+              "Aggregation results cannot be as input of the aggregation function.");
         }
       }
       return true;

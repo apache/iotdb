@@ -227,22 +227,21 @@ public class QueryStatement extends Statement {
     return resultSetFormat == ResultSetFormat.DISABLE_ALIGN;
   }
 
-  public boolean HasBuiltInAggregationFunction() {
-    return selectComponent.isHasBuiltInAggregationFunction();
-  }
-
-  public boolean hasTimeSeriesGeneratingFunction() {
-    return selectComponent.isHasTimeSeriesGeneratingFunction();
-  }
-
-  public boolean hasUserDefinedAggregationFunction() {
-    return selectComponent.isHasUserDefinedAggregationFunction();
-  }
-
   public void semanticCheck() {
+    List<ResultColumn> resultColumns = selectComponent.getResultColumns();
+    boolean isAggregation =
+        ExpressionAnalyzer.checkIsValidAggregation(resultColumns.get(0).getExpression());
+    for (ResultColumn resultColumn : resultColumns) {
+      if (ExpressionAnalyzer.checkIsValidAggregation(resultColumn.getExpression())
+          != isAggregation) {
+        throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
+      }
+    }
+    selectComponent.setHasBuiltInAggregationFunction(isAggregation);
+
     if (isAlignByDevice()) {
       // the paths can only be measurement or one-level wildcard in ALIGN BY DEVICE
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+      for (ResultColumn resultColumn : resultColumns) {
         ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
       }
       if (getWhereCondition() != null) {
@@ -257,7 +256,7 @@ public class QueryStatement extends Statement {
       if (disableAlign()) {
         throw new SemanticException("Disable align cannot be applied to LAST query.");
       }
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+      for (ResultColumn resultColumn : resultColumns) {
         Expression expression = resultColumn.getExpression();
         if (!(expression instanceof TimeSeriesOperand)) {
           throw new SemanticException("Last queries can only be applied on raw time series.");
@@ -271,12 +270,6 @@ public class QueryStatement extends Statement {
       }
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("group by level does not support align by device now.");
-      }
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-        if (!ExpressionAnalyzer.checkIsValidAggregation(resultColumn.getExpression())) {
-          throw new SemanticException(
-              "Illegal aggregation function: " + resultColumn.getExpression());
-        }
       }
     }
   }
