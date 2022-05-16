@@ -67,6 +67,8 @@ public class TransformOperator implements ProcessOperator {
   protected final Expression[] outputExpressions;
   protected final boolean keepNull;
 
+  protected boolean isFirstIteration;
+
   protected RawQueryInputLayer inputLayer;
   protected UDTFContext udtfContext;
   protected LayerPointReader[] transformers;
@@ -89,10 +91,11 @@ public class TransformOperator implements ProcessOperator {
     this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
 
+    isFirstIteration = true;
+
     initInputLayer(inputDataTypes);
     initUdtfContext(zoneId);
     initTransformers(inputLocations, typeProvider);
-    readyForFirstIteration();
   }
 
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
@@ -157,6 +160,15 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
+    if (isFirstIteration) {
+      try {
+        readyForFirstIteration();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+      isFirstIteration = false;
+    }
+
     return !timeHeap.isEmpty();
   }
 

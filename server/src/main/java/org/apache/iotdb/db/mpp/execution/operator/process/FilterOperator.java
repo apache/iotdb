@@ -161,6 +161,11 @@ public class FilterOperator extends TransformOperator {
   @Override
   public boolean hasNext() {
     try {
+      if (isFirstIteration) {
+        readyForFirstIteration();
+        isFirstIteration = false;
+      }
+
       return filterPointReader.next();
     } catch (Exception e) {
       throw new RuntimeException(e);
