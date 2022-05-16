@@ -19,38 +19,32 @@
 
 package org.apache.iotdb.db.query.udf.core.transformer.binary;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.io.IOException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public class CompareNonEqualTransformer extends CompareBinaryTransformer {
 
   public CompareNonEqualTransformer(
-      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader)
+      throws UnSupportedDataTypeException {
     super(leftPointReader, rightPointReader);
   }
 
   @Override
-  protected void transformAndCache() throws QueryProcessException, IOException {
-    if (leftPointReader.getDataType() == TSDataType.BOOLEAN
-        && rightPointReader.getDataType() == TSDataType.BOOLEAN) {
-      cachedBoolean = evaluate(leftPointReader.currentBoolean(), rightPointReader.currentBoolean());
-    } else {
-      cachedBoolean =
-          evaluate(
-              castCurrentValueToDoubleOperand(leftPointReader),
-              castCurrentValueToDoubleOperand(rightPointReader));
-    }
-  }
-
-  protected boolean evaluate(boolean leftOperand, boolean rightOperand) {
-    return leftOperand != rightOperand;
+  protected Evaluator constructNumberEvaluator() {
+    return () ->
+        Double.compare(
+                castCurrentValueToDoubleOperand(leftPointReader, leftPointReaderDataType),
+                castCurrentValueToDoubleOperand(rightPointReader, rightPointReaderDataType))
+            != 0;
   }
 
   @Override
-  protected boolean evaluate(double leftOperand, double rightOperand) {
-    return Double.compare(leftOperand, rightOperand) != 0;
+  protected Evaluator constructTextEvaluator() {
+    return () ->
+        compare(
+                leftPointReader.currentBinary().getStringValue(),
+                rightPointReader.currentBinary().getStringValue())
+            != 0;
   }
 }

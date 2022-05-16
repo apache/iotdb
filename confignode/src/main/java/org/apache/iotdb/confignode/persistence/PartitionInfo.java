@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
@@ -34,8 +35,10 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionRe
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -63,7 +66,11 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/** manage data partition and schema partition */
+/**
+ * The PartitionInfo stores cluster PartitionTable. The PartitionTable including: 1. regionMap:
+ * location of Region member 2. schemaPartition: location of schema 3. dataPartition: location of
+ * data
+ */
 public class PartitionInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionInfo.class);
@@ -85,7 +92,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   private final String snapshotFileName = "partition_info.bin";
 
-  private PartitionInfo() {
+  public PartitionInfo() {
     this.regionReadWriteLock = new ReentrantReadWriteLock();
     this.regionMap = new HashMap<>();
 
@@ -125,7 +132,7 @@ public class PartitionInfo implements SnapshotProcessor {
     try {
       int maxRegionId = Integer.MIN_VALUE;
 
-      for (TRegionReplicaSet regionReplicaSet : req.getRegionReplicaSets()) {
+      for (TRegionReplicaSet regionReplicaSet : req.getRegionMap().values()) {
         regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
         maxRegionId = Math.max(maxRegionId, regionReplicaSet.getRegionId().getId());
       }
@@ -133,7 +140,7 @@ public class PartitionInfo implements SnapshotProcessor {
       if (nextRegionGroupId.get() < maxRegionId) {
         // In this case, at least one Region is created with the leader node,
         // so the nextRegionGroupID of the followers needs to be added
-        nextRegionGroupId.getAndAdd(req.getRegionReplicaSets().size());
+        nextRegionGroupId.getAndAdd(req.getRegionMap().size());
       }
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -161,6 +168,27 @@ public class PartitionInfo implements SnapshotProcessor {
       regionReadWriteLock.writeLock().unlock();
     }
     return result;
+  }
+
+  /**
+   * Delete StorageGroup
+   *
+   * @param req DeleteRegionsReq
+   */
+  public void deleteStorageGroup(DeleteStorageGroupReq req) {
+    TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
+    List<TConsensusGroupId> dataRegionGroupIds = storageGroupSchema.getDataRegionGroupIds();
+    List<TConsensusGroupId> schemaRegionGroupIds = storageGroupSchema.getSchemaRegionGroupIds();
+    DeleteRegionsReq deleteRegionsReq = new DeleteRegionsReq();
+    for (TConsensusGroupId schemaRegionGroupId : schemaRegionGroupIds) {
+      deleteRegionsReq.addConsensusGroupId(schemaRegionGroupId);
+    }
+    for (TConsensusGroupId dataRegionId : dataRegionGroupIds) {
+      deleteRegionsReq.addConsensusGroupId(dataRegionId);
+    }
+    deleteRegions(deleteRegionsReq);
+    deleteDataPartitionMapByStorageGroup(storageGroupSchema.getName());
+    deleteSchemaPartitionMapByStorageGroup(storageGroupSchema.getName());
   }
 
   /**
@@ -321,6 +349,36 @@ public class PartitionInfo implements SnapshotProcessor {
     return result;
   }
 
+  /** Get all allocated RegionReplicaSets */
+  public List<TRegionReplicaSet> getAllocatedRegions() {
+    List<TRegionReplicaSet> result;
+    regionReadWriteLock.readLock().lock();
+    try {
+      result = new ArrayList<>(regionMap.values());
+    } finally {
+      regionReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  private void deleteDataPartitionMapByStorageGroup(String storageGroup) {
+    dataPartitionReadWriteLock.writeLock().lock();
+    try {
+      dataPartition.getDataPartitionMap().remove(storageGroup);
+    } finally {
+      dataPartitionReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  private void deleteSchemaPartitionMapByStorageGroup(String storageGroup) {
+    schemaPartitionReadWriteLock.writeLock().lock();
+    try {
+      schemaPartition.getSchemaPartitionMap().remove(storageGroup);
+    } finally {
+      schemaPartitionReadWriteLock.writeLock().unlock();
+    }
+  }
+
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
 
     File snapshotFile = new File(snapshotDir, snapshotFileName);
@@ -356,7 +414,14 @@ public class PartitionInfo implements SnapshotProcessor {
       unlockAllRead();
       byteBuffer.clear();
       // with or without success, delete temporary files anyway
-      tmpFile.delete();
+      for (int retry = 0; retry < 5; retry++) {
+        if (tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
     }
   }
 
@@ -468,18 +533,5 @@ public class PartitionInfo implements SnapshotProcessor {
     if (dataPartition.getDataPartitionMap() != null) {
       dataPartition.getDataPartitionMap().clear();
     }
-  }
-
-  private static class PartitionInfoHolder {
-
-    private static final PartitionInfo INSTANCE = new PartitionInfo();
-
-    private PartitionInfoHolder() {
-      // empty constructor
-    }
-  }
-
-  public static PartitionInfo getInstance() {
-    return PartitionInfoHolder.INSTANCE;
   }
 }

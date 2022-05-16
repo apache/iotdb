@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.wal.recover;
 
-import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;

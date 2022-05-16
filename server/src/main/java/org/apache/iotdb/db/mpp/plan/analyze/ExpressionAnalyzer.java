@@ -762,6 +762,22 @@ public class ExpressionAnalyzer {
     }
   }
 
+  /** Check for arithmetic expression, logical expression, UDF. Returns true if it exists. */
+  public static boolean checkIsNeedTransform(Expression expression) {
+    if (expression instanceof BinaryExpression) {
+      return true;
+    } else if (expression instanceof UnaryExpression) {
+      return true;
+    } else if (expression instanceof FunctionExpression) {
+      return !expression.isBuiltInAggregationFunctionExpression();
+    } else if (expression instanceof TimeSeriesOperand) {
+      return false;
+    } else {
+      throw new IllegalArgumentException(
+          "unsupported expression type: " + expression.getExpressionType());
+    }
+  }
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Method can only be used in source expression
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -807,7 +823,7 @@ public class ExpressionAnalyzer {
 
   public static String getDeviceNameInSourceExpression(Expression expression) {
     if (expression instanceof TimeSeriesOperand) {
-      return ((TimeSeriesOperand) expression).getPath().getDeviceIdString();
+      return ((TimeSeriesOperand) expression).getPath().getDevice();
     } else if (expression instanceof FunctionExpression) {
       return getDeviceNameInSourceExpression(expression.getExpressions().get(0));
     } else {

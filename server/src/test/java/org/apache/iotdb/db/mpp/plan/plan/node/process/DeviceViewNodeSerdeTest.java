@@ -29,6 +29,7 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
 
@@ -43,7 +44,8 @@ public class DeviceViewNodeSerdeTest {
         new DeviceViewNode(
             new PlanNodeId("TestDeviceMergeNode"),
             Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_ASC),
-            Arrays.asList("s1", "s2"));
+            Arrays.asList("s1", "s2"),
+            new HashMap<>());
     deviceViewNode.addChildDeviceNode("root.sg.d1", timeJoinNode1);
     deviceViewNode.addChildDeviceNode("root.sg.d2", timeJoinNode2);
 

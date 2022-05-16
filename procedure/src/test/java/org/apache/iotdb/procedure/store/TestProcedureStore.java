@@ -25,6 +25,7 @@ import org.apache.iotdb.procedure.TestProcEnv;
 import org.apache.iotdb.procedure.TestProcedureBase;
 import org.apache.iotdb.procedure.entity.IncProcedure;
 import org.apache.iotdb.procedure.entity.StuckSTMProcedure;
+import org.apache.iotdb.procedure.entity.TestProcedureFactory;
 import org.apache.iotdb.procedure.util.ProcedureTestUtil;
 import org.apache.iotdb.service.rpc.thrift.ProcedureState;
 
@@ -42,11 +43,12 @@ public class TestProcedureStore extends TestProcedureBase {
 
   private static final String TEST_DIR = "./target/testWAL/";
   private static final int WORK_THREAD = 2;
+  private IProcedureFactory factory = new TestProcedureFactory();
 
   @Override
   protected void initExecutor() {
     this.env = new TestProcEnv();
-    this.procStore = new ProcedureStore(TEST_DIR);
+    this.procStore = new ProcedureStore(TEST_DIR, factory);
     this.procExecutor = new ProcedureExecutor<>(env, procStore);
     this.env.setScheduler(this.procExecutor.getScheduler());
     this.procExecutor.init(WORK_THREAD);
@@ -54,7 +56,7 @@ public class TestProcedureStore extends TestProcedureBase {
 
   @Test
   public void testUpdate() {
-    ProcedureStore procedureStore = new ProcedureStore(TEST_DIR);
+    ProcedureStore procedureStore = new ProcedureStore(TEST_DIR, factory);
     IncProcedure incProcedure = new IncProcedure();
     procedureStore.update(incProcedure);
     List<Procedure> procedureList = new ArrayList<>();
@@ -81,7 +83,7 @@ public class TestProcedureStore extends TestProcedureBase {
     // stop service
     ProcedureTestUtil.stopService(procExecutor, procExecutor.getScheduler(), procStore);
     ConcurrentHashMap<Long, Procedure> procedures = procExecutor.getProcedures();
-    ProcedureStore procedureStore = new ProcedureStore(TEST_DIR);
+    ProcedureStore procedureStore = new ProcedureStore(TEST_DIR, new TestProcedureFactory());
     List<Procedure> procedureList = new ArrayList<>();
     procedureStore.load(procedureList);
     Assert.assertEquals(childCount + 1, procedureList.size());

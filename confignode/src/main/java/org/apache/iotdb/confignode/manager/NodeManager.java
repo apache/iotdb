@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -42,20 +43,20 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/** Manage cluster node information and process node addition and removal requests */
+/** NodeManager manages cluster node addition and removal requests */
 public class NodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
-  private static final NodeInfo nodeInfo = NodeInfo.getInstance();
-
   private final Manager configManager;
+  private final NodeInfo nodeInfo;
 
   /** TODO:do some operate after add node or remove node */
   private final List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
-  public NodeManager(Manager configManager) {
+  public NodeManager(Manager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
+    this.nodeInfo = nodeInfo;
   }
 
   private void setGlobalConfig(DataNodeConfigurationResp dataSet) {
@@ -82,7 +83,7 @@ public class NodeManager {
   public DataSet registerDataNode(RegisterDataNodeReq req) {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
 
-    if (NodeInfo.getInstance().containsValue(req.getLocation())) {
+    if (nodeInfo.containsValue(req.getLocation())) {
       // Reset client
       AsyncDataNodeClientPool.getInstance().resetClient(req.getLocation().getInternalEndPoint());
 
@@ -91,7 +92,7 @@ public class NodeManager {
       dataSet.setStatus(status);
     } else {
       // Persist DataNodeInfo
-      req.getLocation().setDataNodeId(NodeInfo.getInstance().generateNextDataNodeId());
+      req.getLocation().setDataNodeId(nodeInfo.generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(req);
       dataSet.setStatus(resp.getStatus());
     }
@@ -117,8 +118,23 @@ public class NodeManager {
     return nodeInfo.getOnlineDataNodeCount();
   }
 
+  /**
+   * Only leader use this interface.
+   *
+   * @return all online DataNodes
+   */
   public List<TDataNodeLocation> getOnlineDataNodes() {
     return nodeInfo.getOnlineDataNodes();
+  }
+
+  /**
+   * Only leader use this interface.
+   *
+   * @param dataNodeId the specific DataNodeId
+   * @return the specific DataNodeLocation
+   */
+  public TDataNodeLocation getOnlineDataNode(int dataNodeId) {
+    return nodeInfo.getOnlineDataNode(dataNodeId);
   }
 
   /**
@@ -150,6 +166,10 @@ public class NodeManager {
       return new TSStatus(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Apply ConfigNode failed because there is another ConfigNode being applied.");
     }
+  }
+
+  public List<TConfigNodeLocation> getOnlineConfigNodes() {
+    return nodeInfo.getOnlineConfigNodes();
   }
 
   private ConsensusManager getConsensusManager() {

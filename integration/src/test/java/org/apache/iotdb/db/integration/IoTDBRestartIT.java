@@ -303,12 +303,17 @@ public class IoTDBRestartIT {
 
       boolean hasResultSet = statement.execute("select * from root.**");
       assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          Assert.assertEquals("1", resultSet.getString(1));
+          Assert.assertEquals(null, resultSet.getString(2));
+          Assert.assertEquals("2.2", resultSet.getString(3));
+          cnt++;
+        }
+        assertEquals(1, cnt);
       }
-      assertEquals(1, cnt);
     }
   }
 
@@ -331,12 +336,16 @@ public class IoTDBRestartIT {
 
       boolean hasResultSet = statement.execute("select * from root.**");
       assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
-      int cnt = 0;
-      while (resultSet.next()) {
-        cnt++;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          Assert.assertEquals("1", resultSet.getString(1));
+          Assert.assertEquals("2.2", resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(1, cnt);
       }
-      assertEquals(1, cnt);
     }
   }
 

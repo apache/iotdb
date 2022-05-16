@@ -24,6 +24,7 @@ import org.apache.iotdb.procedure.Procedure;
 import java.util.List;
 
 public interface IProcedureStore {
+
   boolean isRunning();
 
   void setRunning(boolean running);
