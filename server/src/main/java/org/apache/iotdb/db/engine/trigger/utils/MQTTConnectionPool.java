@@ -25,9 +25,25 @@ import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.fusesource.mqtt.client.BlockingConnection;
 import org.fusesource.mqtt.client.QoS;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class MQTTConnectionPool extends GenericObjectPool<BlockingConnection> {
 
-  public MQTTConnectionPool(MQTTConnectionFactory factory, int size) {
+  // Each host corresponds to an singleton instance
+  private static final Map<String, MQTTConnectionPool> MQTT_CONNECTION_POOL_MAP = new HashMap<>();
+
+  public static MQTTConnectionPool getInstance(
+      String host, MQTTConnectionFactory factory, int size) {
+    MQTTConnectionPool pool = MQTT_CONNECTION_POOL_MAP.get(host);
+    if (pool == null || pool.isClosed()) {
+      pool = new MQTTConnectionPool(factory, size);
+      MQTT_CONNECTION_POOL_MAP.put(host, pool);
+    }
+    return pool;
+  }
+
+  private MQTTConnectionPool(MQTTConnectionFactory factory, int size) {
     super(factory);
     setMaxTotal(
         Math.min(size, IoTDBDescriptor.getInstance().getConfig().getTriggerForwardMQTTPoolSize()));

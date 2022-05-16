@@ -39,18 +39,17 @@ public class MQTTForwardHandler implements Handler<MQTTForwardConfiguration, MQT
   @Override
   public void open(MQTTForwardConfiguration configuration) throws Exception {
     this.configuration = configuration;
-    if (connectionPool == null || connectionPool.isClosed()) {
-      connectionPool =
-          new MQTTConnectionPool(
-              new MQTTConnectionFactory(
-                  configuration.getHost(),
-                  configuration.getPort(),
-                  configuration.getUsername(),
-                  configuration.getPassword(),
-                  configuration.getConnectAttemptsMax(),
-                  configuration.getReconnectDelay()),
-              configuration.getPoolSize());
-    }
+    MQTTConnectionFactory factory =
+        new MQTTConnectionFactory(
+            configuration.getHost(),
+            configuration.getPort(),
+            configuration.getUsername(),
+            configuration.getPassword(),
+            configuration.getConnectAttemptsMax(),
+            configuration.getReconnectDelay());
+    connectionPool =
+        MQTTConnectionPool.getInstance(
+            configuration.getHost(), factory, configuration.getPoolSize());
     connectionPool.preparePool();
   }
 

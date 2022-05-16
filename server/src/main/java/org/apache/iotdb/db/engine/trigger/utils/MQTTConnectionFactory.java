@@ -65,24 +65,9 @@ public class MQTTConnectionFactory extends BasePooledObjectFactory<BlockingConne
     mqtt.setConnectAttemptsMax(connectAttemptsMax);
     mqtt.setReconnectDelay(reconnectDelay);
 
-    return mqtt.blockingConnection();
-  }
-
-  @Override
-  public PooledObject<BlockingConnection> wrap(BlockingConnection blockingConnection) {
-    return new DefaultPooledObject<>(blockingConnection);
-  }
-
-  @Override
-  public void activateObject(PooledObject<BlockingConnection> p) throws Exception {
-    if (p == null) {
-      return;
-    }
-    BlockingConnection connection = p.getObject();
+    BlockingConnection connection = mqtt.blockingConnection();
     try {
-      if (!connection.isConnected()) {
-        connection.connect();
-      }
+      connection.connect();
     } catch (Exception e) {
       if (connection.isConnected()) {
         connection.disconnect();
@@ -90,23 +75,12 @@ public class MQTTConnectionFactory extends BasePooledObjectFactory<BlockingConne
       connection.kill();
       throw new SinkException("MQTT Connection activate error", e);
     }
-    super.activateObject(p);
+    return connection;
   }
 
   @Override
-  public void passivateObject(PooledObject<BlockingConnection> p) throws Exception {
-    if (p == null) {
-      return;
-    }
-    BlockingConnection connection = p.getObject();
-    try {
-      if (connection != null && connection.isConnected()) {
-        connection.disconnect();
-      }
-    } catch (Exception e) {
-      throw new SinkException("MQTT connection passivate error", e);
-    }
-    super.passivateObject(p);
+  public PooledObject<BlockingConnection> wrap(BlockingConnection blockingConnection) {
+    return new DefaultPooledObject<>(blockingConnection);
   }
 
   @Override
