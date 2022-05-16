@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
@@ -153,6 +154,11 @@ public class DataNode implements DataNodeMBean {
         location.setConsensusEndPoint(
             new TEndPoint(config.getInternalIp(), config.getConsensusPort()));
         req.setDataNodeLocation(location);
+
+        TDataNodeInfo info = new TDataNodeInfo();
+        info.setCpuCoreNum(Runtime.getRuntime().availableProcessors());
+        info.setMaxMemory(Runtime.getRuntime().totalMemory());
+        req.setDataNodeInfo(info);
 
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
 
