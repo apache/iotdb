@@ -75,12 +75,17 @@ public class ConfigRequestExecutor {
 
   private final ProcedureInfo procedureInfo;
 
-  public ConfigRequestExecutor() {
-    this.nodeInfo = NodeInfo.getInstance();
-    this.clusterSchemaInfo = ClusterSchemaInfo.getInstance();
-    this.partitionInfo = PartitionInfo.getInstance();
-    this.authorInfo = AuthorInfo.getInstance();
-    this.procedureInfo = ProcedureInfo.getInstance();
+  public ConfigRequestExecutor(
+      NodeInfo nodeInfo,
+      ClusterSchemaInfo clusterSchemaInfo,
+      PartitionInfo partitionInfo,
+      AuthorInfo authorInfo,
+      ProcedureInfo procedureInfo) {
+    this.nodeInfo = nodeInfo;
+    this.clusterSchemaInfo = clusterSchemaInfo;
+    this.partitionInfo = partitionInfo;
+    this.authorInfo = authorInfo;
+    this.procedureInfo = procedureInfo;
   }
 
   public DataSet executorQueryPlan(ConfigRequest req)
@@ -123,6 +128,7 @@ public class ConfigRequestExecutor {
       case SetStorageGroup:
         return clusterSchemaInfo.setStorageGroup((SetStorageGroupReq) req);
       case DeleteStorageGroup:
+        partitionInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
       case SetTTL:
         return clusterSchemaInfo.setTTL((SetTTLReq) req);
