@@ -77,7 +77,8 @@ public class AggregationDescriptor {
     }
     List<String> outputColumnNames = new ArrayList<>();
     for (AggregationType outputType : outputAggregationTypes) {
-      outputColumnNames.add(outputType.toString() + "(" + getParametersString() + ")");
+      outputColumnNames.add(
+          outputType.toString().toLowerCase() + "(" + getParametersString() + ")");
     }
     return outputColumnNames;
   }
@@ -119,10 +120,6 @@ public class AggregationDescriptor {
 
   public void setStep(AggregationStep step) {
     this.step = step;
-  }
-
-  public List<Expression> getInputExpressions() {
-    return inputExpressions;
   }
 
   public void serialize(ByteBuffer byteBuffer) {

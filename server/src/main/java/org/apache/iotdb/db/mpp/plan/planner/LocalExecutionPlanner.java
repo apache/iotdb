@@ -359,7 +359,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitSeriesAggregate(
+    public Operator visitSeriesAggregationScan(
         SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
       PartialPath seriesPath = node.getSeriesPath();
       boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
@@ -373,10 +373,13 @@ public class LocalExecutionPlanner {
       node.getAggregationDescriptorList()
           .forEach(
               o ->
-                  new Aggregator(
-                      AccumulatorFactory.createAccumulator(
-                          o.getAggregationType(), node.getSeriesPath().getSeriesType(), ascending),
-                      o.getStep()));
+                  aggregators.add(
+                      new Aggregator(
+                          AccumulatorFactory.createAccumulator(
+                              o.getAggregationType(),
+                              node.getSeriesPath().getSeriesType(),
+                              ascending),
+                          o.getStep())));
       SeriesAggregateScanOperator aggregateScanOperator =
           new SeriesAggregateScanOperator(
               node.getPlanNodeId(),
