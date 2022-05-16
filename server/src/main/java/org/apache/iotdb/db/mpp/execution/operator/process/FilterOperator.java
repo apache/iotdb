@@ -94,10 +94,10 @@ public class FilterOperator extends TransformOperator {
   }
 
   private void iterateFilterReaderToNextValid() throws QueryProcessException, IOException {
-    while (filterPointReader.next()
-        && (filterPointReader.isCurrentNull() || !filterPointReader.currentBoolean())) {
+    do {
       filterPointReader.readyForNext();
-    }
+    } while (filterPointReader.next()
+        && (filterPointReader.isCurrentNull() || !filterPointReader.currentBoolean()));
   }
 
   @Override
