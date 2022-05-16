@@ -89,9 +89,6 @@ public class PartitionInfo implements SnapshotProcessor {
   private final ReentrantReadWriteLock dataPartitionReadWriteLock;
   private final DataPartition dataPartition;
 
-  // The size of the buffer used for snapshot(temporary value)
-  private final int bufferSize = 10 * 1024 * 1024;
-
   private final String snapshotFileName = "partition_info.bin";
 
   public PartitionInfo() {
