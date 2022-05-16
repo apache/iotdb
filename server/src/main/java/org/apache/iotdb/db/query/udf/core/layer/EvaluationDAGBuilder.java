@@ -41,6 +41,8 @@ public class EvaluationDAGBuilder {
   private final Expression[] outputExpressions;
   private final LayerPointReader[] outputPointReaders;
 
+  private final TypeProvider typeProvider;
+
   private final UDTFContext udtfContext;
 
   private final LayerMemoryAssigner memoryAssigner;
@@ -50,22 +52,21 @@ public class EvaluationDAGBuilder {
   // sub-expressions, but they can share the same point reader. we cache the point reader here to
   // make sure that only one point reader will be built for one expression.
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
-  private final TypeProvider typeProvider;
 
   public EvaluationDAGBuilder(
       long queryId,
       RawQueryInputLayer inputLayer,
       Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
-      UDTFContext udtfContext,
       TypeProvider typeProvider,
+      UDTFContext udtfContext,
       float memoryBudgetInMB) {
     this.queryId = queryId;
     this.inputLayer = inputLayer;
     this.inputLocations = inputLocations;
     this.outputExpressions = outputExpressions;
-    this.udtfContext = udtfContext;
     this.typeProvider = typeProvider;
+    this.udtfContext = udtfContext;
 
     int size = inputLayer.getInputColumnCount();
     outputPointReaders = new LayerPointReader[size];

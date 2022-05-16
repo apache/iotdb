@@ -75,9 +75,11 @@ public class FilterOperator extends TransformOperator {
 
   @Override
   protected void initTransformers(
-      Map<String, List<InputLocation>> inputLocations, TypeProvider typeProvider)
+      Map<String, List<InputLocation>> inputLocations,
+      Expression[] outputExpressions,
+      TypeProvider typeProvider)
       throws QueryProcessException, IOException {
-    super.initTransformers(inputLocations, typeProvider);
+    super.initTransformers(inputLocations, outputExpressions, typeProvider);
 
     filterPointReader = transformers[transformers.length - 1];
     if (filterPointReader.getDataType() != TSDataType.BOOLEAN) {

@@ -63,8 +63,6 @@ public class TransformOperator implements ProcessOperator {
 
   protected final OperatorContext operatorContext;
   protected final Operator inputOperator;
-  protected final List<TSDataType> inputDataTypes;
-  protected final Expression[] outputExpressions;
   protected final boolean keepNull;
 
   protected boolean isFirstIteration;
@@ -87,15 +85,13 @@ public class TransformOperator implements ProcessOperator {
       throws QueryProcessException, IOException {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
-    this.inputDataTypes = inputDataTypes;
-    this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
 
     isFirstIteration = true;
 
     initInputLayer(inputDataTypes);
-    initUdtfContext(zoneId);
-    initTransformers(inputLocations, typeProvider);
+    initUdtfContext(outputExpressions, zoneId);
+    initTransformers(inputLocations, outputExpressions, typeProvider);
   }
 
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
@@ -106,13 +102,15 @@ public class TransformOperator implements ProcessOperator {
             new TsBlockInputDataSet(inputOperator, inputDataTypes));
   }
 
-  private void initUdtfContext(ZoneId zoneId) {
+  private void initUdtfContext(Expression[] outputExpressions, ZoneId zoneId) {
     udtfContext = new UDTFContext(zoneId);
     udtfContext.constructUdfExecutors(outputExpressions);
   }
 
   protected void initTransformers(
-      Map<String, List<InputLocation>> inputLocations, TypeProvider typeProvider)
+      Map<String, List<InputLocation>> inputLocations,
+      Expression[] outputExpressions,
+      TypeProvider typeProvider)
       throws QueryProcessException, IOException {
     UDFRegistrationService.getInstance().acquireRegistrationLock();
     try {
@@ -125,10 +123,11 @@ public class TransformOperator implements ProcessOperator {
                   inputLayer,
                   inputLocations,
                   outputExpressions,
-                  udtfContext,
                   typeProvider,
+                  udtfContext,
                   udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
               .buildLayerMemoryAssigner()
+              .bindInputLayerColumnIndexWithExpression()
               .buildResultColumnPointReaders()
               .getOutputPointReaders();
     } finally {
