@@ -93,7 +93,11 @@ public class Analysis {
   // not 0 because device is the first column
   private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
-  public Analysis() {}
+  private boolean finishQueryAfterAnalyze;
+
+  public Analysis() {
+    this.finishQueryAfterAnalyze = false;
+  }
 
   public List<TRegionReplicaSet> getPartitionInfo(PartialPath seriesPath, Filter timefilter) {
     // TODO: (xingtanzjr) implement the calculation of timePartitionIdList
@@ -239,6 +243,14 @@ public class Analysis {
 
   public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {
     this.groupByTimeParameter = groupByTimeParameter;
+  }
+
+  public boolean isFinishQueryAfterAnalyze() {
+    return finishQueryAfterAnalyze;
+  }
+
+  public void setFinishQueryAfterAnalyze(boolean finishQueryAfterAnalyze) {
+    this.finishQueryAfterAnalyze = finishQueryAfterAnalyze;
   }
 
   public void setDeviceToMeasurementIndexesMap(

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticMultiplic
 
 import java.nio.ByteBuffer;
 
-public class MultiplicationExpression extends BinaryExpression {
+public class MultiplicationExpression extends ArithmeticBinaryExpression {
 
   public MultiplicationExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

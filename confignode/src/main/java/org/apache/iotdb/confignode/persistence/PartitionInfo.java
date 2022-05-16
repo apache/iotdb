@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
@@ -34,8 +35,10 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionRe
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -165,6 +168,29 @@ public class PartitionInfo implements SnapshotProcessor {
       regionReadWriteLock.writeLock().unlock();
     }
     return result;
+  }
+
+  /**
+   * Delete Regions
+   *
+   * @param req DeleteRegionsReq
+   * @return SUCCESS_STATUS
+   */
+  public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) {
+    TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
+    List<TConsensusGroupId> dataRegionGroupIds = storageGroupSchema.getDataRegionGroupIds();
+    List<TConsensusGroupId> schemaRegionGroupIds = storageGroupSchema.getSchemaRegionGroupIds();
+    DeleteRegionsReq deleteRegionsReq = new DeleteRegionsReq();
+    for (TConsensusGroupId schemaRegionGroupId : schemaRegionGroupIds) {
+      deleteRegionsReq.addConsensusGroupId(schemaRegionGroupId);
+    }
+    for (TConsensusGroupId dataRegionId : dataRegionGroupIds) {
+      deleteRegionsReq.addConsensusGroupId(dataRegionId);
+    }
+    deleteRegions(deleteRegionsReq);
+    deleteDataPartitionMapByStorageGroup(storageGroupSchema.getName());
+    deleteSchemaPartitionMapByStorageGroup(storageGroupSchema.getName());
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**
@@ -335,6 +361,24 @@ public class PartitionInfo implements SnapshotProcessor {
       regionReadWriteLock.readLock().unlock();
     }
     return result;
+  }
+
+  private void deleteDataPartitionMapByStorageGroup(String storageGroup) {
+    dataPartitionReadWriteLock.writeLock().lock();
+    try {
+      dataPartition.getDataPartitionMap().remove(storageGroup);
+    } finally {
+      dataPartitionReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  private void deleteSchemaPartitionMapByStorageGroup(String storageGroup) {
+    schemaPartitionReadWriteLock.writeLock().lock();
+    try {
+      schemaPartition.getSchemaPartitionMap().remove(storageGroup);
+    } finally {
+      schemaPartitionReadWriteLock.writeLock().unlock();
+    }
   }
 
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {

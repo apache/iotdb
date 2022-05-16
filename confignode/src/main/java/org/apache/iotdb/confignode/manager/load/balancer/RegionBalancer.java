@@ -16,6 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.balancer;
+package org.apache.iotdb.confignode.manager.load.balancer;
 
-public class SeriesPartitionSlotBalancer {}
+public class RegionBalancer {}

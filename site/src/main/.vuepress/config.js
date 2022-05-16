@@ -703,8 +703,7 @@ var config = {
 							['API/Programming-MQTT','MQTT'],
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
-							['API/Status-Codes','Status Codes'],
-							['API/Interface-Comparison', 'Interface Comparison']
+							['API/Status-Codes','Status Codes']
 						]
 					},
 					{
@@ -1626,8 +1625,7 @@ var config = {
 							['API/Programming-MQTT','MQTT'],
 							['API/RestService','REST API'],
 							['API/Programming-TsFile-API','TsFile API'],
-							['API/Status-Codes','状态码'],
-							['API/Interface-Comparison', '原生接口对比']
+							['API/Status-Codes','状态码']
 						]
 					},
 					{

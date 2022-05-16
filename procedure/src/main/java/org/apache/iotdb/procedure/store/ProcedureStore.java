@@ -42,10 +42,12 @@ public class ProcedureStore implements IProcedureStore {
   private String procedureWalDir =
       ProcedureNodeConfigDescriptor.getInstance().getConf().getProcedureWalDir();
   private final ConcurrentHashMap<Long, ProcedureWAL> procWALMap = new ConcurrentHashMap<>();
+  private final IProcedureFactory procedureFactory;
   private volatile boolean isRunning = false;
 
-  public ProcedureStore() {
+  public ProcedureStore(IProcedureFactory procedureFactory) {
     try {
+      this.procedureFactory = procedureFactory;
       Files.createDirectories(Paths.get(procedureWalDir));
     } catch (IOException e) {
       throw new RuntimeException("Create procedure wal directory failed.", e);
@@ -53,7 +55,8 @@ public class ProcedureStore implements IProcedureStore {
   }
 
   @TestOnly
-  public ProcedureStore(String testWALDir) {
+  public ProcedureStore(String testWALDir, IProcedureFactory procedureFactory) {
+    this.procedureFactory = procedureFactory;
     try {
       Files.createDirectories(Paths.get(testWALDir));
       procedureWalDir = testWALDir;
@@ -93,7 +96,8 @@ public class ProcedureStore implements IProcedureStore {
                 String fileName = path.getFileName().toString();
                 long procId = Long.parseLong(fileName.split("\\.")[0]);
                 ProcedureWAL procedureWAL =
-                    procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path));
+                    procWALMap.computeIfAbsent(
+                        procId, id -> new ProcedureWAL(path, procedureFactory));
                 procedureWAL.load(procedureList);
               });
     } catch (IOException e) {
@@ -113,7 +117,8 @@ public class ProcedureStore implements IProcedureStore {
     }
     long procId = procedure.getProcId();
     Path path = Paths.get(procedureWalDir, procId + ProcedureNodeConstant.PROCEDURE_WAL_SUFFIX);
-    ProcedureWAL procedureWAL = procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path));
+    ProcedureWAL procedureWAL =
+        procWALMap.computeIfAbsent(procId, id -> new ProcedureWAL(path, procedureFactory));
     try {
       procedureWAL.save(procedure);
     } catch (IOException e) {
@@ -187,9 +192,5 @@ public class ProcedureStore implements IProcedureStore {
     if (!isRunning) {
       isRunning = true;
     }
-  }
-
-  public static class ProcedureStoreHolder {
-    private static final ProcedureStore INSTANCE = new ProcedureStore();
   }
 }

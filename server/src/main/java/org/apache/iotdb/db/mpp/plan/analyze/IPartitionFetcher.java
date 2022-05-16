@@ -40,4 +40,6 @@ public interface IPartitionFetcher {
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
+
+  void invalidAllCache();
 }
