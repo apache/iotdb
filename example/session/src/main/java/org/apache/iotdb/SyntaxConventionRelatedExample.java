@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -91,7 +93,18 @@ public class SyntaxConventionRelatedExample {
 
     // createTimeSeries
     createTimeSeries();
-    SessionDataSet sessionDataSet = session.executeQueryStatement("show timeseries");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries");
+    // the expected columnNames would be:
+    // [Time, root.sg1.select, root.sg1.`111`, root.sg1.`a"b`c```, root.sg1.a]
+    // You could see that time series in dataSet are exactly the same as
+    // the initial String you used as path. Node names consist of digits or contain special
+    // characters are quoted with ``, both in SQL statement and in header of result dataset.
+    // It's convenient that you can use the result of show timeseries as input parameter directly for other
+    // session APIs such as insertRecord or executeRawDataQuery.
+    List<String> timeseries = new ArrayList<>();
+    while(dataSet.hasNext()){
+      timeseries.add(dataSet.next().toString());
+    }
   }
 
   private static void createTimeSeries()
