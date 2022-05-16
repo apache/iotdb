@@ -156,7 +156,7 @@ public class IoTDBConfig {
 
   // region Write Ahead Log Configuration
   /** Write mode of wal */
-  private WALMode walMode = WALMode.ASYNC;
+  private WALMode walMode = WALMode.DISABLE;
 
   /** WAL directories */
   private String[] walDirs = {DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME};

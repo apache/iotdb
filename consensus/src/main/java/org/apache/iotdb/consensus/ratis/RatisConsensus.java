@@ -114,6 +114,9 @@ class RatisConsensus implements IConsensus {
 
     RaftServerConfigKeys.setStorageDir(properties, Collections.singletonList(ratisStorageDir));
     RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(properties, true);
+    RaftServerConfigKeys.Snapshot.setAutoTriggerThreshold(properties, 5);
+    RaftServerConfigKeys.Log.setPurgeUptoSnapshotIndex(properties, true);
+    RaftServerConfigKeys.Log.setPurgeGap(properties, 1);
 
     // set the port which server listen to in RaftProperty object
     final int port = NetUtils.createSocketAddr(address).getPort();

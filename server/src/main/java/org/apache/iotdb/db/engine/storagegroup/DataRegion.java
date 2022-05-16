@@ -3618,6 +3618,6 @@ public class DataRegion {
               Tag.NAME.toString(),
               "storageGroup_" + dataRegion.getLogicalStorageGroupName());
     }
-    return null;
+    return dataRegion;
   }
 }
