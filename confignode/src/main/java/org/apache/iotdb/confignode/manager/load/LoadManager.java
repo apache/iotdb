@@ -143,7 +143,7 @@ public class LoadManager implements Runnable {
             // Currently, we just assume that it's 1:5
             int regionNum =
                 Math.min(
-                    (totalCoreNum - totalReplicaNum)
+                    ((int) (totalCoreNum * 0.5) - totalReplicaNum)
                         / storageGroupSchema.getDataReplicationFactor(),
                     storageGroupSchema.getSchemaRegionGroupIdsSize() * 5
                         - storageGroupSchema.getDataRegionGroupIdsSize());
