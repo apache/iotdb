@@ -1261,6 +1261,8 @@ public class TsFileProcessor {
             for (CloseFileListener closeFileListener : closeFileListeners) {
               closeFileListener.onClosed(this);
             }
+            // close writer
+            writer.close();
             writer = null;
             synchronized (flushingMemTables) {
               flushingMemTables.notifyAll();
