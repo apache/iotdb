@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
@@ -91,7 +92,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   private final String snapshotFileName = "partition_info.bin";
 
-  private PartitionInfo() {
+  public PartitionInfo() {
     this.regionReadWriteLock = new ReentrantReadWriteLock();
     this.regionMap = new HashMap<>();
 
@@ -170,12 +171,11 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Delete Regions
+   * Delete StorageGroup
    *
    * @param req DeleteRegionsReq
-   * @return SUCCESS_STATUS
    */
-  public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) {
+  public void deleteStorageGroup(DeleteStorageGroupReq req) {
     TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
     List<TConsensusGroupId> dataRegionGroupIds = storageGroupSchema.getDataRegionGroupIds();
     List<TConsensusGroupId> schemaRegionGroupIds = storageGroupSchema.getSchemaRegionGroupIds();
@@ -189,7 +189,6 @@ public class PartitionInfo implements SnapshotProcessor {
     deleteRegions(deleteRegionsReq);
     deleteDataPartitionMapByStorageGroup(storageGroupSchema.getName());
     deleteSchemaPartitionMapByStorageGroup(storageGroupSchema.getName());
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**
@@ -415,7 +414,14 @@ public class PartitionInfo implements SnapshotProcessor {
       unlockAllRead();
       byteBuffer.clear();
       // with or without success, delete temporary files anyway
-      tmpFile.delete();
+      for (int retry = 0; retry < 5; retry++) {
+        if (tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
     }
   }
 
@@ -527,18 +533,5 @@ public class PartitionInfo implements SnapshotProcessor {
     if (dataPartition.getDataPartitionMap() != null) {
       dataPartition.getDataPartitionMap().clear();
     }
-  }
-
-  private static class PartitionInfoHolder {
-
-    private static final PartitionInfo INSTANCE = new PartitionInfo();
-
-    private PartitionInfoHolder() {
-      // empty constructor
-    }
-  }
-
-  public static PartitionInfo getInstance() {
-    return PartitionInfoHolder.INSTANCE;
   }
 }

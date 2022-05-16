@@ -156,6 +156,9 @@ public class IoTDBReporter extends ScheduledReporter {
   }
 
   private void sendGauge(String name, Gauge gauge) {
+    if (null == gauge) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     Object obj = gauge.getValue();
     double value;
@@ -168,12 +171,18 @@ public class IoTDBReporter extends ScheduledReporter {
   }
 
   private void sendCounter(String name, Counter counter) {
+    if (null == counter) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     double value = counter.getCount();
     updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
   }
 
   private void sendHistogram(String name, Histogram histogram) {
+    if (null == histogram) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     writeSnapshotAndCount(
         prefixed(metricName.getName()),
@@ -184,12 +193,18 @@ public class IoTDBReporter extends ScheduledReporter {
   }
 
   private void sendMeter(String name, Meter meter) {
+    if (null == meter) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     double value = meter.getCount();
     updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
   }
 
   private void sendTimer(String name, Timer timer) {
+    if (null == timer) {
+      return;
+    }
     MetricName metricName = new MetricName(name);
     writeSnapshotAndCount(
         prefixed(metricName.getName()),

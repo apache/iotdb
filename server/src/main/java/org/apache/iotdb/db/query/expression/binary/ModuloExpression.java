@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.binary.ArithmeticModuloTra
 
 import java.nio.ByteBuffer;
 
-public class ModuloExpression extends BinaryExpression {
+public class ModuloExpression extends ArithmeticBinaryExpression {
 
   public ModuloExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

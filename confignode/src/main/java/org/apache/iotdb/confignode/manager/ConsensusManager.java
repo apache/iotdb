@@ -18,17 +18,18 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConf;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -49,21 +50,37 @@ public class ConsensusManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConsensusManager.class);
   private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
-  private ConfigManager configManager;
   private ConsensusGroupId consensusGroupId;
   private IConsensus consensusImpl;
 
-  public ConsensusManager(ConfigManager configManager) throws IOException {
-    this.configManager = configManager;
-    setConsensusLayer();
+  public ConsensusManager(PartitionRegionStateMachine stateMachine) throws IOException {
+    setConsensusLayer(stateMachine);
   }
 
   public void close() throws IOException {
     consensusImpl.stop();
   }
 
+  @TestOnly
+  public void singleCopyMayWaitUntilLeaderReady() {
+    if (conf.getConfigNodeList().size() == 1) {
+      long startTime = System.currentTimeMillis();
+      long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
+      try {
+        while (!consensusImpl.isLeader(consensusGroupId)) {
+          Thread.sleep(100);
+          long elapsed = System.currentTimeMillis() - startTime;
+          if (elapsed > maxWaitTime) {
+            return;
+          }
+        }
+      } catch (InterruptedException ignored) {
+      }
+    }
+  }
+
   /** Build ConfigNodeGroup ConsensusLayer */
-  private void setConsensusLayer() throws IOException {
+  private void setConsensusLayer(PartitionRegionStateMachine stateMachine) throws IOException {
     // There is only one ConfigNodeGroup
     consensusGroupId = new PartitionRegionId(conf.getPartitionRegionId());
 
@@ -73,7 +90,7 @@ public class ConsensusManager {
                 conf.getConfigNodeConsensusProtocolClass(),
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()),
                 new File(conf.getConsensusDir()),
-                gid -> new PartitionRegionStateMachine(configManager))
+                gid -> stateMachine)
             .orElseThrow(
                 () ->
                     new IllegalArgumentException(

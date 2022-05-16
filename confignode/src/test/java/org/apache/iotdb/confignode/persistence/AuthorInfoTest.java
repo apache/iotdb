@@ -22,31 +22,55 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
+
 public class AuthorInfoTest {
 
   private static AuthorInfo authorInfo;
+  private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "authorInfo-snapshot");
+  private static final ConfigNodeConf config = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   @BeforeClass
   public static void setup() {
-    authorInfo = AuthorInfo.getInstance();
+    authorInfo = new AuthorInfo();
+    if (!snapshotDir.exists()) {
+      snapshotDir.mkdirs();
+    }
+  }
+
+  @AfterClass
+  public static void cleanup() throws IOException, AuthException {
+    authorInfo.clear();
+    if (snapshotDir.exists()) {
+      FileUtils.deleteDirectory(snapshotDir);
+    }
   }
 
   @Test
@@ -288,5 +312,28 @@ public class AuthorInfoTest {
       status = authorInfo.authorNonQuery(authorReq);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
+  }
+
+  @Test
+  public void takeSnapshot() throws TException, IOException, AuthException {
+    cleanUserAndRole();
+    // create role
+    AuthorReq createRoleReq = new AuthorReq(ConfigRequestType.CreateRole);
+    createRoleReq.setRoleName("testRole");
+    TSStatus status = authorInfo.authorNonQuery(createRoleReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    AuthorReq createUserReq = new AuthorReq(ConfigRequestType.CreateUser);
+    createUserReq.setUserName("testUser");
+    createUserReq.setPassword("testPassword");
+    status = authorInfo.authorNonQuery(createUserReq);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+    Assert.assertEquals(1, authorInfo.executeListRole().getPermissionInfo().get("role").size());
+    Assert.assertEquals(2, authorInfo.executeListUser().getPermissionInfo().get("user").size());
+    Assert.assertTrue(authorInfo.processTakeSnapshot(snapshotDir));
+    authorInfo.clear();
+    authorInfo.processLoadSnapshot(snapshotDir);
+    Assert.assertEquals(1, authorInfo.executeListRole().getPermissionInfo().get("role").size());
+    Assert.assertEquals(2, authorInfo.executeListUser().getPermissionInfo().get("user").size());
   }
 }

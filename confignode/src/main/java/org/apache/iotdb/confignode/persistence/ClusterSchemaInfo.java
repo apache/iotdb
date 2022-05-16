@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
@@ -76,7 +77,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private final String snapshotFileName = "cluster_schema.bin";
 
-  private ClusterSchemaInfo() {
+  public ClusterSchemaInfo() {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
 
     try {
@@ -135,7 +136,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       TStorageGroupSchema storageGroupSchema = req.getStorageGroup();
       PartialPath partialPathName = new PartialPath(storageGroupSchema.getName());
       mTree.deleteStorageGroup(partialPathName);
-      PartitionInfo.getInstance().deleteStorageGroup(req);
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
       LOGGER.warn("Storage group not exist", e);
@@ -344,27 +344,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** @return All StorageGroupSchemas that matches to the specific StorageGroup patterns */
-  public Map<String, TStorageGroupSchema> getDeleteStorageGroups(List<String> rawPathList) {
-    Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
-    storageGroupReadWriteLock.readLock().lock();
-    try {
-      for (String rawPath : rawPathList) {
-        PartialPath patternPath = new PartialPath(rawPath);
-        List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
-        for (PartialPath path : matchedPaths) {
-          schemaMap.put(
-              path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
-        }
-      }
-    } catch (MetadataException e) {
-      LOGGER.warn("Error StorageGroup name", e);
-    } finally {
-      storageGroupReadWriteLock.readLock().unlock();
-    }
-    return schemaMap;
-  }
-
   /** @return True if StorageGroupInfo contains the specific StorageGroup */
   public boolean containsStorageGroup(String storageName) {
     boolean result;
@@ -397,6 +376,28 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } finally {
       storageGroupReadWriteLock.readLock().unlock();
     }
+  }
+
+  /** @return All StorageGroupSchemas that matches to the specific StorageGroup patterns */
+  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByName(
+      List<String> rawPathList) {
+    Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      for (String rawPath : rawPathList) {
+        PartialPath patternPath = new PartialPath(rawPath);
+        List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+        for (PartialPath path : matchedPaths) {
+          schemaMap.put(
+              path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+        }
+      }
+    } catch (MetadataException e) {
+      LOGGER.warn("Error StorageGroup name", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return schemaMap;
   }
 
   /**
@@ -458,7 +459,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       return tmpFile.renameTo(snapshotFile);
     } finally {
       buffer.clear();
-      tmpFile.delete();
+      for (int retry = 0; retry < 5; retry++) {
+        if (tmpFile.delete()) {
+          break;
+        } else {
+          LOGGER.warn(
+              "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
+        }
+      }
       storageGroupReadWriteLock.readLock().unlock();
     }
   }
@@ -491,18 +499,5 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   @TestOnly
   public void clear() {
     mTree.clear();
-  }
-
-  private static class StorageGroupInfoHolder {
-
-    private static final ClusterSchemaInfo INSTANCE = new ClusterSchemaInfo();
-
-    private StorageGroupInfoHolder() {
-      // Empty constructor
-    }
-  }
-
-  public static ClusterSchemaInfo getInstance() {
-    return StorageGroupInfoHolder.INSTANCE;
   }
 }
