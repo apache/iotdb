@@ -160,6 +160,7 @@ public class LoadManager implements Runnable {
 
           // TODO: use procedure to protect this
           createRegionsOnDataNodes(createRegionsReq);
+          getConsensusManager().write(createRegionsReq);
         }
       } catch (MetadataException e) {
         LOGGER.warn("Meet error when doing regionExpansion", e);
@@ -170,9 +171,7 @@ public class LoadManager implements Runnable {
   }
 
   private void doLoadBalancing() {
-    // TODO: Under development
-
-    // regionExpansion();
+    regionExpansion();
     // TODO: update replicaScoreMap
   }
 
