@@ -78,7 +78,7 @@ public class NodeInfoTest {
     nodeInfo.setDrainingDataNodes(drainingDataNodes_before);
 
     int nextId = nodeInfo.getNextDataNodeId();
-    List<TDataNodeLocation> onlineDataNodes_before = nodeInfo.getOnlineDataNodes();
+    List<TDataNodeInfo> onlineDataNodes_before = nodeInfo.getOnlineDataNodes(-1);
 
     nodeInfo.processTakeSnapshot(snapshotDir);
     nodeInfo.clear();
@@ -89,7 +89,7 @@ public class NodeInfoTest {
     Set<TDataNodeLocation> drainingDataNodes_after = nodeInfo.getDrainingDataNodes();
     Assert.assertEquals(drainingDataNodes_before, drainingDataNodes_after);
 
-    List<TDataNodeLocation> onlineDataNodes_after = nodeInfo.getOnlineDataNodes();
+    List<TDataNodeInfo> onlineDataNodes_after = nodeInfo.getOnlineDataNodes(-1);
     Assert.assertEquals(onlineDataNodes_before, onlineDataNodes_after);
   }
 

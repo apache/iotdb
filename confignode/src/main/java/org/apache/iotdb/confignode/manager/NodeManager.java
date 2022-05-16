@@ -116,10 +116,6 @@ public class NodeManager {
     return (DataNodeInfosResp) getConsensusManager().read(req).getDataset();
   }
 
-  public int getOnlineDataNodeCount() {
-    return nodeInfo.getOnlineDataNodeCount();
-  }
-
   /**
    * Only leader use this interface
    *

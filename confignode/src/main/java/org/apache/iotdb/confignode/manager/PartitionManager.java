@@ -33,7 +33,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
@@ -259,7 +258,7 @@ public class PartitionManager {
         storageGroupWithoutRegion.add(storageGroup);
       }
     }
-    getLoadManager().allocateAndCreateRegions(storageGroupWithoutRegion, consensusGroupType);
+    getLoadManager().initializeRegions(storageGroupWithoutRegion, consensusGroupType);
   }
 
   /** Get all allocated RegionReplicaSets */
@@ -314,9 +313,5 @@ public class PartitionManager {
 
   private LoadManager getLoadManager() {
     return configManager.getLoadManager();
-  }
-
-  public TSStatus deleteRegions(DeleteRegionsReq deleteRegionsReq) {
-    return getConsensusManager().write(deleteRegionsReq).getStatus();
   }
 }

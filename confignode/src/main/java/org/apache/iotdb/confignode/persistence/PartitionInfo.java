@@ -132,9 +132,11 @@ public class PartitionInfo implements SnapshotProcessor {
     try {
       int maxRegionId = Integer.MIN_VALUE;
 
-      for (TRegionReplicaSet regionReplicaSet : req.getRegionMap().values()) {
-        regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
-        maxRegionId = Math.max(maxRegionId, regionReplicaSet.getRegionId().getId());
+      for (Map.Entry<String, List<TRegionReplicaSet>> entry : req.getRegionMap().entrySet()) {
+        for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
+          regionMap.put(regionReplicaSet.getRegionId(), regionReplicaSet);
+          maxRegionId = Math.max(maxRegionId, regionReplicaSet.getRegionId().getId());
+        }
       }
 
       if (nextRegionGroupId.get() < maxRegionId) {
