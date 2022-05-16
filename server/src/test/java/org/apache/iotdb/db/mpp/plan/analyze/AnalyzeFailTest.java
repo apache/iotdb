@@ -34,6 +34,14 @@ import static org.junit.Assert.fail;
 public class AnalyzeFailTest {
 
   @Test
+  public void illegalAggregationTest() {
+    String message = "Illegal aggregation function: ";
+    assertAnalyzeSemanticException("SELECT sum(s1) + s1 FROM root.sg.d1", message);
+
+    assertAnalyzeSemanticException("SELECT sum(sum(s1)) FROM root.sg.d1", message);
+  }
+
+  @Test
   public void samePropertyKeyTest() {
     assertAnalyzeSemanticException(
         "CREATE TIMESERIES root.sg1.d1.s1 INT32 TAGS('a'='1') ATTRIBUTES('a'='1')",

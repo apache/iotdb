@@ -272,12 +272,11 @@ public class QueryStatement extends Statement {
       if (isGroupByLevel() && isAlignByDevice()) {
         throw new SemanticException("group by level does not support align by device now.");
       }
-      if (hasTimeSeriesGeneratingFunction()) {
-        throw new SemanticException(
-            "User-defined and built-in hybrid aggregation is not supported together.");
-      }
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-        ExpressionAnalyzer.checkIsAllAggregation(resultColumn.getExpression());
+        if (!ExpressionAnalyzer.checkIsValidAggregation(resultColumn.getExpression())) {
+          throw new SemanticException(
+              "Illegal aggregation function: " + resultColumn.getExpression());
+        }
       }
     }
   }

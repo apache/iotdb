@@ -111,23 +111,26 @@ public class ExpressionAnalyzer {
    *
    * @param expression expression to be checked
    */
-  public static void checkIsAllAggregation(Expression expression) {
+  public static boolean checkIsValidAggregation(Expression expression) {
     if (expression instanceof BinaryExpression) {
-      checkIsAllAggregation(((BinaryExpression) expression).getLeftExpression());
-      checkIsAllAggregation(((BinaryExpression) expression).getRightExpression());
+      return checkIsValidAggregation(((BinaryExpression) expression).getLeftExpression())
+          && checkIsValidAggregation(((BinaryExpression) expression).getRightExpression());
     } else if (expression instanceof UnaryExpression) {
-      checkIsAllAggregation(((UnaryExpression) expression).getExpression());
+      return checkIsValidAggregation(((UnaryExpression) expression).getExpression());
     } else if (expression instanceof FunctionExpression) {
-      if (expression.getExpressions().size() != 1
-          || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand)) {
-        throw new SemanticException(
-            "The argument of the aggregation function must be a time series.");
+      if (!expression.isBuiltInAggregationFunctionExpression()) {
+        return false;
       }
-    } else if (expression instanceof TimeSeriesOperand) {
-      throw new SemanticException(
-          "Raw data queries and aggregated queries are not allowed to appear at the same time.");
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
-      // do nothing
+      for (Expression childExpression : expression.getExpressions()) {
+        if (checkIsValidAggregation(childExpression)) {
+          return false;
+        }
+      }
+      return true;
+    } else if (expression instanceof TimeSeriesOperand || expression instanceof TimestampOperand) {
+      return false;
+    } else if (expression instanceof ConstantOperand) {
+      return true;
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + expression.getExpressionType());

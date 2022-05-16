@@ -35,6 +35,8 @@ public class AnalyzeTest {
   @Test
   public void testRawDataQuery() {
     // TODO: @lmh add UTs
+    Analysis analysis = analyzeSQL("select sum(s1+1) + 1 from root.sg.*");
+    System.out.println();
   }
 
   private Analysis analyzeSQL(String sql) {

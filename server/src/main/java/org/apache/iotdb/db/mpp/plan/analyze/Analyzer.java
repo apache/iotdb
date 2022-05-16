@@ -263,8 +263,18 @@ public class Analyzer {
         analysis.setSelectExpressions(selectExpressions);
 
         if (queryStatement.getFilterNullComponent() != null) {
-          FilterNullParameter filterNullParameter =
-              analyzeWithoutNull(queryStatement, schemaTree, selectExpressions);
+          FilterNullParameter filterNullParameter = new FilterNullParameter();
+          filterNullParameter.setFilterNullPolicy(
+              queryStatement.getFilterNullComponent().getWithoutPolicyType());
+          List<Expression> resultFilterNullColumns;
+          if (queryStatement.isAlignByDevice()) {
+            resultFilterNullColumns =
+                analyzeWithoutNullAlignByDevice(queryStatement, outputExpressions);
+          } else {
+            resultFilterNullColumns =
+                analyzeWithoutNull(queryStatement, schemaTree, selectExpressions);
+          }
+          filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
           analysis.setFilterNullParameter(filterNullParameter);
         }
 
@@ -360,9 +370,19 @@ public class Analyzer {
       // device path patterns in FROM clause
       List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
-      // a list of measurement name with alias (null if alias not exist)
-      List<Pair<Expression, String>> measurementWithAliasList =
-          getAllMeasurements(queryStatement, measurementSet);
+      // a list of measurement expressions with alias (null if alias not exist)
+      List<Pair<Expression, String>> measurementExpressions =
+          queryStatement.getSelectComponent().getResultColumns().stream()
+              .map(
+                  resultColumn -> new Pair<>(resultColumn.getExpression(), resultColumn.getAlias()))
+              .collect(Collectors.toList());
+      measurementSet.addAll(
+          measurementExpressions.stream()
+              .map(Pair::getLeft)
+              .map(ExpressionAnalyzer::collectPaths)
+              .flatMap(Set::stream)
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toSet()));
 
       // a list contains all selected paths
       List<MeasurementPath> allSelectedPaths = new ArrayList<>();
@@ -406,7 +426,7 @@ public class Analyzer {
       ColumnPaginationController paginationController =
           new ColumnPaginationController(
               queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
-      for (Pair<Expression, String> measurementAliasPair : measurementWithAliasList) {
+      for (Pair<Expression, String> measurementAliasPair : measurementExpressions) {
         String measurement =
             ExpressionAnalyzer.getPathInSourceExpression(measurementAliasPair.left).toString();
         if (measurementNameToPathsMap.containsKey(measurement)) {
@@ -509,25 +529,6 @@ public class Analyzer {
         }
       }
       return outputExpressions;
-    }
-
-    private List<Pair<Expression, String>> getAllMeasurements(
-        QueryStatement queryStatement, Set<String> measurementSet) {
-      List<Pair<Expression, String>> measurementWithAliasList =
-          queryStatement.getSelectComponent().getResultColumns().stream()
-              .map(
-                  resultColumn ->
-                      ExpressionAnalyzer.getMeasurementWithAliasInSourceExpression(
-                          resultColumn.getExpression(), resultColumn.getAlias()))
-              .collect(Collectors.toList());
-      measurementSet.addAll(
-          measurementWithAliasList.stream()
-              .map(Pair::getLeft)
-              .map(ExpressionAnalyzer::collectPaths)
-              .flatMap(Set::stream)
-              .map(PartialPath::getFullPath)
-              .collect(Collectors.toSet()));
-      return measurementWithAliasList;
     }
 
     private Pair<Filter, Boolean> analyzeGlobalTimeFilter(QueryStatement queryStatement) {
@@ -670,11 +671,8 @@ public class Analyzer {
       return groupByLevelExpressions;
     }
 
-    private FilterNullParameter analyzeWithoutNull(
+    private List<Expression> analyzeWithoutNull(
         QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> selectExpressions) {
-      FilterNullParameter filterNullParameter = new FilterNullParameter();
-      filterNullParameter.setFilterNullPolicy(
-          queryStatement.getFilterNullComponent().getWithoutPolicyType());
       List<Expression> resultFilterNullColumns = new ArrayList<>();
       List<Expression> rawFilterNullColumns =
           queryStatement.getFilterNullComponent().getWithoutNullColumns();
@@ -687,7 +685,8 @@ public class Analyzer {
           if (!selectExpressions.contains(expressionWithoutAlias)) {
             throw new SemanticException(
                 String.format(
-                    "The without null column '%s' don't match the columns queried.", expression));
+                    "The without null column '%s' don't match the columns queried.",
+                    filterNullColumn));
           }
           resultFilterNullColumns.add(expressionWithoutAlias);
         }
@@ -696,8 +695,21 @@ public class Analyzer {
       if (rawFilterNullColumns.isEmpty()) {
         resultFilterNullColumns.addAll(selectExpressions);
       }
-      filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
-      return filterNullParameter;
+      return resultFilterNullColumns;
+    }
+
+    private List<Expression> analyzeWithoutNullAlignByDevice(
+        QueryStatement queryStatement, List<Pair<Expression, String>> outputExpressions) {
+      List<Expression> resultFilterNullColumns = new ArrayList<>();
+      List<Expression> rawFilterNullColumns =
+          queryStatement.getFilterNullComponent().getWithoutNullColumns();
+
+      // don't specify columns, by default, it is effective for all columns
+      if (rawFilterNullColumns.isEmpty()) {
+        resultFilterNullColumns.addAll(
+            outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toList()));
+      }
+      return resultFilterNullColumns;
     }
 
     private DatasetHeader analyzeOutput(
