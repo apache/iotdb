@@ -98,7 +98,7 @@ public class NodeInfo implements SnapshotProcessor {
 
   private final String snapshotFileName = "node_info.bin";
 
-  private NodeInfo() {
+  public NodeInfo() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.onlineConfigNodes =
@@ -406,18 +406,5 @@ public class NodeInfo implements SnapshotProcessor {
     onlineDataNodes.clear();
     drainingDataNodes.clear();
     onlineConfigNodes.clear();
-  }
-
-  private static class DataNodeInfoPersistenceHolder {
-
-    private static final NodeInfo INSTANCE = new NodeInfo();
-
-    private DataNodeInfoPersistenceHolder() {
-      // empty constructor
-    }
-  }
-
-  public static NodeInfo getInstance() {
-    return NodeInfo.DataNodeInfoPersistenceHolder.INSTANCE;
   }
 }

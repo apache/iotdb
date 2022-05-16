@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -97,6 +98,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   @TestOnly
   public void close() throws IOException {
     configManager.close();
+  }
+
+  @TestOnly
+  public ConsensusManager getConsensusManager() {
+    return configManager.getConsensusManager();
   }
 
   @Override

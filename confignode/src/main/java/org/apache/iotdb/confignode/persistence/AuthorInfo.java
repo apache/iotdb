@@ -340,18 +340,6 @@ public class AuthorInfo implements SnapshotProcessor {
     }
   }
 
-  private static class AuthorInfoHolder {
-    private static final AuthorInfo INSTANCE = new AuthorInfo();
-
-    private AuthorInfoHolder() {
-      // empty constructor
-    }
-  }
-
-  public static AuthorInfo getInstance() {
-    return AuthorInfo.AuthorInfoHolder.INSTANCE;
-  }
-
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
     return authorizer.processTakeSnapshot(snapshotDir);

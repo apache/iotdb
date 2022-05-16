@@ -48,7 +48,7 @@ public class ClusterSchemaInfoTest {
 
   @BeforeClass
   public static void setup() {
-    clusterSchemaInfo = ClusterSchemaInfo.getInstance();
+    clusterSchemaInfo = new ClusterSchemaInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.binary.CompareEqualToTrans
 
 import java.nio.ByteBuffer;
 
-public class EqualToExpression extends BinaryExpression {
+public class EqualToExpression extends CompareBinaryExpression {
 
   public EqualToExpression(Expression leftExpression, Expression rightExpression) {
     super(leftExpression, rightExpression);

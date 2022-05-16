@@ -132,9 +132,9 @@ public interface Manager {
   TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq);
 
   /**
-   * Delete StorageGroup
+   * Delete StorageGroups
    *
-   * @param deleteStorageGroupsReq deleteStorageGroupReq
+   * @param deletedPaths List<StringPattern>
    * @return status
    */
   TSStatus deleteStorageGroups(List<String> deletedPaths);
