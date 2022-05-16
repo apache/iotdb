@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
@@ -43,36 +44,23 @@ import java.util.List;
 public class SnapshotTaker {
   private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotTaker.class);
   private final DataRegion dataRegion;
+  public static String SNAPSHOT_FILE_INFO_SEP_STR = "_";
 
   public SnapshotTaker(DataRegion dataRegion) {
     this.dataRegion = dataRegion;
   }
 
   public boolean takeFullSnapshot(String snapshotDirPath, boolean flushBeforeSnapshot)
-      throws DirectoryNotLegalException {
-    File seqSnapshotDir =
-        new File(
-            snapshotDirPath
-                + File.separator
-                + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator
-                + dataRegion.getLogicalStorageGroupName()
-                + File.separator
-                + dataRegion.getDataRegionId());
-    File unseqSnapshotDir =
-        new File(
-            snapshotDirPath
-                + File.separator
-                + IoTDBConstant.UNSEQUENCE_FLODER_NAME
-                + File.separator
-                + dataRegion.getLogicalStorageGroupName()
-                + File.separator
-                + dataRegion.getDataRegionId());
-    if ((seqSnapshotDir.exists() && seqSnapshotDir.listFiles() != null)
-        || (unseqSnapshotDir.exists() && unseqSnapshotDir.listFiles() != null)) {
+      throws DirectoryNotLegalException, IOException {
+    File snapshotDir = new File(snapshotDirPath);
+    if (snapshotDir.exists() && snapshotDir.listFiles() != null) {
       // the directory should be empty or not exists
       throw new DirectoryNotLegalException(
           String.format("%s already exists and is not empty", snapshotDirPath));
+    }
+
+    if (!snapshotDir.exists() && !snapshotDir.mkdirs()) {
+      throw new IOException(String.format("Failed to create directory %s", snapshotDir));
     }
 
     if (flushBeforeSnapshot) {
@@ -82,48 +70,18 @@ public class SnapshotTaker {
     List<Long> timePartitions = dataRegion.getTimePartitions();
     for (Long timePartition : timePartitions) {
       List<String> seqDataDirs = getAllDataDirOfOnePartition(true, timePartition);
-      File seqTargetDir =
-          new File(
-              snapshotDirPath
-                  + File.separator
-                  + IoTDBConstant.SEQUENCE_FLODER_NAME
-                  + File.separator
-                  + dataRegion.getLogicalStorageGroupName()
-                  + File.separator
-                  + dataRegion.getDataRegionId()
-                  + File.separator
-                  + timePartition);
-      if (!seqTargetDir.mkdirs()) {
-        LOGGER.error("Failed to create target directory {}", seqTargetDir);
-        return false;
-      }
 
       try {
-        createFileSnapshot(seqDataDirs, seqTargetDir);
+        createFileSnapshot(seqDataDirs, snapshotDir, true, timePartition);
       } catch (IOException e) {
         LOGGER.error("Fail to create snapshot", e);
         return false;
       }
 
       List<String> unseqDataDirs = getAllDataDirOfOnePartition(false, timePartition);
-      File unseqTargetDir =
-          new File(
-              snapshotDirPath
-                  + File.separator
-                  + IoTDBConstant.UNSEQUENCE_FLODER_NAME
-                  + File.separator
-                  + dataRegion.getLogicalStorageGroupName()
-                  + File.separator
-                  + dataRegion.getDataRegionId()
-                  + File.separator
-                  + timePartition);
-      if (!unseqTargetDir.mkdirs()) {
-        LOGGER.error("Failed to create target directory {}", seqTargetDir);
-        return false;
-      }
 
       try {
-        createFileSnapshot(unseqDataDirs, unseqTargetDir);
+        createFileSnapshot(unseqDataDirs, snapshotDir, false, timePartition);
       } catch (IOException e) {
         LOGGER.error("Fail to create snapshot", e);
         return false;
@@ -159,7 +117,9 @@ public class SnapshotTaker {
     return resultDirs;
   }
 
-  private void createFileSnapshot(List<String> sourceDirPaths, File targetDir) throws IOException {
+  private void createFileSnapshot(
+      List<String> sourceDirPaths, File targetDir, boolean sequence, long timePartition)
+      throws IOException {
     for (String sourceDirPath : sourceDirPaths) {
       File sourceDir = new File(sourceDirPath);
       if (!sourceDir.exists()) {
@@ -172,13 +132,27 @@ public class SnapshotTaker {
                   name.endsWith(".tsfile")
                       || name.endsWith(TsFileResource.RESOURCE_SUFFIX)
                       || name.endsWith(ModificationFile.FILE_SUFFIX)
-                      || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX));
+                      || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX)
+                      || name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
+                      || name.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)
+                      || name.endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)
+                      || name.endsWith(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX));
       if (files == null || files.length == 0) {
         continue;
       }
 
       for (File file : files) {
-        File linkFile = new File(targetDir, file.getName());
+        String newFileName =
+            (sequence ? "seq" : "unseq")
+                + SNAPSHOT_FILE_INFO_SEP_STR
+                + dataRegion.getLogicalStorageGroupName()
+                + SNAPSHOT_FILE_INFO_SEP_STR
+                + dataRegion.getDataRegionId()
+                + SNAPSHOT_FILE_INFO_SEP_STR
+                + timePartition
+                + SNAPSHOT_FILE_INFO_SEP_STR
+                + file.getName();
+        File linkFile = new File(targetDir, newFileName);
         Files.createLink(linkFile.toPath(), file.toPath());
       }
     }

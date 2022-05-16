@@ -2438,7 +2438,7 @@ public class DataRegion {
     //    } catch (Exception e) {
     //      logger.error("exception occurs", e);
     //    }
-    new SnapshotLoader("../snapshot", "root.test", "0").loadSnapshot();
+    new SnapshotLoader("../snapshot", "root.test", "0").loadSnapshotForStateMachine();
   }
 
   private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)

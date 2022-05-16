@@ -353,7 +353,7 @@ public class IoTDBConfig {
   private boolean enableUnseqSpaceCompaction = true;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = false;
+  private boolean enableCrossSpaceCompaction = true;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy

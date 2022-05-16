@@ -124,6 +124,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         // indicates that the cross compaction is complete and the result can be reused during a
         // restart recovery
         compactionLogger.close();
+        Thread.sleep(1000000);
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
         performer.setTargetFiles(targetTsfileResourceList);

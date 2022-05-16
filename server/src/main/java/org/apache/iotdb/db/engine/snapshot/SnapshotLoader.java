@@ -47,26 +47,10 @@ public class SnapshotLoader {
   }
 
   public DataRegion loadSnapshot() {
-    File seqDataDir =
-        new File(
-            dataDirPath
-                + File.separator
-                + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator
-                + storageGroupName
-                + File.separator
-                + dataRegionId);
-    File unseqDataDir =
-        new File(
-            dataDirPath
-                + File.separator
-                + IoTDBConstant.UNSEQUENCE_FLODER_NAME
-                + File.separator
-                + storageGroupName
-                + File.separator
-                + dataRegionId);
-    if (!seqDataDir.exists() && !unseqDataDir.exists()) {
-      return null;
+    File dataDir = new File(dataDirPath);
+    if (!dataDir.exists()) {
+      throw new RuntimeException(
+          String.format("Failed to load snapshot from %s because it does not exist", dataDir));
     }
     try {
       return DataRegion.recoverFromSnapshot(
@@ -75,7 +59,7 @@ public class SnapshotLoader {
           dataDirPath,
           StorageEngine.getInstance().getSystemDir() + File.separator + storageGroupName);
     } catch (Exception e) {
-      LOGGER.error("Exception occurs while load snapshot from {}", seqDataDir, e);
+      LOGGER.error("Exception occurs while load snapshot from {}", dataDir, e);
       return null;
     }
   }
@@ -157,39 +141,10 @@ public class SnapshotLoader {
                 + storageGroupName
                 + File.separator
                 + dataRegionId);
-    File seqSourceDataDir =
-        new File(
-            dataDirPath
-                + File.separator
-                + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator
-                + storageGroupName
-                + File.separator
-                + dataRegionId);
-    File unseqSourceDataDir =
-        new File(
-            dataDirPath
-                + File.separator
-                + IoTDBConstant.UNSEQUENCE_FLODER_NAME
-                + File.separator
-                + storageGroupName
-                + File.separator
-                + dataRegionId);
-    File[] seqTimePartitionDirs = seqSourceDataDir.listFiles();
-    if (seqTimePartitionDirs != null) {
+    File sourceDataDir = new File(dataDirPath);
+    if (sourceDataDir.exists()) {
       try {
-        createLinksFromSnapshotDirToDataDir(seqTimePartitionDirs, seqBaseDir);
-      } catch (IOException e) {
-        LOGGER.error(
-            "Exception occurs when creating links from snapshot directory to data directory", e);
-        return null;
-      }
-    }
-
-    File[] unseqTimePartitionDirs = unseqSourceDataDir.listFiles();
-    if (unseqTimePartitionDirs != null) {
-      try {
-        createLinksFromSnapshotDirToDataDir(unseqTimePartitionDirs, unseqBaseDir);
+        createLinksFromSnapshotDirToDataDir(sourceDataDir, seqBaseDir, unseqBaseDir);
       } catch (IOException e) {
         LOGGER.error(
             "Exception occurs when creating links from snapshot directory to data directory", e);
@@ -201,31 +156,32 @@ public class SnapshotLoader {
     return loadSnapshot();
   }
 
-  private void createLinksFromSnapshotDirToDataDir(File[] timePartitionDirs, File baseDir)
-      throws IOException {
-    for (File seqTimePartitionDir : timePartitionDirs) {
-      String[] splittedPathInfo =
-          seqTimePartitionDir
-              .getAbsolutePath()
-              .split(File.separator.equals("\\") ? "\\\\" : File.separator);
-      String timePartition = splittedPathInfo[splittedPathInfo.length - 1];
-      File targetDirForThisTimePartition = new File(baseDir, timePartition);
-      if (!targetDirForThisTimePartition.mkdirs()) {
+  private void createLinksFromSnapshotDirToDataDir(
+      File sourceDir, File seqBaseDir, File unseqBaseDir) throws IOException {
+    File[] files = sourceDir.listFiles();
+    if (files == null) {
+      return;
+    }
+    for (File sourceFile : files) {
+      String[] fileInfo = sourceFile.getName().split(SnapshotTaker.SNAPSHOT_FILE_INFO_SEP_STR);
+      if (fileInfo.length != 5) {
+        continue;
+      }
+      boolean seq = fileInfo[0].equals("seq");
+      String timePartition = fileInfo[3];
+      String fileName = fileInfo[4];
+      File targetDirForThisTimePartition = new File(seq ? seqBaseDir : unseqBaseDir, timePartition);
+      if (!targetDirForThisTimePartition.exists() && !targetDirForThisTimePartition.mkdirs()) {
         throw new IOException(
             String.format("Failed to make directory %s", targetDirForThisTimePartition));
       }
-      File[] sourceTsFiles = seqTimePartitionDir.listFiles();
-      if (sourceTsFiles != null) {
-        for (File sourceFile : sourceTsFiles) {
-          File targetFile = new File(targetDirForThisTimePartition, sourceFile.getName());
-          try {
-            Files.createLink(targetFile.toPath(), sourceFile.toPath());
-          } catch (IOException e) {
-            throw new IOException(
-                String.format("Failed to create hard link from %s to %s", sourceFile, targetFile),
-                e);
-          }
-        }
+
+      File targetFile = new File(targetDirForThisTimePartition, fileName);
+      try {
+        Files.createLink(targetFile.toPath(), sourceFile.toPath());
+      } catch (IOException e) {
+        throw new IOException(
+            String.format("Failed to create hard link from %s to %s", sourceFile, targetFile), e);
       }
     }
   }
