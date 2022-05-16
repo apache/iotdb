@@ -95,6 +95,7 @@ public class RawDataAggregateOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     // 1. Clear previous aggregation result
+    curTimeRange = timeRangeIterator.nextTimeRange();
     for (Aggregator aggregator : aggregators) {
       aggregator.reset();
       aggregator.setTimeRange(curTimeRange);
@@ -116,11 +117,7 @@ public class RawDataAggregateOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    if (!timeRangeIterator.hasNextTimeRange()) {
-      return false;
-    }
-    curTimeRange = timeRangeIterator.nextTimeRange();
-    return true;
+    return timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
