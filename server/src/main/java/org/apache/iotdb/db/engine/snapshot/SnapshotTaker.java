@@ -53,7 +53,9 @@ public class SnapshotTaker {
   public boolean takeFullSnapshot(String snapshotDirPath, boolean flushBeforeSnapshot)
       throws DirectoryNotLegalException, IOException {
     File snapshotDir = new File(snapshotDirPath);
-    if (snapshotDir.exists() && snapshotDir.listFiles() != null) {
+    if (snapshotDir.exists()
+        && snapshotDir.listFiles() != null
+        && snapshotDir.listFiles().length > 0) {
       // the directory should be empty or not exists
       throw new DirectoryNotLegalException(
           String.format("%s already exists and is not empty", snapshotDirPath));

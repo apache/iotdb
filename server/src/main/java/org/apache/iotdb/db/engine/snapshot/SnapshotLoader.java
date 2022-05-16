@@ -46,7 +46,7 @@ public class SnapshotLoader {
     this.dataRegionId = dataRegionId;
   }
 
-  public DataRegion loadSnapshot() {
+  private DataRegion loadSnapshot() {
     File dataDir = new File(dataDirPath);
     if (!dataDir.exists()) {
       throw new RuntimeException(
