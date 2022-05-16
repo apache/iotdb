@@ -83,6 +83,7 @@ struct THeartbeatResp {
 }
 
 struct TDataNodeInfo {
-  1: required i32 cpuCoreNum
-  2: required i64 maxMemory
+  1: required TDataNodeLocation location
+  2: required i32 cpuCoreNum
+  3: required i64 maxMemory
 }

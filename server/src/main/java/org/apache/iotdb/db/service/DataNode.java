@@ -143,7 +143,8 @@ public class DataNode implements DataNodeMBean {
       try {
         ConfigNodeClient configNodeClient = new ConfigNodeClient();
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        TDataNodeRegisterReq req = new TDataNodeRegisterReq();
+
+        // Set DataNodeLocation
         TDataNodeLocation location = new TDataNodeLocation();
         location.setDataNodeId(config.getDataNodeId());
         location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
@@ -153,13 +154,15 @@ public class DataNode implements DataNodeMBean {
             new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
         location.setConsensusEndPoint(
             new TEndPoint(config.getInternalIp(), config.getConsensusPort()));
-        req.setDataNodeLocation(location);
 
+        // Set DataNodeInfo
         TDataNodeInfo info = new TDataNodeInfo();
+        info.setLocation(location);
         info.setCpuCoreNum(Runtime.getRuntime().availableProcessors());
         info.setMaxMemory(Runtime.getRuntime().totalMemory());
-        req.setDataNodeInfo(info);
 
+        TDataNodeRegisterReq req = new TDataNodeRegisterReq();
+        req.setDataNodeInfo(info);
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
 
         // store config node lists from resp

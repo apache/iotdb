@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -28,7 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -83,21 +84,22 @@ public class NodeManager {
   public DataSet registerDataNode(RegisterDataNodeReq req) {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
 
-    if (nodeInfo.containsValue(req.getLocation())) {
+    if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
       // Reset client
-      AsyncDataNodeClientPool.getInstance().resetClient(req.getLocation().getInternalEndPoint());
+      AsyncDataNodeClientPool.getInstance()
+          .resetClient(req.getInfo().getLocation().getInternalEndPoint());
 
       TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
       dataSet.setStatus(status);
     } else {
       // Persist DataNodeInfo
-      req.getLocation().setDataNodeId(nodeInfo.generateNextDataNodeId());
+      req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextDataNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(req);
       dataSet.setStatus(resp.getStatus());
     }
 
-    dataSet.setDataNodeId(req.getLocation().getDataNodeId());
+    dataSet.setDataNodeId(req.getInfo().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
     setGlobalConfig(dataSet);
     return dataSet;
@@ -110,8 +112,8 @@ public class NodeManager {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeLocationsResp getDataNodeInfo(GetDataNodeInfoReq req) {
-    return (DataNodeLocationsResp) getConsensusManager().read(req).getDataset();
+  public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoReq req) {
+    return (DataNodeInfosResp) getConsensusManager().read(req).getDataset();
   }
 
   public int getOnlineDataNodeCount() {
@@ -119,22 +121,14 @@ public class NodeManager {
   }
 
   /**
-   * Only leader use this interface.
+   * Only leader use this interface
    *
-   * @return all online DataNodes
+   * @param dataNodeId Specific DataNodeId
+   * @return All online DataNodes if dataNodeId equals -1. And return the specific DataNode
+   *     otherwise.
    */
-  public List<TDataNodeLocation> getOnlineDataNodes() {
-    return nodeInfo.getOnlineDataNodes();
-  }
-
-  /**
-   * Only leader use this interface.
-   *
-   * @param dataNodeId the specific DataNodeId
-   * @return the specific DataNodeLocation
-   */
-  public TDataNodeLocation getOnlineDataNode(int dataNodeId) {
-    return nodeInfo.getOnlineDataNode(dataNodeId);
+  public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
+    return nodeInfo.getOnlineDataNodes(dataNodeId);
   }
 
   /**

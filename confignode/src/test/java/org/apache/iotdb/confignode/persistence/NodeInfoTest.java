@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -61,10 +62,12 @@ public class NodeInfoTest {
   @Test
   public void testSnapshot() throws TException, IOException {
 
-    RegisterDataNodeReq registerDataNodeReq = new RegisterDataNodeReq(generateTDataNodeLocation(1));
+    RegisterDataNodeReq registerDataNodeReq =
+        new RegisterDataNodeReq(new TDataNodeInfo(generateTDataNodeLocation(1), 16, 34359738368L));
     nodeInfo.registerDataNode(registerDataNodeReq);
 
-    registerDataNodeReq = new RegisterDataNodeReq(generateTDataNodeLocation(2));
+    registerDataNodeReq =
+        new RegisterDataNodeReq(new TDataNodeInfo(generateTDataNodeLocation(2), 16, 34359738368L));
     nodeInfo.registerDataNode(registerDataNodeReq);
 
     Set<TDataNodeLocation> drainingDataNodes_before = new HashSet<>();
@@ -87,7 +90,6 @@ public class NodeInfoTest {
     Assert.assertEquals(drainingDataNodes_before, drainingDataNodes_after);
 
     List<TDataNodeLocation> onlineDataNodes_after = nodeInfo.getOnlineDataNodes();
-
     Assert.assertEquals(onlineDataNodes_before, onlineDataNodes_after);
   }
 

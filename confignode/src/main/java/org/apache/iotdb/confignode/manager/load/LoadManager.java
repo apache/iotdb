@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.THeartbeatReq;
@@ -105,7 +106,7 @@ public class LoadManager implements Runnable {
       throws NotEnoughDataNodeException, MetadataException {
     CreateRegionsReq createRegionsReq = new CreateRegionsReq();
 
-    List<TDataNodeLocation> onlineDataNodes = getNodeManager().getOnlineDataNodes();
+    List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllocatedRegions();
 
     for (String storageGroup : storageGroups) {
@@ -260,19 +261,27 @@ public class LoadManager implements Runnable {
 
   @Override
   public void run() {
+    int balanceCount = 0;
     while (true) {
       try {
 
         if (getConsensusManager().isLeader()) {
           // Ask DataNode for heartbeat in every heartbeat interval
-          List<TDataNodeLocation> onlineDataNodes = getNodeManager().getOnlineDataNodes();
-          for (TDataNodeLocation dataNodeLocation : onlineDataNodes) {
+          List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
+          for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
             HeartbeatHandler handler =
-                new HeartbeatHandler(dataNodeLocation.getDataNodeId(), heartbeatCache);
+                new HeartbeatHandler(dataNodeInfo.getLocation().getDataNodeId(), heartbeatCache);
             AsyncDataNodeClientPool.getInstance()
-                .getHeartBeat(dataNodeLocation.getInternalEndPoint(), genHeartbeatReq(), handler);
+                .getHeartBeat(
+                    dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
           }
 
+          balanceCount += 1;
+          // TODO: Adjust load balancing period
+          if (balanceCount == 10) {
+            doLoadBalancing();
+            balanceCount = 0;
+          }
         } else {
           heartbeatCache.discardAllCache();
         }
@@ -284,4 +293,7 @@ public class LoadManager implements Runnable {
       }
     }
   }
+
+  /** Load balancing */
+  private void doLoadBalancing() {}
 }

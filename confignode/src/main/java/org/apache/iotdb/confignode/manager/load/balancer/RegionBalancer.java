@@ -18,4 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager.load.balancer;
 
-public class RegionBalancer {}
+public class RegionBalancer {
+
+
+}

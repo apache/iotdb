@@ -23,11 +23,10 @@ namespace py iotdb.thrift.confignode
 
 // DataNode
 struct TDataNodeRegisterReq {
-  1: required common.TDataNodeLocation dataNodeLocation
-  2: required common.TDataNodeInfo dataNodeInfo
+  1: required common.TDataNodeInfo dataNodeInfo
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
-  3: optional map<string, TStorageGroupSchema> statusMap
+  2: optional map<string, TStorageGroupSchema> statusMap
 }
 
 struct TGlobalConfig {
@@ -44,10 +43,10 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
 }
 
-struct TDataNodeLocationResp {
+struct TDataNodeInfoResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeLocation>
-  2: optional map<i32, common.TDataNodeLocation> dataNodeLocationMap
+  2: optional map<i32, common.TDataNodeInfo> dataNodeInfoMap
 }
 
 // StorageGroup
@@ -181,7 +180,7 @@ service ConfigIService {
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  TDataNodeLocationResp getDataNodeLocations(i32 dataNodeId)
+  TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
 
   /* StorageGroup */
 
