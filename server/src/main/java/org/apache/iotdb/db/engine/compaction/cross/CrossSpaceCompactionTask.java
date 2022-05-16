@@ -160,9 +160,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors
-      if (throwable instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      } else {
+      if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
             "{} [Compaction] Meet errors in cross space compaction.", fullStorageGroupName);
       }
