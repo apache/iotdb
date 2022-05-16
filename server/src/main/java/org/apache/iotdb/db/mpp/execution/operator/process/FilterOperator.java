@@ -70,8 +70,9 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  protected void initTransformers() throws QueryProcessException, IOException {
-    super.initTransformers();
+  protected void initTransformers(TypeProvider typeProvider)
+      throws QueryProcessException, IOException {
+    super.initTransformers(typeProvider);
 
     filterPointReader = transformers[transformers.length - 1];
     if (filterPointReader.getDataType() != TSDataType.BOOLEAN) {

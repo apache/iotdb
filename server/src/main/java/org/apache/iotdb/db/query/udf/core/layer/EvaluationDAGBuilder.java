@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -47,18 +47,20 @@ public class EvaluationDAGBuilder {
   // sub-expressions, but they can share the same point reader. we cache the point reader here to
   // make sure that only one point reader will be built for one expression.
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
-  private final Map<Expression, TSDataType> expressionDataTypeMap;
+  private final TypeProvider typeProvider;
 
   public EvaluationDAGBuilder(
       long queryId,
       RawQueryInputLayer inputLayer,
       Expression[] outputExpressions,
       UDTFContext udtfContext,
+      TypeProvider typeProvider,
       float memoryBudgetInMB) {
     this.queryId = queryId;
     this.inputLayer = inputLayer;
     this.outputExpressions = outputExpressions;
     this.udtfContext = udtfContext;
+    this.typeProvider = typeProvider;
 
     int size = inputLayer.getInputColumnCount();
     outputPointReaders = new LayerPointReader[size];
@@ -66,7 +68,6 @@ public class EvaluationDAGBuilder {
     memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
 
     expressionIntermediateLayerMap = new HashMap<>();
-    expressionDataTypeMap = new HashMap<>();
   }
 
   public EvaluationDAGBuilder buildLayerMemoryAssigner() {
@@ -87,7 +88,7 @@ public class EvaluationDAGBuilder {
                   udtfContext,
                   inputLayer,
                   expressionIntermediateLayerMap,
-                  expressionDataTypeMap,
+                  typeProvider,
                   memoryAssigner)
               .constructPointReader();
     }

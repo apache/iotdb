@@ -293,6 +293,103 @@ public class FunctionExpression extends Expression {
       UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      float memoryBudgetInMB = memoryAssigner.assign();
+      Transformer transformer;
+      if (isBuiltInAggregationFunctionExpression) {
+        transformer =
+            new TransparentTransformer(
+                rawTimeSeriesInputLayer.constructValuePointReader(inputColumnIndex));
+      } else {
+        IntermediateLayer udfInputIntermediateLayer =
+            constructUdfInputIntermediateLayer(
+                queryId,
+                udtfContext,
+                rawTimeSeriesInputLayer,
+                expressionIntermediateLayerMap,
+                typeProvider,
+                memoryAssigner);
+        transformer =
+            constructUdfTransformer(
+                queryId, udtfContext, typeProvider, memoryAssigner, udfInputIntermediateLayer);
+      }
+      expressionIntermediateLayerMap.put(
+          this,
+          memoryAssigner.getReference(this) == 1
+              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, transformer)
+              : new SingleInputColumnMultiReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, transformer));
+    }
+
+    return expressionIntermediateLayerMap.get(this);
+  }
+
+  private IntermediateLayer constructUdfInputIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
+    List<IntermediateLayer> intermediateLayers = new ArrayList<>();
+    for (Expression expression : expressions) {
+      intermediateLayers.add(
+          expression.constructIntermediateLayer(
+              queryId,
+              udtfContext,
+              rawTimeSeriesInputLayer,
+              expressionIntermediateLayerMap,
+              typeProvider,
+              memoryAssigner));
+    }
+    return intermediateLayers.size() == 1
+        ? intermediateLayers.get(0)
+        : new MultiInputColumnIntermediateLayer(
+            this,
+            queryId,
+            memoryAssigner.assign(),
+            intermediateLayers.stream()
+                .map(IntermediateLayer::constructPointReader)
+                .collect(Collectors.toList()));
+  }
+
+  private UDFQueryTransformer constructUdfTransformer(
+      long queryId,
+      UDTFContext udtfContext,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner,
+      IntermediateLayer udfInputIntermediateLayer)
+      throws QueryProcessException, IOException {
+    UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
+
+    executor.beforeStart(queryId, memoryAssigner.assign(), typeProvider);
+
+    AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
+    switch (accessStrategy.getAccessStrategyType()) {
+      case ROW_BY_ROW:
+        return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
+      case SLIDING_SIZE_WINDOW:
+      case SLIDING_TIME_WINDOW:
+        return new UDFQueryRowWindowTransformer(
+            udfInputIntermediateLayer.constructRowWindowReader(
+                accessStrategy, memoryAssigner.assign()),
+            executor);
+      default:
+        throw new UnsupportedOperationException("Unsupported transformer access strategy");
+    }
+  }
+
+  @Override
+  public IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException {
@@ -333,6 +430,8 @@ public class FunctionExpression extends Expression {
     return expressionIntermediateLayerMap.get(this);
   }
 
+  // TODO: remove it after MPP finished
+  @Deprecated
   private IntermediateLayer constructUdfInputIntermediateLayer(
       long queryId,
       UDTFContext udtfContext,
@@ -363,6 +462,8 @@ public class FunctionExpression extends Expression {
                 .collect(Collectors.toList()));
   }
 
+  // TODO: remove it after MPP finished
+  @Deprecated
   private UDFQueryTransformer constructUdfTransformer(
       long queryId,
       UDTFContext udtfContext,

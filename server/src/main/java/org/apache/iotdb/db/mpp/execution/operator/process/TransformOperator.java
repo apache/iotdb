@@ -88,9 +88,8 @@ public class TransformOperator implements ProcessOperator {
 
     initInputLayer(inputDataTypes);
     initUdtfContext(zoneId);
-    initTransformers();
+    initTransformers(typeProvider);
     readyForFirstIteration();
-    updateTypeProvider(typeProvider);
   }
 
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
@@ -106,7 +105,8 @@ public class TransformOperator implements ProcessOperator {
     udtfContext.constructUdfExecutors(outputExpressions);
   }
 
-  protected void initTransformers() throws QueryProcessException, IOException {
+  protected void initTransformers(TypeProvider typeProvider)
+      throws QueryProcessException, IOException {
     UDFRegistrationService.getInstance().acquireRegistrationLock();
     try {
       // This statement must be surrounded by the registration lock.
@@ -118,6 +118,7 @@ public class TransformOperator implements ProcessOperator {
                   inputLayer,
                   outputExpressions,
                   udtfContext,
+                  typeProvider,
                   udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
               .buildLayerMemoryAssigner()
               .buildResultColumnPointReaders()
@@ -146,12 +147,6 @@ public class TransformOperator implements ProcessOperator {
       }
       timeHeap.add(reader.currentTime());
       break;
-    }
-  }
-
-  private void updateTypeProvider(TypeProvider typeProvider) {
-    for (int i = 0; i < transformers.length; ++i) {
-      typeProvider.setType(outputExpressions[i].toString(), transformers[i].getDataType());
     }
   }
 

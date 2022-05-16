@@ -139,12 +139,23 @@ public abstract class Expression {
 
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
+  // TODO: remove after MPP finish
+  @Deprecated
   public abstract IntermediateLayer constructIntermediateLayer(
       long queryId,
       UDTFContext udtfContext,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException;
+
+  public abstract IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
 

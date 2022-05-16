@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -119,6 +120,24 @@ public class ConstantOperand extends LeafOperand {
       throws QueryProcessException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       expressionDataTypeMap.put(this, this.getDataType());
+      IntermediateLayer intermediateLayer =
+          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
+      expressionIntermediateLayerMap.put(this, intermediateLayer);
+    }
+
+    return expressionIntermediateLayerMap.get(this);
+  }
+
+  @Override
+  public IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
       IntermediateLayer intermediateLayer =
           new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
       expressionIntermediateLayerMap.put(this, intermediateLayer);

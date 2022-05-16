@@ -120,6 +120,32 @@ public class TimestampOperand extends LeafOperand {
   }
 
   @Override
+  public IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFContext udtfContext,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      TypeProvider typeProvider,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      float memoryBudgetInMB = memoryAssigner.assign();
+
+      LayerPointReader parentLayerPointReader = rawTimeSeriesInputLayer.constructTimePointReader();
+
+      expressionIntermediateLayerMap.put(
+          this,
+          memoryAssigner.getReference(this) == 1
+              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader)
+              : new SingleInputColumnMultiReferenceIntermediateLayer(
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader));
+    }
+
+    return expressionIntermediateLayerMap.get(this);
+  }
+
+  @Override
   protected boolean isConstantOperandInternal() {
     return false;
   }
