@@ -159,8 +159,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
       }
     } catch (Throwable throwable) {
-      // catch throwable instead of exception to handle OOM errors
-      LOGGER.error("Meet errors in cross space compaction.");
+      // catch throwable to handle OOM errors
+      if (throwable instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      } else {
+        LOGGER.error(
+            "{} [Compaction] Meet errors in cross space compaction.", fullStorageGroupName);
+      }
+
+      // handle exception
       CompactionExceptionHandler.handleException(
           fullStorageGroupName,
           logFile,

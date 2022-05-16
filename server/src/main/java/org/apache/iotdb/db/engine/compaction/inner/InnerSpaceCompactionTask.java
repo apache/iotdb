@@ -113,9 +113,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                 + File.separator
                 + targetTsFileResource.getTsFile().getName()
                 + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    CompactionLogger compactionLogger = null;
-    try {
-      compactionLogger = new CompactionLogger(logFile);
+    try (CompactionLogger compactionLogger = new CompactionLogger(logFile)) {
       compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
       compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
       LOGGER.info("{} [InnerSpaceCompactionTask] Close the logger", fullStorageGroupName);
@@ -200,13 +198,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         FileUtils.delete(logFile);
       }
     } catch (Throwable throwable) {
-      LOGGER.warn("{} [Compaction] Start to handle exception", fullStorageGroupName);
+      // catch throwable to handle OOM errors
       if (throwable instanceof InterruptedException) {
         Thread.currentThread().interrupt();
+      } else {
+        LOGGER.error(
+            "{} [Compaction] Meet errors in inner space compaction.", fullStorageGroupName);
       }
-      if (compactionLogger != null) {
-        compactionLogger.close();
-      }
+
+      // handle exception
       if (isSequence()) {
         CompactionExceptionHandler.handleException(
             fullStorageGroupName,
