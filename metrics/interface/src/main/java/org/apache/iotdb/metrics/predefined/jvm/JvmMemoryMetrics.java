@@ -38,7 +38,7 @@ public class JvmMemoryMetrics implements IMetricSet {
     for (BufferPoolMXBean bufferPoolBean :
         ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
       metricManager.getOrCreateAutoGauge(
-          "jvm.buffer.count",
+          "jvm.buffer.count.buffers",
           MetricLevel.IMPORTANT,
           bufferPoolBean,
           BufferPoolMXBean::getCount,
@@ -46,7 +46,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           bufferPoolBean.getName());
 
       metricManager.getOrCreateAutoGauge(
-          "jvm.buffer.memory.used",
+          "jvm.buffer.memory.used.bytes",
           MetricLevel.IMPORTANT,
           bufferPoolBean,
           BufferPoolMXBean::getMemoryUsed,
@@ -54,7 +54,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           bufferPoolBean.getName());
 
       metricManager.getOrCreateAutoGauge(
-          "jvm.buffer.total.capacity",
+          "jvm.buffer.total.capacity.bytes",
           MetricLevel.IMPORTANT,
           bufferPoolBean,
           BufferPoolMXBean::getTotalCapacity,
@@ -67,7 +67,7 @@ public class JvmMemoryMetrics implements IMetricSet {
       String area = MemoryType.HEAP.equals(memoryPoolBean.getType()) ? "heap" : "nonheap";
 
       metricManager.getOrCreateAutoGauge(
-          "jvm.memory.used",
+          "jvm.memory.used.bytes",
           MetricLevel.IMPORTANT,
           memoryPoolBean,
           (mem) -> (long) JvmUtils.getUsageValue(mem, MemoryUsage::getUsed),
@@ -77,7 +77,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           area);
 
       metricManager.getOrCreateAutoGauge(
-          "jvm.memory.committed",
+          "jvm.memory.committed.bytes",
           MetricLevel.IMPORTANT,
           memoryPoolBean,
           (mem) -> (long) JvmUtils.getUsageValue(mem, MemoryUsage::getCommitted),
@@ -87,7 +87,7 @@ public class JvmMemoryMetrics implements IMetricSet {
           area);
 
       metricManager.getOrCreateAutoGauge(
-          "jvm.memory.max",
+          "jvm.memory.max.bytes",
           MetricLevel.IMPORTANT,
           memoryPoolBean,
           (mem) -> (long) JvmUtils.getUsageValue(mem, MemoryUsage::getMax),

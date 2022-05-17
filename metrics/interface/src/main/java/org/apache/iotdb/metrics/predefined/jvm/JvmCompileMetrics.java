@@ -34,7 +34,7 @@ public class JvmCompileMetrics implements IMetricSet {
     CompilationMXBean compilationBean = ManagementFactory.getCompilationMXBean();
     if (compilationBean != null && compilationBean.isCompilationTimeMonitoringSupported()) {
       metricManager.getOrCreateAutoGauge(
-          "jvm.compilation.time",
+          "jvm.compilation.time.ms",
           MetricLevel.IMPORTANT,
           compilationBean,
           CompilationMXBean::getTotalCompilationTime,

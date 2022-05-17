@@ -35,22 +35,28 @@ public class JvmThreadMetrics implements IMetricSet {
     ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
 
     metricManager.getOrCreateAutoGauge(
-        "jvm.threads.peak", MetricLevel.IMPORTANT, threadBean, ThreadMXBean::getPeakThreadCount);
+        "jvm.threads.peak.threads",
+        MetricLevel.IMPORTANT,
+        threadBean,
+        ThreadMXBean::getPeakThreadCount);
 
     metricManager.getOrCreateAutoGauge(
-        "jvm.threads.daemon",
+        "jvm.threads.daemon.threads",
         MetricLevel.IMPORTANT,
         threadBean,
         ThreadMXBean::getDaemonThreadCount);
 
     metricManager.getOrCreateAutoGauge(
-        "jvm.threads.live", MetricLevel.IMPORTANT, threadBean, ThreadMXBean::getThreadCount);
+        "jvm.threads.live.threads",
+        MetricLevel.IMPORTANT,
+        threadBean,
+        ThreadMXBean::getThreadCount);
 
     try {
       threadBean.getAllThreadIds();
       for (Thread.State state : Thread.State.values()) {
         metricManager.getOrCreateAutoGauge(
-            "jvm.threads.states",
+            "jvm.threads.states.threads",
             MetricLevel.IMPORTANT,
             threadBean,
             (bean) -> getThreadStateCount(bean, state),

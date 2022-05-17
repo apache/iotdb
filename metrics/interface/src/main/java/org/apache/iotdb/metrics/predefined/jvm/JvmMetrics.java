@@ -37,6 +37,9 @@ public class JvmMetrics implements IMetricSet {
 
     JvmMemoryMetrics jvmMemoryMetricSet = new JvmMemoryMetrics();
     jvmMemoryMetricSet.bindTo(metricManager);
+
+    JvmThreadMetrics jvmThreadMetrics = new JvmThreadMetrics();
+    jvmThreadMetrics.bindTo(metricManager);
   }
 
   @Override

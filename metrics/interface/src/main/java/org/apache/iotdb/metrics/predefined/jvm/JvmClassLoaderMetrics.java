@@ -34,12 +34,12 @@ public class JvmClassLoaderMetrics implements IMetricSet {
     ClassLoadingMXBean classLoadingBean = ManagementFactory.getClassLoadingMXBean();
 
     metricManager.getOrCreateAutoGauge(
-        "jvm.classes.loaded",
+        "jvm.classes.loaded.classes",
         MetricLevel.IMPORTANT,
         classLoadingBean,
         ClassLoadingMXBean::getLoadedClassCount);
     metricManager.getOrCreateAutoGauge(
-        "jvm.classes.unloaded",
+        "jvm.classes.unloaded.classes",
         MetricLevel.IMPORTANT,
         classLoadingBean,
         ClassLoadingMXBean::getUnloadedClassCount);

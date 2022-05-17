@@ -102,18 +102,20 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
 
     AtomicLong maxDataSize = new AtomicLong((long) maxLongLivedPoolBytes);
     metricManager.getOrCreateAutoGauge(
-        "jvm.gc.max.data.size", MetricLevel.IMPORTANT, maxDataSize, AtomicLong::get);
+        "jvm.gc.max.data.size.bytes", MetricLevel.IMPORTANT, maxDataSize, AtomicLong::get);
 
     AtomicLong liveDataSize = new AtomicLong();
     metricManager.getOrCreateAutoGauge(
-        "jvm.gc.live.data.size", MetricLevel.IMPORTANT, liveDataSize, AtomicLong::get);
+        "jvm.gc.live.data.size.bytes", MetricLevel.IMPORTANT, liveDataSize, AtomicLong::get);
 
     Counter allocatedBytes =
-        metricManager.getOrCreateCounter("jvm.gc.memory.allocated", MetricLevel.IMPORTANT);
+        metricManager.getOrCreateCounter("jvm.gc.memory.allocated.bytes", MetricLevel.IMPORTANT);
+
     Counter promotedBytes =
         (oldGenPoolName == null)
             ? null
-            : metricManager.getOrCreateCounter("jvm.gc.memory.promoted", MetricLevel.IMPORTANT);
+            : metricManager.getOrCreateCounter(
+                "jvm.gc.memory.promoted.bytes", MetricLevel.IMPORTANT);
 
     // start watching for GC notifications
     final AtomicLong heapPoolSizeAfterGc = new AtomicLong();
