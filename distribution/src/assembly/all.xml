@@ -72,12 +72,12 @@
         </fileSet>
         <fileSet>
             <outputDirectory>datanode/sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
+            <directory>${maven.multiModuleProjectDirectory}/distribution/src/assembly/resources/datanode/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>confignode/sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/sbin</directory>
+            <directory>${maven.multiModuleProjectDirectory}/distribution/src/assembly/resources/confignode/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
@@ -87,7 +87,7 @@
         </fileSet>
         <fileSet>
             <outputDirectory>datanode/sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/sbin</directory>
+            <directory>${maven.multiModuleProjectDirectory}/distribution/src/assembly/resources/cli/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
