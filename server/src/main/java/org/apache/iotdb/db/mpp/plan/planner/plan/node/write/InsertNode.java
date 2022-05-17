@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
@@ -42,7 +43,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public abstract class InsertNode extends WritePlanNode {
+public abstract class InsertNode extends WritePlanNode implements IConsensusRequest {
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -136,6 +137,17 @@ public abstract class InsertNode extends WritePlanNode {
 
   public void setDeviceID(IDeviceID deviceID) {
     this.deviceID = deviceID;
+  }
+
+  /** Deserialize via {@link org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType#deserialize(ByteBuffer)} */
+  @Override
+  public void serializeRequest(ByteBuffer buffer) {
+    serializeAttributes(buffer);
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
   }
 
   /** Serialized size of measurement schemas, ignoring failed time series */
@@ -267,11 +279,6 @@ public abstract class InsertNode extends WritePlanNode {
     }
   }
   // endregion
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
-  }
 
   @Override
   public boolean equals(Object o) {
