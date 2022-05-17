@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCo
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -101,8 +102,10 @@ public enum PlanNodeType {
   DEVICE_MERGE((short) 35),
   SCHEMA_FETCH_MERGE((short) 36),
   TRANSFORM((short) 37),
-  CHILD_PATHS_SCAN((short) 38),
-  CHILD_NODES_SCAN((short) 39);
+  DELETE_REGION((short) 38),
+  CREATE_MULTI_TIME_SERIES((short) 39),
+  CHILD_PATHS_SCAN((short) 40),
+  CHILD_NODES_SCAN((short) 41);
 
   private final short nodeType;
 
@@ -203,8 +206,12 @@ public enum PlanNodeType {
       case 37:
         return TransformNode.deserialize(buffer);
       case 38:
-        return ChildPathsSchemaScanNode.deserialize(buffer);
+        return DeleteRegionNode.deserialize(buffer);
       case 39:
+        return CreateMultiTimeSeriesNode.deserialize(buffer);
+      case 40:
+        return ChildPathsSchemaScanNode.deserialize(buffer);
+      case 41:
         return ChildNodesSchemaScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);

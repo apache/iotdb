@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
@@ -31,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -39,13 +41,15 @@ import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationF
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.PartitionInfo;
-import org.apache.iotdb.confignode.persistence.SnapshotProcessor;
+import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -69,11 +73,19 @@ public class ConfigRequestExecutor {
 
   private final AuthorInfo authorInfo;
 
-  public ConfigRequestExecutor() {
-    this.nodeInfo = NodeInfo.getInstance();
-    this.clusterSchemaInfo = ClusterSchemaInfo.getInstance();
-    this.partitionInfo = PartitionInfo.getInstance();
-    this.authorInfo = AuthorInfo.getInstance();
+  private final ProcedureInfo procedureInfo;
+
+  public ConfigRequestExecutor(
+      NodeInfo nodeInfo,
+      ClusterSchemaInfo clusterSchemaInfo,
+      PartitionInfo partitionInfo,
+      AuthorInfo authorInfo,
+      ProcedureInfo procedureInfo) {
+    this.nodeInfo = nodeInfo;
+    this.clusterSchemaInfo = clusterSchemaInfo;
+    this.partitionInfo = partitionInfo;
+    this.authorInfo = authorInfo;
+    this.procedureInfo = procedureInfo;
   }
 
   public DataSet executorQueryPlan(ConfigRequest req)
@@ -116,6 +128,7 @@ public class ConfigRequestExecutor {
       case SetStorageGroup:
         return clusterSchemaInfo.setStorageGroup((SetStorageGroupReq) req);
       case DeleteStorageGroup:
+        partitionInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
         return clusterSchemaInfo.deleteStorageGroup((DeleteStorageGroupReq) req);
       case SetTTL:
         return clusterSchemaInfo.setTTL((SetTTLReq) req);
@@ -126,6 +139,10 @@ public class ConfigRequestExecutor {
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalReq) req);
       case CreateRegions:
+        TSStatus status = clusterSchemaInfo.createRegions((CreateRegionsReq) req);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
         return partitionInfo.createRegions((CreateRegionsReq) req);
       case DeleteRegions:
         return partitionInfo.deleteRegions((DeleteRegionsReq) req);
@@ -133,6 +150,10 @@ public class ConfigRequestExecutor {
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionReq) req);
       case CreateDataPartition:
         return partitionInfo.createDataPartition((CreateDataPartitionReq) req);
+      case UpdateProcedure:
+        return procedureInfo.updateProcedure((UpdateProcedureReq) req);
+      case DeleteProcedure:
+        return procedureInfo.deleteProcedure((DeleteProcedureReq) req);
       case CreateUser:
       case CreateRole:
       case DropUser:
@@ -212,6 +233,7 @@ public class ConfigRequestExecutor {
     List<SnapshotProcessor> allAttributes = new ArrayList<>();
     allAttributes.add(clusterSchemaInfo);
     allAttributes.add(partitionInfo);
+    allAttributes.add(nodeInfo);
     return allAttributes;
   }
 }
