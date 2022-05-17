@@ -91,7 +91,7 @@ public class SessionExample {
     //    nonQuery();
     //    query();
     //    queryWithTimeout();
-    //    rawDataQuery();
+    rawDataQuery();
     //    lastDataQuery();
     //    queryByIterator();
     //    deleteData();

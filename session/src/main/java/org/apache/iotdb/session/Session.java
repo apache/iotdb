@@ -647,7 +647,7 @@ public class Session {
 
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
-    return defaultSessionConnection.checkTimeseriesExists(path, queryTimeoutInMs);
+    return false;
   }
 
   public void setQueryTimeout(long timeoutInMs) {

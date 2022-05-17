@@ -963,7 +963,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
       }
 
       QUERY_FREQUENCY_RECORDER.incrementAndGet();
-      AUDIT_LOGGER.debug("Session {} execute row data Query", req.sessionId);
+      AUDIT_LOGGER.debug("Session {} execute Row Data Query: {}", req.sessionId, req);
       long queryId = SESSION_MANAGER.requestQueryId(req.statementId, true);
       QueryId id = new QueryId(String.valueOf(queryId));
       // create and cache dataset
@@ -996,9 +996,13 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
     } catch (Exception e) {
       // TODO call the coordinator to release query resource
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, OperationType.EXECUTE_RAW_DATA_QUERY));
+          onQueryException(e, "\"" + req + "\". " + OperationType.EXECUTE_RAW_DATA_QUERY));
     } finally {
       addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      long costTime = System.currentTimeMillis() - startTime;
+      if (costTime >= CONFIG.getSlowQueryThreshold()) {
+        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, req);
+      }
     }
   }
 
