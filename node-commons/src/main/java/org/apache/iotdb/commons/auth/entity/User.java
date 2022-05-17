@@ -105,22 +105,6 @@ public class User {
     this.lastActiveTime = lastActiveTime;
   }
 
-  public String getStringName() {
-    return "name";
-  }
-
-  public String getStringPassword() {
-    return "password";
-  }
-
-  public String getStringPrivilegeList() {
-    return "privilegeList";
-  }
-
-  public String getStringRoleList() {
-    return "roleList";
-  }
-
   public PathPrivilege toPathPrivilege(String path, String privilege) {
     PathPrivilege pathPrivilege = new PathPrivilege();
     String[] privileges = privilege.replace(" ", "").split(",");

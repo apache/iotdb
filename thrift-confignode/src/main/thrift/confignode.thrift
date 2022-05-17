@@ -146,6 +146,24 @@ struct TAuthorizerResp {
   2: required map<string, list<string>> authorizerInfo
 }
 
+struct TUserResp{
+  1: required string username
+  2: required string password
+  3: required list<string> privilegeList
+  4: required list<string> roleList
+}
+
+struct TRoleResp{
+  1: required string roleName
+  2: required list<string> privilegeList
+}
+
+struct TPermissionInfoResp{
+  1: required TUserResp userInfo
+  2: required map<string, TRoleResp> roleInfo
+  3: required common.TSStatus status
+}
+
 struct TLoginReq {
   1: required string userrname
   2: required string password
@@ -221,9 +239,9 @@ service ConfigIService {
 
   TAuthorizerResp queryPermission(TAuthorizerReq req)
 
-  TAuthorizerResp login(TLoginReq req)
+  TPermissionInfoResp login(TLoginReq req)
 
-  TAuthorizerResp checkUserPrivileges(TCheckUserPrivilegesReq req)
+  TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   /* ConfigNode */
 

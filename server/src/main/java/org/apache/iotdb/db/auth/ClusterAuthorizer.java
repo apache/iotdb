@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.auth;
 
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -30,10 +30,11 @@ import java.util.List;
 
 public class ClusterAuthorizer {
 
-  public static TAuthorizerResp checkPath(String username, List<String> allPath, int permission) {
+  public static TPermissionInfoResp checkPath(
+      String username, List<String> allPath, int permission) {
     TCheckUserPrivilegesReq req = new TCheckUserPrivilegesReq(username, allPath, permission);
     ConfigNodeClient configNodeClient = null;
-    TAuthorizerResp status = null;
+    TPermissionInfoResp status = null;
     try {
       configNodeClient = new ConfigNodeClient();
       // Send request to some API server
@@ -45,16 +46,16 @@ public class ClusterAuthorizer {
         configNodeClient.close();
       }
       if (status == null) {
-        status = new TAuthorizerResp();
+        status = new TPermissionInfoResp();
       }
     }
     return status;
   }
 
   /** Check the user */
-  public static TAuthorizerResp checkUser(String username, String password) {
+  public static TPermissionInfoResp checkUser(String username, String password) {
     TLoginReq req = new TLoginReq(username, password);
-    TAuthorizerResp status = null;
+    TPermissionInfoResp status = null;
     ConfigNodeClient configNodeClient = null;
     try {
       configNodeClient = new ConfigNodeClient();
@@ -67,7 +68,7 @@ public class ClusterAuthorizer {
         configNodeClient.close();
       }
       if (status == null) {
-        status = new TAuthorizerResp();
+        status = new TPermissionInfoResp();
       }
     }
     return status;

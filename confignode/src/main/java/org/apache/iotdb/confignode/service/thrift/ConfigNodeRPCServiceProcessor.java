@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
@@ -333,19 +334,14 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   }
 
   @Override
-  public TAuthorizerResp login(TLoginReq req) throws TException {
-    PermissionInfoResp dataSet =
-        (PermissionInfoResp) configManager.login(req.getUserrname(), req.getPassword());
-    return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
+  public TPermissionInfoResp login(TLoginReq req) throws TException {
+    return configManager.login(req.getUserrname(), req.getPassword());
   }
 
   @Override
-  public TAuthorizerResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
-    PermissionInfoResp dataSet =
-        (PermissionInfoResp)
-            configManager.checkUserPrivileges(
-                req.getUsername(), req.getPaths(), req.getPermission());
-    return new TAuthorizerResp(dataSet.getStatus(), dataSet.getPermissionInfo());
+  public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
+    return configManager.checkUserPrivileges(
+        req.getUsername(), req.getPaths(), req.getPermission());
   }
 
   @Override

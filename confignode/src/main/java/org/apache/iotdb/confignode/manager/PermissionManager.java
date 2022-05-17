@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 
 import java.util.List;
 
@@ -61,11 +62,11 @@ public class PermissionManager {
     return configManager.getConsensusManager();
   }
 
-  public PermissionInfoResp login(String username, String password) {
+  public TPermissionInfoResp login(String username, String password) {
     return authorInfo.login(username, password);
   }
 
-  public PermissionInfoResp checkUserPrivileges(
+  public TPermissionInfoResp checkUserPrivileges(
       String username, List<String> paths, int permission) {
     return authorInfo.checkUserPrivileges(username, paths, permission);
   }

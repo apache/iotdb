@@ -36,6 +36,9 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
+import org.apache.iotdb.confignode.rpc.thrift.TUserResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -46,7 +49,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,28 +69,43 @@ public class AuthorInfo implements SnapshotProcessor {
     }
   }
 
-  public PermissionInfoResp login(String username, String password) {
+  public TPermissionInfoResp login(String username, String password) {
     boolean status;
     String loginMessage = null;
     User user;
     TSStatus tsStatus = new TSStatus();
-    PermissionInfoResp result = new PermissionInfoResp();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    List<String> privilegeList = new ArrayList<>();
+    TPermissionInfoResp result = new TPermissionInfoResp();
+    TUserResp tUserResp = new TUserResp();
+    TRoleResp tRoleResp = new TRoleResp();
+    Map<String, TRoleResp> tRoleRespMap = new HashMap();
+    List<String> userPrivilegeList = new ArrayList<>();
+    List<String> rolePrivilegeList = new ArrayList<>();
     try {
       status = authorizer.login(username, password);
       if (status) {
         user = authorizer.getUser(username);
         for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-          privilegeList.add(pathPrivilege.getPath());
+          userPrivilegeList.add(pathPrivilege.getPath());
           String privilegeIdList = pathPrivilege.getPrivileges().toString();
-          privilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+          userPrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
         }
-        permissionInfo.put(user.getStringName(), Collections.singletonList(user.getName()));
-        permissionInfo.put(user.getStringPassword(), Collections.singletonList(user.getPassword()));
-        permissionInfo.put(user.getStringPrivilegeList(), privilegeList);
-        permissionInfo.put(user.getStringRoleList(), user.getRoleList());
-        result.setPermissionInfo(permissionInfo);
+        tUserResp.setUsername(user.getName());
+        tUserResp.setPassword(user.getPassword());
+        tUserResp.setPrivilegeList(userPrivilegeList);
+        tUserResp.setRoleList(user.getRoleList());
+        for (String roleName : user.getRoleList()) {
+          Role role = authorizer.getRole(roleName);
+          tRoleResp.setRoleName(roleName);
+          for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+            rolePrivilegeList.add(pathPrivilege.getPath());
+            String privilegeIdList = pathPrivilege.getPrivileges().toString();
+            rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+          }
+          tRoleResp.setPrivilegeList(rolePrivilegeList);
+          tRoleRespMap.put(roleName, tRoleResp);
+        }
+        result.setUserInfo(tUserResp);
+        result.setRoleInfo(tRoleRespMap);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
       }
     } catch (AuthException e) {
@@ -104,13 +121,16 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp checkUserPrivileges(
+  public TPermissionInfoResp checkUserPrivileges(
       String username, List<String> paths, int permission) {
     boolean status = true;
     User user;
-    PermissionInfoResp result = new PermissionInfoResp();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    List<String> privilegeList = new ArrayList<>();
+    TPermissionInfoResp result = new TPermissionInfoResp();
+    TUserResp tUserResp = new TUserResp();
+    TRoleResp tRoleResp = new TRoleResp();
+    Map<String, TRoleResp> tRoleRespMap = new HashMap();
+    List<String> userPrivilegeList = new ArrayList<>();
+    List<String> rolePrivilegeList = new ArrayList<>();
     try {
       for (String path : paths) {
         if (!checkOnePath(username, path, permission)) {
@@ -123,15 +143,29 @@ public class AuthorInfo implements SnapshotProcessor {
     if (status) {
       try {
         user = authorizer.getUser(username);
-        permissionInfo.put(user.getStringName(), Collections.singletonList(user.getName()));
-        permissionInfo.put(user.getStringPassword(), Collections.singletonList(user.getPassword()));
         for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-          privilegeList.add(pathPrivilege.getPath());
+          userPrivilegeList.add(pathPrivilege.getPath());
           String privilegeIdList = pathPrivilege.getPrivileges().toString();
-          privilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+          userPrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
         }
-        permissionInfo.put(user.getStringRoleList(), user.getRoleList());
-        result.setPermissionInfo(permissionInfo);
+        tUserResp.setUsername(user.getName());
+        tUserResp.setPassword(user.getPassword());
+        tUserResp.setPrivilegeList(userPrivilegeList);
+        tUserResp.setRoleList(user.getRoleList());
+
+        for (String roleName : user.getRoleList()) {
+          Role role = authorizer.getRole(roleName);
+          tRoleResp.setRoleName(roleName);
+          for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
+            rolePrivilegeList.add(pathPrivilege.getPath());
+            String privilegeIdList = pathPrivilege.getPrivileges().toString();
+            rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
+          }
+          tRoleResp.setPrivilegeList(rolePrivilegeList);
+          tRoleRespMap.put(roleName, tRoleResp);
+        }
+        result.setUserInfo(tUserResp);
+        result.setRoleInfo(tRoleRespMap);
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (AuthException e) {
         result.setStatus(

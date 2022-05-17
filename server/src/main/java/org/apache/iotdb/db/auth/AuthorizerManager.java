@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -52,14 +52,19 @@ public class AuthorizerManager implements IAuthorizer {
 
   private IAuthorizer iAuthorizer;
   private ReentrantReadWriteLock snapshotLock;
-  private TAuthorizerResp tAuthorizerResp;
+  private TPermissionInfoResp tPermissionInfoResp;
 
-  LoadingCache<String, User> privilegeCache =
+  LoadingCache<String, User> userCache =
       Caffeine.newBuilder()
           .maximumSize(100)
-          .expireAfterAccess(30, TimeUnit.SECONDS)
-          // getAll将会对缓存中, 没有值的key分别调用CacheLoader.load方法来构建缓存的值
-          .build(this::buildLoader);
+          .expireAfterAccess(30, TimeUnit.MINUTES)
+          .build(this::cacheUser);
+
+  LoadingCache<String, Role> roleCache =
+      Caffeine.newBuilder()
+          .maximumSize(100)
+          .expireAfterAccess(30, TimeUnit.MINUTES)
+          .build(this::cacheRole);
 
   public AuthorizerManager() {
     try {
@@ -363,55 +368,77 @@ public class AuthorizerManager implements IAuthorizer {
 
   public TSStatus checkPath(String username, List<String> allPath, int permission)
       throws AuthException {
-    User user = privilegeCache.getIfPresent(username);
+    User user = userCache.getIfPresent(username);
     if (user != null) {
       for (String path : allPath) {
-        boolean status = user.checkPrivilege(path, permission);
-        if (status) {
+        if (user.checkPrivilege(path, permission)) {
           return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        } else {
+          for (String roleName : user.getRoleList()) {
+            Role role = roleCache.getIfPresent(roleName);
+            if (role != null) {
+              if (role.checkPrivilege(path, permission)) {
+                return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+              }
+            }
+          }
         }
       }
     }
-    tAuthorizerResp = ClusterAuthorizer.checkPath(username, allPath, permission);
-    if (tAuthorizerResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      privilegeCache.get(username);
-      return tAuthorizerResp.getStatus();
+    tPermissionInfoResp = ClusterAuthorizer.checkPath(username, allPath, permission);
+    if (tPermissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      userCache.get(username);
+      return tPermissionInfoResp.getStatus();
     } else {
-      return tAuthorizerResp.getStatus();
+      return tPermissionInfoResp.getStatus();
     }
   }
 
   /** Check the user */
   public TSStatus checkUser(String username, String password) {
-    User user = privilegeCache.getIfPresent(username);
+    User user = userCache.getIfPresent(username);
     if (user != null
         && password != null
         && AuthUtils.validatePassword(password, user.getPassword())) {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
-    tAuthorizerResp = ClusterAuthorizer.checkUser(username, password);
-    if (tAuthorizerResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      privilegeCache.get(username);
-      return tAuthorizerResp.getStatus();
+    tPermissionInfoResp = ClusterAuthorizer.checkUser(username, password);
+    if (tPermissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      userCache.get(username);
+      return tPermissionInfoResp.getStatus();
     } else {
-      return tAuthorizerResp.getStatus();
+      return tPermissionInfoResp.getStatus();
     }
   }
 
-  User buildLoader(String username) {
+  User cacheUser(String username) {
     User user = new User();
-    List<String> privilegeList =
-        tAuthorizerResp.getAuthorizerInfo().get(user.getStringPrivilegeList());
+    List<String> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
     List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-    user.setName(tAuthorizerResp.getAuthorizerInfo().get(user.getStringName()).get(0));
-    user.setPassword(tAuthorizerResp.getAuthorizerInfo().get(user.getStringPassword()).get(0));
+    user.setName(tPermissionInfoResp.getUserInfo().getUsername());
+    user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
     for (int i = 0; i < privilegeList.size(); i++) {
       String path = privilegeList.get(i);
       String privilege = privilegeList.get(++i);
       pathPrivilegeList.add(user.toPathPrivilege(path, privilege));
     }
     user.setPrivilegeList(pathPrivilegeList);
-    user.setRoleList(tAuthorizerResp.getAuthorizerInfo().get(user.getStringRoleList()));
+    user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
+    roleCache.getAll(tPermissionInfoResp.getRoleInfo().keySet());
     return user;
+  }
+
+  Role cacheRole(String roleName) {
+    Role role = new Role();
+    List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
+    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
+    role.setName(tPermissionInfoResp.getRoleInfo().get(roleName).getRoleName());
+    for (int i = 0; i < privilegeList.size(); i++) {
+      String path = privilegeList.get(i);
+      String privilege = privilegeList.get(++i);
+      pathPrivilegeList.add(role.toPathPrivilege(path, privilege));
+    }
+    role.setPrivilegeList(pathPrivilegeList);
+    return role;
   }
 }
