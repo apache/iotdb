@@ -508,9 +508,6 @@ public class IoTDBConfig {
   /** Replace implementation class of influxdb protocol service */
   private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
 
-  /** Is stat performance of sub-module enable. */
-  private boolean enablePerformanceStat = false;
-
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
 
@@ -1620,14 +1617,6 @@ public class IoTDBConfig {
 
   void setExternalSortThreshold(int externalSortThreshold) {
     this.externalSortThreshold = externalSortThreshold;
-  }
-
-  public boolean isEnablePerformanceStat() {
-    return enablePerformanceStat;
-  }
-
-  public void setEnablePerformanceStat(boolean enablePerformanceStat) {
-    this.enablePerformanceStat = enablePerformanceStat;
   }
 
   public boolean isEnablePartialInsert() {

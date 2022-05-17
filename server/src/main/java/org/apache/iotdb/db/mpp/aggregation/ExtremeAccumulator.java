@@ -68,6 +68,9 @@ public class ExtremeAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of ExtremeValue should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         updateIntResult(partialResult[0].getInt(0));
@@ -118,6 +121,10 @@ public class ExtremeAccumulator implements Accumulator {
 
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
+    initResult = true;
     extremeResult.setObject(finalResult.getObject(0));
   }
 
@@ -125,6 +132,10 @@ public class ExtremeAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of ExtremeValue should be 1");
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilders[0].writeInt(extremeResult.getInt());
@@ -148,6 +159,10 @@ public class ExtremeAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
+    if (!initResult) {
+      columnBuilder.appendNull();
+      return;
+    }
     switch (seriesDataType) {
       case INT32:
         columnBuilder.writeInt(extremeResult.getInt());
@@ -194,7 +209,7 @@ public class ExtremeAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
@@ -220,7 +235,7 @@ public class ExtremeAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
@@ -246,7 +261,7 @@ public class ExtremeAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {
@@ -272,7 +287,7 @@ public class ExtremeAccumulator implements Accumulator {
     TimeColumn timeColumn = (TimeColumn) column[0];
     for (int i = 0; i < timeColumn.getPositionCount(); i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
+      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
         break;
       }
       if (!column[1].isNull(i)) {

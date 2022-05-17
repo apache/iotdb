@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.filter.BasicFunctionFilter;
-import org.apache.iotdb.db.mpp.common.filter.QueryFilter;
 import org.apache.iotdb.db.mpp.plan.constant.FilterConstant;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
@@ -44,7 +43,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.SqlLexer;
 import org.apache.iotdb.db.qp.strategy.SQLParseError;
+import org.apache.iotdb.db.query.expression.binary.GreaterEqualExpression;
+import org.apache.iotdb.db.query.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.query.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.query.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.query.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -71,9 +75,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 
@@ -100,27 +102,16 @@ public class StatementGenerator {
     selectComponent.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
 
     // set query filter
-    QueryFilter queryFilter = new QueryFilter(FilterConstant.FilterType.KW_AND);
-    PartialPath timePath = new PartialPath(TIME);
-    queryFilter.setSinglePath(timePath);
-    Set<PartialPath> pathSet = new HashSet<>();
-    pathSet.add(timePath);
-    queryFilter.setIsSingle(true);
-    queryFilter.setPathSet(pathSet);
-
-    BasicFunctionFilter left =
-        new BasicFunctionFilter(
-            FilterConstant.FilterType.GREATERTHANOREQUALTO,
-            timePath,
-            Long.toString(rawDataQueryReq.getStartTime()));
-    BasicFunctionFilter right =
-        new BasicFunctionFilter(
-            FilterConstant.FilterType.LESSTHAN,
-            timePath,
-            Long.toString(rawDataQueryReq.getEndTime()));
-    queryFilter.addChildOperator(left);
-    queryFilter.addChildOperator(right);
-    //    whereCondition.setQueryFilter(queryFilter);
+    GreaterEqualExpression leftPredicate =
+        new GreaterEqualExpression(
+            new TimestampOperand(),
+            new ConstantOperand(TSDataType.INT64, Long.toString(rawDataQueryReq.getStartTime())));
+    LessThanExpression rightPredicate =
+        new LessThanExpression(
+            new TimestampOperand(),
+            new ConstantOperand(TSDataType.INT64, Long.toString(rawDataQueryReq.getEndTime())));
+    LogicAndExpression predicate = new LogicAndExpression(leftPredicate, rightPredicate);
+    whereCondition.setPredicate(predicate);
 
     queryStatement.setSelectComponent(selectComponent);
     queryStatement.setFromComponent(fromComponent);
